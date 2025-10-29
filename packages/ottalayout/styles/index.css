@@ -1,0 +1,177 @@
+/* OttaLayout Styles */
+
+/* Layout transitions */
+.otta-layout-transition {
+  transition: all 200ms ease;
+}
+
+/* Smooth transitions for layout sections */
+[data-mantine-app-shell] {
+  transition: padding 200ms ease;
+}
+
+/* Header animations */
+[data-mantine-app-shell-header] {
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+
+[data-mantine-app-shell-header][data-collapsed="true"] {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+/* Footer animations */
+[data-mantine-app-shell-footer] {
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+
+[data-mantine-app-shell-footer][data-collapsed="true"] {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+/* Navbar animations */
+[data-mantine-app-shell-navbar] {
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+
+[data-mantine-app-shell-navbar][data-collapsed="true"] {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+/* Aside animations */
+[data-mantine-app-shell-aside] {
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+
+[data-mantine-app-shell-aside][data-collapsed="true"] {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+/* Main content animations */
+[data-mantine-app-shell-main] {
+  transition: padding 200ms ease;
+}
+
+/* Enhanced transitions for layout switching */
+.otta-layout-fade-enter {
+  opacity: 0;
+}
+
+.otta-layout-fade-enter-active {
+  opacity: 1;
+  transition: opacity 200ms ease-in;
+}
+
+.otta-layout-fade-exit {
+  opacity: 1;
+}
+
+.otta-layout-fade-exit-active {
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+
+/* Slide transitions */
+.otta-layout-slide-left-enter {
+  transform: translateX(-100%);
+}
+
+.otta-layout-slide-left-enter-active {
+  transform: translateX(0);
+  transition: transform 200ms ease;
+}
+
+.otta-layout-slide-right-enter {
+  transform: translateX(100%);
+}
+
+.otta-layout-slide-right-enter-active {
+  transform: translateX(0);
+  transition: transform 200ms ease;
+}
+
+/* Custom scrollbar for layout sections */
+.otta-layout-scrollable {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.otta-layout-scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.otta-layout-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.otta-layout-scrollable::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.otta-layout-scrollable::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode scrollbar */
+[data-mantine-color-scheme="dark"] .otta-layout-scrollable {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+[data-mantine-color-scheme="dark"] .otta-layout-scrollable::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-mantine-color-scheme="dark"] .otta-layout-scrollable::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Layout section borders */
+.otta-layout-bordered [data-mantine-app-shell-navbar] {
+  border-right: 1px solid var(--mantine-color-gray-3);
+}
+
+.otta-layout-bordered [data-mantine-app-shell-aside] {
+  border-left: 1px solid var(--mantine-color-gray-3);
+}
+
+.otta-layout-bordered [data-mantine-app-shell-header] {
+  border-bottom: 1px solid var(--mantine-color-gray-3);
+}
+
+.otta-layout-bordered [data-mantine-app-shell-footer] {
+  border-top: 1px solid var(--mantine-color-gray-3);
+}
+
+/* Dark mode borders */
+[data-mantine-color-scheme="dark"] .otta-layout-bordered [data-mantine-app-shell-navbar],
+[data-mantine-color-scheme="dark"] .otta-layout-bordered [data-mantine-app-shell-aside],
+[data-mantine-color-scheme="dark"] .otta-layout-bordered [data-mantine-app-shell-header],
+[data-mantine-color-scheme="dark"] .otta-layout-bordered [data-mantine-app-shell-footer] {
+  border-color: var(--mantine-color-dark-4);
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  [data-mantine-app-shell-navbar],
+  [data-mantine-app-shell-aside] {
+    transition: transform 150ms ease;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .otta-layout-transition,
+  [data-mantine-app-shell],
+  [data-mantine-app-shell-header],
+  [data-mantine-app-shell-footer],
+  [data-mantine-app-shell-navbar],
+  [data-mantine-app-shell-aside],
+  [data-mantine-app-shell-main] {
+    transition: none;
+  }
+}
