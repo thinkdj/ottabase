@@ -6,20 +6,15 @@
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
-      "require": "./dist/index.js"
-    },
-    "./client": {
-      "types": "./dist/client.d.ts",
-      "import": "./dist/client.esm.js",
-      "require": "./dist/client.js"
-    },
     "./prisma": {
       "types": "./dist/prisma-config.d.ts",
-      "import": "./dist/prisma-config.esm.js",
+      "import": "./dist/prisma-config.mjs",
       "require": "./dist/prisma-config.js"
+    },
+    "./cloudflare": {
+      "types": "./dist/cloudflare.d.ts",
+      "import": "./dist/cloudflare.mjs",
+      "require": "./dist/cloudflare.js"
     },
     "./schema": "./prisma/schema.prisma"
   },
@@ -29,8 +24,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/client.ts src/prisma-config.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/client.ts src/prisma-config.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/prisma-config.ts src/cloudflare.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/prisma-config.ts src/cloudflare.ts --format cjs,esm --dts --watch",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts",
     "type-check": "tsc --noEmit",
@@ -53,7 +48,19 @@
   "peerDependencies": {
     "@prisma/client": ">=5.22.0"
   },
+  "peerDependenciesMeta": {
+    "@ottabase/cf-data": {
+      "optional": true
+    },
+    "@cloudflare/workers-types": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@ottabase/cf-data": "workspace:*"
+  },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
     "@prisma/client": "catalog:",
     "@types/node": "catalog:",
     "prisma": "catalog:",

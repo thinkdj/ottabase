@@ -5,7 +5,8 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["@cloudflare/workers-types", "@types/node"]
   },
   "include": ["src/**/*", "prisma/**/*"],
   "exclude": ["dist", "node_modules", "**/*.test.*", "**/*.spec.*"]

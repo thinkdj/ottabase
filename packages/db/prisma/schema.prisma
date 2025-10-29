@@ -1,0 +1,18 @@
+// Minimal schema for @ottabase/db package build
+// This allows the package to build successfully
+// Apps should use their own schema with their models
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Minimal placeholder model for build purposes
+model _BuildPlaceholder {
+  id String @id @default(cuid())
+}

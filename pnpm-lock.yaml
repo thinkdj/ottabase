@@ -465,7 +465,14 @@ importers:
         version: 5.9.2
 
   packages/db:
+    dependencies:
+      '@ottabase/cf-data':
+        specifier: workspace:*
+        version: link:../cf-data
     devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20241127.0
+        version: 4.20251014.0
       '@prisma/client':
         specifier: 'catalog:'
         version: 5.22.0(prisma@5.22.0)
