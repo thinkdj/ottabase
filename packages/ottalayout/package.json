@@ -1,7 +1,7 @@
 {
   "name": "@ottabase/ottalayout",
   "version": "1.0.0",
-  "description": "Core layout component for Ottabase applications with Mantine AppShell",
+  "description": "Standalone layout component for Ottabase applications - mimics Mantine AppShell functionality",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
@@ -29,20 +29,14 @@
     "react",
     "layout",
     "app-shell",
-    "mantine",
+    "standalone",
     "ottabase"
   ],
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "@mantine/core": "catalog:",
-    "@mantine/hooks": "catalog:"
-  },
   "peerDependencies": {
     "react": ">=18.0.0",
-    "react-dom": ">=18.0.0",
-    "@mantine/core": "^8.3.1",
-    "@mantine/hooks": "^8.3.1"
+    "react-dom": ">=18.0.0"
   },
   "devDependencies": {
     "@types/react": "catalog:",

@@ -1,177 +1,259 @@
-/* OttaLayout Styles */
+/* OttaLayout Styles - Standalone Implementation */
 
-/* Layout transitions */
-.otta-layout-transition {
-  transition: all 200ms ease;
+/* Reset and base styles */
+.otta-layout {
+  box-sizing: border-box;
+  position: relative;
 }
 
-/* Smooth transitions for layout sections */
-[data-mantine-app-shell] {
-  transition: padding 200ms ease;
+.otta-layout *,
+.otta-layout *::before,
+.otta-layout *::after {
+  box-sizing: inherit;
 }
 
-/* Header animations */
-[data-mantine-app-shell-header] {
-  transition: transform 200ms ease, opacity 200ms ease;
+/* Header section */
+.otta-layout-header {
+  background-color: var(--otta-header-bg, #ffffff);
+  border-bottom: 1px solid var(--otta-border-color, #e0e0e0);
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 0;
 }
 
-[data-mantine-app-shell-header][data-collapsed="true"] {
-  transform: translateY(-100%);
-  opacity: 0;
+.otta-layout-header[data-collapsed="true"] {
+  visibility: hidden;
 }
 
-/* Footer animations */
-[data-mantine-app-shell-footer] {
-  transition: transform 200ms ease, opacity 200ms ease;
+/* Footer section */
+.otta-layout-footer {
+  background-color: var(--otta-footer-bg, #ffffff);
+  border-top: 1px solid var(--otta-border-color, #e0e0e0);
+  display: flex;
+  align-items: center;
+  position: sticky;
+  bottom: 0;
 }
 
-[data-mantine-app-shell-footer][data-collapsed="true"] {
-  transform: translateY(100%);
-  opacity: 0;
+.otta-layout-footer[data-collapsed="true"] {
+  visibility: hidden;
 }
 
-/* Navbar animations */
-[data-mantine-app-shell-navbar] {
-  transition: transform 200ms ease, opacity 200ms ease;
+/* Navbar section (left sidebar) */
+.otta-layout-navbar {
+  background-color: var(--otta-navbar-bg, #f5f5f5);
+  border-right: 1px solid var(--otta-border-color, #e0e0e0);
+  position: sticky;
+  top: 0;
+  height: 100%;
 }
 
-[data-mantine-app-shell-navbar][data-collapsed="true"] {
-  transform: translateX(-100%);
-  opacity: 0;
+.otta-layout-navbar[data-collapsed="true"] {
+  visibility: hidden;
 }
 
-/* Aside animations */
-[data-mantine-app-shell-aside] {
-  transition: transform 200ms ease, opacity 200ms ease;
+/* Aside section (right sidebar) */
+.otta-layout-aside {
+  background-color: var(--otta-aside-bg, #f5f5f5);
+  border-left: 1px solid var(--otta-border-color, #e0e0e0);
+  position: sticky;
+  top: 0;
+  height: 100%;
 }
 
-[data-mantine-app-shell-aside][data-collapsed="true"] {
-  transform: translateX(100%);
-  opacity: 0;
+.otta-layout-aside[data-collapsed="true"] {
+  visibility: hidden;
 }
 
-/* Main content animations */
-[data-mantine-app-shell-main] {
-  transition: padding 200ms ease;
+/* Main content area */
+.otta-layout-main {
+  background-color: var(--otta-main-bg, #ffffff);
+  min-height: 100%;
 }
 
-/* Enhanced transitions for layout switching */
-.otta-layout-fade-enter {
-  opacity: 0;
+/* Layout variants */
+.otta-layout[data-layout="alt"] .otta-layout-navbar {
+  border-right: none;
+  border-left: 1px solid var(--otta-border-color, #e0e0e0);
 }
 
-.otta-layout-fade-enter-active {
-  opacity: 1;
-  transition: opacity 200ms ease-in;
-}
-
-.otta-layout-fade-exit {
-  opacity: 1;
-}
-
-.otta-layout-fade-exit-active {
-  opacity: 0;
-  transition: opacity 200ms ease-out;
-}
-
-/* Slide transitions */
-.otta-layout-slide-left-enter {
-  transform: translateX(-100%);
-}
-
-.otta-layout-slide-left-enter-active {
-  transform: translateX(0);
-  transition: transform 200ms ease;
-}
-
-.otta-layout-slide-right-enter {
-  transform: translateX(100%);
-}
-
-.otta-layout-slide-right-enter-active {
-  transform: translateX(0);
-  transition: transform 200ms ease;
+.otta-layout[data-layout="alt"] .otta-layout-aside {
+  border-left: none;
+  border-right: 1px solid var(--otta-border-color, #e0e0e0);
 }
 
 /* Custom scrollbar for layout sections */
-.otta-layout-scrollable {
-  overflow-y: auto;
+.otta-layout-header,
+.otta-layout-footer,
+.otta-layout-navbar,
+.otta-layout-aside,
+.otta-layout-main {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  scrollbar-color: var(--otta-scrollbar-thumb, rgba(0, 0, 0, 0.2)) transparent;
 }
 
-.otta-layout-scrollable::-webkit-scrollbar {
+.otta-layout-header::-webkit-scrollbar,
+.otta-layout-footer::-webkit-scrollbar,
+.otta-layout-navbar::-webkit-scrollbar,
+.otta-layout-aside::-webkit-scrollbar,
+.otta-layout-main::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
-.otta-layout-scrollable::-webkit-scrollbar-track {
+.otta-layout-header::-webkit-scrollbar-track,
+.otta-layout-footer::-webkit-scrollbar-track,
+.otta-layout-navbar::-webkit-scrollbar-track,
+.otta-layout-aside::-webkit-scrollbar-track,
+.otta-layout-main::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.otta-layout-scrollable::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.2);
+.otta-layout-header::-webkit-scrollbar-thumb,
+.otta-layout-footer::-webkit-scrollbar-thumb,
+.otta-layout-navbar::-webkit-scrollbar-thumb,
+.otta-layout-aside::-webkit-scrollbar-thumb,
+.otta-layout-main::-webkit-scrollbar-thumb {
+  background-color: var(--otta-scrollbar-thumb, rgba(0, 0, 0, 0.2));
   border-radius: 4px;
 }
 
-.otta-layout-scrollable::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(0, 0, 0, 0.3);
-}
-
-/* Dark mode scrollbar */
-[data-mantine-color-scheme="dark"] .otta-layout-scrollable {
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-}
-
-[data-mantine-color-scheme="dark"] .otta-layout-scrollable::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-[data-mantine-color-scheme="dark"] .otta-layout-scrollable::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-}
-
-/* Layout section borders */
-.otta-layout-bordered [data-mantine-app-shell-navbar] {
-  border-right: 1px solid var(--mantine-color-gray-3);
-}
-
-.otta-layout-bordered [data-mantine-app-shell-aside] {
-  border-left: 1px solid var(--mantine-color-gray-3);
-}
-
-.otta-layout-bordered [data-mantine-app-shell-header] {
-  border-bottom: 1px solid var(--mantine-color-gray-3);
-}
-
-.otta-layout-bordered [data-mantine-app-shell-footer] {
-  border-top: 1px solid var(--mantine-color-gray-3);
-}
-
-/* Dark mode borders */
-[data-mantine-color-scheme="dark"] .otta-layout-bordered [data-mantine-app-shell-navbar],
-[data-mantine-color-scheme="dark"] .otta-layout-bordered [data-mantine-app-shell-aside],
-[data-mantine-color-scheme="dark"] .otta-layout-bordered [data-mantine-app-shell-header],
-[data-mantine-color-scheme="dark"] .otta-layout-bordered [data-mantine-app-shell-footer] {
-  border-color: var(--mantine-color-dark-4);
-}
-
-/* Responsive utilities */
-@media (max-width: 768px) {
-  [data-mantine-app-shell-navbar],
-  [data-mantine-app-shell-aside] {
-    transition: transform 150ms ease;
-  }
+.otta-layout-header::-webkit-scrollbar-thumb:hover,
+.otta-layout-footer::-webkit-scrollbar-thumb:hover,
+.otta-layout-navbar::-webkit-scrollbar-thumb:hover,
+.otta-layout-aside::-webkit-scrollbar-thumb:hover,
+.otta-layout-main::-webkit-scrollbar-thumb:hover {
+  background-color: var(--otta-scrollbar-thumb-hover, rgba(0, 0, 0, 0.3));
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  .otta-layout-transition,
-  [data-mantine-app-shell],
-  [data-mantine-app-shell-header],
-  [data-mantine-app-shell-footer],
-  [data-mantine-app-shell-navbar],
-  [data-mantine-app-shell-aside],
-  [data-mantine-app-shell-main] {
-    transition: none;
+  .otta-layout,
+  .otta-layout-header,
+  .otta-layout-footer,
+  .otta-layout-navbar,
+  .otta-layout-aside,
+  .otta-layout-main {
+    transition: none !important;
   }
+}
+
+/* Responsive behavior */
+@media (max-width: 768px) {
+  .otta-layout-navbar,
+  .otta-layout-aside {
+    position: fixed;
+    z-index: 1000;
+    height: 100vh;
+  }
+
+  .otta-layout-navbar {
+    left: 0;
+    top: 0;
+  }
+
+  .otta-layout-aside {
+    right: 0;
+    top: 0;
+  }
+}
+
+/* Dark mode support - CSS custom properties */
+@media (prefers-color-scheme: dark) {
+  .otta-layout {
+    --otta-header-bg: #1a1a1a;
+    --otta-footer-bg: #1a1a1a;
+    --otta-navbar-bg: #242424;
+    --otta-aside-bg: #242424;
+    --otta-main-bg: #121212;
+    --otta-border-color: #333333;
+    --otta-scrollbar-thumb: rgba(255, 255, 255, 0.2);
+    --otta-scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  }
+}
+
+/* Dark mode with explicit class */
+.otta-layout-dark,
+.dark .otta-layout,
+[data-theme="dark"] .otta-layout {
+  --otta-header-bg: #1a1a1a;
+  --otta-footer-bg: #1a1a1a;
+  --otta-navbar-bg: #242424;
+  --otta-aside-bg: #242424;
+  --otta-main-bg: #121212;
+  --otta-border-color: #333333;
+  --otta-scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --otta-scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+}
+
+/* Light mode with explicit class */
+.otta-layout-light,
+.light .otta-layout,
+[data-theme="light"] .otta-layout {
+  --otta-header-bg: #ffffff;
+  --otta-footer-bg: #ffffff;
+  --otta-navbar-bg: #f5f5f5;
+  --otta-aside-bg: #f5f5f5;
+  --otta-main-bg: #ffffff;
+  --otta-border-color: #e0e0e0;
+  --otta-scrollbar-thumb: rgba(0, 0, 0, 0.2);
+  --otta-scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+}
+
+/* Utility classes for bordered layout */
+.otta-layout-bordered .otta-layout-navbar {
+  border-right-width: 2px;
+}
+
+.otta-layout-bordered .otta-layout-aside {
+  border-left-width: 2px;
+}
+
+.otta-layout-bordered .otta-layout-header {
+  border-bottom-width: 2px;
+}
+
+.otta-layout-bordered .otta-layout-footer {
+  border-top-width: 2px;
+}
+
+/* Shadow variants */
+.otta-layout-shadow .otta-layout-header {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-bottom: none;
+}
+
+.otta-layout-shadow .otta-layout-footer {
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+  border-top: none;
+}
+
+.otta-layout-shadow .otta-layout-navbar {
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+  border-right: none;
+}
+
+.otta-layout-shadow .otta-layout-aside {
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+  border-left: none;
+}
+
+/* Overlay for mobile */
+.otta-layout-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.otta-layout-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
 }

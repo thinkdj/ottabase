@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useDisclosure } from "@mantine/hooks";
 
 export interface LayoutState {
   /** Whether the navbar is opened */
@@ -72,37 +71,38 @@ export function useOttaLayout(
     initialFooterVisible = true,
   } = options;
 
-  const [navbarOpened, { toggle: toggleNavbar, open: openNavbar, close: closeNavbar }] =
-    useDisclosure(initialNavbarOpened);
+  const [navbarOpened, setNavbarOpened] = useState(initialNavbarOpened);
+  const [asideOpened, setAsideOpened] = useState(initialAsideOpened);
+  const [headerVisible, setHeaderVisible] = useState(initialHeaderVisible);
+  const [footerVisible, setFooterVisible] = useState(initialFooterVisible);
 
-  const [asideOpened, { toggle: toggleAside, open: openAside, close: closeAside }] =
-    useDisclosure(initialAsideOpened);
+  // Navbar functions
+  const toggleNavbar = useCallback(() => setNavbarOpened(prev => !prev), []);
+  const openNavbar = useCallback(() => setNavbarOpened(true), []);
+  const closeNavbar = useCallback(() => setNavbarOpened(false), []);
 
-  const [headerVisible, { toggle: toggleHeader, open: showHeader, close: hideHeader }] =
-    useDisclosure(initialHeaderVisible);
+  // Aside functions
+  const toggleAside = useCallback(() => setAsideOpened(prev => !prev), []);
+  const openAside = useCallback(() => setAsideOpened(true), []);
+  const closeAside = useCallback(() => setAsideOpened(false), []);
 
-  const [footerVisible, { toggle: toggleFooter, open: showFooter, close: hideFooter }] =
-    useDisclosure(initialFooterVisible);
+  // Header functions
+  const toggleHeader = useCallback(() => setHeaderVisible(prev => !prev), []);
+  const showHeader = useCallback(() => setHeaderVisible(true), []);
+  const hideHeader = useCallback(() => setHeaderVisible(false), []);
 
+  // Footer functions
+  const toggleFooter = useCallback(() => setFooterVisible(prev => !prev), []);
+  const showFooter = useCallback(() => setFooterVisible(true), []);
+  const hideFooter = useCallback(() => setFooterVisible(false), []);
+
+  // Reset function
   const reset = useCallback(() => {
-    if (navbarOpened !== initialNavbarOpened) toggleNavbar();
-    if (asideOpened !== initialAsideOpened) toggleAside();
-    if (headerVisible !== initialHeaderVisible) toggleHeader();
-    if (footerVisible !== initialFooterVisible) toggleFooter();
-  }, [
-    navbarOpened,
-    asideOpened,
-    headerVisible,
-    footerVisible,
-    initialNavbarOpened,
-    initialAsideOpened,
-    initialHeaderVisible,
-    initialFooterVisible,
-    toggleNavbar,
-    toggleAside,
-    toggleHeader,
-    toggleFooter,
-  ]);
+    setNavbarOpened(initialNavbarOpened);
+    setAsideOpened(initialAsideOpened);
+    setHeaderVisible(initialHeaderVisible);
+    setFooterVisible(initialFooterVisible);
+  }, [initialNavbarOpened, initialAsideOpened, initialHeaderVisible, initialFooterVisible]);
 
   return {
     navbarOpened,

@@ -489,13 +489,6 @@ importers:
         version: 5.9.2
 
   packages/ottalayout:
-    dependencies:
-      '@mantine/core':
-        specifier: 'catalog:'
-        version: 8.3.1(@mantine/hooks@8.3.1(react@18.3.1))(@types/react@18.3.24)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@mantine/hooks':
-        specifier: 'catalog:'
-        version: 8.3.1(react@18.3.1)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

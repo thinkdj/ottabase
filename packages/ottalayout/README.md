@@ -1,24 +1,30 @@
 # @ottabase/ottalayout
 
-Core layout component for Ottabase applications, built on top of Mantine's AppShell component with enhanced features and smooth transitions.
+Standalone layout component for Ottabase applications that mimics Mantine's AppShell functionality. Built with CSS Grid and React, providing flexible layout management with smooth transitions - no external UI library dependencies required.
 
 ## Features
 
-- Built on Mantine AppShell for robust layout management
-- Smooth CSS transitions when switching between layouts
-- Flexible component composition (Header, Footer, Navbar, Aside, Body)
-- Responsive behavior out of the box
-- TypeScript support with full type definitions
-- Custom hook for managing layout state
-- Preset layout configurations
-- Customizable transition timing and easing
-- Support for both light and dark themes
+- **Standalone implementation** - No Mantine or other UI library dependencies
+- **CSS Grid-based layout** - Modern, flexible layout system
+- **Smooth CSS transitions** - When switching between layouts or collapsing sections
+- **Flexible component composition** - Header, Footer, Navbar, Aside, and Main content areas
+- **Responsive behavior** - Mobile-friendly with automatic breakpoints
+- **TypeScript support** - Full type definitions included
+- **Custom hook** - `useOttaLayout` for managing layout state
+- **Preset configurations** - 13 ready-to-use layout patterns
+- **Customizable transitions** - Control timing and easing functions
+- **Theme support** - Light/dark themes with CSS variables
+- **Accessibility** - Semantic HTML elements and reduced motion support
 
 ## Installation
 
 ```bash
 pnpm add @ottabase/ottalayout
 ```
+
+**Peer Dependencies:**
+- `react` >= 18.0.0
+- `react-dom` >= 18.0.0
 
 ## Basic Usage
 
@@ -66,6 +72,7 @@ function App() {
         children: (
           <div>
             <button onClick={layout.toggleNavbar}>Toggle Navbar</button>
+            <button onClick={layout.toggleAside}>Toggle Aside</button>
           </div>
         ),
       }}
@@ -110,12 +117,13 @@ const presetNames = Object.keys(layoutPresets);
 | `navbar`                   | `OttaLayoutSection`     | -         | Left navbar section configuration    |
 | `aside`                    | `OttaLayoutSection`     | -         | Right aside section configuration    |
 | `children`                 | `ReactNode`             | Required  | Main content area                    |
-| `layout`                   | `'default' \| 'alt'`    | `default` | Layout configuration                 |
-| `padding`                  | `number \| string`      | `'md'`    | Padding for main content area        |
+| `layout`                   | `'default' \| 'alt'`    | `default` | Layout configuration (navbar/aside position swap) |
+| `padding`                  | `number \| string`      | `'md'`    | Padding for main content (xs/sm/md/lg/xl or custom) |
 | `disableTransitions`       | `boolean`               | `false`   | Whether to disable transitions       |
 | `transitionDuration`       | `number`                | `200`     | Transition duration in milliseconds  |
 | `transitionTimingFunction` | `string`                | `'ease'`  | Transition timing function           |
-| `appShellProps`            | `Partial<AppShellProps>`| `{}`      | Additional AppShell props            |
+| `className`                | `string`                | -         | Custom className for root container  |
+| `style`                    | `React.CSSProperties`   | -         | Custom styles for root container     |
 | `mainClassName`            | `string`                | -         | Custom className for main content    |
 | `mainStyle`                | `React.CSSProperties`   | -         | Custom styles for main content       |
 
@@ -130,7 +138,8 @@ const presetNames = Object.keys(layoutPresets);
 | `zIndex`   | `number`               | z-index of the section                |
 | `className`| `string`               | Custom className                      |
 | `style`    | `React.CSSProperties`  | Custom styles                         |
-| `offset`   | `number`               | Offset for fixed positioning          |
+| `offset`   | `boolean`              | Whether to offset main content area   |
+| `breakpoint` | `number`             | Breakpoint for responsive behavior (px) |
 
 ### useOttaLayout Hook
 
@@ -208,6 +217,78 @@ Available presets:
   {children}
 </OttaLayout>
 ```
+
+### Theme Customization
+
+The layout supports theming through CSS custom properties:
+
+```css
+.otta-layout {
+  --otta-header-bg: #ffffff;
+  --otta-footer-bg: #ffffff;
+  --otta-navbar-bg: #f5f5f5;
+  --otta-aside-bg: #f5f5f5;
+  --otta-main-bg: #ffffff;
+  --otta-border-color: #e0e0e0;
+  --otta-scrollbar-thumb: rgba(0, 0, 0, 0.2);
+  --otta-scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+}
+```
+
+### Utility Classes
+
+- `otta-layout-bordered` - Add thicker borders
+- `otta-layout-shadow` - Add shadows instead of borders
+- `otta-layout-dark` / `otta-layout-light` - Force theme
+
+## How It Works
+
+OttaLayout uses CSS Grid to create a flexible layout system:
+
+- **Grid Layout**: 3 columns × 3 rows grid structure
+- **Automatic Sizing**: Sections collapse to 0px when not in use
+- **Smooth Transitions**: All size changes animated
+- **Transform-based Animations**: Collapsed sections slide out of view
+- **Responsive**: Adapts to mobile screens automatically
+
+## Migration from Mantine AppShell
+
+If you're migrating from Mantine's AppShell, OttaLayout provides similar functionality:
+
+```diff
+- import { AppShell } from '@mantine/core';
++ import { OttaLayout } from '@ottabase/ottalayout';
++ import '@ottabase/ottalayout/styles';
+
+  <OttaLayout
+    header={{
+-     height: { base: 60, md: 70 },
++     height: 60,
+      children: <Header />
+    }}
+    // ... other props remain similar
+  />
+```
+
+Key differences:
+- No Mantine dependency required
+- Simplified responsive props (use CSS media queries for complex responsive behavior)
+- CSS Grid-based instead of Flexbox
+- CSS custom properties for theming
+
+## Browser Support
+
+- Modern browsers (Chrome, Firefox, Safari, Edge)
+- CSS Grid support required
+- CSS custom properties support required
+
+## Examples
+
+Check the `examples/` directory for complete working examples:
+
+- `BasicExample.tsx` - Simple header + navbar layout
+- `FullLayoutExample.tsx` - All sections with toggle controls
+- `PresetExample.tsx` - Switcher between preset configurations
 
 ## License
 
