@@ -8,27 +8,27 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
     "./kv": {
       "types": "./dist/kv/index.d.ts",
-      "import": "./dist/kv/index.esm.js",
+      "import": "./dist/kv/index.mjs",
       "require": "./dist/kv/index.js"
     },
     "./d1": {
       "types": "./dist/d1/index.d.ts",
-      "import": "./dist/d1/index.esm.js",
+      "import": "./dist/d1/index.mjs",
       "require": "./dist/d1/index.js"
     },
     "./cache": {
       "types": "./dist/cache/index.d.ts",
-      "import": "./dist/cache/index.esm.js",
+      "import": "./dist/cache/index.mjs",
       "require": "./dist/cache/index.js"
     },
     "./types": {
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/types/index.esm.js",
+      "import": "./dist/types/index.mjs",
       "require": "./dist/types/index.js"
     }
   },
