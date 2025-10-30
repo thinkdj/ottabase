@@ -15,6 +15,7 @@
   "dependencies": {
     "@mantine/core": "catalog:",
     "@mantine/hooks": "catalog:",
+    "@ottabase/cf-ratelimiter": "workspace:*",
     "@ottabase/config": "workspace:*",
     "@ottabase/ottaselect": "workspace:*",
     "@ottabase/state": "workspace:*",

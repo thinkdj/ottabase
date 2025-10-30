@@ -1,0 +1,33 @@
+# Cloudflare Workers configuration for ottabase-template-app
+# Deploy: wrangler deploy
+
+name = "ottabase-template-app"
+main = "build/worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Durable Objects bindings
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimitDO"
+script_name = "ottabase-template-app"
+
+# Migrations for Durable Objects
+[[migrations]]
+tag = "v1"
+new_classes = ["RateLimitDO"]
+
+# Environment variables
+[vars]
+RATE_LIMIT_DAILY = "100"
+
+# D1 Database binding (if using Prisma)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "ottabase-db"
+# database_id = "your-database-id"
+
+# KV namespace binding (optional)
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "your-kv-namespace-id"

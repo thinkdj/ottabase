@@ -18,6 +18,8 @@
       /* Pattern-based path mapping for all packages */
       "@ottabase/*": ["./packages/*/src"],
       /* Individual package mappings for direct imports */
+      "@ottabase/cf-ratelimiter": ["./packages/cf-ratelimiter/src"],
+      "@ottabase/cf-ratelimiter/*": ["./packages/cf-ratelimiter/src/*"],
       "@ottabase/ui-core": ["./packages/ui-core/src"],
       "@ottabase/config": ["./packages/config/src"],
       "@ottabase/state": ["./packages/state/src"],
@@ -37,6 +39,9 @@
   "include": ["./packages/**/src/**/*.ts", "./packages/**/src/**/*.tsx"],
   "exclude": ["node_modules"],
   "references": [
+    {
+      "path": "./packages/cf-ratelimiter"
+    },
     {
       "path": "./packages/ui-core"
     },

@@ -3,6 +3,7 @@
 const nextConfig = {
   // Enable transpilation of packages
   transpilePackages: [
+    "@ottabase/cf-ratelimiter",
     "@ottabase/ui-core",
     "@ottabase/config",
     "@ottabase/state",
@@ -30,6 +31,7 @@ const nextConfig = {
       "@mantine/core",
       "@mantine/hooks",
       "@mantine/carousel",
+      "@ottabase/cf-ratelimiter",
       "@ottabase/ui-core",
       "@ottabase/config",
       "@ottabase/state",
