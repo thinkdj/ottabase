@@ -21,6 +21,7 @@
     "@ottabase/ui-code-highlight": "workspace:*",
     "@ottabase/ui-components": "workspace:*",
     "@ottabase/ui-base": "workspace:*",
+    "@ottabase/ui-fonts": "workspace:*",
     "@ottabase/ui-mantine": "workspace:*",
     "@ottabase/ui-shadcn": "workspace:*",
     "@ottabase/utils": "workspace:*",

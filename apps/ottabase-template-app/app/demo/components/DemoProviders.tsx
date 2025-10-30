@@ -3,31 +3,27 @@
 import { ProviderUIBase } from "@ottabase/ui-base";
 import { ProviderUIMantine } from "@ottabase/ui-mantine";
 import { ProviderCodeHighlight } from "@ottabase/ui-code-highlight";
-import {
-  ProviderFont,
-  ProviderNextThemes,
-  primaryFontFamily,
-  headingFontFamily,
-  monospaceFontFamily,
-} from "@/ottabase/providers";
+import { ProviderFont, extractFontFamilies } from "@ottabase/ui-fonts";
+import { appFontsConfig, fontOptions } from "@/ottabase/config/fonts.config";
+import { ProviderNextThemes } from "@/ottabase/providers";
 import { appConfig, THEME_COLORS } from "@/ottabase/config/app.config";
 import { useTheme } from "../lib/themeContext";
 
 export function DemoProviders({ children }: { children: React.ReactNode }) {
   const { currentMantineTheme } = useTheme();
-  const fontFamilies = {
-    primary: primaryFontFamily.style.fontFamily,
-    heading: headingFontFamily.style.fontFamily,
-    monospace: monospaceFontFamily.style.fontFamily,
-  };
+  const fontFamilies = extractFontFamilies(appFontsConfig);
 
   return (
-    <ProviderUIBase
-      preventFOUC={appConfig.ui.preventFOUC}
-      preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
-      fontFamilies={fontFamilies}
+    <ProviderFont
+      fonts={appFontsConfig}
+      enforceWithImportant={fontOptions.enforceWithImportant}
+      applyToBody={fontOptions.applyToBody}
     >
-      <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
+      <ProviderUIBase
+        preventFOUC={appConfig.ui.preventFOUC}
+        preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
+        fontFamilies={fontFamilies}
+      >
         <ProviderUIMantine
           storagePrefix={appConfig.storage.prefix}
           themeColors={THEME_COLORS}
@@ -38,7 +34,7 @@ export function DemoProviders({ children }: { children: React.ReactNode }) {
             <ProviderCodeHighlight>{children}</ProviderCodeHighlight>
           </ProviderNextThemes>
         </ProviderUIMantine>
-      </ProviderFont>
-    </ProviderUIBase>
+      </ProviderUIBase>
+    </ProviderFont>
   );
 }

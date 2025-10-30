@@ -371,47 +371,115 @@ export default function DemoPage() {
           </Stack>
         </Card>
 
-        {/* Font Demo */}
+        {/* Font Demo - Enhanced */}
         <Card shadow="sm" padding="lg" radius="md" withBorder>
           <Title order={2} size="h3" mb="md">
-            Font Demo
+            Font Demo - @ottabase/ui-fonts
           </Title>
 
-          <Stack gap="md">
+          <Text size="sm" c="dimmed" mb="lg">
+            Fonts are now centrally managed via the{" "}
+            <Code>@ottabase/ui-fonts</Code> package. Configure fonts in{" "}
+            <Code>ottabase/config/fonts.config.ts</Code>.
+          </Text>
+
+          <Stack gap="lg">
             <div>
-              <Text size="sm" c="dimmed" mb="xs">
-                Primary Font (Inter):
-              </Text>
-              <Text className="font-family-primary">
+              <Group justify="space-between" mb="xs">
+                <Text size="sm" fw={500}>
+                  Primary Font
+                </Text>
+                <Code>var(--font-family-primary)</Code>
+              </Group>
+              <Text className="font-family-primary" size="md">
                 The quick brown fox jumps over the lazy dog. 1234567890
+              </Text>
+              <Text className="font-family-primary" size="sm" c="dimmed">
+                Used for body text and general content throughout the
+                application.
               </Text>
             </div>
 
             <div>
-              <Text size="sm" c="dimmed" mb="xs">
-                Heading Font (Work Sans):
-              </Text>
-              <Text className="font-family-heading" size="lg" fw={600}>
-                The quick brown fox jumps over the lazy dog. 1234567890
+              <Group justify="space-between" mb="xs">
+                <Text size="sm" fw={500}>
+                  Heading Font
+                </Text>
+                <Code>var(--font-family-heading)</Code>
+              </Group>
+              <Title order={3} className="font-family-heading" mb="xs">
+                The quick brown fox jumps over the lazy dog
+              </Title>
+              <Text size="sm" c="dimmed">
+                Applied automatically to h1-h6 elements. Numbers: 1234567890
               </Text>
             </div>
 
             <div>
-              <Text size="sm" c="dimmed" mb="xs">
-                Monospace Font (JetBrains Mono):
-              </Text>
-              <Code className="font-family-monospace">
-                const example = "Hello World"; // Code example
+              <Group justify="space-between" mb="xs">
+                <Text size="sm" fw={500}>
+                  Monospace Font
+                </Text>
+                <Code>var(--font-family-monospace)</Code>
+              </Group>
+              <Code block className="font-family-monospace" mb="xs">
+                {`const greeting = "Hello World";
+function add(a: number, b: number) {
+  return a + b;
+}`}
               </Code>
+              <Text size="sm" c="dimmed">
+                Used for code blocks, pre-formatted text, and developer
+                content.
+              </Text>
             </div>
 
             <div>
-              <Text size="sm" c="dimmed" mb="xs">
-                Handwriting Font (Patrick Hand):
+              <Group justify="space-between" mb="xs">
+                <Text size="sm" fw={500}>
+                  Handwriting Font
+                </Text>
+                <Code>var(--font-family-handwriting)</Code>
+              </Group>
+              <Text className="font-family-handwriting" size="xl" mb="xs">
+                The quick brown fox jumps over the lazy dog!
               </Text>
-              <Text className="font-family-handwriting" size="lg">
-                The quick brown fox jumps over the lazy dog.
+              <Text size="sm" c="dimmed">
+                Adds a personal, human touch to special content and
+                annotations.
               </Text>
+            </div>
+
+            <div
+              style={{
+                marginTop: "1rem",
+                padding: "1rem",
+                backgroundColor: "var(--mantine-color-default)",
+                borderRadius: "8px",
+              }}
+            >
+              <Text size="sm" fw={500} mb="xs">
+                💡 Font Configuration Tips
+              </Text>
+              <Stack gap="xs">
+                <Text size="xs" c="dimmed">
+                  • Switch to Vercel fonts: Change{" "}
+                  <Code>appFontsConfig</Code> to{" "}
+                  <Code>vercelFontsConfig</Code>
+                </Text>
+                <Text size="xs" c="dimmed">
+                  • Use system fonts: Change to{" "}
+                  <Code>systemFontsConfig</Code> for best performance
+                </Text>
+                <Text size="xs" c="dimmed">
+                  • Custom fonts: Create your own <Code>FontsConfig</Code>{" "}
+                  object
+                </Text>
+                <Text size="xs" c="dimmed">
+                  • See <Code>packages/ui-fonts/README.md</Code> for
+                  full documentation
+                </Text>
+              </Stack>
             </div>
           </Stack>
         </Card>

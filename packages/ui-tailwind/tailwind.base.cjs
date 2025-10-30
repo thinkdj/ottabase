@@ -50,7 +50,12 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Inter", ...defaultTheme.fontFamily.sans],
+        // Font families now managed by @ottabase/ui-fonts package
+        // Uses CSS custom properties for dynamic font configuration
+        sans: ["var(--font-family-primary)", ...defaultTheme.fontFamily.sans],
+        heading: ["var(--font-family-heading)", ...defaultTheme.fontFamily.sans],
+        mono: ["var(--font-family-monospace)", ...defaultTheme.fontFamily.mono],
+        handwriting: ["var(--font-family-handwriting)", "cursive"],
       },
       keyframes: {
         "accordion-down": {

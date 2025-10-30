@@ -23,11 +23,11 @@ const rgba = (color: string, alpha: number): string => {
 export const mantineVercel: MantineThemeOverride = {
   primaryColor: "dark",
   primaryShade: 9,
-  fontFamily:
-    'Geist Sans, Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  // Font families now managed by @ottabase/ui-fonts package
+  // Uses CSS custom properties for dynamic font configuration
+  fontFamily: "var(--font-family-primary)",
   headings: {
-    fontFamily:
-      'Geist Sans, Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    fontFamily: "var(--font-family-heading)",
     fontWeight: "600",
     sizes: {
       h1: { fontSize: "3rem", lineHeight: "1.1" },
@@ -38,6 +38,7 @@ export const mantineVercel: MantineThemeOverride = {
       h6: { fontSize: "1.125rem", lineHeight: "1.5" },
     },
   },
+  fontFamilyMonospace: "var(--font-family-monospace)",
 
   // Vercel's exact color system
   colors: {
@@ -641,8 +642,7 @@ export const mantineVercel: MantineThemeOverride = {
             color: "#18181b",
             border: "1px solid #e4e4e7",
             borderRadius: theme.radius.sm,
-            fontFamily:
-              'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+            fontFamily: "var(--font-family-monospace)",
             fontSize: "13px",
             fontWeight: "500",
             padding: "2px 6px",

@@ -88,7 +88,7 @@ const ProviderCodeHighlight = ({ children }: ProviderCodeHighlightProps) => {
 				background: transparent !important;
 			}
 			.hljs.plaintext {
-				font-family: 'JetBrains Mono', monospace !important;
+				font-family: var(--font-family-monospace) !important;
 			}
 			h1 .hljs.plaintext,
 			h2 .hljs.plaintext,

@@ -263,6 +263,9 @@ importers:
       '@ottabase/ui-components':
         specifier: workspace:*
         version: link:../../packages/ui-components
+      '@ottabase/ui-fonts':
+        specifier: workspace:*
+        version: link:../../packages/ui-fonts
       '@ottabase/ui-mantine':
         specifier: workspace:*
         version: link:../../packages/ui-mantine
@@ -631,6 +634,39 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 9.36.0(jiti@1.21.7)
+      react:
+        specifier: 'catalog:'
+        version: 18.3.1
+      react-dom:
+        specifier: 'catalog:'
+        version: 18.3.1(react@18.3.1)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.0.1
+      tsup:
+        specifier: 'catalog:'
+        version: 8.5.0(@swc/core@1.13.5)(jiti@1.21.7)(postcss@8.5.6)(typescript@5.9.2)(yaml@2.8.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.2
+
+  packages/ui-fonts:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.19.17
+      '@types/react':
+        specifier: 'catalog:'
+        version: 18.3.24
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 18.3.7(@types/react@18.3.24)
+      eslint:
+        specifier: 'catalog:'
+        version: 9.36.0(jiti@1.21.7)
+      next:
+        specifier: 'catalog:'
+        version: 15.5.3(@babel/core@7.28.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: 'catalog:'
         version: 18.3.1
@@ -11364,7 +11400,7 @@ snapshots:
     dependencies:
       '@next/env': 15.5.3
       '@swc/helpers': 0.5.15
-      caniuse-lite: 1.0.30001743
+      caniuse-lite: 1.0.30001751
       postcss: 8.4.31
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
@@ -11387,7 +11423,7 @@ snapshots:
     dependencies:
       '@next/env': 15.5.3
       '@swc/helpers': 0.5.15
-      caniuse-lite: 1.0.30001743
+      caniuse-lite: 1.0.30001751
       postcss: 8.4.31
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)

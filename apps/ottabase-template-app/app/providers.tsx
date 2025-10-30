@@ -1,34 +1,32 @@
 "use client";
 
 import { appConfig, THEME_COLORS } from "@/ottabase/config/app.config";
-import {
-  headingFontFamily,
-  monospaceFontFamily,
-  primaryFontFamily,
-  ProviderFont,
-  ProviderNextThemes,
-} from "@/ottabase/providers";
+import { appFontsConfig, fontOptions } from "@/ottabase/config/fonts.config";
+import { ProviderNextThemes } from "@/ottabase/providers";
 import { ProviderState } from "@ottabase/state";
 import { ProviderCodeHighlight } from "@ottabase/ui-code-highlight";
 import { ProviderUIBase } from "@ottabase/ui-base";
+import { ProviderFont, extractFontFamilies } from "@ottabase/ui-fonts";
 import { ProviderUIMantine } from "@ottabase/ui-mantine";
 import { ShadcnProviders } from "@ottabase/ui-shadcn/providers";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const fontFamilies = {
-    primary: primaryFontFamily.style.fontFamily,
-    heading: headingFontFamily.style.fontFamily,
-    monospace: monospaceFontFamily.style.fontFamily,
-  };
+  // Extract font families from the centralized font configuration
+  const fontFamilies = extractFontFamilies(appFontsConfig);
 
   return (
     <ProviderState>
-      <ProviderUIBase
-        preventFOUC={appConfig.ui.preventFOUC}
-        preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
-        fontFamilies={fontFamilies}
+      {/* ProviderFont wraps everything to ensure fonts are loaded first */}
+      <ProviderFont
+        fonts={appFontsConfig}
+        enforceWithImportant={fontOptions.enforceWithImportant}
+        applyToBody={fontOptions.applyToBody}
       >
-        <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
+        <ProviderUIBase
+          preventFOUC={appConfig.ui.preventFOUC}
+          preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
+          fontFamilies={fontFamilies}
+        >
           <ProviderUIMantine
             storagePrefix={appConfig.storage.prefix}
             themeColors={THEME_COLORS}
@@ -40,8 +38,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
               </ShadcnProviders>
             </ProviderNextThemes>
           </ProviderUIMantine>
-        </ProviderFont>
-      </ProviderUIBase>
+        </ProviderUIBase>
+      </ProviderFont>
     </ProviderState>
   );
 }
