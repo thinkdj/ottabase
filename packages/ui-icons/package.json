@@ -1,0 +1,61 @@
+{
+  "name": "@ottabase/ui-icons",
+  "version": "1.0.0",
+  "description": "Unified icon system for Ottabase with Lucide and Tabler icon support",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./lucide": {
+      "types": "./dist/lucide.d.ts",
+      "import": "./dist/lucide.mjs",
+      "require": "./dist/lucide.js"
+    },
+    "./tabler": {
+      "types": "./dist/tabler.d.ts",
+      "import": "./dist/tabler.mjs",
+      "require": "./dist/tabler.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts src/lucide.ts src/tabler.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts src/lucide.ts src/tabler.ts --format cjs,esm --dts --watch",
+    "clean": "rimraf dist",
+    "lint": "eslint src --ext .ts,.tsx",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "icons",
+    "lucide",
+    "tabler",
+    "react",
+    "ui",
+    "ottabase"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "dependencies": {
+    "@tabler/icons-react": "catalog:",
+    "lucide-react": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "eslint": "catalog:",
+    "rimraf": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:"
+  }
+}
