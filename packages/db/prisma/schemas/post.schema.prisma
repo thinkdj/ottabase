@@ -1,11 +1,40 @@
 /// Post model - Blog posts and content management
 
 model Post {
-    id        String   @id @default(cuid())
-    title     String
-    content   String?  @db.Text
-    published Boolean  @default(false)
-    authorId  String?
+    id         String         @id @default(cuid())
+    title      String
+    content    String?        @db.Text
+    published  Boolean        @default(false)
+    authorId   String?
+    createdAt  DateTime       @default(now())
+    updatedAt  DateTime       @updatedAt
+    author     User?          @relation("PostToUser", fields: [authorId], references: [id], onDelete: SetNull)
+    tags       PostTag[]
+    categories PostCategory[]
+}
+
+/// PostTag pivot table - Many-to-many relationship between Posts and Tags
+model PostTag {
+    postId    String
+    tagId     String
     createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+    tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+    @@id([postId, tagId])
+    @@index([postId])
+    @@index([tagId])
+}
+
+/// PostCategory pivot table - Many-to-many relationship between Posts and Categories
+model PostCategory {
+    postId     String
+    categoryId String
+    createdAt  DateTime @default(now())
+    post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+    category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+    @@id([postId, categoryId])
+    @@index([postId])
+    @@index([categoryId])
 }

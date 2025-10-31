@@ -1,0 +1,69 @@
+{
+  "name": "@ottabase/models",
+  "version": "1.0.0",
+  "description": "Powerful ActiveRecord-style model abstraction layer for Ottabase with decorators, query builder, and automatic CRUD generation",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    },
+    "./base": {
+      "types": "./dist/base/index.d.ts",
+      "import": "./dist/base/index.esm.js",
+      "require": "./dist/base/index.js"
+    },
+    "./decorators": {
+      "types": "./dist/decorators/index.d.ts",
+      "import": "./dist/decorators/index.esm.js",
+      "require": "./dist/decorators/index.js"
+    },
+    "./models/*": {
+      "types": "./dist/models/*.d.ts",
+      "import": "./dist/models/*.esm.js",
+      "require": "./dist/models/*.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "clean": "rimraf dist",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "orm",
+    "activerecord",
+    "models",
+    "prisma",
+    "decorators",
+    "query-builder",
+    "crud",
+    "validation",
+    "ottabase"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@ottabase/db": "workspace:*",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@prisma/client": ">=5.22.0"
+  },
+  "devDependencies": {
+    "@prisma/client": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "tsup": "catalog:",
+    "rimraf": "catalog:",
+    "eslint": "catalog:"
+  }
+}

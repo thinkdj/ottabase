@@ -5,4 +5,5 @@ model User {
     email     String   @unique
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+    posts     Post[]   @relation("PostToUser")
 }

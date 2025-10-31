@@ -1,0 +1,13 @@
+/// Category model - Categories for organizing posts
+
+model Category {
+    id        String         @id @default(cuid())
+    name      String         @unique
+    slug      String         @unique
+    parentId  String?
+    createdAt DateTime       @default(now())
+    updatedAt DateTime       @updatedAt
+    parent    Category?      @relation("CategoryToCategory", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+    children  Category[]     @relation("CategoryToCategory")
+    posts     PostCategory[]
+}

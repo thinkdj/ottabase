@@ -6,4 +6,4 @@
  * 2. Add the name to this type
  * 3. Update the README.md in this directory
  */
-export type CoreSchemaName = "user" | "post";
+export type CoreSchemaName = "user" | "post" | "tag" | "category";
