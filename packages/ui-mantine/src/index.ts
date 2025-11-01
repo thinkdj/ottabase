@@ -4,6 +4,13 @@ export { default as ProviderUIMantine } from "../provider/ProviderUI";
 // Re-export types
 export type { ThemeColors } from "../provider/ProviderUI";
 
+// Export components
+export {
+  MantineThemeSwitcher,
+  default as MantineThemeSwitcherDefault,
+} from "../components/MantineThemeSwitcher";
+export type { MantineThemeSwitcherProps } from "../components/MantineThemeSwitcher";
+
 // Export themes
 export { default as mantineShadcn } from "../themes/mantine-shadcn";
 export { default as mantineVercel } from "../themes/mantine-vercel";

@@ -17,6 +17,7 @@ import {
   Code,
   Container,
   Group,
+  MantineThemeSwitcher,
   Slider,
   Stack,
   Switch,
@@ -265,6 +266,25 @@ export default function DemoPage() {
             <Group justify="space-between">
               <Text>Dark Mode Toggle (Switch):</Text>
               <DarkModeToggle type="toggle-switch" />
+            </Group>
+
+            <Text size="sm" fw={600} mt="md" mb="xs" c="dimmed">
+              Mantine Theme Switchers:
+            </Text>
+
+            <Group justify="space-between">
+              <Text>Mantine Theme Switcher (Button):</Text>
+              <MantineThemeSwitcher variant="button" />
+            </Group>
+
+            <Group justify="space-between">
+              <Text>Mantine Theme Switcher (Switch):</Text>
+              <MantineThemeSwitcher variant="switch" showLabels />
+            </Group>
+
+            <Group justify="space-between">
+              <Text>Mantine Theme Switcher (Switch, Large):</Text>
+              <MantineThemeSwitcher variant="switch" size="lg" showLabels />
             </Group>
 
             <Group justify="space-between">

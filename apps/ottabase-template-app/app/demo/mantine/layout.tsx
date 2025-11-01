@@ -1,7 +1,7 @@
 "use client";
 
 import { appConfig, THEME_COLORS } from "@/ottabase/config/app.config";
-import { ProviderUIMantine } from "@ottabase/ui-mantine";
+import { MantineThemeSwitcher, ProviderUIMantine } from "@ottabase/ui-mantine";
 import { useAtomValue } from "jotai";
 import { themeAtom } from "@/ottabase/state/appGlobalState";
 
@@ -25,6 +25,17 @@ export default function MantineLayout({
       // This makes Mantine a controlled component regarding the theme.
       colorScheme={validTheme}
     >
+      {/* Mantine Theme Switcher - Fixed top-right, replaces generic DarkModeToggle */}
+      <div
+        style={{
+          position: "fixed",
+          top: "1.25rem",
+          right: "1.25rem",
+          zIndex: 1000,
+        }}
+      >
+        <MantineThemeSwitcher variant="button" size="lg" />
+      </div>
       {children}
     </ProviderUIMantine>
   );

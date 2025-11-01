@@ -5,6 +5,7 @@ Mantine UI components and providers for Ottabase applications. This package prov
 ## Features
 
 - **ProviderUIMantine**: Main UI provider that wires Mantine, notifications, and modal support
+- **MantineThemeSwitcher**: Mantine-styled theme switcher component (button or switch variant)
 - **Pre-built Themes**: ShadCN, Vercel, Ant Design, and Stripe-inspired themes
 - **Theme Management**: Syncs with global theme state (themeAtom from @ottabase/state)
 - **Theme Configuration**: Utilities for creating and validating custom themes
@@ -52,6 +53,35 @@ function App({ children }) {
 ### Syncing with Global State
 
 This provider is a **controlled component**. It does not manage the theme state itself. Instead, you must provide the current theme via the `colorScheme` prop. This ensures that Mantine is always in sync with your application's single source of truth for theme state (e.g., a Jotai atom). The `MantineThemeSync` component is no longer needed.
+
+### Theme Switcher Component
+
+The `MantineThemeSwitcher` component provides Mantine-styled theme switching functionality that integrates with `next-themes`.
+
+```tsx
+import { MantineThemeSwitcher } from '@ottabase/ui-mantine';
+
+// Button variant (icon button)
+<MantineThemeSwitcher variant="button" />
+
+// Button with custom size
+<MantineThemeSwitcher variant="button" size="lg" />
+
+// Switch variant
+<MantineThemeSwitcher variant="switch" />
+
+// Switch with labels (shows sun/moon icons)
+<MantineThemeSwitcher variant="switch" showLabels />
+
+// Large switch with labels
+<MantineThemeSwitcher variant="switch" size="lg" showLabels />
+```
+
+**Props:**
+- `variant`: `"button"` (ActionIcon) or `"switch"` (Switch component)
+- `size`: `"xs" | "sm" | "md" | "lg" | "xl"` (default: `"md"`)
+- `tooltip`: Tooltip text for button variant (default: `"Toggle theme"`)
+- `showLabels`: Show sun/moon icons in switch variant (default: `false`)
 
 ### Using Pre-built Themes
 
@@ -157,6 +187,8 @@ This package requires the following peer dependencies:
 - `@mantine/modals` ^8.3.1
 - `@mantine/notifications` ^8.3.1
 - `@mantine/carousel` ^8.3.1
+- `@tabler/icons-react` ^3.0.0
+- `next-themes` >= 0.4.0
 
 **Note:** This package requires `@ottabase/ui-base` and `@ottabase/state` to be installed.
 
@@ -180,8 +212,10 @@ ui-mantine/
 ├── src/
 │   ├── index.ts         # Main entry point
 │   └── themeConfig.ts   # Theme configuration utilities
+├── components/
+│   └── MantineThemeSwitcher.tsx  # Theme switcher component
 ├── provider/
-│   └── ProviderUIMantine.tsx   # Mantine provider component
+│   └── ProviderUI.tsx   # Mantine provider component
 ├── themes/
 │   ├── mantine-shadcn.ts
 │   ├── mantine-vercel.ts
