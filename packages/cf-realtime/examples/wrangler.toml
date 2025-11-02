@@ -1,0 +1,52 @@
+# Example wrangler.toml for cf-realtime
+# Copy this to your project root and customize as needed
+
+name = "cf-realtime-worker"
+main = "src/worker.ts"
+compatibility_date = "2024-01-01"
+
+# Account ID (get from Cloudflare dashboard)
+# account_id = "your-account-id"
+
+# Workers Paid plan required for Durable Objects
+# https://developers.cloudflare.com/workers/platform/pricing/
+
+# Durable Objects binding
+[[durable_objects.bindings]]
+name = "REALTIME"
+class_name = "RealtimeActor"
+
+# Migration to create the Durable Object class
+[[migrations]]
+tag = "v1"
+new_classes = ["RealtimeActor"]
+
+# Optional: Environment variables
+[env.production.vars]
+ENVIRONMENT = "production"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+
+# Optional: Custom domains
+# routes = [
+#   { pattern = "realtime.example.com/*", zone_name = "example.com" }
+# ]
+
+# Optional: KV Namespace (if you need additional storage)
+# [[kv_namespaces]]
+# binding = "MY_KV"
+# id = "your-kv-namespace-id"
+
+# Optional: R2 Bucket (for file storage)
+# [[r2_buckets]]
+# binding = "MY_BUCKET"
+# bucket_name = "my-bucket"
+
+# Build configuration
+[build]
+command = "pnpm build"
+
+# Observability
+[observability]
+enabled = true
