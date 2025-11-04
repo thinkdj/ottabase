@@ -86,21 +86,22 @@
   },
 
   // Rate Limiting bindings
-  // Preview/Prod only - not available in local dev
-  // Uncomment and configure when ready to use
-  // "unsafe": {
-  //   "bindings": [
-  //     {
-  //       "name": "RATE_LIMITER",
-  //       "type": "ratelimit",
-  //       "namespace_id": "YOUR_RATE_LIMIT_NAMESPACE", // Create in Cloudflare dashboard
-  //       "simple": {
-  //         "limit": 100,
-  //         "period": 60
-  //       }
-  //     }
-  //   ]
-  // },
+  // Note: Rate limiting works differently in local dev vs production
+  // Local dev: Uses simulated rate limiting with local state
+  // Preview/Prod: Uses real Cloudflare Rate Limiting
+  "unsafe": {
+    "bindings": [
+      {
+        "name": "RATE_LIMITER",
+        "type": "ratelimit",
+        "namespace_id": "1001", // For local dev, can use any value
+        "simple": {
+          "limit": 10,       // 10 requests
+          "period": 60       // per 60 seconds
+        }
+      }
+    ]
+  },
 
   // Environment variables
   // These are available in all environments (dev/preview/prod)
