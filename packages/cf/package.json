@@ -1,0 +1,69 @@
+{
+  "name": "@ottabase/cf",
+  "version": "1.0.0",
+  "description": "Framework-agnostic Cloudflare bindings wrapper for D1, KV, R2, Images, Hyperdrive, Queues, Secret Store, and Rate Limiting",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    },
+    "./d1": {
+      "types": "./dist/d1.d.ts",
+      "import": "./dist/d1.esm.js",
+      "require": "./dist/d1.js"
+    },
+    "./kv": {
+      "types": "./dist/kv.d.ts",
+      "import": "./dist/kv.esm.js",
+      "require": "./dist/kv.js"
+    },
+    "./r2": {
+      "types": "./dist/r2.d.ts",
+      "import": "./dist/r2.esm.js",
+      "require": "./dist/r2.js"
+    },
+    "./images": {
+      "types": "./dist/images.d.ts",
+      "import": "./dist/images.esm.js",
+      "require": "./dist/images.js"
+    },
+    "./hyperdrive": {
+      "types": "./dist/hyperdrive.d.ts",
+      "import": "./dist/hyperdrive.esm.js",
+      "require": "./dist/hyperdrive.js"
+    },
+    "./queues": {
+      "types": "./dist/queues.d.ts",
+      "import": "./dist/queues.esm.js",
+      "require": "./dist/queues.js"
+    },
+    "./secrets": {
+      "types": "./dist/secrets.d.ts",
+      "import": "./dist/secrets.esm.js",
+      "require": "./dist/secrets.js"
+    },
+    "./rate-limiting": {
+      "types": "./dist/rate-limiting.d.ts",
+      "import": "./dist/rate-limiting.esm.js",
+      "require": "./dist/rate-limiting.js"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts --format cjs,esm --dts --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ottabase/config": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "catalog:",
+    "tsup": "catalog:"
+  }
+}

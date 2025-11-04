@@ -1,0 +1,438 @@
+# Cloudflare Features Guide
+
+Complete guide for using Cloudflare bindings with `@ottabase/cf` and Next.js.
+
+## Overview
+
+This guide covers setup and usage of all Cloudflare Worker bindings:
+
+- **D1**: SQLite database
+- **KV**: Key-value storage
+- **R2**: Object storage
+- **Images**: Image transformation
+- **Hyperdrive**: Database connection pooling
+- **Queues**: Message queues
+- **Secrets**: Environment variables
+- **Rate Limiting**: Request throttling
+
+## Setup
+
+### 1. Install Dependencies
+
+The `@ottabase/cf` package and required dependencies are already configured in `apps/ottabase-template-app/package.json`.
+
+```bash
+pnpm install
+```
+
+### 2. Configure Bindings
+
+Edit `apps/ottabase-template-app/wrangler.jsonc` to configure your Cloudflare bindings.
+
+#### Create D1 Database
+
+```bash
+cd apps/ottabase-template-app
+pnpm wrangler d1 create ottabase-db
+```
+
+Copy the returned `database_id` and update `wrangler.jsonc`:
+
+```jsonc
+"d1_databases": [{
+  "binding": "DB",
+  "database_name": "ottabase-db",
+  "database_id": "YOUR_D1_DATABASE_ID"
+}]
+```
+
+#### Create KV Namespace
+
+```bash
+pnpm wrangler kv:namespace create MY_KV
+pnpm wrangler kv:namespace create MY_KV --preview
+```
+
+Update `wrangler.jsonc` with the returned IDs:
+
+```jsonc
+"kv_namespaces": [{
+  "binding": "MY_KV",
+  "id": "YOUR_KV_NAMESPACE_ID",
+  "preview_id": "YOUR_KV_PREVIEW_ID"
+}]
+```
+
+#### Create R2 Bucket
+
+```bash
+pnpm wrangler r2 bucket create ottabase-bucket
+pnpm wrangler r2 bucket create ottabase-bucket-preview
+```
+
+Update `wrangler.jsonc`:
+
+```jsonc
+"r2_buckets": [{
+  "binding": "MY_BUCKET",
+  "bucket_name": "ottabase-bucket",
+  "preview_bucket_name": "ottabase-bucket-preview"
+}]
+```
+
+#### Create Queue
+
+```bash
+pnpm wrangler queues create ottabase-queue
+```
+
+Update `wrangler.jsonc`:
+
+```jsonc
+"queues": {
+  "producers": [{
+    "binding": "MY_QUEUE",
+    "queue": "ottabase-queue"
+  }]
+}
+```
+
+### 3. Set Secrets (Optional)
+
+For features requiring API access (like Images):
+
+```bash
+pnpm wrangler secret put CF_ACCOUNT_ID
+pnpm wrangler secret put CF_API_TOKEN
+```
+
+## Development Workflow
+
+### Local Development (with HMR)
+
+```bash
+cd apps/ottabase-template-app
+pnpm dev
+```
+
+- Uses Next.js dev server with HMR
+- Bindings use local state (`.wrangler/state/v3/`)
+- No Cloudflare account required
+- Database, KV, R2 stored locally
+
+### Preview (with workerd)
+
+```bash
+pnpm preview
+```
+
+- Uses Cloudflare Workers runtime (workerd)
+- Can use local or remote bindings
+- Test before production deployment
+
+### Production Deploy
+
+```bash
+pnpm deploy
+```
+
+- Deploys to Cloudflare Workers
+- Uses real Cloudflare resources
+- Configured bindings from `wrangler.jsonc`
+
+## Usage
+
+### D1 Database
+
+```typescript
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { createD1Client } from '@ottabase/cf/d1';
+
+export const runtime = 'edge';
+
+export async function GET() {
+  const { env } = await getCloudflareContext();
+  const db = createD1Client({ database: env.DB });
+
+  // Query
+  const result = await db.query<User>(
+    'SELECT * FROM users WHERE id = ?',
+    [userId]
+  );
+
+  // Execute
+  await db.execute(
+    'INSERT INTO users (name, email) VALUES (?, ?)',
+    ['John', 'john@example.com']
+  );
+
+  // Batch
+  await db.batch([
+    { sql: 'INSERT INTO users (name) VALUES (?)', params: ['Alice'] },
+    { sql: 'INSERT INTO users (name) VALUES (?)', params: ['Bob'] }
+  ]);
+
+  return Response.json(result.data);
+}
+```
+
+### KV Storage
+
+```typescript
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { createKVClient } from '@ottabase/cf/kv';
+
+export const runtime = 'edge';
+
+export async function GET() {
+  const { env } = await getCloudflareContext();
+  const kv = createKVClient({ namespace: env.MY_KV });
+
+  // Set with TTL
+  await kv.putJSON('session:abc', sessionData, {
+    expirationTtl: 3600 // 1 hour
+  });
+
+  // Get
+  const result = await kv.getJSON<Session>('session:abc');
+
+  // Delete
+  await kv.delete('session:abc');
+
+  return Response.json(result.data);
+}
+```
+
+### R2 Storage
+
+```typescript
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { createR2Client } from '@ottabase/cf/r2';
+
+export const runtime = 'edge';
+
+export async function POST(request: Request) {
+  const { env } = await getCloudflareContext();
+  const r2 = createR2Client({ bucket: env.MY_BUCKET });
+
+  const formData = await request.formData();
+  const file = formData.get('file') as File;
+
+  // Upload
+  await r2.put(`uploads/${file.name}`, await file.arrayBuffer(), {
+    httpMetadata: {
+      contentType: file.type
+    }
+  });
+
+  // Download
+  const result = await r2.get(`uploads/${file.name}`);
+  if (result.success && result.data) {
+    const content = await result.data.arrayBuffer();
+  }
+
+  return Response.json({ success: true });
+}
+```
+
+### Images
+
+```typescript
+import { createImagesClient } from '@ottabase/cf/images';
+
+const images = createImagesClient({
+  accountId: env.CF_ACCOUNT_ID,
+  apiToken: env.CF_API_TOKEN
+});
+
+// Upload
+const result = await images.upload(imageFile, {
+  metadata: { alt: 'Product photo' }
+});
+
+// Get delivery URL
+const url = images.getDeliveryUrl(result.data.id, 'public');
+```
+
+### Queues
+
+```typescript
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { createQueuesClient } from '@ottabase/cf/queues';
+
+export const runtime = 'edge';
+
+export async function POST(request: Request) {
+  const { env } = await getCloudflareContext();
+  const queue = createQueuesClient({ queue: env.MY_QUEUE });
+
+  // Send message
+  await queue.send({
+    userId: 123,
+    action: 'send-email',
+    data: { to: 'user@example.com' }
+  });
+
+  return Response.json({ success: true });
+}
+```
+
+### Rate Limiting
+
+```typescript
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { createRateLimitingClient } from '@ottabase/cf/rate-limiting';
+
+export const runtime = 'edge';
+
+export async function GET(request: Request) {
+  const { env } = await getCloudflareContext();
+  const limiter = createRateLimitingClient({
+    rateLimiter: env.RATE_LIMITER
+  });
+
+  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+  const result = await limiter.limit({ key: `ip:${ip}` });
+
+  if (!result.data.success) {
+    return new Response('Too many requests', {
+      status: 429,
+      headers: {
+        'X-RateLimit-Limit': result.data.limit.toString(),
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': result.data.resetAfter.toString()
+      }
+    });
+  }
+
+  return Response.json({ success: true });
+}
+```
+
+## Next.js-Specific Notes
+
+### Server Components
+
+Access bindings in Server Components:
+
+```typescript
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+
+export default async function Page() {
+  const { env } = await getCloudflareContext();
+  // Use env.DB, env.MY_KV, etc.
+}
+```
+
+### Route Handlers
+
+All route handlers must use edge runtime:
+
+```typescript
+export const runtime = 'edge';
+```
+
+### Middleware
+
+Access bindings in middleware:
+
+```typescript
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+
+export async function middleware(request: NextRequest) {
+  const { env } = await getCloudflareContext();
+  // Use bindings for rate limiting, authentication, etc.
+}
+```
+
+## Best Practices
+
+### Error Handling
+
+All wrapper methods return `Result<T, Error>` type:
+
+```typescript
+const result = await db.query('SELECT * FROM users');
+
+if (result.success) {
+  console.log(result.data); // T
+} else {
+  console.error(result.error); // Error
+}
+```
+
+### Type Safety
+
+Define your environment types:
+
+```typescript
+// types/cloudflare.d.ts
+export interface CloudflareEnv {
+  DB: D1Database;
+  MY_KV: KVNamespace;
+  MY_BUCKET: R2Bucket;
+  // ... other bindings
+}
+```
+
+### Local Development
+
+- All bindings work locally with wrangler
+- Data stored in `.wrangler/state/v3/`
+- No Cloudflare account needed for development
+- Commit `.wrangler` to `.gitignore`
+
+### Performance
+
+- Use KV for frequently accessed data
+- Use D1 for relational data queries
+- Use R2 for large files/media
+- Cache aggressively with TTL
+
+## Troubleshooting
+
+### Binding not found
+
+Check `wrangler.jsonc` configuration and ensure bindings are created:
+
+```bash
+pnpm wrangler d1 list
+pnpm wrangler kv:namespace list
+pnpm wrangler r2 bucket list
+```
+
+### Type errors
+
+Run type generation:
+
+```bash
+pnpm wrangler types
+```
+
+### Local development not working
+
+Delete `.wrangler` directory and restart:
+
+```bash
+rm -rf .wrangler
+pnpm dev
+```
+
+## Demo Pages
+
+Working examples available at:
+
+- `/demo/cloudflare/d1` - D1 Database with CRUD
+- `/demo/cloudflare/kv` - KV Storage
+- `/demo/cloudflare/r2` - R2 Object Storage
+- `/demo/cloudflare/images` - Image Upload
+- `/demo/cloudflare/queues` - Message Queues
+- `/demo/cloudflare/rate-limiting` - Rate Limiting
+
+## Resources
+
+- [Cloudflare D1 Docs](https://developers.cloudflare.com/d1/)
+- [Cloudflare KV Docs](https://developers.cloudflare.com/kv/)
+- [Cloudflare R2 Docs](https://developers.cloudflare.com/r2/)
+- [OpenNext Cloudflare](https://opennext.js.org/cloudflare/)
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/)

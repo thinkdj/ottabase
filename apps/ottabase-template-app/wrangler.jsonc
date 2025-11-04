@@ -1,0 +1,154 @@
+{
+  // Wrangler configuration for Next.js app with Cloudflare bindings
+  // Supports dev (local with HMR), preview (workerd), and prod (real CF resources)
+
+  "name": "ottabase-template-app",
+  "compatibility_date": "2024-11-01",
+
+  // Main worker configuration
+  "main": ".worker-next/index.mjs",
+
+  // Assets configuration for static files
+  "assets": {
+    "directory": ".worker-next/assets",
+    "binding": "ASSETS"
+  },
+
+  // Observability - logging configuration
+  "observability": {
+    "enabled": true
+  },
+
+  // D1 Database bindings
+  // Local dev: Uses local SQLite file (.wrangler/state/v3/d1)
+  // Preview/Prod: Uses real Cloudflare D1 database
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ottabase-db",
+      "database_id": "YOUR_D1_DATABASE_ID", // Replace with: wrangler d1 create ottabase-db
+      // For preview/prod, create with: wrangler d1 create ottabase-db
+      // Then update database_id with the returned ID
+      "preview_database_id": "preview" // Uses preview DB for `wrangler dev --remote`
+    }
+  ],
+
+  // KV Namespace bindings
+  // Local dev: Uses local KV storage (.wrangler/state/v3/kv)
+  // Preview/Prod: Uses real Cloudflare KV namespace
+  "kv_namespaces": [
+    {
+      "binding": "MY_KV",
+      "id": "YOUR_KV_NAMESPACE_ID", // Replace with: wrangler kv:namespace create MY_KV
+      "preview_id": "YOUR_KV_PREVIEW_ID" // Replace with: wrangler kv:namespace create MY_KV --preview
+    }
+  ],
+
+  // R2 Bucket bindings
+  // Local dev: Uses local R2 storage (.wrangler/state/v3/r2)
+  // Preview/Prod: Uses real Cloudflare R2 bucket
+  "r2_buckets": [
+    {
+      "binding": "MY_BUCKET",
+      "bucket_name": "ottabase-bucket", // Create with: wrangler r2 bucket create ottabase-bucket
+      "preview_bucket_name": "ottabase-bucket-preview" // Create with: wrangler r2 bucket create ottabase-bucket-preview
+    }
+  ],
+
+  // Hyperdrive bindings for database connection pooling
+  // Preview/Prod only - not available in local dev
+  // Uncomment and configure when ready to use
+  // "hyperdrive": [
+  //   {
+  //     "binding": "HYPERDRIVE",
+  //     "id": "YOUR_HYPERDRIVE_ID" // Create with: wrangler hyperdrive create <name> --connection-string="postgres://..."
+  //   }
+  // ],
+
+  // Queue bindings for async message processing
+  // Local dev: Uses local queue storage
+  // Preview/Prod: Uses real Cloudflare Queue
+  "queues": {
+    "producers": [
+      {
+        "binding": "MY_QUEUE",
+        "queue": "ottabase-queue" // Create with: wrangler queues create ottabase-queue
+      }
+    ]
+    // Uncomment to add consumer configuration
+    // "consumers": [
+    //   {
+    //     "queue": "ottabase-queue",
+    //     "max_batch_size": 10,
+    //     "max_batch_timeout": 30
+    //   }
+    // ]
+  },
+
+  // Rate Limiting bindings
+  // Preview/Prod only - not available in local dev
+  // Uncomment and configure when ready to use
+  // "unsafe": {
+  //   "bindings": [
+  //     {
+  //       "name": "RATE_LIMITER",
+  //       "type": "ratelimit",
+  //       "namespace_id": "YOUR_RATE_LIMIT_NAMESPACE", // Create in Cloudflare dashboard
+  //       "simple": {
+  //         "limit": 100,
+  //         "period": 60
+  //       }
+  //     }
+  //   ]
+  // },
+
+  // Environment variables
+  // These are available in all environments (dev/preview/prod)
+  "vars": {
+    "ENVIRONMENT": "development",
+    "NODE_ENV": "production"
+  },
+
+  // Secrets (set via wrangler secret put)
+  // Example: wrangler secret put CF_ACCOUNT_ID
+  // Example: wrangler secret put CF_API_TOKEN
+  // Note: Secrets override env vars with the same name
+  // Access via env.SECRET_NAME in your code
+
+  // Local development settings
+  "dev": {
+    "port": 8788,
+    "local_protocol": "http"
+  },
+
+  // Node.js compatibility for Next.js
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+
+  // Limits configuration
+  "limits": {
+    "cpu_ms": 50000 // 50 seconds CPU time limit
+  }
+
+  // Environment-specific overrides
+  // Uncomment to configure different settings per environment
+  // "env": {
+  //   "staging": {
+  //     "vars": {
+  //       "ENVIRONMENT": "staging"
+  //     }
+  //   },
+  //   "production": {
+  //     "vars": {
+  //       "ENVIRONMENT": "production"
+  //     },
+  //     "routes": [
+  //       {
+  //         "pattern": "ottabase.example.com",
+  //         "custom_domain": true
+  //       }
+  //     ]
+  //   }
+  // }
+}
