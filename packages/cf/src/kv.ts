@@ -101,7 +101,7 @@ export class KVClient {
     options?: KVPutOptions
   ): Promise<Result<void, Error>> {
     try {
-      await this.kv.put(key, value, options);
+      await this.kv.put(key, value as any, options);
 
       return {
         success: true,
@@ -185,7 +185,7 @@ export class KVClient {
   ): Promise<Result<{ value: T | null; metadata: M | null }, Error>> {
     try {
       const type = options?.type || 'json';
-      const result = await this.kv.getWithMetadata(key, type, { cacheTtl: options?.cacheTtl });
+      const result = await this.kv.getWithMetadata(key, { type: type as any, cacheTtl: options?.cacheTtl });
 
       return {
         success: true,

@@ -117,7 +117,7 @@ export class ImagesClient {
         );
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
 
       return {
         success: true,
@@ -150,7 +150,7 @@ export class ImagesClient {
         );
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
 
       return {
         success: true,
@@ -225,7 +225,7 @@ export class ImagesClient {
         );
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
 
       return {
         success: true,

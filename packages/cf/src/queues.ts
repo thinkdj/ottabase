@@ -52,7 +52,7 @@ export class QueuesClient<T = unknown> {
    */
   async send(body: T, options?: QueueSendOptions): Promise<Result<void, Error>> {
     try {
-      await this.queue.send(body, options);
+      await this.queue.send(body, options as any);
 
       return {
         success: true,
@@ -78,7 +78,7 @@ export class QueuesClient<T = unknown> {
         ...(msg.options || {}),
       }));
 
-      await this.queue.sendBatch(messagesToSend);
+      await this.queue.sendBatch(messagesToSend as any);
 
       return {
         success: true,

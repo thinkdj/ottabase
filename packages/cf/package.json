@@ -3,52 +3,52 @@
   "version": "1.0.0",
   "description": "Framework-agnostic Cloudflare bindings wrapper for D1, KV, R2, Images, Hyperdrive, Queues, Secret Store, and Rate Limiting",
   "main": "dist/index.js",
-  "module": "dist/index.esm.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
     "./d1": {
       "types": "./dist/d1.d.ts",
-      "import": "./dist/d1.esm.js",
+      "import": "./dist/d1.mjs",
       "require": "./dist/d1.js"
     },
     "./kv": {
       "types": "./dist/kv.d.ts",
-      "import": "./dist/kv.esm.js",
+      "import": "./dist/kv.mjs",
       "require": "./dist/kv.js"
     },
     "./r2": {
       "types": "./dist/r2.d.ts",
-      "import": "./dist/r2.esm.js",
+      "import": "./dist/r2.mjs",
       "require": "./dist/r2.js"
     },
     "./images": {
       "types": "./dist/images.d.ts",
-      "import": "./dist/images.esm.js",
+      "import": "./dist/images.mjs",
       "require": "./dist/images.js"
     },
     "./hyperdrive": {
       "types": "./dist/hyperdrive.d.ts",
-      "import": "./dist/hyperdrive.esm.js",
+      "import": "./dist/hyperdrive.mjs",
       "require": "./dist/hyperdrive.js"
     },
     "./queues": {
       "types": "./dist/queues.d.ts",
-      "import": "./dist/queues.esm.js",
+      "import": "./dist/queues.mjs",
       "require": "./dist/queues.js"
     },
     "./secrets": {
       "types": "./dist/secrets.d.ts",
-      "import": "./dist/secrets.esm.js",
+      "import": "./dist/secrets.mjs",
       "require": "./dist/secrets.js"
     },
     "./rate-limiting": {
       "types": "./dist/rate-limiting.d.ts",
-      "import": "./dist/rate-limiting.esm.js",
+      "import": "./dist/rate-limiting.mjs",
       "require": "./dist/rate-limiting.js"
     }
   },

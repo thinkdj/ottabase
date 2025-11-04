@@ -93,7 +93,7 @@ export class R2Client {
     options?: R2PutOptions
   ): Promise<Result<R2Object, Error>> {
     try {
-      const object = await this.bucket.put(key, value, options);
+      const object = await this.bucket.put(key, value as any, options);
 
       return {
         success: true,

@@ -5,11 +5,11 @@
  * @see https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
  */
 
-import type { RateLimiter } from '@cloudflare/workers-types';
+import type { RateLimit } from '@cloudflare/workers-types';
 import { CloudflareError, type Result } from './types';
 
 export interface RateLimitingConfig {
-  rateLimiter: RateLimiter;
+  rateLimiter: RateLimit;
 }
 
 export interface RateLimitOptions {
@@ -45,7 +45,7 @@ export interface RateLimitResult {
  * Type-safe Rate Limiting wrapper
  */
 export class RateLimitingClient {
-  private rateLimiter: RateLimiter;
+  private rateLimiter: RateLimit;
 
   constructor(config: RateLimitingConfig) {
     if (!config.rateLimiter) {
@@ -62,7 +62,7 @@ export class RateLimitingClient {
    */
   async limit(options: RateLimitOptions): Promise<Result<RateLimitResult, Error>> {
     try {
-      const result = await this.rateLimiter.limit({ key: options.key });
+      const result = await this.rateLimiter.limit({ key: options.key }) as any;
 
       return {
         success: true,
@@ -113,9 +113,9 @@ export class RateLimitingClient {
   }
 
   /**
-   * Get raw RateLimiter instance for advanced usage
+   * Get raw RateLimit instance for advanced usage
    */
-  getRaw(): RateLimiter {
+  getRaw(): RateLimit {
     return this.rateLimiter;
   }
 }

@@ -7,7 +7,7 @@ export const runtime = 'edge';
 // PATCH /api/cloudflare/d1/todos/[id] - Update a todo
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { env } = await getCloudflareContext();
@@ -19,7 +19,8 @@ export async function PATCH(
       );
     }
 
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     if (isNaN(id)) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
@@ -67,7 +68,7 @@ export async function PATCH(
 // DELETE /api/cloudflare/d1/todos/[id] - Delete a todo
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { env } = await getCloudflareContext();
@@ -79,7 +80,8 @@ export async function DELETE(
       );
     }
 
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     if (isNaN(id)) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }

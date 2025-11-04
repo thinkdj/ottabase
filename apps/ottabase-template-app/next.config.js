@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 
+const { initOpenNextCloudflareForDev } = require("@opennextjs/cloudflare");
+
+// Initialize OpenNext Cloudflare for local development
+initOpenNextCloudflareForDev();
+
 const nextConfig = {
   // Enable transpilation of packages
   transpilePackages: [
