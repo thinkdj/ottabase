@@ -1,23 +1,100 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createRateLimitingClient } from '@ottabase/cf/rate-limiting';
+import { createKVClient } from '@ottabase/cf/kv';
 
 export const runtime = 'edge';
+
+// Simulated rate limiter using KV for local dev
+async function simulateRateLimit(env: any, key: string) {
+  if (!env.MY_KV) {
+    console.log('[Rate Limit] KV not available');
+    return null; // KV not available, can't simulate
+  }
+
+  const kv = createKVClient({ namespace: env.MY_KV });
+  const rateLimitKey = `ratelimit:${key}`;
+
+  const LIMIT = 10;
+  const PERIOD = 60; // seconds
+
+  // Get current count and timestamp
+  console.log(`[Rate Limit] Getting data for key: ${rateLimitKey}`);
+  const result = await kv.getText(rateLimitKey);
+  console.log(`[Rate Limit] KV get result:`, {
+    success: result.success,
+    hasData: !!result.data,
+    dataType: typeof result.data,
+    data: result.data
+  });
+
+  let count = 0;
+  let firstRequestTime = Date.now();
+  const now = Date.now();
+
+  if (result.success && result.data) {
+    try {
+      console.log(`[Rate Limit] Parsing stored data: ${result.data}`);
+      const data = JSON.parse(result.data);
+      console.log(`[Rate Limit] Parsed data:`, data);
+      count = data.count || 0;
+      firstRequestTime = data.firstRequestTime || now;
+      console.log(`[Rate Limit] Loaded count=${count}, firstRequestTime=${new Date(firstRequestTime).toISOString()}`);
+    } catch (error) {
+      console.error('[Rate Limit] Error parsing stored data:', error);
+      // Invalid data, reset
+    }
+  } else {
+    console.log(`[Rate Limit] No stored data found, starting fresh with count=0`);
+  }
+
+  // Check if period has expired
+  let elapsed = (now - firstRequestTime) / 1000;
+  console.log(`[Rate Limit] Time elapsed: ${elapsed}s (period: ${PERIOD}s)`);
+  if (elapsed >= PERIOD) {
+    console.log(`[Rate Limit] Period expired, resetting counter`);
+    // Reset the counter for new period
+    count = 0;
+    firstRequestTime = now;
+    elapsed = 0; // Recalculate elapsed after reset
+  }
+
+  // Increment counter for this request
+  const oldCount = count;
+  count++;
+  console.log(`[Rate Limit] Incrementing count: ${oldCount} -> ${count}`);
+
+  // Check if limit exceeded
+  const isAllowed = count <= LIMIT;
+  const remaining = Math.max(0, LIMIT - count);
+  const resetAfter = Math.max(1, Math.ceil(PERIOD - elapsed));
+
+  console.log(`[Rate Limit] Decision: count=${count}, limit=${LIMIT}, isAllowed=${isAllowed} (${count} <= ${LIMIT} = ${count <= LIMIT})`);
+
+  // Store updated count
+  const dataToStore = JSON.stringify({ count, firstRequestTime });
+  console.log(`[Rate Limit] Storing data: ${dataToStore}`);
+  const putResult = await kv.put(
+    rateLimitKey,
+    dataToStore,
+    { expirationTtl: PERIOD + 10 } // Add buffer to prevent early expiration
+  );
+  console.log(`[Rate Limit] KV put result:`, putResult);
+
+  console.log(`[Rate Limit] Final result for ${key}: count=${count}, limit=${LIMIT}, remaining=${remaining}, resetAfter=${resetAfter}, allowed=${isAllowed}`);
+
+  return {
+    success: isAllowed,
+    limit: LIMIT,
+    remaining,
+    resetAfter,
+  };
+}
 
 // POST /api/cloudflare/rate-limiting - Test rate limit
 export async function POST(request: NextRequest) {
   try {
     const { env } = await getCloudflareContext();
-
-    if (!env.RATE_LIMITER) {
-      return NextResponse.json(
-        {
-          error: 'Rate limiter binding not configured',
-          hint: 'Make sure wrangler.jsonc has the RATE_LIMITER binding enabled. Restart your dev server after making changes.'
-        },
-        { status: 500 }
-      );
-    }
 
     const body = await request.json();
     const { key } = body;
@@ -29,40 +106,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const limiter = createRateLimitingClient({ rateLimiter: env.RATE_LIMITER });
-    const result = await limiter.limit({ key });
+    let rateLimitData: any = null;
 
-    if (!result.success) {
-      console.error('Rate limit check failed:', result.error);
-      return NextResponse.json(
-        { error: 'Failed to check rate limit', details: result.error.message },
-        { status: 500 }
-      );
+    // Try real rate limiter first
+    if (env.RATE_LIMITER) {
+      try {
+        const limiter = createRateLimitingClient({ rateLimiter: env.RATE_LIMITER });
+        const result = await limiter.limit({ key });
+
+        if (result.success) {
+          const { success, limit, remaining, resetAfter } = result.data;
+
+          // Check if we got valid data (not all undefined)
+          if (limit !== undefined && remaining !== undefined && resetAfter !== undefined) {
+            rateLimitData = { success, limit, remaining, resetAfter };
+          }
+        }
+      } catch (error) {
+        console.warn('Real rate limiter failed, falling back to simulation:', error);
+      }
     }
 
-    console.log('Rate limit result:', result.data);
+    // Fallback to simulated rate limiter for local dev
+    if (!rateLimitData) {
+      console.log('Using simulated rate limiter with KV storage');
+      rateLimitData = await simulateRateLimit(env, key);
 
-    const { success, limit, remaining, resetAfter } = result.data;
+      if (!rateLimitData) {
+        return NextResponse.json(
+          {
+            error: 'Rate limiter not available',
+            hint: 'Enable RATE_LIMITER binding or ensure MY_KV is configured for local dev simulation'
+          },
+          { status: 500 }
+        );
+      }
+    }
 
-    // Provide defaults for undefined values
-    const limitValue = limit ?? 10;
-    const remainingValue = remaining ?? 0;
-    const resetAfterValue = resetAfter ?? 60;
+    const { success, limit, remaining, resetAfter } = rateLimitData;
 
     if (!success) {
       return NextResponse.json(
         {
           error: 'Rate limit exceeded',
-          limit: limitValue,
-          remaining: remainingValue,
-          resetAfter: resetAfterValue,
+          limit,
+          remaining,
+          resetAfter,
         },
         {
           status: 429,
           headers: {
-            'X-RateLimit-Limit': limitValue.toString(),
-            'X-RateLimit-Remaining': remainingValue.toString(),
-            'X-RateLimit-Reset': resetAfterValue.toString(),
+            'X-RateLimit-Limit': limit.toString(),
+            'X-RateLimit-Remaining': remaining.toString(),
+            'X-RateLimit-Reset': resetAfter.toString(),
           },
         }
       );
@@ -72,15 +168,15 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         message: 'Request allowed',
-        limit: limitValue,
-        remaining: remainingValue,
-        resetAfter: resetAfterValue,
+        limit,
+        remaining,
+        resetAfter,
       },
       {
         headers: {
-          'X-RateLimit-Limit': limitValue.toString(),
-          'X-RateLimit-Remaining': remainingValue.toString(),
-          'X-RateLimit-Reset': resetAfterValue.toString(),
+          'X-RateLimit-Limit': limit.toString(),
+          'X-RateLimit-Remaining': remaining.toString(),
+          'X-RateLimit-Reset': resetAfter.toString(),
         },
       }
     );

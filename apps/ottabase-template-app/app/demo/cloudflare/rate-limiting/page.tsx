@@ -81,6 +81,17 @@ export default function RateLimitingDemoPage() {
           </p>
         </div>
 
+        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <h3 className="mb-2 text-sm font-medium text-blue-900">
+            Local Development Mode
+          </h3>
+          <p className="text-sm text-blue-700">
+            In local dev, rate limiting is simulated using KV storage since Wrangler's
+            rate limiter mock doesn't work properly. The simulation provides accurate
+            rate limiting behavior with a 10 requests per 60 seconds limit.
+          </p>
+        </div>
+
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
             <p className="text-sm text-red-700">{error}</p>
@@ -258,7 +269,10 @@ export default function RateLimitingDemoPage() {
               • Returns detailed rate limit information in responses
             </li>
             <li>
-              • Works locally with wrangler
+              • Local dev: Simulated with KV storage (10 req/60s)
+            </li>
+            <li>
+              • Production: Uses real Cloudflare Rate Limiting binding
             </li>
             <li>
               • Perfect for protecting APIs from abuse
