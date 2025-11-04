@@ -97,6 +97,31 @@ Update `wrangler.jsonc`:
 }
 ```
 
+#### Create Hyperdrive Configuration
+
+Hyperdrive is not available for local development. Skip this for local testing or use `--remote` flag.
+
+```bash
+# PostgreSQL example
+pnpm wrangler hyperdrive create my-postgres \
+  --connection-string="postgres://user:password@host.example.com:5432/database"
+
+# MySQL example
+pnpm wrangler hyperdrive create my-mysql \
+  --connection-string="mysql://user:password@host.example.com:3306/database"
+```
+
+Update `wrangler.jsonc` with the returned Hyperdrive ID:
+
+```jsonc
+"hyperdrive": [{
+  "binding": "HYPERDRIVE",
+  "id": "YOUR_HYPERDRIVE_ID"
+}]
+```
+
+**Note**: Works with any PostgreSQL or MySQL database including AWS RDS, Google Cloud SQL, Neon, Supabase, PlanetScale, and others.
+
 ### 3. Set Secrets (Optional)
 
 For features requiring API access (like Images):
@@ -253,6 +278,121 @@ const result = await images.upload(imageFile, {
 // Get delivery URL
 const url = images.getDeliveryUrl(result.data.id, 'public');
 ```
+
+### Hyperdrive
+
+Hyperdrive accelerates access to your existing PostgreSQL and MySQL databases by maintaining connection pools and caching queries at the edge.
+
+#### Setup
+
+```bash
+# Create Hyperdrive configuration
+pnpm wrangler hyperdrive create my-postgres \
+  --connection-string="postgres://user:password@host:5432/database"
+```
+
+Update `wrangler.jsonc`:
+
+```jsonc
+"hyperdrive": [{
+  "binding": "HYPERDRIVE",
+  "id": "YOUR_HYPERDRIVE_ID"  // Returned from create command
+}]
+```
+
+#### Usage with Prisma
+
+```typescript
+import { PrismaClient } from '@prisma/client';
+import { createHyperdriveClient } from '@ottabase/cf/hyperdrive';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+
+export const runtime = 'edge';
+
+export async function GET() {
+  const { env } = await getCloudflareContext();
+
+  const hyperdrive = createHyperdriveClient({
+    hyperdrive: env.HYPERDRIVE
+  });
+
+  const prisma = new PrismaClient({
+    datasourceUrl: hyperdrive.getConnectionString()
+  });
+
+  const users = await prisma.user.findMany();
+
+  return Response.json({ users });
+}
+```
+
+#### Usage with pg Driver
+
+```typescript
+import { Client } from 'pg';
+import { createHyperdriveClient } from '@ottabase/cf/hyperdrive';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+
+export const runtime = 'edge';
+
+export async function GET() {
+  const { env } = await getCloudflareContext();
+
+  const hyperdrive = createHyperdriveClient({
+    hyperdrive: env.HYPERDRIVE
+  });
+
+  const client = new Client({
+    connectionString: hyperdrive.getConnectionString()
+  });
+
+  await client.connect();
+  const result = await client.query('SELECT * FROM users LIMIT 10');
+  await client.end();
+
+  return Response.json({ users: result.rows });
+}
+```
+
+#### Usage with Drizzle ORM
+
+```typescript
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import { createHyperdriveClient } from '@ottabase/cf/hyperdrive';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+
+export const runtime = 'edge';
+
+export async function GET() {
+  const { env } = await getCloudflareContext();
+
+  const hyperdrive = createHyperdriveClient({
+    hyperdrive: env.HYPERDRIVE
+  });
+
+  const client = postgres(hyperdrive.getConnectionString());
+  const db = drizzle(client);
+
+  const users = await db.select().from(usersTable);
+
+  return Response.json({ users });
+}
+```
+
+#### Benefits
+
+- **Connection Pooling**: Reuses connections across requests, eliminating setup overhead
+- **Query Caching**: Caches frequently-read queries at the edge for sub-millisecond response times
+- **Geographic Optimization**: Smart routing through Cloudflare locations closest to your database
+- **Reduced Database Load**: Lower connection count and query load on your database
+
+#### Important Notes
+
+- Hyperdrive is **not available in local development** (`wrangler dev`)
+- Use `wrangler dev --remote` to test with real Hyperdrive configuration
+- Best for read-heavy workloads with frequently-accessed data
+- Compatible with PostgreSQL and MySQL databases (including managed services like AWS RDS, Google Cloud SQL, Neon, Supabase, PlanetScale)
 
 ### Queues
 

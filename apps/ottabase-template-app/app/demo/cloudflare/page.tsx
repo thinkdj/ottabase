@@ -23,6 +23,11 @@ export default function CloudflareDemoPage() {
       href: '/demo/cloudflare/images',
     },
     {
+      name: 'Hyperdrive',
+      description: 'Database connection pooling and acceleration',
+      href: '/demo/cloudflare/hyperdrive',
+    },
+    {
       name: 'Queues',
       description: 'Message queue processing',
       href: '/demo/cloudflare/queues',
