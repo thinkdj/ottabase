@@ -1,4 +1,4 @@
-import type { MantineThemeOverride, MantineTheme } from "@mantine/core";
+import type { MantineThemeOverride } from "@mantine/core";
 
 /**
  * Helper function to create rgba from hex color
@@ -434,7 +434,7 @@ export const mantineShadcn: MantineThemeOverride = {
             border: "none",
             width: "2.75rem",
             height: "1.5rem",
-            "&[data-checked]": {
+            "&[dataChecked]": {
               backgroundColor: "#0f172a",
             },
           },

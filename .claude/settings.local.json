@@ -1,20 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm install:*)",
-      "Bash(pnpm type-check:*)",
-      "Bash(pnpm build:*)",
-      "Bash(mkdir:*)",
       "Bash(cat:*)",
-      "Bash(test:*)",
-      "Bash(pnpm dev)",
-      "Bash(pnpm test:*)",
-      "Bash(pnpm start)",
-      "Bash(pnpm lint)",
-      "Bash(pnpm db:generate)",
-      "Bash(pnpm storybook)",
-      "Bash(pnpm storybook:build)",
-      "Bash(pnpm db:generate:*)"
+      "Bash(pnpm install:*)",
+      "Bash(pnpm build)",
+      "Bash(find:*)",
+      "Bash(pnpm prisma:generate:*)"
     ],
     "deny": [],
     "ask": []

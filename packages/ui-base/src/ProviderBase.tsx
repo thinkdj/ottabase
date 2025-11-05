@@ -62,11 +62,11 @@ export const ProviderUIBase: React.FC<ProviderUIBaseProps> = ({
       style={
         shouldPreventFOUC
           ? { visibility: "hidden" }
-          : {
+          : ({
               fontFamily: mergedFontFamilies.primary,
               "--font-heading": mergedFontFamilies.heading,
               "--font-monospace": mergedFontFamilies.monospace,
-            } as React.CSSProperties
+            } as React.CSSProperties)
       }
       suppressHydrationWarning
     >

@@ -28,38 +28,29 @@ pnpm add @ottabase/state jotai
 
 ### 1. Create Your App State
 
-Create a state instance for your app (usually in a dedicated file):
+Create a state instance for your app (usually in a dedicated file). This file becomes the single source of truth for your app's global state exports.
 
 ```typescript
-// src/state/appGlobalState.ts
+// ottabase/state/appGlobalState.ts
 import { createDefaultAppState } from "@ottabase/state";
 
-// Create your app's state instance
+// 1. Create the state instance.
 const appState = createDefaultAppState();
 
-// Export for use in your app
-export const appGlobalStateAtom = appState.appGlobalStateAtom;
-export const createAppGlobalStateAtom = appState.createAppGlobalStateAtom;
+// 2. Export the main atom and derived, lensed atoms.
+export const { appStateAtom, atoms, createLensedAtom } = appState;
 export const {
-  isMobileSidebarOpenAtom,
-  isDesktopSidebarOpenAtom,
   themeAtom,
   scaleAtom,
   userAtom,
-  coreModuleAtom,
-  currentModuleAtom,
-  cursorThemeAtom,
-  selectionColorAtom,
-  layoutProviderAtom,
-  layoutPresetAtom,
-  layoutAtom,
-  routeContextAtom,
-} = appState.atoms;
+  isMobileSidebarOpenAtom,
+  isDesktopSidebarOpenAtom
+} = atoms;
 ```
 
 ### 2. Setup Provider
 
-Wrap your app with the state provider:
+Wrap your app's root layout with the `ProviderState` component. It's recommended to do this within a dedicated `providers.tsx` file.
 
 ```tsx
 // app/providers.tsx
@@ -93,47 +84,26 @@ export default function RootLayout({ children }) {
 
 ### 3. Use in Components
 
+The recommended pattern is to use the granular, lensed atoms. This ensures your components only re-render when the specific slice of state they depend on actually changes, maximizing performance.
+
 ```tsx
 "use client";
 
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import {
-  appGlobalStateAtom,
-  themeAtom,
-  scaleAtom,
-  createAppGlobalStateAtom
-} from "@/state/appGlobalState";
+import { useAtom } from "jotai";
+import { scaleAtom } from "@/ottabase/state/appGlobalState";
 
-function MyComponent() {
-  // Read and write the entire state
-  const [appState, setAppState] = useAtom(appGlobalStateAtom);
-
-  // Read-only access to a specific property
-  const theme = useAtomValue(themeAtom);
-
-  // Write-only access to a specific property (optimized)
-  const setScale = useSetAtom(scaleAtom);
-
-  // Or create a custom derived atom on the fly
-  const setUser = useSetAtom(createAppGlobalStateAtom("user"));
+function ScaleControl() {
+  // This component will ONLY re-render when the `scale` value changes.
+  const [scale, setScale] = useAtom(scaleAtom);
 
   return (
     <div>
-      <p>Current theme: {theme}</p>
-      <p>Current scale: {appState.scale}</p>
-
-      {/* Update individual property */}
-      <button onClick={() => setScale(1.5)}>
-        Increase Scale
+      <p>Current scale: {scale.toFixed(1)}x</p>
+      <button onClick={() => setScale(s => s + 0.1)}>
+        +
       </button>
-
-      {/* Update multiple properties at once */}
-      <button onClick={() => setAppState(prev => ({
-        ...prev,
-        theme: prev.theme === "light" ? "dark" : "light",
-        scale: 1.0
-      }))}>
-        Toggle Theme & Reset Scale
+      <button onClick={() => setScale(s => s - 0.1)}>
+        -
       </button>
     </div>
   );
@@ -147,9 +117,11 @@ function MyComponent() {
 Creates a new app state instance with custom configuration.
 
 **Type Parameters:**
+
 - `TUser extends BaseUser` - Custom user type (optional)
 
 **Parameters:**
+
 ```typescript
 interface AppStateConfig<TUser extends BaseUser> {
   initialState?: Partial<AppGlobalState<TUser>>;
@@ -159,6 +131,7 @@ interface AppStateConfig<TUser extends BaseUser> {
 ```
 
 **Returns:**
+
 ```typescript
 {
   appGlobalStateAtom: WritableAtom<AppGlobalState<TUser>>,
@@ -184,6 +157,7 @@ interface AppStateConfig<TUser extends BaseUser> {
 ```
 
 **Example:**
+
 ```typescript
 import { createAppState, type BaseUser } from "@ottabase/state";
 
@@ -208,11 +182,13 @@ const appState = createAppState<MyUser>({
 Convenience function to create app state with minimal configuration.
 
 **Parameters:**
+
 - `coreModule?: string` - Initial core module value
 
 **Returns:** Same as `createAppState()`
 
 **Example:**
+
 ```typescript
 const appState = createDefaultAppState("dashboard");
 ```
@@ -222,6 +198,7 @@ const appState = createDefaultAppState("dashboard");
 React component that provides Jotai context to your app.
 
 **Props:**
+
 ```typescript
 interface ProviderStateProps {
   children: React.ReactNode;
@@ -230,6 +207,7 @@ interface ProviderStateProps {
 ```
 
 **Example:**
+
 ```tsx
 // Basic usage
 <ProviderState>
@@ -600,16 +578,19 @@ In your app's `package.json`:
 ### Building
 
 The package is built with `tsup` and outputs:
+
 - CommonJS: `dist/index.js`
 - ESM: `dist/index.mjs`
 - TypeScript declarations: `dist/index.d.ts` and `dist/index.d.mts`
 
 Build command:
+
 ```bash
 pnpm build
 ```
 
 Development mode with watch:
+
 ```bash
 pnpm dev
 ```
@@ -621,11 +602,13 @@ pnpm dev
 If you have an existing local state management setup:
 
 1. **Install the package:**
+
    ```bash
    pnpm add @ottabase/state jotai
    ```
 
 2. **Create your state instance:**
+
    ```typescript
    // src/state/appGlobalState.ts
    import { createDefaultAppState } from "@ottabase/state";
@@ -637,6 +620,7 @@ If you have an existing local state management setup:
    ```
 
 3. **Replace your provider:**
+
    ```tsx
    // Before
    <YourCustomProvider>
@@ -650,6 +634,7 @@ If you have an existing local state management setup:
    ```
 
 4. **Update component imports:**
+
    ```typescript
    // Before
    import { useTheme } from "@/context/ThemeContext";
@@ -665,6 +650,7 @@ If you have an existing local state management setup:
 ### "Cannot find module '@ottabase/state'"
 
 Make sure you've installed the package and its peer dependencies:
+
 ```bash
 pnpm add @ottabase/state jotai react
 ```

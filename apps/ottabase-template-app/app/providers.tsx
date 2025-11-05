@@ -1,6 +1,6 @@
 "use client";
 
-import { appConfig, THEME_COLORS } from "@/ottabase/config/app.config";
+import { appConfig } from "@/ottabase/config/app.config";
 import {
   headingFontFamily,
   monospaceFontFamily,
@@ -8,10 +8,10 @@ import {
   ProviderFont,
   ProviderNextThemes,
 } from "@/ottabase/providers";
+import { ThemeManager } from "@/ottabase/providers/ThemeManager";
 import { ProviderState } from "@ottabase/state";
 import { ProviderCodeHighlight } from "@ottabase/ui-code-highlight";
 import { ProviderUIBase } from "@ottabase/ui-base";
-import { ProviderUIMantine } from "@ottabase/ui-mantine";
 import { ShadcnProviders } from "@ottabase/ui-shadcn/providers";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -29,17 +29,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         fontFamilies={fontFamilies}
       >
         <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
-          <ProviderUIMantine
-            storagePrefix={appConfig.storage.prefix}
-            themeColors={THEME_COLORS}
-            primaryColor={appConfig.theme.colorDefault}
-          >
-            <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
-              <ShadcnProviders enableThemeProvider={false} enableToaster>
-                <ProviderCodeHighlight>{children}</ProviderCodeHighlight>
-              </ShadcnProviders>
-            </ProviderNextThemes>
-          </ProviderUIMantine>
+          <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
+            <ThemeManager />
+            <ShadcnProviders enableThemeProvider={false} enableToaster>
+              <ProviderCodeHighlight>{children}</ProviderCodeHighlight>
+            </ShadcnProviders>
+          </ProviderNextThemes>
         </ProviderFont>
       </ProviderUIBase>
     </ProviderState>

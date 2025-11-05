@@ -7,7 +7,6 @@ import {
   createTheme,
   MantineThemeOverride,
   MantineColorsTuple,
-  localStorageColorSchemeManager,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
@@ -29,6 +28,8 @@ interface ProviderUIMantineProps {
   scale?: number;
   // Theme override - allows apps to provide their own complete theme
   themeOverride?: MantineThemeOverride;
+  /** Explicitly set the color scheme. Overrides internal management. */
+  colorScheme?: "light" | "dark";
 }
 
 export type ThemeColors = Record<string, MantineColorsTuple>;
@@ -40,24 +41,12 @@ const ProviderUIMantine = ({
   primaryColor = "blue",
   scale = 1.0,
   themeOverride,
+  colorScheme,
 }: ProviderUIMantineProps) => {
-  const storageKeyTheme = `${storagePrefix}.color-scheme`;
-  const colorSchemeManager = localStorageColorSchemeManager({
-    key: storageKeyTheme,
-  });
-
-  type ColorSchemeType = "light" | "dark" | "auto";
-
-  /* Theme switch: save to local storage */
-  const [colorScheme, setColorScheme] = useLocalStorage<ColorSchemeType>({
-    key: storageKeyTheme,
-    defaultValue: "light" as ColorSchemeType,
-    getInitialValueInEffect: true,
-  });
-
-  const toggleColorScheme = (value?: ColorSchemeType) =>
-    setColorScheme(value || (colorScheme === "dark" ? "light" : "dark"));
-
+  /**
+   * NOTE: Theme is now managed by global state (themeAtom) in @ottabase/state
+   * The color scheme should be passed directly to this provider via the `colorScheme` prop.
+   */
   const mantineDefaultTheme: MantineThemeOverride = {
     defaultRadius: "sm",
     colors: themeColors,
@@ -85,7 +74,7 @@ const ProviderUIMantine = ({
 
   return (
     <MantineProvider
-      colorSchemeManager={colorSchemeManager}
+      forceColorScheme={colorScheme}
       withCssVariables={true}
       deduplicateCssVariables={true}
       classNamesPrefix="cdc-mt"

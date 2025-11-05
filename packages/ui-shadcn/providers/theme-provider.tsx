@@ -33,17 +33,18 @@ export interface ShadcnThemeProviderProps extends ThemeProviderProps {
 }
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
-  return (
-    <NextThemesProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-      {...props}
-    >
-      {children}
-    </NextThemesProvider>
-  );
+  // Enforce unified theme storage and behavior across apps/packages
+  const providerProps: NextThemeProviderProps = {
+    attribute: "class",
+    storageKey: "ottabase-theme",
+    defaultTheme: "light",
+    enableSystem: false,
+    forcedTheme: undefined,
+    disableTransitionOnChange: true,
+    ...props, // allow explicit overrides if a specific app needs it
+  };
+
+  return <NextThemesProvider {...providerProps}>{children}</NextThemesProvider>;
 }
 
 export function ShadcnProviders({

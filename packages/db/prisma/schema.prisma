@@ -1,0 +1,33 @@
+/// Base Prisma configuration - generator and datasource
+/// This file is a template. The actual datasource will be configured
+/// based on the app's prisma.config.js settings during schema generation.
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+/// User model - Core authentication and user management
+
+model User {
+    id        String   @id @default(cuid())
+    email     String   @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+/// Post model - Blog posts and content management
+
+model Post {
+    id        String   @id @default(cuid())
+    title     String
+    content   String?  @db.Text
+    published Boolean  @default(false)
+    authorId  String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}

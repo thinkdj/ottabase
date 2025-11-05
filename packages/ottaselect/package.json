@@ -1,7 +1,7 @@
 {
   "name": "@ottabase/ottaselect",
   "version": "1.0.0",
-  "description": "Notion-style select component with single/multi-select, search, and CrudHub integration",
+  "description": "A select component with single/multi-select, search, and CrudHub integration",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",

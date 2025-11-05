@@ -6,6 +6,7 @@ cloudflare-env.d.ts
 /wrangler.jsonc.backup
 .open-next
 .dev.vars
+.wrangler/
 
 # Force-ignore .gitignore files
 # Add this to your local files that need not be committed (Eg: google-oauth.gitignore.json)

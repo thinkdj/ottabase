@@ -1,4 +1,4 @@
-import type { MantineThemeOverride, MantineTheme } from "@mantine/core";
+import type { MantineThemeOverride } from "@mantine/core";
 
 /**
  * Helper function to create rgba from hex color
@@ -474,7 +474,7 @@ export const mantineVercel: MantineThemeOverride = {
           track: {
             border: "none",
             backgroundColor: "#e4e4e7",
-            "&[data-checked]": {
+            "&[dataChecked]": {
               backgroundColor: "#000",
             },
           },

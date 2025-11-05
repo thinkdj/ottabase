@@ -1,4 +1,4 @@
-import type { MantineThemeOverride, MantineTheme } from "@mantine/core";
+import type { MantineThemeOverride } from "@mantine/core";
 
 /**
  * Helper function to create rgba from hex color
@@ -473,7 +473,7 @@ export const mantineStripe: MantineThemeOverride = {
             border: "none",
             width: "3rem",
             height: "1.5rem",
-            "&[data-checked]": {
+            "&[dataChecked]": {
               background: "linear-gradient(135deg, #7c66dc 0%, #635bff 100%)",
             },
           },

@@ -1,6 +1,6 @@
 # @ottabase/ottaselect
 
-A Notion-style select component that accepts **any object format** and always returns a standardized output. Perfect for React applications with dynamic data sources and CrudHub integration.
+A select component that accepts **any object format** and always returns a standardized output. Perfect for React applications with dynamic data sources and CrudHub integration.
 
 ## Key Features
 
@@ -14,7 +14,7 @@ A Notion-style select component that accepts **any object format** and always re
 - **Clear functionality** - Optional clear button for easy deselection
 - **Custom headers/footers** - Add custom UI elements above and below the list
 - **Optimized item merging** - Selected items always visible and properly merged with collection
-- **Notion-inspired design** - Clean, modern UI based on Tailwind CSS
+- **Minimalistic design** - Clean, modern UI based on Tailwind CSS
 
 ## Installation
 

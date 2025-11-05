@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
-import { OttaSelect, OttaSelectItem, OttaSelectInputItem } from './OttaSelect';
+import { OttaSelect, OttaSelectInputItem, OttaSelectItem } from "./OttaSelect";
 
 // Sample data - flexible input format with various properties
 const sampleItemsWithName: OttaSelectInputItem[] = [
@@ -56,21 +56,21 @@ const mockFetchCollection = async (searchQuery: string): Promise<OttaSelectInput
 };
 
 const meta: Meta<typeof OttaSelect> = {
-  title: 'Components/OttaSelect',
+  title: "Components/OttaSelect",
   component: OttaSelect,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
     docs: {
       description: {
         component:
-          'A Notion-style select component that accepts any object with id and name/label/title. Always returns standardized { id, name, data } format where data contains the original object.',
+          "A select component that accepts any object with id and name/label/title. Always returns standardized { id, name, data } format where data contains the original object.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   decorators: [
-    (Story) => (
-      <div style={{ width: '450px', padding: '20px' }}>
+    (Story: any) => (
+      <div style={{ width: "450px", padding: "20px" }}>
         <Story />
       </div>
     ),

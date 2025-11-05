@@ -6,45 +6,52 @@ Mantine UI components and providers for Ottabase applications. This package prov
 
 - **ProviderUIMantine**: Main UI provider that wires Mantine, notifications, and modal support
 - **Pre-built Themes**: ShadCN, Vercel, Ant Design, and Stripe-inspired themes
-- **Theme Management**: Integrated dark/light mode support with local storage persistence
+- **Theme Management**: Syncs with global theme state (themeAtom from @ottabase/state)
 - **Theme Configuration**: Utilities for creating and validating custom themes
-- **Font Controls**: Configure Mantine font families via `fontFamilies` prop
 - **FOUC Prevention**: Flash of unstyled content prevention helpers
 
 ## Installation
 
 ```bash
-npm install @ottabase/ui-mantine @ottabase/ui-base
+npm install @ottabase/ui-mantine @ottabase/ui-base @ottabase/state
 # or
-pnpm add @ottabase/ui-mantine @ottabase/ui-base
+pnpm add @ottabase/ui-mantine @ottabase/ui-base @ottabase/state
 ```
 
 ## Usage
 
 ### Basic Setup
 
-**Important:** ProviderUIMantine should be wrapped with ProviderUIMantineBase from `@ottabase/ui-base` to ensure base styles are loaded.
+**Important:** The theme (light/dark mode) is controlled by the global `themeAtom` from `@ottabase/state`. You must pass the theme value to this provider's `colorScheme` prop to keep it in sync.
 
 ```tsx
 import { ProviderUIMantineBase } from '@ottabase/ui-base';
 import { ProviderUIMantine } from '@ottabase/ui-mantine';
-
-const fontFamilies = {
-  primary: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  heading: "Work Sans, 'Segoe UI', sans-serif",
-  monospace: "JetBrains Mono, 'Fira Code', monospace",
-};
+import { useAtomValue } from 'jotai';
+import { themeAtom } from '@/ottabase/state/appGlobalState'; // Adjust path as needed
 
 function App({ children }) {
+  const theme = useAtomValue(themeAtom);
+
   return (
     <ProviderUIMantineBase>
-      <ProviderUIMantine fontFamilies={fontFamilies}>
+      <ProviderUIMantine
+        storagePrefix="ottabase"
+        themeColors={THEME_COLORS}
+        primaryColor="blue"
+        // Pass the global theme to the provider
+        colorScheme={theme as 'light' | 'dark'}
+      >
         {children}
       </ProviderUIMantine>
     </ProviderUIMantineBase>
   );
 }
 ```
+
+### Syncing with Global State
+
+This provider is a **controlled component**. It does not manage the theme state itself. Instead, you must provide the current theme via the `colorScheme` prop. This ensures that Mantine is always in sync with your application's single source of truth for theme state (e.g., a Jotai atom). The `MantineThemeSync` component is no longer needed.
 
 ### Using Pre-built Themes
 
@@ -62,6 +69,7 @@ function App({ children }) {
   return (
     <ProviderUIMantineBase>
       <ProviderUIMantine themeOverride={mantineShadcn}>
+        <MantineThemeSync />
         {children}
       </ProviderUIMantine>
     </ProviderUIMantineBase>
@@ -113,6 +121,7 @@ function App({ children }) {
   return (
     <ProviderUIMantineBase>
       <ProviderUIMantine themeOverride={customTheme}>
+        <MantineThemeSync />
         {children}
       </ProviderUIMantine>
     </ProviderUIMantineBase>
@@ -127,6 +136,16 @@ function App({ children }) {
 - **mantineAnt**: Ant Design inspired theme
 - **mantineStripe**: Stripe-inspired professional theme
 
+## Theme System Architecture
+
+This package is part of Ottabase's centralized theme system:
+
+- **Global State**: Theme is stored in `themeAtom` (from @ottabase/state) with automatic localStorage persistence
+- **Single Source of Truth**: All UI frameworks sync with global state
+- **One-Way Sync**: Mantine reads from global state, theme changes go through global state
+
+See `THEME_ARCHITECTURE.md` in your app for the complete theme system documentation.
+
 ## Dependencies
 
 This package requires the following peer dependencies:
@@ -139,7 +158,7 @@ This package requires the following peer dependencies:
 - `@mantine/notifications` ^8.3.1
 - `@mantine/carousel` ^8.3.1
 
-**Note:** This package requires `@ottabase/ui-base` to be installed and its ProviderUIMantineBase component to wrap ProviderUIMantine.
+**Note:** This package requires `@ottabase/ui-base` and `@ottabase/state` to be installed.
 
 ## Development
 

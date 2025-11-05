@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Flex, Group, Title, Image } from "@mantine/core";
+import Image from "next/image";
 import DarkModeToggle from "./DarkModeToggle";
 import { createAppConfig } from "@ottabase/config";
 
@@ -36,48 +36,40 @@ export const Logo: React.FC<LogoProps> = ({
   const renderDarkModeToggle = () =>
     darkModeSwitcher && <DarkModeToggle type="button" />;
 
+  const LogoContent = () => (
+    <>
+      {appLogoUrl && (
+        <img
+          src={appLogoUrl}
+          alt={`${appNameTitle}`}
+          style={{ height: `${size}px`, width: "auto" }}
+          className="rounded object-contain"
+        />
+      )}
+      {appNameTitle && (
+        <h4 className="text-lg font-semibold">{appNameTitle}</h4>
+      )}
+    </>
+  );
+
   return (
-    <Flex
-      justify="space-between"
-      align="center"
-      direction="row"
-      wrap="nowrap"
-      gap="4"
-      style={{ minWidth: minWidthPx }}
+    <div
+      className="flex flex-row flex-nowrap items-center justify-between gap-4"
+      style={{ minWidth: `${minWidthPx}px` }}
     >
-      <Group p="xs">
+      <div className="flex items-center gap-3 p-2">
         {linkUrl ? (
           <Link href={linkUrl} className="flex items-center gap-3">
-            {appLogoUrl && (
-              <Image
-                src={appLogoUrl}
-                alt={`${appNameTitle}`}
-                h={size}
-                w={"auto"}
-                fit="contain"
-                radius={4}
-              />
-            )}
-            {appNameTitle && <Title order={4}>{appNameTitle}</Title>}
+            <LogoContent />
           </Link>
         ) : (
           <div className="flex items-center gap-3">
-            {appLogoUrl && (
-              <Image
-                src={appLogoUrl}
-                alt={`${appNameTitle}`}
-                h={size}
-                w={"auto"}
-                fit="contain"
-                radius={4}
-              />
-            )}
-            {appNameTitle && <Title order={4}>{appNameTitle}</Title>}
+            <LogoContent />
           </div>
         )}
-      </Group>
+      </div>
       {renderDarkModeToggle()}
-    </Flex>
+    </div>
   );
 };
 

@@ -1,100 +1,79 @@
-import { Box, Title, Text, Button, Stack, Group } from "@mantine/core";
-import { DarkModeToggle } from "@ottabase/ui-components/dark-mode-toggle";
 import { APP_META } from "@/ottabase/config/app.config";
+import { DarkModeToggle } from "@ottabase/ui-components/dark-mode-toggle";
+import { Button } from "@ottabase/ui-shadcn";
 import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <Box
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "var(--mantine-color-body)",
-      }}
-    >
-      <Stack
-        align="center"
-        gap="xl"
-        style={{ textAlign: "center", maxWidth: 600 }}
-      >
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex max-w-3xl flex-col items-center gap-8 px-4 text-center">
         {/* Dark Mode Toggle in corner */}
-        <Group
-          justify="flex-end"
-          style={{ position: "absolute", top: 20, right: 20 }}
-        >
+        <div className="absolute right-5 top-5">
           <DarkModeToggle type="button" title="Toggle dark/light mode" />
-        </Group>
+        </div>
 
         {/* Main Heading */}
-        <Title
-          order={1}
-          size={64}
-          fw={700}
+        <h1
+          className="mb-4 bg-gradient-to-r from-cyan-500 to-fuchsia-500 bg-clip-text text-6xl font-bold text-transparent"
           style={{
-            background: "linear-gradient(135deg, #0ea5e9 0%, #d946ef 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            marginBottom: 16,
           }}
         >
           {APP_META.appName}
-        </Title>
+        </h1>
 
         {/* Description */}
-        <Text
-          size="xl"
-          c="dimmed"
-          style={{ lineHeight: 1.6, marginBottom: 32 }}
-        >
+        <p className="mb-8 text-xl leading-relaxed text-muted-foreground">
           {APP_META.description}
-        </Text>
+        </p>
 
-        <Text size="lg" c="dimmed" style={{ lineHeight: 1.5 }}>
+        <p className="text-lg leading-relaxed text-muted-foreground">
           A modern React app template built with <strong>Next.js</strong>,{" "}
-          <strong>Mantine</strong>, <strong>TypeScript</strong>, and{" "}
-          <strong>Tailwind CSS</strong>. Features theme switching, state
-          management, and a scalable monorepo architecture.
-        </Text>
+          <strong>TypeScript</strong>, and <strong>Tailwind CSS</strong>.
+          Features theme switching, state management, and a scalable monorepo
+          architecture with UI Base as the foundation.
+        </p>
 
         {/* Action Buttons */}
-        <Group gap="md" style={{ marginTop: 32 }}>
+        <div className="mt-8 flex flex-wrap gap-2 justify-center">
+          <Button asChild variant="outline" size="lg">
+            <a href="/demo">Demo Page</a>
+          </Button>
           <Button
-            component={Link}
-            href="/demo"
+            asChild
             size="lg"
-            style={{
-              background: "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)",
-              border: "none",
-            }}
+            className="bg-gradient-to-r from-cyan-500 to-cyan-600"
           >
-            Kitchensink
+            <Link href="/demo/mantine">Mantine Demo</Link>
           </Button>
 
-          <Button
-            variant="outline"
-            size="lg"
-            component="a"
-            href="https://github.com/thinkdj/"
-            target="_blank"
-          >
-            Homepage
+          <Button asChild variant="outline" size="lg">
+            <Link href="/demo/shadcn">shadcn/ui Demo</Link>
           </Button>
-        </Group>
+
+          <Button asChild variant="outline" size="lg">
+            <a
+              href="https://github.com/thinkdj/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Homepage
+            </a>
+          </Button>
+        </div>
 
         {/* Footer */}
-        <Text size="sm" c="dimmed" style={{ marginTop: 64 }}>
+        <p className="mt-16 text-sm text-muted-foreground">
           {APP_META.copyrightText}
-        </Text>
+        </p>
 
-        <Text size="xs" c="dimmed" style={{ marginTop: 8 }}>
+        <p className="mt-2 text-xs text-muted-foreground">
           To create a new app from this template, simply delete the{" "}
-          <code>/demo</code> directory and customize this landing page to match
-          your project needs.
-        </Text>
-      </Stack>
-    </Box>
+          <code className="rounded bg-muted px-1 py-0.5">/demo</code> directory
+          and customize this landing page to match your project needs.
+        </p>
+      </div>
+    </div>
   );
 }

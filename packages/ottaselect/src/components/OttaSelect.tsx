@@ -1,6 +1,12 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Search, X, ChevronDown, Loader2, Check } from 'lucide-react';
-import { clsx } from 'clsx';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
+import { Search, X, ChevronDown, Loader2, Check } from "lucide-react";
+import { clsx } from "clsx";
 
 // Output format - always standardized with id and name
 export interface OttaSelectItem extends Record<string, any> {
@@ -13,7 +19,7 @@ export type OttaSelectInputItem = Record<string, any>;
 
 export interface OttaSelectProps {
   // Mode configuration
-  mode?: 'single' | 'multiple';
+  mode?: "single" | "multiple";
 
   // Value management - always returns with normalized id and name
   value?: OttaSelectItem | OttaSelectItem[] | null;
@@ -49,10 +55,10 @@ export interface OttaSelectProps {
 // Helper function to normalize input items to standard format
 const normalizeItem = (item: OttaSelectInputItem): OttaSelectItem => {
   // Extract id - must exist
-  const id = item.id?.toString() || '';
+  const id = item.id?.toString() || "";
 
   // Extract display name with fallbacks: name -> label -> title
-  const name = item.name || item.label || item.title || '';
+  const name = item.name || item.label || item.title || "";
 
   // Return the original object with normalized id and name
   return {
@@ -63,15 +69,15 @@ const normalizeItem = (item: OttaSelectInputItem): OttaSelectItem => {
 };
 
 export const OttaSelect: React.FC<OttaSelectProps> = ({
-  mode = 'single',
+  mode = "single",
   value = null,
   onChange,
   items = [],
   fetchCollection,
   searchable = true,
   searchDebounceMs = 300,
-  searchPlaceholder = 'Search...',
-  placeholder = 'Select an option',
+  searchPlaceholder = "Search...",
+  placeholder = "Select an option",
   disabled = false,
   clearable = true,
   header,
@@ -79,13 +85,13 @@ export const OttaSelect: React.FC<OttaSelectProps> = ({
   className,
   dropdownClassName,
   maxDisplayItems = 100,
-  emptyMessage = 'No options found',
-  loadingMessage = 'Loading...',
-  errorMessage = 'Error loading options',
+  emptyMessage = "No options found",
+  loadingMessage = "Loading...",
+  errorMessage = "Error loading options",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fetchedItems, setFetchedItems] = useState<OttaSelectItem[]>([]);
@@ -145,12 +151,12 @@ export const OttaSelect: React.FC<OttaSelectProps> = ({
     const itemsMap = new Map<string, OttaSelectItem>();
 
     // Add selected items first (they should always be visible)
-    selectedItems.forEach(item => {
+    selectedItems.forEach((item) => {
       itemsMap.set(item.id, item);
     });
 
     // Add available items
-    itemsSource.forEach(item => {
+    itemsSource.forEach((item) => {
       if (!itemsMap.has(item.id)) {
         itemsMap.set(item.id, item);
       }
@@ -167,89 +173,103 @@ export const OttaSelect: React.FC<OttaSelectProps> = ({
 
     const query = searchQuery.toLowerCase();
     return allItems
-      .filter(item => item.name.toLowerCase().includes(query))
+      .filter((item) => item.name.toLowerCase().includes(query))
       .slice(0, maxDisplayItems);
   }, [allItems, searchQuery, fetchCollection, maxDisplayItems]);
 
   // Check if item is selected
-  const isSelected = useCallback((item: OttaSelectItem) => {
-    return selectedItems.some(selected => selected.id === item.id);
-  }, [selectedItems]);
+  const isSelected = useCallback(
+    (item: OttaSelectItem) => {
+      return selectedItems.some((selected) => selected.id === item.id);
+    },
+    [selectedItems],
+  );
 
   // Handle item selection
-  const handleSelect = useCallback((item: OttaSelectItem) => {
-    if (!onChange) return;
+  const handleSelect = useCallback(
+    (item: OttaSelectItem) => {
+      if (!onChange) return;
 
-    if (mode === 'single') {
-      onChange(item);
-      setIsOpen(false);
-      setSearchQuery('');
-    } else {
-      const isItemSelected = isSelected(item);
-      if (isItemSelected) {
-        const newValue = selectedItems.filter(selected => selected.id !== item.id);
-        onChange(newValue.length > 0 ? newValue : null);
+      if (mode === "single") {
+        onChange(item);
+        setIsOpen(false);
+        setSearchQuery("");
       } else {
-        onChange([...selectedItems, item]);
+        const isItemSelected = isSelected(item);
+        if (isItemSelected) {
+          const newValue = selectedItems.filter(
+            (selected) => selected.id !== item.id,
+          );
+          onChange(newValue.length > 0 ? newValue : null);
+        } else {
+          onChange([...selectedItems, item]);
+        }
       }
-    }
-  }, [mode, onChange, selectedItems, isSelected]);
+    },
+    [mode, onChange, selectedItems, isSelected],
+  );
 
   // Handle clear
-  const handleClear = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onChange) {
-      onChange(null);
-    }
-    setSearchQuery('');
-  }, [onChange]);
+  const handleClear = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (onChange) {
+        onChange(null);
+      }
+      setSearchQuery("");
+    },
+    [onChange],
+  );
 
   // Handle keyboard navigation
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!isOpen) {
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        setIsOpen(true);
-      }
-      return;
-    }
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setFocusedIndex(prev =>
-          prev < filteredItems.length - 1 ? prev + 1 : prev
-        );
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setFocusedIndex(prev => prev > 0 ? prev - 1 : -1);
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (focusedIndex >= 0 && focusedIndex < filteredItems.length) {
-          handleSelect(filteredItems[focusedIndex]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!isOpen) {
+        if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+          e.preventDefault();
+          setIsOpen(true);
         }
-        break;
-      case 'Escape':
-        e.preventDefault();
-        setIsOpen(false);
-        setSearchQuery('');
-        break;
-    }
-  }, [isOpen, filteredItems, focusedIndex, handleSelect]);
+        return;
+      }
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setFocusedIndex((prev) =>
+            prev < filteredItems.length - 1 ? prev + 1 : prev,
+          );
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setFocusedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (focusedIndex >= 0 && focusedIndex < filteredItems.length) {
+            handleSelect(filteredItems[focusedIndex]);
+          }
+          break;
+        case "Escape":
+          e.preventDefault();
+          setIsOpen(false);
+          setSearchQuery("");
+          break;
+      }
+    },
+    [isOpen, filteredItems, focusedIndex, handleSelect],
+  );
 
   // Scroll focused item into view
   useEffect(() => {
     if (focusedIndex >= 0 && dropdownRef.current) {
       const focusedElement = dropdownRef.current.querySelector(
-        `[data-index="${focusedIndex}"]`
+        `[data-index="${focusedIndex}"]`,
       ) as HTMLElement;
 
       if (focusedElement) {
         focusedElement.scrollIntoView({
-          block: 'nearest',
-          behavior: 'smooth'
+          block: "nearest",
+          behavior: "smooth",
         });
       }
     }
@@ -258,17 +278,20 @@ export const OttaSelect: React.FC<OttaSelectProps> = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
         // Clear search query when closing if no selection
-        if (mode === 'single' && !value) {
-          setSearchQuery('');
+        if (mode === "single" && !value) {
+          setSearchQuery("");
         }
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [mode, value]);
 
   // Focus search input when opening
@@ -285,7 +308,7 @@ export const OttaSelect: React.FC<OttaSelectProps> = ({
 
   // Get display text
   const displayText = useMemo(() => {
-    if (mode === 'single') {
+    if (mode === "single") {
       return selectedItems[0]?.name || placeholder;
     }
 
@@ -300,9 +323,9 @@ export const OttaSelect: React.FC<OttaSelectProps> = ({
     <div
       ref={containerRef}
       className={clsx(
-        'relative w-full',
-        disabled && 'opacity-50 cursor-not-allowed',
-        className
+        "relative w-full",
+        disabled && "opacity-50 cursor-not-allowed",
+        className,
       )}
       onKeyDown={handleKeyDown}
     >
@@ -312,37 +335,44 @@ export const OttaSelect: React.FC<OttaSelectProps> = ({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={clsx(
-          'w-full px-3 py-2 text-left',
-          'bg-white dark:bg-gray-800',
-          'border border-gray-300 dark:border-gray-600',
-          'text-gray-900 dark:text-gray-100',
-          'rounded-lg',
-          'hover:border-gray-400 dark:hover:border-gray-500',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent',
-          'transition-colors duration-150',
-          'flex items-center justify-between gap-2',
-          disabled && 'cursor-not-allowed',
-          !hasValue && 'text-gray-500 dark:text-gray-400'
+          "w-full px-3 py-2 text-left",
+          "bg-white dark:bg-gray-800",
+          "border border-gray-300 dark:border-gray-600",
+          "text-gray-900 dark:text-gray-100",
+          "rounded-lg",
+          "hover:border-gray-400 dark:hover:border-gray-500",
+          "focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent",
+          "transition-colors duration-150",
+          "flex items-center justify-between gap-2",
+          disabled && "cursor-not-allowed",
+          !hasValue && "text-gray-500 dark:text-gray-400",
         )}
       >
         <span className="truncate flex-1">{displayText}</span>
 
         <div className="flex items-center gap-1 flex-shrink-0">
           {clearable && hasValue && !disabled && (
-            <button
-              type="button"
+            <span
               onClick={handleClear}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors cursor-pointer"
+              role="button"
               aria-label="Clear selection"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleClear(e as any);
+                }
+              }}
             >
               <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-            </button>
+            </span>
           )}
 
           <ChevronDown
             className={clsx(
-              'w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200',
-              isOpen && 'transform rotate-180'
+              "w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200",
+              isOpen && "transform rotate-180",
             )}
           />
         </div>
@@ -353,12 +383,12 @@ export const OttaSelect: React.FC<OttaSelectProps> = ({
         <div
           ref={dropdownRef}
           className={clsx(
-            'absolute z-50 w-full mt-2',
-            'bg-white dark:bg-gray-800',
-            'border border-gray-200 dark:border-gray-700',
-            'rounded-lg shadow-lg dark:shadow-gray-900/50',
-            'max-h-80 overflow-hidden flex flex-col',
-            dropdownClassName
+            "absolute z-50 w-full mt-2",
+            "bg-white dark:bg-gray-800",
+            "border border-gray-200 dark:border-gray-700",
+            "rounded-lg shadow-lg dark:shadow-gray-900/50",
+            "max-h-80 overflow-hidden flex flex-col",
+            dropdownClassName,
           )}
         >
           {/* Header */}
@@ -380,12 +410,12 @@ export const OttaSelect: React.FC<OttaSelectProps> = ({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={searchPlaceholder}
                   className={clsx(
-                    'w-full pl-8 pr-3 py-1.5 text-sm rounded',
-                    'bg-white dark:bg-gray-900',
-                    'border border-gray-300 dark:border-gray-600',
-                    'text-gray-900 dark:text-gray-100',
-                    'placeholder:text-gray-400 dark:placeholder:text-gray-500',
-                    'focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent'
+                    "w-full pl-8 pr-3 py-1.5 text-sm rounded",
+                    "bg-white dark:bg-gray-900",
+                    "border border-gray-300 dark:border-gray-600",
+                    "text-gray-900 dark:text-gray-100",
+                    "placeholder:text-gray-400 dark:placeholder:text-gray-500",
+                    "focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent",
                   )}
                 />
               </div>
@@ -420,12 +450,13 @@ export const OttaSelect: React.FC<OttaSelectProps> = ({
                       data-index={index}
                       onClick={() => handleSelect(item)}
                       className={clsx(
-                        'w-full px-3 py-2 text-left text-sm',
-                        'text-gray-900 dark:text-gray-100',
-                        'hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors',
-                        'flex items-center justify-between gap-2',
-                        focused && 'bg-gray-100 dark:bg-gray-700',
-                        selected && 'bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50'
+                        "w-full px-3 py-2 text-left text-sm",
+                        "text-gray-900 dark:text-gray-100",
+                        "hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors",
+                        "flex items-center justify-between gap-2",
+                        focused && "bg-gray-100 dark:bg-gray-700",
+                        selected &&
+                          "bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50",
                       )}
                     >
                       <span className="truncate flex-1">{item.name}</span>
