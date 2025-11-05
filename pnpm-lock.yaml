@@ -248,6 +248,9 @@ importers:
       '@ottabase/ottaeditor':
         specifier: workspace:*
         version: link:../../packages/ottaeditor
+      '@ottabase/ottalayout':
+        specifier: workspace:*
+        version: link:../../packages/ottalayout
       '@ottabase/ottaselect':
         specifier: workspace:*
         version: link:../../packages/ottaselect
