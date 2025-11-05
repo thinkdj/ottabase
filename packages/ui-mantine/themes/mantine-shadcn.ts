@@ -185,17 +185,17 @@ export const mantineShadcn: MantineThemeOverride = {
             border: "1px solid transparent",
             "&:focus": {
               outline: "none",
-              boxShadow: "0 0 0 2px hsl(210 40% 60% / 0.2)",
+              boxShadow: `0 0 0 2px ${theme.colorScheme === "dark" ? "rgba(148, 163, 184, 0.2)" : "hsl(210 40% 60% / 0.2)"}`,
             },
           },
           filled: {
-            backgroundColor: "#18181b",
-            color: "#fafafa",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[7] : theme.colors.slate[9],
+            color: theme.colorScheme === "dark" ? theme.colors.slate[0] : theme.colors.slate[0],
             "&:hover": {
-              backgroundColor: "#18181b/90",
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[6] : theme.colors.slate[8],
             },
             "&:active": {
-              backgroundColor: "#18181b/95",
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[5] : theme.colors.slate[9],
             },
           },
           outline: {
@@ -203,22 +203,22 @@ export const mantineShadcn: MantineThemeOverride = {
             backgroundColor: "var(--mantine-color-body)",
             color: "var(--mantine-color-text)",
             "&:hover": {
-              backgroundColor: "#f8fafc",
-              color: "#0f172a",
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[8] : theme.colors.slate[1],
+              color: "var(--mantine-color-text)",
             },
           },
           subtle: {
             backgroundColor: "transparent",
             color: "var(--mantine-color-text)",
             "&:hover": {
-              backgroundColor: "#f1f5f9",
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[8] : theme.colors.slate[1],
             },
           },
           light: {
-            backgroundColor: "#f1f5f9",
-            color: "#334155",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[8] : theme.colors.slate[1],
+            color: "var(--mantine-color-text)",
             "&:hover": {
-              backgroundColor: "#e2e8f0",
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[7] : theme.colors.slate[2],
             },
           },
         } as Record<string, React.CSSProperties>),
@@ -271,12 +271,12 @@ export const mantineShadcn: MantineThemeOverride = {
             padding: "0.5rem 0.75rem",
             transition: "all 0.15s ease",
             "&:focus": {
-              borderColor: "#64748b",
-              boxShadow: "0 0 0 2px hsl(215.4 16.3% 46.9% / 0.2)",
+              borderColor: theme.colors.slate[5],
+              boxShadow: `0 0 0 2px ${rgba(theme.colors.slate[5], 0.2)}`,
               outline: "none",
             },
             "&::placeholder": {
-              color: "#94a3b8",
+              color: theme.colors.slate[4],
               fontSize: "0.875rem",
             },
           },
@@ -320,8 +320,8 @@ export const mantineShadcn: MantineThemeOverride = {
             fontSize: "0.875rem",
             padding: "0.5rem 0.75rem",
             "&[data-hovered]": {
-              backgroundColor: "#f1f5f9",
-              color: "#0f172a",
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[8] : theme.colors.slate[1],
+              color: "var(--mantine-color-text)",
             },
           },
         } as Record<string, React.CSSProperties>),
@@ -355,9 +355,9 @@ export const mantineShadcn: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           root: {
-            backgroundColor: "#f1f5f9",
-            color: "#475569",
-            border: "1px solid #e2e8f0",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[8] : theme.colors.slate[1],
+            color: theme.colorScheme === "dark" ? theme.colors.slate[3] : theme.colors.slate[6],
+            border: `1px solid ${theme.colorScheme === "dark" ? theme.colors.slate[7] : theme.colors.slate[2]}`,
             fontWeight: "500",
             fontSize: "0.75rem",
             height: "1.25rem",
@@ -378,9 +378,9 @@ export const mantineShadcn: MantineThemeOverride = {
             backgroundColor: "var(--mantine-color-body)",
             "&:checked": {
               backgroundColor: "var(--mantine-color-body)",
-              borderColor: "#0f172a",
+              borderColor: theme.colorScheme === "dark" ? theme.colors.slate[3] : theme.colors.slate[9],
               "&::before": {
-                backgroundColor: "#0f172a",
+                backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[3] : theme.colors.slate[9],
                 width: "0.375rem",
                 height: "0.375rem",
                 borderRadius: "50%",
@@ -392,7 +392,7 @@ export const mantineShadcn: MantineThemeOverride = {
               },
             },
             "&:focus": {
-              boxShadow: "0 0 0 2px hsl(215.4 16.3% 46.9% / 0.2)",
+              boxShadow: `0 0 0 2px ${rgba(theme.colors.slate[5], 0.2)}`,
             },
           },
           label: {
@@ -414,8 +414,8 @@ export const mantineShadcn: MantineThemeOverride = {
             border: "1px solid var(--mantine-color-default-border)",
             backgroundColor: "var(--mantine-color-body)",
             "&:checked": {
-              backgroundColor: "#0f172a",
-              borderColor: "#0f172a",
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[3] : theme.colors.slate[9],
+              borderColor: theme.colorScheme === "dark" ? theme.colors.slate[3] : theme.colors.slate[9],
             },
           },
           label: {
@@ -430,16 +430,16 @@ export const mantineShadcn: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           track: {
-            backgroundColor: "#cbd5e1",
+            backgroundColor: theme.colors.slate[3],
             border: "none",
             width: "2.75rem",
             height: "1.5rem",
             "&[dataChecked]": {
-              backgroundColor: "#0f172a",
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[4] : theme.colors.slate[9],
             },
           },
           thumb: {
-            backgroundColor: "#ffffff",
+            backgroundColor: theme.colors.slate[0],
             border: "none",
             width: "1.25rem",
             height: "1.25rem",
@@ -485,13 +485,13 @@ export const mantineShadcn: MantineThemeOverride = {
             borderRadius: theme.radius.lg,
           },
           thead: {
-            backgroundColor: "#f8fafc",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[8] : theme.colors.slate[0],
           },
           th: {
             padding: "0.75rem 1rem",
             fontSize: "0.875rem",
             fontWeight: "500",
-            color: "#475569",
+            color: theme.colorScheme === "dark" ? theme.colors.slate[3] : theme.colors.slate[6],
             borderBottom: "1px solid var(--mantine-color-default-border)",
             "&:not(:last-child)": {
               borderRight: "1px solid var(--mantine-color-default-border)",
@@ -507,7 +507,7 @@ export const mantineShadcn: MantineThemeOverride = {
           },
           tr: {
             "&:hover": {
-              backgroundColor: "#f8fafc",
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[8] : theme.colors.slate[0],
             },
           },
         } as Record<string, React.CSSProperties>),
@@ -517,12 +517,12 @@ export const mantineShadcn: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           root: {
-            backgroundColor: "#e2e8f0",
+            backgroundColor: theme.colors.slate[2],
             borderRadius: "9999px",
             height: "0.5rem",
           },
           bar: {
-            backgroundColor: "#0f172a",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[4] : theme.colors.slate[9],
             borderRadius: "9999px",
           },
         } as Record<string, React.CSSProperties>),
@@ -532,7 +532,7 @@ export const mantineShadcn: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           tabsList: {
-            backgroundColor: "#f1f5f9",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[8] : theme.colors.slate[1],
             padding: "0.25rem",
             borderRadius: theme.radius.lg,
           },
@@ -541,7 +541,7 @@ export const mantineShadcn: MantineThemeOverride = {
             fontSize: "0.875rem",
             fontWeight: "500",
             padding: "0.5rem 1rem",
-            color: "#64748b",
+            color: theme.colors.slate[5],
             "&[data-active]": {
               backgroundColor: "var(--mantine-color-body)",
               color: "var(--mantine-color-text)",
@@ -567,8 +567,8 @@ export const mantineShadcn: MantineThemeOverride = {
             fontSize: "0.875rem",
             padding: "0.5rem 0.75rem",
             "&[data-hovered]": {
-              backgroundColor: "#f1f5f9",
-              color: "#0f172a",
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[8] : theme.colors.slate[1],
+              color: "var(--mantine-color-text)",
             },
           },
         } as Record<string, React.CSSProperties>),
@@ -591,8 +591,8 @@ export const mantineShadcn: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           tooltip: {
-            backgroundColor: "#0f172a",
-            color: "#f8fafc",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.slate[2] : theme.colors.slate[9],
+            color: theme.colorScheme === "dark" ? theme.colors.slate[9] : theme.colors.slate[0],
             borderRadius: theme.radius.md,
             fontSize: "0.75rem",
             padding: "0.5rem 0.75rem",

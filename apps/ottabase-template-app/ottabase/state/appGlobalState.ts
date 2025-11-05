@@ -1,4 +1,11 @@
 import { createDefaultAppState } from "@ottabase/state";
+import { atom } from "jotai";
+
+// Mantine theme preset type
+export type MantineThemePreset = "mantine-shadcn" | "mantine-vercel" | "mantine-ant" | "mantine-stripe";
+
+// Mantine theme preset atom (separate from main app state)
+export const mantineThemePresetAtom = atom<MantineThemePreset>("mantine-shadcn");
 
 // Create app state using the shared state package
 const appState = createDefaultAppState();

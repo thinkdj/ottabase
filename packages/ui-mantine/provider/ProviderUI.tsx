@@ -1,12 +1,13 @@
 "use client";
 
-import React, { ReactNode } from "react";
+import React, { ReactNode, useMemo } from "react";
 // Mantine
 import {
   MantineProvider,
   createTheme,
   MantineThemeOverride,
   MantineColorsTuple,
+  mergeMantineTheme,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
@@ -14,10 +15,18 @@ import { ModalsProvider } from "@mantine/modals";
 import { Group, Text, Anchor, rem } from "@mantine/core";
 import { useLocalStorage } from "@mantine/hooks";
 
+// Import theme presets
+import mantineShadcn from "../themes/mantine-shadcn";
+import mantineVercel from "../themes/mantine-vercel";
+import mantineAnt from "../themes/mantine-ant";
+import mantineStripe from "../themes/mantine-stripe";
+
 /* Import Mantine CSS */
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import "@mantine/carousel/styles.css";
+
+export type MantineThemePreset = "mantine-shadcn" | "mantine-vercel" | "mantine-ant" | "mantine-stripe";
 
 interface ProviderUIMantineProps {
   children: ReactNode;
@@ -26,6 +35,8 @@ interface ProviderUIMantineProps {
   themeColors?: Record<string, MantineColorsTuple>;
   primaryColor?: string;
   scale?: number;
+  // Base theme preset to use
+  baseTheme?: MantineThemePreset;
   // Theme override - allows apps to provide their own complete theme
   themeOverride?: MantineThemeOverride;
   /** Explicitly set the color scheme. Overrides internal management. */
@@ -40,6 +51,7 @@ const ProviderUIMantine = ({
   themeColors = {},
   primaryColor = "blue",
   scale = 1.0,
+  baseTheme = "mantine-shadcn",
   themeOverride,
   colorScheme,
 }: ProviderUIMantineProps) => {
@@ -47,6 +59,17 @@ const ProviderUIMantine = ({
    * NOTE: Theme is now managed by global state (themeAtom) in @ottabase/state
    * The color scheme should be passed directly to this provider via the `colorScheme` prop.
    */
+
+  // Get the base theme preset
+  const themePresets: Record<MantineThemePreset, MantineThemeOverride> = {
+    "mantine-shadcn": mantineShadcn,
+    "mantine-vercel": mantineVercel,
+    "mantine-ant": mantineAnt,
+    "mantine-stripe": mantineStripe,
+  };
+
+  const selectedBaseTheme = themePresets[baseTheme] || mantineShadcn;
+
   const mantineDefaultTheme: MantineThemeOverride = {
     defaultRadius: "sm",
     colors: themeColors,
@@ -68,8 +91,19 @@ const ProviderUIMantine = ({
     },
   };
 
-  // Use theme override if provided, otherwise use the default theme
-  const finalTheme = themeOverride ? themeOverride : mantineDefaultTheme;
+  // Merge the selected base theme with any custom theme colors/settings
+  const finalTheme = useMemo(() => {
+    if (themeOverride) {
+      // If a complete theme override is provided, use it
+      return themeOverride;
+    } else {
+      // Merge the base theme preset with custom settings
+      const defaultTheme = createTheme(mantineDefaultTheme);
+      const baseThemeInstance = createTheme(selectedBaseTheme);
+      return mergeMantineTheme(baseThemeInstance, defaultTheme);
+    }
+  }, [baseTheme, themeColors, primaryColor, scale, themeOverride]);
+
   const mantineTheme = createTheme(finalTheme);
 
   return (

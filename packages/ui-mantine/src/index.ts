@@ -2,7 +2,7 @@
 export { default as ProviderUIMantine } from "../provider/ProviderUI";
 
 // Re-export types
-export type { ThemeColors } from "../provider/ProviderUI";
+export type { ThemeColors, MantineThemePreset } from "../provider/ProviderUI";
 
 // Export themes
 export { default as mantineShadcn } from "../themes/mantine-shadcn";

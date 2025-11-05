@@ -9,6 +9,8 @@ import {
   appStateAtom,
   scaleAtom,
   themeAtom,
+  mantineThemePresetAtom,
+  type MantineThemePreset,
 } from "@/ottabase/state/appGlobalState";
 import {
   Badge,
@@ -56,6 +58,7 @@ export default function DemoPage() {
   const appState = useAtomValue(appStateAtom);
   const [scale, setScale] = useAtom(scaleAtom);
   const [theme, setTheme] = useAtom(themeAtom);
+  const [mantineTheme, setMantineTheme] = useAtom(mantineThemePresetAtom);
   // For more complex updates, you can use the main atom
   const setAppState = useAtom(appStateAtom)[1];
 
@@ -142,17 +145,38 @@ export default function DemoPage() {
         {/* App State Demo */}
         <Card shadow="sm" padding="lg" radius="md" withBorder>
           <Title order={2} size="h3" mb="md">
-            Global State Demo
+            Global State & Theme Demo
           </Title>
 
           <Stack gap="md">
             <Group justify="space-between">
-              <Text>Current Theme:</Text>
+              <Text>Color Scheme (Light/Dark):</Text>
               <Badge color={theme === "dark" ? "dark" : "blue"}>{theme}</Badge>
               <Button size="xs" onClick={toggleTheme}>
-                Toggle Theme
+                Toggle Light/Dark
               </Button>
             </Group>
+
+            <div>
+              <Text size="sm" fw={500} mb="xs">
+                Mantine Theme Preset:
+              </Text>
+              <Group gap="xs">
+                {(["mantine-shadcn", "mantine-vercel", "mantine-ant", "mantine-stripe"] as MantineThemePreset[]).map((preset) => (
+                  <Button
+                    key={preset}
+                    size="sm"
+                    variant={mantineTheme === preset ? "filled" : "outline"}
+                    onClick={() => setMantineTheme(preset)}
+                  >
+                    {preset.replace("mantine-", "")}
+                  </Button>
+                ))}
+              </Group>
+              <Text size="xs" c="dimmed" mt="xs">
+                Current: <Code>{mantineTheme}</Code> - Switch to see the entire page transform with different design systems
+              </Text>
+            </div>
 
             <Group justify="space-between">
               <Text>UI Scale:</Text>

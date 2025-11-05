@@ -48,8 +48,8 @@ export const mantineStripe: MantineThemeOverride = {
       "#d4ceff",
       "#b8acff",
       "#9b8aff",
-      "#7c66dc",
-      "#635bff",
+      "${theme.colors.violet[6]}",
+      "${theme.colors.violet[7]}",
       "#5a52d5",
       "#4c44b0",
     ],
@@ -189,16 +189,16 @@ export const mantineStripe: MantineThemeOverride = {
             },
           },
           filled: {
-            background: "linear-gradient(180deg, #7c66dc 0%, #635bff 100%)",
+            background: `linear-gradient(180deg, ${theme.colors.violet[6]} 0%, ${theme.colors.violet[7]} 100%)`,
             color: "#ffffff",
-            boxShadow: "0 4px 6px -1px rgba(99, 91, 255, 0.4)",
+            boxShadow: `0 4px 6px -1px ${rgba(theme.colors.violet[7], 0.4)}`,
             "&:hover": {
-              background: "linear-gradient(180deg, #8b75e3 0%, #6d63ff 100%)",
+              background: `linear-gradient(180deg, ${theme.colors.violet[5]} 0%, ${theme.colors.violet[6]} 100%)`,
               transform: "translateY(-1px)",
-              boxShadow: "0 6px 12px -1px rgba(99, 91, 255, 0.4)",
+              boxShadow: `0 6px 12px -1px ${rgba(theme.colors.violet[7], 0.4)}`,
             },
             "&:active": {
-              background: "linear-gradient(180deg, #6d5dd1 0%, #5a52d5 100%)",
+              background: `linear-gradient(180deg, ${theme.colors.violet[7]} 0%, ${theme.colors.violet[8]} 100%)`,
               transform: "translateY(0)",
             },
           },
@@ -216,12 +216,12 @@ export const mantineStripe: MantineThemeOverride = {
             },
           },
           light: {
-            backgroundColor: "rgba(99, 91, 255, 0.08)",
-            color: "#635bff",
-            border: "1px solid rgba(99, 91, 255, 0.2)",
+            backgroundColor: rgba(theme.colors.violet[7], 0.08),
+            color: theme.colors.violet[7],
+            border: `1px solid ${rgba(theme.colors.violet[7], 0.2)}`,
             "&:hover": {
-              backgroundColor: "rgba(99, 91, 255, 0.12)",
-              borderColor: "rgba(99, 91, 255, 0.3)",
+              backgroundColor: rgba(theme.colors.violet[7], 0.12),
+              borderColor: rgba(theme.colors.violet[7], 0.3),
             },
           },
           subtle: {
@@ -290,8 +290,8 @@ export const mantineStripe: MantineThemeOverride = {
               borderColor: "var(--mantine-color-default-border)",
             },
             "&:focus": {
-              borderColor: "#635bff",
-              boxShadow: "0 0 0 3px rgba(99, 91, 255, 0.1)",
+              borderColor: theme.colors.violet[7],
+              boxShadow: `0 0 0 3px ${rgba(theme.colors.violet[7], 0.1)}`,
               outline: "none",
             },
             "&::placeholder": {
@@ -326,8 +326,8 @@ export const mantineStripe: MantineThemeOverride = {
               borderColor: "var(--mantine-color-default-border)",
             },
             "&:focus": {
-              borderColor: "#635bff",
-              boxShadow: "0 0 0 3px rgba(99, 91, 255, 0.1)",
+              borderColor: theme.colors.violet[7],
+              boxShadow: `0 0 0 3px ${rgba(theme.colors.violet[7], 0.1)}`,
             },
           },
           dropdown: {
@@ -346,8 +346,8 @@ export const mantineStripe: MantineThemeOverride = {
               backgroundColor: "var(--mantine-color-gray-light-hover)",
             },
             "&[data-selected]": {
-              backgroundColor: "rgba(99, 91, 255, 0.1)",
-              color: "#635bff",
+              backgroundColor: rgba(theme.colors.violet[7], 0.1),
+              color: theme.colors.violet[7],
               fontWeight: "500",
             },
           },
@@ -369,8 +369,8 @@ export const mantineStripe: MantineThemeOverride = {
               borderColor: "var(--mantine-color-default-border)",
             },
             "&:focus": {
-              borderColor: "#635bff",
-              boxShadow: "0 0 0 3px rgba(99, 91, 255, 0.1)",
+              borderColor: theme.colors.violet[7],
+              boxShadow: `0 0 0 3px ${rgba(theme.colors.violet[7], 0.1)}`,
             },
           },
         } as Record<string, React.CSSProperties>),
@@ -385,9 +385,9 @@ export const mantineStripe: MantineThemeOverride = {
         ({
           root: {
             background:
-              "linear-gradient(135deg, rgba(99, 91, 255, 0.1) 0%, rgba(124, 102, 220, 0.1) 100%)",
-            color: "#635bff",
-            border: "1px solid rgba(99, 91, 255, 0.2)",
+              `linear-gradient(135deg, ${rgba(theme.colors.violet[7], 0.1)} 0%, ${rgba(theme.colors.violet[6], 0.1)} 100%)`,
+            color: theme.colors.violet[7],
+            border: `1px solid ${rgba(theme.colors.violet[7], 0.2)}`,
             fontWeight: "500",
             fontSize: "0.75rem",
             height: "1.5rem",
@@ -407,9 +407,9 @@ export const mantineStripe: MantineThemeOverride = {
             backgroundColor: "var(--mantine-color-body)",
             "&:checked": {
               backgroundColor: "var(--mantine-color-body)",
-              borderColor: "#635bff",
+              borderColor: theme.colors.violet[7],
               "&::before": {
-                backgroundColor: "#635bff",
+                backgroundColor: theme.colors.violet[7],
                 width: "0.5rem",
                 height: "0.5rem",
                 borderRadius: "50%",
@@ -424,7 +424,7 @@ export const mantineStripe: MantineThemeOverride = {
               borderColor: "var(--mantine-color-default-border)",
             },
             "&:focus": {
-              boxShadow: "0 0 0 3px rgba(99, 91, 255, 0.1)",
+              boxShadow: `0 0 0 3px ${rgba(theme.colors.violet[7], 0.1)}`,
               outline: "none",
             },
           },
@@ -447,14 +447,14 @@ export const mantineStripe: MantineThemeOverride = {
             border: "1.5px solid #e5e7eb",
             backgroundColor: "var(--mantine-color-body)",
             "&:checked": {
-              backgroundColor: "#635bff",
-              borderColor: "#635bff",
+              backgroundColor: theme.colors.violet[7],
+              borderColor: theme.colors.violet[7],
             },
             "&:hover": {
               borderColor: "var(--mantine-color-default-border)",
             },
             "&:focus": {
-              boxShadow: "0 0 0 3px rgba(99, 91, 255, 0.1)",
+              boxShadow: `0 0 0 3px ${rgba(theme.colors.violet[7], 0.1)}`,
             },
           },
           label: {
@@ -474,7 +474,7 @@ export const mantineStripe: MantineThemeOverride = {
             width: "3rem",
             height: "1.5rem",
             "&[dataChecked]": {
-              background: "linear-gradient(135deg, #7c66dc 0%, #635bff 100%)",
+              background: `linear-gradient(135deg, ${theme.colors.violet[6]} 0%, ${theme.colors.violet[7]} 100%)`,
             },
           },
           thumb: {
@@ -566,7 +566,7 @@ export const mantineStripe: MantineThemeOverride = {
             height: "0.5rem",
           },
           bar: {
-            background: "linear-gradient(90deg, #7c66dc 0%, #635bff 100%)",
+            background: `linear-gradient(90deg, ${theme.colors.violet[6]} 0%, ${theme.colors.violet[7]} 100%)`,
             borderRadius: "9999px",
           },
         } as Record<string, React.CSSProperties>),
@@ -590,7 +590,7 @@ export const mantineStripe: MantineThemeOverride = {
             transition: "all 0.2s ease",
             "&[data-active]": {
               backgroundColor: "var(--mantine-color-body)",
-              color: "#635bff",
+              color: theme.colors.violet[7],
               boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1)",
             },
             "&:hover:not([data-active])": {

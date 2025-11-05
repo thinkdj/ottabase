@@ -228,14 +228,14 @@ export const mantineVercel: MantineThemeOverride = {
           letterSpacing: "-0.01em",
           cursor: "pointer",
         },
-        // Primary button (black background)
+        // Primary button (black background in light, inverted in dark)
         filled: {
-          backgroundColor: "#000",
-          color: "#fff",
-          border: "1px solid #000",
+          backgroundColor: theme.colorScheme === "dark" ? theme.colors.gray[1] : theme.colors.gray[9],
+          color: theme.colorScheme === "dark" ? theme.colors.gray[9] : theme.colors.gray[0],
+          border: `1px solid ${theme.colorScheme === "dark" ? theme.colors.gray[1] : theme.colors.gray[9]}`,
           "&:hover": {
-            backgroundColor: "#333",
-            borderColor: "#333",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[7],
+            borderColor: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[7],
             transform: "translateY(-1px)",
           },
           "&:active": {
@@ -323,12 +323,12 @@ export const mantineVercel: MantineThemeOverride = {
             padding: "0 12px",
             transition: "all 0.15s ease",
             "&:focus": {
-              borderColor: "#000",
+              borderColor: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
               boxShadow: "none",
               outline: "none",
             },
             "&::placeholder": {
-              color: "#71717a",
+              color: theme.colors.gray[5],
               fontSize: "14px",
             },
           },
@@ -358,7 +358,7 @@ export const mantineVercel: MantineThemeOverride = {
             transition: "all 0.15s ease",
             cursor: "pointer",
             "&:focus": {
-              borderColor: "#000",
+              borderColor: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
               boxShadow: "none",
               outline: "none",
             },
@@ -386,12 +386,12 @@ export const mantineVercel: MantineThemeOverride = {
             minHeight: "80px",
             resize: "vertical",
             "&:focus": {
-              borderColor: "#000",
+              borderColor: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
               boxShadow: "none",
               outline: "none",
             },
             "&::placeholder": {
-              color: "#71717a",
+              color: theme.colors.gray[5],
               fontSize: "14px",
             },
           },
@@ -406,9 +406,9 @@ export const mantineVercel: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           root: {
-            backgroundColor: "#f4f4f5",
-            color: "#18181b",
-            border: "1px solid #e4e4e7",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.gray[8] : theme.colors.gray[1],
+            color: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
+            border: `1px solid ${theme.colorScheme === "dark" ? theme.colors.gray[7] : theme.colors.gray[2]}`,
             fontWeight: "500",
             fontSize: "12px",
             height: "24px",
@@ -426,9 +426,9 @@ export const mantineVercel: MantineThemeOverride = {
             backgroundColor: "var(--mantine-color-body)",
             "&:checked": {
               backgroundColor: "var(--mantine-color-body)",
-              borderColor: "#000",
+              borderColor: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
               "&::before": {
-                backgroundColor: "#000",
+                backgroundColor: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
                 width: "8px",
                 height: "8px",
                 borderRadius: "50%",
@@ -456,8 +456,8 @@ export const mantineVercel: MantineThemeOverride = {
             backgroundColor: "var(--mantine-color-body)",
             borderRadius: theme.radius.sm,
             "&:checked": {
-              backgroundColor: "#000",
-              borderColor: "#000",
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
+              borderColor: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
             },
           },
           label: {
@@ -473,13 +473,13 @@ export const mantineVercel: MantineThemeOverride = {
         ({
           track: {
             border: "none",
-            backgroundColor: "#e4e4e7",
+            backgroundColor: theme.colors.gray[2],
             "&[dataChecked]": {
-              backgroundColor: "#000",
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
             },
           },
           thumb: {
-            backgroundColor: "#fff",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.gray[8] : theme.colors.gray[0],
             border: "none",
           },
           label: {
@@ -538,8 +538,8 @@ export const mantineVercel: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           tooltip: {
-            backgroundColor: "#18181b",
-            color: "#fafafa",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.gray[1] : theme.colors.gray[9],
+            color: theme.colorScheme === "dark" ? theme.colors.gray[9] : theme.colors.gray[0],
             borderRadius: theme.radius.sm,
             fontSize: "12px",
             fontWeight: "500",
@@ -576,8 +576,8 @@ export const mantineVercel: MantineThemeOverride = {
               backgroundColor: "var(--mantine-color-default)",
             },
             "&[data-active]": {
-              backgroundColor: "#f4f4f5",
-              color: "#000",
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.gray[8] : theme.colors.gray[1],
+              color: "var(--mantine-color-text)",
             },
           },
         } as Record<string, React.CSSProperties>),
@@ -637,9 +637,9 @@ export const mantineVercel: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           root: {
-            backgroundColor: "#f4f4f5",
-            color: "#18181b",
-            border: "1px solid #e4e4e7",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.gray[8] : theme.colors.gray[1],
+            color: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
+            border: `1px solid ${theme.colorScheme === "dark" ? theme.colors.gray[7] : theme.colors.gray[2]}`,
             borderRadius: theme.radius.sm,
             fontFamily:
               'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
@@ -660,7 +660,7 @@ export const mantineVercel: MantineThemeOverride = {
             overflow: "hidden",
           },
           thead: {
-            backgroundColor: "#fafafa",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.gray[8] : theme.colors.gray[0],
             borderBottom: `1px solid var(--mantine-color-default-border)`,
           },
           th: {
@@ -684,11 +684,11 @@ export const mantineVercel: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           root: {
-            backgroundColor: "#e4e4e7",
+            backgroundColor: theme.colors.gray[2],
             borderRadius: theme.radius.xl,
           },
           bar: {
-            backgroundColor: "#000",
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
             borderRadius: theme.radius.xl,
           },
         } as Record<string, React.CSSProperties>),
@@ -704,17 +704,17 @@ export const mantineVercel: MantineThemeOverride = {
           tab: {
             fontWeight: "500",
             fontSize: "14px",
-            color: "#71717a",
+            color: theme.colors.gray[5],
             border: "none",
             borderBottom: "2px solid transparent",
             padding: "12px 16px",
             "&[data-active]": {
-              color: "#000",
-              borderBottomColor: "#000",
+              color: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
+              borderBottomColor: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
             },
             "&:hover": {
               backgroundColor: "transparent",
-              color: "#000",
+              color: theme.colorScheme === "dark" ? theme.colors.gray[0] : theme.colors.gray[9],
             },
           },
           panel: {
