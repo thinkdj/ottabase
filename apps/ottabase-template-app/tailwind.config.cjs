@@ -11,6 +11,7 @@ module.exports = {
     "../../packages/ui-components/src/**/*.{js,ts,jsx,tsx}",
     "../../packages/ui-tailwind/src/**/*.{js,ts,jsx,tsx}",
     "../../packages/ui-shadcn/components/**/*.{js,ts,jsx,tsx}",
+    "../../packages/ottaselect/src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {

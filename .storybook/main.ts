@@ -180,9 +180,6 @@ const config: StorybookConfig = {
       // Tailwind UI
       ["@ottabase/ui-tailwind", "packages/ui-tailwind", "src"],
       ["@ottabase/ui-tailwind/styles", "packages/ui-tailwind", "styles"],
-      // ============ AUTH PACKAGES ============
-      ["@ottabase/auth", "packages/auth", "src"],
-      ["@ottabase/auth0", "packages/auth0", "src"],
       // ============ DATABASE PACKAGES ============
       ["@ottabase/db", "packages/db", "src"],
       // ============ EXAMPLE PACKAGES ============

@@ -1,12 +1,18 @@
 export type { CoreSchemaName } from "../prisma/schemas";
 
-export type PrismaProvider =
+/**
+ * Datasource type for database connection
+ * - Standard databases: postgresql, mysql, sqlite, sqlserver, mongodb, cockroachdb
+ * - d1: Cloudflare D1 (serverless SQLite with @prisma/adapter-d1)
+ */
+export type PrismaDatasource =
   | "postgresql"
   | "mysql"
   | "sqlite"
   | "sqlserver"
   | "mongodb"
-  | "cockroachdb";
+  | "cockroachdb"
+  | "d1";
 
 export interface PrismaConfig {
   /**
@@ -16,10 +22,13 @@ export interface PrismaConfig {
   coreSchemas?: import("../prisma/schemas").CoreSchemaName[];
 
   /**
-   * Database provider to use in the generated schema
-   * Defaults to "postgresql" if not specified
+   * Datasource configuration to use
+   * Options: "postgresql", "mysql", "sqlite", "sqlserver", "mongodb", "cockroachdb", "d1"
+   * Defaults to "d1" if not specified
+   *
+   * For Cloudflare D1: Set to "d1" and install @prisma/adapter-d1
    */
-  provider?: PrismaProvider;
+  datasource?: PrismaDatasource;
 
   /**
    * Path to the app-specific schema file (relative to app root)

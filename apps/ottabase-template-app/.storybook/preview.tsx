@@ -3,7 +3,8 @@ import type { Preview } from "@storybook/react-webpack5";
 import "@ottabase/ui-tailwind/styles/tailwind.base.css";
 import "../app/globals.css";
 
-import { ProviderUI } from "@ottabase/ui-core";
+import { ProviderUIBase } from "@ottabase/ui-base";
+import { ProviderUIMantine } from "@ottabase/ui-mantine";
 import { ProviderState } from "@ottabase/state";
 import { ProviderCodeHighlight } from "@ottabase/ui-code-highlight";
 import {
@@ -19,37 +20,46 @@ const preview: Preview = {
   parameters: {
     layout: "centered",
     backgrounds: {
-      default: "light",
-      values: [
-        { name: "light", value: "#ffffff" },
-        { name: "dark", value: "#111827" },
-      ],
+      options: {
+        light: { name: "light", value: "#ffffff" },
+        dark: { name: "dark", value: "#111827" }
+      }
     },
   },
+
   decorators: [
     (Story: any) => (
       <ProviderState>
-        <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
-          <ProviderUI
-            storagePrefix={appConfig.storage.prefix}
-            themeColors={THEME_COLORS}
-            primaryColor={appConfig.theme.colorDefault}
-            fontFamilies={{
-              primary: primaryFontFamily.style.fontFamily,
-              heading: headingFontFamily.style.fontFamily,
-              monospace: monospaceFontFamily.style.fontFamily,
-            }}
-          >
-            <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
-              <ProviderCodeHighlight>
-                <Story />
-              </ProviderCodeHighlight>
-            </ProviderNextThemes>
-          </ProviderUI>
-        </ProviderFont>
+        <ProviderUIBase
+          fontFamilies={{
+            primary: primaryFontFamily.style.fontFamily,
+            heading: headingFontFamily.style.fontFamily,
+            monospace: monospaceFontFamily.style.fontFamily,
+          }}
+        >
+          <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
+            <ProviderUIMantine
+              storagePrefix={appConfig.storage.prefix}
+              themeColors={THEME_COLORS}
+              primaryColor={appConfig.theme.colorDefault}
+            >
+              <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
+                <ProviderCodeHighlight>
+                  <Story />
+                </ProviderCodeHighlight>
+              </ProviderNextThemes>
+            </ProviderUIMantine>
+          </ProviderFont>
+        </ProviderUIBase>
       </ProviderState>
     ),
   ],
+
+  initialGlobals: {
+    backgrounds: {
+      value: "light"
+    }
+  }
 };
 
 export default preview;

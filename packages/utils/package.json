@@ -98,9 +98,14 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
     "eslint": "catalog:",
+    "react": "catalog:",
     "rimraf": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "catalog:"
   }
 }

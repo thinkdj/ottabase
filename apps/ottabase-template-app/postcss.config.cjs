@@ -9,7 +9,7 @@ module.exports = {
       },
     },
     "postcss-preset-mantine": {
-      autoRem: true,
+      autoRem: false, // Disabled to prevent conflicts with shadcn/ui and Tailwind
       // extend: https://mantine.dev/styles/postcss-preset/#custom-mixins
     },
     "postcss-simple-vars": {

@@ -1,7 +1,7 @@
 import {
   CoreSchemaName,
   PrismaConfig,
-  PrismaProvider,
+  PrismaDatasource,
 } from "@ottabase/db/prisma";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -23,19 +23,40 @@ const getAppSchemaPath = (cwd: string, customPath?: string) =>
 const getOutputSchemaPath = (cwd: string, customPath?: string) =>
   path.join(cwd, customPath || DEFAULT_OUTPUT_SCHEMA_PATH);
 
+/**
+ * Generates the base Prisma schema with generator and datasource configuration
+ * Handles special cases like Cloudflare D1 which requires additional setup
+ */
 const generateBaseSchema = (
-  provider: PrismaProvider = "postgresql",
+  datasource: PrismaDatasource = "d1",
   dbUrlEnvVar: string = "DATABASE_URL",
   clientProvider: string = "prisma-client-js",
 ): string => {
-  return `generator client {
+  const generatorSection = `generator client {
   provider = "${clientProvider}"
-}
+}`;
 
-datasource db {
+  // Determine the provider (D1 uses sqlite, others use their name)
+  const provider = datasource === "d1" ? "sqlite" : datasource;
+
+  // Add special comments for D1
+  const comments =
+    datasource === "d1"
+      ? `// Cloudflare D1 Configuration
+// Requires: @prisma/adapter-d1 package installed
+// Note: D1 uses SQLite provider with runtime adapter
+// Setup: Install via "npm install @prisma/adapter-d1"
+// Runtime: Initialize PrismaClient with D1 adapter in your worker`
+      : "";
+
+  const datasourceSection = `datasource db {
   provider = "${provider}"
   url      = env("${dbUrlEnvVar}")
 }`;
+
+  return comments
+    ? `${comments}\n\n${generatorSection}\n\n${datasourceSection}`
+    : `${generatorSection}\n\n${datasourceSection}`;
 };
 
 // Modular schemas directory fallback paths
@@ -119,6 +140,32 @@ const readModularSchema = async (
   return await readFile(schemaPath, "utf8");
 };
 
+/**
+ * Transforms schema content based on datasource-specific requirements
+ * Handles compatibility issues like SQLite/D1 not supporting @db.Text
+ */
+const transformSchemaForDatasource = (
+  schemaContent: string,
+  datasource: PrismaDatasource,
+): string => {
+  let transformed = schemaContent;
+
+  // SQLite/D1 transformations
+  if (datasource === "d1" || datasource === "sqlite") {
+    // Remove @db.Text as SQLite doesn't support it (String maps to TEXT by default)
+    transformed = transformed.replace(/@db\.Text/g, "");
+
+    // Log transformation for visibility
+    if (/@db\.Text/.test(schemaContent)) {
+      console.log(
+        `   ⚙️  Removed @db.Text attributes (not supported in ${datasource})`,
+      );
+    }
+  }
+
+  return transformed;
+};
+
 const runPrismaGenerate = async (
   schemaPath: string,
   cwd: string,
@@ -156,19 +203,26 @@ export const concatenatePrismaSchema = async (
 
   const schemas: string[] = [];
 
+  // Determine datasource (defaults to d1)
+  const datasource = config.datasource || "d1";
+  console.log(`🔌 Using datasource: ${datasource}`);
+
+  // Add base configuration with selected datasource
+  const baseSchema = generateBaseSchema(datasource);
+  schemas.push(`// ---- Base Configuration ----\n${baseSchema.trim()}`);
+
   // Use modular schemas approach
   if (config.coreSchemas && config.coreSchemas.length > 0) {
     console.log("📦 Using modular core schemas:", config.coreSchemas);
 
-    // Add base configuration with configurable provider
-    const provider = config.provider || "postgresql";
-    const baseSchema = generateBaseSchema(provider);
-    schemas.push(`// ---- Base Configuration ----\n${baseSchema.trim()}`);
-
     // Add selected core schemas
     for (const schemaName of config.coreSchemas!) {
       try {
-        const schemaContent = await readModularSchema(schemaName);
+        let schemaContent = await readModularSchema(schemaName);
+
+        // Transform schema based on datasource
+        schemaContent = transformSchemaForDatasource(schemaContent, datasource);
+
         schemas.push(
           `// ---- Core Schema: ${schemaName} ----\n${schemaContent.trim()}`,
         );
@@ -181,16 +235,16 @@ export const concatenatePrismaSchema = async (
       }
     }
   } else {
-    // No core schemas - just use base configuration
     console.log("📦 No core schemas selected, using base configuration only");
-    const provider = config.provider || "postgresql";
-    const baseSchema = generateBaseSchema(provider);
-    schemas.push(`// ---- Base Configuration ----\n${baseSchema.trim()}`);
   }
 
   // Add app schema if it exists
   if (existsSync(appSchemaPath)) {
-    const appSchema = await readFile(appSchemaPath, "utf8");
+    let appSchema = await readFile(appSchemaPath, "utf8");
+
+    // Transform app schema based on datasource
+    appSchema = transformSchemaForDatasource(appSchema, datasource);
+
     schemas.push(`// ---- App Schema ----\n${appSchema.trim()}`);
   }
 

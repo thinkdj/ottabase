@@ -2,16 +2,19 @@
   "version": "0.2",
   "language": "en",
   "words": [
-    "ottabase",
-    "thinkdj",
-    "deepak",
+    "Deepak",
     "jotai",
     "mantine",
     "nextjs",
-    "typescript",
-    "tailwind",
+    "Otta",
+    "Ottabase",
+    "ottaeditor",
+    "ottaselect",
     "pnpm",
-    "tsup"
+    "tailwind",
+    "thinkdj",
+    "tsup",
+    "typescript"
   ],
   "ignorePaths": [
     "**/node_modules/**",

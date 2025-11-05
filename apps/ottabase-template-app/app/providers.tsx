@@ -1,18 +1,18 @@
 "use client";
 
-import { ProviderUI } from "@ottabase/ui-core";
-import { ProviderCodeHighlight } from "@ottabase/ui-code-highlight";
-import { ProviderState } from "@ottabase/state";
-import { ShadcnProviders } from "@ottabase/ui-shadcn/providers";
-import { AuthProvider } from "@ottabase/auth/next";
+import { appConfig } from "@/ottabase/config/app.config";
 import {
-  ProviderFont,
-  ProviderNextThemes,
-  primaryFontFamily,
   headingFontFamily,
   monospaceFontFamily,
+  primaryFontFamily,
+  ProviderFont,
+  ProviderNextThemes,
 } from "@/ottabase/providers";
-import { appConfig, THEME_COLORS } from "@/ottabase/config/app.config";
+import { ThemeManager } from "@/ottabase/providers/ThemeManager";
+import { ProviderState } from "@ottabase/state";
+import { ProviderCodeHighlight } from "@ottabase/ui-code-highlight";
+import { ProviderUIBase } from "@ottabase/ui-base";
+import { ShadcnProviders } from "@ottabase/ui-shadcn/providers";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const fontFamilies = {
@@ -22,25 +22,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthProvider>
-      <ProviderState>
+    <ProviderState>
+      <ProviderUIBase
+        preventFOUC={appConfig.ui.preventFOUC}
+        preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
+        fontFamilies={fontFamilies}
+      >
         <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
-          <ProviderUI
-            storagePrefix={appConfig.storage.prefix}
-            preventFOUC={appConfig.ui.preventFOUC}
-            preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
-            themeColors={THEME_COLORS}
-            primaryColor={appConfig.theme.colorDefault}
-            fontFamilies={fontFamilies}
-          >
-            <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
-              <ShadcnProviders enableThemeProvider={false} enableToaster>
-                <ProviderCodeHighlight>{children}</ProviderCodeHighlight>
-              </ShadcnProviders>
-            </ProviderNextThemes>
-          </ProviderUI>
+          <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
+            <ThemeManager />
+            <ShadcnProviders enableThemeProvider={false} enableToaster>
+              <ProviderCodeHighlight>{children}</ProviderCodeHighlight>
+            </ShadcnProviders>
+          </ProviderNextThemes>
         </ProviderFont>
-      </ProviderState>
-    </AuthProvider>
+      </ProviderUIBase>
+    </ProviderState>
   );
 }

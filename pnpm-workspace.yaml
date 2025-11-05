@@ -3,37 +3,29 @@ packages:
   - packages/*
 
 catalog:
-  "@auth/prisma-adapter": ^2.10.0
-  "@babel/core": ^7.28.4
-  "@babel/preset-env": ^7.28.3
-  "@babel/preset-react": ^7.27.1
-  "@babel/preset-typescript": ^7.27.1
-  "@mantine/carousel": ^8.3.1
-  "@mantine/code-highlight": ^8.3.1
-  "@mantine/core": ^8.3.1
-  "@mantine/form": ^8.3.1
-  "@mantine/hooks": ^8.3.1
-  "@mantine/modals": ^8.3.1
-  "@mantine/notifications": ^8.3.1
-  "@mantine/spotlight": ^8.3.1
+  "@babel/core": ^7.28.5
+  "@babel/preset-env": ^7.28.5
+  "@babel/preset-react": ^7.28.5
+  "@babel/preset-typescript": ^7.28.5
+  "@prisma/adapter-d1": ^5.22.0
   "@prisma/client": ^5.22.0
   "@radix-ui/react-slot": ^1.1.1
   "@radix-ui/react-switch": ^1.1.1
   "@radix-ui/react-tabs": ^1.1.1
   "@radix-ui/react-tooltip": ^1.1.7
-  "@storybook/addon-docs": ^9.1.7
-  "@storybook/addon-links": ^9.1.7
+  "@storybook/addon-docs": ^9.1.16
+  "@storybook/addon-links": ^9.1.16
   "@storybook/addon-styling-webpack": ^2.0.0
-  "@storybook/react-webpack5": ^9.1.7
-  "@storybook/test": ^9.1.7
+  "@storybook/react-webpack5": ^9.1.16
+  "@storybook/test": ^9.1.15
   "@tabler/icons-react": ^3.35.0
   "@tailwindcss/forms": ^0.5.10
   "@tailwindcss/typography": ^0.5.18
   "@types/node": ^20.19.17
   "@types/react": ^18.3.24
   "@types/react-dom": ^18.3.7
-  "@typescript-eslint/eslint-plugin": ^8.44.0
-  "@typescript-eslint/parser": ^8.44.0
+  "@typescript-eslint/eslint-plugin": ^8.46.2
+  "@typescript-eslint/parser": ^8.46.2
   autoprefixer: ^10.4.21
   babel-loader: ^9.2.1
   class-variance-authority: ^0.7.0
@@ -46,7 +38,6 @@ catalog:
   jotai: ^2.14.0
   lucide-react: ^0.468.0
   next: ^15.5.3
-  "next-auth": 5.0.0-beta.25
   next-themes: ^0.4.6
   postcss: ^8.5.6
   postcss-loader: ^7.3.4
@@ -59,7 +50,7 @@ catalog:
   react-dom: ^18.3.1
   rimraf: ^6.0.1
   sonner: ^1.5.1
-  storybook: ^9.1.7
+  storybook: ^9.1.16
   style-loader: ^4.0.0
   tailwind-merge: ^2.6.0
   tailwindcss: ^3.4.17

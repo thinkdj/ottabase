@@ -23,9 +23,9 @@
     "paths": {
       "@/*": ["./*"],
       /* Pattern-based path mapping for all packages */
-      "@ottabase/*": ["../../packages/*/src"],
-      /* Specific mapping for auth/next subpath */
-      "@ottabase/auth/next": ["../../packages/auth/next"]
+      "@ottabase/*": [
+        "../../packages/*/src"
+      ]
     }
   },
   "include": [

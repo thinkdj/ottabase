@@ -1,9 +1,9 @@
-import type { MantineThemeConfig } from "@ottabase/ui-core";
+import type { MantineThemeConfig } from "@ottabase/ui-mantine";
 
 /**
  * Mantine theme configuration for the Ottabase Template App
  *
- * This configuration extends the base mantine-shadcn theme from packages/ui-core/themes
+ * This configuration extends the base mantine-shadcn theme from packages/ui-mantine/themes
  * with app-specific customizations for the template app's visual design language.
  */
 export const mantineThemeConfig: MantineThemeConfig = {

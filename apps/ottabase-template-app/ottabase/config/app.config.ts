@@ -55,11 +55,6 @@ export const appConfig = createAppConfig({
         urlBase: "crudhub",
         urlBaseListing: "browse",
       },
-      auth: {
-        signInUrl: "/api/auth/signin",
-        signOutUrl: "/api/auth/signout",
-        preLaunchOptIn: false,
-      },
       pagination: {
         defaultPageSize: 10,
         maxPageSize: 100,
@@ -98,11 +93,6 @@ export const PAGE_SIZE_OPTIONS = appConfig.features.pagination.sizeOptions;
 
 // Spotlight
 export const SPOTLIGHT_CONFIG = appConfig.features.spotlight;
-
-// Auth URLs
-export const AUTH_SIGN_IN_URL = appConfig.features.auth.signInUrl;
-export const AUTH_SIGN_OUT_URL = appConfig.features.auth.signOutUrl;
-export const AUTH_PRE_LAUNCH_OPT_IN = appConfig.features.auth.preLaunchOptIn;
 
 // Layout
 export const UI_LAYOUT = appConfig.ui.layout;

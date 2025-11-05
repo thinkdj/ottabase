@@ -29,17 +29,17 @@ export const parameters: Preview["parameters"] = {
     },
   },
   backgrounds: {
-    default: "light",
-    values: [
-      {
+    options: {
+      light: {
         name: "light",
         value: "#ffffff",
       },
-      {
+
+      dark: {
         name: "dark",
         value: "#111827",
-      },
-    ],
+      }
+    }
   },
 };
 
@@ -75,3 +75,9 @@ const withOttabaseShell = (Story: any, context: any) => {
 };
 
 export const decorators = [withOttabaseShell];
+
+export const initialGlobals = {
+  backgrounds: {
+    value: "light"
+  }
+};

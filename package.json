@@ -8,6 +8,8 @@
   ],
   "scripts": {
     "build": "turbo build",
+    "build:apps": "turbo build --filter=./apps/*",
+    "build:packages": "turbo build --filter=./packages/*",
     "dev": "turbo dev --filter=@ottabase/ottabase-template-app",
     "dev:all": "turbo dev --concurrency 15",
     "dev:ui": "turbo dev --filter=@ottabase/ottabase-template-app --filter=@ottabase/ui-*",
@@ -38,7 +40,7 @@
     "postcss-loader": "catalog:",
     "storybook": "catalog:",
     "style-loader": "catalog:",
-    "turbo": "^2.5.8"
+    "turbo": "^2.6.0"
   },
   "packageManager": "pnpm@10.15.1",
   "engines": {

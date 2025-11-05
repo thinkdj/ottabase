@@ -10,20 +10,30 @@
     "type-check": "tsc --noEmit",
     "db:generate": "db-prisma-schema-concatenate",
     "storybook": "storybook dev -p 6007",
-    "storybook:build": "storybook build"
+    "storybook:build": "storybook build",
+    "preview": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "wrangler": "wrangler"
   },
   "dependencies": {
-    "@mantine/core": "catalog:",
-    "@mantine/hooks": "catalog:",
-    "@ottabase/auth": "workspace:*",
+    "@mantine/carousel": "^8.3.1",
+    "@mantine/core": "^8.3.1",
+    "@mantine/hooks": "^8.3.1",
+    "@mantine/modals": "^8.3.1",
+    "@mantine/notifications": "^8.3.1",
+    "@ottabase/cf": "workspace:*",
     "@ottabase/config": "workspace:*",
+    "@ottabase/ottaeditor": "workspace:*",
+    "@ottabase/ottaselect": "workspace:*",
     "@ottabase/state": "workspace:*",
     "@ottabase/ui-code-highlight": "workspace:*",
     "@ottabase/ui-components": "workspace:*",
-    "@ottabase/ui-core": "workspace:*",
+    "@ottabase/ui-base": "workspace:*",
+    "@ottabase/ui-mantine": "workspace:*",
     "@ottabase/ui-shadcn": "workspace:*",
     "@ottabase/utils": "workspace:*",
     "@ottabase/db": "workspace:*",
+    "@prisma/adapter-d1": "catalog:",
     "@prisma/client": "catalog:",
     "critters": "catalog:",
     "jotai": "catalog:",
@@ -38,6 +48,8 @@
     "@babel/preset-env": "catalog:",
     "@babel/preset-react": "catalog:",
     "@babel/preset-typescript": "catalog:",
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@opennextjs/cloudflare": "^1.11.0",
     "@ottabase/scripts": "workspace:*",
     "@ottabase/ui-tailwind": "workspace:*",
     "@storybook/addon-docs": "catalog:",
@@ -59,6 +71,7 @@
     "storybook": "catalog:",
     "tailwindcss": "catalog:",
     "tailwindcss-animate": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "wrangler": "^3.94.0"
   }
 }

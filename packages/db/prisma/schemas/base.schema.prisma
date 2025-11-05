@@ -1,5 +1,6 @@
 /// Base Prisma configuration - generator and datasource
-/// This file contains the core Prisma setup without any models
+/// This file is a template. The actual datasource will be configured
+/// based on the app's prisma.config.js settings during schema generation.
 
 generator client {
     provider = "prisma-client-js"

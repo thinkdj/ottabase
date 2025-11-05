@@ -1,9 +1,11 @@
 {
   "permissions": {
     "allow": [
+      "Bash(cat:*)",
       "Bash(pnpm install:*)",
-      "Bash(pnpm type-check:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build)",
+      "Bash(find:*)",
+      "Bash(pnpm prisma:generate:*)"
     ],
     "deny": [],
     "ask": []

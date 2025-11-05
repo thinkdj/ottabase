@@ -26,10 +26,17 @@ Ottabase is a **pnpm monorepo** with **Turborepo** for build orchestration, feat
 
 ## 🎯 Core Patterns
 
+### Package Philosophy
+
+- **Generic & Reusable**: Packages should be framework-agnostic where possible
+- **React Dependencies Allowed**: Use React/React DOM as peer dependencies when needed
+- **No Next.js in Packages**: Next.js-specific code belongs in `apps/ottabase-template-app`
+- **Single Responsibility**: Each package solves one problem well
+
 ### Dependency Management Strategy
 
 - **PNPM Catalog System**: All shared dependencies are defined in `pnpm-workspace.yaml` catalog section
-- **Workspace Protocol**: Internal packages use `"workspace:*"` (e.g., `"@ottabase/ui-core": "workspace:*"`)
+- **Workspace Protocol**: Internal packages use `"workspace:*"` (e.g., `"@ottabase/ui-mantine": "workspace:*"`)
 - **Catalog References**: External deps use `"catalog:"` (e.g., `"react": "catalog:"`)
 - **Peer Dependencies**: Shared packages declare framework deps as peerDependencies to avoid duplication
 
@@ -86,7 +93,7 @@ pnpm test
 pnpm storybook
 
 # Work with specific packages
-pnpm dev --filter=@ottabase/ui-core
+pnpm dev --filter=@ottabase/ui-mantine
 pnpm build --filter=ottabase-template-app
 pnpm lint --filter=@ottabase/ui-components
 ```
@@ -98,7 +105,7 @@ pnpm lint --filter=@ottabase/ui-components
 # First add to pnpm-workspace.yaml catalog, then reference as "catalog:"
 
 # Add to specific package
-pnpm add --filter @ottabase/ui-core some-package
+pnpm add --filter @ottabase/ui-mantine some-package
 
 # Add workspace dependency
 # Use "workspace:*" in package.json dependencies
@@ -114,9 +121,13 @@ pnpm add --filter @ottabase/ui-core some-package
 ### Creating New Packages
 
 1. Follow naming: `@ottabase/package-name`
-2. Use standard package.json with tsup build script
-3. Export via `src/index.ts` with proper TypeScript types
-4. Add to root tsconfig.json paths for development
+2. Keep packages **generic and reusable** across apps
+3. Use React/React DOM as peer dependencies (allowed)
+4. **Avoid Next.js dependencies** - Next.js code goes in template app
+5. Use standard package.json with tsup build script
+6. Export via `src/index.ts` with proper TypeScript types
+7. Add to root tsconfig.json paths for development
+8. Refer to [PACKAGE_CREATION_GUIDE.md](../../PACKAGE_CREATION_GUIDE.md) for details
 
 ## 📦 Package System & Catalog Management
 
@@ -193,10 +204,10 @@ catalog:
 
 ### Existing Package Types
 
-- **`@ottabase/auth/next`** - NextAuth v5 authentication with Prisma adapter integration
 - **`@ottabase/config`** - App configuration utilities with `createAppConfig()`
 - **`@ottabase/state`** - Jotai-based state management with providers
-- **`@ottabase/ui-core`** - Core UI shell, Mantine provider, theme management
+- **`@ottabase/ui-base`** - Base UI styles and CSS utilities (framework-agnostic)
+- **`@ottabase/ui-mantine`** - Mantine provider, theme management, and pre-built themes
 - **`@ottabase/ui-components`** - Reusable UI components (buttons, forms, layout helpers)
 - **`@ottabase/ui-code-highlight`** - Code syntax highlighting providers and styles
 - **`@ottabase/ui-tailwind`** - Tailwind preset and shared CSS (`tailwind.base.cjs`)
@@ -208,15 +219,13 @@ catalog:
 ### UI Provider Hierarchy (apps/\*/app/providers.tsx)
 
 ```tsx
-<AuthProvider>            // @ottabase/auth/next - NextAuth session
-  <ProviderState>         // @ottabase/state - global state
-    <ProviderUI>          // @ottabase/ui-core - Mantine + themes
-      <ProviderCodeHighlight> // @ottabase/ui-code-highlight
-        {children}
-      </ProviderCodeHighlight>
-    </ProviderUI>
-  </ProviderState>
-</AuthProvider>
+<ProviderState>         // @ottabase/state - global state
+  <ProviderUI>          // @ottabase/ui-mantine - Mantine + themes
+    <ProviderCodeHighlight> // @ottabase/ui-code-highlight
+      {children}
+    </ProviderCodeHighlight>
+  </ProviderUI>
+</ProviderState>
 ```
 
 ### Configuration Pattern (ottabase/config.ts)
@@ -327,65 +336,15 @@ module.exports = definePrismaConfig({
 - **DO NOT edit generated schemas**: They are overwritten on each `pnpm db:generate`
 - **CoreSchemaName type**: Lives in `packages/db/prisma/schemas/index.ts` for easy management
 
-## 🔐 Authentication Integration
-
-### NextAuth v5 Setup
-
-Ottabase includes `@ottabase/auth/next` for NextAuth v5 integration:
-
-```typescript
-// API Route (app/api/auth/[...nextauth]/route.ts)
-import { createAuthConfig, createNextAuth } from "@ottabase/auth/next";
-import { prisma } from "@ottabase/db";
-
-const authConfig = createAuthConfig(prisma);
-const { handlers } = createNextAuth(authConfig);
-export const { GET, POST } = handlers;
-
-// Middleware (middleware.ts)
-import { createAuthConfig, createNextAuth } from "@ottabase/auth/next";
-import { prisma } from "@ottabase/db";
-
-const authConfig = createAuthConfig(prisma);
-const { auth } = createNextAuth(authConfig);
-export default auth;
-```
-
-### Authentication Hooks
-
-```typescript
-import { useAuth, useUser, useIsAuthenticated } from "@ottabase/auth/next";
-
-function MyComponent() {
-  const { user, isAuthenticated, signIn, signOut } = useAuth();
-  const currentUser = useUser();
-  const { isAuthenticated: authStatus, isLoading } = useIsAuthenticated();
-}
-```
-
-### Provider Integration
-
-Include `AuthProvider` in your app's provider hierarchy:
-
-```tsx
-import { AuthProvider } from "@ottabase/auth/next";
-
-export function Providers({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthProvider>
-      {/* Other providers */}
-      {children}
-    </AuthProvider>
-  );
-}
-```
-
 ## 🎯 When Working on This Codebase
 
 1. **Always use pnpm** - never npm or yarn
-2. **Check turbo.json** for task dependencies before adding new build steps
-3. **Update pnpm-workspace.yaml catalog** when adding shared dependencies
-4. **Follow the 3-directory pattern** for new applications
-5. **Use workspace protocol** for internal package references
-6. **Export styles properly** from UI packages for Tailwind content scanning
-7. **Test template app** after making changes to shared packages
+2. **Keep packages generic** - framework-agnostic where possible, React allowed as peer dep
+3. **Next.js code in template app** - not in packages
+4. **Check turbo.json** for task dependencies before adding new build steps
+5. **Update pnpm-workspace.yaml catalog** when adding shared dependencies
+6. **Follow the 3-directory pattern** for new applications (`app/`, `ottabase/`, `src/`)
+7. **Use workspace protocol** for internal package references (`workspace:*`)
+8. **Export styles properly** from UI packages for Tailwind content scanning
+9. **Test template app** after making changes to shared packages
+10. **Review AGENTS.MD** for architecture overview and best practices
