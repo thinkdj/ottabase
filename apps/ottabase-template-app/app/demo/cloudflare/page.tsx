@@ -37,6 +37,11 @@ export default function CloudflareDemoPage() {
       description: 'Request throttling and protection',
       href: '/demo/cloudflare/rate-limiting',
     },
+    {
+      name: 'Realtime Pub/Sub',
+      description: 'WebSocket-based real-time messaging with offline support',
+      href: '/demo/cloudflare/realtime',
+    },
   ];
 
   return (

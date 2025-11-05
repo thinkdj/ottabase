@@ -22,6 +22,7 @@
     "@mantine/modals": "^8.3.1",
     "@mantine/notifications": "^8.3.1",
     "@ottabase/cf": "workspace:*",
+    "@ottabase/cf-realtime": "workspace:*",
     "@ottabase/config": "workspace:*",
     "@ottabase/ottaeditor": "workspace:*",
     "@ottabase/ottaselect": "workspace:*",

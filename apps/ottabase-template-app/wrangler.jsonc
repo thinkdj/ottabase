@@ -127,10 +127,31 @@
     "nodejs_compat"
   ],
 
+  // Durable Objects bindings for stateful, persistent objects
+  // Local dev: Uses local Durable Object storage
+  // Preview/Prod: Uses real Cloudflare Durable Objects
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "REALTIME",
+        "class_name": "RealtimeActor",
+        "script_name": "ottabase-template-app"
+      }
+    ]
+  },
+
   // Limits configuration
   "limits": {
     "cpu_ms": 50000 // 50 seconds CPU time limit
-  }
+  },
+
+  // Migrations for Durable Objects
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["RealtimeActor"]
+    }
+  ]
 
   // Environment-specific overrides
   // Uncomment to configure different settings per environment

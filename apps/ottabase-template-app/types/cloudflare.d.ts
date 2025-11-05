@@ -10,6 +10,7 @@ import type {
   Queue,
   Hyperdrive,
   RateLimiter,
+  DurableObjectNamespace,
 } from '@cloudflare/workers-types';
 
 /**
@@ -34,6 +35,9 @@ export interface CloudflareEnv {
 
   // Rate Limiter (uncomment when configured)
   // RATE_LIMITER: RateLimiter;
+
+  // Durable Objects
+  REALTIME: DurableObjectNamespace;
 
   // Environment Variables
   ENVIRONMENT: string;

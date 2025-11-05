@@ -239,6 +239,9 @@ importers:
       '@ottabase/cf':
         specifier: workspace:*
         version: link:../../packages/cf
+      '@ottabase/cf-realtime':
+        specifier: workspace:*
+        version: link:../../packages/cf-realtime
       '@ottabase/config':
         specifier: workspace:*
         version: link:../../packages/config
