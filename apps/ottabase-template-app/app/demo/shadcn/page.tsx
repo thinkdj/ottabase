@@ -63,6 +63,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyIcon,
+  EmptyTitle,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -827,9 +832,7 @@ export default function ShadcnDemoPage() {
           <Pagination>
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious asChild>
-                  <Link href="#" />
-                </PaginationPrevious>
+                <PaginationPrevious href="#" />
               </PaginationItem>
               <PaginationItem>
                 <PaginationLink asChild>
@@ -1347,6 +1350,46 @@ export default function ShadcnDemoPage() {
               <Underline className="h-4 w-4" />
             </ToggleGroupItem>
           </ToggleGroup>
+        </CardContent>
+      </Card>
+
+      {/* Empty */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Empty</CardTitle>
+          <CardDescription>
+            A state to display when there is no content to show
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Empty>
+            <EmptyIcon>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-8 w-8 text-muted-foreground"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+            </EmptyIcon>
+            <EmptyTitle>No results found</EmptyTitle>
+            <EmptyDescription>
+              Try adjusting your search or filter criteria
+            </EmptyDescription>
+            <EmptyContent>
+              <Button variant="outline" size="sm">
+                Clear filters
+              </Button>
+            </EmptyContent>
+          </Empty>
         </CardContent>
       </Card>
 

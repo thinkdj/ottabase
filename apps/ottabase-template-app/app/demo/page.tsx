@@ -1,7 +1,14 @@
 "use client";
 
 import { APP_META } from "@/ottabase/config/app.config";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@ottabase/ui-shadcn";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@ottabase/ui-shadcn";
 import Link from "next/link";
 
 /**
@@ -24,7 +31,8 @@ export default function DemoIndexPage() {
           {APP_META.appName} - Demo Gallery
         </h1>
         <p className="text-lg text-muted-foreground">
-          Explore different UI component libraries and features integrated into this template.
+          Explore different UI component libraries and features integrated into
+          this template.
         </p>
       </div>
 
@@ -33,7 +41,8 @@ export default function DemoIndexPage() {
           <CardHeader>
             <CardTitle>Mantine Demo</CardTitle>
             <CardDescription>
-              Full-featured demo showcasing Mantine components, theme switching, state management, and more
+              Full-featured demo showcasing Mantine components, theme switching,
+              state management, and more
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -47,7 +56,8 @@ export default function DemoIndexPage() {
           <CardHeader>
             <CardTitle>shadcn/ui Demo</CardTitle>
             <CardDescription>
-              Explore shadcn/ui primitives with Tailwind utilities and shared theme providers
+              Explore shadcn/ui primitives with Tailwind utilities and shared
+              theme providers
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -70,15 +80,35 @@ export default function DemoIndexPage() {
             </Button>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Cloudflare Services</CardTitle>
+            <CardDescription>
+              Type-safe wrappers for Cloudflare infrastructure: KV, D1, R2,
+              Queues, Images, PubSub, and Rate Limiting
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/demo/cloudflare">View Cloudflare Demo</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="mt-8 rounded-lg border bg-muted/50 p-6">
         <h2 className="mb-2 text-xl font-semibold">About This Template</h2>
         <p className="text-sm text-muted-foreground">
-          This template uses <strong>UI Base</strong> as the foundation, with optional UI libraries layered on top.
-          The main app providers only include UI Base, fonts, state management, and shadcn/ui.
-          To use Mantine, refer to the <code className="rounded bg-background px-1 py-0.5">/demo/mantine</code> implementation
-          which shows how to add Mantine providers in a nested layout.
+          This template uses <strong>UI Base</strong> as the foundation, with
+          optional UI libraries layered on top. The main app providers only
+          include UI Base, fonts, state management, and shadcn/ui. To use
+          Mantine, refer to the{" "}
+          <code className="rounded bg-background px-1 py-0.5">
+            /demo/mantine
+          </code>{" "}
+          implementation which shows how to add Mantine providers in a nested
+          layout.
         </p>
       </div>
     </div>

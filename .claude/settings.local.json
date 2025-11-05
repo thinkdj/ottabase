@@ -3,7 +3,9 @@
     "allow": [
       "Bash(cat:*)",
       "Bash(pnpm install:*)",
-      "Bash(pnpm build)"
+      "Bash(pnpm build)",
+      "Bash(find:*)",
+      "Bash(pnpm prisma:generate:*)"
     ],
     "deny": [],
     "ask": []

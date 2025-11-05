@@ -8,11 +8,13 @@
     "nextjs",
     "Otta",
     "Ottabase",
+    "ottaeditor",
+    "ottaselect",
     "pnpm",
     "tailwind",
     "thinkdj",
     "tsup",
-    "typescript",
+    "typescript"
   ],
   "ignorePaths": [
     "**/node_modules/**",

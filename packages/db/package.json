@@ -3,22 +3,22 @@
   "version": "1.0.0",
   "description": "Shared Prisma database client for Ottabase applications",
   "main": "dist/index.js",
-  "module": "dist/index.esm.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
     "./client": {
       "types": "./dist/client.d.ts",
-      "import": "./dist/client.esm.js",
+      "import": "./dist/client.mjs",
       "require": "./dist/client.js"
     },
     "./prisma": {
       "types": "./dist/prisma-config.d.ts",
-      "import": "./dist/prisma-config.esm.js",
+      "import": "./dist/prisma-config.mjs",
       "require": "./dist/prisma-config.js"
     },
     "./schema": "./prisma/schema.prisma"

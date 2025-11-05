@@ -1,9 +1,15 @@
 /** @type {import('next').NextConfig} */
 
+const { initOpenNextCloudflareForDev } = require("@opennextjs/cloudflare");
+
+// Initialize OpenNext Cloudflare for local development
+initOpenNextCloudflareForDev();
+
 const nextConfig = {
   // Enable transpilation of packages
   transpilePackages: [
     "@ottabase/ui-core",
+    "@ottabase/cf",
     "@ottabase/config",
     "@ottabase/state",
     "@ottabase/ui-code-highlight",
@@ -28,6 +34,7 @@ const nextConfig = {
     optimizeCss: true, // default true
     optimizePackageImports: [
       "@ottabase/ui-core",
+      "@ottabase/cf",
       "@ottabase/config",
       "@ottabase/state",
       "@ottabase/ui-code-highlight",
