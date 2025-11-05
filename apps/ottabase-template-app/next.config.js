@@ -10,6 +10,7 @@ const nextConfig = {
   transpilePackages: [
     "@ottabase/ui-core",
     "@ottabase/cf",
+    "@ottabase/cf-realtime",
     "@ottabase/config",
     "@ottabase/state",
     "@ottabase/ui-code-highlight",
@@ -35,6 +36,7 @@ const nextConfig = {
     optimizePackageImports: [
       "@ottabase/ui-core",
       "@ottabase/cf",
+      "@ottabase/cf-realtime",
       "@ottabase/config",
       "@ottabase/state",
       "@ottabase/ui-code-highlight",
