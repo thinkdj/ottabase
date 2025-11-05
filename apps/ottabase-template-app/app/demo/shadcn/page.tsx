@@ -29,12 +29,18 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
   Button,
+  Calendar,
   Card,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
   Checkbox,
   Collapsible,
   CollapsibleContent,
@@ -57,6 +63,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -72,6 +86,10 @@ import {
   HoverCardContent,
   HoverCardTrigger,
   Input,
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
   Label,
   Menubar,
   MenubarContent,
@@ -98,6 +116,9 @@ import {
   Progress,
   RadioGroup,
   RadioGroupItem,
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
   ScrollArea,
   Select,
   SelectContent,
@@ -111,6 +132,12 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarNav,
+  SidebarNavItem,
   Skeleton,
   Slider,
   Switch,
@@ -138,9 +165,10 @@ import {
 import {
   AlertCircle,
   Bold,
-  Calendar,
+  Calendar as CalendarIcon,
   ChevronsUpDown,
   CreditCard,
+  Home,
   Italic,
   LogOut,
   Mail,
@@ -490,7 +518,7 @@ export default function ShadcnDemoPage() {
               <CommandEmpty>No results found.</CommandEmpty>
               <CommandGroup heading="Suggestions">
                 <CommandItem>
-                  <Calendar className="mr-2 h-4 w-4" />
+                  <CalendarIcon className="mr-2 h-4 w-4" />
                   <span>Calendar</span>
                 </CommandItem>
                 <CommandItem>
@@ -673,7 +701,7 @@ export default function ShadcnDemoPage() {
                     The React Framework – created and maintained by @vercel.
                   </p>
                   <div className="flex items-center pt-2">
-                    <Calendar className="mr-2 h-4 w-4 opacity-70" />{" "}
+                    <CalendarIcon className="mr-2 h-4 w-4 opacity-70" />{" "}
                     <span className="text-xs text-muted-foreground">
                       Joined December 2021
                     </span>
@@ -1413,6 +1441,176 @@ export default function ShadcnDemoPage() {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+        </CardContent>
+      </Card>
+
+      {/* Calendar - NEW */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Calendar</CardTitle>
+          <CardDescription>
+            A date picker component with calendar UI
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center">
+          <Calendar
+            mode="single"
+            selected={new Date()}
+            className="rounded-md border"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Carousel - NEW */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Carousel</CardTitle>
+          <CardDescription>
+            A carousel component for displaying multiple items
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center">
+          <Carousel className="w-full max-w-xs">
+            <CarouselContent>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <CarouselItem key={index}>
+                  <div className="p-1">
+                    <Card>
+                      <CardContent className="flex aspect-square items-center justify-center p-6">
+                        <span className="text-4xl font-semibold">
+                          {index + 1}
+                        </span>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious />
+            <CarouselNext />
+          </Carousel>
+        </CardContent>
+      </Card>
+
+      {/* Drawer - NEW */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Drawer</CardTitle>
+          <CardDescription>
+            A mobile-friendly drawer component
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Drawer>
+            <DrawerTrigger asChild>
+              <Button variant="outline">Open Drawer</Button>
+            </DrawerTrigger>
+            <DrawerContent>
+              <DrawerHeader>
+                <DrawerTitle>Are you absolutely sure?</DrawerTitle>
+                <DrawerDescription>
+                  This action cannot be undone.
+                </DrawerDescription>
+              </DrawerHeader>
+              <DrawerFooter>
+                <Button>Submit</Button>
+                <DrawerClose asChild>
+                  <Button variant="outline">Cancel</Button>
+                </DrawerClose>
+              </DrawerFooter>
+            </DrawerContent>
+          </Drawer>
+        </CardContent>
+      </Card>
+
+      {/* Input OTP - NEW */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Input OTP</CardTitle>
+          <CardDescription>
+            Accessible one-time password input component
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center">
+          <InputOTP maxLength={6}>
+            <InputOTPGroup>
+              <InputOTPSlot index={0} />
+              <InputOTPSlot index={1} />
+              <InputOTPSlot index={2} />
+            </InputOTPGroup>
+            <InputOTPSeparator />
+            <InputOTPGroup>
+              <InputOTPSlot index={3} />
+              <InputOTPSlot index={4} />
+              <InputOTPSlot index={5} />
+            </InputOTPGroup>
+          </InputOTP>
+        </CardContent>
+      </Card>
+
+      {/* Resizable - NEW */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Resizable</CardTitle>
+          <CardDescription>
+            Resizable panel groups for layouts
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResizablePanelGroup
+            direction="horizontal"
+            className="min-h-[200px] max-w-md rounded-lg border"
+          >
+            <ResizablePanel defaultSize={50}>
+              <div className="flex h-full items-center justify-center p-6">
+                <span className="font-semibold">One</span>
+              </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={50}>
+              <div className="flex h-full items-center justify-center p-6">
+                <span className="font-semibold">Two</span>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </CardContent>
+      </Card>
+
+      {/* Sidebar - NEW */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Sidebar</CardTitle>
+          <CardDescription>
+            Sidebar navigation component
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] rounded-lg border">
+            <Sidebar className="w-48">
+              <SidebarHeader>
+                <h3 className="font-semibold">Navigation</h3>
+              </SidebarHeader>
+              <SidebarContent>
+                <SidebarNav>
+                  <SidebarNavItem>
+                    <Home className="mr-2 h-4 w-4" />
+                    Home
+                  </SidebarNavItem>
+                  <SidebarNavItem>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </SidebarNavItem>
+                  <SidebarNavItem>
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </SidebarNavItem>
+                </SidebarNav>
+              </SidebarContent>
+              <SidebarFooter>
+                <p className="text-xs text-muted-foreground">v1.0.0</p>
+              </SidebarFooter>
+            </Sidebar>
+          </div>
         </CardContent>
       </Card>
     </div>
