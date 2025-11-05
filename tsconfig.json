@@ -18,13 +18,17 @@
       /* Pattern-based path mapping for all packages */
       "@ottabase/*": ["./packages/*/src"],
       /* Individual package mappings for direct imports */
-      "@ottabase/ui-core": ["./packages/ui-core/src"],
+      "@ottabase/cf": ["./packages/cf/src"],
       "@ottabase/config": ["./packages/config/src"],
       "@ottabase/state": ["./packages/state/src"],
       "@ottabase/scripts": ["./packages/scripts/src"],
       "@ottabase/db": ["./packages/db/src"],
       "@ottabase/models": ["./packages/models/src"],
+      "@ottabase/ottaeditor": ["./packages/ottaeditor/src"],
+      "@ottabase/ottaselect": ["./packages/ottaselect/src"],
+      "@ottabase/ui-base": ["./packages/ui-base/src"],
       "@ottabase/ui-code-highlight": ["./packages/ui-code-highlight/src"],
+      "@ottabase/ui-mantine": ["./packages/ui-mantine/src"],
       "@ottabase/ui-tailwind": ["./packages/ui-tailwind/src"],
       "@ottabase/ui-components": ["./packages/ui-components/src"],
       "@ottabase/ui-components/*": ["./packages/ui-components/src/*"],
@@ -39,7 +43,7 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "./packages/ui-core"
+      "path": "./packages/cf"
     },
     {
       "path": "./packages/config"
@@ -54,10 +58,22 @@
       "path": "./packages/models"
     },
     {
+      "path": "./packages/ottaeditor"
+    },
+    {
+      "path": "./packages/ottaselect"
+    },
+    {
       "path": "./packages/scripts"
     },
     {
+      "path": "./packages/ui-base"
+    },
+    {
       "path": "./packages/ui-code-highlight"
+    },
+    {
+      "path": "./packages/ui-mantine"
     },
     {
       "path": "./packages/ui-tailwind"
