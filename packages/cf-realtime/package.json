@@ -31,7 +31,11 @@
     "dev": "tsup src/index.ts src/server/index.ts src/client/index.ts --format cjs,esm --dts --watch",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [
     "cloudflare",
@@ -50,9 +54,13 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250127.0",
+    "@cloudflare/vitest-pool-workers": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "@vitest/ui": "catalog:",
     "typescript": "catalog:",
     "tsup": "catalog:",
     "rimraf": "catalog:",
-    "eslint": "catalog:"
+    "eslint": "catalog:",
+    "vitest": "catalog:"
   }
 }
