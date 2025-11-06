@@ -191,16 +191,16 @@ export const mantineAnt: MantineThemeOverride = {
             },
           },
           filled: {
-            backgroundColor: "#1890ff",
-            borderColor: "#1890ff",
+            backgroundColor: theme.colors.blue[5],
+            borderColor: theme.colors.blue[5],
             color: "#ffffff",
             "&:hover": {
-              backgroundColor: "#40a9ff",
-              borderColor: "#40a9ff",
+              backgroundColor: theme.colors.blue[4],
+              borderColor: theme.colors.blue[4],
             },
             "&:active": {
-              backgroundColor: "#096dd9",
-              borderColor: "#096dd9",
+              backgroundColor: theme.colors.blue[6],
+              borderColor: theme.colors.blue[6],
             },
           },
           outline: {
@@ -209,13 +209,13 @@ export const mantineAnt: MantineThemeOverride = {
             color: "var(--mantine-color-text)",
             "&:hover": {
               backgroundColor: "var(--mantine-color-body)",
-              borderColor: "#1890ff",
-              color: "#1890ff",
+              borderColor: theme.colors.blue[5],
+              color: theme.colors.blue[5],
             },
             "&:active": {
               backgroundColor: "var(--mantine-color-body)",
-              borderColor: "#096dd9",
-              color: "#096dd9",
+              borderColor: theme.colors.blue[6],
+              color: theme.colors.blue[6],
             },
           },
           light: {
@@ -230,12 +230,12 @@ export const mantineAnt: MantineThemeOverride = {
             },
           },
           subtle: {
-            backgroundColor: "#1890ff",
-            borderColor: "#1890ff",
+            backgroundColor: theme.colors.blue[5],
+            borderColor: theme.colors.blue[5],
             color: "#ffffff",
             "&:hover": {
-              backgroundColor: "#40a9ff",
-              borderColor: "#40a9ff",
+              backgroundColor: theme.colors.blue[4],
+              borderColor: theme.colors.blue[4],
             },
           },
         } as Record<string, React.CSSProperties>),
@@ -287,11 +287,11 @@ export const mantineAnt: MantineThemeOverride = {
             backgroundColor: "var(--mantine-color-body)",
             transition: "all 0.3s",
             "&:hover": {
-              borderColor: "#40a9ff",
+              borderColor: theme.colors.blue[4],
             },
             "&:focus": {
-              borderColor: "#1890ff",
-              boxShadow: "0 0 0 2px rgba(24, 144, 255, 0.2)",
+              borderColor: theme.colors.blue[5],
+              boxShadow: `0 0 0 2px ${rgba(theme.colors.blue[5], 0.2)}`,
               outline: "none",
             },
             "&::placeholder": {
@@ -322,11 +322,11 @@ export const mantineAnt: MantineThemeOverride = {
             border: "1px solid var(--mantine-color-default-border)",
             backgroundColor: "var(--mantine-color-body)",
             "&:hover": {
-              borderColor: "#40a9ff",
+              borderColor: theme.colors.blue[4],
             },
             "&:focus": {
-              borderColor: "#1890ff",
-              boxShadow: "0 0 0 2px rgba(24, 144, 255, 0.2)",
+              borderColor: theme.colors.blue[5],
+              boxShadow: `0 0 0 2px ${rgba(theme.colors.blue[5], 0.2)}`,
             },
           },
           dropdown: {
@@ -345,8 +345,8 @@ export const mantineAnt: MantineThemeOverride = {
               backgroundColor: "var(--mantine-color-gray-light-hover)",
             },
             "&[data-selected]": {
-              backgroundColor: "var(--mantine-color-blue-light)",
-              color: "#1890ff",
+              backgroundColor: theme.colorScheme === "dark" ? rgba(theme.colors.blue[5], 0.2) : "var(--mantine-color-blue-light)",
+              color: theme.colors.blue[5],
               fontWeight: "600",
             },
           },
@@ -365,11 +365,11 @@ export const mantineAnt: MantineThemeOverride = {
             minHeight: "80px",
             resize: "vertical",
             "&:hover": {
-              borderColor: "#40a9ff",
+              borderColor: theme.colors.blue[4],
             },
             "&:focus": {
-              borderColor: "#1890ff",
-              boxShadow: "0 0 0 2px rgba(24, 144, 255, 0.2)",
+              borderColor: theme.colors.blue[5],
+              boxShadow: `0 0 0 2px ${rgba(theme.colors.blue[5], 0.2)}`,
             },
           },
         } as Record<string, React.CSSProperties>),
@@ -405,9 +405,9 @@ export const mantineAnt: MantineThemeOverride = {
             backgroundColor: "var(--mantine-color-body)",
             "&:checked": {
               backgroundColor: "var(--mantine-color-body)",
-              borderColor: "#1890ff",
+              borderColor: theme.colors.blue[5],
               "&::before": {
-                backgroundColor: "#1890ff",
+                backgroundColor: theme.colors.blue[5],
                 width: "8px",
                 height: "8px",
                 borderRadius: "50%",
@@ -419,10 +419,10 @@ export const mantineAnt: MantineThemeOverride = {
               },
             },
             "&:hover": {
-              borderColor: "#40a9ff",
+              borderColor: theme.colors.blue[4],
             },
             "&:focus": {
-              boxShadow: "0 0 0 2px rgba(24, 144, 255, 0.2)",
+              boxShadow: `0 0 0 2px ${rgba(theme.colors.blue[5], 0.2)}`,
               outline: "none",
             },
           },
@@ -445,11 +445,11 @@ export const mantineAnt: MantineThemeOverride = {
             border: "1px solid var(--mantine-color-default-border)",
             backgroundColor: "var(--mantine-color-body)",
             "&:checked": {
-              backgroundColor: "#1890ff",
-              borderColor: "#1890ff",
+              backgroundColor: theme.colors.blue[5],
+              borderColor: theme.colors.blue[5],
             },
             "&:hover": {
-              borderColor: "#40a9ff",
+              borderColor: theme.colors.blue[4],
             },
           },
           label: {
@@ -469,7 +469,7 @@ export const mantineAnt: MantineThemeOverride = {
             width: "44px",
             height: "22px",
             "&[dataChecked]": {
-              backgroundColor: "#1890ff",
+              backgroundColor: theme.colors.blue[5],
             },
           },
           thumb: {
@@ -560,7 +560,7 @@ export const mantineAnt: MantineThemeOverride = {
             height: "6px",
           },
           bar: {
-            backgroundColor: "#1890ff",
+            backgroundColor: theme.colors.blue[5],
             borderRadius: "100px",
           },
         } as Record<string, React.CSSProperties>),
@@ -583,11 +583,11 @@ export const mantineAnt: MantineThemeOverride = {
             backgroundColor: "transparent",
             borderRadius: "0",
             "&:hover": {
-              color: "#40a9ff",
+              color: theme.colors.blue[4],
             },
             "&[data-active]": {
-              color: "#1890ff",
-              borderBottomColor: "#1890ff",
+              color: theme.colors.blue[5],
+              borderBottomColor: theme.colors.blue[5],
               backgroundColor: "transparent",
             },
           },
