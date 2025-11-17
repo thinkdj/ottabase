@@ -1,110 +1,141 @@
 /**
  * @ottabase/ui-icons
  *
- * Unified icon system for Ottabase applications
- * Provides a consistent API for Lucide, Tabler, and custom icons
- */
-
-// Export types
-export type {
-  IconComponent,
-  IconProps,
-  IconMeta,
-  IconRegistryEntry,
-  IconRegistry,
-} from './types';
-
-export { IconSource } from './types';
-
-// Export utility functions
-export {
-  normalizeSize,
-  createLucideWrapper,
-  createTablerWrapper,
-  isValidIconComponent,
-} from './utils';
-
-// Export Lucide icons
-export {
-  Icons,
-  getLucideIcon,
-  hasLucideIcon,
-  type LucideIconName,
-} from './lucide';
-
-// Export Tabler icons
-export {
-  TablerIconSet,
-  getTablerIcon,
-  hasTablerIcon,
-  type TablerIconName,
-} from './tabler';
-
-// Export custom icon support
-export {
-  registerCustomIcon,
-  getCustomIcon,
-  hasCustomIcon,
-  getCustomIconNames,
-  unregisterCustomIcon,
-  clearCustomIcons,
-  getCustomIconRegistry,
-  createSvgIcon,
-} from './custom';
-
-// Re-export commonly used icons as a unified set
-// This provides a curated, opinionated selection combining the best from both libraries
-import { Icons as LucideIcons, getLucideIcon, hasLucideIcon } from './lucide';
-import { TablerIconSet, getTablerIcon, hasTablerIcon } from './tabler';
-import { getCustomIcon, hasCustomIcon } from './custom';
-import type { IconComponent } from './types';
-
-/**
- * Unified icon set combining Lucide and Tabler icons
- * This is the recommended way to import icons for consistency across the app
+ * Unified icon package for Ottabase applications
+ * Provides direct access to Lucide and Tabler icon libraries
  *
  * @example
  * ```tsx
+ * // Option 1: Use curated common icons
  * import { Icon } from '@ottabase/ui-icons';
+ * <Icon.Search size={20} />
  *
- * function MyComponent() {
- *   return <Icon.Home size={24} color="blue" />;
- * }
+ * // Option 2: Import directly from Lucide
+ * import { Home, Search, Settings } from '@ottabase/ui-icons/lucide';
+ * <Home size={24} />
+ *
+ * // Option 3: Import directly from Tabler
+ * import { IconHome, IconSearch } from '@ottabase/ui-icons/tabler';
+ * <IconHome size={24} />
  * ```
+ */
+
+import * as LucideIcons from 'lucide-react';
+
+/**
+ * Curated set of commonly used icons
+ * Uses Lucide icons as the default for consistency
+ *
+ * Feel free to import any icon directly from:
+ * - '@ottabase/ui-icons/lucide' for all Lucide icons
+ * - '@ottabase/ui-icons/tabler' for all Tabler icons
  */
 export const Icon = {
-  // Prefer Lucide for most common icons (they're simpler and more consistent)
-  ...LucideIcons,
+  // Navigation & UI
+  Menu: LucideIcons.Menu,
+  Close: LucideIcons.X,
+  ChevronDown: LucideIcons.ChevronDown,
+  ChevronUp: LucideIcons.ChevronUp,
+  ChevronLeft: LucideIcons.ChevronLeft,
+  ChevronRight: LucideIcons.ChevronRight,
+  ArrowLeft: LucideIcons.ArrowLeft,
+  ArrowRight: LucideIcons.ArrowRight,
+  ArrowUp: LucideIcons.ArrowUp,
+  ArrowDown: LucideIcons.ArrowDown,
+  Home: LucideIcons.Home,
+  Search: LucideIcons.Search,
+  Settings: LucideIcons.Settings,
+  MoreVertical: LucideIcons.MoreVertical,
+  MoreHorizontal: LucideIcons.MoreHorizontal,
 
-  // Add specific Tabler icons that might be better or not available in Lucide
-  // Users can override by importing from TablerIconSet directly if needed
+  // Actions
+  Plus: LucideIcons.Plus,
+  Minus: LucideIcons.Minus,
+  Edit: LucideIcons.Edit,
+  Trash: LucideIcons.Trash,
+  Save: LucideIcons.Save,
+  Copy: LucideIcons.Copy,
+  Download: LucideIcons.Download,
+  Upload: LucideIcons.Upload,
+  Share: LucideIcons.Share,
+  ExternalLink: LucideIcons.ExternalLink,
+  Refresh: LucideIcons.RefreshCw,
+  Check: LucideIcons.Check,
+  CheckCircle: LucideIcons.CheckCircle,
+
+  // Files & Folders
+  File: LucideIcons.File,
+  FileText: LucideIcons.FileText,
+  Folder: LucideIcons.Folder,
+  FolderOpen: LucideIcons.FolderOpen,
+  Image: LucideIcons.Image,
+
+  // Communication
+  Mail: LucideIcons.Mail,
+  Send: LucideIcons.Send,
+  MessageSquare: LucideIcons.MessageSquare,
+  Bell: LucideIcons.Bell,
+  Phone: LucideIcons.Phone,
+
+  // Users & Auth
+  User: LucideIcons.User,
+  Users: LucideIcons.Users,
+  UserPlus: LucideIcons.UserPlus,
+  Lock: LucideIcons.Lock,
+  Unlock: LucideIcons.Unlock,
+  LogIn: LucideIcons.LogIn,
+  LogOut: LucideIcons.LogOut,
+
+  // Status & Feedback
+  Info: LucideIcons.Info,
+  AlertCircle: LucideIcons.AlertCircle,
+  AlertTriangle: LucideIcons.AlertTriangle,
+  HelpCircle: LucideIcons.HelpCircle,
+  XCircle: LucideIcons.XCircle,
+  Loader: LucideIcons.Loader,
+  Loader2: LucideIcons.Loader2,
+
+  // Data & Database
+  Database: LucideIcons.Database,
+  Table: LucideIcons.Table,
+  Grid: LucideIcons.Grid,
+  List: LucideIcons.List,
+  BarChart: LucideIcons.BarChart,
+  PieChart: LucideIcons.PieChart,
+  LineChart: LucideIcons.LineChart,
+
+  // Development
+  Code: LucideIcons.Code,
+  Terminal: LucideIcons.Terminal,
+  GitBranch: LucideIcons.GitBranch,
+  Package: LucideIcons.Package,
+  Cpu: LucideIcons.Cpu,
+  Server: LucideIcons.Server,
+
+  // UI Elements
+  Eye: LucideIcons.Eye,
+  EyeOff: LucideIcons.EyeOff,
+  Star: LucideIcons.Star,
+  Heart: LucideIcons.Heart,
+  Bookmark: LucideIcons.Bookmark,
+  Filter: LucideIcons.Filter,
+  Calendar: LucideIcons.Calendar,
+  Clock: LucideIcons.Clock,
+  Sun: LucideIcons.Sun,
+  Moon: LucideIcons.Moon,
+
+  // Media
+  Play: LucideIcons.Play,
+  Pause: LucideIcons.Pause,
+  Volume: LucideIcons.Volume,
+  VolumeX: LucideIcons.VolumeX,
+  Camera: LucideIcons.Camera,
+
+  // Commerce
+  ShoppingCart: LucideIcons.ShoppingCart,
+  CreditCard: LucideIcons.CreditCard,
+  DollarSign: LucideIcons.DollarSign,
 } as const;
 
-// Default export for convenient usage
+// Default export for convenience
 export default Icon;
-
-/**
- * Get an icon from any source by name
- * Searches in order: Custom -> Lucide -> Tabler
- *
- * @example
- * ```tsx
- * const HomeIcon = getIcon('Home'); // Returns Lucide Home icon
- * const MyIcon = getIcon('my-custom-icon'); // Returns custom icon if registered
- * ```
- */
-export function getIcon(name: string): IconComponent | undefined {
-  // Search order: Custom -> Lucide -> Tabler
-  return (
-    getCustomIcon(name) ||
-    getLucideIcon(name as any) ||
-    getTablerIcon(name as any)
-  );
-}
-
-/**
- * Check if an icon exists in any registry
- */
-export function hasIcon(name: string): boolean {
-  return hasCustomIcon(name) || hasLucideIcon(name) || hasTablerIcon(name);
-}
