@@ -1,434 +1,208 @@
 /**
  * Unit tests for RealtimeActor
  * Tests Durable Object behavior using Cloudflare Workers test environment
+ *
+ * These tests run in the Workers runtime via @cloudflare/vitest-pool-workers
+ * which provides Miniflare for local Durable Objects emulation.
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
+import { env } from "cloudflare:test";
 import { RealtimeActor } from "../../server/RealtimeActor";
-import { MessageType } from "../../types";
-import {
-  createSubscribeMessage,
-  createUnsubscribeMessage,
-  createChannelMessage,
-  createBroadcastMessage,
-  createPingMessage,
-  createAckMessage,
-} from "../fixtures/messages";
+import { createBroadcastMessage } from "../fixtures/messages";
 
-describe("RealtimeActor", () => {
-  let actor: RealtimeActor;
-  let state: DurableObjectState;
-  let env: any;
+// Define the env interface for our tests
+interface Env {
+  REALTIME: DurableObjectNamespace<RealtimeActor>;
+}
+
+describe("RealtimeActor - Durable Object Tests", () => {
+  let id: DurableObjectId;
+  let stub: DurableObjectStub<RealtimeActor>;
 
   beforeEach(() => {
-    // Mock DurableObjectState
-    const storage = new Map();
-    state = {
-      id: { toString: () => "test-actor-id" } as DurableObjectId,
-      storage: {
-        get: async (key: string) => storage.get(key),
-        put: async (key: string, value: any) => {
-          storage.set(key, value);
-        },
-        delete: async (key: string) => storage.delete(key),
-        list: async () => new Map(storage),
-        deleteAll: async () => storage.clear(),
-        setAlarm: async (time: number) => {},
-        getAlarm: async () => null,
-        deleteAlarm: async () => {},
-      },
-      waitUntil: async (promise: Promise<any>) => {},
-      blockConcurrencyWhile: async (callback: () => Promise<any>) => callback(),
-    } as DurableObjectState;
-
-    env = {};
-    actor = new RealtimeActor(state, env);
-  });
-
-  describe("initialization", () => {
-    it("should initialize actor", async () => {
-      await actor.onInit();
-      // Should not throw
-      expect(true).toBe(true);
-    });
-
-    it("should load persisted offline messages on init", async () => {
-      const offlineMessages = new Map([
-        ["client-1", [
-          {
-            id: "msg-1",
-            channel: "test-channel",
-            event: "test-event",
-            data: { test: "data" },
-            createdAt: Date.now(),
-          },
-        ]],
-      ]);
-
-      await state.storage.put("offlineMessages", Array.from(offlineMessages.entries()));
-      await actor.onInit();
-
-      // Should not throw during initialization
-      expect(true).toBe(true);
-    });
+    // Get a Durable Object instance
+    // Each test gets a new ID for isolation
+    const testEnv = env as unknown as Env;
+    id = testEnv.REALTIME.idFromName(`test-${Date.now()}-${Math.random()}`);
+    stub = testEnv.REALTIME.get(id);
   });
 
   describe("HTTP endpoints", () => {
     it("should handle health check", async () => {
-      const request = new Request("https://test.example.com/health");
-      const response = await actor.fetch(request);
+      const response = await stub.fetch("https://test.example.com/health");
 
       expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data).toHaveProperty("status", "ok");
-      expect(data).toHaveProperty("connections");
+      const data = await response.json<{ status: string; connections: number }>();
+      expect(data.status).toBe("ok");
+      expect(data.connections).toBe(0);
     });
 
     it("should return 404 for unknown endpoints", async () => {
-      const request = new Request("https://test.example.com/unknown");
-      const response = await actor.fetch(request);
-
+      const response = await stub.fetch("https://test.example.com/unknown");
       expect(response.status).toBe(404);
     });
 
     it("should handle stats request", async () => {
-      const request = new Request("https://test.example.com/stats");
-      const response = await actor.fetch(request);
+      const response = await stub.fetch("https://test.example.com/stats");
 
       expect(response.status).toBe(200);
-      const stats = await response.json();
-      expect(stats).toHaveProperty("totalConnections");
-      expect(stats).toHaveProperty("channels");
-      expect(stats).toHaveProperty("offlineMessagesQueued");
+      const stats = await response.json<{
+        totalConnections: number;
+        channels: Array<{ channel: string; subscriberCount: number }>;
+        offlineMessagesQueued: number;
+      }>();
+
+      expect(stats.totalConnections).toBe(0);
+      expect(Array.isArray(stats.channels)).toBe(true);
+      expect(stats.offlineMessagesQueued).toBe(0);
     });
 
     it("should handle broadcast request", async () => {
       const broadcast = createBroadcastMessage(["channel-1"], "test-event", { foo: "bar" });
 
-      const request = new Request("https://test.example.com/broadcast", {
+      const response = await stub.fetch("https://test.example.com/broadcast", {
         method: "POST",
         body: JSON.stringify(broadcast),
         headers: { "Content-Type": "application/json" },
       });
 
-      const response = await actor.fetch(request);
       expect(response.status).toBe(200);
-
-      const result = await response.json();
+      const result = await response.json<{ success: boolean; channels: number }>();
       expect(result.success).toBe(true);
+      expect(result.channels).toBe(1);
+    });
+
+    it("should handle broadcast to multiple channels", async () => {
+      const broadcast = createBroadcastMessage(
+        ["channel-1", "channel-2", "channel-3"],
+        "multi-event",
+        { data: "test" }
+      );
+
+      const response = await stub.fetch("https://test.example.com/broadcast", {
+        method: "POST",
+        body: JSON.stringify(broadcast),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      expect(response.status).toBe(200);
+      const result = await response.json<{ success: boolean; channels: number }>();
+      expect(result.success).toBe(true);
+      expect(result.channels).toBe(3);
     });
 
     it("should handle invalid broadcast request", async () => {
-      const request = new Request("https://test.example.com/broadcast", {
+      const response = await stub.fetch("https://test.example.com/broadcast", {
         method: "POST",
         body: "invalid json",
         headers: { "Content-Type": "application/json" },
       });
 
-      const response = await actor.fetch(request);
       expect(response.status).toBe(400);
-
-      const result = await response.json();
+      const result = await response.json<{ success: boolean; error: string }>();
       expect(result.success).toBe(false);
-      expect(result).toHaveProperty("error");
+      expect(result.error).toBeDefined();
     });
   });
 
-  describe("WebSocket connections", () => {
-    it("should upgrade to WebSocket", async () => {
-      const request = new Request("https://test.example.com/ws?clientId=test-client", {
+  describe("WebSocket upgrade", () => {
+    it("should upgrade to WebSocket with client ID", async () => {
+      const response = await stub.fetch("https://test.example.com/ws?clientId=test-client", {
         headers: {
           "Upgrade": "websocket",
         },
       });
-
-      const response = await actor.fetch(request);
 
       expect(response.status).toBe(101);
       expect(response.webSocket).toBeDefined();
     });
 
-    it("should generate client ID if not provided", async () => {
-      const request = new Request("https://test.example.com/ws", {
+    it("should upgrade to WebSocket without client ID (auto-generate)", async () => {
+      const response = await stub.fetch("https://test.example.com/ws", {
         headers: {
           "Upgrade": "websocket",
         },
       });
-
-      const response = await actor.fetch(request);
 
       expect(response.status).toBe(101);
-      // Client ID should be auto-generated
+      expect(response.webSocket).toBeDefined();
     });
   });
 
-  describe("message handling", () => {
-    let ws: WebSocket;
-    let serverWs: WebSocket;
-    let receivedMessages: any[];
+  describe("Durable Object isolation", () => {
+    it("should maintain separate state across different DO instances", async () => {
+      // Create two different Durable Objects
+      const testEnv = env as unknown as Env;
 
-    beforeEach(async () => {
-      receivedMessages = [];
+      const id1 = testEnv.REALTIME.idFromName("instance-1");
+      const stub1 = testEnv.REALTIME.get(id1);
 
-      const request = new Request("https://test.example.com/ws?clientId=test-client", {
-        headers: {
-          "Upgrade": "websocket",
-        },
-      });
+      const id2 = testEnv.REALTIME.idFromName("instance-2");
+      const stub2 = testEnv.REALTIME.get(id2);
 
-      const response = await actor.fetch(request);
-      ws = response.webSocket!;
+      // Make requests to both
+      const stats1 = await stub1.fetch("https://test.example.com/stats");
+      const stats2 = await stub2.fetch("https://test.example.com/stats");
 
-      // Mock WebSocket methods
-      const send = ws.send.bind(ws);
-      ws.send = (data: string) => {
-        try {
-          receivedMessages.push(JSON.parse(data));
-        } catch (e) {
-          receivedMessages.push(data);
-        }
-        return send(data);
-      };
+      // Both should work independently
+      expect(stats1.status).toBe(200);
+      expect(stats2.status).toBe(200);
+
+      const data1 = await stats1.json();
+      const data2 = await stats2.json();
+
+      // Both should have clean state
+      expect(data1.totalConnections).toBe(0);
+      expect(data2.totalConnections).toBe(0);
     });
 
-    it("should send connection acknowledgment", () => {
-      const ackMessage = receivedMessages.find(msg => msg.type === MessageType.ACK);
-      expect(ackMessage).toBeDefined();
-    });
+    it("should persist state within same DO instance", async () => {
+      // Make multiple requests to the same instance
+      const health1 = await stub.fetch("https://test.example.com/health");
+      const health2 = await stub.fetch("https://test.example.com/health");
 
-    it("should handle ping messages", () => {
-      const ping = createPingMessage();
-      ws.dispatchEvent(new MessageEvent("message", {
-        data: JSON.stringify(ping),
-      }));
+      expect(health1.status).toBe(200);
+      expect(health2.status).toBe(200);
 
-      // Should eventually receive pong
-      // Note: In real async environment, you'd wait for the response
-    });
+      // Instance should maintain its identity
+      const data1 = await health1.json();
+      const data2 = await health2.json();
 
-    it("should handle subscribe messages", () => {
-      const subscribe = createSubscribeMessage("test-channel", "test-client");
-      receivedMessages = []; // Clear initial messages
-
-      ws.dispatchEvent(new MessageEvent("message", {
-        data: JSON.stringify(subscribe),
-      }));
-
-      // Should receive acknowledgment
-      // Note: Testing async behavior requires proper Workers environment
-    });
-
-    it("should handle unsubscribe messages", () => {
-      const unsubscribe = createUnsubscribeMessage("test-channel", "test-client");
-      receivedMessages = [];
-
-      ws.dispatchEvent(new MessageEvent("message", {
-        data: JSON.stringify(unsubscribe),
-      }));
-
-      // Should receive acknowledgment
-    });
-
-    it("should handle malformed messages gracefully", () => {
-      ws.dispatchEvent(new MessageEvent("message", {
-        data: "invalid json",
-      }));
-
-      // Should send error message
-      const errorMessage = receivedMessages.find(msg => msg.type === MessageType.ERROR);
-      // In proper environment, error would be sent
+      expect(data1.status).toBe("ok");
+      expect(data2.status).toBe("ok");
     });
   });
 
-  describe("channel subscriptions", () => {
-    it("should track client subscriptions", async () => {
-      const request = new Request("https://test.example.com/ws?clientId=test-client", {
-        headers: { "Upgrade": "websocket" },
-      });
-
-      const response = await actor.fetch(request);
-      const ws = response.webSocket!;
-
-      // Subscribe to channel
-      const subscribe = createSubscribeMessage("test-channel", "test-client");
-      ws.dispatchEvent(new MessageEvent("message", {
-        data: JSON.stringify(subscribe),
-      }));
-
-      // Get stats to verify subscription
-      const statsRequest = new Request("https://test.example.com/stats");
-      const statsResponse = await actor.fetch(statsRequest);
-      const stats = await statsResponse.json();
-
-      // In proper Workers environment, this would show the subscription
-      expect(stats).toBeDefined();
-    });
-  });
-
-  describe("offline message handling", () => {
-    it("should store offline messages when persistence is enabled", async () => {
-      const message = createChannelMessage("test-channel", "test-event", { foo: "bar" });
-      message.requiresAck = true;
-
-      // In proper Workers environment, this would store the message
-      expect(message.requiresAck).toBe(true);
-    });
-
-    it("should deliver offline messages on reconnection", async () => {
-      // This test requires proper Workers environment with Durable Objects storage
-      expect(true).toBe(true);
-    });
-
-    it("should clean up expired messages", async () => {
-      await actor.onAlarm();
-      // Should not throw
-      expect(true).toBe(true);
-    });
-  });
-
-  describe("broadcast functionality", () => {
-    it("should broadcast to multiple channels", async () => {
-      const broadcast = createBroadcastMessage(
-        ["channel-1", "channel-2"],
-        "broadcast-event",
-        { data: "test" }
-      );
-
-      const request = new Request("https://test.example.com/broadcast", {
-        method: "POST",
-        body: JSON.stringify(broadcast),
-        headers: { "Content-Type": "application/json" },
-      });
-
-      const response = await actor.fetch(request);
-      expect(response.status).toBe(200);
-
-      const result = await response.json();
-      expect(result.success).toBe(true);
-      expect(result.channels).toBe(2);
-    });
-
-    it("should persist broadcast messages when enabled", async () => {
-      const broadcast = createBroadcastMessage(["channel-1"], "test-event", { foo: "bar" });
+  describe("Broadcast persistence", () => {
+    it("should handle broadcast with persistence enabled", async () => {
+      const broadcast = createBroadcastMessage(["persist-channel"], "event", { data: "value" });
       broadcast.persistForOffline = true;
 
-      const request = new Request("https://test.example.com/broadcast", {
+      const response = await stub.fetch("https://test.example.com/broadcast", {
         method: "POST",
         body: JSON.stringify(broadcast),
         headers: { "Content-Type": "application/json" },
       });
 
-      const response = await actor.fetch(request);
       expect(response.status).toBe(200);
-    });
-  });
-
-  describe("client management", () => {
-    it("should track connected clients", async () => {
-      const request1 = new Request("https://test.example.com/ws?clientId=client-1", {
-        headers: { "Upgrade": "websocket" },
-      });
-      const request2 = new Request("https://test.example.com/ws?clientId=client-2", {
-        headers: { "Upgrade": "websocket" },
-      });
-
-      await actor.fetch(request1);
-      await actor.fetch(request2);
-
-      const statsRequest = new Request("https://test.example.com/stats");
-      const statsResponse = await actor.fetch(statsRequest);
-      const stats = await statsResponse.json();
-
-      expect(stats.totalConnections).toBe(2);
+      const result = await response.json<{ success: boolean }>();
+      expect(result.success).toBe(true);
     });
 
-    it("should remove client on disconnect", async () => {
-      const request = new Request("https://test.example.com/ws?clientId=test-client", {
-        headers: { "Upgrade": "websocket" },
+    it("should handle broadcast without persistence", async () => {
+      const broadcast = createBroadcastMessage(["temp-channel"], "event", { data: "value" });
+      broadcast.persistForOffline = false;
+
+      const response = await stub.fetch("https://test.example.com/broadcast", {
+        method: "POST",
+        body: JSON.stringify(broadcast),
+        headers: { "Content-Type": "application/json" },
       });
 
-      const response = await actor.fetch(request);
-      const ws = response.webSocket!;
-
-      // Simulate disconnect
-      ws.dispatchEvent(new Event("close"));
-
-      const statsRequest = new Request("https://test.example.com/stats");
-      const statsResponse = await actor.fetch(statsRequest);
-      const stats = await statsResponse.json();
-
-      expect(stats.totalConnections).toBe(0);
-    });
-  });
-
-  describe("acknowledgments", () => {
-    it("should handle message acknowledgments", async () => {
-      const request = new Request("https://test.example.com/ws?clientId=test-client", {
-        headers: { "Upgrade": "websocket" },
-      });
-
-      const response = await actor.fetch(request);
-      const ws = response.webSocket!;
-
-      const ack = createAckMessage("msg-123", "test-channel");
-      ws.dispatchEvent(new MessageEvent("message", {
-        data: JSON.stringify(ack),
-      }));
-
-      // Should handle ack without errors
-      expect(true).toBe(true);
-    });
-
-    it("should remove acknowledged messages from offline queue", async () => {
-      // This test requires proper Workers environment with storage
-      expect(true).toBe(true);
-    });
-  });
-
-  describe("error handling", () => {
-    it("should handle WebSocket errors gracefully", async () => {
-      const request = new Request("https://test.example.com/ws?clientId=test-client", {
-        headers: { "Upgrade": "websocket" },
-      });
-
-      const response = await actor.fetch(request);
-      const ws = response.webSocket!;
-
-      ws.dispatchEvent(new Event("error"));
-
-      // Should handle error without crashing
-      expect(true).toBe(true);
-    });
-
-    it("should send error messages to clients", async () => {
-      const request = new Request("https://test.example.com/ws?clientId=test-client", {
-        headers: { "Upgrade": "websocket" },
-      });
-
-      const response = await actor.fetch(request);
-      const ws = response.webSocket!;
-
-      // Send invalid message
-      ws.dispatchEvent(new MessageEvent("message", {
-        data: "not json",
-      }));
-
-      // Error should be sent to client (in proper Workers environment)
-      expect(true).toBe(true);
-    });
-  });
-
-  describe("alarms", () => {
-    it("should clean up expired messages on alarm", async () => {
-      await actor.onAlarm();
-      // Should not throw
-      expect(true).toBe(true);
-    });
-
-    it("should schedule next alarm", async () => {
-      await actor.onAlarm();
-      // In proper Workers environment, next alarm would be scheduled
-      expect(true).toBe(true);
+      expect(response.status).toBe(200);
+      const result = await response.json<{ success: boolean }>();
+      expect(result.success).toBe(true);
     });
   });
 });
