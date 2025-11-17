@@ -883,6 +883,9 @@ importers:
       cmdk:
         specifier: ^1.0.4
         version: 1.1.1(@types/react-dom@18.3.7(@types/react@18.3.24))(@types/react@18.3.24)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
       embla-carousel-react:
         specifier: ^8.5.1
         version: 8.6.0(react@18.3.1)

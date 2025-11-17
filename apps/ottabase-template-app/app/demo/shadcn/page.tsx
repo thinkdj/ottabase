@@ -45,6 +45,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  Combobox,
   Command,
   CommandEmpty,
   CommandGroup,
@@ -56,6 +57,7 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
+  DatePicker,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -90,6 +92,7 @@ import {
   InputOTPGroup,
   InputOTPSeparator,
   InputOTPSlot,
+  Kbd,
   Label,
   Menubar,
   MenubarContent,
@@ -140,6 +143,7 @@ import {
   SidebarNavItem,
   Skeleton,
   Slider,
+  Spinner,
   Switch,
   Table,
   TableBody,
@@ -1610,6 +1614,94 @@ export default function ShadcnDemoPage() {
                 <p className="text-xs text-muted-foreground">v1.0.0</p>
               </SidebarFooter>
             </Sidebar>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Combobox - NEW */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Combobox</CardTitle>
+          <CardDescription>
+            Searchable select dropdown (Command + Popover)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center">
+          <Combobox
+            options={[
+              { value: "react", label: "React" },
+              { value: "vue", label: "Vue" },
+              { value: "angular", label: "Angular" },
+              { value: "svelte", label: "Svelte" },
+              { value: "next", label: "Next.js" },
+            ]}
+            placeholder="Select framework..."
+            searchPlaceholder="Search framework..."
+            emptyText="No framework found."
+          />
+        </CardContent>
+      </Card>
+
+      {/* Date Picker - NEW */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Date Picker</CardTitle>
+          <CardDescription>
+            Date picker with calendar popup (Calendar + Popover)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center">
+          <DatePicker placeholder="Pick a date" />
+        </CardContent>
+      </Card>
+
+      {/* Spinner - NEW */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Spinner</CardTitle>
+          <CardDescription>
+            Loading spinner component
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-4 justify-center">
+          <Spinner size="sm" />
+          <Spinner size="md" />
+          <Spinner size="lg" />
+        </CardContent>
+      </Card>
+
+      {/* Kbd - NEW */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Kbd</CardTitle>
+          <CardDescription>
+            Keyboard key display component
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">Save:</span>
+            <Kbd>Ctrl</Kbd>
+            <span>+</span>
+            <Kbd>S</Kbd>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">Copy:</span>
+            <Kbd>Ctrl</Kbd>
+            <span>+</span>
+            <Kbd>C</Kbd>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">Paste:</span>
+            <Kbd>Ctrl</Kbd>
+            <span>+</span>
+            <Kbd>V</Kbd>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">Command:</span>
+            <Kbd>⌘</Kbd>
+            <span>+</span>
+            <Kbd>K</Kbd>
           </div>
         </CardContent>
       </Card>

@@ -292,3 +292,11 @@ export {
 } from "./sidebar";
 
 export { Toaster as Sonner } from "./sonner";
+
+export { Combobox, type ComboboxProps, type ComboboxOption } from "./combobox";
+
+export { DatePicker, type DatePickerProps } from "./date-picker";
+
+export { Spinner, type SpinnerProps } from "./spinner";
+
+export { Kbd, type KbdProps } from "./kbd";
