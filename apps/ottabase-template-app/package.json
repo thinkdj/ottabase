@@ -25,6 +25,7 @@
     "@ottabase/cf-realtime": "workspace:*",
     "@ottabase/config": "workspace:*",
     "@ottabase/ottaeditor": "workspace:*",
+    "@ottabase/ottasearch": "workspace:*",
     "@ottabase/ottaselect": "workspace:*",
     "@ottabase/state": "workspace:*",
     "@ottabase/ui-code-highlight": "workspace:*",

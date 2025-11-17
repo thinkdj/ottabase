@@ -1,0 +1,56 @@
+{
+  "name": "@ottabase/ottasearch",
+  "version": "1.0.0",
+  "description": "Universal search component with D1 integration, notion-like UI, and mock mode for Ottabase apps",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    },
+    "./adapters": {
+      "types": "./dist/adapters.d.ts",
+      "import": "./dist/adapters.esm.js",
+      "require": "./dist/adapters.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts src/adapters.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts src/adapters.ts --format cjs,esm --dts --watch",
+    "clean": "rimraf dist",
+    "lint": "eslint src --ext .ts,.tsx",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ottabase/config": "workspace:*",
+    "clsx": "catalog:",
+    "lucide-react": "catalog:"
+  },
+  "peerDependencies": {
+    "@ottabase/cf": "workspace:*",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@ottabase/cf": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@ottabase/cf": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "eslint": "catalog:",
+    "rimraf": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:"
+  }
+}

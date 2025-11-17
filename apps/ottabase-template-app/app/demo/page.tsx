@@ -83,6 +83,20 @@ export default function DemoIndexPage() {
 
         <Card>
           <CardHeader>
+            <CardTitle>OttaSearch</CardTitle>
+            <CardDescription>
+              Universal search with Notion-like UI, keyboard navigation, and D1 integration
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/demo/ottasearch">View OttaSearch</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Cloudflare Services</CardTitle>
             <CardDescription>
               Type-safe wrappers for Cloudflare infrastructure: KV, D1, R2,
