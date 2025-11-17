@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { OttaSearch, SearchButton, SearchInput, createMockAdapter } from '@ottabase/ottasearch';
+import { OttaSearch, createMockAdapter } from '@ottabase/ottasearch';
 import type { SearchResult } from '@ottabase/ottasearch';
 
 export default function OttaSearchDemo() {
@@ -24,67 +24,136 @@ export default function OttaSearchDemo() {
             OttaSearch Demo
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
-            Universal search component with Notion-like UI and keyboard navigation
+            Universal search with flexible triggers and display modes
           </p>
         </div>
 
-        {/* Variant Demos */}
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Modal Variant */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Modal Variant
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Full-screen Notion-like search experience. Press{' '}
-                <kbd className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded">
-                  ⌘K
-                </kbd>{' '}
-                or click the button.
-              </p>
-            </div>
-            <OttaSearch
-              adapter={mockAdapter}
-              variant="modal"
-              onSelect={handleSelect}
-            />
+        {/* Popover Variants - NEW! */}
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Popover Display (Dropdown)
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Minimal dropdown that appears below the trigger. Perfect for quick searches.
+            </p>
           </div>
 
-          {/* Button Variant */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Button Variant
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Simple button that opens search modal. Perfect for navigation bars.
-              </p>
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Icon + Popover */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Icon Trigger
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Just an icon. Click to expand and search.
+                </p>
+              </div>
+              <div className="flex justify-center">
+                <OttaSearch
+                  adapter={mockAdapter}
+                  trigger="icon-input"
+                  display="popover"
+                  onSelect={handleSelect}
+                />
+              </div>
             </div>
-            <OttaSearch
-              adapter={mockAdapter}
-              variant="button"
-              onSelect={handleSelect}
-              className="w-full md:w-auto"
-            />
+
+            {/* Input + Popover */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Input Trigger
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Search input with dropdown results below.
+                </p>
+              </div>
+              <OttaSearch
+                adapter={mockAdapter}
+                trigger="input"
+                display="popover"
+                placeholder="Search anything..."
+                onSelect={handleSelect}
+              />
+            </div>
+
+            {/* Icon Input + Popover */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Icon + Input
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Icon that expands to input with popover.
+                </p>
+              </div>
+              <div className="flex justify-center">
+                <OttaSearch
+                  adapter={mockAdapter}
+                  trigger="icon-input"
+                  display="popover"
+                  size="lg"
+                  onSelect={handleSelect}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Variants */}
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Modal Display (Full-Screen)
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Notion-like full-screen search experience. Press{' '}
+              <kbd className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded">
+                ⌘K
+              </kbd>{' '}
+              for button trigger.
+            </p>
           </div>
 
-          {/* Input Variant */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4 md:col-span-2">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Input Variant
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Inline search with dropdown results. Use arrow keys to navigate.
-              </p>
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Button + Modal */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Button Trigger
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Button that opens full-screen modal.
+                </p>
+              </div>
+              <OttaSearch
+                adapter={mockAdapter}
+                trigger="button"
+                display="modal"
+                onSelect={handleSelect}
+              />
             </div>
-            <OttaSearch
-              adapter={mockAdapter}
-              variant="input"
-              placeholder="Try searching for users, documents, or tasks..."
-              onSelect={handleSelect}
-            />
+
+            {/* Input + Modal */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Input Trigger
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Input field that opens modal on click.
+                </p>
+              </div>
+              <OttaSearch
+                adapter={mockAdapter}
+                trigger="input"
+                display="modal"
+                placeholder="Click to search..."
+                onSelect={handleSelect}
+              />
+            </div>
           </div>
         </div>
 
@@ -135,11 +204,19 @@ export default function OttaSearchDemo() {
           <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400">
             <div className="flex items-start gap-2">
               <span className="text-green-500">✓</span>
+              <span>Flexible triggers: button, input, icon, icon-input</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-green-500">✓</span>
+              <span>Display modes: modal (full-screen), popover (dropdown)</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-green-500">✓</span>
               <span>Keyboard navigation (↑/↓/Enter/Esc)</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-green-500">✓</span>
-              <span>Global shortcut (⌘K / Ctrl+K)</span>
+              <span>Global shortcut (⌘K / Ctrl+K for modal)</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-green-500">✓</span>
@@ -147,19 +224,11 @@ export default function OttaSearchDemo() {
             </div>
             <div className="flex items-start gap-2">
               <span className="text-green-500">✓</span>
-              <span>Grouped results by category</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-green-500">✓</span>
-              <span>Recent searches tracking</span>
+              <span>Notion-inspired minimal UI</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-green-500">✓</span>
               <span>D1 database integration</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-green-500">✓</span>
-              <span>Mock mode for demos</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-green-500">✓</span>
@@ -168,26 +237,57 @@ export default function OttaSearchDemo() {
           </div>
         </div>
 
-        {/* Usage Example */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Usage Example
+        {/* Usage Examples */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Usage Examples
           </h3>
-          <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg overflow-x-auto text-sm">
-            <code className="text-gray-800 dark:text-gray-200">{`import { OttaSearch, createMockAdapter } from '@ottabase/ottasearch';
 
-const mockAdapter = createMockAdapter();
+          {/* Popover Examples */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Popover (Dropdown)
+            </h4>
+            <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg overflow-x-auto text-xs">
+              <code className="text-gray-800 dark:text-gray-200">{`// Icon that expands to input with dropdown
+<OttaSearch
+  adapter={adapter}
+  trigger="icon-input"
+  display="popover"
+/>
 
-function App() {
-  return (
-    <OttaSearch
-      adapter={mockAdapter}
-      variant="modal"
-      onSelect={(result) => console.log(result)}
-    />
-  );
-}`}</code>
-          </pre>
+// Input with dropdown
+<OttaSearch
+  adapter={adapter}
+  trigger="input"
+  display="popover"
+  placeholder="Quick search..."
+/>`}</code>
+            </pre>
+          </div>
+
+          {/* Modal Examples */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Modal (Full-Screen)
+            </h4>
+            <pre className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg overflow-x-auto text-xs">
+              <code className="text-gray-800 dark:text-gray-200">{`// Button with modal (⌘K shortcut)
+<OttaSearch
+  adapter={adapter}
+  trigger="button"
+  display="modal"
+/>
+
+// Input field that opens modal
+<OttaSearch
+  adapter={adapter}
+  trigger="input"
+  display="modal"
+  placeholder="Click to search..."
+/>`}</code>
+            </pre>
+          </div>
         </div>
       </div>
     </div>

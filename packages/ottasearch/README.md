@@ -1,12 +1,13 @@
 # @ottabase/ottasearch
 
-Universal search component for Ottabase applications with D1 integration, Notion-like UI, and mock mode for demos.
+Universal search component for Ottabase applications with D1 integration, Notion-like UI, and flexible display modes.
 
 ## Features
 
 - 🎨 **Notion-inspired UI** - Minimal, slick interface with dark mode support
 - ⌨️ **Keyboard Navigation** - Full keyboard support (Cmd/Ctrl+K, arrows, Enter, Esc)
-- 🔍 **Multiple Variants** - Button, Input, and Modal (full-screen) modes
+- 🔍 **Flexible Triggers** - Button, Input, Icon, or Icon+Input
+- 📺 **Display Modes** - Modal (full-screen) or Popover (dropdown)
 - 📦 **Flexible Adapters** - D1, Mock, or custom data sources
 - 🌙 **Dark Mode** - Built-in dark mode support via CSS classes
 - ⚡ **Real-time Search** - Debounced search with loading states
@@ -32,6 +33,42 @@ function App() {
 }
 ```
 
+### Trigger + Display Combinations
+
+The component supports different **triggers** (what the user interacts with) and **display modes** (how results are shown):
+
+```tsx
+// Icon that expands to input with dropdown (minimal, Notion-style)
+<OttaSearch
+  adapter={adapter}
+  trigger="icon-input"
+  display="popover"
+/>
+
+// Input field with dropdown results (quick search)
+<OttaSearch
+  adapter={adapter}
+  trigger="input"
+  display="popover"
+  placeholder="Search..."
+/>
+
+// Button with full-screen modal (⌘K shortcut)
+<OttaSearch
+  adapter={adapter}
+  trigger="button"
+  display="modal"
+/>
+
+// Input field that opens modal on click
+<OttaSearch
+  adapter={adapter}
+  trigger="input"
+  display="modal"
+  placeholder="Click to search..."
+/>
+```
+
 ### With D1 Database
 
 ```tsx
@@ -45,35 +82,40 @@ const d1Client = createD1Client({ database: env.DB });
 const searchAdapter = createD1SearchAdapter({
   d1Client,
   tables: [
-    { name: 'users', searchFields: ['name', 'email'], displayFields: ['name', 'email'] },
-    { name: 'posts', searchFields: ['title', 'content'], displayFields: ['title'] },
+    {
+      name: 'users',
+      searchFields: ['name', 'email'],
+      displayFields: ['name', 'email'],
+      category: 'Users',
+      icon: 'User'
+    },
+    {
+      name: 'posts',
+      searchFields: ['title', 'content'],
+      displayFields: ['title'],
+      category: 'Content',
+      icon: 'FileText'
+    },
   ],
 });
 
 function App() {
-  return <OttaSearch adapter={searchAdapter} />;
+  return (
+    <OttaSearch
+      adapter={searchAdapter}
+      trigger="icon-input"
+      display="popover"
+    />
+  );
 }
-```
-
-### Variants
-
-```tsx
-// Modal (default) - Full-screen Notion-like experience
-<OttaSearch adapter={adapter} variant="modal" />
-
-// Button - Simple trigger button
-<OttaSearch adapter={adapter} variant="button" />
-
-// Input - Inline search with dropdown
-<OttaSearch adapter={adapter} variant="input" placeholder="Search..." />
 ```
 
 ### Keyboard Shortcuts
 
-- `Cmd/Ctrl + K` - Open search modal
+- `Cmd/Ctrl + K` - Open search modal (button + modal only)
 - `↑/↓` - Navigate results
 - `Enter` - Select result
-- `Esc` - Close modal
+- `Esc` - Close search
 
 ## API
 
@@ -82,11 +124,29 @@ function App() {
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `adapter` | `SearchAdapter` | Required | Data source adapter |
-| `variant` | `'modal' \| 'button' \| 'input'` | `'modal'` | UI variant |
+| `trigger` | `'button' \| 'input' \| 'icon' \| 'icon-input'` | `'button'` | Trigger type |
+| `display` | `'modal' \| 'popover'` | `'modal'` | Display mode |
 | `placeholder` | `string` | `'Search...'` | Input placeholder |
-| `shortcut` | `string` | `'⌘K'` | Keyboard shortcut display |
+| `showShortcut` | `boolean` | `true` | Show ⌘K hint (button only) |
 | `onSelect` | `(result: SearchResult) => void` | - | Result selection callback |
 | `className` | `string` | - | Additional CSS classes |
+| `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | Size for button/icon triggers |
+| `variant` | `'default' \| 'ghost' \| 'minimal'` | `'default'` | Button variant |
+| `debounceMs` | `number` | `300` | Search debounce delay |
+| `autoSearch` | `boolean` | `true` | Auto-search on input |
+| `minQueryLength` | `number` | `1` | Min query length |
+
+### Trigger Options
+
+- **`button`** - Button with "Search" text and ⌘K hint
+- **`input`** - Full search input field
+- **`icon`** - Just a search icon
+- **`icon-input`** - Icon that expands to input on click (recommended for minimal UI)
+
+### Display Options
+
+- **`modal`** - Full-screen Notion-like modal with recent searches
+- **`popover`** - Minimal dropdown below trigger (perfect for quick searches)
 
 ### Creating Custom Adapters
 
@@ -103,6 +163,59 @@ const customAdapter: SearchAdapter = {
     return [];
   },
 };
+```
+
+### SearchResult Type
+
+```typescript
+interface SearchResult {
+  id: string;
+  title: string;
+  description?: string;  // Optional subtitle
+  category?: string;     // For grouping
+  icon?: string;         // Lucide icon name
+  url?: string;          // Navigation URL
+  metadata?: Record<string, any>;
+}
+```
+
+## Examples
+
+### Minimal Navbar Search
+
+```tsx
+// Icon that expands to search with dropdown
+<OttaSearch
+  adapter={adapter}
+  trigger="icon-input"
+  display="popover"
+  size="md"
+  variant="ghost"
+/>
+```
+
+### Command Palette
+
+```tsx
+// Full-screen modal with ⌘K shortcut
+<OttaSearch
+  adapter={adapter}
+  trigger="button"
+  display="modal"
+  showShortcut={true}
+/>
+```
+
+### Quick Filter
+
+```tsx
+// Input with dropdown for filtering
+<OttaSearch
+  adapter={adapter}
+  trigger="input"
+  display="popover"
+  placeholder="Filter items..."
+/>
 ```
 
 ## License

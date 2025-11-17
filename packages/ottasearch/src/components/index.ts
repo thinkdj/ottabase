@@ -13,3 +13,9 @@ export type { SearchButtonProps } from './SearchButton';
 
 export { SearchInput } from './SearchInput';
 export type { SearchInputProps } from './SearchInput';
+
+export { SearchPopover } from './SearchPopover';
+export type { SearchPopoverProps } from './SearchPopover';
+
+export { SearchIconTrigger } from './SearchIconTrigger';
+export type { SearchIconTriggerProps } from './SearchIconTrigger';

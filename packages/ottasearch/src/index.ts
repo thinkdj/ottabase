@@ -4,12 +4,21 @@
  */
 
 // Main component
-export { OttaSearch, SearchModal, SearchButton, SearchInput } from './components';
+export {
+  OttaSearch,
+  SearchModal,
+  SearchButton,
+  SearchInput,
+  SearchPopover,
+  SearchIconTrigger,
+} from './components';
 export type {
   OttaSearchProps,
   SearchModalProps,
   SearchButtonProps,
   SearchInputProps,
+  SearchPopoverProps,
+  SearchIconTriggerProps,
 } from './components';
 
 // Adapters
