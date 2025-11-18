@@ -6,6 +6,20 @@
 import type { SearchAdapter, SearchResult, SearchOptions } from '../types';
 
 /**
+ * Create an AbortController with timeout
+ * @param timeout Timeout in milliseconds
+ * @returns Object with controller and cleanup function
+ */
+function createAbortController(timeout: number) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  const cleanup = () => clearTimeout(timeoutId);
+
+  return { controller, cleanup };
+}
+
+/**
  * API adapter configuration
  */
 export interface ApiAdapterConfig {
@@ -93,8 +107,7 @@ export function createApiAdapter(config: ApiAdapterConfig): SearchAdapter {
         }
 
         // Create abort controller for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        const { controller, cleanup } = createAbortController(timeout);
 
         try {
           const response = await fetch(url.toString(), {
@@ -106,7 +119,7 @@ export function createApiAdapter(config: ApiAdapterConfig): SearchAdapter {
             signal: controller.signal,
           });
 
-          clearTimeout(timeoutId);
+          cleanup();
 
           if (!response.ok) {
             throw new Error(`API error: ${response.status} ${response.statusText}`);
@@ -115,7 +128,7 @@ export function createApiAdapter(config: ApiAdapterConfig): SearchAdapter {
           const data = await response.json();
           return transform(data);
         } catch (error) {
-          clearTimeout(timeoutId);
+          cleanup();
           throw error;
         }
       } catch (error) {
@@ -155,8 +168,7 @@ export function createApiAdapterPost(config: ApiAdapterConfig): SearchAdapter {
         const url = new URL(searchEndpoint, baseUrl);
 
         // Create abort controller for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        const { controller, cleanup } = createAbortController(timeout);
 
         try {
           const response = await fetch(url.toString(), {
@@ -176,7 +188,7 @@ export function createApiAdapterPost(config: ApiAdapterConfig): SearchAdapter {
             signal: controller.signal,
           });
 
-          clearTimeout(timeoutId);
+          cleanup();
 
           if (!response.ok) {
             throw new Error(`API error: ${response.status} ${response.statusText}`);
@@ -185,7 +197,7 @@ export function createApiAdapterPost(config: ApiAdapterConfig): SearchAdapter {
           const data = await response.json();
           return transform(data);
         } catch (error) {
-          clearTimeout(timeoutId);
+          cleanup();
           throw error;
         }
       } catch (error) {

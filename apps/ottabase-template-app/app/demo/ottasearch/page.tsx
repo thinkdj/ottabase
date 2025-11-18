@@ -2,13 +2,30 @@
 
 import React, { useState } from 'react';
 import { OttaSearch, createMockAdapter } from '@ottabase/ottasearch';
-import type { SearchResult } from '@ottabase/ottasearch';
+import type { SearchResult, SearchScope, EmptyStateConfig } from '@ottabase/ottasearch';
 
 export default function OttaSearchDemo() {
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
 
   // Create mock adapter for demo
   const mockAdapter = createMockAdapter();
+
+  // Define search scopes
+  const searchScopes: SearchScope[] = [
+    { id: 'Users', name: 'Users', icon: 'User', description: 'Search users' },
+    { id: 'Documents', name: 'Documents', icon: 'FileText', description: 'Search documents' },
+    { id: 'Projects', name: 'Projects', icon: 'FolderOpen', description: 'Search projects' },
+    { id: 'Tasks', name: 'Tasks', icon: 'CheckSquare', description: 'Search tasks' },
+  ];
+
+  // Configure empty state with suggestions
+  const emptyStateConfig: EmptyStateConfig = {
+    message: 'No results found. Try different keywords.',
+    suggestions: [
+      { label: 'View all users', onClick: () => console.log('Navigate to users') },
+      { label: 'Browse docs', onClick: () => console.log('Navigate to docs') },
+    ],
+  };
 
   const handleSelect = (result: SearchResult) => {
     setSelectedResult(result);
@@ -157,6 +174,94 @@ export default function OttaSearchDemo() {
           </div>
         </div>
 
+        {/* Advanced Features */}
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Advanced Features
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Scopes, highlights, empty states, and localStorage persistence
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Search Scopes */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Search Scopes
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Filter results by category with scope tabs (Users, Documents, Projects, Tasks)
+                </p>
+              </div>
+              <OttaSearch
+                adapter={mockAdapter}
+                trigger="button"
+                display="modal"
+                scopes={searchScopes}
+                onSelect={handleSelect}
+              />
+              <pre className="bg-gray-50 dark:bg-gray-900 p-3 rounded text-xs overflow-x-auto">
+                <code className="text-gray-800 dark:text-gray-200">{`scopes={[
+  { id: 'Users', name: 'Users', icon: 'User' },
+  { id: 'Documents', name: 'Documents', icon: 'FileText' },
+]}`}</code>
+              </pre>
+            </div>
+
+            {/* Custom Empty State */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Custom Empty State
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Custom message and suggestions when no results found
+                </p>
+              </div>
+              <OttaSearch
+                adapter={mockAdapter}
+                trigger="button"
+                display="modal"
+                emptyStateConfig={emptyStateConfig}
+                onSelect={handleSelect}
+              />
+              <pre className="bg-gray-50 dark:bg-gray-900 p-3 rounded text-xs overflow-x-auto">
+                <code className="text-gray-800 dark:text-gray-200">{`emptyStateConfig={{
+  message: 'No results found...',
+  suggestions: [
+    { label: 'View all', onClick: ... }
+  ]
+}}`}</code>
+              </pre>
+            </div>
+
+            {/* Highlights & Recent Searches */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4 md:col-span-2">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Search Highlights & Recent Searches
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Search terms are automatically highlighted in results. Recent searches (last 5) are persisted to localStorage and shown when the search is empty.
+                </p>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4 text-xs">
+                <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded">
+                  <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">Auto Highlights</div>
+                  <p className="text-gray-600 dark:text-gray-400">Query terms are highlighted with yellow background in titles and descriptions</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded">
+                  <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">localStorage Persistence</div>
+                  <p className="text-gray-600 dark:text-gray-400">Last 5 searches auto-saved and shown on empty query</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Selected Result Display */}
         {selectedResult && (
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6">
@@ -233,6 +338,22 @@ export default function OttaSearchDemo() {
             <div className="flex items-start gap-2">
               <span className="text-green-500">✓</span>
               <span>TypeScript support</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-green-500">✓</span>
+              <span>Auto search highlights</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-green-500">✓</span>
+              <span>Search scopes/filters</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-green-500">✓</span>
+              <span>Recent searches (localStorage)</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-green-500">✓</span>
+              <span>Custom empty states</span>
             </div>
           </div>
         </div>

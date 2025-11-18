@@ -3,7 +3,7 @@
  */
 
 import React, { useRef } from 'react';
-import type { SearchAdapter } from '../types';
+import type { SearchAdapter, SearchScope, EmptyStateConfig } from '../types';
 import { useSearch } from '../hooks/useSearch';
 import { useKeyboardNavigation } from '../hooks/useKeyboardNavigation';
 import { SearchModal } from './SearchModal';
@@ -37,6 +37,10 @@ export interface OttaSearchProps {
   size?: 'sm' | 'md' | 'lg';
   /** Variant for button triggers */
   variant?: 'default' | 'ghost' | 'minimal';
+  /** Available search scopes */
+  scopes?: SearchScope[];
+  /** Empty state configuration */
+  emptyStateConfig?: EmptyStateConfig;
 }
 
 export const OttaSearch: React.FC<OttaSearchProps> = ({
@@ -52,6 +56,8 @@ export const OttaSearch: React.FC<OttaSearchProps> = ({
   minQueryLength = 1,
   size = 'md',
   variant = 'default',
+  scopes,
+  emptyStateConfig,
 }) => {
   const triggerRef = useRef<HTMLDivElement>(null);
 
@@ -70,6 +76,7 @@ export const OttaSearch: React.FC<OttaSearchProps> = ({
     error,
     isOpen,
     focusedIndex,
+    activeScope,
     setQuery,
     open,
     close,
@@ -78,6 +85,7 @@ export const OttaSearch: React.FC<OttaSearchProps> = ({
     selectFocused,
     selectResult,
     clearHistory,
+    setActiveScope,
   } = searchState;
 
   // Handle result selection
@@ -173,6 +181,8 @@ export const OttaSearch: React.FC<OttaSearchProps> = ({
             focusedIndex={focusedIndex}
             onSelectResult={handleSelectResult}
             anchorRef={triggerRef}
+            query={query}
+            emptyStateConfig={emptyStateConfig}
           />
         </div>
       </div>
@@ -204,6 +214,10 @@ export const OttaSearch: React.FC<OttaSearchProps> = ({
           onSelectResult={handleSelectResult}
           onClearHistory={clearHistory}
           placeholder={placeholder}
+          emptyStateConfig={emptyStateConfig}
+          scopes={scopes}
+          activeScope={activeScope}
+          onScopeChange={setActiveScope}
         />
       </>
     );
@@ -232,6 +246,10 @@ export const OttaSearch: React.FC<OttaSearchProps> = ({
         onSelectResult={handleSelectResult}
         onClearHistory={clearHistory}
         placeholder={placeholder}
+        emptyStateConfig={emptyStateConfig}
+        scopes={scopes}
+        activeScope={activeScope}
+        onScopeChange={setActiveScope}
       />
     </>
   );

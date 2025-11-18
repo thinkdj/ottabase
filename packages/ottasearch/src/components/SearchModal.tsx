@@ -5,8 +5,8 @@
 import React, { useEffect, useRef } from 'react';
 import { Search, Loader2, Clock, X } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { SearchResult, GroupedResults } from '../types';
-import { getCommandKey } from '../utils';
+import type { SearchResult, GroupedResults, EmptyStateConfig, SearchScope } from '../types';
+import { getCommandKey, highlightTextParts } from '../utils';
 import * as LucideIcons from 'lucide-react';
 
 export interface SearchModalProps {
@@ -36,6 +36,14 @@ export interface SearchModalProps {
   placeholder?: string;
   /** Custom className */
   className?: string;
+  /** Empty state configuration */
+  emptyStateConfig?: EmptyStateConfig;
+  /** Available search scopes */
+  scopes?: SearchScope[];
+  /** Active scope ID */
+  activeScope?: string;
+  /** Scope change handler */
+  onScopeChange?: (scopeId: string | undefined) => void;
 }
 
 export const SearchModal: React.FC<SearchModalProps> = ({
@@ -52,6 +60,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   onClearHistory,
   placeholder = 'Search...',
   className,
+  emptyStateConfig,
+  scopes,
+  activeScope,
+  onScopeChange,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -160,6 +172,44 @@ export const SearchModal: React.FC<SearchModalProps> = ({
           </kbd>
         </div>
 
+        {/* Scope Selector */}
+        {scopes && scopes.length > 0 && (
+          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex gap-2 overflow-x-auto">
+              <button
+                onClick={() => onScopeChange?.(undefined)}
+                className={clsx(
+                  'px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors',
+                  !activeScope
+                    ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                )}
+              >
+                All
+              </button>
+              {scopes.map((scope) => {
+                const ScopeIcon = scope.icon ? (LucideIcons as any)[scope.icon] : null;
+                return (
+                  <button
+                    key={scope.id}
+                    onClick={() => onScopeChange?.(scope.id)}
+                    className={clsx(
+                      'px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors flex items-center gap-1.5',
+                      activeScope === scope.id
+                        ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    )}
+                    title={scope.description}
+                  >
+                    {ScopeIcon && <ScopeIcon className="w-3.5 h-3.5" />}
+                    {scope.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Results */}
         <div
           ref={resultsRef}
@@ -183,9 +233,30 @@ export const SearchModal: React.FC<SearchModalProps> = ({
           {/* Empty State */}
           {showEmpty && (
             <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
-              <Search className="w-8 h-8 mb-3 opacity-50" />
-              <p className="text-sm">No results found</p>
-              <p className="text-xs mt-1">Try a different search term</p>
+              {emptyStateConfig?.component ? (
+                <emptyStateConfig.component />
+              ) : (
+                <>
+                  <Search className="w-8 h-8 mb-3 opacity-50" />
+                  <p className="text-sm">{emptyStateConfig?.message || 'No results found'}</p>
+                  {!emptyStateConfig?.message && (
+                    <p className="text-xs mt-1">Try a different search term</p>
+                  )}
+                  {emptyStateConfig?.suggestions && emptyStateConfig.suggestions.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                      {emptyStateConfig.suggestions.map((suggestion, idx) => (
+                        <button
+                          key={idx}
+                          onClick={suggestion.onClick}
+                          className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors"
+                        >
+                          {suggestion.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
 
@@ -214,6 +285,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                     index={index}
                     isFocused={index === focusedIndex}
                     onSelect={onSelectResult}
+                    query={query}
                   />
                 ))}
               </div>
@@ -242,6 +314,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                           index={globalIndex}
                           isFocused={globalIndex === focusedIndex}
                           onSelect={onSelectResult}
+                          query={query}
                         />
                       );
                     })}
@@ -292,6 +365,7 @@ interface ResultItemProps {
   index: number;
   isFocused: boolean;
   onSelect: (result: SearchResult) => void;
+  query?: string;
 }
 
 const ResultItem: React.FC<ResultItemProps> = ({
@@ -299,11 +373,16 @@ const ResultItem: React.FC<ResultItemProps> = ({
   index,
   isFocused,
   onSelect,
+  query = '',
 }) => {
   // Get icon component
   const IconComponent = result.icon
     ? (LucideIcons as any)[result.icon]
     : null;
+
+  // Highlight title and description
+  const titleParts = highlightTextParts(result.title, query);
+  const descriptionParts = result.description ? highlightTextParts(result.description, query) : [];
 
   return (
     <button
@@ -340,11 +419,33 @@ const ResultItem: React.FC<ResultItemProps> = ({
               : 'text-gray-900 dark:text-gray-100'
           )}
         >
-          {result.title}
+          {titleParts.map((part, idx) => (
+            part.highlight ? (
+              <mark
+                key={idx}
+                className="bg-yellow-200 dark:bg-yellow-900/50 text-gray-900 dark:text-gray-100"
+              >
+                {part.text}
+              </mark>
+            ) : (
+              <span key={idx}>{part.text}</span>
+            )
+          ))}
         </div>
         {result.description && (
           <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-            {result.description}
+            {descriptionParts.map((part, idx) => (
+              part.highlight ? (
+                <mark
+                  key={idx}
+                  className="bg-yellow-200 dark:bg-yellow-900/50 text-gray-700 dark:text-gray-300"
+                >
+                  {part.text}
+                </mark>
+              ) : (
+                <span key={idx}>{part.text}</span>
+              )
+            ))}
           </div>
         )}
       </div>

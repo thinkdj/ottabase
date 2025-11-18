@@ -6,7 +6,8 @@
 import React, { useRef, useEffect } from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { SearchResult, GroupedResults } from '../types';
+import type { SearchResult, GroupedResults, EmptyStateConfig } from '../types';
+import { highlightTextParts } from '../utils';
 import * as LucideIcons from 'lucide-react';
 
 export interface SearchPopoverProps {
@@ -30,6 +31,10 @@ export interface SearchPopoverProps {
   className?: string;
   /** Max results to show */
   maxResults?: number;
+  /** Search query for highlighting */
+  query?: string;
+  /** Empty state configuration */
+  emptyStateConfig?: EmptyStateConfig;
 }
 
 export const SearchPopover: React.FC<SearchPopoverProps> = ({
@@ -43,6 +48,8 @@ export const SearchPopover: React.FC<SearchPopoverProps> = ({
   anchorRef,
   className,
   maxResults = 8,
+  query = '',
+  emptyStateConfig,
 }) => {
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -126,9 +133,28 @@ export const SearchPopover: React.FC<SearchPopoverProps> = ({
 
       {/* Empty State */}
       {!isLoading && !error && !hasResults && (
-        <div className="flex items-center gap-2 px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-          <Search className="w-4 h-4 opacity-50" />
-          <span>No results found</span>
+        <div className="px-3 py-4">
+          {emptyStateConfig?.component ? (
+            <emptyStateConfig.component />
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <Search className="w-4 h-4 opacity-50" />
+              <span>{emptyStateConfig?.message || 'No results found'}</span>
+            </div>
+          )}
+          {emptyStateConfig?.suggestions && emptyStateConfig.suggestions.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {emptyStateConfig.suggestions.map((suggestion, idx) => (
+                <button
+                  key={idx}
+                  onClick={suggestion.onClick}
+                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                >
+                  {suggestion.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -140,6 +166,10 @@ export const SearchPopover: React.FC<SearchPopoverProps> = ({
               ? (LucideIcons as any)[result.icon]
               : null;
             const isFocused = index === focusedIndex;
+
+            // Highlight title and description
+            const titleParts = highlightTextParts(result.title, query);
+            const descriptionParts = result.description ? highlightTextParts(result.description, query) : [];
 
             return (
               <button
@@ -182,11 +212,33 @@ export const SearchPopover: React.FC<SearchPopoverProps> = ({
                         : 'text-gray-900 dark:text-gray-100'
                     )}
                   >
-                    {result.title}
+                    {titleParts.map((part, idx) => (
+                      part.highlight ? (
+                        <mark
+                          key={idx}
+                          className="bg-yellow-200 dark:bg-yellow-900/50 text-gray-900 dark:text-gray-100"
+                        >
+                          {part.text}
+                        </mark>
+                      ) : (
+                        <span key={idx}>{part.text}</span>
+                      )
+                    ))}
                   </div>
                   {result.description && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                      {result.description}
+                      {descriptionParts.map((part, idx) => (
+                        part.highlight ? (
+                          <mark
+                            key={idx}
+                            className="bg-yellow-200 dark:bg-yellow-900/50 text-gray-700 dark:text-gray-300"
+                          >
+                            {part.text}
+                          </mark>
+                        ) : (
+                          <span key={idx}>{part.text}</span>
+                        )
+                      ))}
                     </div>
                   )}
                   {result.url && (
