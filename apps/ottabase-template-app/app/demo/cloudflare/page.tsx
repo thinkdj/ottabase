@@ -42,6 +42,11 @@ export default function CloudflareDemoPage() {
       description: 'WebSocket-based real-time messaging with offline support',
       href: '/demo/cloudflare/realtime',
     },
+    {
+      name: 'Task Scheduler',
+      description: 'Database-driven cron scheduler with execution logs',
+      href: '/demo/scheduler',
+    },
   ];
 
   return (
