@@ -62,6 +62,7 @@ export default function SchedulerDemoPage() {
   const handleCreateTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const cronExpression = formData.get('cron_expression') as string;
 
     try {
       setLoading(true);
@@ -72,7 +73,8 @@ export default function SchedulerDemoPage() {
           app_id: 'demo-app',
           name: formData.get('name'),
           description: formData.get('description'),
-          frequency: formData.get('frequency'),
+          frequency: cronExpression ? 'custom' : formData.get('frequency'),
+          cron_expression: cronExpression || undefined,
           handler: formData.get('handler'),
           payload: formData.get('payload')
             ? JSON.parse(formData.get('payload') as string)
@@ -450,24 +452,47 @@ export default function SchedulerDemoPage() {
                     <option value="every_30_minutes">Every 30 Minutes</option>
                     <option value="hourly">Hourly</option>
                     <option value="every_6_hours">Every 6 Hours</option>
-                    <option value="daily">Daily</option>
+                    <option value="daily">Daily (midnight UTC)</option>
                     <option value="weekly">Weekly</option>
                   </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    For specific times like "daily at 1:00 AM", use cron expression below
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Custom Cron Expression (optional)
+                  </label>
+                  <input
+                    type="text"
+                    name="cron_expression"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:border-gray-400 focus:outline-none"
+                    placeholder="e.g., 0 1 * * * (daily at 1:00 AM)"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Examples: "0 1 * * *" (1 AM daily), "0 9,17 * * 1-5" (9 AM & 5 PM weekdays)
+                  </p>
                 </div>
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">
                     Handler Function
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="handler"
                     required
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-400 focus:outline-none"
-                    placeholder="e.g., demo-task"
-                  />
+                  >
+                    <option value="">Select a handler...</option>
+                    <option value="demo-task">demo-task</option>
+                    <option value="send-summary-email">send-summary-email</option>
+                    <option value="send-notifications">send-notifications</option>
+                    <option value="cleanup-task">cleanup-task</option>
+                    <option value="database-backup">database-backup</option>
+                  </select>
                   <p className="mt-1 text-xs text-gray-500">
-                    Name of the handler function to execute
+                    Registered handler to execute
                   </p>
                 </div>
 

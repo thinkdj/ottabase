@@ -6,6 +6,8 @@ import type { CreateTaskInput } from '@ottabase/cf-scheduler';
 export const runtime = 'edge';
 
 // Demo task handlers
+// In production, register your custom handlers here
+// Each handler receives optional payload from the task definition
 const demoHandlers = {
   'demo-task': async (payload?: unknown) => {
     console.log('Demo task executed with payload:', payload);
@@ -15,6 +17,25 @@ const demoHandlers = {
       output: { message: 'Demo task completed', payload },
     };
   },
+
+  // Example: Email sender handler
+  'send-summary-email': async (payload?: unknown) => {
+    const params = payload as { recipients?: string[]; subject?: string } | undefined;
+    console.log('Sending summary email to:', params?.recipients || ['default@example.com']);
+
+    // Your email sending logic would go here
+    // await emailService.send(...)
+
+    return {
+      success: true,
+      output: {
+        sent: params?.recipients?.length || 1,
+        subject: params?.subject || 'Daily Summary',
+        timestamp: new Date().toISOString(),
+      },
+    };
+  },
+
   'send-notifications': async (payload?: unknown) => {
     console.log('Sending notifications:', payload);
     return {
@@ -22,11 +43,24 @@ const demoHandlers = {
       output: { sent: 5, payload },
     };
   },
+
   'cleanup-task': async () => {
     console.log('Running cleanup task');
     return {
       success: true,
       output: { cleaned: 10 },
+    };
+  },
+
+  // Example: Database maintenance handler
+  'database-backup': async (payload?: unknown) => {
+    console.log('Running database backup');
+    return {
+      success: true,
+      output: {
+        backupSize: '1.2GB',
+        timestamp: new Date().toISOString(),
+      },
     };
   },
 };

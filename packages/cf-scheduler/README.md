@@ -20,75 +20,118 @@ pnpm add @ottabase/cf-scheduler
 
 ## Quick Start
 
-### 1. Server Setup
+### 1. Register Your Custom Handlers
+
+First, define the custom actions you want to schedule:
 
 ```typescript
 import { createScheduler } from '@ottabase/cf-scheduler/server';
-import { createCronHandler } from '@ottabase/cf-scheduler/server';
 
-// Define your task handlers
+// Define your task handlers - these are the custom actions
 const handlers = {
-  'send-notifications': async (payload) => {
-    console.log('Sending notifications...', payload);
-    // Your task logic here
-    return { success: true, output: { sent: 10 } };
+  'send-summary-email': async (payload) => {
+    const { recipients, subject } = payload;
+    // Your email sending logic
+    await sendEmail(recipients, subject);
+    return { success: true, output: { sent: recipients.length } };
   },
   'cleanup-database': async () => {
-    console.log('Cleaning up old records...');
     // Your cleanup logic
-    return { success: true };
+    const deleted = await cleanupOldRecords();
+    return { success: true, output: { deleted } };
   },
 };
 
-// Create scheduler instance
+// Create scheduler instance with your handlers
 const scheduler = createScheduler(env.DB, { handlers });
 
 // Initialize database schema (run once)
 await scheduler.initializeSchema();
+```
 
-// Create a scheduled task
+### 2. Create Scheduled Tasks in Database
+
+Add tasks to the database - the scheduler will automatically run them at the specified times:
+
+```typescript
+// Example: Send summary email daily at 1:00 AM
 await scheduler.createTask({
   app_id: 'my-app',
-  name: 'Send Daily Notifications',
-  description: 'Send notifications to users',
-  frequency: 'daily',
-  handler: 'send-notifications',
-  payload: { type: 'daily-digest' },
+  name: 'Send Daily Summary Email',
+  description: 'Send summary email to all users',
+
+  // Use custom cron for specific time
+  frequency: 'custom',
+  cron_expression: '0 1 * * *', // Daily at 1:00 AM UTC
+
+  // Handler name (must match registered handler)
+  handler: 'send-summary-email',
+
+  // Metadata/parameters passed to handler
+  payload: {
+    recipients: ['user@example.com'],
+    subject: 'Your Daily Summary',
+    template: 'daily-summary',
+  },
 });
 ```
 
-### 2. Cloudflare Workers Cron Integration
+### 3. Cloudflare Workers Cron Integration
+
+The scheduler checks the database for due tasks every time Cloudflare triggers it.
 
 In your `wrangler.toml`:
 
 ```toml
 [triggers]
-crons = ["* * * * *"]  # Run every minute
+crons = ["* * * * *"]  # Cloudflare triggers every minute
+
+[[d1_databases]]
+binding = "DB"
+database_name = "my-database"
+database_id = "your-database-id"
 ```
 
 In your worker:
 
 ```typescript
-export default {
-  // Regular fetch handler
-  async fetch(request, env, ctx) {
-    // Your API logic
-  },
+import { createCronHandler } from '@ottabase/cf-scheduler/server';
 
-  // Scheduled cron handler
+export default {
+  // Scheduled cron handler - Cloudflare calls this every minute
+  // It checks the database for tasks that are due to run
   scheduled: createCronHandler({
     database: env.DB,
     handlers: {
-      'send-notifications': async (payload) => {
-        // Task implementation
+      // Same handlers as registered above
+      'send-summary-email': async (payload) => {
+        const { recipients, subject } = payload;
+        await sendEmail(recipients, subject);
+        return { success: true, output: { sent: recipients.length } };
+      },
+      'cleanup-database': async () => {
+        // Your cleanup logic
+        return { success: true };
       },
     },
     verbose: true, // Enable logging
+    maxTasksPerRun: 10, // Process up to 10 tasks per execution
   }),
+
+  // Regular fetch handler for your API
+  async fetch(request, env, ctx) {
+    // Your API endpoints
+  },
 };
 ```
 
-### 3. Client-Side Usage
+**How it works:**
+1. Cloudflare triggers your worker every minute (or your chosen interval)
+2. The scheduler queries the database for tasks where `next_run_at <= now`
+3. Each due task's handler is executed with its payload
+4. Task execution is logged, and `next_run_at` is updated based on the schedule
+
+### 4. Client-Side Usage
 
 ```typescript
 import { createSchedulerClient } from '@ottabase/cf-scheduler/client';
@@ -115,6 +158,27 @@ await client.resumeTask(task.id);
 
 // Get execution logs
 const logs = await client.getTaskLogs(task.id);
+```
+
+## How It Works
+
+The scheduler follows a database-driven approach:
+
+1. **Register Handlers**: Define custom action functions (e.g., `send-summary-email`, `cleanup-database`)
+2. **Create Tasks in DB**: Add task entries to the database with:
+   - Handler name to execute
+   - Schedule (frequency or cron expression)
+   - Payload (metadata/parameters for the handler)
+3. **Cloudflare Triggers**: Cloudflare Workers cron triggers your worker at regular intervals (e.g., every minute)
+4. **Scheduler Checks DB**: On each trigger, the scheduler queries for tasks where `next_run_at <= now`
+5. **Execute Tasks**: Due tasks are executed with their payload passed to the registered handler
+6. **Update & Log**: Execution results are logged, and `next_run_at` is calculated for the next run
+
+**Example Flow:**
+```
+User creates task → Stored in D1 → Cloudflare triggers worker →
+Scheduler checks DB → Finds due tasks → Executes handler with payload →
+Logs result → Updates next_run_at
 ```
 
 ## Supported Frequencies
