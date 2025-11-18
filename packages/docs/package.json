@@ -1,0 +1,60 @@
+{
+  "name": "@ottabase/docs",
+  "version": "0.1.0",
+  "description": "Minimal, clean documentation package for ottabase - like Notion, but for docs",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --external react",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --external react --watch",
+    "lint": "eslint src/",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "documentation",
+    "docs",
+    "markdown",
+    "ottabase",
+    "react",
+    "mantine"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0",
+    "@mantine/core": "^8.3.1",
+    "@mantine/hooks": "^8.3.1"
+  },
+  "dependencies": {
+    "@ottabase/ui-code-highlight": "workspace:*",
+    "@tabler/icons-react": "catalog:",
+    "gray-matter": "^4.0.3",
+    "react": "catalog:",
+    "react-markdown": "^9.0.1",
+    "rehype-highlight": "^7.0.0",
+    "rehype-raw": "^7.0.0",
+    "rehype-slug": "^6.0.0",
+    "remark-gfm": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@types/node": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:"
+  }
+}
