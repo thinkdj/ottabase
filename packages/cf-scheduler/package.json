@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Database-driven task scheduler with cron support for Cloudflare Workers and D1",
   "main": "dist/index.js",
-  "module": "dist/index.esm.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
@@ -12,22 +12,22 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
     "./server": {
       "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.esm.js",
+      "import": "./dist/server/index.mjs",
       "require": "./dist/server/index.js"
     },
     "./client": {
       "types": "./dist/client/index.d.ts",
-      "import": "./dist/client/index.esm.js",
+      "import": "./dist/client/index.mjs",
       "require": "./dist/client/index.js"
     },
     "./types": {
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/types/index.esm.js",
+      "import": "./dist/types/index.mjs",
       "require": "./dist/types/index.js"
     }
   },
