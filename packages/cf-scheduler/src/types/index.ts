@@ -45,6 +45,9 @@ export interface ScheduledTask {
   failure_count: number;
   max_retries: number;
   timeout_seconds: number;
+  skip_missed: number; // Boolean as INTEGER (0 or 1) - skip execution if missed
+  execution_lock_id?: string; // Lock ID for preventing concurrent execution
+  execution_locked_at?: string; // When the lock was acquired
   created_at: string;
   updated_at: string;
 }
@@ -125,6 +128,7 @@ export interface CreateTaskInput {
   payload?: unknown;
   max_retries?: number;
   timeout_seconds?: number;
+  skip_missed?: boolean; // Skip execution if time has passed
 }
 
 /**
@@ -140,6 +144,7 @@ export interface UpdateTaskInput {
   status?: TaskStatus;
   max_retries?: number;
   timeout_seconds?: number;
+  skip_missed?: boolean;
 }
 
 /**

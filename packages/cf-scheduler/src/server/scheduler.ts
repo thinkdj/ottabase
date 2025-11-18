@@ -52,6 +52,9 @@ export class Scheduler {
         failure_count INTEGER NOT NULL DEFAULT 0,
         max_retries INTEGER NOT NULL DEFAULT 3,
         timeout_seconds INTEGER NOT NULL DEFAULT 300,
+        skip_missed INTEGER NOT NULL DEFAULT 0,
+        execution_lock_id TEXT,
+        execution_locked_at TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -59,6 +62,7 @@ export class Scheduler {
       CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_status ON scheduled_tasks(status);
       CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_next_run ON scheduled_tasks(next_run_at);
       CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_app_id ON scheduled_tasks(app_id);
+      CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_lock ON scheduled_tasks(execution_lock_id);
 
       CREATE TABLE IF NOT EXISTS task_logs (
         id TEXT PRIMARY KEY,
@@ -101,6 +105,7 @@ export class Scheduler {
       failure_count: 0,
       max_retries: input.max_retries ?? 3,
       timeout_seconds: input.timeout_seconds ?? 300,
+      skip_missed: input.skip_missed ? 1 : 0,
       created_at: now,
       updated_at: now,
     };
@@ -110,8 +115,8 @@ export class Scheduler {
         `INSERT INTO scheduled_tasks (
           id, app_id, name, description, frequency, cron_expression,
           handler, payload, status, next_run_at, run_count, failure_count,
-          max_retries, timeout_seconds, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          max_retries, timeout_seconds, skip_missed, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         task.id,
@@ -128,6 +133,7 @@ export class Scheduler {
         task.failure_count,
         task.max_retries,
         task.timeout_seconds,
+        task.skip_missed,
         task.created_at,
         task.updated_at
       )
@@ -208,6 +214,10 @@ export class Scheduler {
       updates.push('timeout_seconds = ?');
       values.push(input.timeout_seconds);
     }
+    if (input.skip_missed !== undefined) {
+      updates.push('skip_missed = ?');
+      values.push(input.skip_missed ? 1 : 0);
+    }
 
     updates.push('updated_at = ?');
     values.push(new Date().toISOString());
@@ -235,18 +245,37 @@ export class Scheduler {
   }
 
   /**
-   * Get tasks that are due to run
+   * Get tasks that are due to run with optimistic locking
    */
   async getDueTasks(): Promise<ScheduledTask[]> {
     const now = new Date().toISOString();
+    const lockId = crypto.randomUUID();
+    const staleLockThreshold = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // 10 minutes ago
+
+    // Acquire locks on due tasks using optimistic locking
+    await this.db
+      .prepare(
+        `UPDATE scheduled_tasks
+         SET execution_lock_id = ?,
+             execution_locked_at = ?
+         WHERE id IN (
+           SELECT id FROM scheduled_tasks
+           WHERE status = 'active'
+           AND (next_run_at IS NULL OR next_run_at <= ?)
+           AND (execution_lock_id IS NULL OR execution_locked_at < ?)
+           LIMIT ?
+         )`
+      )
+      .bind(lockId, now, now, staleLockThreshold, this.config.maxTasksPerRun)
+      .run();
+
+    // Fetch tasks we successfully locked
     const result = await this.db
       .prepare(
         `SELECT * FROM scheduled_tasks
-         WHERE status = 'active'
-         AND (next_run_at IS NULL OR next_run_at <= ?)
-         LIMIT ?`
+         WHERE execution_lock_id = ?`
       )
-      .bind(now, this.config.maxTasksPerRun)
+      .bind(lockId)
       .all<ScheduledTask>();
 
     return result.results || [];
@@ -258,6 +287,36 @@ export class Scheduler {
   async executeTask(task: ScheduledTask): Promise<TaskExecutionResult> {
     const startTime = Date.now();
     const logId = crypto.randomUUID();
+    const now = new Date();
+    const nowISO = now.toISOString();
+
+    // Check if task should be skipped due to missed execution window
+    if (task.skip_missed && task.next_run_at) {
+      const nextRun = new Date(task.next_run_at);
+      const missedBy = now.getTime() - nextRun.getTime();
+      const tolerance = 5 * 60 * 1000; // 5 minutes tolerance
+
+      if (missedBy > tolerance) {
+        // Skip this execution and calculate next run
+        const cronExpression = task.cron_expression || getCronExpression(task.frequency);
+        const nextRunAt = getNextRunTime(cronExpression, now);
+
+        await this.db
+          .prepare(
+            `UPDATE scheduled_tasks
+             SET next_run_at = ?, execution_lock_id = NULL, execution_locked_at = NULL, updated_at = ?
+             WHERE id = ?`
+          )
+          .bind(nextRunAt.toISOString(), nowISO, task.id)
+          .run();
+
+        return {
+          success: true,
+          output: { skipped: true, reason: 'Missed execution window' },
+          executionTimeMs: Date.now() - startTime,
+        };
+      }
+    }
 
     // Create log entry
     if (this.config.enableLogging) {
@@ -266,7 +325,7 @@ export class Scheduler {
           `INSERT INTO task_logs (id, task_id, started_at, status)
            VALUES (?, ?, ?, 'running')`
         )
-        .bind(logId, task.id, new Date().toISOString())
+        .bind(logId, task.id, nowISO)
         .run();
     }
 
@@ -282,17 +341,18 @@ export class Scheduler {
       const executionTime = Date.now() - startTime;
       const output = result && typeof result === 'object' && 'output' in result ? result.output : result;
 
-      // Update task
+      // Update task - calculate next run and release lock
       const cronExpression = task.cron_expression || getCronExpression(task.frequency);
-      const nextRunAt = getNextRunTime(cronExpression);
+      const nextRunAt = getNextRunTime(cronExpression, now);
 
       await this.db
         .prepare(
           `UPDATE scheduled_tasks
-           SET last_run_at = ?, next_run_at = ?, run_count = run_count + 1, updated_at = ?
+           SET last_run_at = ?, next_run_at = ?, run_count = run_count + 1,
+               execution_lock_id = NULL, execution_locked_at = NULL, updated_at = ?
            WHERE id = ?`
         )
-        .bind(new Date().toISOString(), nextRunAt.toISOString(), new Date().toISOString(), task.id)
+        .bind(nowISO, nextRunAt.toISOString(), nowISO, task.id)
         .run();
 
       // Update log
@@ -321,11 +381,12 @@ export class Scheduler {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      // Update failure count
+      // Update failure count and release lock
       await this.db
         .prepare(
           `UPDATE scheduled_tasks
            SET failure_count = failure_count + 1, updated_at = ?,
+               execution_lock_id = NULL, execution_locked_at = NULL,
                status = CASE WHEN failure_count + 1 >= max_retries THEN 'failed' ELSE status END
            WHERE id = ?`
         )

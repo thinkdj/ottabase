@@ -177,9 +177,48 @@ The scheduler follows a database-driven approach:
 **Example Flow:**
 ```
 User creates task → Stored in D1 → Cloudflare triggers worker →
-Scheduler checks DB → Finds due tasks → Executes handler with payload →
-Logs result → Updates next_run_at
+Scheduler checks DB → Finds due tasks → Acquires lock → Executes handler →
+Logs result → Updates next_run_at → Releases lock
 ```
+
+## Concurrency & Reliability
+
+### Optimistic Locking (Prevents Double-Execution)
+
+The scheduler uses **optimistic locking** to prevent concurrent workers from running the same task twice:
+
+1. When checking for due tasks, the scheduler acquires a lock by setting `execution_lock_id`
+2. Only tasks without a lock (or with stale locks >10 minutes old) can be acquired
+3. After execution (success or failure), the lock is released
+4. If a worker dies mid-execution, the stale lock will be cleared after 10 minutes
+
+**This prevents:**
+- ❌ Double-execution when multiple Cloudflare workers run simultaneously
+- ❌ Race conditions during concurrent cron triggers
+- ❌ Duplicate task processing
+
+### Skip Missed Executions
+
+Set `skip_missed: true` to skip tasks that missed their execution window by >5 minutes:
+
+```typescript
+await scheduler.createTask({
+  app_id: 'my-app',
+  name: 'Time-Sensitive Report',
+  frequency: 'daily',
+  handler: 'generate-report',
+  skip_missed: true, // Skip if worker was down during execution time
+});
+```
+
+**Use cases:**
+- ✅ Time-sensitive reports (don't generate yesterday's report today)
+- ✅ Real-time notifications (don't send stale alerts)
+- ✅ Scheduled maintenance windows (skip if window passed)
+
+**Default behavior** (`skip_missed: false`):
+- Missed tasks run immediately when worker comes back up
+- Good for: backups, cleanup, non-time-sensitive tasks
 
 ## Supported Frequencies
 
