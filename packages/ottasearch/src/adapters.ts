@@ -8,3 +8,6 @@ export type { MockAdapterConfig } from './adapters/mock-adapter';
 
 export { createD1SearchAdapter, createFTS5TableSQL } from './adapters/d1-adapter';
 export type { D1AdapterConfig, D1TableConfig } from './adapters/d1-adapter';
+
+export { createApiAdapter, createApiAdapterPost } from './adapters/api-adapter';
+export type { ApiAdapterConfig } from './adapters/api-adapter';

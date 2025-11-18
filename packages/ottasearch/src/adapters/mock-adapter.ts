@@ -3,7 +3,7 @@
  */
 
 import type { SearchAdapter, SearchResult, SearchOptions } from '../types';
-import { clientSearch } from '../utils';
+import { clientSearch, getRecentSearches, addRecentSearch, clearRecentSearches } from '../utils';
 
 /**
  * Mock data configuration
@@ -227,9 +227,6 @@ export function createMockAdapter(config: MockAdapterConfig = {}): SearchAdapter
     simulateError = false,
   } = config;
 
-  // Store recent searches in memory
-  const recentSearches: SearchResult[] = [];
-
   const adapter: SearchAdapter = {
     async search(query: string, options?: SearchOptions): Promise<SearchResult[]> {
       // Simulate network delay
@@ -240,38 +237,33 @@ export function createMockAdapter(config: MockAdapterConfig = {}): SearchAdapter
         throw new Error('Mock adapter error');
       }
 
+      // Filter by scope if specified
+      let scopedData = data;
+      if (options?.scope) {
+        scopedData = data.filter(item => item.category === options.scope);
+      }
+
       // Empty query returns recent or all results
       if (!query.trim()) {
-        const results = recentSearches.length > 0 ? recentSearches : data;
+        const recent = getRecentSearches();
+        const results = recent.length > 0 ? recent : scopedData;
         return applyOptions(results, options);
       }
 
       // Client-side search
-      const results = clientSearch(data, query);
-
-      // Add to recent searches if we have results
-      if (results.length > 0 && results[0]) {
-        const existing = recentSearches.findIndex((r) => r.id === results[0].id);
-        if (existing >= 0) {
-          recentSearches.splice(existing, 1);
-        }
-        recentSearches.unshift(results[0]);
-        if (recentSearches.length > 5) {
-          recentSearches.pop();
-        }
-      }
+      const results = clientSearch(scopedData, query);
 
       return applyOptions(results, options);
     },
 
     async getRecentSearches(): Promise<SearchResult[]> {
       await new Promise((resolve) => setTimeout(resolve, 100));
-      return recentSearches;
+      return getRecentSearches();
     },
 
     async clearHistory(): Promise<void> {
       await new Promise((resolve) => setTimeout(resolve, 100));
-      recentSearches.length = 0;
+      clearRecentSearches();
     },
   };
 

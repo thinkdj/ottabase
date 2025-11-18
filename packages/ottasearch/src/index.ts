@@ -30,6 +30,8 @@ export type {
   SearchAdapter,
   SearchResult,
   SearchOptions,
+  SearchScope,
+  EmptyStateConfig,
   GroupedResults,
   SearchState,
   SearchActions,
@@ -45,9 +47,14 @@ export {
   groupResults,
   debounce,
   highlightText,
+  highlightTextParts,
   getCommandKey,
   isCommandKey,
   flattenResults,
   filterByCategory,
   clientSearch,
+  getRecentSearches,
+  addRecentSearch,
+  clearRecentSearches,
 } from './utils';
+export type { StoredSearch } from './utils';

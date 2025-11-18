@@ -47,13 +47,58 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 /**
- * Highlight search query in text
+ * Highlight search query in text (returns HTML string)
  */
 export function highlightText(text: string, query: string): string {
   if (!query.trim()) return text;
 
-  const regex = new RegExp(`(${query})`, 'gi');
-  return text.replace(regex, '<mark>$1</mark>');
+  // Escape special regex characters
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escapedQuery})`, 'gi');
+
+  return text.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-900/50 text-gray-900 dark:text-gray-100">$1</mark>');
+}
+
+/**
+ * Highlight text and return parts for React rendering
+ */
+export function highlightTextParts(text: string, query: string): Array<{text: string; highlight: boolean}> {
+  if (!query.trim()) return [{text, highlight: false}];
+
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escapedQuery})`, 'gi');
+  const parts: Array<{text: string; highlight: boolean}> = [];
+
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    // Add non-matching part
+    if (match.index > lastIndex) {
+      parts.push({
+        text: text.slice(lastIndex, match.index),
+        highlight: false
+      });
+    }
+
+    // Add matching part
+    parts.push({
+      text: match[0],
+      highlight: true
+    });
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push({
+      text: text.slice(lastIndex),
+      highlight: false
+    });
+  }
+
+  return parts;
 }
 
 /**
@@ -107,3 +152,7 @@ export function clientSearch(
       result.description?.toLowerCase().includes(lowerQuery)
   );
 }
+
+// Re-export storage utilities
+export { getRecentSearches, addRecentSearch, clearRecentSearches } from './storage';
+export type { StoredSearch } from './storage';

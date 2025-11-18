@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import type { SearchAdapter, SearchResult, SearchState, GroupedResults } from '../types';
-import { groupResults, debounce, flattenResults } from '../utils';
+import { groupResults, debounce, flattenResults, addRecentSearch } from '../utils';
 
 export interface UseSearchOptions {
   /** Search adapter */
@@ -35,6 +35,7 @@ export function useSearch(options: UseSearchOptions) {
     isOpen: false,
     focusedIndex: -1,
     recentSearches: [],
+    activeScope: undefined,
   });
 
   // Load recent searches on mount
@@ -48,11 +49,11 @@ export function useSearch(options: UseSearchOptions) {
 
   // Perform search
   const search = useCallback(
-    async (query: string) => {
+    async (query: string, scope?: string) => {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
       try {
-        const results = await adapter.search(query);
+        const results = await adapter.search(query, { scope: scope || state.activeScope });
         const grouped = groupResults(results);
 
         setState((prev) => ({
@@ -72,7 +73,7 @@ export function useSearch(options: UseSearchOptions) {
         }));
       }
     },
-    [adapter]
+    [adapter, state.activeScope]
   );
 
   // Debounced search
@@ -155,12 +156,22 @@ export function useSearch(options: UseSearchOptions) {
   // Select result
   const selectResult = useCallback(
     (result: SearchResult) => {
+      // Add to recent searches (localStorage)
+      addRecentSearch({
+        id: result.id,
+        title: result.title,
+        description: result.description,
+        category: result.category,
+        icon: result.icon,
+        url: result.url,
+      });
+
       // Navigate to URL if provided
       if (result.url && typeof window !== 'undefined') {
         window.location.href = result.url;
       }
 
-      // Update recent searches
+      // Update recent searches in state
       if (adapter.getRecentSearches) {
         adapter.getRecentSearches().then((recent) => {
           setState((prev) => ({ ...prev, recentSearches: recent }));
@@ -202,6 +213,11 @@ export function useSearch(options: UseSearchOptions) {
     }
   }, [adapter]);
 
+  // Set active scope
+  const setActiveScope = useCallback((scope: string | undefined) => {
+    setState((prev) => ({ ...prev, activeScope: scope }));
+  }, []);
+
   return {
     ...state,
     setQuery,
@@ -216,6 +232,7 @@ export function useSearch(options: UseSearchOptions) {
     selectResult,
     clear,
     clearHistory,
+    setActiveScope,
     adapter,
   };
 }

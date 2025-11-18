@@ -32,8 +32,39 @@ export interface SearchOptions {
   offset?: number;
   /** Categories/tables to filter by */
   categories?: string[];
+  /** Active search scope */
+  scope?: string;
   /** Additional adapter-specific options */
   [key: string]: any;
+}
+
+/**
+ * Search scope configuration
+ */
+export interface SearchScope {
+  /** Unique identifier */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Icon name from lucide-react (optional) */
+  icon?: string;
+  /** Description (optional) */
+  description?: string;
+}
+
+/**
+ * Empty state configuration
+ */
+export interface EmptyStateConfig {
+  /** Custom empty message */
+  message?: string;
+  /** Custom empty component */
+  component?: React.ComponentType;
+  /** Suggested actions */
+  suggestions?: Array<{
+    label: string;
+    onClick: () => void;
+  }>;
 }
 
 /**
@@ -96,6 +127,8 @@ export interface SearchState {
   focusedIndex: number;
   /** Recent searches */
   recentSearches: SearchResult[];
+  /** Active search scope */
+  activeScope?: string;
 }
 
 /**
@@ -126,6 +159,8 @@ export interface SearchActions {
   clear: () => void;
   /** Clear history */
   clearHistory: () => Promise<void>;
+  /** Set active scope */
+  setActiveScope: (scope: string | undefined) => void;
 }
 
 /**
