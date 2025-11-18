@@ -20,7 +20,11 @@
     "test": "turbo test",
     "format": "prettier --write .",
     "storybook": "storybook dev -p 6006",
-    "storybook:build": "storybook build"
+    "storybook:build": "storybook build",
+    "env:check": "node packages/env/dist/cli.js check",
+    "env:validate": "node packages/env/dist/cli.js validate",
+    "env:list": "node packages/env/dist/cli.js list",
+    "env:generate": "node packages/env/dist/cli.js generate"
   },
   "devDependencies": {
     "@babel/core": "catalog:",

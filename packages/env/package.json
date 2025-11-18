@@ -1,0 +1,55 @@
+{
+  "name": "@ottabase/env",
+  "version": "0.1.0",
+  "description": "Type-safe environment variable validation and management for Ottabase monorepo",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schemas": {
+      "types": "./dist/schemas/index.d.ts",
+      "import": "./dist/schemas/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js"
+    }
+  },
+  "bin": {
+    "ottabase-env": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist .turbo",
+    "lint": "eslint src --max-warnings 0",
+    "generate-example": "node dist/cli.js generate"
+  },
+  "dependencies": {
+    "zod": "^3.22.3",
+    "zod-validation-error": "^3.0.0",
+    "dotenv": "^16.4.5",
+    "dotenv-expand": "^11.0.6",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsup": "^8.3.5",
+    "typescript": "^5.9.2"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "env",
+    "environment",
+    "validation",
+    "zod",
+    "type-safety",
+    "monorepo"
+  ]
+}
