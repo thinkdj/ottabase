@@ -1,0 +1,175 @@
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/ottabase-template-app/**'
+      - 'packages/**'
+      - '.github/workflows/deploy-cloudflare.yml'
+  workflow_dispatch:
+
+# Ensure only one deployment runs at a time
+concurrency:
+  group: cloudflare-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: |
+          cd packages/db
+          npx prisma generate
+
+      - name: Build packages
+        run: pnpm build:packages
+
+      - name: Build template app
+        run: pnpm build --filter=@ottabase/ottabase-template-app
+
+      - name: Setup Cloudflare bindings
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          cd apps/ottabase-template-app
+          
+          # Install wrangler globally to ensure consistency
+          npm install -g wrangler@3.94.0
+          
+          # Authenticate with Cloudflare
+          echo "Setting up Cloudflare authentication..."
+          
+          # Create D1 database if it doesn't exist
+          echo "Setting up D1 database..."
+          DB_INFO=$(wrangler d1 list --json 2>/dev/null | jq -r '.[] | select(.name=="ottabase-db") | .uuid' || echo "")
+          if [ -z "$DB_INFO" ]; then
+            echo "Creating D1 database: ottabase-db"
+            DB_CREATE_OUTPUT=$(wrangler d1 create ottabase-db --json)
+            DB_ID=$(echo "$DB_CREATE_OUTPUT" | jq -r '.uuid')
+            echo "D1 database created with ID: $DB_ID"
+          else
+            echo "D1 database already exists with ID: $DB_INFO"
+            DB_ID="$DB_INFO"
+          fi
+          
+          # Create R2 buckets if they don't exist
+          echo "Setting up R2 buckets..."
+          R2_PROD=$(wrangler r2 bucket list --json 2>/dev/null | jq -r '.[] | select(.name=="ottabase-bucket") | .name' || echo "")
+          if [ -z "$R2_PROD" ]; then
+            echo "Creating R2 bucket: ottabase-bucket"
+            wrangler r2 bucket create ottabase-bucket
+          else
+            echo "R2 bucket ottabase-bucket already exists"
+          fi
+          
+          R2_PREVIEW=$(wrangler r2 bucket list --json 2>/dev/null | jq -r '.[] | select(.name=="ottabase-bucket-preview") | .name' || echo "")
+          if [ -z "$R2_PREVIEW" ]; then
+            echo "Creating R2 preview bucket: ottabase-bucket-preview"
+            wrangler r2 bucket create ottabase-bucket-preview
+          else
+            echo "R2 preview bucket ottabase-bucket-preview already exists"
+          fi
+          
+          # Create KV namespaces if they don't exist
+          echo "Setting up KV namespaces..."
+          KV_INFO=$(wrangler kv:namespace list --json 2>/dev/null | jq -r '.[] | select(.title=="ottabase-template-app-MY_KV") | .id' || echo "")
+          if [ -z "$KV_INFO" ]; then
+            echo "Creating KV namespace: MY_KV"
+            KV_CREATE_OUTPUT=$(wrangler kv:namespace create MY_KV --json)
+            KV_ID=$(echo "$KV_CREATE_OUTPUT" | jq -r '.id')
+            echo "KV namespace created with ID: $KV_ID"
+          else
+            echo "KV namespace already exists with ID: $KV_INFO"
+            KV_ID="$KV_INFO"
+          fi
+          
+          KV_PREVIEW_INFO=$(wrangler kv:namespace list --json 2>/dev/null | jq -r '.[] | select(.title=="ottabase-template-app-MY_KV_preview") | .id' || echo "")
+          if [ -z "$KV_PREVIEW_INFO" ]; then
+            echo "Creating KV preview namespace: MY_KV"
+            KV_PREVIEW_CREATE_OUTPUT=$(wrangler kv:namespace create MY_KV --preview --json)
+            KV_PREVIEW_ID=$(echo "$KV_PREVIEW_CREATE_OUTPUT" | jq -r '.id')
+            echo "KV preview namespace created with ID: $KV_PREVIEW_ID"
+          else
+            echo "KV preview namespace already exists with ID: $KV_PREVIEW_INFO"
+            KV_PREVIEW_ID="$KV_PREVIEW_INFO"
+          fi
+          
+          # Create Queue if it doesn't exist
+          echo "Setting up Queue..."
+          QUEUE_INFO=$(wrangler queues list --json 2>/dev/null | jq -r '.[] | select(.queue_name=="ottabase-queue") | .queue_name' || echo "")
+          if [ -z "$QUEUE_INFO" ]; then
+            echo "Creating Queue: ottabase-queue"
+            wrangler queues create ottabase-queue
+          else
+            echo "Queue ottabase-queue already exists"
+          fi
+          
+          # Update wrangler.jsonc with actual IDs
+          echo "Updating wrangler.jsonc with resource IDs..."
+          
+          # Backup original wrangler.jsonc
+          cp wrangler.jsonc wrangler.jsonc.bak
+          
+          # Use jq to update the IDs in wrangler.jsonc
+          # Note: This is a simplified approach. You might need to adjust based on your actual wrangler.jsonc structure
+          cat wrangler.jsonc | jq --arg db_id "$DB_ID" \
+            --arg kv_id "$KV_ID" \
+            --arg kv_preview_id "$KV_PREVIEW_ID" \
+            '.d1_databases[0].database_id = $db_id |
+             .kv_namespaces[0].id = $kv_id |
+             .kv_namespaces[0].preview_id = $kv_preview_id' > wrangler.jsonc.tmp
+          mv wrangler.jsonc.tmp wrangler.jsonc
+          
+          echo "Cloudflare bindings setup complete!"
+
+      - name: Deploy to Cloudflare Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          cd apps/ottabase-template-app
+          pnpm wrangler deploy --keep-vars
+
+      - name: Get deployment URL
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          cd apps/ottabase-template-app
+          echo "Deployment successful! 🚀"
+          echo "Your app should be available at: https://ottabase-template-app.YOUR_SUBDOMAIN.workers.dev"
+          echo ""
+          echo "To view your deployment details, run:"
+          echo "pnpm wrangler deployments list"
+
+      - name: Restore wrangler.jsonc
+        if: always()
+        run: |
+          cd apps/ottabase-template-app
+          if [ -f wrangler.jsonc.bak ]; then
+            mv wrangler.jsonc.bak wrangler.jsonc
+          fi

@@ -11,34 +11,47 @@ Next.js 15 template application with Cloudflare Workers integration using OpenNe
 - **@ottabase/cf** for Cloudflare bindings (D1, KV, R2, etc.)
 - **Prisma** for database ORM (with D1 adapter)
 - **Demo Pages** for all Cloudflare features
+- **🚀 Fully Automated CI/CD** - Auto-deploy to Cloudflare Workers on push to main
 
 ## Quick Start
 
-### Install Dependencies
+### 🚀 Automated CI/CD Deployment (Recommended)
+
+The easiest way to deploy is using the automated CI/CD pipeline:
+
+1. **Setup GitHub Secrets** (one-time)
+   - Create a [Cloudflare API Token](https://dash.cloudflare.com/profile/api-tokens)
+   - Get your [Account ID](https://dash.cloudflare.com/)
+   - Add to GitHub: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
+
+2. **Deploy**
+   ```bash
+   git push origin main
+   ```
+
+3. **Access Your App**
+   - URL: `https://ottabase-template-app.<your-subdomain>.workers.dev`
+   - All services (D1, R2, KV, Queues) are automatically created!
+
+See [Cloudflare CI/CD Setup Guide](../../docs/CLOUDFLARE_CICD_SETUP.md) for detailed instructions.
+
+### 📦 Manual Local Setup
+
+If you want to develop locally or deploy manually:
 
 ```bash
+# Install dependencies
 pnpm install
-```
 
-### Setup Cloudflare Bindings
+# Setup Cloudflare bindings (run helper script)
+./.github/workflows/setup-cloudflare-resources.sh
 
-See [Cloudflare Features Documentation](../../docs/cloudflare-features.md) for complete setup.
-
-Quick commands:
-
-```bash
-# Create D1 database
+# Or manually create services
 pnpm wrangler d1 create ottabase-db
-
-# Create KV namespace
 pnpm wrangler kv:namespace create MY_KV
 pnpm wrangler kv:namespace create MY_KV --preview
-
-# Create R2 bucket
 pnpm wrangler r2 bucket create ottabase-bucket
 pnpm wrangler r2 bucket create ottabase-bucket-preview
-
-# Create Queue
 pnpm wrangler queues create ottabase-queue
 ```
 
