@@ -64,6 +64,10 @@ await scheduler.createTask({
   frequency: 'custom',
   cron_expression: '0 1 * * *', // Daily at 1:00 AM UTC
 
+  // ⚠️  IMPORTANT: All times are in UTC
+  // If you need 1:00 AM EST (UTC-5), use: '0 6 * * *'
+  // Convert local time to UTC in your UI layer
+
   // Handler name (must match registered handler)
   handler: 'send-summary-email',
 
@@ -220,6 +224,32 @@ await scheduler.createTask({
 - Missed tasks run immediately when worker comes back up
 - Good for: backups, cleanup, non-time-sensitive tasks
 
+### Automatic Retry Logic
+
+Tasks automatically retry on failure with configurable retry attempts:
+
+```typescript
+await scheduler.createTask({
+  app_id: 'my-app',
+  name: 'API Sync Task',
+  frequency: 'every_5_minutes',
+  handler: 'sync-api-data',
+  max_retries: 3, // Retry up to 3 times on failure (default: 3)
+});
+```
+
+**How retries work:**
+1. Task fails → `failure_count` increments
+2. If `failure_count < max_retries` → Task scheduled to retry after 1 minute
+3. If `failure_count >= max_retries` → Task marked as `'failed'` status (stops running)
+4. On successful execution → `failure_count` resets to 0
+
+**Retry behavior:**
+- ✅ Retry delay: 1 minute between retry attempts
+- ✅ Failed tasks remain active until `max_retries` exceeded
+- ✅ Success resets failure counter
+- ❌ No exponential backoff (fixed 1-minute delay)
+
 ## Supported Frequencies
 
 - `every_minute` - Every minute
@@ -291,6 +321,50 @@ const myHandler = async (payload) => {
 };
 ```
 
+## Important Considerations
+
+### Cloudflare Workers Timeouts
+- **Free tier**: 30-second timeout per execution
+- **Paid tier**: Up to 15 minutes with CPU limits
+- Tasks exceeding these limits will fail and trigger retry logic
+- Set `timeout_seconds` appropriately for your plan
+
+### Payload Size Limits
+- Maximum payload size: **1MB** (enforced on task creation)
+- D1 has row size limits (~1MB total per row)
+- Use external storage (R2, KV) for large data
+
+### Log Growth
+- Task logs grow indefinitely by default
+- Use `cleanupOldLogs()` periodically to prevent unbounded growth
+- Recommended: Schedule a cleanup task to run monthly
+
+```typescript
+// Add a cleanup task that runs monthly
+await scheduler.createTask({
+  name: 'Log Cleanup',
+  frequency: 'monthly',
+  handler: 'cleanup-logs',
+  payload: { daysToKeep: 30 },
+});
+
+// Handler implementation
+handlers['cleanup-logs'] = async (payload) => {
+  const deleted = await scheduler.cleanupOldLogs(payload.daysToKeep);
+  return { success: true, output: { deleted } };
+};
+```
+
+### Rate Limiting
+- Email/API handlers should implement their own rate limiting
+- Scheduler doesn't enforce rate limits on handler execution
+- Consider batch processing for high-frequency tasks
+
+### Timezone Handling
+- **All times are stored and processed in UTC**
+- Convert local timezones to UTC in your UI/application layer
+- Example: 1:00 AM EST (UTC-5) = `'0 6 * * *'` cron expression
+
 ## API Reference
 
 ### Scheduler Class
@@ -299,13 +373,18 @@ const myHandler = async (payload) => {
 
 Create a scheduler instance.
 
+**Config options:**
+- `handlers` - Task handler registry
+- `maxTasksPerRun` - Max tasks to process per cron trigger (default: 10)
+- `enableLogging` - Enable execution logging (default: true)
+
 #### `initializeSchema(): Promise<void>`
 
 Initialize the D1 database schema. Run this once during setup.
 
 #### `createTask(input: CreateTaskInput): Promise<ScheduledTask>`
 
-Create a new scheduled task.
+Create a new scheduled task. Validates payload size (<1MB).
 
 #### `getTasks(appId?: string): Promise<ScheduledTask[]>`
 
@@ -323,13 +402,25 @@ Update a task.
 
 Delete a task.
 
+#### `getDueTasks(appId?: string): Promise<ScheduledTask[]>`
+
+Get tasks due to run with optimistic locking. Optionally filter by app ID.
+
+#### `runDueTasks(appId?: string): Promise<TaskExecutionResult[]>`
+
+Run all due tasks in parallel. Optionally filter by app ID.
+
 #### `triggerTask(id: string): Promise<TaskExecutionResult>`
 
 Manually trigger a task execution.
 
 #### `getTaskLogs(taskId: string, limit?: number): Promise<TaskLog[]>`
 
-Get execution logs for a task.
+Get execution logs for a task (default limit: 50).
+
+#### `cleanupOldLogs(daysToKeep?: number): Promise<number>`
+
+Delete old task logs. Returns number of logs deleted (default: 30 days).
 
 #### `registerHandler(name: string, handler: TaskHandler): void`
 

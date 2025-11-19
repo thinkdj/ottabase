@@ -11,6 +11,8 @@ export default function SchedulerDemoPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Debounce state: track last trigger time per task
+  const [lastTriggerTimes, setLastTriggerTimes] = useState<Record<string, number>>({});
 
   useEffect(() => {
     initializeAndLoadTasks();
@@ -114,8 +116,21 @@ export default function SchedulerDemoPage() {
   };
 
   const handleTriggerTask = async (taskId: string) => {
+    // Debounce: prevent rapid triggers (2 second cooldown)
+    const now = Date.now();
+    const lastTrigger = lastTriggerTimes[taskId] || 0;
+    const cooldownMs = 2000; // 2 seconds
+
+    if (now - lastTrigger < cooldownMs) {
+      const remainingMs = cooldownMs - (now - lastTrigger);
+      setError(`Please wait ${Math.ceil(remainingMs / 1000)}s before triggering again`);
+      return;
+    }
+
     try {
       setLoading(true);
+      setLastTriggerTimes(prev => ({ ...prev, [taskId]: now }));
+
       const response = await fetch(`/api/scheduler/tasks/${taskId}/trigger`, {
         method: 'POST',
       });

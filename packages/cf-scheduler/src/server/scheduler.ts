@@ -15,6 +15,12 @@ import type {
 } from '../types';
 import { getCronExpression, getNextRunTime, shouldRunNow } from '../utils/cron';
 
+// Maximum payload size (1MB - leaving room for other fields)
+const MAX_PAYLOAD_SIZE = 1024 * 1024; // 1MB
+
+// Retry delay in minutes after task failure
+const RETRY_DELAY_MINUTES = 1;
+
 export class Scheduler {
   private db: D1Database;
   private handlers: TaskHandlerRegistry;
@@ -63,6 +69,8 @@ export class Scheduler {
       CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_next_run ON scheduled_tasks(next_run_at);
       CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_app_id ON scheduled_tasks(app_id);
       CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_lock ON scheduled_tasks(execution_lock_id);
+      -- Compound index for efficient getDueTasks query
+      CREATE INDEX IF NOT EXISTS idx_due_tasks ON scheduled_tasks(status, next_run_at, execution_lock_id) WHERE status = 'active';
 
       CREATE TABLE IF NOT EXISTS task_logs (
         id TEXT PRIMARY KEY,
@@ -90,6 +98,14 @@ export class Scheduler {
     const cronExpression = getCronExpression(input.frequency, input.cron_expression);
     const nextRunAt = getNextRunTime(cronExpression);
 
+    // Validate payload size to prevent D1 row size limit issues
+    const payloadStr = input.payload ? JSON.stringify(input.payload) : undefined;
+    if (payloadStr && payloadStr.length > MAX_PAYLOAD_SIZE) {
+      throw new Error(
+        `Payload too large: ${payloadStr.length} bytes (max: ${MAX_PAYLOAD_SIZE} bytes)`
+      );
+    }
+
     const task: ScheduledTask = {
       id,
       app_id: input.app_id || 'default', // Default to 'default' if not provided
@@ -98,7 +114,7 @@ export class Scheduler {
       frequency: input.frequency,
       cron_expression: input.frequency === 'custom' ? input.cron_expression : cronExpression,
       handler: input.handler,
-      payload: input.payload ? JSON.stringify(input.payload) : undefined,
+      payload: payloadStr,
       status: 'active',
       next_run_at: nextRunAt.toISOString(),
       run_count: 0,
@@ -246,28 +262,41 @@ export class Scheduler {
 
   /**
    * Get tasks that are due to run with optimistic locking
+   * @param appId - Optional app ID filter to only get tasks for specific app
    */
-  async getDueTasks(): Promise<ScheduledTask[]> {
+  async getDueTasks(appId?: string): Promise<ScheduledTask[]> {
     const now = new Date().toISOString();
     const lockId = crypto.randomUUID();
     const staleLockThreshold = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // 10 minutes ago
 
+    // Build query with optional app_id filter
+    const appFilter = appId ? 'AND app_id = ?' : '';
+    const selectQuery = `
+      SELECT id FROM scheduled_tasks
+      WHERE status = 'active'
+      AND (next_run_at IS NULL OR next_run_at <= ?)
+      AND (execution_lock_id IS NULL OR execution_locked_at < ?)
+      ${appFilter}
+      LIMIT ?
+    `;
+
     // Acquire locks on due tasks using optimistic locking
-    await this.db
-      .prepare(
-        `UPDATE scheduled_tasks
-         SET execution_lock_id = ?,
-             execution_locked_at = ?
-         WHERE id IN (
-           SELECT id FROM scheduled_tasks
-           WHERE status = 'active'
-           AND (next_run_at IS NULL OR next_run_at <= ?)
-           AND (execution_lock_id IS NULL OR execution_locked_at < ?)
-           LIMIT ?
-         )`
-      )
-      .bind(lockId, now, now, staleLockThreshold, this.config.maxTasksPerRun)
-      .run();
+    const updateStmt = this.db.prepare(
+      `UPDATE scheduled_tasks
+       SET execution_lock_id = ?,
+           execution_locked_at = ?
+       WHERE id IN (${selectQuery})`
+    );
+
+    // Bind parameters based on whether appId is provided
+    const updateResult = appId
+      ? await updateStmt.bind(lockId, now, now, staleLockThreshold, appId, this.config.maxTasksPerRun).run()
+      : await updateStmt.bind(lockId, now, now, staleLockThreshold, this.config.maxTasksPerRun).run();
+
+    // Skip fetching if no locks acquired (optimization)
+    if (updateResult.meta.changes === 0) {
+      return [];
+    }
 
     // Fetch tasks we successfully locked
     const result = await this.db
@@ -282,7 +311,7 @@ export class Scheduler {
   }
 
   /**
-   * Execute a task
+   * Execute a task with retry logic and guaranteed lock release
    */
   async executeTask(task: ScheduledTask): Promise<TaskExecutionResult> {
     const startTime = Date.now();
@@ -329,19 +358,21 @@ export class Scheduler {
         .run();
     }
 
+    // Parse payload once and cache it
+    const payload = task.payload ? JSON.parse(task.payload) : undefined;
+
     try {
       const handler = this.handlers[task.handler];
       if (!handler) {
         throw new Error(`Handler not found: ${task.handler}`);
       }
 
-      const payload = task.payload ? JSON.parse(task.payload) : undefined;
       const result = await handler(payload);
 
       const executionTime = Date.now() - startTime;
       const output = result && typeof result === 'object' && 'output' in result ? result.output : result;
 
-      // Update task - calculate next run and release lock
+      // Success: Calculate next regular run and release lock
       const cronExpression = task.cron_expression || getCronExpression(task.frequency);
       const nextRunAt = getNextRunTime(cronExpression, now);
 
@@ -349,7 +380,7 @@ export class Scheduler {
         .prepare(
           `UPDATE scheduled_tasks
            SET last_run_at = ?, next_run_at = ?, run_count = run_count + 1,
-               execution_lock_id = NULL, execution_locked_at = NULL, updated_at = ?
+               failure_count = 0, execution_lock_id = NULL, execution_locked_at = NULL, updated_at = ?
            WHERE id = ?`
         )
         .bind(nowISO, nextRunAt.toISOString(), nowISO, task.id)
@@ -381,16 +412,37 @@ export class Scheduler {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      // Update failure count and release lock
+      // Calculate if we should retry or mark as failed
+      const newFailureCount = task.failure_count + 1;
+      const shouldRetry = newFailureCount < task.max_retries;
+
+      // Determine next_run_at based on retry logic
+      let nextRunAt: string;
+      let newStatus: string = task.status;
+
+      if (shouldRetry) {
+        // Schedule retry after delay
+        const retryTime = new Date(Date.now() + RETRY_DELAY_MINUTES * 60 * 1000);
+        nextRunAt = retryTime.toISOString();
+      } else {
+        // Max retries reached - mark as failed and stop scheduling
+        newStatus = 'failed';
+        nextRunAt = task.next_run_at || nowISO; // Keep current or set to now
+      }
+
+      // Update task with retry logic and guaranteed lock release
       await this.db
         .prepare(
           `UPDATE scheduled_tasks
-           SET failure_count = failure_count + 1, updated_at = ?,
-               execution_lock_id = NULL, execution_locked_at = NULL,
-               status = CASE WHEN failure_count + 1 >= max_retries THEN 'failed' ELSE status END
+           SET failure_count = failure_count + 1,
+               next_run_at = ?,
+               status = ?,
+               updated_at = ?,
+               execution_lock_id = NULL,
+               execution_locked_at = NULL
            WHERE id = ?`
         )
-        .bind(new Date().toISOString(), task.id)
+        .bind(nextRunAt, newStatus, new Date().toISOString(), task.id)
         .run();
 
       // Update log
@@ -414,18 +466,37 @@ export class Scheduler {
   }
 
   /**
-   * Run all due tasks
+   * Run all due tasks in parallel for better performance
+   * @param appId - Optional app ID filter to only run tasks for specific app
    */
-  async runDueTasks(): Promise<TaskExecutionResult[]> {
-    const tasks = await this.getDueTasks();
-    const results: TaskExecutionResult[] = [];
+  async runDueTasks(appId?: string): Promise<TaskExecutionResult[]> {
+    const tasks = await this.getDueTasks(appId);
 
-    for (const task of tasks) {
-      const result = await this.executeTask(task);
-      results.push(result);
+    // Early exit if no tasks (optimization)
+    if (tasks.length === 0) {
+      return [];
     }
 
-    return results;
+    // Execute all tasks in parallel using Promise.allSettled
+    // This prevents one slow/failing task from blocking others
+    const results = await Promise.allSettled(
+      tasks.map(task => this.executeTask(task))
+    );
+
+    // Convert PromiseSettledResult to TaskExecutionResult
+    return results.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        // If executeTask itself throws (shouldn't happen as we catch errors inside),
+        // return a failed result
+        return {
+          success: false,
+          error: `Task execution failed: ${result.reason}`,
+          executionTimeMs: 0,
+        };
+      }
+    });
   }
 
   /**
@@ -443,6 +514,26 @@ export class Scheduler {
       .all<TaskLog>();
 
     return result.results || [];
+  }
+
+  /**
+   * Clean up old task logs to prevent unbounded growth
+   * @param daysToKeep - Number of days of logs to retain (default: 30)
+   * @returns Number of logs deleted
+   */
+  async cleanupOldLogs(daysToKeep = 30): Promise<number> {
+    const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
+    const cutoffISO = cutoffDate.toISOString();
+
+    const result = await this.db
+      .prepare(
+        `DELETE FROM task_logs
+         WHERE started_at < ?`
+      )
+      .bind(cutoffISO)
+      .run();
+
+    return result.meta.changes;
   }
 
   /**

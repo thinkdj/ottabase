@@ -2,68 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createScheduler } from '@ottabase/cf-scheduler/server';
 import type { CreateTaskInput } from '@ottabase/cf-scheduler';
+import { schedulerHandlers } from '@/lib/scheduler-handlers';
 
 export const runtime = 'edge';
-
-// Demo task handlers
-// In production, register your custom handlers here
-// Each handler receives optional payload from the task definition
-const demoHandlers = {
-  'demo-task': async (payload?: unknown) => {
-    console.log('Demo task executed with payload:', payload);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return {
-      success: true,
-      output: { message: 'Demo task completed', payload },
-    };
-  },
-
-  // Example: Email sender handler
-  'send-summary-email': async (payload?: unknown) => {
-    const params = payload as { recipients?: string[]; subject?: string } | undefined;
-    console.log('Sending summary email to:', params?.recipients || ['default@example.com']);
-
-    // Your email sending logic would go here
-    // await emailService.send(...)
-
-    return {
-      success: true,
-      output: {
-        sent: params?.recipients?.length || 1,
-        subject: params?.subject || 'Daily Summary',
-        timestamp: new Date().toISOString(),
-      },
-    };
-  },
-
-  'send-notifications': async (payload?: unknown) => {
-    console.log('Sending notifications:', payload);
-    return {
-      success: true,
-      output: { sent: 5, payload },
-    };
-  },
-
-  'cleanup-task': async () => {
-    console.log('Running cleanup task');
-    return {
-      success: true,
-      output: { cleaned: 10 },
-    };
-  },
-
-  // Example: Database maintenance handler
-  'database-backup': async (payload?: unknown) => {
-    console.log('Running database backup');
-    return {
-      success: true,
-      output: {
-        backupSize: '1.2GB',
-        timestamp: new Date().toISOString(),
-      },
-    };
-  },
-};
 
 // GET /api/scheduler/tasks - List all tasks
 export async function GET(request: NextRequest) {
@@ -77,7 +18,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const scheduler = createScheduler(env.DB, { handlers: demoHandlers });
+    const scheduler = createScheduler(env.DB, { handlers: schedulerHandlers });
 
     const url = new URL(request.url);
     const appId = url.searchParams.get('app_id') || undefined;
@@ -116,7 +57,7 @@ export async function POST(request: NextRequest) {
       body.app_id = 'default';
     }
 
-    const scheduler = createScheduler(env.DB, { handlers: demoHandlers });
+    const scheduler = createScheduler(env.DB, { handlers: schedulerHandlers });
     const task = await scheduler.createTask(body);
 
     return NextResponse.json({ task }, { status: 201 });
