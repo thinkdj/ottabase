@@ -92,7 +92,7 @@ export class Scheduler {
 
     const task: ScheduledTask = {
       id,
-      app_id: input.app_id,
+      app_id: input.app_id || 'default', // Default to 'default' if not provided
       name: input.name,
       description: input.description,
       frequency: input.frequency,

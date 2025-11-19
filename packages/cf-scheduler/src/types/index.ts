@@ -119,7 +119,7 @@ export interface SchedulerConfig {
  * Create task input
  */
 export interface CreateTaskInput {
-  app_id: string;
+  app_id?: string; // Defaults to 'default' if not provided
   name: string;
   description?: string;
   frequency: ScheduleFrequency;

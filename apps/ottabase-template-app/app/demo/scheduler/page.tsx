@@ -439,6 +439,22 @@ export default function SchedulerDemoPage() {
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">
+                    App Name (optional)
+                  </label>
+                  <input
+                    type="text"
+                    name="app_id"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-400 focus:outline-none"
+                    placeholder="default"
+                    defaultValue="default"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Group tasks by app (useful when sharing DB across apps)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
                     Frequency
                   </label>
                   <select

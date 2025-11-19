@@ -111,6 +111,11 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as CreateTaskInput;
 
+    // Default to 'default' app if not provided
+    if (!body.app_id) {
+      body.app_id = 'default';
+    }
+
     const scheduler = createScheduler(env.DB, { handlers: demoHandlers });
     const task = await scheduler.createTask(body);
 
