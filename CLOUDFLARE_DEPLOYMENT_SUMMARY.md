@@ -72,6 +72,22 @@ git push origin main
 
 Your app will automatically deploy to Cloudflare Workers!
 
+## ✅ Validate Your Setup (Optional)
+
+Before deploying, you can validate your local environment:
+
+```bash
+./.github/workflows/validate-setup.sh
+```
+
+This checks:
+- Node.js and pnpm are installed
+- Dependencies are installed
+- Prisma client is generated
+- Repository structure is correct
+- Wrangler is installed (optional)
+- GitHub secrets are set (if gh CLI is available)
+
 ## 📍 Where to Find Your App
 
 After the first deployment:
