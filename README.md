@@ -1,5 +1,7 @@
 # Ottabase Monorepo
 
+[![Deploy to Cloudflare Workers](https://github.com/thinkdj/ottabase/actions/workflows/deploy-cloudflare.yml/badge.svg)](https://github.com/thinkdj/ottabase/actions/workflows/deploy-cloudflare.yml)
+
 A modern monorepo setup with pnpm workspaces and Turborepo for Next.js 15+ applications and shared packages.
 
 ## 🏗️ Structure
