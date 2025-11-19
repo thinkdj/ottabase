@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { AppShell, Container, Group, Text, Box, Burger } from '@mantine/core';
+import { AppShell, Container, Group, Text, Box, Burger, Stack } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Sidebar } from './Sidebar';
 import { MarkdownContent } from './MarkdownContent';
 import { TableOfContents } from './TableOfContents';
+import { DocsSearch } from './DocsSearch';
+import { Breadcrumbs } from './Breadcrumbs';
+import { DocNavigation } from './DocNavigation';
 import { useDocsContext } from '../DocsContext';
 import { extractHeadings } from '../utils/markdown';
+import { flattenSidebarConfig, findAdjacentDocs, generateBreadcrumbs } from '../utils/files';
 import type { DocItem, Heading } from '../types';
 
 export interface DocsLayoutProps {
@@ -19,6 +23,21 @@ export interface DocsLayoutProps {
    */
   showTableOfContents?: boolean;
   /**
+   * Show/hide search
+   * @default true
+   */
+  showSearch?: boolean;
+  /**
+   * Show/hide breadcrumbs
+   * @default true
+   */
+  showBreadcrumbs?: boolean;
+  /**
+   * Show/hide prev/next navigation
+   * @default true
+   */
+  showNavigation?: boolean;
+  /**
    * Maximum width of the content area
    * @default 'lg'
    */
@@ -28,12 +47,28 @@ export interface DocsLayoutProps {
 export function DocsLayout({
   header,
   showTableOfContents = true,
+  showSearch = true,
+  showBreadcrumbs = true,
+  showNavigation = true,
   maxWidth = 'lg',
 }: DocsLayoutProps) {
   const { config, currentDoc, setCurrentSlug } = useDocsContext();
-  const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
+  const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure();
   const [headings, setHeadings] = useState<Heading[]>([]);
   const [activeHeadingId, setActiveHeadingId] = useState<string>();
+
+  // Get all docs for search and navigation
+  const allDocs = config.sidebarConfig ? flattenSidebarConfig(config.sidebarConfig) : [];
+
+  // Get breadcrumbs
+  const breadcrumbs = currentDoc && config.sidebarConfig
+    ? generateBreadcrumbs(currentDoc.slug, config.sidebarConfig)
+    : [];
+
+  // Get adjacent docs for prev/next navigation
+  const adjacentDocs = currentDoc
+    ? findAdjacentDocs(currentDoc.slug, allDocs)
+    : { prev: null, next: null };
 
   // Extract headings when content changes
   useEffect(() => {
@@ -69,7 +104,14 @@ export function DocsLayout({
 
   const handleNavigate = (item: DocItem) => {
     setCurrentSlug(item.slug);
-    toggleMobile();
+    closeMobile();
+    // Scroll to top on navigation
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBreadcrumbNavigate = (slug: string) => {
+    setCurrentSlug(slug);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const defaultHeader = (
@@ -85,14 +127,14 @@ export function DocsLayout({
     <AppShell
       header={{ height: 60 }}
       navbar={{
-        width: 280,
+        width: parseInt(config.theme?.spacing.sidebarWidth || '280px') || 280,
         breakpoint: 'sm',
         collapsed: { mobile: !mobileOpened },
       }}
       aside={
         showTableOfContents && headings.length > 0
           ? {
-              width: 240,
+              width: parseInt(config.theme?.spacing.tocWidth || '240px') || 240,
               breakpoint: 'md',
               collapsed: { mobile: true, desktop: false },
             }
@@ -106,10 +148,15 @@ export function DocsLayout({
             <Burger opened={mobileOpened} onClick={toggleMobile} hiddenFrom="sm" size="sm" />
             {header || defaultHeader}
           </Group>
+          {showSearch && allDocs.length > 0 && (
+            <Box style={{ maxWidth: '300px', flex: 1 }} data-docs-header-actions>
+              <DocsSearch docs={allDocs} onSelect={handleNavigate} />
+            </Box>
+          )}
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md">
+      <AppShell.Navbar p="md" data-docs-sidebar>
         {config.sidebarConfig && (
           <Sidebar
             config={config.sidebarConfig}
@@ -119,10 +166,16 @@ export function DocsLayout({
         )}
       </AppShell.Navbar>
 
-      <AppShell.Main>
+      <AppShell.Main data-docs-content>
         <Container size={maxWidth} px="md">
           {currentDoc ? (
-            <>
+            <Stack gap="md">
+              {/* Breadcrumbs */}
+              {showBreadcrumbs && breadcrumbs.length > 0 && (
+                <Breadcrumbs items={breadcrumbs} onNavigate={handleBreadcrumbNavigate} />
+              )}
+
+              {/* Title and description */}
               {currentDoc.frontmatter.title && (
                 <Box mb="xl">
                   <Text size="xl" fw={700} mb="xs">
@@ -135,8 +188,21 @@ export function DocsLayout({
                   )}
                 </Box>
               )}
+
+              {/* Content */}
               <MarkdownContent content={currentDoc.content} />
-            </>
+
+              {/* Prev/Next Navigation */}
+              {showNavigation && (adjacentDocs.prev || adjacentDocs.next) && (
+                <Box data-docs-navigation>
+                  <DocNavigation
+                    prev={adjacentDocs.prev}
+                    next={adjacentDocs.next}
+                    onNavigate={handleNavigate}
+                  />
+                </Box>
+              )}
+            </Stack>
           ) : (
             <Box ta="center" mt="xl">
               <Text size="xl" c="dimmed">
@@ -148,7 +214,7 @@ export function DocsLayout({
       </AppShell.Main>
 
       {showTableOfContents && headings.length > 0 && (
-        <AppShell.Aside p="md">
+        <AppShell.Aside p="md" data-docs-toc>
           <TableOfContents headings={headings} activeId={activeHeadingId} />
         </AppShell.Aside>
       )}

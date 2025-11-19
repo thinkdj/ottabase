@@ -1,0 +1,351 @@
+/* ===================================
+   Docs Global Styles
+   =================================== */
+
+/* Base theme variables are set by ThemeProvider */
+/* These styles use those CSS variables */
+
+/* ===================================
+   Dark Mode Support
+   =================================== */
+
+[data-mantine-color-scheme="light"] {
+  --docs-bg: var(--docs-bg-light);
+  --docs-surface: var(--docs-surface-light);
+  --docs-elevated: var(--docs-elevated-light);
+  --docs-text-primary: var(--docs-text-primary-light);
+  --docs-text-secondary: var(--docs-text-secondary-light);
+  --docs-text-tertiary: var(--docs-text-tertiary-light);
+  --docs-border: var(--docs-border-light);
+  --docs-code-bg: var(--docs-code-bg-light);
+}
+
+[data-mantine-color-scheme="dark"] {
+  --docs-bg: var(--docs-bg-dark);
+  --docs-surface: var(--docs-surface-dark);
+  --docs-elevated: var(--docs-elevated-dark);
+  --docs-text-primary: var(--docs-text-primary-dark);
+  --docs-text-secondary: var(--docs-text-secondary-dark);
+  --docs-text-tertiary: var(--docs-text-tertiary-dark);
+  --docs-border: var(--docs-border-dark);
+  --docs-code-bg: var(--docs-code-bg-dark);
+}
+
+/* ===================================
+   Component Styles
+   =================================== */
+
+/* Code Block Styles */
+.docs-code-block {
+  background-color: var(--docs-code-bg);
+}
+
+.docs-code-block-header {
+  border-bottom: 1px solid var(--docs-border);
+  background-color: var(--docs-surface);
+}
+
+/* Callout Styles */
+.docs-callout-note {
+  background-color: rgba(34, 139, 230, 0.1);
+}
+
+[data-mantine-color-scheme="dark"] .docs-callout-note {
+  background-color: rgba(34, 139, 230, 0.15);
+}
+
+.docs-callout-tip {
+  background-color: rgba(18, 184, 134, 0.1);
+}
+
+[data-mantine-color-scheme="dark"] .docs-callout-tip {
+  background-color: rgba(18, 184, 134, 0.15);
+}
+
+.docs-callout-warning {
+  background-color: rgba(250, 176, 5, 0.1);
+}
+
+[data-mantine-color-scheme="dark"] .docs-callout-warning {
+  background-color: rgba(250, 176, 5, 0.15);
+}
+
+.docs-callout-danger {
+  background-color: rgba(250, 82, 82, 0.1);
+}
+
+[data-mantine-color-scheme="dark"] .docs-callout-danger {
+  background-color: rgba(250, 82, 82, 0.15);
+}
+
+.docs-callout-success {
+  background-color: rgba(64, 192, 87, 0.1);
+}
+
+[data-mantine-color-scheme="dark"] .docs-callout-success {
+  background-color: rgba(64, 192, 87, 0.15);
+}
+
+.docs-callout-info {
+  background-color: rgba(21, 170, 191, 0.1);
+}
+
+[data-mantine-color-scheme="dark"] .docs-callout-info {
+  background-color: rgba(21, 170, 191, 0.15);
+}
+
+/* Search Result Hover */
+.docs-search-result {
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.docs-search-result:hover {
+  background-color: var(--docs-surface);
+}
+
+/* ===================================
+   Print Styles
+   =================================== */
+
+@media print {
+  /* Hide navigation elements */
+  [data-docs-sidebar],
+  [data-docs-toc],
+  [data-docs-search],
+  [data-docs-header-actions],
+  [data-docs-navigation],
+  .mantine-AppShell-navbar,
+  .mantine-AppShell-aside,
+  .mantine-AppShell-header,
+  .mantine-Burger-root {
+    display: none !important;
+  }
+
+  /* Expand content to full width */
+  [data-docs-content],
+  .mantine-AppShell-main {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Optimize typography for print */
+  body {
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #000;
+    background: #fff;
+  }
+
+  /* Page breaks */
+  h1, h2, h3 {
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  pre, blockquote, table {
+    page-break-inside: avoid;
+  }
+
+  img {
+    max-width: 100%;
+    page-break-inside: avoid;
+  }
+
+  /* Code blocks */
+  pre {
+    border: 1px solid #ccc;
+    padding: 10px;
+    background: #f5f5f5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  /* Links */
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+    font-size: 90%;
+    color: #666;
+  }
+
+  a[href^="#"]:after {
+    content: "";
+  }
+
+  /* Callouts */
+  [data-docs-callout] {
+    border: 1px solid #ddd !important;
+    background: #f9f9f9 !important;
+    padding: 12px !important;
+    margin: 12px 0 !important;
+  }
+
+  /* Remove shadows and transitions */
+  * {
+    box-shadow: none !important;
+    transition: none !important;
+  }
+
+  /* Show URLs for external links */
+  .mantine-Anchor[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 10pt;
+    color: #666;
+  }
+}
+
+/* ===================================
+   Design Language Styles
+   =================================== */
+
+/* Sidebar Styles */
+[data-docs-sidebar-style="minimal"] [data-docs-sidebar] {
+  background: transparent;
+  border: none;
+}
+
+[data-docs-sidebar-style="bordered"] [data-docs-sidebar] {
+  border-right: 1px solid var(--docs-border);
+  background: var(--docs-surface);
+}
+
+[data-docs-sidebar-style="filled"] [data-docs-sidebar] {
+  background: var(--docs-elevated);
+  box-shadow: var(--docs-shadow-sm);
+}
+
+/* Heading Styles */
+[data-docs-heading-style="plain"] h1,
+[data-docs-heading-style="plain"] h2 {
+  border-bottom: none;
+}
+
+[data-docs-heading-style="underlined"] h1,
+[data-docs-heading-style="underlined"] h2 {
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--docs-border);
+}
+
+[data-docs-heading-style="accented"] h1,
+[data-docs-heading-style="accented"] h2 {
+  padding-left: 1rem;
+  border-left: 4px solid var(--docs-primary);
+}
+
+/* Link Styles */
+[data-docs-link-style="underlined"] a {
+  text-decoration: underline;
+}
+
+[data-docs-link-style="colored"] a {
+  color: var(--docs-primary);
+  text-decoration: none;
+}
+
+[data-docs-link-style="colored"] a:hover {
+  text-decoration: underline;
+}
+
+[data-docs-link-style="subtle"] a {
+  color: var(--docs-text-primary);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--docs-border);
+}
+
+[data-docs-link-style="subtle"] a:hover {
+  color: var(--docs-primary);
+}
+
+/* Code Block Styles */
+[data-docs-code-style="minimal"] pre {
+  background: var(--docs-code-bg);
+  border: none;
+  box-shadow: none;
+}
+
+[data-docs-code-style="bordered"] pre {
+  background: var(--docs-code-bg);
+  border: 1px solid var(--docs-border);
+  box-shadow: none;
+}
+
+[data-docs-code-style="elevated"] pre {
+  background: var(--docs-code-bg);
+  border: 1px solid var(--docs-border);
+  box-shadow: var(--docs-shadow-sm);
+}
+
+/* ===================================
+   Table of Contents - Sticky/Floating
+   =================================== */
+
+[data-docs-toc] {
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding-right: 12px;
+}
+
+/* Smooth scrollbar */
+[data-docs-toc]::-webkit-scrollbar {
+  width: 6px;
+}
+
+[data-docs-toc]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-docs-toc]::-webkit-scrollbar-thumb {
+  background: var(--docs-border);
+  border-radius: 3px;
+}
+
+[data-docs-toc]::-webkit-scrollbar-thumb:hover {
+  background: var(--docs-text-tertiary);
+}
+
+/* ===================================
+   Responsive adjustments
+   =================================== */
+
+@media (max-width: 768px) {
+  [data-docs-toc] {
+    position: static;
+    max-height: none;
+  }
+}
+
+/* ===================================
+   Accessibility
+   =================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid var(--docs-primary);
+  outline-offset: 2px;
+}
+
+/* Skip to content link */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+}
+
+.skip-to-content:focus {
+  left: 0;
+  top: 0;
+  background: var(--docs-primary);
+  color: white;
+  padding: 8px 16px;
+}

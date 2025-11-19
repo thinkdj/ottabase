@@ -36,6 +36,7 @@ export interface DocsConfig {
   logo?: React.ReactNode;
   defaultTheme?: 'light' | 'dark';
   showTableOfContents?: boolean;
+  theme?: any; // Will be DocsTheme from theme/types
 }
 
 export interface Heading {

@@ -40,7 +40,9 @@
   "dependencies": {
     "@ottabase/ui-code-highlight": "workspace:*",
     "@tabler/icons-react": "catalog:",
+    "flexsearch": "^0.7.43",
     "gray-matter": "^4.0.3",
+    "highlight.js": "^11.11.1",
     "react": "catalog:",
     "react-markdown": "^9.0.1",
     "rehype-highlight": "^7.0.0",
