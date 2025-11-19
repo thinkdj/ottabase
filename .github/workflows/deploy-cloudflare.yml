@@ -15,6 +15,10 @@ concurrency:
   group: cloudflare-deployment
   cancel-in-progress: false
 
+# Set minimal permissions for GITHUB_TOKEN
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Build and Deploy
