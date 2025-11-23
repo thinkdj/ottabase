@@ -154,23 +154,42 @@
   ]
 
   // Environment-specific overrides
-  // Uncomment to configure different settings per environment
-  // "env": {
-  //   "staging": {
-  //     "vars": {
-  //       "ENVIRONMENT": "staging"
-  //     }
-  //   },
-  //   "production": {
-  //     "vars": {
-  //       "ENVIRONMENT": "production"
-  //     },
-  //     "routes": [
-  //       {
-  //         "pattern": "ottabase.example.com",
-  //         "custom_domain": true
-  //       }
-  //     ]
-  //   }
-  // }
+  "env": {
+    "production": {
+      "vars": {
+        "ENVIRONMENT": "production"
+      },
+      // Production D1 Database - set via CI/CD substitution or manually
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "ottabase-db",
+          "database_id": "PRODUCTION_D1_DATABASE_ID"
+        }
+      ],
+      // Production KV Namespace - set via CI/CD substitution or manually
+      "kv_namespaces": [
+        {
+          "binding": "OTTABASE_KV",
+          "id": "PRODUCTION_KV_NAMESPACE_ID"
+        }
+      ],
+      // Production R2 Bucket
+      "r2_buckets": [
+        {
+          "binding": "OTTABASE_BUCKET",
+          "bucket_name": "ottabase-bucket"
+        }
+      ],
+      // Production Queue
+      "queues": {
+        "producers": [
+          {
+            "binding": "MY_QUEUE",
+            "queue": "ottabase-queue"
+          }
+        ]
+      }
+    }
+  }
 }

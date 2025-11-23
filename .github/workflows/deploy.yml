@@ -37,10 +37,17 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Substitute production resource IDs
+        working-directory: apps/${{ matrix.app }}
+        run: |
+          # Replace placeholder IDs with actual values from GitHub secrets
+          sed -i 's/PRODUCTION_D1_DATABASE_ID/${{ secrets.D1_DATABASE_ID }}/g' wrangler.jsonc
+          sed -i 's/PRODUCTION_KV_NAMESPACE_ID/${{ secrets.KV_NAMESPACE_ID }}/g' wrangler.jsonc
+
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/${{ matrix.app }}
-          command: deploy
+          command: deploy --env production

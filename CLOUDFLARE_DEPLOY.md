@@ -56,6 +56,8 @@ To enable automated deployments on push, you need to configure GitHub Secrets.
     | :--- | :--- | :--- |
     | `CLOUDFLARE_API_TOKEN` | API Token with permissions to deploy Workers, D1, KV, R2. | [Create Token](https://dash.cloudflare.com/profile/api-tokens) -> Use "Edit Cloudflare Workers" template. |
     | `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare Account ID. | Found in the Cloudflare Dashboard URL or "Overview" page of any zone/worker. |
+    | `D1_DATABASE_ID` | Your D1 database ID for production. | Run `wrangler d1 list` or check the Cloudflare dashboard under Workers & Pages -> D1. |
+    | `KV_NAMESPACE_ID` | Your KV namespace ID for production. | Run `wrangler kv:namespace list` or check the Cloudflare dashboard under Workers & Pages -> KV. |
 
 ## 3. Deployment Workflow
 
