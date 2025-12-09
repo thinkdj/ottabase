@@ -1,0 +1,60 @@
+{
+  "name": "@ottabase/migrate",
+  "version": "0.1.0",
+  "description": "Unified migration system for Ottabase with Drizzle ORM and Cloudflare D1 support",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "migrate": "bin/migrate.cjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./dist/config/index.js",
+      "require": "./dist/config/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ottabase/db": "workspace:*",
+    "@ottabase/ottaorm": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "drizzle-kit": "^0.29.0",
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0",
+    "prompts": "^2.4.2",
+    "zod": "^3.24.1",
+    "better-sqlite3": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "catalog:",
+    "@types/prompts": "^2.4.9",
+    "typescript": "catalog:",
+    "tsup": "catalog:",
+    "tsx": "catalog:"
+  },
+  "keywords": [
+    "migrations",
+    "drizzle",
+    "orm",
+    "database",
+    "cloudflare-d1",
+    "cli",
+    "ottabase"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ottabase/ottabase"
+  },
+  "license": "MIT"
+}
