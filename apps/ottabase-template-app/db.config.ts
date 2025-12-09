@@ -15,10 +15,10 @@ export default defineAppDbConfig({
   // Database provider (default: "d1" for Cloudflare D1)
   dbProvider: "d1",
 
-  // Feature packages to enable (adds models to schema)
-  features: [
-    // "auth",  // Uncomment to add authentication models
-  ],
+  // Feature packages to enable
+  // Note: Auth uses OttaORM migrations (not Prisma schema)
+  // Auth tables are in OttaORM core migrations when using Drizzle
+  features: [],
 
   // Path to app-specific schema
   appSchemaPath: "ottabase/prisma/app.schema.prisma",

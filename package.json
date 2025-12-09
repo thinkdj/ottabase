@@ -36,6 +36,7 @@
     "@typescript-eslint/eslint-plugin": "catalog:",
     "@typescript-eslint/parser": "catalog:",
     "babel-loader": "catalog:",
+    "baseline-browser-mapping": "^2.9.5",
     "css-loader": "catalog:",
     "eslint-plugin-storybook": "catalog:",
     "next-themes": "catalog:",

@@ -23,11 +23,13 @@
     "wrangler": "wrangler"
   },
   "dependencies": {
+    "@auth/core": "^0.37.4",
     "@mantine/carousel": "^8.3.1",
     "@mantine/core": "^8.3.1",
     "@mantine/hooks": "^8.3.1",
     "@mantine/modals": "^8.3.1",
     "@mantine/notifications": "^8.3.1",
+    "@ottabase/auth": "workspace:*",
     "@ottabase/cf": "workspace:*",
     "@ottabase/cf-realtime": "workspace:*",
     "@ottabase/config": "workspace:*",
@@ -44,10 +46,13 @@
     "@ottabase/utils": "workspace:*",
     "@prisma/adapter-d1": "catalog:",
     "@prisma/client": "catalog:",
+    "@tabler/icons-react": "^3.24.0",
     "critters": "catalog:",
+    "drizzle-orm": "catalog:",
     "jotai": "catalog:",
     "lucide-react": "catalog:",
     "next": "catalog:",
+    "next-auth": "5.0.0-beta.25",
     "next-themes": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"

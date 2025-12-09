@@ -206,6 +206,9 @@ importers:
       babel-loader:
         specifier: 'catalog:'
         version: 10.0.0(@babel/core@7.28.5)(webpack@5.103.0(esbuild@0.27.1))
+      baseline-browser-mapping:
+        specifier: ^2.9.5
+        version: 2.9.5
       css-loader:
         specifier: 'catalog:'
         version: 7.1.2(webpack@5.103.0(esbuild@0.27.1))
@@ -236,6 +239,9 @@ importers:
 
   apps/ottabase-template-app:
     dependencies:
+      '@auth/core':
+        specifier: ^0.37.4
+        version: 0.37.4
       '@mantine/carousel':
         specifier: ^8.3.1
         version: 8.3.1(@mantine/core@8.3.1(@mantine/hooks@8.3.1(react@19.2.1))(@types/react@19.2.7)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(@mantine/hooks@8.3.1(react@19.2.1))(embla-carousel-react@8.6.0(react@19.2.1))(embla-carousel@8.6.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -251,6 +257,9 @@ importers:
       '@mantine/notifications':
         specifier: ^8.3.1
         version: 8.3.1(@mantine/core@8.3.1(@mantine/hooks@8.3.1(react@19.2.1))(@types/react@19.2.7)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(@mantine/hooks@8.3.1(react@19.2.1))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      '@ottabase/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@ottabase/cf':
         specifier: workspace:*
         version: link:../../packages/cf
@@ -299,9 +308,15 @@ importers:
       '@prisma/client':
         specifier: 'catalog:'
         version: 5.22.0(prisma@5.22.0)
+      '@tabler/icons-react':
+        specifier: ^3.24.0
+        version: 3.35.0(react@19.2.1)
       critters:
         specifier: 'catalog:'
         version: 0.0.22
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.38.4(@cloudflare/workers-types@4.20251205.0)(@prisma/client@5.22.0(prisma@5.22.0))(@types/react@19.2.7)(prisma@5.22.0)(react@19.2.1)
       jotai:
         specifier: 'catalog:'
         version: 2.14.0(@babel/core@7.28.5)(@babel/template@7.27.2)(@types/react@19.2.7)(react@19.2.1)
@@ -311,6 +326,9 @@ importers:
       next:
         specifier: 'catalog:'
         version: 16.0.7(@babel/core@7.28.5)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      next-auth:
+        specifier: 5.0.0-beta.25
+        version: 5.0.0-beta.25(next@16.0.7(@babel/core@7.28.5)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(react@19.2.1)
       next-themes:
         specifier: 'catalog:'
         version: 0.4.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -420,6 +438,9 @@ importers:
       '@ottabase/cf':
         specifier: workspace:*
         version: link:../cf
+      drizzle-orm:
+        specifier: '>=0.30.0'
+        version: 0.38.4(@cloudflare/workers-types@4.20251205.0)(@prisma/client@5.22.0(prisma@5.22.0))(@types/react@19.2.7)(prisma@5.22.0)(react@19.2.1)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
@@ -1165,6 +1186,34 @@ packages:
       '@simplewebauthn/browser': ^9.0.1
       '@simplewebauthn/server': ^9.0.2
       nodemailer: ^7
+    peerDependenciesMeta:
+      '@simplewebauthn/browser':
+        optional: true
+      '@simplewebauthn/server':
+        optional: true
+      nodemailer:
+        optional: true
+
+  '@auth/core@0.37.2':
+    resolution: {integrity: sha512-kUvzyvkcd6h1vpeMAojK2y7+PAV5H+0Cc9+ZlKYDFhDY31AlvsB+GW5vNO4qE3Y07KeQgvNO9U0QUx/fN62kBw==}
+    peerDependencies:
+      '@simplewebauthn/browser': ^9.0.1
+      '@simplewebauthn/server': ^9.0.2
+      nodemailer: ^6.8.0
+    peerDependenciesMeta:
+      '@simplewebauthn/browser':
+        optional: true
+      '@simplewebauthn/server':
+        optional: true
+      nodemailer:
+        optional: true
+
+  '@auth/core@0.37.4':
+    resolution: {integrity: sha512-HOXJwXWXQRhbBDHlMU0K/6FT1v+wjtzdKhsNg0ZN7/gne6XPsIrjZ4daMcFnbq0Z/vsAbYBinQhhua0d77v7qw==}
+    peerDependencies:
+      '@simplewebauthn/browser': ^9.0.1
+      '@simplewebauthn/server': ^9.0.2
+      nodemailer: ^6.8.0
     peerDependenciesMeta:
       '@simplewebauthn/browser':
         optional: true
@@ -5269,10 +5318,6 @@ packages:
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
 
-  baseline-browser-mapping@2.8.6:
-    resolution: {integrity: sha512-wrH5NNqren/QMtKUEEJf7z86YjfqW/2uw3IL3/xpqZUC95SSVIFXYQeeGjL6FT/X68IROu6RMehZQS5foy2BXw==}
-    hasBin: true
-
   baseline-browser-mapping@2.9.5:
     resolution: {integrity: sha512-D5vIoztZOq1XM54LUdttJVc96ggEsIfju2JBvht06pSzpckp3C7HReun67Bghzrtdsq9XdMGbSSB3v3GhMNmAA==}
     hasBin: true
@@ -6943,6 +6988,22 @@ packages:
 
   neo-async@2.6.2:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
+
+  next-auth@5.0.0-beta.25:
+    resolution: {integrity: sha512-2dJJw1sHQl2qxCrRk+KTQbeH+izFbGFPuJj5eGgBZFYyiYYtvlrBeUw1E/OJJxTRjuxbSYGnCTkUIRsIIW0bog==}
+    peerDependencies:
+      '@simplewebauthn/browser': ^9.0.1
+      '@simplewebauthn/server': ^9.0.2
+      next: ^14.0.0-0 || ^15.0.0-0
+      nodemailer: ^6.6.5
+      react: ^18.2.0 || ^19.0.0-0
+    peerDependenciesMeta:
+      '@simplewebauthn/browser':
+        optional: true
+      '@simplewebauthn/server':
+        optional: true
+      nodemailer:
+        optional: true
 
   next-themes@0.4.6:
     resolution: {integrity: sha512-pZvgD5L0IEvX5/9GWyHMf3m8BKiVQwsCMHfoFosXtXBMnaS0ZnIJ9ST4b4NqLVKDEm8QBxoNNGNaBv2JNF6XNA==}
@@ -8615,6 +8676,24 @@ snapshots:
       oauth4webapi: 2.17.0
       preact: 10.11.3
       preact-render-to-string: 5.2.3(preact@10.11.3)
+
+  '@auth/core@0.37.2':
+    dependencies:
+      '@panva/hkdf': 1.2.1
+      '@types/cookie': 0.6.0
+      cookie: 0.7.1
+      jose: 5.10.0
+      oauth4webapi: 3.8.3
+      preact: 10.11.3
+      preact-render-to-string: 5.2.3(preact@10.11.3)
+
+  '@auth/core@0.37.4':
+    dependencies:
+      '@panva/hkdf': 1.2.1
+      jose: 5.10.0
+      oauth4webapi: 3.8.3
+      preact: 10.24.3
+      preact-render-to-string: 6.5.11(preact@10.24.3)
 
   '@auth/core@0.41.1':
     dependencies:
@@ -13741,8 +13820,6 @@ snapshots:
 
   balanced-match@1.0.2: {}
 
-  baseline-browser-mapping@2.8.6: {}
-
   baseline-browser-mapping@2.9.5: {}
 
   binary-extensions@2.3.0: {}
@@ -13782,7 +13859,7 @@ snapshots:
 
   browserslist@4.26.2:
     dependencies:
-      baseline-browser-mapping: 2.8.6
+      baseline-browser-mapping: 2.9.5
       caniuse-lite: 1.0.30001759
       electron-to-chromium: 1.5.222
       node-releases: 2.0.21
@@ -14502,7 +14579,7 @@ snapshots:
       '@typescript-eslint/parser': 8.48.1(eslint@9.36.0(jiti@2.6.1))(typescript@5.9.2)
       eslint: 9.36.0(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.48.1(eslint@9.36.0(jiti@2.6.1))(typescript@5.9.2))(eslint@9.36.0(jiti@2.6.1)))(eslint@9.36.0(jiti@2.6.1))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.36.0(jiti@2.6.1))
       eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.48.1(eslint@9.36.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.36.0(jiti@2.6.1))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.36.0(jiti@2.6.1))
       eslint-plugin-react: 7.37.5(eslint@9.36.0(jiti@2.6.1))
@@ -14522,7 +14599,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.48.1(eslint@9.36.0(jiti@2.6.1))(typescript@5.9.2))(eslint@9.36.0(jiti@2.6.1)))(eslint@9.36.0(jiti@2.6.1)):
+  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.36.0(jiti@2.6.1)):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
@@ -14537,14 +14614,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.48.1(eslint@9.36.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.48.1(eslint@9.36.0(jiti@2.6.1))(typescript@5.9.2))(eslint@9.36.0(jiti@2.6.1)))(eslint@9.36.0(jiti@2.6.1)))(eslint@9.36.0(jiti@2.6.1)):
+  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.48.1(eslint@9.36.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.36.0(jiti@2.6.1)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       '@typescript-eslint/parser': 8.48.1(eslint@9.36.0(jiti@2.6.1))(typescript@5.9.2)
       eslint: 9.36.0(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.48.1(eslint@9.36.0(jiti@2.6.1))(typescript@5.9.2))(eslint@9.36.0(jiti@2.6.1)))(eslint@9.36.0(jiti@2.6.1))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.36.0(jiti@2.6.1))
     transitivePeerDependencies:
       - supports-color
 
@@ -14559,7 +14636,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.36.0(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.48.1(eslint@9.36.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.48.1(eslint@9.36.0(jiti@2.6.1))(typescript@5.9.2))(eslint@9.36.0(jiti@2.6.1)))(eslint@9.36.0(jiti@2.6.1)))(eslint@9.36.0(jiti@2.6.1))
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.48.1(eslint@9.36.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.36.0(jiti@2.6.1))
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -15584,6 +15661,12 @@ snapshots:
   negotiator@1.0.0: {}
 
   neo-async@2.6.2: {}
+
+  next-auth@5.0.0-beta.25(next@16.0.7(@babel/core@7.28.5)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(react@19.2.1):
+    dependencies:
+      '@auth/core': 0.37.2
+      next: 16.0.7(@babel/core@7.28.5)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      react: 19.2.1
 
   next-themes@0.4.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1):
     dependencies:

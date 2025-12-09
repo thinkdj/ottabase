@@ -25,6 +25,11 @@ export {
   registerAuthFeature,
 } from "./db.feature";
 
+// Auto-register auth feature on package import
+// This ensures the feature is available when generating schemas
+import { registerAuthFeature } from "./db.feature";
+registerAuthFeature("prisma");
+
 // ============================================================
 // D1 ADAPTER - Unified Factory (ORM-agnostic)
 // ============================================================
@@ -65,6 +70,7 @@ export {
 export {
   createOttabaseAuthConfig,
   createOttabaseAuthConfigDev,
+  mergeAuthConfig,
   type OttabaseAuthConfigOptions,
 } from "./config";
 

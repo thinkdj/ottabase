@@ -30,10 +30,12 @@ export const authFeatureDrizzle = defineFeatureSchema({
 /**
  * Auth feature schema definition for Prisma (legacy)
  *
+ * Uses the same featureId as Drizzle ("auth") so they're interchangeable.
+ *
  * @deprecated Drizzle is recommended for D1. Use authFeatureDrizzle instead.
  */
 export const authFeaturePrisma = defineFeatureSchema({
-  featureId: "auth-prisma",
+  featureId: "auth",
   name: "Authentication (Prisma)",
   description:
     "Auth.js (NextAuth.js) compatible authentication models for Prisma",
@@ -51,14 +53,19 @@ export const authFeature = authFeatureDrizzle;
 /**
  * Register the auth feature with the global registry
  *
- * @param orm - ORM to use ("drizzle" or "prisma"), defaults to "drizzle"
+ * @param orm - ORM to use ("drizzle" or "prisma"), defaults to "prisma"
+ *
+ * Note: Even though Drizzle is used at runtime, Prisma is the default here
+ * because it's needed for Prisma schema generation. The Drizzle adapter
+ * works regardless of which feature is registered.
  */
 export function registerAuthFeature(
-  orm: "drizzle" | "prisma" = "drizzle",
+  orm: "drizzle" | "prisma" = "prisma",
 ): void {
   const feature = orm === "drizzle" ? authFeatureDrizzle : authFeaturePrisma;
   registerFeature(feature);
 }
 
-// Auto-register Drizzle feature by default
+// Auto-register Prisma feature by default for schema generation
+// Runtime uses Drizzle adapter regardless of this registration
 registerAuthFeature();

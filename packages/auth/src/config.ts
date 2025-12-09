@@ -223,3 +223,79 @@ export function createOttabaseAuthConfigDev(
     log: ["error", "warn"],
   });
 }
+
+/**
+ * Merge multiple Auth.js configurations with override support
+ *
+ * This helper allows you to combine a base configuration with overrides,
+ * similar to the pattern used in Next.js apps where you spread a config
+ * and add custom properties.
+ *
+ * @param baseConfig - The base Auth.js configuration
+ * @param overrides - Configuration overrides to merge in
+ * @returns A merged Auth.js configuration
+ *
+ * @example
+ * ```typescript
+ * // In your Next.js app's auth.ts
+ * import NextAuth from "next-auth";
+ * import { createOttabaseAuthConfig, mergeAuthConfig } from "@ottabase/auth/config";
+ *
+ * export const { handlers, auth, signIn, signOut } = NextAuth((request) => {
+ *   const env = request?.env || process.env;
+ *
+ *   const baseConfig = createOttabaseAuthConfig({
+ *     d1: env.DB,
+ *     providers: [...],
+ *   });
+ *
+ *   // Override or extend the base configuration
+ *   return mergeAuthConfig(baseConfig, {
+ *     pages: {
+ *       signIn: "/login",
+ *       error: "/error",
+ *     },
+ *     callbacks: {
+ *       async signIn({ user }) {
+ *         // Custom sign-in logic
+ *         return true;
+ *       },
+ *     },
+ *   });
+ * });
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // Simple spread pattern (also supported)
+ * const config = {
+ *   ...createOttabaseAuthConfig({ d1: env.DB, providers: [...] }),
+ *   pages: { signIn: "/login" },
+ * };
+ * ```
+ */
+export function mergeAuthConfig(
+  baseConfig: NextAuthConfig,
+  overrides: Partial<NextAuthConfig> = {},
+): NextAuthConfig {
+  // Deep merge callbacks if both configs have them
+  const callbacks = {
+    ...(baseConfig.callbacks || {}),
+    ...(overrides.callbacks || {}),
+  };
+
+  // Deep merge pages if both configs have them
+  const pages = {
+    ...(baseConfig.pages || {}),
+    ...(overrides.pages || {}),
+  };
+
+  // Merge the configurations
+  return {
+    ...baseConfig,
+    ...overrides,
+    // Ensure deeply merged objects are included
+    ...(Object.keys(callbacks).length > 0 && { callbacks }),
+    ...(Object.keys(pages).length > 0 && { pages }),
+  };
+}

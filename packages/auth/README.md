@@ -314,9 +314,80 @@ const sessionData = serializeSession(await getSession());
 
 ## Framework Integration
 
-### Next.js
+### Next.js (App Router)
 
-For Next.js-specific helpers (middleware, API handlers, etc.), see the `ottabase-template-app` package which includes Next.js integration examples.
+The Ottabase auth package is framework-agnostic. Next.js-specific code stays in your app.
+
+#### Create `app/auth.ts`
+
+```typescript
+import NextAuth from "next-auth";
+import { createOttabaseAuthConfig } from "@ottabase/auth/config";
+import { autoConfigureProviders } from "@ottabase/auth/providers";
+
+// Get auth configuration from @ottabase/auth package
+const authConfig = (request?: any) => {
+  const env = request?.env || process.env;
+
+  return createOttabaseAuthConfig({
+    d1: env.DB,
+    providers: autoConfigureProviders(env),
+    orm: "drizzle",
+    sessionStrategy: "jwt",
+    useCachedAdapter: true,
+    log: env.NODE_ENV === "development" ? ["error", "warn"] : false,
+    authConfig: {
+      trustHost: true,
+    },
+  });
+};
+
+export const {
+  handlers: { GET, POST },
+  auth,
+  signIn,
+  signOut
+} = NextAuth((request) => ({
+  ...authConfig(request),
+  // override configs below this line, if required;
+}));
+```
+
+#### Create API Route: `app/api/auth/[...nextauth]/route.ts`
+
+```typescript
+import { handlers } from "@/app/auth";
+
+export const { GET, POST } = handlers;
+export const runtime = "edge";
+```
+
+#### Usage in Components
+
+```typescript
+// Server Component
+import { auth } from "@/app/auth";
+
+export default async function Page() {
+  const session = await auth();
+
+  if (!session) {
+    return <div>Not authenticated</div>;
+  }
+
+  return <div>Welcome {session.user?.email}</div>;
+}
+
+// Client Component
+"use client";
+import { signIn, signOut } from "next-auth/react";
+
+export function SignInButton() {
+  return <button onClick={() => signIn()}>Sign In</button>;
+}
+```
+
+For complete examples, see the `ottabase-template-app` package.
 
 ### Cloudflare Workers
 
