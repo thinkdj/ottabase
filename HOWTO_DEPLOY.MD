@@ -145,32 +145,17 @@ After adding all secrets, you should see:
 
 ---
 
-## Step 4: Setup Database (If Using Prisma)
+## Step 4: Setup Database (Optional - If Using Database)
 
-### 4.1 Generate Prisma Schema
+If your app uses a database, generate the Prisma schema and create migrations:
 
 ```bash
 cd apps/ottabase-template-app
-pnpm db:generate
+pnpm db:generate          # Generate schema
+pnpm db:migrate           # Create migrations
 ```
 
-This creates `prisma/schema.prisma` from your configuration.
-
-### 4.2 Create Database Migration
-
-```bash
-pnpm db:migrate
-```
-
-This creates migration files in `prisma/migrations/`.
-
-### 4.3 Apply Migration Locally (Optional - for testing)
-
-```bash
-wrangler d1 migrations apply ottabase-db --local
-```
-
-**Note:** The CI/CD pipeline will automatically apply migrations to production.
+**Note:** The CI/CD pipeline automatically applies migrations to production. See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for detailed database setup.
 
 ---
 
@@ -351,16 +336,16 @@ wrangler queues list
 
 ### Cloudflare Bindings
 
-Your app has access to these bindings:
+Your app has access to these bindings (see [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for usage details):
 
-| Binding | Type | Access in Code |
-|---------|------|----------------|
-| `OBCF_D1` | D1 Database | `env.OBCF_D1` |
-| `OBCF_KV` | KV Namespace | `env.OBCF_KV` |
-| `OBCF_R2` | R2 Bucket | `env.OBCF_R2` |
-| `OBCF_QUEUE` | Queue | `env.OBCF_QUEUE` |
-| `OBCF_REALTIME` | Durable Object | `env.OBCF_REALTIME` |
-| `OBCF_RATE_LIMITER` | Rate Limiter | `env.OBCF_RATE_LIMITER` |
+| Binding | Type |
+|---------|------|
+| `OBCF_D1` | D1 Database |
+| `OBCF_KV` | KV Namespace |
+| `OBCF_R2` | R2 Bucket |
+| `OBCF_QUEUE` | Queue |
+| `OBCF_REALTIME` | Durable Object |
+| `OBCF_RATE_LIMITER` | Rate Limiter |
 
 ---
 
@@ -387,7 +372,6 @@ Your app has access to these bindings:
 
 ## Additional Resources
 
-- [Cloudflare Configuration Guide](./CLOUDFLARE_CONFIGURATION_GUIDE.md)
-- [D1 Production Deployment](./packages/db/src/prisma/D1_PRODUCTION_DEPLOYMENT.md)
-- [Wrangler CLI Reference](https://developers.cloudflare.com/workers/wrangler/commands/)
-- [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)
+- **[CLOUDFLARE_CONFIGURATION_GUIDE.md](./CLOUDFLARE_CONFIGURATION_GUIDE.md)** - Detailed technical reference for bindings, environment variables, database setup, and code usage
+- **[Wrangler CLI Reference](https://developers.cloudflare.com/workers/wrangler/commands/)** - Official Cloudflare Wrangler documentation
+- **[Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)** - Official Cloudflare Workers documentation

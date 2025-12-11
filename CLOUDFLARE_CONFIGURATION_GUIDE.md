@@ -18,26 +18,9 @@ Complete guide for configuring your Ottabase application to work 100% with Cloud
 
 ## 🚀 Quick Start
 
-### Automated Setup (Recommended)
+> **📖 For deployment instructions, see [HOWTO_DEPLOY.MD](HOWTO_DEPLOY.MD)**
 
-```bash
-# 1. Login to Cloudflare
-wrangler login
-
-# 2. Run automated setup script
-pnpm cloudflare:setup
-
-# 3. Validate configuration
-pnpm cloudflare:validate
-
-# 4. Generate database schema
-cd apps/ottabase-template-app
-pnpm db:generate
-```
-
-### Manual Setup (Skip if using automated setup)
-
-See [Manual Configuration](#manual-configuration-advanced) section below.
+This guide covers Cloudflare resource configuration, bindings, environment variables, and code usage.
 
 ---
 
@@ -609,16 +592,7 @@ pnpm cf-typegen
 
 ## 📝 Summary
 
-### Minimal Setup Steps
-
-1. **Login:** `wrangler login`
-2. **Setup:** `pnpm cloudflare:setup`
-3. **Validate:** `pnpm cloudflare:validate`
-4. **Generate Schema:** `cd apps/ottabase-template-app && pnpm db:generate`
-5. **Migrate:** `pnpm db:migrate && wrangler d1 migrations apply ottabase-db --local`
-6. **Deploy:** `pnpm deploy`
-
-### Required Files
+### Required Configuration Files
 
 - ✅ `wrangler.jsonc` - Cloudflare bindings configuration (OBCF\_\* names)
 - ✅ `db.config.ts` - Database configuration (d1Database: "OBCF_D1")
