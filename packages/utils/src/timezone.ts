@@ -103,13 +103,13 @@ export function getUserTimezone(): Timezone {
 }
 
 /**
- * Convert a date input to a Date object
+ * Validate and convert a date input to a Date object
  * Handles Date objects, ISO strings, and timestamps
  * 
  * @param date - Date input (Date, ISO string, or timestamp)
- * @returns Date object or null if invalid
+ * @returns Valid Date object or null if invalid
  */
-function toDateObject(date: DateInput): Date | null {
+function validateAndConvertToDate(date: DateInput): Date | null {
   if (date instanceof Date) {
     return isValid(date) ? date : null;
   }
@@ -143,7 +143,7 @@ function toDateObject(date: DateInput): Date | null {
  * ```
  */
 export function toUTC(date: DateInput, timezone?: Timezone): Date | null {
-  const dateObj = toDateObject(date);
+  const dateObj = validateAndConvertToDate(date);
   if (!dateObj) return null;
 
   const tz = timezone || getUserTimezone();
@@ -175,7 +175,7 @@ export function toUTC(date: DateInput, timezone?: Timezone): Date | null {
  * ```
  */
 export function fromUTC(date: DateInput, timezone?: Timezone): Date | null {
-  const dateObj = toDateObject(date);
+  const dateObj = validateAndConvertToDate(date);
   if (!dateObj) return null;
 
   const tz = timezone || getUserTimezone();
@@ -216,7 +216,7 @@ export function formatInUserTimezone(
   formatStr: string = 'PPpp',
   timezone?: Timezone
 ): string | null {
-  const dateObj = toDateObject(date);
+  const dateObj = validateAndConvertToDate(date);
   if (!dateObj) return null;
 
   const tz = timezone || getUserTimezone();
@@ -311,7 +311,7 @@ export function getTimezoneOffsetMinutes(
   date?: DateInput
 ): number {
   const tz = timezone || getUserTimezone();
-  const dateObj = date ? toDateObject(date) : new Date();
+  const dateObj = date ? validateAndConvertToDate(date) : new Date();
   
   if (!dateObj) return 0;
 
@@ -395,7 +395,9 @@ export function getCommonTimezones(): Array<{
     const offset = getTimezoneOffsetMinutes(tz);
     const hours = Math.floor(Math.abs(offset) / 60);
     const minutes = Math.abs(offset) % 60;
-    const sign = offset <= 0 ? '+' : '-';
+    // Negative offset means ahead of UTC (e.g., +5 for EST which is -300 minutes)
+    // Positive offset means behind UTC (e.g., -9 for Tokyo which is 540 minutes)
+    const sign = offset < 0 ? '+' : '-';
     const offsetStr = `UTC${sign}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     
     return {
@@ -426,7 +428,7 @@ export function convertTimezone(
   fromTimezone: Timezone,
   toTimezone: Timezone
 ): Date | null {
-  const dateObj = toDateObject(date);
+  const dateObj = validateAndConvertToDate(date);
   if (!dateObj) return null;
 
   try {
@@ -464,6 +466,7 @@ export function formatWithTimezone(
 
 /**
  * Check if a date is in daylight saving time for a timezone
+ * Works for both northern and southern hemisphere timezones
  * 
  * @param date - Date to check
  * @param timezone - Timezone to check (defaults to user's timezone)
@@ -471,26 +474,33 @@ export function formatWithTimezone(
  * 
  * @example
  * ```typescript
- * isDST(new Date('2024-06-15'), 'America/New_York'); // true (summer)
- * isDST(new Date('2024-12-15'), 'America/New_York'); // false (winter)
+ * isDST(new Date('2024-06-15'), 'America/New_York'); // true (northern summer)
+ * isDST(new Date('2024-12-15'), 'America/New_York'); // false (northern winter)
+ * isDST(new Date('2024-12-15'), 'Australia/Sydney'); // true (southern summer)
  * ```
  */
 export function isDST(date: DateInput, timezone?: Timezone): boolean {
-  const dateObj = toDateObject(date);
+  const dateObj = validateAndConvertToDate(date);
   if (!dateObj) return false;
 
   const tz = timezone || getUserTimezone();
 
   try {
-    // Get offset in January (definitely not DST for northern hemisphere)
+    // Get offsets for January and July
     const jan = new Date(dateObj.getFullYear(), 0, 1);
+    const jul = new Date(dateObj.getFullYear(), 6, 1);
     const janOffset = getTimezoneOffset(tz, jan);
+    const julOffset = getTimezoneOffset(tz, jul);
     
     // Get offset for current date
     const currentOffset = getTimezoneOffset(tz, dateObj);
     
-    // If current offset is less than January offset, we're in DST
-    return currentOffset < janOffset;
+    // DST is active when offset differs from standard time
+    // Standard time is the larger offset (further from UTC)
+    const standardOffset = Math.max(janOffset, julOffset);
+    
+    // If current offset is less than standard offset, we're in DST
+    return currentOffset < standardOffset;
   } catch (e) {
     console.error('Error checking DST:', e);
     return false;
