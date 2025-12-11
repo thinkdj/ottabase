@@ -264,6 +264,28 @@ pnpm storybook
 - Set `STORYBOOK_PRIMARY_APP=ottabase-template-app` to choose which app drives the `@/` alias
 - Add `.stories.tsx` or `.stories.mdx` files inside package `src/` or app `app/` folders to populate the catalog
 
+## 🚀 Deployment to Cloudflare Workers
+
+Deploy `ottabase-template-app` to Cloudflare Workers with automated CI/CD:
+
+```bash
+# 1. Setup Cloudflare resources (one-time)
+pnpm cloudflare:setup
+
+# 2. Verify setup
+pnpm cloudflare:validate
+
+# 3. Follow the complete deployment guide
+```
+
+**📖 See [HOWTO_DEPLOY.MD](HOWTO_DEPLOY.MD) for complete step-by-step instructions.**
+
+The guide covers:
+- Setting up Cloudflare resources (D1, KV, R2, Queue)
+- Configuring GitHub secrets for CI/CD
+- Automatic deployment on push to main
+- Database migrations and verification
+
 ---
 
 [![Built on Cloudflare](https://workers.cloudflare.com/built-with-cloudflare.svg)](https://cloudflare.com)
