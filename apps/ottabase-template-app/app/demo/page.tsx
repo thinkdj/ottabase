@@ -95,6 +95,21 @@ export default function DemoIndexPage() {
             </Button>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Timezone Utilities</CardTitle>
+            <CardDescription>
+              Production-ready timezone standardization: always store in UTC,
+              display in user's timezone. Lightweight and type-safe.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/demo/timezone">View Timezone Demo</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="mt-8 rounded-lg border bg-muted/50 p-6">
