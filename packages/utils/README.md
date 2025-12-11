@@ -53,6 +53,9 @@ import { getInitials } from '@ottabase/utils/user';
 
 // Git utilities
 import { getLastCommitMessage, getCurrentBranch, getLatestCommitHash, isGitRepository } from '@ottabase/utils/git';
+
+// Timezone utilities
+import { toUTC, fromUTC, formatInUserTimezone, getUserTimezone, setTimezoneConfig, nowUTC, parseInTimezone, getCommonTimezones, isValidTimezone } from '@ottabase/utils/timezone';
 ```
 
 ## Available Utilities
@@ -153,6 +156,46 @@ import { getLastCommitMessage, getCurrentBranch, getLatestCommitHash, isGitRepos
 - **`hasUncommittedChanges(): boolean`** - Check for uncommitted changes
 - **`getCommitCount(): number`** - Get number of commits in current branch
 
+### Timezone Utilities (`@ottabase/utils/timezone`)
+
+**Production-ready timezone standardization for SaaS applications**
+
+Core principles:
+- **Server/DB**: Always store in UTC
+- **Client**: Convert to user's timezone for display
+- **Lightweight**: Uses date-fns-tz (~2KB gzipped)
+- **Type-safe**: Full TypeScript support
+
+#### Configuration
+
+- **`setTimezoneConfig(config: TimezoneConfig): void`** - Set global timezone configuration
+- **`getTimezoneConfig(): TimezoneConfig`** - Get current timezone configuration
+- **`getUserTimezone(): Timezone`** - Get user's timezone (auto-detected or configured)
+
+#### UTC Conversion (For Database Storage)
+
+- **`toUTC(date: DateInput, timezone?: Timezone): Date | null`** - Convert any date to UTC for storage
+- **`nowUTC(): Date`** - Get current date/time in UTC (for new records)
+- **`parseInTimezone(dateStr: string, timezone?: Timezone): Date | null`** - Parse user input to UTC
+
+#### User Display (From Database)
+
+- **`fromUTC(date: DateInput, timezone?: Timezone): Date | null`** - Convert UTC date to user's timezone
+- **`formatInUserTimezone(date: DateInput, format?: string, timezone?: Timezone): string | null`** - Format UTC date in user's timezone
+- **`formatWithTimezone(date: DateInput, format?: string, timezone?: Timezone): string | null`** - Format with timezone abbreviation
+
+#### Timezone Information
+
+- **`getCommonTimezones(): Array<{name, offset, label}>`** - Get list of common timezones (for dropdowns)
+- **`isValidTimezone(timezone: string): boolean`** - Validate IANA timezone string
+- **`getTimezoneOffsetMinutes(timezone?: Timezone, date?: DateInput): number`** - Get timezone offset in minutes
+- **`isDST(date: DateInput, timezone?: Timezone): boolean`** - Check if date is in daylight saving time
+
+#### Advanced
+
+- **`nowInTimezone(timezone?: Timezone): Date`** - Get current time in specific timezone
+- **`convertTimezone(date: DateInput, from: Timezone, to: Timezone): Date | null`** - Convert between timezones
+
 #### Case Types
 
 The `changeCase` function supports these case formats:
@@ -242,6 +285,85 @@ console.log(getLastCommitMessage()); // "feat: New feature @ Mon Jan 1 12:00:00 
 console.log(getCurrentBranch()); // "main"
 console.log(getLatestCommitHash()); // "a1b2c3d"
 console.log(isGitRepository()); // true
+
+// Timezone utilities
+import { toUTC, fromUTC, formatInUserTimezone, setTimezoneConfig, nowUTC, getCommonTimezones } from '@ottabase/utils/timezone';
+
+// Configure user's timezone (e.g., from user profile)
+setTimezoneConfig({ userTimezone: 'America/New_York' });
+
+// SAVING TO DATABASE: Convert user input to UTC
+const userInput = '2024-01-15T14:30:00'; // User enters in their timezone
+const utcDate = toUTC(userInput); // Convert to UTC
+// Save utcDate to database
+
+// DISPLAYING FROM DATABASE: Convert UTC to user's timezone
+const dbDate = new Date('2024-01-15T19:30:00Z'); // UTC from database
+const userDate = fromUTC(dbDate); // Convert to user's timezone
+console.log(formatInUserTimezone(dbDate, 'PPpp')); // "Jan 15, 2024, 2:30:00 PM"
+
+// CREATE NEW RECORDS: Always use UTC
+const newRecord = {
+  title: 'New Post',
+  createdAt: nowUTC(), // Current time in UTC
+};
+
+// TIMEZONE SELECTOR: Get list of common timezones
+const timezones = getCommonTimezones();
+// [{ name: 'America/New_York', offset: -300, label: 'America/New York (UTC-05:00)' }, ...]
+```
+
+### Real-World SaaS Example
+
+```typescript
+import { toUTC, fromUTC, formatInUserTimezone, setTimezoneConfig } from '@ottabase/utils/timezone';
+
+// 1. User Registration: Store user's preferred timezone
+async function registerUser(email: string, timezone: string) {
+  return db.user.create({
+    data: {
+      email,
+      timezone, // Store user's timezone preference
+      createdAt: nowUTC(), // Always UTC in database
+    }
+  });
+}
+
+// 2. Creating Content: Convert user's time to UTC
+async function createPost(userId: string, scheduledTime: string) {
+  const user = await db.user.findUnique({ where: { id: userId } });
+  
+  return db.post.create({
+    data: {
+      userId,
+      // Convert scheduled time from user's timezone to UTC
+      scheduledAt: toUTC(scheduledTime, user.timezone),
+      createdAt: nowUTC(),
+    }
+  });
+}
+
+// 3. Displaying Content: Convert UTC to user's timezone
+async function getUserPosts(userId: string) {
+  const user = await db.user.findUnique({ where: { id: userId } });
+  const posts = await db.post.findMany({ where: { userId } });
+  
+  return posts.map(post => ({
+    ...post,
+    // Display in user's timezone
+    scheduledAtFormatted: formatInUserTimezone(
+      post.scheduledAt, 
+      'PPpp', 
+      user.timezone
+    ),
+  }));
+}
+
+// 4. Client-side: Auto-detect and use user's timezone
+// In your app initialization
+if (typeof window !== 'undefined') {
+  setTimezoneConfig({ userTimezone: getUserTimezone() });
+}
 ```
 
 ## Future Utilities
@@ -250,7 +372,6 @@ This package is designed to be extensible. Future additions may include:
 
 - `@ottabase/utils/html` - HTML manipulation utilities
 - `@ottabase/utils/table` - Table/data utilities
-- `@ottabase/utils/date` - Date/time utilities
 - `@ottabase/utils/validation` - Validation utilities
 
 ## Requirements

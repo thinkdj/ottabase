@@ -1,7 +1,7 @@
 {
   "name": "@ottabase/utils",
   "version": "0.1.0",
-  "description": "Set of common utility functions for file operations, string manipulation, currency formatting, email parsing, JSON handling, git operations, browser detection, and more.",
+  "description": "Set of common utility functions for file operations, string manipulation, currency formatting, email parsing, JSON handling, git operations, browser detection, timezone management, and more.",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
@@ -65,6 +65,11 @@
       "types": "./dist/browser.d.ts",
       "import": "./dist/browser.esm.js",
       "require": "./dist/browser.js"
+    },
+    "./timezone": {
+      "types": "./dist/timezone.d.ts",
+      "import": "./dist/timezone.esm.js",
+      "require": "./dist/timezone.js"
     }
   },
   "files": [
@@ -72,8 +77,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts --format cjs,esm --dts --watch",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts",
     "type-check": "tsc --noEmit"
@@ -90,12 +95,17 @@
     "user",
     "git",
     "browser",
+    "timezone",
     "tree-shakeable",
     "typescript",
     "ottabase"
   ],
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "date-fns": "catalog:",
+    "date-fns-tz": "catalog:"
+  },
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/react": "catalog:",
