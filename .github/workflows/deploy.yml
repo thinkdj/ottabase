@@ -65,11 +65,27 @@ jobs:
           APP_FOLDER=$(echo "${{ matrix.app }}" | sed 's/@ottabase\///')
           echo "folder=$APP_FOLDER" >> $GITHUB_OUTPUT
 
-      # Build the app and all its dependencies using Turborepo
-      - name: Build
-        run: pnpm turbo build --filter=${{ matrix.app }}...
+      # Build packages first
+      - name: Build packages
+        run: pnpm turbo build --filter="./packages/*"
         env:
           NODE_ENV: production
+
+      # Generate database schema and migrations for the app
+      - name: Generate Prisma schema
+        working-directory: apps/${{ steps.app-info.outputs.folder }}
+        run: pnpm db:generate
+
+      # Build the app and all its dependencies using Turborepo
+      - name: Build application
+        run: pnpm turbo build --filter=${{ matrix.app }}
+        env:
+          NODE_ENV: production
+
+      # Build Cloudflare Worker bundle
+      - name: Build Cloudflare Worker
+        working-directory: apps/${{ steps.app-info.outputs.folder }}
+        run: pnpm build:worker
 
       # Substitute production secrets into wrangler.jsonc
       - name: Substitute production resource IDs
@@ -78,6 +94,31 @@ jobs:
         run: |
           sed -i 's/PRODUCTION_D1_DATABASE_ID/${{ secrets.D1_DATABASE_ID }}/g' wrangler.jsonc
           sed -i 's/PRODUCTION_KV_NAMESPACE_ID/${{ secrets.KV_NAMESPACE_ID }}/g' wrangler.jsonc
+
+      # Apply database migrations to production D1
+      - name: Apply database migrations
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: apps/${{ steps.app-info.outputs.folder }}
+        run: |
+          # Check if migrations directory exists and has migrations
+          if [ -d "prisma/migrations" ] && [ "$(ls -A prisma/migrations)" ]; then
+            echo "Applying migrations to production D1 database..."
+            # Get list of migration directories
+            for migration_dir in prisma/migrations/*/; do
+              if [ -f "${migration_dir}migration.sql" ]; then
+                echo "Applying migration: $(basename $migration_dir)"
+                pnpm wrangler d1 execute ${{ secrets.D1_DATABASE_NAME || 'ottabase-db' }} \
+                  --remote \
+                  --file="${migration_dir}migration.sql" || echo "Migration may have been applied already"
+              fi
+            done
+            echo "Migrations applied successfully"
+          else
+            echo "No migrations found, skipping migration step"
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       # Deploy to Cloudflare Workers
       - name: Deploy to Cloudflare

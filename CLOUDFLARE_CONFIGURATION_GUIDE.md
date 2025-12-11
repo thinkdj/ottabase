@@ -540,7 +540,8 @@ Replace all `YOUR_*_ID` placeholders with actual resource IDs and ensure binding
   - [Durable Objects](https://developers.cloudflare.com/durable-objects/)
 
 - **Project Documentation:**
-  - [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md) - CI/CD setup
+  - [HOWTO_DEPLOY.MD](HOWTO_DEPLOY.MD) - Complete deployment guide with CI/CD setup
+  - [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md) - Additional CI/CD information
   - [AGENTS.MD](AGENTS.MD) - Monorepo architecture
 
 ---

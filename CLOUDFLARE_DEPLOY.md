@@ -1,5 +1,8 @@
 # Cloudflare Workers Deployment Guide
 
+> **📖 For a complete step-by-step deployment guide, see [HOWTO_DEPLOY.MD](HOWTO_DEPLOY.MD)**  
+> This document provides additional context and details.
+
 This guide details how to deploy the `ottabase-template-app` to Cloudflare Workers with fully automated CI/CD.
 
 ## Prerequisites
