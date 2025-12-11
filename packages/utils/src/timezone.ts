@@ -9,7 +9,7 @@
  * @module @ottabase/utils/timezone
  */
 
-import { format, parseISO, isValid } from 'date-fns';
+import { parseISO, isValid } from 'date-fns';
 import { 
   toZonedTime, 
   fromZonedTime, 
@@ -395,9 +395,9 @@ export function getCommonTimezones(): Array<{
     const offset = getTimezoneOffsetMinutes(tz);
     const hours = Math.floor(Math.abs(offset) / 60);
     const minutes = Math.abs(offset) % 60;
-    // Negative offset means ahead of UTC (e.g., +5 for EST which is -300 minutes)
-    // Positive offset means behind UTC (e.g., -9 for Tokyo which is 540 minutes)
-    const sign = offset < 0 ? '+' : '-';
+    // Negative offset means behind UTC (e.g., EST is -300, shown as UTC-05:00)
+    // Positive offset means ahead of UTC (e.g., Tokyo is 540, shown as UTC+09:00)
+    const sign = offset < 0 ? '-' : '+';
     const offsetStr = `UTC${sign}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     
     return {
