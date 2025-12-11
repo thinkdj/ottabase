@@ -63,10 +63,10 @@ jobs:
               run: pnpm type-check
 
             - name: Build All Packages (with Turborepo)
-              run: pnpm turbo build --filter="./packages/*"
+              run: pnpm build:packages
 
             - name: Build All Apps (with dependencies)
-              run: pnpm turbo build --filter="./apps/*..."
+              run: pnpm exec turbo build --filter="./apps/*..."
 
             - name: Test
               run: pnpm test

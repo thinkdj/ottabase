@@ -3,3 +3,7 @@
 auto-install-peers=true
 dedupe-peer-dependents=true
 prefer-workspace-packages=true
+
+# Hoist all dependencies to root node_modules for Turborepo compatibility
+# This ensures tsup and other build tools are accessible when Turbo runs build scripts
+shamefully-hoist=true
