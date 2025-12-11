@@ -233,13 +233,19 @@ export function formatInUserTimezone(
  * Get the current date/time in UTC
  * Use this when creating new records with timestamps
  * 
- * @returns Current date in UTC
+ * @returns Current date in UTC (JavaScript Date objects internally store UTC timestamps)
  * 
  * @example
  * ```typescript
  * const now = nowUTC();
  * // Store in database: { createdAt: now }
+ * // The Date object represents the current UTC time
+ * // When stored in database, it will be stored as UTC
  * ```
+ * 
+ * @note JavaScript Date objects always store time as UTC timestamps internally.
+ * This function returns `new Date()` which represents the current UTC time.
+ * When serialized (e.g., toISOString()), it outputs UTC format.
  */
 export function nowUTC(): Date {
   return new Date();
