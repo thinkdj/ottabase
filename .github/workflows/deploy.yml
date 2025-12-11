@@ -107,12 +107,25 @@ jobs:
             for migration_dir in prisma/migrations/*/; do
               if [ -f "${migration_dir}migration.sql" ]; then
                 echo "Applying migration: $(basename $migration_dir)"
-                pnpm wrangler d1 execute ${{ secrets.D1_DATABASE_NAME || 'ottabase-db' }} \
+                # Try to apply migration, check for specific error messages
+                if ! output=$(pnpm wrangler d1 execute ${{ secrets.D1_DATABASE_NAME || 'ottabase-db' }} \
                   --remote \
-                  --file="${migration_dir}migration.sql" || echo "Migration may have been applied already"
+                  --file="${migration_dir}migration.sql" 2>&1); then
+                  # Check if error is about already existing objects (safe to ignore)
+                  if echo "$output" | grep -qiE "(already exists|duplicate|UNIQUE constraint failed)"; then
+                    echo "⚠️  Migration already applied, skipping..."
+                  else
+                    # Real error - fail the build
+                    echo "❌ Migration failed with error:"
+                    echo "$output"
+                    exit 1
+                  fi
+                else
+                  echo "✓ Migration applied successfully"
+                fi
               fi
             done
-            echo "Migrations applied successfully"
+            echo "All migrations processed"
           else
             echo "No migrations found, skipping migration step"
           fi
