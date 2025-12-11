@@ -98,7 +98,7 @@ export default function TimezoneDemoPage() {
                 <span className="font-medium">Timezone Offset:</span>
                 <code className="rounded bg-background px-2 py-1">
                   UTC
-                  {getTimezoneOffsetMinutes(userTimezone) <= 0 ? "+" : "-"}
+                  {getTimezoneOffsetMinutes(userTimezone) < 0 ? "-" : "+"}
                   {Math.abs(
                     Math.floor(
                       Math.abs(getTimezoneOffsetMinutes(userTimezone)) / 60
