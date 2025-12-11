@@ -278,7 +278,7 @@ pnpm cloudflare:validate
 # 3. Follow the complete deployment guide
 ```
 
-**📖 See [HOWTO_DEPLOY.MD](HOWTO_DEPLOY.MD) for complete step-by-step instructions.**
+**📖 See [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md) for complete step-by-step instructions.**
 
 The guide covers:
 - Setting up Cloudflare resources (D1, KV, R2, Queue)

@@ -18,7 +18,7 @@ Complete guide for configuring your Ottabase application to work 100% with Cloud
 
 ## 🚀 Quick Start
 
-> **📖 For deployment instructions, see [HOWTO_DEPLOY.MD](HOWTO_DEPLOY.MD)**
+> **📖 For deployment instructions, see [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md)**
 
 This guide covers Cloudflare resource configuration, bindings, environment variables, and code usage.
 
@@ -523,8 +523,7 @@ Replace all `YOUR_*_ID` placeholders with actual resource IDs and ensure binding
   - [Durable Objects](https://developers.cloudflare.com/durable-objects/)
 
 - **Project Documentation:**
-  - [HOWTO_DEPLOY.MD](HOWTO_DEPLOY.MD) - Complete deployment guide with CI/CD setup
-  - [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md) - Additional CI/CD information
+  - [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md) - Complete deployment guide with CI/CD setup
   - [AGENTS.MD](AGENTS.MD) - Monorepo architecture
 
 ---
