@@ -181,8 +181,24 @@ Core principles:
 #### User Display (From Database)
 
 - **`fromUTC(date: DateInput, timezone?: Timezone): Date | null`** - Convert UTC date to user's timezone
-- **`formatInUserTimezone(date: DateInput, format?: string, timezone?: Timezone): string | null`** - Format UTC date in user's timezone
+- **`formatInUserTimezone(date: DateInput, format?: string, timezone?: Timezone): string | null`** - Format UTC date in user's timezone (with custom format string)
 - **`formatWithTimezone(date: DateInput, format?: string, timezone?: Timezone): string | null`** - Format with timezone abbreviation
+
+#### Preset Format Functions (Convenience Wrappers)
+
+Ready-to-use format presets for common display patterns:
+
+- **`formatShortDateTime(date: DateInput, timezone?: Timezone): string | null`** - "Aug 10, 2025 11:10 AM"
+- **`formatDayMonthDateTime(date: DateInput, timezone?: Timezone): string | null`** - "10-Aug-2025 11:10 AM"
+- **`formatLongDateTime(date: DateInput, timezone?: Timezone): string | null`** - "August 10, 2025 11:10 AM"
+- **`formatShortDate(date: DateInput, timezone?: Timezone): string | null`** - "Aug 10, 2025"
+- **`formatSlashDate(date: DateInput, timezone?: Timezone): string | null`** - "10/Aug/2025"
+- **`formatISODateTime(date: DateInput, timezone?: Timezone): string | null`** - "2025-08-10 11:10 AM"
+- **`formatTime12Hour(date: DateInput, timezone?: Timezone): string | null`** - "11:10 AM"
+- **`formatTime24Hour(date: DateInput, timezone?: Timezone): string | null`** - "14:30"
+- **`formatFullDate(date: DateInput, timezone?: Timezone): string | null`** - "Monday, August 10, 2025"
+- **`formatCompactDateTime(date: DateInput, timezone?: Timezone): string | null`** - "Mon, Aug 10, 2025 11:10 AM"
+- **`formatDateAtTime(date: DateInput, timezone?: Timezone): string | null`** - "Aug 10 at 11:10 AM"
 
 #### Timezone Information
 
@@ -301,6 +317,12 @@ const utcDate = toUTC(userInput); // Convert to UTC
 const dbDate = new Date('2024-01-15T19:30:00Z'); // UTC from database
 const userDate = fromUTC(dbDate); // Convert to user's timezone
 console.log(formatInUserTimezone(dbDate, 'PPpp')); // "Jan 15, 2024, 2:30:00 PM"
+
+// PRESET FORMATS: Use ready-made format presets
+import { formatShortDateTime, formatDayMonthDateTime, formatDateAtTime } from '@ottabase/utils/timezone';
+console.log(formatShortDateTime(dbDate)); // "Jan 15, 2024 2:30 PM"
+console.log(formatDayMonthDateTime(dbDate)); // "15-JAN-2024 2:30 PM"
+console.log(formatDateAtTime(dbDate)); // "Jan 15 at 2:30 PM"
 
 // CREATE NEW RECORDS: Always use UTC
 const newRecord = {

@@ -14,6 +14,17 @@ import {
   getTimezoneOffsetMinutes,
   convertTimezone,
   isDST,
+  formatShortDateTime,
+  formatDayMonthDateTime,
+  formatLongDateTime,
+  formatShortDate,
+  formatSlashDate,
+  formatISODateTime,
+  formatTime12Hour,
+  formatTime24Hour,
+  formatFullDate,
+  formatCompactDateTime,
+  formatDateAtTime,
   type Timezone,
 } from "@ottabase/utils/timezone";
 import {
@@ -387,10 +398,158 @@ const dbRecord = {
         </CardContent>
       </Card>
 
+      {/* Preset Formats */}
+      <Card>
+        <CardHeader>
+          <CardTitle>6. Preset Format Functions</CardTitle>
+          <CardDescription>
+            Ready-to-use format presets for common display patterns - no need to
+            remember format strings!
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-lg bg-muted p-4">
+            <div className="mb-4">
+              <p className="text-sm">
+                Example UTC date from database:{" "}
+                <code className="rounded bg-background px-2 py-1">
+                  {exampleDates.utcDate.toISOString()}
+                </code>
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Selected timezone: <strong>{selectedTimezone}</strong>
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="rounded border bg-background p-3">
+                <div className="mb-1 text-xs font-medium text-muted-foreground">
+                  Date & Time Formats
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <code className="text-xs">formatShortDateTime()</code>
+                    <span className="font-mono text-sm">
+                      {formatShortDateTime(
+                        exampleDates.utcDate,
+                        selectedTimezone
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <code className="text-xs">formatDayMonthDateTime()</code>
+                    <span className="font-mono text-sm">
+                      {formatDayMonthDateTime(
+                        exampleDates.utcDate,
+                        selectedTimezone
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <code className="text-xs">formatLongDateTime()</code>
+                    <span className="font-mono text-sm">
+                      {formatLongDateTime(
+                        exampleDates.utcDate,
+                        selectedTimezone
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <code className="text-xs">formatISODateTime()</code>
+                    <span className="font-mono text-sm">
+                      {formatISODateTime(
+                        exampleDates.utcDate,
+                        selectedTimezone
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <code className="text-xs">formatCompactDateTime()</code>
+                    <span className="font-mono text-sm">
+                      {formatCompactDateTime(
+                        exampleDates.utcDate,
+                        selectedTimezone
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <code className="text-xs">formatDateAtTime()</code>
+                    <span className="font-mono text-sm">
+                      {formatDateAtTime(
+                        exampleDates.utcDate,
+                        selectedTimezone
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded border bg-background p-3">
+                <div className="mb-1 text-xs font-medium text-muted-foreground">
+                  Date Only Formats
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <code className="text-xs">formatShortDate()</code>
+                    <span className="font-mono text-sm">
+                      {formatShortDate(exampleDates.utcDate, selectedTimezone)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <code className="text-xs">formatSlashDate()</code>
+                    <span className="font-mono text-sm">
+                      {formatSlashDate(exampleDates.utcDate, selectedTimezone)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <code className="text-xs">formatFullDate()</code>
+                    <span className="font-mono text-sm">
+                      {formatFullDate(exampleDates.utcDate, selectedTimezone)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded border bg-background p-3">
+                <div className="mb-1 text-xs font-medium text-muted-foreground">
+                  Time Only Formats
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <code className="text-xs">formatTime12Hour()</code>
+                    <span className="font-mono text-sm">
+                      {formatTime12Hour(exampleDates.utcDate, selectedTimezone)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <code className="text-xs">formatTime24Hour()</code>
+                    <span className="font-mono text-sm">
+                      {formatTime24Hour(exampleDates.utcDate, selectedTimezone)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+              <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                <span>💡</span> Benefits
+              </h4>
+              <ul className="space-y-1 text-xs">
+                <li>✅ No need to remember format strings</li>
+                <li>✅ Consistent formatting across your app</li>
+                <li>✅ Easy to use - just call the function</li>
+                <li>✅ All presets automatically convert from UTC</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Code Examples */}
       <Card>
         <CardHeader>
-          <CardTitle>6. Quick Reference - Code Examples</CardTitle>
+          <CardTitle>7. Quick Reference - Code Examples</CardTitle>
           <CardDescription>
             Common patterns for using timezone utilities in your app
           </CardDescription>
@@ -432,12 +591,12 @@ const newPost = await db.post.create({
 
             <div>
               <h4 className="mb-2 text-sm font-semibold">
-                📺 Displaying to User
+                📺 Displaying to User (Custom Format)
               </h4>
               <code className="block whitespace-pre-wrap rounded bg-muted p-3 text-xs">
                 {`import { formatInUserTimezone } from '@ottabase/utils/timezone';
 
-// Display UTC date from database
+// Display UTC date from database with custom format
 const posts = await db.post.findMany();
 const formatted = posts.map(post => ({
   ...post,
@@ -446,6 +605,24 @@ const formatted = posts.map(post => ({
     'PPpp',
     user.timezone
   ),
+}));`}
+              </code>
+            </div>
+
+            <div>
+              <h4 className="mb-2 text-sm font-semibold">
+                🎨 Displaying with Preset Formats
+              </h4>
+              <code className="block whitespace-pre-wrap rounded bg-muted p-3 text-xs">
+                {`import { formatShortDateTime, formatDateAtTime } from '@ottabase/utils/timezone';
+
+// Use preset formats for consistency
+const posts = await db.post.findMany();
+const formatted = posts.map(post => ({
+  ...post,
+  // No need to remember format strings!
+  createdAtDisplay: formatShortDateTime(post.createdAt, user.timezone),
+  scheduledDisplay: formatDateAtTime(post.scheduledAt, user.timezone),
 }));`}
               </code>
             </div>

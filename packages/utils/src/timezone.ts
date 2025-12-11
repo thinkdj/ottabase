@@ -230,6 +230,244 @@ export function formatInUserTimezone(
 }
 
 /**
+ * Preset format functions for common date/time display patterns
+ * These are convenience wrappers around formatInUserTimezone with predefined formats
+ */
+
+/**
+ * Format date as "Aug 10, 2025 11:10 AM"
+ * Pattern: Short month, day, year, 12-hour time with AM/PM
+ * 
+ * @param date - UTC date from database
+ * @param timezone - Target timezone (defaults to user's timezone)
+ * @returns Formatted string like "Aug 10, 2025 11:10 AM"
+ * 
+ * @example
+ * ```typescript
+ * formatShortDateTime(new Date('2024-01-15T19:30:00Z'));
+ * // "Jan 15, 2024 2:30 PM" (in EST)
+ * ```
+ */
+export function formatShortDateTime(
+  date: DateInput,
+  timezone?: Timezone
+): string | null {
+  return formatInUserTimezone(date, 'MMM d, yyyy h:mm a', timezone);
+}
+
+/**
+ * Format date as "10-Aug-2025 11:10 AM"
+ * Pattern: Day-month-year with 12-hour time and uppercase AM/PM
+ * 
+ * @param date - UTC date from database
+ * @param timezone - Target timezone (defaults to user's timezone)
+ * @returns Formatted string like "10-Aug-2025 11:10 AM"
+ * 
+ * @example
+ * ```typescript
+ * formatDayMonthDateTime(new Date('2024-01-15T19:30:00Z'));
+ * // "15-Jan-2024 2:30 PM" (in EST)
+ * ```
+ */
+export function formatDayMonthDateTime(
+  date: DateInput,
+  timezone?: Timezone
+): string | null {
+  const formatted = formatInUserTimezone(date, 'dd-MMM-yyyy h:mm a', timezone);
+  return formatted ? formatted.toUpperCase().replace(/AM|PM/, match => match.toUpperCase()) : null;
+}
+
+/**
+ * Format date as "August 10, 2025 11:10 AM"
+ * Pattern: Full month name, day, year, 12-hour time with AM/PM
+ * 
+ * @param date - UTC date from database
+ * @param timezone - Target timezone (defaults to user's timezone)
+ * @returns Formatted string like "August 10, 2025 11:10 AM"
+ * 
+ * @example
+ * ```typescript
+ * formatLongDateTime(new Date('2024-01-15T19:30:00Z'));
+ * // "January 15, 2024 2:30 PM" (in EST)
+ * ```
+ */
+export function formatLongDateTime(
+  date: DateInput,
+  timezone?: Timezone
+): string | null {
+  return formatInUserTimezone(date, 'MMMM d, yyyy h:mm a', timezone);
+}
+
+/**
+ * Format date as "Aug 10, 2025"
+ * Pattern: Short month, day, year (date only, no time)
+ * 
+ * @param date - UTC date from database
+ * @param timezone - Target timezone (defaults to user's timezone)
+ * @returns Formatted string like "Aug 10, 2025"
+ * 
+ * @example
+ * ```typescript
+ * formatShortDate(new Date('2024-01-15T19:30:00Z'));
+ * // "Jan 15, 2024" (in EST)
+ * ```
+ */
+export function formatShortDate(
+  date: DateInput,
+  timezone?: Timezone
+): string | null {
+  return formatInUserTimezone(date, 'MMM d, yyyy', timezone);
+}
+
+/**
+ * Format date as "10/Aug/2025"
+ * Pattern: Day/month/year with slashes
+ * 
+ * @param date - UTC date from database
+ * @param timezone - Target timezone (defaults to user's timezone)
+ * @returns Formatted string like "10/Aug/2025"
+ * 
+ * @example
+ * ```typescript
+ * formatSlashDate(new Date('2024-01-15T19:30:00Z'));
+ * // "15/Jan/2024" (in EST)
+ * ```
+ */
+export function formatSlashDate(
+  date: DateInput,
+  timezone?: Timezone
+): string | null {
+  return formatInUserTimezone(date, 'dd/MMM/yyyy', timezone);
+}
+
+/**
+ * Format date as "2025-08-10 11:10 AM"
+ * Pattern: ISO-style date with 12-hour time
+ * 
+ * @param date - UTC date from database
+ * @param timezone - Target timezone (defaults to user's timezone)
+ * @returns Formatted string like "2025-08-10 11:10 AM"
+ * 
+ * @example
+ * ```typescript
+ * formatISODateTime(new Date('2024-01-15T19:30:00Z'));
+ * // "2024-01-15 2:30 PM" (in EST)
+ * ```
+ */
+export function formatISODateTime(
+  date: DateInput,
+  timezone?: Timezone
+): string | null {
+  return formatInUserTimezone(date, 'yyyy-MM-dd h:mm a', timezone);
+}
+
+/**
+ * Format date as "11:10 AM"
+ * Pattern: 12-hour time only with AM/PM
+ * 
+ * @param date - UTC date from database
+ * @param timezone - Target timezone (defaults to user's timezone)
+ * @returns Formatted string like "11:10 AM"
+ * 
+ * @example
+ * ```typescript
+ * formatTime12Hour(new Date('2024-01-15T19:30:00Z'));
+ * // "2:30 PM" (in EST)
+ * ```
+ */
+export function formatTime12Hour(
+  date: DateInput,
+  timezone?: Timezone
+): string | null {
+  return formatInUserTimezone(date, 'h:mm a', timezone);
+}
+
+/**
+ * Format date as "14:30"
+ * Pattern: 24-hour time only
+ * 
+ * @param date - UTC date from database
+ * @param timezone - Target timezone (defaults to user's timezone)
+ * @returns Formatted string like "14:30"
+ * 
+ * @example
+ * ```typescript
+ * formatTime24Hour(new Date('2024-01-15T19:30:00Z'));
+ * // "14:30" (in EST)
+ * ```
+ */
+export function formatTime24Hour(
+  date: DateInput,
+  timezone?: Timezone
+): string | null {
+  return formatInUserTimezone(date, 'HH:mm', timezone);
+}
+
+/**
+ * Format date as "Monday, August 10, 2025"
+ * Pattern: Full weekday, full month, day, year
+ * 
+ * @param date - UTC date from database
+ * @param timezone - Target timezone (defaults to user's timezone)
+ * @returns Formatted string like "Monday, August 10, 2025"
+ * 
+ * @example
+ * ```typescript
+ * formatFullDate(new Date('2024-01-15T19:30:00Z'));
+ * // "Monday, January 15, 2024" (in EST)
+ * ```
+ */
+export function formatFullDate(
+  date: DateInput,
+  timezone?: Timezone
+): string | null {
+  return formatInUserTimezone(date, 'EEEE, MMMM d, yyyy', timezone);
+}
+
+/**
+ * Format date as "Mon, Aug 10, 2025 11:10 AM"
+ * Pattern: Short weekday, short month, day, year, 12-hour time
+ * 
+ * @param date - UTC date from database
+ * @param timezone - Target timezone (defaults to user's timezone)
+ * @returns Formatted string like "Mon, Aug 10, 2025 11:10 AM"
+ * 
+ * @example
+ * ```typescript
+ * formatCompactDateTime(new Date('2024-01-15T19:30:00Z'));
+ * // "Mon, Jan 15, 2024 2:30 PM" (in EST)
+ * ```
+ */
+export function formatCompactDateTime(
+  date: DateInput,
+  timezone?: Timezone
+): string | null {
+  return formatInUserTimezone(date, 'EEE, MMM d, yyyy h:mm a', timezone);
+}
+
+/**
+ * Format date as "Aug 10 at 11:10 AM"
+ * Pattern: Short month, day with "at" separator and time
+ * Useful for compact displays like "Today at 3:30 PM"
+ * 
+ * @param date - UTC date from database
+ * @param timezone - Target timezone (defaults to user's timezone)
+ * @returns Formatted string like "Aug 10 at 11:10 AM"
+ * 
+ * @example
+ * ```typescript
+ * formatDateAtTime(new Date('2024-01-15T19:30:00Z'));
+ * // "Jan 15 at 2:30 PM" (in EST)
+ * ```
+ */
+export function formatDateAtTime(
+  date: DateInput,
+  timezone?: Timezone
+): string | null {
+  return formatInUserTimezone(date, "MMM d 'at' h:mm a", timezone);
+}
+
+/**
  * Get the current date/time in UTC
  * Use this when creating new records with timestamps
  * 

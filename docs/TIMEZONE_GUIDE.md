@@ -311,6 +311,53 @@ formatInUserTimezone(dbDate, 'PPpp zzz'); // "... 2:30:00 PM EST"
 
 See [date-fns format tokens](https://date-fns.org/v2.30.0/docs/format) for complete list.
 
+### Preset Format Functions
+
+Ready-to-use format presets for common display patterns. These are convenience wrappers that eliminate the need to remember format strings.
+
+#### Available Presets
+
+```typescript
+import {
+  formatShortDateTime,
+  formatDayMonthDateTime,
+  formatLongDateTime,
+  formatShortDate,
+  formatSlashDate,
+  formatISODateTime,
+  formatTime12Hour,
+  formatTime24Hour,
+  formatFullDate,
+  formatCompactDateTime,
+  formatDateAtTime,
+} from '@ottabase/utils/timezone';
+
+const dbDate = new Date('2024-01-15T19:30:00Z');
+
+// Date and Time formats
+formatShortDateTime(dbDate);      // "Jan 15, 2024 2:30 PM"
+formatDayMonthDateTime(dbDate);   // "15-JAN-2024 2:30 PM"
+formatLongDateTime(dbDate);       // "January 15, 2024 2:30 PM"
+formatISODateTime(dbDate);        // "2024-01-15 2:30 PM"
+formatCompactDateTime(dbDate);    // "Mon, Jan 15, 2024 2:30 PM"
+formatDateAtTime(dbDate);         // "Jan 15 at 2:30 PM"
+
+// Date only formats
+formatShortDate(dbDate);          // "Jan 15, 2024"
+formatSlashDate(dbDate);          // "15/Jan/2024"
+formatFullDate(dbDate);           // "Monday, January 15, 2024"
+
+// Time only formats
+formatTime12Hour(dbDate);         // "2:30 PM"
+formatTime24Hour(dbDate);         // "14:30"
+```
+
+**When to use preset formats:**
+- ✅ Use presets for consistency across your app
+- ✅ Use presets to avoid remembering format strings
+- ✅ Use presets for common display patterns
+- ⚠️ Use `formatInUserTimezone()` with custom format string for unique needs
+
 ### Timezone Information
 
 #### `getCommonTimezones(): Array<{name, offset, label}>`
