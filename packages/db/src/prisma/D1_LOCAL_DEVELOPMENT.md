@@ -99,7 +99,7 @@ Your `wrangler.jsonc` configures the D1 binding:
     {
       "binding: "OBCF_D1",                      // Accessible as env.OBCF_D1
       "database_name": "ottabase-db",       // Name for CLI commands
-      "database_id": "YOUR_D1_DATABASE_ID"  // Not needed for local dev
+      "database_id": "MY_D1_DATABASE_ID"  // Not needed for local dev
     }
   ]
 }

@@ -28,9 +28,7 @@
     {
       "binding": "OBCF_D1",
       "database_name": "ottabase-db",
-      "database_id": "YOUR_D1_DATABASE_ID", // Replace with: wrangler d1 create ottabase-db
-      // For preview/prod, create with: wrangler d1 create ottabase-db
-      // Then update database_id with the returned ID
+      "database_id": "${CF_D1_DATABASE_ID}", // Auto-substituted from .env.local or CI env vars
       "preview_database_id": "preview" // Uses preview DB for `wrangler dev --remote`
     }
   ],
@@ -41,8 +39,8 @@
   "kv_namespaces": [
     {
       "binding": "OBCF_KV",
-      "id": "YOUR_KV_NAMESPACE_ID", // Replace with: wrangler kv:namespace create OBCF_KV
-      "preview_id": "YOUR_KV_PREVIEW_ID" // Replace with: wrangler kv:namespace create OBCF_KV --preview
+      "id": "${CF_KV_NAMESPACE_ID}", // Auto-substituted from .env.local or CI env vars
+      "preview_id": "${CF_KV_PREVIEW_ID}" // Auto-substituted from .env.local or CI env vars (optional)
     }
   ],
 
@@ -63,7 +61,7 @@
   // "hyperdrive": [
   //   {
   //     "binding": "OBCF_HYPERDRIVE",
-  //     "id": "YOUR_HYPERDRIVE_ID" // Create with: wrangler hyperdrive create <name> --connection-string="postgres://..."
+  //     "id": "MY_HYPERDRIVE_ID" // Substituted in CI from GitHub Secrets
   //   }
   // ],
 
@@ -96,10 +94,10 @@
       {
         "name": "OBCF_RATE_LIMITER",
         "type": "ratelimit",
-        "namespace_id": "1001", // For local dev, can use any value
+        "namespace_id": "${CF_RATE_LIMITER_NAMESPACE_ID:-obcf-rate-limiter-local}", // Auto-substituted, fallback for local dev
         "simple": {
-          "limit": 10,       // 10 requests
-          "period": 60       // per 60 seconds
+          "limit": 10, // 10 requests
+          "period": 60 // per 60 seconds
         }
       }
     ]
@@ -147,7 +145,23 @@
   "env": {
     "production": {
       "vars": {
-        "ENVIRONMENT": "production"
+        "ENVIRONMENT": "production",
+        "NODE_ENV": "production"
+      },
+      // NOTE: Wrangler does not inherit top-level `unsafe` into `env.*`.
+      // Keep production bindings explicitly defined.
+      "unsafe": {
+        "bindings": [
+          {
+            "name": "OBCF_RATE_LIMITER",
+            "type": "ratelimit",
+            "namespace_id": "${CF_RATE_LIMITER_NAMESPACE_ID}", // Auto-substituted from .env.local or CI env vars
+            "simple": {
+              "limit": 10,
+              "period": 60
+            }
+          }
+        ]
       },
 
       // Durable Objects bindings for stateful, persistent objects
@@ -166,14 +180,14 @@
         {
           "binding": "OBCF_D1",
           "database_name": "ottabase-db",
-          "database_id": "PRODUCTION_D1_DATABASE_ID"
+          "database_id": "${CF_D1_DATABASE_ID}"
         }
       ],
       // Production KV Namespace - set via CI/CD substitution or manually
       "kv_namespaces": [
         {
           "binding": "OBCF_KV",
-          "id": "PRODUCTION_KV_NAMESPACE_ID"
+          "id": "${CF_KV_NAMESPACE_ID}"
         }
       ],
       // Production R2 Bucket

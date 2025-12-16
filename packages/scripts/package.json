@@ -27,8 +27,7 @@
     "db-migrate": "bin/db-migrate.cjs",
     "db-migrate:apply": "bin/db-migrate-apply.cjs",
     "db-migrate:status": "bin/db-migrate-status.cjs",
-    "cloudflare-setup": "bin/cloudflare-setup.cjs",
-    "cloudflare-validate": "bin/cloudflare-validate.cjs"
+    "cloudflare-setup": "bin/cloudflare-setup.cjs"
   },
   "files": [
     "dist",

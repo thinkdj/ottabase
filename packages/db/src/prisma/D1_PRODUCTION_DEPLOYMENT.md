@@ -33,7 +33,7 @@ Your app uses [wrangler.jsonc](../apps/ottabase-template-app/wrangler.jsonc) wit
   "d1_databases": [{
     "binding: "OBCF_D1",
     "database_name": "ottabase-db",
-    "database_id": "YOUR_D1_DATABASE_ID"  // Not used locally
+    "database_id": "MY_D1_DATABASE_ID"  // Not used locally, replaced in CI/CD
   }],
 
   // Production override
@@ -42,7 +42,7 @@ Your app uses [wrangler.jsonc](../apps/ottabase-template-app/wrangler.jsonc) wit
       "d1_databases": [{
         "binding: "OBCF_D1",
         "database_name": "ottabase-db",
-        "database_id": "PRODUCTION_D1_DATABASE_ID"  // Must set this!
+        "database_id": "MY_D1_DATABASE_ID"  // Replaced by CI/CD with GitHub Secret
       }]
     }
   }

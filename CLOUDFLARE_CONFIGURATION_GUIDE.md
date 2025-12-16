@@ -141,13 +141,13 @@ wrangler secret put CF_R2_SECRET_ACCESS_KEY
     {
       "binding": "OBCF_D1",
       "database_name": "ottabase-db",
-      "database_id": "YOUR_D1_DATABASE_ID" // Set by cloudflare:setup
+      "database_id": "MY_D1_DATABASE_ID" // Set by cloudflare:setup or CI/CD
     }
   ],
   "kv_namespaces": [
     {
       "binding": "OBCF_KV",
-      "id": "YOUR_KV_NAMESPACE_ID" // Set by cloudflare:setup
+      "id": "MY_KV_NAMESPACE_ID" // Set by cloudflare:setup or CI/CD
     }
   ],
   "r2_buckets": [
@@ -502,7 +502,7 @@ wrangler queues create ottabase-queue
 
 ### 5. Update `wrangler.jsonc`
 
-Replace all `YOUR_*_ID` placeholders with actual resource IDs and ensure binding names use `OBCF_*` convention.
+Replace all `MY_*` placeholders with actual resource IDs (done automatically by `pnpm cloudflare:setup` or CI/CD). Ensure binding names use `OBCF_*` convention.
 
 ---
 

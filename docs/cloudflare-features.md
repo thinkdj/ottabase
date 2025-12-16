@@ -42,7 +42,7 @@ Copy the returned `database_id` and update `wrangler.jsonc`:
 "d1_databases": [{
   "binding: "OBCF_D1",
   "database_name": "ottabase-db",
-  "database_id": "YOUR_D1_DATABASE_ID"
+  "database_id": "MY_D1_DATABASE_ID"
 }]
 ```
 
@@ -58,8 +58,8 @@ Update `wrangler.jsonc` with the returned IDs:
 ```jsonc
 "kv_namespaces": [{
   "binding": "MY_KV",
-  "id": "YOUR_KV_NAMESPACE_ID",
-  "preview_id": "YOUR_KV_PREVIEW_ID"
+  "id": "MY_KV_NAMESPACE_ID",
+  "preview_id": "MY_KV_PREVIEW_ID"
 }]
 ```
 
@@ -116,7 +116,7 @@ Update `wrangler.jsonc` with the returned Hyperdrive ID:
 ```jsonc
 "hyperdrive": [{
   "binding": "HYPERDRIVE",
-  "id": "YOUR_HYPERDRIVE_ID"
+  "id": "MY_HYPERDRIVE_ID"
 }]
 ```
 
@@ -296,7 +296,7 @@ Update `wrangler.jsonc`:
 ```jsonc
 "hyperdrive": [{
   "binding": "HYPERDRIVE",
-  "id": "YOUR_HYPERDRIVE_ID"  // Returned from create command
+  "id": "MY_HYPERDRIVE_ID"  // Returned from create command
 }]
 ```
 
