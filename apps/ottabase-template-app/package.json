@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node ./scripts/ci-build-wrapper.mjs",
+    "build:ci": "node ./scripts/ci-build.js replace && next build && node ./scripts/ci-build.js restore",
+    "build:prod": "next build",
     "build:worker": "node ./scripts/ensure-opennext-dirs.mjs && opennextjs-cloudflare build --skipBuild",
     "start": "next start",
     "lint": "next lint",
