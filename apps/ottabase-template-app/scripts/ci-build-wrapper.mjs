@@ -18,6 +18,11 @@ const child = spawn('pnpm', [buildScript], {
   shell: true,
 });
 
+child.on('error', (error) => {
+  console.error(`[Build] Error spawning process:`, error);
+  process.exit(1);
+});
+
 child.on('exit', (code) => {
   process.exit(code || 0);
 });
