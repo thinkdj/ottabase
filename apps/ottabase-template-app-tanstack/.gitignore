@@ -34,3 +34,4 @@ pnpm-debug.log*
 
 # Type generation
 cloudflare-env.d.ts
+*.timestamp_*.js
