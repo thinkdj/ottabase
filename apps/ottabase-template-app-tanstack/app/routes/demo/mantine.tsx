@@ -1,11 +1,10 @@
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
-import { ProviderMantine } from "@ottabase/ui-mantine";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { ProviderUIMantine } from "@ottabase/ui-mantine";
 import {
   mantineThemePresetAtom,
   themeAtom,
 } from "@/ottabase/state/appGlobalState";
 import { useAtomValue } from "jotai";
-import { mantineThemeConfig } from "@/ottabase/config/theme.mantine";
 
 export const Route = createFileRoute("/demo/mantine")({
   component: MantineLayout,
@@ -23,14 +22,11 @@ function MantineLayout() {
   const globalTheme = useAtomValue(themeAtom);
 
   return (
-    <ProviderMantine
-      themeConfig={mantineThemeConfig}
-      themePreset={mantineTheme}
+    <ProviderUIMantine
+      baseTheme={mantineTheme}
       colorScheme={globalTheme}
-      withNotifications
-      withModals
     >
       <Outlet />
-    </ProviderMantine>
+    </ProviderUIMantine>
   );
 }

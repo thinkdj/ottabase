@@ -46,7 +46,7 @@ function OttaORMDemoPage() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
+        const data = (await response.json()) as { error?: string };
         throw new Error(data.error || "Failed to initialize database");
       }
 
@@ -66,14 +66,14 @@ function OttaORMDemoPage() {
       // Load users
       const usersResponse = await fetch("/api/ottaorm/users");
       if (usersResponse.ok) {
-        const usersData = await usersResponse.json();
+        const usersData = (await usersResponse.json()) as { users: User[] };
         setUsers(usersData.users);
       }
 
       // Load posts
       const postsResponse = await fetch("/api/ottaorm/posts");
       if (postsResponse.ok) {
-        const postsData = await postsResponse.json();
+        const postsData = (await postsResponse.json()) as { posts: Post[] };
         setPosts(postsData.posts);
       }
 
@@ -98,7 +98,7 @@ function OttaORMDemoPage() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
+        const data = (await response.json()) as { error?: string };
         throw new Error(data.error || "Failed to add user");
       }
 
@@ -130,7 +130,7 @@ function OttaORMDemoPage() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
+        const data = (await response.json()) as { error?: string };
         throw new Error(data.error || "Failed to add post");
       }
 
@@ -152,7 +152,7 @@ function OttaORMDemoPage() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
+        const data = (await response.json()) as { error?: string };
         throw new Error(data.error || "Failed to delete user");
       }
 
@@ -173,7 +173,7 @@ function OttaORMDemoPage() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
+        const data = (await response.json()) as { error?: string };
         throw new Error(data.error || "Failed to delete post");
       }
 

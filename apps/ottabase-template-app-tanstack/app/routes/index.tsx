@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { APP_META } from "@/ottabase/config/app.config";
-import { DarkModeToggle } from "@ottabase/ui-components/dark-mode-toggle";
+import DarkModeToggle from "@/src/components/DarkModeToggle";
 import { Button } from "@ottabase/ui-shadcn";
 
 export const Route = createFileRoute("/")({

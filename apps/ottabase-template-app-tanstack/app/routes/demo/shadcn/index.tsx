@@ -833,9 +833,7 @@ function ShadcnDemoPage() {
                 <PaginationPrevious href="#" />
               </PaginationItem>
               <PaginationItem>
-                <PaginationLink asChild>
-                  <Link to="#">1</Link>
-                </PaginationLink>
+                <PaginationLink href="#">1</PaginationLink>
               </PaginationItem>
               <PaginationItem>
                 <PaginationLink href="#" isActive>

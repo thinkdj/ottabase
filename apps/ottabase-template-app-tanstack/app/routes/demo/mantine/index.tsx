@@ -26,8 +26,8 @@ import {
 } from "@ottabase/ui-mantine";
 import { OttaSelect, OttaSelectItem } from "@ottabase/ottaselect";
 import { BlogPagination } from "@ottabase/ui-components";
-import { DarkModeToggle } from "@ottabase/ui-components/dark-mode-toggle";
-import { Logo } from "@ottabase/ui-components/logo";
+import DarkModeToggle from "@/src/components/DarkModeToggle";
+import { Logo } from "@/src/components/Logo";
 import { useAtom, useAtomValue } from "jotai";
 import { useState } from "react";
 

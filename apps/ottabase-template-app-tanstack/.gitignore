@@ -2,9 +2,9 @@
 node_modules/
 
 # Build outputs
+dist/
 .output/
 .vinxi/
-dist/
 
 # TanStack Router generated files
 app/routeTree.gen.ts

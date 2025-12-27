@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { DarkModeToggle } from "@ottabase/ui-components/dark-mode-toggle";
+import DarkModeToggle from "@/src/components/DarkModeToggle";
 
 export const Route = createFileRoute("/demo")({
   component: DemoLayout,

@@ -1,15 +1,17 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // Wrangler configuration for TanStack Start app with Cloudflare bindings
-  // Supports dev (local), preview (workerd), and prod (real CF resources)
+  // Wrangler configuration for TanStack SPA with Cloudflare Pages
+  // For API routes, use Cloudflare Pages Functions in functions/ directory
 
   "name": "ottabase-template-app-tanstack",
   "compatibility_date": "2024-12-30",
   
-  // Compatibility flags for TanStack Start
+  // Pages configuration - the site is a static SPA deployed to Cloudflare Pages
+  // API routes are handled by Pages Functions
+
+  // Compatibility flags for Pages Functions
   "compatibility_flags": [
-    "nodejs_compat",
-    "global_fetch_strictly_public"
+    "nodejs_compat"
   ],
 
   // Observability - logging configuration
@@ -17,83 +19,39 @@
     "enabled": true
   },
 
-  // D1 Database bindings
+  // D1 Database bindings (for Pages Functions)
   "d1_databases": [
     {
       "binding": "OBCF_D1",
       "database_name": "ottabase-db",
-      "database_id": "YOUR_D1_DATABASE_ID",
-      "preview_database_id": "preview"
+      "database_id": "YOUR_D1_DATABASE_ID"
     }
   ],
 
-  // KV Namespace bindings
+  // KV Namespace bindings (for Pages Functions)
   "kv_namespaces": [
     {
       "binding": "OBCF_KV",
-      "id": "YOUR_KV_NAMESPACE_ID",
-      "preview_id": "YOUR_KV_PREVIEW_ID"
+      "id": "YOUR_KV_NAMESPACE_ID"
     }
   ],
 
-  // R2 Bucket bindings
+  // R2 Bucket bindings (for Pages Functions)
   "r2_buckets": [
     {
       "binding": "OBCF_R2",
-      "bucket_name": "ottabase-bucket",
-      "preview_bucket_name": "ottabase-bucket-preview"
+      "bucket_name": "ottabase-bucket"
     }
   ],
 
-  // Queue bindings
-  "queues": {
-    "producers": [
-      {
-        "binding": "OBCF_QUEUE",
-        "queue": "ottabase-queue"
-      }
-    ]
-  },
-
-  // Rate Limiting bindings
-  "unsafe": {
-    "bindings": [
-      {
-        "name": "OBCF_RATE_LIMITER",
-        "type": "ratelimit",
-        "namespace_id": "1001",
-        "simple": {
-          "limit": 10,
-          "period": 60
-        }
-      }
-    ]
-  },
-
   // Environment variables
   "vars": {
-    "ENVIRONMENT": "development",
-    "NODE_ENV": "production"
+    "ENVIRONMENT": "development"
   },
 
   // Local development settings
   "dev": {
     "port": 8788,
     "local_protocol": "http"
-  },
-
-  // Limits configuration
-  "limits": {
-    "cpu_ms": 50000
-  },
-
-  // Environment-specific overrides
-  "env": {
-    "production": {
-      "vars": {
-        "ENVIRONMENT": "production",
-        "NODE_ENV": "production"
-      }
-    }
   }
 }
