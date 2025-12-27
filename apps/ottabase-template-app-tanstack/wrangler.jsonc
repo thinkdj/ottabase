@@ -1,0 +1,99 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Wrangler configuration for TanStack Start app with Cloudflare bindings
+  // Supports dev (local), preview (workerd), and prod (real CF resources)
+
+  "name": "ottabase-template-app-tanstack",
+  "compatibility_date": "2024-12-30",
+  
+  // Compatibility flags for TanStack Start
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+
+  // Observability - logging configuration
+  "observability": {
+    "enabled": true
+  },
+
+  // D1 Database bindings
+  "d1_databases": [
+    {
+      "binding": "OBCF_D1",
+      "database_name": "ottabase-db",
+      "database_id": "YOUR_D1_DATABASE_ID",
+      "preview_database_id": "preview"
+    }
+  ],
+
+  // KV Namespace bindings
+  "kv_namespaces": [
+    {
+      "binding": "OBCF_KV",
+      "id": "YOUR_KV_NAMESPACE_ID",
+      "preview_id": "YOUR_KV_PREVIEW_ID"
+    }
+  ],
+
+  // R2 Bucket bindings
+  "r2_buckets": [
+    {
+      "binding": "OBCF_R2",
+      "bucket_name": "ottabase-bucket",
+      "preview_bucket_name": "ottabase-bucket-preview"
+    }
+  ],
+
+  // Queue bindings
+  "queues": {
+    "producers": [
+      {
+        "binding": "OBCF_QUEUE",
+        "queue": "ottabase-queue"
+      }
+    ]
+  },
+
+  // Rate Limiting bindings
+  "unsafe": {
+    "bindings": [
+      {
+        "name": "OBCF_RATE_LIMITER",
+        "type": "ratelimit",
+        "namespace_id": "1001",
+        "simple": {
+          "limit": 10,
+          "period": 60
+        }
+      }
+    ]
+  },
+
+  // Environment variables
+  "vars": {
+    "ENVIRONMENT": "development",
+    "NODE_ENV": "production"
+  },
+
+  // Local development settings
+  "dev": {
+    "port": 8788,
+    "local_protocol": "http"
+  },
+
+  // Limits configuration
+  "limits": {
+    "cpu_ms": 50000
+  },
+
+  // Environment-specific overrides
+  "env": {
+    "production": {
+      "vars": {
+        "ENVIRONMENT": "production",
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}
