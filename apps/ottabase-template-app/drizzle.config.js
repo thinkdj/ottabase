@@ -24,9 +24,6 @@ const config = {
   // Database dialect - SQLite for Cloudflare D1
   dialect: "sqlite",
 
-  // D1 driver configuration
-  driver: "d1-http",
-
   // Database credentials for D1 (optional - mainly for studio)
   // These can be set via environment variables for remote access:
   //   CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_DATABASE_ID, CLOUDFLARE_D1_TOKEN
