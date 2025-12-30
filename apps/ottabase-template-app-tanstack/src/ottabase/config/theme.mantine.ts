@@ -52,7 +52,8 @@ export const mantineThemeConfig: MantineThemeConfig = {
       defaultProps: {
         radius: "md",
       },
-      styles: () => ({
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      styles: (_theme: unknown) => ({
         root: {
           fontWeight: "600",
           transition: "all 0.2s ease",
@@ -77,7 +78,8 @@ export const mantineThemeConfig: MantineThemeConfig = {
         radius: "md",
         withBorder: true,
       },
-      styles: () => ({
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      styles: (_theme: unknown) => ({
         root: {
           transition: "all 0.2s ease",
           "&:hover": {
@@ -90,7 +92,8 @@ export const mantineThemeConfig: MantineThemeConfig = {
 
     // Template app navigation styling
     Navbar: {
-      styles: () => ({
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      styles: (_theme: unknown) => ({
         root: {
           backgroundColor: "var(--mantine-color-body)",
           backdropFilter: "blur(10px)",

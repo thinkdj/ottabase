@@ -178,6 +178,8 @@ export class Todo extends BaseModel {
 
   /**
    * Get the user who owns this todo (BelongsTo User)
+   * Note: Dynamic import is used to avoid circular dependency issues
+   * since User is defined in @ottabase/ottaorm
    */
   async user(select?: string[]) {
     const { User } = await import("@ottabase/ottaorm");
