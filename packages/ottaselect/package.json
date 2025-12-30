@@ -3,17 +3,17 @@
   "version": "1.0.0",
   "description": "A select component with single/multi-select, search, and CrudHub integration",
   "main": "dist/index.js",
-  "module": "dist/index.esm.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
     "./ottaselect": {
       "types": "./dist/ottaselect.d.ts",
-      "import": "./dist/ottaselect.esm.js",
+      "import": "./dist/ottaselect.mjs",
       "require": "./dist/ottaselect.js"
     }
   },

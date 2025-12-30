@@ -3,18 +3,18 @@
   "version": "1.0.0",
   "description": "Mantine UI components and providers for Ottabase applications",
   "main": "dist/index.js",
-  "module": "dist/index.esm.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
     "./provider": {
-      "types": "./dist/provider/index.d.ts",
-      "import": "./dist/provider/index.esm.js",
-      "require": "./dist/provider/index.js"
+      "types": "./dist/provider.d.ts",
+      "import": "./dist/provider.mjs",
+      "require": "./dist/provider.js"
     }
   },
   "files": [
@@ -22,8 +22,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts src/provider.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts src/provider.ts --format cjs,esm --dts --watch",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts,.tsx",
     "type-check": "tsc --noEmit"

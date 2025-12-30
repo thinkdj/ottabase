@@ -1,6 +1,4 @@
 import React from "react";
-import Link from "next/link";
-import Image from "next/image";
 import DarkModeToggle from "./DarkModeToggle";
 import { createAppConfig } from "@ottabase/config";
 
@@ -29,6 +27,7 @@ export function Logo({
   const config = appConfig || createAppConfig();
 
   const minWidthPx = appName && appName?.length > 10 ? 279 : 100;
+  const minWidthClass = minWidthPx === 279 ? "min-w-[279px]" : "min-w-[100px]";
 
   const appLogoUrl = logoUrl || config.meta.logoUrl; // relative path `/logo.png` would be in `public` folder during dev;
   const appNameTitle = appName || config.meta.appName;
@@ -42,7 +41,7 @@ export function Logo({
         <img
           src={appLogoUrl}
           alt={`${appNameTitle}`}
-          style={{ height: `${size}px`, width: "auto" }}
+          height={size}
           className="rounded object-contain"
         />
       )}
@@ -54,14 +53,18 @@ export function Logo({
 
   return (
     <div
-      className="flex flex-row flex-nowrap items-center justify-between gap-4"
-      style={{ minWidth: `${minWidthPx}px` }}
+      className={`flex flex-row flex-nowrap items-center justify-between gap-4 ${minWidthClass}`}
     >
       <div className="flex items-center gap-3 p-2">
         {linkUrl ? (
-          <Link href={linkUrl} className="flex items-center gap-3">
+          <a
+            href={linkUrl}
+            className="flex items-center gap-3"
+            aria-label={appNameTitle || "Home"}
+            title={appNameTitle || "Home"}
+          >
             <LogoContent />
-          </Link>
+          </a>
         ) : (
           <div className="flex items-center gap-3">
             <LogoContent />
