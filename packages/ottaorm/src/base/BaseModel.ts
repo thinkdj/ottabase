@@ -253,6 +253,16 @@ export class BaseModel extends AbstractBaseModel {
     // Merge with defaults
     const createData = { ...this.defaults, ...data };
 
+    // Cloudflare Workers (workerd) disallows random generation in module/global scope,
+    // so model schemas avoid crypto.randomUUID() defaults. Generate ids at runtime.
+    if (this.primaryKey === "id" && (createData.id === undefined || createData.id === null)) {
+      const uuidFn = globalThis.crypto?.randomUUID;
+      if (typeof uuidFn !== "function") {
+        throw new Error(`Missing id for ${this.entity} and crypto.randomUUID is unavailable`);
+      }
+      createData.id = uuidFn.call(globalThis.crypto);
+    }
+
     const result = await db.insert(table).values(createData).returning();
 
     if (result.length === 0) {
