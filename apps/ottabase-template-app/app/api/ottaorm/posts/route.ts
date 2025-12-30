@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
     const post = await Post.create({
       id: crypto.randomUUID(),
       title,
+      slug: Post.generateSlug(title),
       content: content || null,
       published: false,
       authorId,

@@ -699,6 +699,7 @@ export default {
         const post = await Post.create({
           id: crypto.randomUUID(),
           title: body.title,
+          slug: Post.generateSlug(body.title),
           content: body.content || null,
           published: false,
           authorId: body.authorId,
