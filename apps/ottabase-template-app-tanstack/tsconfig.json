@@ -1,0 +1,29 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@ottabase/cf/*": ["../../packages/cf/src/*"],
+      "@ottabase/cf-realtime": ["../../packages/cf-realtime/src/index.ts"],
+      "@ottabase/cf-realtime/server": ["../../packages/cf-realtime/src/server/index.ts"],
+      "@ottabase/cf-realtime/client": ["../../packages/cf-realtime/src/client/index.ts"],
+      "@ottabase/db/drizzle-d1": ["../../packages/db/src/drizzle/drizzle-d1.ts"],
+      "@ottabase/db/drizzle": ["../../packages/db/src/drizzle/drizzle.ts"],
+      "@ottabase/db/*": ["../../packages/db/src/*"],
+      "@ottabase/*": ["../../packages/*/src"]
+    },
+    "types": ["@cloudflare/workers-types"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "vite.config.ts",
+    "cloudflare-worker.ts",
+    "cloudflare-env.d.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}
