@@ -97,7 +97,6 @@ export class Post extends BaseModel {
 
   protected static defaults = {
     published: false,
-    slug: crypto.randomUUID().substring(0, 8),
   };
 
   protected static fields: ModelFields = {
