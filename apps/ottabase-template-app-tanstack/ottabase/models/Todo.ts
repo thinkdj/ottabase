@@ -25,6 +25,29 @@ export const todosTable = sqliteTable("todos", {
 export type TodoType = typeof todosTable.$inferSelect;
 export type NewTodoType = typeof todosTable.$inferInsert;
 
+/**
+ * Todo model - App-specific fat model
+ *
+ * @example
+ * ```typescript
+ * import { Todo } from "./models/Todo";
+ * import { setDriver } from "@ottabase/ottaorm";
+ *
+ * setDriver(createD1Driver(env.DB));
+ *
+ * // Create todo
+ * const todo = await Todo.create({
+ *   title: "Buy groceries",
+ *   userId: "user-123"
+ * });
+ *
+ * // Toggle completed
+ * await todo.toggle();
+ *
+ * // Get incomplete todos
+ * const incomplete = await Todo.incomplete();
+ * ```
+ */
 export class Todo extends BaseModel {
   static entity = "todos";
   static table = todosTable;
@@ -147,5 +170,80 @@ export class Todo extends BaseModel {
   constructor(data: { [key: string]: any }) {
     const params: IModelConstructorParams = { entity: Todo.entity, data };
     super(params);
+  }
+
+  // ============================================================
+  // RELATIONSHIPS
+  // ============================================================
+
+  /**
+   * Get the user who owns this todo (BelongsTo User)
+   */
+  async user(select?: string[]) {
+    const { User } = await import("@ottabase/ottaorm");
+
+    return this.belongsTo(User, "userId", {
+      select: select || ["id", "name", "email"],
+    });
+  }
+
+  // ============================================================
+  // HELPER METHODS
+  // ============================================================
+
+  /**
+   * Get all incomplete todos
+   */
+  static async incomplete(options?: {
+    orderBy?: string;
+    orderDirection?: "asc" | "desc";
+  }) {
+    return this.where(
+      { completed: false },
+      {
+        orderBy: options?.orderBy || "createdAt",
+        orderDirection: options?.orderDirection || "asc",
+      }
+    );
+  }
+
+  /**
+   * Get all completed todos
+   */
+  static async completed(options?: {
+    orderBy?: string;
+    orderDirection?: "asc" | "desc";
+  }) {
+    return this.where(
+      { completed: true },
+      {
+        orderBy: options?.orderBy || "createdAt",
+        orderDirection: options?.orderDirection || "desc",
+      }
+    );
+  }
+
+  /**
+   * Toggle completed status
+   */
+  async toggle() {
+    this.set("completed", !this.get("completed"));
+    return this.save();
+  }
+
+  /**
+   * Mark as completed
+   */
+  async complete() {
+    this.set("completed", true);
+    return this.save();
+  }
+
+  /**
+   * Mark as incomplete
+   */
+  async uncomplete() {
+    this.set("completed", false);
+    return this.save();
   }
 }

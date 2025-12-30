@@ -196,8 +196,7 @@ export function ShadcnDemoPage() {
                         <TabsContent value="actions" className="mt-4 space-y-2">
                             <Button
                                 onClick={() =>
-                                    toast({
-                                        title: "Toast",
+                                    toast("Toast", {
                                         description: "Toasts work via ShadcnProviders.",
                                     })
                                 }
