@@ -9,7 +9,9 @@
     "deploy": "pnpm build && wrangler deploy",
     "type-check": "tsc --noEmit",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "wrangler": "wrangler"
+    "wrangler": "wrangler",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@mantine/carousel": "^8.3.1",
@@ -48,6 +50,7 @@
     "@types/node": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "autoprefixer": "catalog:",
+    "drizzle-kit": "catalog:",
     "postcss": "catalog:",
     "postcss-preset-env": "catalog:",
     "postcss-preset-mantine": "catalog:",
