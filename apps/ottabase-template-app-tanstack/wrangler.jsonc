@@ -11,8 +11,7 @@
       "binding": "OBCF_D1",
       "database_name": "ottabase-db",
       "database_id": "YOUR_D1_DATABASE_ID",
-      "preview_database_id": "preview",
-      "migrations_dir": "drizzle/migrations"
+      "preview_database_id": "preview"
     }
   ],
   "kv_namespaces": [

@@ -45,8 +45,7 @@
       "database_id": "YOUR_D1_DATABASE_ID", // Replace with: wrangler d1 create ottabase-db
       // For preview/prod, create with: wrangler d1 create ottabase-db
       // Then update database_id with the returned ID
-      "preview_database_id": "preview", // Uses preview DB for `wrangler dev --remote`
-      "migrations_dir": "drizzle/migrations" // Drizzle-generated migrations (Option 2 codebase first)
+      "preview_database_id": "preview" // Uses preview DB for `wrangler dev --remote`
     }
   ],
 
@@ -198,8 +197,7 @@
         {
           "binding": "OBCF_D1",
           "database_name": "ottabase-db",
-          "database_id": "PRODUCTION_D1_DATABASE_ID",
-          "migrations_dir": "drizzle/migrations"
+          "database_id": "PRODUCTION_D1_DATABASE_ID"
         }
       ],
       // Production KV Namespace - set via CI/CD substitution or manually

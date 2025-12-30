@@ -15,10 +15,8 @@
     "deploy": "pnpm build && pnpm build:worker && wrangler deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "wrangler": "wrangler",
-    "db:generate": "drizzle-kit generate --config=drizzle.config.js",
-    "db:migrate": "wrangler d1 migrations apply OBCF_D1 --local",
-    "db:migrate:remote": "wrangler d1 migrations apply OBCF_D1 --remote",
-    "db:studio": "drizzle-kit studio"
+    "db:migrate": "curl -s -X POST http://localhost:3000/api/ottaorm/init | node -p \"JSON.parse(require('fs').readFileSync(0)).message || 'Migration completed'\"",
+    "db:migrate:remote": "echo 'POST to /api/ottaorm/init with MIGRATION_SECRET header in production'"
   },
   "dependencies": {
     "@mantine/carousel": "^8.3.1",
@@ -75,7 +73,6 @@
     "postcss": "catalog:",
     "postcss-preset-env": "catalog:",
     "postcss-preset-mantine": "catalog:",
-    "drizzle-kit": "catalog:",
     "prisma": "catalog:",
     "storybook": "catalog:",
     "tailwindcss": "catalog:",
