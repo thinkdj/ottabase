@@ -22,7 +22,18 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", "jest.config.*", "vitest.config.*"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "vitest.config.*",
+        "vitest.setup.*",
+        "**/__tests__/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx"
+      ],
+      "outputs": ["coverage/**"],
+      "outputLogs": "new-only"
     },
     "clean": {
       "cache": false

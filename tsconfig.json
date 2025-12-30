@@ -18,7 +18,6 @@
       /* Pattern-based path mapping for all packages */
       "@ottabase/*": ["./packages/*/src"],
       /* Individual package mappings for direct imports */
-      "@ottabase/ui-core": ["./packages/ui-core/src"],
       "@ottabase/config": ["./packages/config/src"],
       "@ottabase/state": ["./packages/state/src"],
       "@ottabase/scripts": ["./packages/scripts/src"],
@@ -37,9 +36,6 @@
   "include": ["./packages/**/src/**/*.ts", "./packages/**/src/**/*.tsx"],
   "exclude": ["node_modules"],
   "references": [
-    {
-      "path": "./packages/ui-core"
-    },
     {
       "path": "./packages/config"
     },

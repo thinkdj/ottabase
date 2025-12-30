@@ -1,0 +1,21 @@
+# Test configuration for @ottabase/cf package
+# This is used for local testing only
+
+name = "ottabase-cf-test"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Test bindings (for local testing)
+[[d1_databases]]
+binding = "TEST_DB"
+database_name = "test-db"
+database_id = "test-db-id"
+
+[[kv_namespaces]]
+binding = "TEST_KV"
+id = "test-kv-id"
+
+[[r2_buckets]]
+binding = "TEST_R2"
+bucket_name = "test-bucket"
