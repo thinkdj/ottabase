@@ -1,104 +1,95 @@
-# Database Migrations
+# Database Schema (Codebase First Approach)
 
-This directory contains TypeScript-based migrations following Drizzle's **codebase first approach**.
-
-## Architecture
-
-Ottabase uses a **programmatic migration system** that combines:
-
-1. **Core migrations** from `@ottabase/ottaorm` (users, accounts, posts, tags, sessions, etc.)
-2. **App-specific migrations** defined in this directory (`ottabase/migrations/index.ts`)
-
-All migrations are defined in TypeScript and executed at runtime via the D1 driver.
-
-## Adding New Migrations
-
-Edit `ottabase/migrations/index.ts` to add new migrations:
-
-```typescript
-import type { Migration } from "@ottabase/ottaorm";
-
-export const appMigrations: Migration[] = [
-  // Existing migrations...
-  {
-    name: '001_create_todos_table',
-    up: async (db) => {
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS todos (...)
-      `);
-    },
-    down: async (db) => {
-      await db.execute(`DROP TABLE IF EXISTS todos`);
-    }
-  },
-  // Add new migrations here:
-  {
-    name: '002_add_priority_to_todos',
-    up: async (db) => {
-      await db.execute(`
-        ALTER TABLE todos ADD COLUMN priority INTEGER DEFAULT 0
-      `);
-    },
-    down: async (db) => {
-      // SQLite doesn't support DROP COLUMN, so we'd need to recreate the table
-      // For simplicity, this example leaves down() empty
-    }
-  }
-];
-```
-
-## Running Migrations
-
-### Development (Local D1)
-
-```bash
-# Start the dev server first
-pnpm dev
-
-# Then run migrations (in another terminal)
-pnpm db:migrate
-```
-
-Or visit the migration endpoint directly:
-- **Next.js app**: `http://localhost:3000/api/ottaorm/init`
-- **TanStack app**: `http://localhost:8790/api/ottaorm/init`
-
-### Production
-
-Migrations require `MIGRATION_SECRET` authentication in production:
-
-```bash
-# Via curl
-curl -X POST https://your-app.pages.dev/api/ottaorm/init \
-  -H "Authorization: Bearer YOUR_MIGRATION_SECRET"
-
-# Or via query parameter
-curl -X POST "https://your-app.pages.dev/api/ottaorm/init?secret=YOUR_MIGRATION_SECRET"
-```
+This application uses Drizzle's **Option 2: Codebase First** approach for database migrations.
 
 ## How It Works
 
-1. **Core models** are automatically created from `@ottabase/ottaorm`:
-   - `users`, `accounts`, `sessions`, `verification_tokens`, `authenticators`
-   - `posts`, `tags`, `post_tags`
+1. **Schema is defined in TypeScript** (`ottabase/db/schema.ts`)
+2. **drizzle-kit push** pushes schema changes directly to D1
+3. **No SQL migration files** to manage
+4. **TypeScript schema is the single source of truth**
 
-2. **App-specific models** are created from your `appMigrations`:
-   - Add tables, indexes, and schema changes here
+## Schema Location
 
-3. **Migration tracking** uses the `_ottabase_migrations` table to prevent re-running migrations
+```
+ottabase/
+├── db/
+│   └── schema.ts      # Combined schema (CORE + APP tables)
+├── models/
+│   └── Todo.ts        # App-specific model with Drizzle table
+└── migrations/
+    └── README.md      # This file
+```
 
-## Benefits of This Approach
+## Schema Structure
 
-- ✅ **No SQL files to manage** - Everything in TypeScript
-- ✅ **Type-safe migrations** - Full IDE support and type checking
-- ✅ **Automatic core schema** - Core models provided by `@ottabase/ottaorm`
-- ✅ **Feature-based organization** - Add features via config
-- ✅ **Runtime execution** - No build step required for migrations
-- ✅ **Cloudflare D1 native** - Works with Drizzle ORM and D1 driver
+The schema file (`ottabase/db/schema.ts`) combines:
 
-## Related Files
+### Core Tables (from `@ottabase/ottaorm`)
+- `usersTable` - User accounts
+- `accountsTable` - OAuth accounts
+- `sessionsTable` - User sessions
+- `verificationTokensTable` - Email verification
+- `authenticatorsTable` - WebAuthn/Passkey
+- `postsTable` - Blog posts
+- `tagsTable` - Tags
+- `postTagsTable` - Post-tag relationships
 
-- `ottabase/migrations/index.ts` - App-specific migrations
-- `ottabase/models/*.ts` - Drizzle table definitions (for ORM queries)
-- `@ottabase/ottaorm` - Core migrations and ORM utilities
-- `db.config.ts` - Database configuration (features, provider)
+### App Tables
+- `todosTable` - Todo items (defined in `ottabase/models/Todo.ts`)
+
+## Commands
+
+```bash
+# Push schema changes to remote D1 database
+pnpm db:push
+
+# Open Drizzle Studio for database browsing
+pnpm db:studio
+```
+
+## Adding New Tables
+
+1. Create a new model file in `ottabase/models/`:
+
+```typescript
+// ottabase/models/Project.ts
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+
+export const projectsTable = sqliteTable("projects", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+```
+
+2. Export it in the schema file (`ottabase/db/schema.ts`):
+
+```typescript
+// Add to APP-SPECIFIC TABLES section
+export { projectsTable } from "../models/Project";
+```
+
+3. Push the changes:
+
+```bash
+pnpm db:push
+```
+
+## Environment Variables
+
+For remote D1, set these environment variables:
+
+```bash
+CLOUDFLARE_ACCOUNT_ID=your-account-id
+CLOUDFLARE_D1_DATABASE_ID=your-database-id  
+CLOUDFLARE_API_TOKEN=your-api-token
+```
+
+## Benefits
+
+- ✅ **No migration files** - Schema TypeScript is the source of truth
+- ✅ **Type-safe** - Full TypeScript support with Drizzle ORM
+- ✅ **Automatic diff** - drizzle-kit detects schema changes
+- ✅ **Rapid prototyping** - Just edit TypeScript and push
+- ✅ **Production ready** - Used by many teams in production
