@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "vite",
+    "dev:worker": "wrangler dev --port 8790",
+    "dev:full": "pnpm build && pnpm dev:worker",
     "build": "vite build",
     "preview": "pnpm build && wrangler dev",
     "deploy": "pnpm build && wrangler deploy",

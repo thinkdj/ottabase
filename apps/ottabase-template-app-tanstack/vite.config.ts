@@ -25,6 +25,13 @@ export default defineConfig(async () => {
     server: {
       port: 5174,
       strictPort: true,
+      proxy: {
+        "/api": {
+          target: "http://localhost:8790",
+          changeOrigin: true,
+          secure: false,
+        },
+      },
     },
   };
 });
