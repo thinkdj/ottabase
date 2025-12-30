@@ -198,6 +198,19 @@ jobs:
             ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
             ${{ runner.os }}-nextjs-${{ matrix.folder }}-
 
+      - name: Cache TanStack builds
+        if: steps.config.outputs.app-type == 'tanstack'
+        uses: actions/cache@v4
+        with:
+          path: |
+            apps/${{ matrix.folder }}/dist
+            apps/${{ matrix.folder }}/node_modules/.vite
+          key: ${{ runner.os }}-tanstack-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-${{ hashFiles('apps/${{ matrix.folder }}/wrangler.jsonc', 'apps/${{ matrix.folder }}/vite.config.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-tanstack-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-
+            ${{ runner.os }}-tanstack-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
+            ${{ runner.os }}-tanstack-${{ matrix.folder }}-
+
       # Verify build tools are accessible
       - name: Verify build tools
         run: |
@@ -216,6 +229,12 @@ jobs:
           if [ "${{ steps.config.outputs.app-type }}" == "nextjs" ]; then
             if command -v pnpm exec next --version &> /dev/null; then
               echo "  - next: $(pnpm exec next --version 2>&1 || echo 'installed')"
+            fi
+          fi
+
+          if [ "${{ steps.config.outputs.app-type }}" == "tanstack" ]; then
+            if command -v pnpm exec vite --version &> /dev/null; then
+              echo "  - vite: $(pnpm exec vite --version 2>&1 || echo 'installed')"
             fi
           fi
 
@@ -269,6 +288,25 @@ jobs:
               exit 1
             fi
             echo "✅ Next.js build output verified (.next directory exists)"
+          fi
+
+          # For TanStack apps, verify dist directory was created
+          if [ "${{ steps.config.outputs.app-type }}" == "tanstack" ]; then
+            echo "Checking for dist directory at: apps/${{ matrix.folder }}/dist"
+            echo "Current working directory: $(pwd)"
+            echo "Directory listing of apps/${{ matrix.folder }}:"
+            ls -la "apps/${{ matrix.folder }}" | head -20
+
+            if [ ! -d "apps/${{ matrix.folder }}/dist" ]; then
+              echo ""
+              echo "❌ ERROR: TanStack build output not found"
+              echo ""
+              echo "Expected directory 'apps/${{ matrix.folder }}/dist' was not created."
+              echo "This indicates the Vite build did not complete successfully."
+              echo ""
+              exit 1
+            fi
+            echo "✅ TanStack build output verified (dist directory exists)"
           fi
 
           echo "✅ Application build completed successfully"
@@ -357,15 +395,15 @@ jobs:
 
           if [ ${#MISSING_PATHS[@]} -ne 0 ]; then
             echo ""
-            echo "❌ ERROR: Required paths not found after Worker build"
+            echo "❌ ERROR: Required paths not found after build"
             echo ""
             echo "The following paths were expected but are missing:"
             printf '  • %s\n' "${MISSING_PATHS[@]}"
             echo ""
             if [ "${{ steps.config.outputs.app-type }}" == "nextjs" ]; then
               echo "For Next.js apps using OpenNext, the expected structure is:"
-              echo "  • .worker-next/ - Main worker output directory"
-              echo "  • .worker-next/assets/ - Static assets directory"
+              echo "  • .open-next/ - Main worker output directory"
+              echo "  • .open-next/assets/ - Static assets directory"
               echo ""
               echo "This error usually means:"
               echo "  1. The 'build:worker' command didn't complete successfully"
@@ -373,12 +411,27 @@ jobs:
               echo "  3. The Next.js build (.next directory) is missing"
               echo ""
             fi
+            if [ "${{ steps.config.outputs.app-type }}" == "tanstack" ]; then
+              echo "For TanStack apps, the expected structure is:"
+              echo "  • dist/ - Vite build output directory"
+              echo "  • cloudflare-worker.ts - Cloudflare Worker entry point"
+              echo ""
+              echo "This error usually means:"
+              echo "  1. The 'build' command didn't complete successfully"
+              echo "  2. Vite configuration (vite.config.ts) is incorrect"
+              echo "  3. The worker entry point is missing or misnamed"
+              echo ""
+            fi
             echo "Current directory contents:"
             ls -la
             echo ""
-            if [ -d ".worker-next" ]; then
-              echo ".worker-next directory contents:"
-              ls -la .worker-next
+            if [ -d ".open-next" ]; then
+              echo ".open-next directory contents:"
+              ls -la .open-next
+            fi
+            if [ -d "dist" ]; then
+              echo "dist directory contents:"
+              ls -la dist | head -20
             fi
             echo ""
             exit 1

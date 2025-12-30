@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/cloudflare-config.schema.json",
+  "deployable": true,
+  "appType": "tanstack",
+  "workerName": "ottabase-template-app-tanstack",
+  "buildCommand": "build",
+  "workerBuildCommand": null,
+  "outputDirectory": "dist",
+  "verifyPaths": [
+    "dist",
+    "cloudflare-worker.ts"
+  ],
+  "wranglerConfig": "wrangler.jsonc",
+  "wranglerEnv": "production",
+  "healthCheckPath": "/",
+  "requiresSecrets": [
+    "CLOUDFLARE_API_TOKEN",
+    "CLOUDFLARE_ACCOUNT_ID",
+    "D1_DATABASE_ID",
+    "KV_NAMESPACE_ID"
+  ]
+}
