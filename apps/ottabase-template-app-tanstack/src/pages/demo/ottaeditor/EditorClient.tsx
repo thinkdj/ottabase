@@ -140,7 +140,7 @@ export function EditorClient() {
                             Reload Sample
                         </Button>
                     </div>
-                    <div ref={editor1.editorRef} className="min-h-[300px] max-w-none rounded-lg border p-4" />
+                    <div ref={editor1.editorRef} className="min-h-[300px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4" />
                     {savedData1 ? (
                         <details className="mt-4">
                             <summary className="cursor-pointer text-sm font-semibold">
@@ -182,7 +182,7 @@ export function EditorClient() {
                             Reload Sample
                         </Button>
                     </div>
-                    <div ref={editor2.editorRef} className="min-h-[300px] max-w-none rounded-lg border p-4" />
+                    <div ref={editor2.editorRef} className="min-h-[300px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4" />
                     {savedData2 ? (
                         <details className="mt-4">
                             <summary className="cursor-pointer text-sm font-semibold">
