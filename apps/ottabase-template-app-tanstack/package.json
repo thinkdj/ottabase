@@ -63,7 +63,7 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-tsconfig-paths": "catalog:",
-    "wrangler": "^4.54.0",
-    "localflare": "^0.1.2"
+    "wrangler": "catalog:",
+    "localflare": "catalog:"
   }
 }
