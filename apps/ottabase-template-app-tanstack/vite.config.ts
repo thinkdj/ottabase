@@ -14,7 +14,8 @@ function spaFallback(): Plugin {
         }
 
         // Skip asset requests (files with extensions)
-        const hasExtension = /\.[a-zA-Z0-9]+$/.test(req.url || "");
+        const urlPath = (req.url || "").split(/[?#]/, 1)[0];
+        const hasExtension = /\.[a-zA-Z0-9]+$/.test(urlPath);
         if (hasExtension) {
           return next();
         }
