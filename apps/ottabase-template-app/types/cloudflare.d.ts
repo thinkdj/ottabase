@@ -51,8 +51,8 @@ export interface CloudflareEnv {
   CF_ACCOUNT_ID?: string;
   CF_API_TOKEN?: string;
 
-  // Assets binding (automatically added by OpenNext)
-  ASSETS?: Fetcher;
+  // Assets binding (OBCF = Ottabase Cloudflare)
+  OBCF_ASSETS?: Fetcher;
 }
 
 /**

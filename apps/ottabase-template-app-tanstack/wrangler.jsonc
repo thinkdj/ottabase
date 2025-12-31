@@ -102,7 +102,7 @@
   // Vite build outputs to dist/ directory
   "assets": {
     "directory": "dist",
-    "binding": "ASSETS"
+    "binding": "OBCF_ASSETS"
   },
 
   // Environment variables
@@ -140,7 +140,7 @@
       },
       // Production assets
       "assets": {
-        "binding": "ASSETS",
+        "binding": "OBCF_ASSETS",
         "directory": "dist"
       },
       // Production D1 Database - set via CI/CD substitution or manually

@@ -741,13 +741,13 @@ export default {
 
     // Serve built assets. If the asset isn't found and the client is requesting HTML,
     // fall back to `index.html` to support client-side routing.
-    const response = await env.ASSETS.fetch(request);
+    const response = await env.OBCF_ASSETS.fetch(request);
     if (response.status !== 404 || !isHtmlRequest(request)) {
       return response;
     }
 
     const indexUrl = new URL(request.url);
     indexUrl.pathname = "/index.html";
-    return env.ASSETS.fetch(new Request(indexUrl.toString(), request));
+    return env.OBCF_ASSETS.fetch(new Request(indexUrl.toString(), request));
   },
 };
