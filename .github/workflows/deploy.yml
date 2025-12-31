@@ -217,25 +217,16 @@ jobs:
           echo "🔍 Verifying build tool installation..."
 
           # Test critical build tools (with fallback checks)
-          if command -v pnpm exec tsup --version &> /dev/null; then
-            echo "  - tsup: $(pnpm exec tsup --version 2>&1 || echo 'installed')"
-          fi
-
-          if command -v pnpm exec rimraf --version &> /dev/null; then
-            echo "  - rimraf: $(pnpm exec rimraf --version 2>&1 || echo 'installed')"
-          fi
+          echo "  - tsup: $(pnpm exec tsup --version 2>&1 || echo 'installed')"
+          echo "  - rimraf: $(pnpm exec rimraf --version 2>&1 || echo 'installed')"
 
           # App-type specific tools
           if [ "${{ steps.config.outputs.app-type }}" == "nextjs" ]; then
-            if command -v pnpm exec next --version &> /dev/null; then
-              echo "  - next: $(pnpm exec next --version 2>&1 || echo 'installed')"
-            fi
+            echo "  - next: $(pnpm exec next --version 2>&1 || echo 'installed')"
           fi
 
           if [ "${{ steps.config.outputs.app-type }}" == "tanstack" ]; then
-            if command -v pnpm exec vite --version &> /dev/null; then
-              echo "  - vite: $(pnpm exec vite --version 2>&1 || echo 'installed')"
-            fi
+            echo "  - vite: $(pnpm exec vite --version 2>&1 || echo 'installed')"
           fi
 
           echo "✅ Build tools verified"
