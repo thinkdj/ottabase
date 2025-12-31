@@ -165,8 +165,8 @@ jobs:
               FILTER_EXPR="${FILTER_EXPR} .folder == \"${app}\""
             done
 
-            # Filter the matrix
-            FILTERED_MATRIX=$(echo "${ALL_APPS}" | jq --arg filter "$FILTER_EXPR" '{include: [.include[] | select('"$FILTER_EXPR"')]}')
+            # Filter the matrix (use -c for compact single-line JSON output)
+            FILTERED_MATRIX=$(echo "${ALL_APPS}" | jq -c '{include: [.include[] | select('"$FILTER_EXPR"')]}')
 
             echo "matrix=${FILTERED_MATRIX}" >> $GITHUB_OUTPUT
 
