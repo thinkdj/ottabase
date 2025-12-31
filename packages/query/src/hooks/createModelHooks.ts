@@ -1,0 +1,357 @@
+// ============================================================
+// @ottabase/query - Model Hooks Factory
+// ============================================================
+// Creates type-safe TanStack Query hooks for any OttaORM model
+// ============================================================
+
+import {
+  useQuery,
+  useMutation,
+  useInfiniteQuery,
+  useQueryClient,
+  type UseQueryOptions,
+  type UseMutationOptions,
+  type InfiniteData,
+} from "@tanstack/react-query";
+import type {
+  ModelQueryConfig,
+  QueryOptions,
+  PaginationResult,
+  MutationContext,
+} from "../types";
+import { createQueryKeys } from "../types";
+
+/**
+ * Create a complete set of query hooks for a model
+ *
+ * @example
+ * ```typescript
+ * const userHooks = createModelHooks<User>({
+ *   entityName: "users",
+ *   apiPath: "/api/users",
+ * });
+ *
+ * // In component:
+ * const { data: users, isLoading } = userHooks.useList();
+ * const { data: user } = userHooks.useDetail("123");
+ * const createMutation = userHooks.useCreate();
+ * ```
+ */
+export function createModelHooks<T extends { id: string | number }>(
+  config: ModelQueryConfig<T>
+) {
+  const { entityName, apiPath, fetchFn = fetch } = config;
+  const queryKeys = createQueryKeys(entityName);
+
+  // ============================================================
+  // API Fetchers
+  // ============================================================
+
+  async function fetchList(options?: QueryOptions): Promise<T[]> {
+    const params = new URLSearchParams();
+
+    if (options?.where) {
+      params.set("where", JSON.stringify(options.where));
+    }
+    if (options?.orderBy) {
+      params.set("orderBy", options.orderBy);
+    }
+    if (options?.orderDirection) {
+      params.set("orderDirection", options.orderDirection);
+    }
+    if (options?.limit) {
+      params.set("limit", String(options.limit));
+    }
+    if (options?.offset) {
+      params.set("offset", String(options.offset));
+    }
+
+    const queryString = params.toString();
+    const url = queryString ? `${apiPath}?${queryString}` : apiPath;
+
+    const response = await fetchFn(url);
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new Error(error.error || `Failed to fetch ${entityName}`);
+    }
+
+    const result = (await response.json()) as Record<string, T[]> & { data?: T[] };
+    // Handle both { users: [...] } and [...] response formats
+    return result[entityName] || result.data || (result as unknown as T[]);
+  }
+
+  async function fetchDetail(id: string | number): Promise<T | null> {
+    const response = await fetchFn(`${apiPath}/${id}`);
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      const error = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new Error(error.error || `Failed to fetch ${entityName}`);
+    }
+
+    const result = (await response.json()) as Record<string, T> & { data?: T };
+    return result[entityName.slice(0, -1)] || result.data || (result as unknown as T);
+  }
+
+  async function fetchPaginated(
+    page: number,
+    perPage: number,
+    options?: Omit<QueryOptions, "offset" | "limit">
+  ): Promise<PaginationResult<T>> {
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("perPage", String(perPage));
+
+    if (options?.where) {
+      params.set("where", JSON.stringify(options.where));
+    }
+    if (options?.orderBy) {
+      params.set("orderBy", options.orderBy);
+    }
+    if (options?.orderDirection) {
+      params.set("orderDirection", options.orderDirection);
+    }
+
+    const response = await fetchFn(`${apiPath}?${params.toString()}`);
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new Error(error.error || `Failed to fetch ${entityName}`);
+    }
+
+    return response.json() as Promise<PaginationResult<T>>;
+  }
+
+  async function createItem(data: Partial<T>): Promise<T> {
+    const response = await fetchFn(apiPath, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new Error(error.error || `Failed to create ${entityName}`);
+    }
+
+    const result = (await response.json()) as Record<string, T> & { data?: T };
+    return result[entityName.slice(0, -1)] || result.data || (result as unknown as T);
+  }
+
+  async function updateItem(id: string | number, data: Partial<T>): Promise<T> {
+    const response = await fetchFn(`${apiPath}/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new Error(error.error || `Failed to update ${entityName}`);
+    }
+
+    const result = (await response.json()) as Record<string, T> & { data?: T };
+    return result[entityName.slice(0, -1)] || result.data || (result as unknown as T);
+  }
+
+  async function deleteItem(id: string | number): Promise<boolean> {
+    const response = await fetchFn(`${apiPath}/${id}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new Error(error.error || `Failed to delete ${entityName}`);
+    }
+
+    return true;
+  }
+
+  // ============================================================
+  // Query Hooks
+  // ============================================================
+
+  function useList(
+    options?: QueryOptions,
+    queryOptions?: Partial<UseQueryOptions<T[], Error>>
+  ) {
+    return useQuery<T[], Error>({
+      queryKey: queryKeys.list(options),
+      queryFn: () => fetchList(options),
+      ...config.defaultQueryOptions,
+      ...queryOptions,
+    });
+  }
+
+  function useDetail(
+    id: string | number,
+    queryOptions?: Partial<UseQueryOptions<T | null, Error>>
+  ) {
+    return useQuery<T | null, Error>({
+      queryKey: queryKeys.detail(id),
+      queryFn: () => fetchDetail(id),
+      enabled: !!id,
+      ...queryOptions,
+    });
+  }
+
+  function useInfiniteList(
+    options?: Omit<QueryOptions, "offset" | "limit">,
+    perPage: number = 10
+  ) {
+    return useInfiniteQuery<
+      PaginationResult<T>,
+      Error,
+      InfiniteData<PaginationResult<T>>,
+      ReturnType<typeof queryKeys.infinite>,
+      number
+    >({
+      queryKey: queryKeys.infinite(options),
+      queryFn: ({ pageParam }) =>
+        fetchPaginated(pageParam, perPage, options),
+      initialPageParam: 1,
+      getNextPageParam: (lastPage) =>
+        lastPage.hasNextPage ? lastPage.page + 1 : undefined,
+      getPreviousPageParam: (firstPage) =>
+        firstPage.hasPrevPage ? firstPage.page - 1 : undefined,
+    });
+  }
+
+  // ============================================================
+  // Mutation Hooks
+  // ============================================================
+
+  function useCreate(
+    mutationOptions?: Partial<UseMutationOptions<T, Error, Partial<T>, MutationContext<T>>>
+  ) {
+    const queryClient = useQueryClient();
+
+    const defaultOnSettled = () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
+    };
+
+    return useMutation<T, Error, Partial<T>, MutationContext<T>>({
+      mutationFn: createItem,
+      onSettled: (...args) => {
+        defaultOnSettled();
+        mutationOptions?.onSettled?.(...args);
+      },
+      ...mutationOptions,
+    });
+  }
+
+  function useUpdate(
+    mutationOptions?: Partial<
+      UseMutationOptions<T, Error, { id: string | number; data: Partial<T> }, MutationContext<T>>
+    >
+  ) {
+    const queryClient = useQueryClient();
+
+    const defaultOnSettled = (_data: T | undefined, _error: Error | null, variables: { id: string | number }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
+    };
+
+    return useMutation<
+      T,
+      Error,
+      { id: string | number; data: Partial<T> },
+      MutationContext<T>
+    >({
+      mutationFn: ({ id, data }) => updateItem(id, data),
+      onSettled: (...args) => {
+        defaultOnSettled(args[0], args[1], args[2]);
+        mutationOptions?.onSettled?.(...args);
+      },
+      ...mutationOptions,
+    });
+  }
+
+  function useDelete(
+    mutationOptions?: Partial<
+      UseMutationOptions<boolean, Error, string | number, MutationContext<T>>
+    >
+  ) {
+    const queryClient = useQueryClient();
+
+    const defaultOnSettled = () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
+    };
+
+    return useMutation<boolean, Error, string | number, MutationContext<T>>({
+      mutationFn: deleteItem,
+      onSettled: (...args) => {
+        defaultOnSettled();
+        mutationOptions?.onSettled?.(...args);
+      },
+      ...mutationOptions,
+    });
+  }
+
+  // ============================================================
+  // Utility Functions
+  // ============================================================
+
+  function usePrefetch() {
+    const queryClient = useQueryClient();
+
+    return {
+      prefetchList: async (options?: QueryOptions) => {
+        await queryClient.prefetchQuery({
+          queryKey: queryKeys.list(options),
+          queryFn: () => fetchList(options),
+        });
+      },
+      prefetchDetail: async (id: string | number) => {
+        await queryClient.prefetchQuery({
+          queryKey: queryKeys.detail(id),
+          queryFn: () => fetchDetail(id),
+        });
+      },
+    };
+  }
+
+  function useInvalidate() {
+    const queryClient = useQueryClient();
+
+    return {
+      invalidateAll: () =>
+        queryClient.invalidateQueries({ queryKey: queryKeys.all() }),
+      invalidateList: (options?: QueryOptions) =>
+        queryClient.invalidateQueries({ queryKey: queryKeys.list(options) }),
+      invalidateDetail: (id: string | number) =>
+        queryClient.invalidateQueries({ queryKey: queryKeys.detail(id) }),
+    };
+  }
+
+  // ============================================================
+  // Return All Hooks
+  // ============================================================
+
+  return {
+    // Query hooks
+    useList,
+    useDetail,
+    useInfiniteList,
+
+    // Mutation hooks
+    useCreate,
+    useUpdate,
+    useDelete,
+
+    // Utility hooks
+    usePrefetch,
+    useInvalidate,
+
+    // Query keys for manual cache manipulation
+    queryKeys,
+
+    // Raw fetchers (for server-side or manual use)
+    fetchers: {
+      fetchList,
+      fetchDetail,
+      fetchPaginated,
+      createItem,
+      updateItem,
+      deleteItem,
+    },
+  };
+}
