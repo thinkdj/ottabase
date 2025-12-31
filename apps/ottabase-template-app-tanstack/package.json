@@ -13,7 +13,8 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "wrangler": "wrangler",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "localflare": "localflare"
   },
   "dependencies": {
     "@mantine/carousel": "^8.3.1",
@@ -62,6 +63,7 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-tsconfig-paths": "catalog:",
-    "wrangler": "^4.54.0"
+    "wrangler": "^4.54.0",
+    "localflare": "^0.1.2"
   }
 }
