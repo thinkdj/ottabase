@@ -7,14 +7,94 @@ on:
   workflow_dispatch: # Allow manual triggers
 
 jobs:
+  # Detect which files changed in the last commit
+  detect-changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    name: Detect file changes
+    outputs:
+      packages-changed: ${{ steps.changes.outputs.packages-changed }}
+      changed-apps: ${{ steps.changes.outputs.changed-apps }}
+      should-deploy: ${{ steps.changes.outputs.should-deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need previous commit to compare
+
+      - name: Detect changed files
+        id: changes
+        run: |
+          echo "🔍 Detecting file changes in the last commit..."
+
+          # Get list of changed files in the last commit
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
+
+          echo "📝 Changed files:"
+          echo "$CHANGED_FILES"
+          echo ""
+
+          # Check if any packages changed
+          PACKAGES_CHANGED="false"
+          if echo "$CHANGED_FILES" | grep -q "^packages/"; then
+            PACKAGES_CHANGED="true"
+            echo "📦 Packages changed - will deploy all apps"
+          fi
+          echo "packages-changed=${PACKAGES_CHANGED}" >> $GITHUB_OUTPUT
+
+          # Find which apps have changes
+          CHANGED_APPS=""
+          while IFS= read -r file; do
+            if [[ "$file" =~ ^apps/([^/]+)/ ]]; then
+              APP_FOLDER="${BASH_REMATCH[1]}"
+              # Add to list if not already present
+              if [[ ! "$CHANGED_APPS" =~ (^|,)$APP_FOLDER(,|$) ]]; then
+                if [ -n "$CHANGED_APPS" ]; then
+                  CHANGED_APPS="${CHANGED_APPS},${APP_FOLDER}"
+                else
+                  CHANGED_APPS="${APP_FOLDER}"
+                fi
+              fi
+            fi
+          done <<< "$CHANGED_FILES"
+
+          echo "changed-apps=${CHANGED_APPS}" >> $GITHUB_OUTPUT
+
+          if [ -n "$CHANGED_APPS" ]; then
+            echo "🎯 Apps with changes: ${CHANGED_APPS}"
+          fi
+
+          # Determine if we should deploy
+          SHOULD_DEPLOY="false"
+          if [ "$PACKAGES_CHANGED" == "true" ] || [ -n "$CHANGED_APPS" ]; then
+            SHOULD_DEPLOY="true"
+          fi
+          echo "should-deploy=${SHOULD_DEPLOY}" >> $GITHUB_OUTPUT
+
+          # For workflow_dispatch, always deploy
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "🔄 Manual trigger - will deploy all apps"
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "packages-changed=true" >> $GITHUB_OUTPUT
+          fi
+
+          echo ""
+          if [ "$SHOULD_DEPLOY" == "true" ]; then
+            echo "✅ Changes detected - deployment will proceed"
+          else
+            echo "⏭️  No relevant changes - deployment will be skipped"
+          fi
+
   # Discover all deployable apps dynamically
   discover:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should-deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: Discover deployable apps
     outputs:
-      matrix: ${{ steps.discover.outputs.matrix }}
-      has-apps: ${{ steps.discover.outputs.has-apps }}
+      matrix: ${{ steps.filter.outputs.matrix }}
+      has-apps: ${{ steps.filter.outputs.has-apps }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,7 +124,65 @@ jobs:
             echo "has-apps=false" >> $GITHUB_OUTPUT
           fi
 
-          echo "📊 Discovered ${APP_COUNT} app(s) to deploy"
+          echo "📊 Discovered ${APP_COUNT} app(s) total"
+
+      - name: Filter apps based on changes
+        id: filter
+        run: |
+          PACKAGES_CHANGED="${{ needs.detect-changes.outputs.packages-changed }}"
+          CHANGED_APPS="${{ needs.detect-changes.outputs.changed-apps }}"
+          ALL_APPS='${{ steps.discover.outputs.matrix }}'
+
+          echo "🔍 Filtering apps based on changes..."
+          echo "   Packages changed: ${PACKAGES_CHANGED}"
+          echo "   Changed apps: ${CHANGED_APPS}"
+
+          # If packages changed or manual trigger, deploy all apps
+          if [ "$PACKAGES_CHANGED" == "true" ]; then
+            echo "📦 Packages changed - deploying all apps"
+            echo "matrix=${ALL_APPS}" >> $GITHUB_OUTPUT
+            APP_COUNT=$(echo "${ALL_APPS}" | jq '.include | length')
+            if [ "$APP_COUNT" -gt 0 ]; then
+              echo "has-apps=true" >> $GITHUB_OUTPUT
+            else
+              echo "has-apps=false" >> $GITHUB_OUTPUT
+            fi
+            echo "📊 Will deploy ${APP_COUNT} app(s)"
+            exit 0
+          fi
+
+          # Filter to only changed apps
+          if [ -n "$CHANGED_APPS" ]; then
+            echo "🎯 Filtering to changed apps only..."
+
+            # Convert comma-separated list to jq filter
+            FILTER_EXPR=""
+            IFS=',' read -ra APP_ARRAY <<< "$CHANGED_APPS"
+            for app in "${APP_ARRAY[@]}"; do
+              if [ -n "$FILTER_EXPR" ]; then
+                FILTER_EXPR="${FILTER_EXPR} or"
+              fi
+              FILTER_EXPR="${FILTER_EXPR} .folder == \"${app}\""
+            done
+
+            # Filter the matrix
+            FILTERED_MATRIX=$(echo "${ALL_APPS}" | jq --arg filter "$FILTER_EXPR" '{include: [.include[] | select('"$FILTER_EXPR"')]}')
+
+            echo "matrix=${FILTERED_MATRIX}" >> $GITHUB_OUTPUT
+
+            APP_COUNT=$(echo "${FILTERED_MATRIX}" | jq '.include | length')
+            if [ "$APP_COUNT" -gt 0 ]; then
+              echo "has-apps=true" >> $GITHUB_OUTPUT
+              echo "📊 Will deploy ${APP_COUNT} app(s): ${CHANGED_APPS}"
+            else
+              echo "has-apps=false" >> $GITHUB_OUTPUT
+              echo "⏭️  No deployable apps in changed folders"
+            fi
+          else
+            echo "has-apps=false" >> $GITHUB_OUTPUT
+            echo 'matrix={"include":[]}' >> $GITHUB_OUTPUT
+            echo "⏭️  No apps to deploy"
+          fi
 
   # Deploy each discovered app
   deploy:
