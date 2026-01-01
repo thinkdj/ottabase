@@ -455,12 +455,8 @@ export default {
         for (const key of listResult.data.keys.slice(0, 20)) {
           const result = await kv.get(key.name);
           if (result.success && result.data) {
-            try {
-              const message = JSON.parse(result.data as string);
-              messages.push({ key: key.name, ...message });
-            } catch {
-              // ignore
-            }
+            // kv.get() defaults to type: 'json', so data is already parsed
+            messages.push({ key: key.name, ...(result.data as object) });
           }
         }
 
