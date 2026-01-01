@@ -162,18 +162,18 @@ jobs:
                 echo "⚠️  Warning: No cloudflare-config.json or wrangler.jsonc for ${app_folder}, skipping"
                 continue
               fi
-              # Use defaults
+              # Use TanStack defaults (default template app is TanStack)
               CONFIG='{
                 "deployable": true,
-                "appType": "nextjs",
+                "appType": "tanstack",
                 "buildCommand": "build",
-                "workerBuildCommand": "build:worker",
-                "outputDirectory": ".open-next",
-                "verifyPaths": [".open-next"],
+                "workerBuildCommand": null,
+                "outputDirectory": "dist",
+                "verifyPaths": ["dist", "cloudflare-worker.ts"],
                 "wranglerConfig": "wrangler.jsonc",
                 "wranglerEnv": "production",
                 "healthCheckPath": "/",
-                "requiresSecrets": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
+                "requiresSecrets": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "D1_DATABASE_ID", "KV_NAMESPACE_ID"]
               }'
             fi
 
