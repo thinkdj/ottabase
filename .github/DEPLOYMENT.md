@@ -23,13 +23,13 @@ Complete reference for the deployment system. See [README.md](README.md) for qui
 
 ## Framework Examples
 
-### TanStack Start (Default)
+### TanStack (Default)
 
 **package.json:**
 ```json
 {
   "scripts": {
-    "build": "vinxi build"
+    "build": "vite build"
   }
 }
 ```

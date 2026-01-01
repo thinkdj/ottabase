@@ -67,10 +67,10 @@ Already configured. Just push to `main`.
 
 ## Build Flow
 
-### TanStack Start (Default)
+### TanStack (Default)
 ```bash
-# Step 1: Vinxi build
-vinxi build
+# Step 1: Vite build
+vite build
 # → Output: dist/
 
 # Step 2: Deploy to Cloudflare Workers
@@ -93,7 +93,7 @@ wrangler deploy --env production
 
 ## Supported App Types
 
-- `tanstack` - TanStack Start (default)
+- `tanstack` - TanStack Router + Vite (default)
 - `nextjs` - Next.js + OpenNext
 - `react` - React + Vite
 - `remix` - Remix
