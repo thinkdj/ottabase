@@ -20,6 +20,11 @@
       "types": "./dist/base/index.d.ts",
       "import": "./dist/base/index.mjs",
       "require": "./dist/base/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "import": "./dist/client/index.mjs",
+      "require": "./dist/client/index.js"
     }
   },
   "files": [
@@ -27,10 +32,10 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/models/index.ts src/base/index.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/models/index.ts src/base/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts src/models/index.ts src/base/index.ts src/client/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts src/models/index.ts src/base/index.ts src/client/index.ts --format cjs,esm --dts --watch",
     "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src --ext .ts,.tsx",
     "type-check": "tsc --noEmit"
   },
   "keywords": [
@@ -40,7 +45,9 @@
     "d1",
     "cloudflare",
     "models",
-    "relationships"
+    "relationships",
+    "tanstack-query",
+    "react"
   ],
   "author": "",
   "license": "MIT",
@@ -49,20 +56,31 @@
   },
   "peerDependencies": {
     "@cloudflare/workers-types": ">=4.0.0",
+    "@tanstack/react-query": ">=5.0.0",
     "drizzle-orm": ">=0.30.0",
-    "mongodb": ">=6.0.0"
+    "mongodb": ">=6.0.0",
+    "react": ">=18.0.0"
   },
   "peerDependenciesMeta": {
     "mongodb": {
+      "optional": true
+    },
+    "@tanstack/react-query": {
+      "optional": true
+    },
+    "react": {
       "optional": true
     }
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
     "drizzle-orm": "catalog:",
     "eslint": "catalog:",
     "mongodb": "catalog:",
+    "react": "catalog:",
     "rimraf": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:"

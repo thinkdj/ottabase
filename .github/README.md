@@ -10,7 +10,7 @@ Dynamic CI/CD system for deploying apps to Cloudflare Workers with automatic dis
    ```json
    {
      "deployable": true,
-     "appType": "nextjs"
+     "appType": "tanstack"
    }
    ```
 
@@ -22,7 +22,15 @@ Already configured. Just push to `main`.
 
 ## Configuration
 
-### Minimal (uses defaults)
+### Minimal TanStack (default)
+```json
+{
+  "deployable": true,
+  "appType": "tanstack"
+}
+```
+
+### Minimal Next.js
 ```json
 {
   "deployable": true,
@@ -57,8 +65,19 @@ Already configured. Just push to `main`.
 - `D1_DATABASE_ID` - (if using D1) From `wrangler d1 create <name>`
 - `KV_NAMESPACE_ID` - (if using KV) From `wrangler kv:namespace create <name>`
 
-## Build Flow (Next.js)
+## Build Flow
 
+### TanStack (Default)
+```bash
+# Step 1: Vite build
+vite build
+# → Output: dist/
+
+# Step 2: Deploy to Cloudflare Workers
+wrangler deploy --env production
+```
+
+### Next.js
 ```bash
 # Step 1: Next.js build
 next build
@@ -74,7 +93,8 @@ wrangler deploy --env production
 
 ## Supported App Types
 
-- `nextjs` - Next.js + OpenNext (default)
+- `tanstack` - TanStack Router + Vite (default)
+- `nextjs` - Next.js + OpenNext
 - `react` - React + Vite
 - `remix` - Remix
 - `vite` - Vite apps

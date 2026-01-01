@@ -40,9 +40,7 @@ const router = createRouter()
   .lazy("/api/cloudflare/queues", () => import("./worker/routes/cloudflare/queues"))
   .lazy("/api/cloudflare/rate-limiting", () => import("./worker/routes/cloudflare/rate-limiting"))
   .lazy("/api/cloudflare/realtime", () => import("./worker/routes/cloudflare/realtime"))
-  .lazy("/api/ottaorm/init", () => import("./worker/routes/ottaorm/init"))
-  .lazy("/api/ottaorm/users", () => import("./worker/routes/ottaorm/users"))
-  .lazy("/api/ottaorm/posts", () => import("./worker/routes/ottaorm/posts"));
+  .lazy("/api/ottaorm", () => import("./worker/routes/ottaorm/crud"));
 
 export default {
   async fetch(request: Request, env: CloudflareEnv): Promise<Response> {
@@ -52,13 +50,13 @@ export default {
 
     // Serve built assets. If the asset isn't found and the client is requesting HTML,
     // fall back to `index.html` to support client-side routing.
-    const assetResponse = await env.ASSETS.fetch(request);
+    const assetResponse = await env.OBCF_ASSETS.fetch(request);
     if (assetResponse.status !== 404 || !isHtmlRequest(request)) {
       return assetResponse;
     }
 
     const url = new URL(request.url);
     url.pathname = "/index.html";
-    return env.ASSETS.fetch(new Request(url.toString(), request));
+    return env.OBCF_ASSETS.fetch(new Request(url.toString(), request));
   },
 };

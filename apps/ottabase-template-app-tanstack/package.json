@@ -13,7 +13,8 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "wrangler": "wrangler",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "localflare": "localflare"
   },
   "dependencies": {
     "@mantine/carousel": "^8.3.1",
@@ -47,6 +48,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "@ottabase/ui-tailwind": "workspace:*",
+    "@tanstack/react-query-devtools": "catalog:",
     "@tanstack/router-plugin": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -62,6 +64,7 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-tsconfig-paths": "catalog:",
-    "wrangler": "^4.54.0"
+    "wrangler": "catalog:",
+    "localflare": "catalog:"
   }
 }

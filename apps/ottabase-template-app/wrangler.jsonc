@@ -29,7 +29,7 @@
   // Asset and Image bindings
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS",
+    "binding": "OBCF_ASSETS",
   },
   "images": {
     "binding": "IMAGES",
@@ -186,7 +186,7 @@
       },
       // Asset and Image bindings for Production
       "assets": {
-        "binding": "ASSETS",
+        "binding": "OBCF_ASSETS",
         "directory": ".open-next/assets",
       },
       "images": {

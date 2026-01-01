@@ -7,13 +7,13 @@ Complete reference for the deployment system. See [README.md](README.md) for qui
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `deployable` | boolean | `true` | Whether to deploy this app |
-| `appType` | string | `"nextjs"` | App framework (`nextjs`, `react`, `remix`, `vite`, `custom`) |
+| `appType` | string | `"tanstack"` | App framework (`tanstack`, `nextjs`, `react`, `remix`, `vite`, `custom`) |
 | `workerName` | string | package name | Cloudflare Worker name |
 | `buildCommand` | string | `"build"` | pnpm script to build app |
-| `workerBuildCommand` | string | `"build:worker"` | pnpm script to build Worker bundle |
-| `outputDirectory` | string | `".worker-next"` | Worker output directory |
-| `assetsDirectory` | string | `".worker-next/assets"` | Static assets directory |
-| `verifyPaths` | string[] | `[".worker-next"]` | Paths to verify after build |
+| `workerBuildCommand` | string | `null` | pnpm script to build Worker bundle (null for TanStack) |
+| `outputDirectory` | string | `"dist"` | Worker output directory |
+| `assetsDirectory` | string | - | Static assets directory |
+| `verifyPaths` | string[] | `["dist", "cloudflare-worker.ts"]` | Paths to verify after build |
 | `wranglerConfig` | string | `"wrangler.jsonc"` | Wrangler config file path |
 | `wranglerEnv` | string | `"production"` | Wrangler environment |
 | `healthCheckPath` | string | `"/"` | Path for health check |
@@ -22,6 +22,31 @@ Complete reference for the deployment system. See [README.md](README.md) for qui
 **Default Secrets:** `["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]`
 
 ## Framework Examples
+
+### TanStack (Default)
+
+**package.json:**
+```json
+{
+  "scripts": {
+    "build": "vite build"
+  }
+}
+```
+
+**cloudflare-config.json:**
+```json
+{
+  "deployable": true,
+  "appType": "tanstack",
+  "workerName": "my-tanstack-app",
+  "buildCommand": "build",
+  "workerBuildCommand": null,
+  "outputDirectory": "dist",
+  "verifyPaths": ["dist", "cloudflare-worker.ts"],
+  "requiresSecrets": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "D1_DATABASE_ID", "KV_NAMESPACE_ID"]
+}
+```
 
 ### Next.js with OpenNext
 
