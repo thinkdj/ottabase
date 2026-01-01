@@ -1,5 +1,7 @@
 // ============================================================
-// @ottabase/query - Type Definitions
+// @ottabase/ottaorm/client - Type Definitions
+// ============================================================
+// Client-only types - no server dependencies
 // ============================================================
 
 /**
@@ -30,7 +32,7 @@ export interface QueryOptions {
  * Configuration for creating model query hooks
  */
 export interface ModelQueryConfig {
-  /** Base entity name (used for query keys, e.g., "users") */
+  /** Entity name (used for query keys and API path, e.g., "users") */
   entityName: string;
   /** Base API path (defaults to "/api/ottaorm/{entityName}") */
   apiPath?: string;

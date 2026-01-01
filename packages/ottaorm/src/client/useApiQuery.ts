@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/query - Generic API Query Hook
+// @ottabase/ottaorm/client - Generic API Query Hooks
 // ============================================================
 // For custom endpoints that don't follow the model pattern
 // ============================================================
@@ -120,7 +120,6 @@ export function useApiMutation<TData, TVariables = unknown>(options: {
       return response.json() as Promise<TData>;
     },
     onSuccess: () => {
-      // Invalidate specified query keys
       for (const key of invalidateKeys) {
         queryClient.invalidateQueries({ queryKey: key });
       }

@@ -29,7 +29,6 @@
     "@ottabase/ottaeditor": "workspace:*",
     "@ottabase/ottaorm": "workspace:*",
     "@ottabase/ottaselect": "workspace:*",
-    "@ottabase/query": "workspace:*",
     "@ottabase/state": "workspace:*",
     "@ottabase/ui-base": "workspace:*",
     "@ottabase/ui-code-highlight": "workspace:*",

@@ -8,7 +8,7 @@ import {
     CardTitle,
     Input,
 } from "@ottabase/ui-shadcn";
-import { createModelHooks, useApiMutation } from "@ottabase/query";
+import { createModelHooks, useApiMutation } from "@ottabase/ottaorm/client";
 
 // ============================================================
 // App-specific model types (defined per-app)

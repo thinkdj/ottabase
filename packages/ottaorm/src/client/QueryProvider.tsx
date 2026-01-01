@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/query - Query Provider
+// @ottabase/ottaorm/client - Query Provider
 // ============================================================
 // Optimized QueryClient configuration for OttaORM apps
 // ============================================================
@@ -48,8 +48,6 @@ export interface OttaQueryProviderProps {
   config?: Partial<QueryClientConfig>;
   /** Provide your own QueryClient instance */
   client?: QueryClient;
-  /** Enable strict mode (development only) */
-  strictMode?: boolean;
 }
 
 /**
@@ -58,7 +56,7 @@ export interface OttaQueryProviderProps {
  * @example
  * ```tsx
  * // Basic usage (uses optimized defaults)
- * import { OttaQueryProvider } from "@ottabase/query/provider";
+ * import { OttaQueryProvider } from "@ottabase/ottaorm/client";
  *
  * function App() {
  *   return (
@@ -90,7 +88,6 @@ export function OttaQueryProvider({
   config,
   client,
 }: OttaQueryProviderProps) {
-  // Create query client with merged configuration
   const [queryClient] = useState(
     () =>
       client ??

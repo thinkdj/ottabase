@@ -12,11 +12,10 @@ import { ProviderState } from "@ottabase/state";
 import { ProviderCodeHighlight } from "@ottabase/ui-code-highlight";
 import { ProviderUIBase } from "@ottabase/ui-base";
 import { ShadcnProviders } from "@ottabase/ui-shadcn/providers";
-import { createQueryClient } from "@ottabase/query";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { createQueryClient, QueryClientProvider } from "@ottabase/ottaorm/client";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
-// Create optimized query client from @ottabase/query
+// Create optimized query client from @ottabase/ottaorm/client
 const queryClient = createQueryClient();
 
 export function Providers({ children }: { children: React.ReactNode }) {

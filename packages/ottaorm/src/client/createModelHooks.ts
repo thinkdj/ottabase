@@ -1,7 +1,7 @@
 // ============================================================
-// @ottabase/query - Model Hooks Factory
+// @ottabase/ottaorm/client - Model Hooks Factory
 // ============================================================
-// Creates type-safe TanStack Query hooks for any model
+// Creates type-safe TanStack Query hooks for any OttaORM model
 // ============================================================
 
 import {
@@ -18,11 +18,11 @@ import type {
   QueryOptions,
   PaginationResult,
   MutationContext,
-} from "../types";
-import { createQueryKeys } from "../types";
+} from "./types";
+import { createQueryKeys } from "./types";
 
 /**
- * Create a complete set of query hooks for a model/entity
+ * Create a complete set of query hooks for an OttaORM model
  *
  * @example
  * ```typescript
@@ -33,10 +33,8 @@ import { createQueryKeys } from "../types";
  *   email: string;
  * }
  *
- * // Create hooks for the model (uses /api/ottaorm/users by default)
- * const userHooks = createModelHooks<User>({
- *   entityName: "users",
- * });
+ * // Create hooks (uses /api/ottaorm/users by default)
+ * const userHooks = createModelHooks<User>({ entityName: "users" });
  *
  * // Or with a custom API path
  * const userHooks = createModelHooks<User>({

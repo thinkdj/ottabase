@@ -504,9 +504,6 @@ importers:
       '@ottabase/ottaselect':
         specifier: workspace:*
         version: link:../../packages/ottaselect
-      '@ottabase/query':
-        specifier: workspace:*
-        version: link:../../packages/query
       '@ottabase/state':
         specifier: workspace:*
         version: link:../../packages/state
@@ -864,9 +861,15 @@ importers:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
         version: 4.20251225.0
+      '@tanstack/react-query':
+        specifier: 'catalog:'
+        version: 5.90.12(react@19.2.1)
       '@types/node':
         specifier: 'catalog:'
         version: 20.19.17
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.7
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.38.4(@cloudflare/workers-types@4.20251225.0)(@prisma/client@5.22.0(prisma@5.22.0))(@types/react@19.2.7)(prisma@5.22.0)(react@19.2.1)
@@ -876,6 +879,9 @@ importers:
       mongodb:
         specifier: 'catalog:'
         version: 7.0.0
+      react:
+        specifier: 'catalog:'
+        version: 19.2.1
       rimraf:
         specifier: 'catalog:'
         version: 6.0.1
@@ -913,33 +919,6 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 9.36.0(jiti@2.6.1)
-      rimraf:
-        specifier: 'catalog:'
-        version: 6.0.1
-      tsup:
-        specifier: 'catalog:'
-        version: 8.5.0(@swc/core@1.13.5)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.2)(yaml@2.8.1)
-      typescript:
-        specifier: 'catalog:'
-        version: 5.9.2
-
-  packages/query:
-    devDependencies:
-      '@tanstack/react-query':
-        specifier: 'catalog:'
-        version: 5.90.12(react@19.2.1)
-      '@types/node':
-        specifier: 'catalog:'
-        version: 20.19.17
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.7
-      eslint:
-        specifier: 'catalog:'
-        version: 9.36.0(jiti@2.6.1)
-      react:
-        specifier: 'catalog:'
-        version: 19.2.1
       rimraf:
         specifier: 'catalog:'
         version: 6.0.1
