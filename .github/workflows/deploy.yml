@@ -686,9 +686,17 @@ jobs:
           # Get worker name from config
           WORKER_NAME="${{ matrix.config.workerName || matrix.folder }}"
           HEALTH_PATH="${{ steps.config.outputs.health-check }}"
+          WRANGLER_ENV="${{ steps.config.outputs.wrangler-env }}"
+
+          # Get account name (use secret or default to 'apiary')
+          ACCOUNT_NAME="${{ secrets.CF_WORKER_ACC_NAME }}"
+          if [ -z "$ACCOUNT_NAME" ]; then
+            ACCOUNT_NAME="apiary"
+          fi
 
           # Construct worker URL (Cloudflare workers.dev domain)
-          WORKER_URL="https://${WORKER_NAME}.${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.workers.dev${HEALTH_PATH}"
+          # Format: https://{worker-name}-{environment}.{account-name}.workers.dev
+          WORKER_URL="https://${WORKER_NAME}-${WRANGLER_ENV}.${ACCOUNT_NAME}.workers.dev${HEALTH_PATH}"
 
           echo "📍 Checking: ${WORKER_URL}"
 
@@ -702,6 +710,7 @@ jobs:
           for i in $(seq 1 $MAX_RETRIES); do
             if curl -f -s -o /dev/null -w "%{http_code}" "$WORKER_URL" | grep -q "^[23]"; then
               echo "✅ Health check passed (attempt $i/$MAX_RETRIES)"
+              echo "🌐 Deployed URL: ${WORKER_URL}"
               exit 0
             else
               echo "⚠️  Health check failed (attempt $i/$MAX_RETRIES)"
@@ -714,6 +723,7 @@ jobs:
 
           echo "⚠️  Warning: Health check failed after $MAX_RETRIES attempts"
           echo "   The deployment may still be propagating. Check manually: ${WORKER_URL}"
+          echo "🌐 Deployed URL: ${WORKER_URL}"
           # Don't fail the deployment on health check failure
           exit 0
 
@@ -721,9 +731,19 @@ jobs:
       - name: Deployment summary
         if: always() && github.ref == 'refs/heads/main'
         run: |
+          # Get account name (use secret or default to 'apiary')
+          ACCOUNT_NAME="${{ secrets.CF_WORKER_ACC_NAME }}"
+          if [ -z "$ACCOUNT_NAME" ]; then
+            ACCOUNT_NAME="apiary"
+          fi
+
+          WORKER_NAME="${{ matrix.config.workerName || matrix.folder }}"
+          WRANGLER_ENV="${{ steps.config.outputs.wrangler-env }}"
+          DEPLOYMENT_URL="https://${WORKER_NAME}-${WRANGLER_ENV}.${ACCOUNT_NAME}.workers.dev"
+
           if [ "${{ job.status }}" == "success" ]; then
             echo "✅ Deployment of ${{ matrix.name }} completed successfully"
-            echo "🌐 Worker: ${{ matrix.config.workerName || matrix.folder }}"
+            echo "🌐 URL: ${DEPLOYMENT_URL}"
             echo "🔧 Type: ${{ steps.config.outputs.app-type }}"
           else
             echo "❌ Deployment of ${{ matrix.name }} failed"
