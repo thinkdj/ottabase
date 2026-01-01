@@ -11,6 +11,20 @@ export {
   clearAllConnections
 } from "./context";
 
+// Model registry (for dynamic model lookup)
+export {
+  registerModel,
+  registerModels,
+  getModel,
+  hasModel,
+  getRegisteredModels,
+  clearModelRegistry,
+} from "./registry";
+
+// Generic CRUD handler
+export { handleCrud, parseCrudRequest } from "./crud";
+export type { CrudRequest, CrudResponse } from "./crud";
+
 // Migrations
 export { runMigrations, rollbackMigrations, coreMigrations } from "./migrations";
 export type { Migration } from "./migrations";

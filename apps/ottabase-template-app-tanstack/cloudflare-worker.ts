@@ -3,7 +3,17 @@ import { createQueuesClient } from "@ottabase/cf/queues";
 import { createRateLimitingClient } from "@ottabase/cf/rate-limiting";
 import { RealtimeBroadcaster, RealtimeActor } from "@ottabase/cf-realtime/server";
 import { createD1Driver } from "@ottabase/db/drizzle-d1";
-import { coreMigrations, registerConnection, runMigrations, User, Post } from "@ottabase/ottaorm";
+import {
+  coreMigrations,
+  registerConnection,
+  runMigrations,
+  User,
+  Post,
+  Tag,
+  registerModels,
+  parseCrudRequest,
+  handleCrud,
+} from "@ottabase/ottaorm";
 import { appMigrations } from "./ottabase/migrations";
 import { Todo } from "./ottabase/models/Todo";
 
@@ -639,104 +649,26 @@ export default {
       });
     }
 
-    if (url.pathname === "/api/ottaorm/users") {
+    // ============================================================
+    // Generic CRUD handler for all registered models
+    // Handles: /api/ottaorm/{model} and /api/ottaorm/{model}/{id}
+    // ============================================================
+    if (url.pathname.startsWith("/api/ottaorm/") && !url.pathname.startsWith("/api/ottaorm/init")) {
       if (!env.OBCF_D1) return json({ error: "D1 database not configured" }, { status: 500 });
       registerConnection("default", createD1Driver(env.OBCF_D1));
 
-      if (request.method === "GET") {
-        const users = await User.all({ orderBy: "createdAt", orderDirection: "desc" });
-        return json({ users: users.map((u) => u.toJson()) });
+      // Register all models for dynamic lookup
+      registerModels([User, Post, Tag, Todo]);
+
+      // Parse the request into a CrudRequest
+      const crudRequest = await parseCrudRequest(request, url, "/api/ottaorm");
+      if (!crudRequest) {
+        return json({ error: "Invalid request path" }, { status: 400 });
       }
 
-      if (request.method === "POST") {
-        const body = await readJson<{ name?: string; email?: string }>(request);
-        if (!body.email) return json({ error: "Email is required" }, { status: 400 });
-
-        const user = await User.create({
-          id: crypto.randomUUID(),
-          name: body.name || null,
-          email: body.email,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-
-        return json({ user: user.toJson() });
-      }
-
-      return json({ error: "Method not allowed" }, { status: 405 });
-    }
-
-    const userMatch = url.pathname.match(/^\/api\/ottaorm\/users\/(.+)$/);
-    if (userMatch) {
-      if (!env.OBCF_D1) return json({ error: "D1 database not configured" }, { status: 500 });
-      registerConnection("default", createD1Driver(env.OBCF_D1));
-      const id = userMatch[1];
-
-      if (request.method === "GET") {
-        const user = await User.find(id);
-        if (!user) return json({ error: "User not found" }, { status: 404 });
-        return json({ user: user.toJson() });
-      }
-
-      if (request.method === "DELETE") {
-        const deleted = await User.delete(id);
-        if (!deleted) return json({ error: "User not found" }, { status: 404 });
-        return json({ success: true, message: "User deleted successfully" });
-      }
-
-      return json({ error: "Method not allowed" }, { status: 405 });
-    }
-
-    if (url.pathname === "/api/ottaorm/posts") {
-      if (!env.OBCF_D1) return json({ error: "D1 database not configured" }, { status: 500 });
-      registerConnection("default", createD1Driver(env.OBCF_D1));
-
-      if (request.method === "GET") {
-        const posts = await Post.all({ orderBy: "createdAt", orderDirection: "desc" });
-        return json({ posts: posts.map((p) => p.toJson()) });
-      }
-
-      if (request.method === "POST") {
-        const body = await readJson<{ title?: string; content?: string; authorId?: string }>(request);
-        if (!body.title) return json({ error: "Title is required" }, { status: 400 });
-        if (!body.authorId) return json({ error: "authorId is required" }, { status: 400 });
-
-        const post = await Post.create({
-          id: crypto.randomUUID(),
-          title: body.title,
-          slug: Post.generateSlug(body.title),
-          content: body.content || null,
-          published: false,
-          authorId: body.authorId,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-
-        return json({ post: post.toJson() });
-      }
-
-      return json({ error: "Method not allowed" }, { status: 405 });
-    }
-
-    const postMatch = url.pathname.match(/^\/api\/ottaorm\/posts\/(.+)$/);
-    if (postMatch) {
-      if (!env.OBCF_D1) return json({ error: "D1 database not configured" }, { status: 500 });
-      registerConnection("default", createD1Driver(env.OBCF_D1));
-      const id = postMatch[1];
-
-      if (request.method === "GET") {
-        const post = await Post.find(id);
-        if (!post) return json({ error: "Post not found" }, { status: 404 });
-        return json({ post: post.toJson() });
-      }
-
-      if (request.method === "DELETE") {
-        const deleted = await Post.delete(id);
-        if (!deleted) return json({ error: "Post not found" }, { status: 404 });
-        return json({ success: true, message: "Post deleted successfully" });
-      }
-
-      return json({ error: "Method not allowed" }, { status: 405 });
+      // Handle the CRUD operation
+      const result = await handleCrud(crudRequest);
+      return json(result.data || { error: result.error }, { status: result.status });
     }
 
     // Serve built assets. If the asset isn't found and the client is requesting HTML,

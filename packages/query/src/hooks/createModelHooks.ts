@@ -33,10 +33,15 @@ import { createQueryKeys } from "../types";
  *   email: string;
  * }
  *
- * // Create hooks for the model
+ * // Create hooks for the model (uses /api/ottaorm/users by default)
  * const userHooks = createModelHooks<User>({
  *   entityName: "users",
- *   apiPath: "/api/users",
+ * });
+ *
+ * // Or with a custom API path
+ * const userHooks = createModelHooks<User>({
+ *   entityName: "users",
+ *   apiPath: "/api/custom/users",
  * });
  *
  * // Use in components
@@ -58,7 +63,9 @@ import { createQueryKeys } from "../types";
 export function createModelHooks<T extends { id: string | number }>(
   config: ModelQueryConfig
 ) {
-  const { entityName, apiPath, fetchFn = fetch } = config;
+  const { entityName, fetchFn = fetch } = config;
+  // Default to /api/ottaorm/{entityName} for the generic CRUD handler
+  const apiPath = config.apiPath ?? `/api/ottaorm/${entityName}`;
   const queryKeys = createQueryKeys(entityName);
 
   // ============================================================

@@ -32,8 +32,8 @@ export interface QueryOptions {
 export interface ModelQueryConfig {
   /** Base entity name (used for query keys, e.g., "users") */
   entityName: string;
-  /** Base API path (e.g., "/api/users") */
-  apiPath: string;
+  /** Base API path (defaults to "/api/ottaorm/{entityName}") */
+  apiPath?: string;
   /** Custom fetch function (optional - defaults to browser fetch) */
   fetchFn?: typeof fetch;
 }

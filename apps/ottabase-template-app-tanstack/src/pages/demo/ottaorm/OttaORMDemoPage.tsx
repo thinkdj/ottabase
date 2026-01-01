@@ -30,17 +30,11 @@ interface Post {
 
 // ============================================================
 // Create query hooks for this app's models
+// Uses /api/ottaorm/{entityName} automatically via generic CRUD handler
 // ============================================================
 
-const userHooks = createModelHooks<User>({
-    entityName: "users",
-    apiPath: "/api/ottaorm/users",
-});
-
-const postHooks = createModelHooks<Post>({
-    entityName: "posts",
-    apiPath: "/api/ottaorm/posts",
-});
+const userHooks = createModelHooks<User>({ entityName: "users" });
+const postHooks = createModelHooks<Post>({ entityName: "posts" });
 
 // ============================================================
 // Component
