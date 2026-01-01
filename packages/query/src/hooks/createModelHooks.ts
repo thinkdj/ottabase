@@ -1,7 +1,7 @@
 // ============================================================
 // @ottabase/query - Model Hooks Factory
 // ============================================================
-// Creates type-safe TanStack Query hooks for any OttaORM model
+// Creates type-safe TanStack Query hooks for any model
 // ============================================================
 
 import {
@@ -22,23 +22,41 @@ import type {
 import { createQueryKeys } from "../types";
 
 /**
- * Create a complete set of query hooks for a model
+ * Create a complete set of query hooks for a model/entity
  *
  * @example
  * ```typescript
+ * // Define your model type
+ * interface User {
+ *   id: string;
+ *   name: string;
+ *   email: string;
+ * }
+ *
+ * // Create hooks for the model
  * const userHooks = createModelHooks<User>({
  *   entityName: "users",
  *   apiPath: "/api/users",
  * });
  *
- * // In component:
- * const { data: users, isLoading } = userHooks.useList();
- * const { data: user } = userHooks.useDetail("123");
- * const createMutation = userHooks.useCreate();
+ * // Use in components
+ * function UserList() {
+ *   const { data: users, isLoading } = userHooks.useList();
+ *   const createUser = userHooks.useCreate();
+ *
+ *   return (
+ *     <div>
+ *       {users?.map(user => <div key={user.id}>{user.name}</div>)}
+ *       <button onClick={() => createUser.mutate({ name: "New User" })}>
+ *         Add User
+ *       </button>
+ *     </div>
+ *   );
+ * }
  * ```
  */
 export function createModelHooks<T extends { id: string | number }>(
-  config: ModelQueryConfig<T>
+  config: ModelQueryConfig
 ) {
   const { entityName, apiPath, fetchFn = fetch } = config;
   const queryKeys = createQueryKeys(entityName);
@@ -76,7 +94,6 @@ export function createModelHooks<T extends { id: string | number }>(
     }
 
     const result = (await response.json()) as Record<string, T[]> & { data?: T[] };
-    // Handle both { users: [...] } and [...] response formats
     return result[entityName] || result.data || (result as unknown as T[]);
   }
 
@@ -176,7 +193,6 @@ export function createModelHooks<T extends { id: string | number }>(
     return useQuery<T[], Error>({
       queryKey: queryKeys.list(options),
       queryFn: () => fetchList(options),
-      ...config.defaultQueryOptions,
       ...queryOptions,
     });
   }
@@ -205,8 +221,7 @@ export function createModelHooks<T extends { id: string | number }>(
       number
     >({
       queryKey: queryKeys.infinite(options),
-      queryFn: ({ pageParam }) =>
-        fetchPaginated(pageParam, perPage, options),
+      queryFn: ({ pageParam }) => fetchPaginated(pageParam, perPage, options),
       initialPageParam: 1,
       getNextPageParam: (lastPage) =>
         lastPage.hasNextPage ? lastPage.page + 1 : undefined,
@@ -224,14 +239,10 @@ export function createModelHooks<T extends { id: string | number }>(
   ) {
     const queryClient = useQueryClient();
 
-    const defaultOnSettled = () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
-    };
-
     return useMutation<T, Error, Partial<T>, MutationContext<T>>({
       mutationFn: createItem,
       onSettled: (...args) => {
-        defaultOnSettled();
+        queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
         mutationOptions?.onSettled?.(...args);
       },
       ...mutationOptions,
@@ -245,11 +256,6 @@ export function createModelHooks<T extends { id: string | number }>(
   ) {
     const queryClient = useQueryClient();
 
-    const defaultOnSettled = (_data: T | undefined, _error: Error | null, variables: { id: string | number }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.detail(variables.id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
-    };
-
     return useMutation<
       T,
       Error,
@@ -258,7 +264,10 @@ export function createModelHooks<T extends { id: string | number }>(
     >({
       mutationFn: ({ id, data }) => updateItem(id, data),
       onSettled: (...args) => {
-        defaultOnSettled(args[0], args[1], args[2]);
+        if (args[2]) {
+          queryClient.invalidateQueries({ queryKey: queryKeys.detail(args[2].id) });
+        }
+        queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
         mutationOptions?.onSettled?.(...args);
       },
       ...mutationOptions,
@@ -272,14 +281,10 @@ export function createModelHooks<T extends { id: string | number }>(
   ) {
     const queryClient = useQueryClient();
 
-    const defaultOnSettled = () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
-    };
-
     return useMutation<boolean, Error, string | number, MutationContext<T>>({
       mutationFn: deleteItem,
       onSettled: (...args) => {
-        defaultOnSettled();
+        queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
         mutationOptions?.onSettled?.(...args);
       },
       ...mutationOptions,
@@ -287,7 +292,7 @@ export function createModelHooks<T extends { id: string | number }>(
   }
 
   // ============================================================
-  // Utility Functions
+  // Utility Hooks
   // ============================================================
 
   function usePrefetch() {
@@ -323,7 +328,7 @@ export function createModelHooks<T extends { id: string | number }>(
   }
 
   // ============================================================
-  // Return All Hooks
+  // Return All Hooks & Utilities
   // ============================================================
 
   return {

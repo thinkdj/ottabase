@@ -2,19 +2,8 @@
 // @ottabase/query - Hooks Exports
 // ============================================================
 
-// Core factory
+// Core factory for creating model hooks
 export { createModelHooks } from "./createModelHooks";
 
-// Generic API hooks
+// Generic API hooks for custom endpoints
 export { useApiQuery, useApiMutation, useBatchMutation } from "./useApiQuery";
-
-// Pre-built model hooks
-export {
-  useUsers,
-  usePosts,
-  useTags,
-  createEntityHooks,
-  type UserQueryType,
-  type PostQueryType,
-  type TagQueryType,
-} from "./modelHooks";

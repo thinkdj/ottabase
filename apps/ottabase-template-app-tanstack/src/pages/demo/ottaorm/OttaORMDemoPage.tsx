@@ -8,13 +8,43 @@ import {
     CardTitle,
     Input,
 } from "@ottabase/ui-shadcn";
-import {
-    useUsers,
-    usePosts,
-    useApiMutation,
-    type UserQueryType,
-    type PostQueryType,
-} from "@ottabase/query";
+import { createModelHooks, useApiMutation } from "@ottabase/query";
+
+// ============================================================
+// App-specific model types (defined per-app)
+// ============================================================
+
+interface User {
+    id: string;
+    name: string | null;
+    email: string;
+}
+
+interface Post {
+    id: string;
+    title: string;
+    content: string | null;
+    published: boolean;
+    authorId: string;
+}
+
+// ============================================================
+// Create query hooks for this app's models
+// ============================================================
+
+const userHooks = createModelHooks<User>({
+    entityName: "users",
+    apiPath: "/api/ottaorm/users",
+});
+
+const postHooks = createModelHooks<Post>({
+    entityName: "posts",
+    apiPath: "/api/ottaorm/posts",
+});
+
+// ============================================================
+// Component
+// ============================================================
 
 export function OttaORMDemoPage() {
     const [newUserName, setNewUserName] = useState("");
@@ -27,13 +57,13 @@ export function OttaORMDemoPage() {
         data: users = [],
         isLoading: usersLoading,
         error: usersError,
-    } = useUsers.useList();
+    } = userHooks.useList();
 
     const {
         data: posts = [],
         isLoading: postsLoading,
         error: postsError,
-    } = usePosts.useList();
+    } = postHooks.useList();
 
     // Database initialization mutation
     const initDb = useApiMutation<{ success: boolean }>({
@@ -43,15 +73,14 @@ export function OttaORMDemoPage() {
     });
 
     // User mutations with automatic cache invalidation
-    const createUser = useUsers.useCreate();
-    const deleteUser = useUsers.useDelete();
+    const createUser = userHooks.useCreate();
+    const deleteUser = userHooks.useDelete();
 
     // Post mutations with automatic cache invalidation
-    const createPost = usePosts.useCreate();
-    const deletePost = usePosts.useDelete();
+    const createPost = postHooks.useCreate();
+    const deletePost = postHooks.useDelete();
 
     // Combined loading/error states
-    const isLoading = usersLoading || postsLoading || initDb.isPending;
     const error = usersError?.message || postsError?.message || initDb.error?.message;
 
     // Check if DB is initialized (has any data or init succeeded)

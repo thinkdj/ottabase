@@ -2,15 +2,8 @@
 // @ottabase/query - Type Definitions
 // ============================================================
 
-import type {
-  UseQueryOptions,
-  UseMutationOptions,
-  UseInfiniteQueryOptions,
-  QueryKey,
-} from "@tanstack/react-query";
-
 /**
- * Pagination result from OttaORM
+ * Pagination result structure (matches OttaORM.paginate output)
  */
 export interface PaginationResult<T> {
   data: T[];
@@ -34,28 +27,15 @@ export interface QueryOptions {
 }
 
 /**
- * API response wrapper
- */
-export interface ApiResponse<T> {
-  data?: T;
-  error?: string;
-  message?: string;
-}
-
-/**
  * Configuration for creating model query hooks
  */
-export interface ModelQueryConfig<T> {
-  /** Base entity name (used for query keys) */
+export interface ModelQueryConfig {
+  /** Base entity name (used for query keys, e.g., "users") */
   entityName: string;
   /** Base API path (e.g., "/api/users") */
   apiPath: string;
   /** Custom fetch function (optional - defaults to browser fetch) */
   fetchFn?: typeof fetch;
-  /** Default query options */
-  defaultQueryOptions?: Partial<UseQueryOptions<T[], Error>>;
-  /** Default mutation options */
-  defaultMutationOptions?: Partial<UseMutationOptions<T, Error, Partial<T>>>;
 }
 
 /**
@@ -85,73 +65,9 @@ export function createQueryKeys<T extends string>(entity: T): QueryKeyFactory<T>
 }
 
 /**
- * CRUD operation types
- */
-export type CrudOperation = "create" | "update" | "delete";
-
-/**
  * Mutation context for optimistic updates
  */
 export interface MutationContext<T> {
   previousData?: T[];
   previousItem?: T;
-}
-
-/**
- * Options for optimistic update configuration
- */
-export interface OptimisticConfig<T> {
-  /** Enable optimistic updates */
-  enabled?: boolean;
-  /** Custom rollback handler */
-  onRollback?: (context: MutationContext<T>, error: Error) => void;
-  /** Custom success handler */
-  onOptimisticSuccess?: (newItem: T) => void;
-}
-
-/**
- * Hook return type for model queries
- */
-export interface UseModelQueryReturn<T> {
-  // Query hooks
-  useList: (
-    options?: QueryOptions,
-    queryOptions?: Partial<UseQueryOptions<T[], Error>>
-  ) => ReturnType<typeof import("@tanstack/react-query").useQuery<T[], Error>>;
-
-  useDetail: (
-    id: string | number,
-    queryOptions?: Partial<UseQueryOptions<T | null, Error>>
-  ) => ReturnType<typeof import("@tanstack/react-query").useQuery<T | null, Error>>;
-
-  useInfiniteList: (
-    options?: Omit<QueryOptions, "offset" | "limit">,
-    perPage?: number,
-    queryOptions?: Partial<UseInfiniteQueryOptions<PaginationResult<T>, Error>>
-  ) => ReturnType<typeof import("@tanstack/react-query").useInfiniteQuery<PaginationResult<T>, Error>>;
-
-  // Mutation hooks
-  useCreate: (
-    mutationOptions?: Partial<UseMutationOptions<T, Error, Partial<T>>>
-  ) => ReturnType<typeof import("@tanstack/react-query").useMutation<T, Error, Partial<T>>>;
-
-  useUpdate: (
-    mutationOptions?: Partial<UseMutationOptions<T, Error, { id: string | number; data: Partial<T> }>>
-  ) => ReturnType<typeof import("@tanstack/react-query").useMutation<T, Error, { id: string | number; data: Partial<T> }>>;
-
-  useDelete: (
-    mutationOptions?: Partial<UseMutationOptions<boolean, Error, string | number>>
-  ) => ReturnType<typeof import("@tanstack/react-query").useMutation<boolean, Error, string | number>>;
-
-  // Query keys for manual cache manipulation
-  queryKeys: QueryKeyFactory<string>;
-
-  // Prefetch helpers
-  prefetchList: (options?: QueryOptions) => Promise<void>;
-  prefetchDetail: (id: string | number) => Promise<void>;
-
-  // Cache invalidation helpers
-  invalidateAll: () => Promise<void>;
-  invalidateList: (options?: QueryOptions) => Promise<void>;
-  invalidateDetail: (id: string | number) => Promise<void>;
 }
