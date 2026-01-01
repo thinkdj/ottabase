@@ -248,13 +248,13 @@ jobs:
           echo "wrangler-env=$(echo "${CONFIG}" | jq -r '.wranglerEnv')" >> $GITHUB_OUTPUT
           echo "health-check=$(echo "${CONFIG}" | jq -r '.healthCheckPath // "/"')" >> $GITHUB_OUTPUT
 
-          # Get Cloudflare account name (use secret or default to 'apiary')
-          # Note: This is the account subdomain, not the worker name
-          ACCOUNT_NAME="${{ secrets.CF_WORKER_ACC_NAME }}"
-          if [ -z "$ACCOUNT_NAME" ]; then
-            ACCOUNT_NAME="apiary"
+          # Get Cloudflare workers.dev subdomain (use secret or default to 'apiary')
+          # This is the subdomain portion of *.workers.dev URLs (e.g., 'apiary' in apiary.workers.dev)
+          WORKER_SUBDOMAIN="${{ secrets.CF_WORKER_SUBDOMAIN }}"
+          if [ -z "$WORKER_SUBDOMAIN" ]; then
+            WORKER_SUBDOMAIN="apiary"
           fi
-          echo "account-name=${ACCOUNT_NAME}" >> $GITHUB_OUTPUT
+          echo "worker-subdomain=${WORKER_SUBDOMAIN}" >> $GITHUB_OUTPUT
 
           # Store verify paths as multiline output
           VERIFY_PATHS=$(echo "${CONFIG}" | jq -r '.verifyPaths[]?' || echo "")
@@ -695,11 +695,11 @@ jobs:
           WORKER_NAME="${{ matrix.config.workerName || matrix.folder }}"
           HEALTH_PATH="${{ steps.config.outputs.health-check }}"
           WRANGLER_ENV="${{ steps.config.outputs.wrangler-env }}"
-          ACCOUNT_NAME="${{ steps.config.outputs.account-name }}"
+          WORKER_SUBDOMAIN="${{ steps.config.outputs.worker-subdomain }}"
 
           # Construct worker URL (Cloudflare workers.dev domain)
-          # Format: https://{worker-name}-{environment}.{account-name}.workers.dev
-          WORKER_URL="https://${WORKER_NAME}-${WRANGLER_ENV}.${ACCOUNT_NAME}.workers.dev${HEALTH_PATH}"
+          # Format: https://{worker-name}-{environment}.{subdomain}.workers.dev
+          WORKER_URL="https://${WORKER_NAME}-${WRANGLER_ENV}.${WORKER_SUBDOMAIN}.workers.dev${HEALTH_PATH}"
 
           echo "📍 Checking: ${WORKER_URL}"
 
@@ -737,8 +737,8 @@ jobs:
           # Get worker name and configuration
           WORKER_NAME="${{ matrix.config.workerName || matrix.folder }}"
           WRANGLER_ENV="${{ steps.config.outputs.wrangler-env }}"
-          ACCOUNT_NAME="${{ steps.config.outputs.account-name }}"
-          DEPLOYMENT_URL="https://${WORKER_NAME}-${WRANGLER_ENV}.${ACCOUNT_NAME}.workers.dev"
+          WORKER_SUBDOMAIN="${{ steps.config.outputs.worker-subdomain }}"
+          DEPLOYMENT_URL="https://${WORKER_NAME}-${WRANGLER_ENV}.${WORKER_SUBDOMAIN}.workers.dev"
 
           if [ "${{ job.status }}" == "success" ]; then
             echo "✅ Deployment of ${{ matrix.name }} completed successfully"
