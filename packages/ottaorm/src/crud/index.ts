@@ -237,8 +237,9 @@ export async function parseCrudRequest(
   if (whereParam) {
     try {
       query.where = JSON.parse(whereParam);
-    } catch {
-      // ignore invalid JSON
+    } catch (error) {
+      // Log invalid JSON in "where" to aid debugging, but keep behavior lenient
+      console.warn('ottaorm: Ignoring invalid JSON in "where" query parameter:', whereParam, error);
     }
   }
 
