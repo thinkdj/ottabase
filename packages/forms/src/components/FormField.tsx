@@ -8,7 +8,7 @@ import React, { useCallback } from "react";
 import { clsx } from "clsx";
 import { OttaSelect, type OttaSelectItem } from "@ottabase/ottaselect";
 import type { FormFieldProps, ModelFieldDescriptor } from "../types";
-import { Calendar, Upload, Eye, EyeOff } from "lucide-react";
+import { Calendar, Upload, Eye, EyeOff, Check, X, AlertCircle } from "lucide-react";
 
 export type { FormFieldProps };
 
@@ -93,7 +93,18 @@ export function FormField({
         );
 
       case "password":
-        return <PasswordField value={value} onChange={onChange} placeholder={placeholder} disabled={disabled} name={name} className={baseInputClasses} />;
+        return (
+          <PasswordField
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            disabled={disabled}
+            name={name}
+            className={baseInputClasses}
+            showHints={field.formConfig?.showPasswordHints}
+            minLength={field.formConfig?.min}
+          />
+        );
 
       case "url":
         return (
@@ -218,6 +229,7 @@ export function FormField({
             accept={formConfig.accept || (fieldType === "image" ? "image/*" : undefined)}
             maxSize={formConfig.maxSize}
             isImage={fieldType === "image"}
+            uploadEndpoint={formConfig.uploadEndpoint}
           />
         );
 
@@ -308,6 +320,8 @@ function PasswordField({
   disabled,
   name,
   className,
+  showHints = false,
+  minLength,
 }: {
   value: unknown;
   onChange: (value: unknown) => void;
@@ -315,28 +329,59 @@ function PasswordField({
   disabled: boolean;
   name: string;
   className: string;
+  showHints?: boolean;
+  minLength?: number;
 }) {
   const [showPassword, setShowPassword] = React.useState(false);
+  const password = (value as string) || "";
+
+  // Password strength indicators
+  const hasMinLength = password.length >= (minLength || 8);
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
   return (
-    <div className="relative">
-      <input
-        type={showPassword ? "text" : "password"}
-        id={name}
-        name={name}
-        value={(value as string) || ""}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={clsx(className, "pr-10")}
-      />
-      <button
-        type="button"
-        onClick={() => setShowPassword(!showPassword)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-      >
-        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-      </button>
+    <div className="space-y-2">
+      <div className="relative">
+        <input
+          type={showPassword ? "text" : "password"}
+          id={name}
+          name={name}
+          value={password}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled}
+          className={clsx(className, "pr-10")}
+          autoComplete="new-password"
+        />
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+        >
+          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        </button>
+      </div>
+      {showHints && password.length > 0 && (
+        <div className="text-xs space-y-1">
+          <PasswordHint passed={hasMinLength} text={`At least ${minLength || 8} characters`} />
+          <PasswordHint passed={hasUppercase} text="One uppercase letter" />
+          <PasswordHint passed={hasLowercase} text="One lowercase letter" />
+          <PasswordHint passed={hasNumber} text="One number" />
+          <PasswordHint passed={hasSpecial} text="One special character" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PasswordHint({ passed, text }: { passed: boolean; text: string }) {
+  return (
+    <div className={clsx("flex items-center gap-1", passed ? "text-green-600 dark:text-green-400" : "text-gray-400")}>
+      {passed ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+      <span>{text}</span>
     </div>
   );
 }
@@ -361,6 +406,7 @@ function SelectField({
   const formConfig = field.formConfig || {};
   const relationship = formConfig.relationship;
   const staticOptions = formConfig.options;
+  const [fetchError, setFetchError] = React.useState<string | null>(null);
 
   // Convert value to OttaSelectItem format
   const normalizedValue = React.useMemo(() => {
@@ -384,10 +430,13 @@ function SelectField({
     return null;
   }, [value, mode]);
 
-  // Create fetch function for relationship fields
+  // Create fetch function for relationship fields with error handling
   const fetchCollection = useCallback(
     async (searchQuery: string) => {
       if (!relationship) return [];
+
+      // Clear previous error
+      setFetchError(null);
 
       const endpoint = relationship.endpoint || `${apiBasePath}/${relationship.entity}`;
       const params = new URLSearchParams();
@@ -400,22 +449,37 @@ function SelectField({
         params.set("where", JSON.stringify(relationship.where));
       }
 
-      const url = params.toString() ? `${endpoint}?${params}` : endpoint;
-      const response = await fetch(url);
+      try {
+        const url = params.toString() ? `${endpoint}?${params}` : endpoint;
+        const response = await fetch(url);
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch options");
+        if (!response.ok) {
+          const errorMsg = `Failed to load ${relationship.entity} (${response.status})`;
+          setFetchError(errorMsg);
+          console.error(`[OttaForms] ${errorMsg}:`, await response.text().catch(() => ""));
+          return [];
+        }
+
+        const data = await response.json();
+        const items = data[relationship.entity] || data.data || data;
+
+        if (!Array.isArray(items)) {
+          setFetchError(`Invalid response format for ${relationship.entity}`);
+          return [];
+        }
+
+        // Map to OttaSelectItem format
+        return items.map((item: Record<string, unknown>) => ({
+          id: String(item[relationship.valueField || "id"]),
+          name: String(item[relationship.labelField || "name"] || item.label || item.title || item.id),
+          ...item,
+        }));
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "Network error";
+        setFetchError(`Failed to load options: ${errorMsg}`);
+        console.error(`[OttaForms] Fetch error for ${relationship.entity}:`, error);
+        return [];
       }
-
-      const data = await response.json();
-      const items = data[relationship.entity] || data.data || data;
-
-      // Map to OttaSelectItem format
-      return items.map((item: Record<string, unknown>) => ({
-        id: String(item[relationship.valueField || "id"]),
-        name: String(item[relationship.labelField || "name"] || item.label || item.title || item.id),
-        ...item,
-      }));
     },
     [relationship, apiBasePath]
   );
@@ -434,16 +498,24 @@ function SelectField({
   );
 
   return (
-    <OttaSelect
-      mode={mode}
-      value={normalizedValue}
-      onChange={handleChange}
-      items={staticOptions}
-      fetchCollection={relationship ? fetchCollection : undefined}
-      placeholder={placeholder}
-      disabled={disabled}
-      searchable={true}
-    />
+    <div className="space-y-1">
+      <OttaSelect
+        mode={mode}
+        value={normalizedValue}
+        onChange={handleChange}
+        items={staticOptions}
+        fetchCollection={relationship ? fetchCollection : undefined}
+        placeholder={placeholder}
+        disabled={disabled}
+        searchable={true}
+      />
+      {fetchError && (
+        <div className="flex items-center gap-1 text-xs text-red-500 dark:text-red-400">
+          <AlertCircle className="w-3 h-3" />
+          <span>{fetchError}</span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -455,6 +527,7 @@ function FileField({
   accept,
   maxSize,
   isImage,
+  uploadEndpoint,
 }: {
   name: string;
   value: unknown;
@@ -463,10 +536,14 @@ function FileField({
   accept?: string;
   maxSize?: number;
   isImage: boolean;
+  /** Custom upload endpoint (e.g., /api/upload or /api/cloudflare/r2) */
+  uploadEndpoint?: string;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [preview, setPreview] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [uploading, setUploading] = React.useState(false);
+  const [uploadProgress, setUploadProgress] = React.useState(0);
 
   React.useEffect(() => {
     if (isImage && typeof value === "string" && value) {
@@ -474,7 +551,7 @@ function FileField({
     }
   }, [value, isImage]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -485,13 +562,50 @@ function FileField({
       return;
     }
 
+    // Show preview for images
     if (isImage) {
       const reader = new FileReader();
       reader.onload = () => setPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
 
-    onChange(file);
+    // If upload endpoint is provided, upload the file
+    if (uploadEndpoint) {
+      setUploading(true);
+      setUploadProgress(0);
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("name", file.name);
+
+        const response = await fetch(uploadEndpoint, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Upload failed (${response.status})`);
+        }
+
+        const result = await response.json();
+        // Expect response to contain { url: string } or { key: string }
+        const fileUrl = result.url || result.key || result.path;
+        onChange(fileUrl);
+        setUploadProgress(100);
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "Upload failed";
+        setError(errorMsg);
+        console.error("[OttaForms] File upload error:", err);
+        setPreview(null);
+      } finally {
+        setUploading(false);
+      }
+    } else {
+      // No upload endpoint - just pass the File object
+      onChange(file);
+    }
   };
 
   return (
@@ -503,11 +617,18 @@ function FileField({
           "border-gray-300 dark:border-gray-600",
           "hover:border-gray-400 dark:hover:border-gray-500",
           "transition-colors cursor-pointer",
-          disabled && "opacity-50 cursor-not-allowed"
+          (disabled || uploading) && "opacity-50 cursor-not-allowed"
         )}
-        onClick={() => !disabled && inputRef.current?.click()}
+        onClick={() => !disabled && !uploading && inputRef.current?.click()}
       >
-        {isImage && preview ? (
+        {uploading ? (
+          <div className="flex flex-col items-center justify-center py-8 px-4">
+            <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mb-2" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Uploading... {uploadProgress > 0 && `${uploadProgress}%`}
+            </p>
+          </div>
+        ) : isImage && preview ? (
           <div className="relative w-full p-2">
             <img src={preview} alt="Preview" className="max-h-48 mx-auto rounded" />
             <button
@@ -534,6 +655,11 @@ function FileField({
                 Accepted: {accept}
               </p>
             )}
+            {uploadEndpoint && (
+              <p className="text-xs text-blue-400 dark:text-blue-500 mt-1">
+                Files will be uploaded automatically
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -544,11 +670,16 @@ function FileField({
         name={name}
         onChange={handleChange}
         accept={accept}
-        disabled={disabled}
+        disabled={disabled || uploading}
         className="hidden"
       />
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && (
+        <div className="flex items-center gap-1 text-sm text-red-500">
+          <AlertCircle className="w-4 h-4" />
+          <span>{error}</span>
+        </div>
+      )}
     </div>
   );
 }

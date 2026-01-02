@@ -134,9 +134,67 @@ function capitalize(str: string): string {
 
 /**
  * Utility to singularize a string
+ * Handles common irregular plurals
  */
 function singularize(str: string): string {
+  // Irregular plurals mapping
+  const irregulars: Record<string, string> = {
+    people: "person",
+    children: "child",
+    men: "man",
+    women: "woman",
+    feet: "foot",
+    teeth: "tooth",
+    geese: "goose",
+    mice: "mouse",
+    lice: "louse",
+    leaves: "leaf",
+    lives: "life",
+    knives: "knife",
+    wives: "wife",
+    halves: "half",
+    selves: "self",
+    calves: "calf",
+    loaves: "loaf",
+    potatoes: "potato",
+    tomatoes: "tomato",
+    heroes: "hero",
+    echoes: "echo",
+    vetoes: "veto",
+    analyses: "analysis",
+    bases: "basis",
+    crises: "crisis",
+    diagnoses: "diagnosis",
+    hypotheses: "hypothesis",
+    oases: "oasis",
+    parentheses: "parenthesis",
+    synopses: "synopsis",
+    theses: "thesis",
+    criteria: "criterion",
+    phenomena: "phenomenon",
+    data: "datum",
+    media: "medium",
+    indices: "index",
+    vertices: "vertex",
+    matrices: "matrix",
+    appendices: "appendix",
+  };
+
+  const lower = str.toLowerCase();
+
+  // Check irregular plurals first
+  if (irregulars[lower]) {
+    // Preserve original case
+    return str.charAt(0) + irregulars[lower].slice(1);
+  }
+
+  // Regular rules
   if (str.endsWith("ies")) return str.slice(0, -3) + "y";
-  if (str.endsWith("s")) return str.slice(0, -1);
+  if (str.endsWith("ves")) return str.slice(0, -3) + "f";
+  if (str.endsWith("es") && (str.endsWith("shes") || str.endsWith("ches") || str.endsWith("xes") || str.endsWith("zes") || str.endsWith("sses"))) {
+    return str.slice(0, -2);
+  }
+  if (str.endsWith("s") && !str.endsWith("ss")) return str.slice(0, -1);
+
   return str;
 }

@@ -58,12 +58,16 @@ export interface ModelFieldDescriptor {
     maxSize?: number;
     /** Number of rows (for textarea) */
     rows?: number;
-    /** Min value (for number) */
+    /** Min value (for number) or min length (for password) */
     min?: number;
     /** Max value (for number) */
     max?: number;
     /** Step value (for number) */
     step?: number;
+    /** Show password strength hints (for password fields) */
+    showPasswordHints?: boolean;
+    /** Custom upload endpoint for file/image fields */
+    uploadEndpoint?: string;
   };
   tableConfig?: {
     visible?: boolean;
@@ -72,7 +76,12 @@ export interface ModelFieldDescriptor {
     /** Custom format for display */
     format?: 'date' | 'datetime' | 'currency' | 'percentage' | 'boolean' | 'image' | 'link';
   };
-  validation?: Record<string, any>;
+  validation?: {
+    /** Validation rules as pipe-separated string (e.g., "required|email|min:8") */
+    rules?: string;
+    /** Custom error messages keyed by rule name */
+    messages?: Record<string, string>;
+  };
 }
 
 export type ModelFields = {
