@@ -14,6 +14,7 @@ import { MantineDemoRoute } from "@/pages/demo/mantine/MantineDemoRoute";
 import { ShadcnDemoPage } from "@/pages/demo/shadcn/ShadcnDemoPage";
 import { OttaEditorDemoPage } from "@/pages/demo/ottaeditor/OttaEditorDemoPage";
 import { OttaORMDemoPage } from "@/pages/demo/ottaorm/OttaORMDemoPage";
+import { OttaFormsDemoPage } from "@/pages/demo/ottaforms/OttaFormsDemoPage";
 import { TimezoneDemoPage } from "@/pages/demo/timezone/TimezoneDemoPage";
 import { CloudflareDemoIndexPage } from "@/pages/demo/cloudflare/CloudflareDemoIndexPage";
 import { CloudflareD1DemoPage } from "@/pages/demo/cloudflare/CloudflareD1DemoPage";
@@ -130,6 +131,12 @@ const demoOttaOrmRoute = new Route({
     component: OttaORMDemoPage,
 });
 
+const demoOttaFormsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: "/demo/ottaforms",
+    component: OttaFormsDemoPage,
+});
+
 const demoTimezoneRoute = new Route({
     getParentRoute: () => rootRoute,
     path: "/demo/timezone",
@@ -197,6 +204,7 @@ const routeTree = rootRoute.addChildren([
     demoShadcnRoute,
     demoOttaEditorRoute,
     demoOttaOrmRoute,
+    demoOttaFormsRoute,
     demoTimezoneRoute,
     demoCloudflareRoute,
     demoCloudflareD1Route,

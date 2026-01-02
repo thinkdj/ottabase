@@ -114,6 +114,21 @@ export function DemoIndexPage() {
                         </Button>
                     </CardContent>
                 </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>OttaForms</CardTitle>
+                        <CardDescription>
+                            Auto-generated CRUD forms from OttaORM model metadata. List, detail,
+                            create, and edit views with relationship field support.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild variant="outline" className="w-full">
+                            <Link to="/demo/ottaforms">View OttaForms Demo</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
 
             <div className="mt-2 rounded-lg border bg-muted/50 p-6">

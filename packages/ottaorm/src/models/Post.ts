@@ -221,9 +221,15 @@ export class Post extends BaseModel {
       formConfig: {
         visible: true,
         fieldType: 'select',
+        relationship: {
+          entity: 'users',
+          labelField: 'name',
+          valueField: 'id',
+        },
       },
       tableConfig: {
-        visible: false,
+        visible: true,
+        colWidth: 150,
       },
     },
     createdAt: {
