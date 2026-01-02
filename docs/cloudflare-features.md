@@ -49,15 +49,15 @@ Copy the returned `database_id` and update `wrangler.jsonc`:
 #### Create KV Namespace
 
 ```bash
-pnpm wrangler kv:namespace create MY_KV
-pnpm wrangler kv:namespace create MY_KV --preview
+pnpm wrangler kv:namespace create OBCF_KV
+pnpm wrangler kv:namespace create OBCF_KV --preview
 ```
 
 Update `wrangler.jsonc` with the returned IDs:
 
 ```jsonc
 "kv_namespaces": [{
-  "binding": "MY_KV",
+  "binding": "OBCF_KV",
   "id": "YOUR_KV_NAMESPACE_ID",
   "preview_id": "YOUR_KV_PREVIEW_ID"
 }]
@@ -74,7 +74,7 @@ Update `wrangler.jsonc`:
 
 ```jsonc
 "r2_buckets": [{
-  "binding": "MY_BUCKET",
+  "binding": "OBCF_R2",
   "bucket_name": "ottabase-bucket",
   "preview_bucket_name": "ottabase-bucket-preview"
 }]
@@ -91,7 +91,7 @@ Update `wrangler.jsonc`:
 ```jsonc
 "queues": {
   "producers": [{
-    "binding": "MY_QUEUE",
+    "binding": "OBCF_QUEUE",
     "queue": "ottabase-queue"
   }]
 }
@@ -211,7 +211,7 @@ export const runtime = 'edge';
 
 export async function GET() {
   const { env } = await getCloudflareContext();
-  const kv = createKVClient({ namespace: env.MY_KV });
+  const kv = createKVClient({ namespace: env.OBCF_KV });
 
   // Set with TTL
   await kv.putJSON('session:abc', sessionData, {
@@ -238,7 +238,7 @@ export const runtime = 'edge';
 
 export async function POST(request: Request) {
   const { env } = await getCloudflareContext();
-  const r2 = createR2Client({ bucket: env.MY_BUCKET });
+  const r2 = createR2Client({ bucket: env.OBCF_R2 });
 
   const formData = await request.formData();
   const file = formData.get('file') as File;
@@ -460,7 +460,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export default async function Page() {
   const { env } = await getCloudflareContext();
-  // Use env.OBCF_D1, env.MY_KV, etc.
+  // Use env.OBCF_D1, env.OBCF_KV, env.OBCF_R2, etc.
 }
 ```
 
@@ -508,9 +508,11 @@ Define your environment types:
 ```typescript
 // types/cloudflare.d.ts
 export interface CloudflareEnv {
-  DB: D1Database;
-  MY_KV: KVNamespace;
-  MY_BUCKET: R2Bucket;
+  OBCF_D1: D1Database;
+  OBCF_KV: KVNamespace;
+  OBCF_R2: R2Bucket;
+  OBCF_QUEUE: Queue;
+  OBCF_RATE_LIMITER: RateLimiter;
   // ... other bindings
 }
 ```

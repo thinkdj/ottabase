@@ -5,10 +5,12 @@
 Ottabase is a **pnpm monorepo** with **Turborepo** for build orchestration, featuring:
 
 - **Monorepo**: pnpm workspaces + Turborepo
-- **Stack**: Next.js 16+, React 19, TypeScript 5+, Cloudflare Infra (Workers, D1, KV, Durable Objects)
-- **Next.js 15+ applications** in `apps/` (using App Router)
+- **Stack**: React 19, TypeScript 5+, Cloudflare Infrastructure (Workers, D1, KV, Durable Objects, Queues)
+- **Template Applications** in `apps/`:
+  - `ottabase-template-app-tanstack/` - TanStack Router + Vite (recommended for new projects)
+  - `ottabase-template-app/` - Next.js 15+ with App Router (alternative)
 - **Shared packages** in `packages/` (React components, utilities, configuration)
-- **Template-driven development** with `ottabase-template-app` as the reference implementation
+- **Template-driven development** - Choose TanStack for lightweight apps or Next.js for full-featured apps
 
 ## ⚙️ Environment & Tooling
 
@@ -44,21 +46,41 @@ Ottabase is a **pnpm monorepo** with **Turborepo** for build orchestration, feat
 
 ### Directory Structure Convention
 
-Applications use a **3-directory architecture**:
+#### TanStack Apps (Recommended)
 
-- `app/` - Next.js App Router (pages, layouts, routing)
-- `ottabase/` - Framework configuration (config, theme, state, menu)
-- `src/` - Application logic (components, hooks, lib, types)
+TanStack apps use a **2-directory architecture**:
 
-Example structure:
+- `src/` - Application code (pages, components, providers, state)
+- `ottabase/` - Server-side code (migrations, models, API logic)
 
 ```
-apps/my-app/
+apps/my-tanstack-app/
+├── src/
+│   ├── pages/         # TanStack Router pages
+│   ├── ottabase/      # Client-side config (providers, state, hooks)
+│   └── providers/     # React providers wrapper
+├── ottabase/
+│   ├── db/           # Drizzle schema
+│   ├── models/       # OttaORM models
+│   └── migrations/   # Database migrations
+└── cloudflare-worker.ts  # Cloudflare Worker entry point
+```
+
+#### Next.js Apps (Alternative)
+
+Next.js apps use a **3-directory architecture**:
+
+- `app/` - Next.js App Router (pages, layouts, routing)
+- `ottabase/` - Framework configuration (config, theme, state, providers)
+- `src/` - Application logic (components, hooks, lib, types)
+
+```
+apps/my-nextjs-app/
 ├── app/           # Next.js routing & pages
 ├── ottabase/      # Ottabase framework config
-│   ├── config.ts  # Main app config using @ottabase/config
-│   ├── theme.ts   # Mantine theme configuration
-│   └── state.ts   # State management setup
+│   ├── config.ts  # Main app config
+│   ├── providers/ # React providers
+│   └── state/     # State management
 └── src/           # App-specific code
     ├── components/
     ├── hooks/
@@ -115,9 +137,18 @@ pnpm add --filter @ottabase/ui-mantine some-package
 
 ### Creating New Apps
 
+#### Option 1: TanStack App (Recommended)
+
+1. Copy `apps/ottabase-template-app-tanstack` structure
+2. Update `package.json` name to `@ottabase/my-app`
+3. Configure `wrangler.jsonc` for Cloudflare deployment
+4. Delete `src/pages/demo/` directory (template showcase)
+
+#### Option 2: Next.js App
+
 1. Copy `apps/ottabase-template-app` structure
 2. Update `ottabase/config.ts` with app-specific settings
-3. Customize `ottabase/theme.ts` and `ottabase/menu.ts`
+3. Customize `ottabase/theme.ts` and `ottabase/providers`
 4. Delete `app/demo/` directory (template showcase)
 
 ### Creating New Packages
@@ -280,10 +311,18 @@ catalog:
 
 ### Template App Guidelines
 
-- `ottabase-template-app` serves as the canonical implementation
-- Demo content in `app/demo/` should be marked for deletion in new apps
+**TanStack Template** (`ottabase-template-app-tanstack`):
+- Recommended for new projects
+- Lightweight, fast development experience
+- Demo content in `src/pages/demo/` should be deleted in new apps
+- First-class Cloudflare Workers support
+- Reference for TanStack Router patterns and API structure
+
+**Next.js Template** (`ottabase-template-app`):
+- Alternative for Next.js-specific features
+- Demo content in `app/demo/` should be deleted in new apps
 - Framework configuration in `ottabase/` directory is the customization point
-- Reference this app for integration patterns and provider setup
+- Reference for Next.js App Router patterns and provider setup
 
 ## 🗄️ Database & Prisma Schema Management
 

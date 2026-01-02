@@ -1,20 +1,25 @@
 # Ottabase Monorepo
 
-A modern monorepo setup with pnpm workspaces and Turborepo for Next.js 15+ applications and shared packages.
+Modern full-stack monorepo with pnpm workspaces and Turborepo for building production-ready applications with Cloudflare Workers deployment.
 
 ## 🏗️ Structure
 
 ```text
 ottabase/
-├── apps/                       # Next.js applications
-│   └── ottabase-template-app/  # Example Next.js 15 app that uses packages as sample
-├── packages/                # Shared packages
-│   ├── db/                  # Shared Prisma database client
-│   ├── ui/                  # UI components and providers
-│   └── hello-world/         # Example package
-├── turbo.json              # Turborepo configuration
-├── pnpm-workspace.yaml     # pnpm workspace configuration
-└── package.json            # Root package.json
+├── apps/                              # Applications
+│   ├── ottabase-template-app-tanstack/ # TanStack Router + Vite (recommended)
+│   └── ottabase-template-app/          # Next.js 15 + App Router (alternative)
+├── packages/                          # Shared packages
+│   ├── db/                            # Database layer (Drizzle, Prisma)
+│   ├── ottaorm/                       # Type-safe ORM for D1/SQLite
+│   ├── cf/                            # Cloudflare bindings (D1, KV, R2, Queues)
+│   ├── auth/                          # Auth.js integration
+│   ├── ui-*/                          # UI packages (Mantine, shadcn, components)
+│   ├── state/                         # Global state management (Jotai)
+│   └── utils/                         # Utility functions
+├── turbo.json                         # Turborepo configuration
+├── pnpm-workspace.yaml                # pnpm workspace configuration
+└── package.json                       # Root package.json
 ```
 
 ## 🚀 Getting Started
@@ -60,122 +65,83 @@ pnpm test                   # Run tests for all packages
 pnpm clean                  # Clean all build artifacts
 ```
 
-## 📦 Packages
+## 📦 Key Packages
 
-### @ottabase/db
+### Database & ORM
 
-Shared Prisma database client for Ottabase applications.
+- **@ottabase/db** - Multi-ORM support (Drizzle, Prisma) with D1 adapters
+- **@ottabase/ottaorm** - Type-safe ORM with migrations for D1/SQLite
+- **@ottabase/cf** - Cloudflare bindings (D1, KV, R2, Queues, Rate Limiting)
+- **@ottabase/auth** - Auth.js v5 integration with D1 adapter
 
-**Features:**
+### UI Components
 
-- Global Prisma client with development-time singleton pattern
-- Shared schema across the monorepo
-- Simple setup and usage
-- Type-safe database operations
+- **@ottabase/ui-base** - Framework-agnostic CSS reset and base styles
+- **@ottabase/ui-mantine** - Mantine provider with pre-built themes
+- **@ottabase/ui-shadcn** - shadcn/ui components with Tailwind
+- **@ottabase/ui-components** - Shared UI components (DarkModeToggle, Logo)
+- **@ottabase/ottaeditor** - EditorJS wrapper with plugins
+- **@ottabase/ottaselect** - Flexible select component
 
-**Usage:**
+### State & Utilities
 
-```tsx
-import { prisma } from '@ottabase/db';
+- **@ottabase/state** - Global state management with Jotai
+- **@ottabase/utils** - Utility functions (files, strings, timezone, etc.)
+- **@ottabase/config** - Shared configuration utilities
 
-// Use the global Prisma client
-const users = await prisma.user.findMany();
-const user = await prisma.user.create({
-  data: {
-    email: 'user@example.com'
-  }
-});
-```
+### Realtime & Advanced
 
-**Setup:**
+- **@ottabase/cf-realtime** - Pusher alternative using Durable Objects
 
-```bash
-# Generate Prisma client
-pnpm --filter @ottabase/db prisma:generate
-
-# Push schema to database
-pnpm --filter @ottabase/db prisma:push
-```
-
-### @ottabase/ui-base
-
-Base UI styles and utilities for Ottabase applications.
-
-**Features:**
-
-- Generic CSS reset and base styles
-- Animation utilities
-- Framework-agnostic design system foundation
-
-### @ottabase/ui-mantine
-
-Mantine UI components and providers for Ottabase applications.
-
-**Features:**
-
-- ProviderUIMantine: Mantine-first provider with notifications, modals, and theme helpers
-- Theme management with dark/light mode support
-- FOUC (Flash of Unstyled Content) prevention utilities
-- Pre-built themes (ShadCN, Vercel, Ant Design, Stripe)
-
-> ℹ️ Next.js-specific providers (fonts, theme sync) live inside
-> `apps/ottabase-template-app/ottabase/providers` so framework code
-> stays out of reusable packages.
-
-**Usage:**
+**Quick Example:**
 
 ```tsx
+import { createPrismaD1Client } from '@ottabase/cf/d1-prisma';
 import { ProviderUIMantine } from '@ottabase/ui-mantine';
 
-const fontFamilies = {
-  primary: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  heading: "Work Sans, 'Segoe UI', sans-serif",
-  monospace: "JetBrains Mono, 'Fira Code', monospace",
-};
+// Use D1 database
+const prisma = createPrismaD1Client(env.OBCF_D1);
+const users = await prisma.user.findMany();
 
-function App({ children }) {
-  return (
-    <ProviderUIMantine fontFamilies={fontFamilies}>
-      {children}
-    </ProviderUIMantine>
-  );
-}
+// UI Provider
+<ProviderUIMantine colorScheme="dark">
+  {children}
+</ProviderUIMantine>
 ```
 
 ## 🏗️ Creating New Apps
 
-### Next.js App
+Choose your framework:
+
+### Option 1: TanStack App (Recommended)
+
+Lightweight, fast, with first-class Cloudflare Workers support.
 
 ```bash
-# Create new Next.js app
-mkdir apps/my-new-app
-cd apps/my-new-app
+# Copy TanStack template
+cp -r apps/ottabase-template-app-tanstack apps/my-app
+cd apps/my-app
 
-# Copy from example-app or create manually
-cp -r ../example-app/* .
-
-# Update package.json name
-# Update any app-specific configurations
+# Update package.json name to @ottabase/my-app
+# Delete demo content in src/pages/demo/
 ```
 
-### Package Structure
+**Stack**: TanStack Router, TanStack Query, Vite, Cloudflare Workers
 
-```json
-{
-  "name": "@ottabase/my-new-app",
-  "dependencies": {
-    "next": "^15.0.0",
-    "react": "workspace:*",
-    "react-dom": "workspace:*",
-    "@ottabase/ui-base": "workspace:*",
-    "@ottabase/ui-mantine": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "workspace:*",
-    "eslint": "workspace:*"
-  }
-}
+### Option 2: Next.js App
+
+Full-featured Next.js with App Router.
+
+```bash
+# Copy Next.js template
+cp -r apps/ottabase-template-app apps/my-app
+cd apps/my-app
+
+# Update package.json name to @ottabase/my-app
+# Delete demo content in app/demo/
 ```
+
+**Stack**: Next.js 15, App Router, OpenNext for Cloudflare
 
 ## 🔧 Creating New Packages
 
@@ -267,25 +233,24 @@ pnpm storybook
 
 ## 🚀 Deployment to Cloudflare Workers
 
-Deploy `ottabase-template-app` to Cloudflare Workers with automated CI/CD:
+Deploy your apps to Cloudflare Workers with automated CI/CD:
 
 ```bash
 # 1. Setup Cloudflare resources (one-time)
 pnpm cloudflare:setup
 
-# 2. Verify setup
+# 2. Verify configuration
 pnpm cloudflare:validate
 
-# 3. Follow the complete deployment guide
+# 3. Deploy (or push to main for automatic deployment)
+cd apps/ottabase-template-app-tanstack
+pnpm deploy
 ```
 
-**📖 See [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md) for complete step-by-step instructions.**
-
-The guide covers:
-- Setting up Cloudflare resources (D1, KV, R2, Queue)
-- Configuring GitHub secrets for CI/CD
-- Automatic deployment on push to main
-- Database migrations and verification
+**📖 Complete Guides:**
+- [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md) - Step-by-step deployment
+- [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) - Bindings and configuration
+- [docs/cloudflare-features.md](docs/cloudflare-features.md) - Feature usage examples
 
 ---
 

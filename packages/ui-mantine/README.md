@@ -64,12 +64,18 @@ import {
   mantineAnt,
   mantineStripe
 } from '@ottabase/ui-mantine';
+import { useAtomValue } from 'jotai';
+import { themeAtom } from '@/ottabase/state/appGlobalState';
 
 function App({ children }) {
+  const theme = useAtomValue(themeAtom);
+
   return (
     <ProviderUIMantineBase>
-      <ProviderUIMantine themeOverride={mantineShadcn}>
-        <MantineThemeSync />
+      <ProviderUIMantine
+        themeOverride={mantineShadcn}
+        colorScheme={theme as 'light' | 'dark'}
+      >
         {children}
       </ProviderUIMantine>
     </ProviderUIMantineBase>
@@ -118,10 +124,14 @@ const myThemeConfig: MantineThemeConfig = {
 const customTheme = createMantineTheme(myThemeConfig, mantineShadcn);
 
 function App({ children }) {
+  const theme = useAtomValue(themeAtom);
+
   return (
     <ProviderUIMantineBase>
-      <ProviderUIMantine themeOverride={customTheme}>
-        <MantineThemeSync />
+      <ProviderUIMantine
+        themeOverride={customTheme}
+        colorScheme={theme as 'light' | 'dark'}
+      >
         {children}
       </ProviderUIMantine>
     </ProviderUIMantineBase>
