@@ -12,26 +12,10 @@ import { User, Post, Tag } from "@ottabase/ottaorm/models";
 import type { ModelConfig } from "@ottabase/forms";
 
 // Create model configs from OttaORM models
-const usersConfig = createModelConfig(User, {
-  displayName: "User",
-  displayNamePlural: "Users",
-  defaultSort: "createdAt",
-  defaultSortDirection: "desc",
-});
-
-const postsConfig = createModelConfig(Post, {
-  displayName: "Post",
-  displayNamePlural: "Posts",
-  defaultSort: "createdAt",
-  defaultSortDirection: "desc",
-});
-
-const tagsConfig = createModelConfig(Tag, {
-  displayName: "Tag",
-  displayNamePlural: "Tags",
-  defaultSort: "name",
-  defaultSortDirection: "asc",
-});
+// Models now contain all metadata (displayName, defaultSort, etc.) as SSOT
+const usersConfig = createModelConfig(User);
+const postsConfig = createModelConfig(Post);
+const tagsConfig = createModelConfig(Tag);
 
 // Example of defining config manually (for custom entities)
 const todosConfig = defineModelConfig({
@@ -272,11 +256,11 @@ export function OttaFormsDemoPage() {
                 <code>{`import { ModelCrud, createModelConfig } from "@ottabase/forms";
 import { User } from "@ottabase/ottaorm/models";
 
-// Create config from OttaORM model
-const usersConfig = createModelConfig(User, {
-  displayName: "User",
-  displayNamePlural: "Users",
-});
+// Create config from OttaORM model - metadata comes from model SSOT
+const usersConfig = createModelConfig(User);
+
+// Or override specific options if needed:
+// const usersConfig = createModelConfig(User, { displayName: "Member" });
 
 // Use in your component
 function UsersPage() {

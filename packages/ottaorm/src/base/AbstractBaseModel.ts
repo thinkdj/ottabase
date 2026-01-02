@@ -125,6 +125,36 @@ export abstract class AbstractBaseModel {
    */
   static connection: string = "default";
 
+  // ============================================================
+  // STATIC PROPERTIES - UI/Forms Metadata
+  // ============================================================
+
+  /**
+   * Display name (singular) for UI
+   * @example "User", "Blog Post"
+   * If not set, derived from entity name
+   */
+  static displayName?: string;
+
+  /**
+   * Display name (plural) for UI
+   * @example "Users", "Blog Posts"
+   * If not set, derived from entity name
+   */
+  static displayNamePlural?: string;
+
+  /**
+   * Default sort field for list views
+   * @example "createdAt"
+   */
+  static defaultSort?: string;
+
+  /**
+   * Default sort direction for list views
+   * @default "asc"
+   */
+  static defaultSortDirection?: "asc" | "desc";
+
   /**
    * Type casting rules for attributes
    * @example
@@ -176,6 +206,11 @@ export abstract class AbstractBaseModel {
       fields: this.fields,
       defaults: this.defaults,
       validationRules: this.validationRules,
+      // UI/Forms metadata
+      displayName: this.displayName,
+      displayNamePlural: this.displayNamePlural,
+      defaultSort: this.defaultSort,
+      defaultSortDirection: this.defaultSortDirection,
     };
   }
 

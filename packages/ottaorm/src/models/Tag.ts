@@ -59,6 +59,12 @@ export class Tag extends BaseModel {
   static table = tagsTable;
   static primaryKey = "id";
 
+  // UI/Forms metadata
+  static displayName = "Tag";
+  static displayNamePlural = "Tags";
+  static defaultSort = "name";
+  static defaultSortDirection = "asc" as const;
+
   static casts = {
     createdAt: 'date' as const,
     updatedAt: 'date' as const,

@@ -15,6 +15,12 @@ type FormFields = ModelFields;
 export interface OttaModelClass {
   entity: string;
   primaryKey: string;
+  // UI/Forms metadata (optional - derived from entity if not set)
+  displayName?: string;
+  displayNamePlural?: string;
+  defaultSort?: string;
+  defaultSortDirection?: "asc" | "desc";
+  // Methods
   getFields?: () => FormFields;
   getModelConfig?: () => {
     entity: string;
@@ -22,6 +28,11 @@ export interface OttaModelClass {
     fields: FormFields;
     defaults?: Record<string, unknown>;
     validationRules?: Record<string, unknown>;
+    // UI/Forms metadata
+    displayName?: string;
+    displayNamePlural?: string;
+    defaultSort?: string;
+    defaultSortDirection?: "asc" | "desc";
   };
 }
 
@@ -46,22 +57,27 @@ export function createModelConfig<T = Record<string, unknown>>(
   model: OttaModelClass,
   options?: Partial<ModelConfig<T>>
 ): ModelConfig<T> {
-  // Get fields from model
+  // Get full config from model (includes UI metadata)
   const modelConfig = model.getModelConfig?.() || {
     entity: model.entity,
     primaryKey: model.primaryKey,
     fields: model.getFields?.() || {},
+    displayName: model.displayName,
+    displayNamePlural: model.displayNamePlural,
+    defaultSort: model.defaultSort,
+    defaultSortDirection: model.defaultSortDirection,
   };
 
+  // Priority: options override > model config > derived defaults
   return {
     entity: modelConfig.entity,
     primaryKey: modelConfig.primaryKey,
     fields: modelConfig.fields as FormFields,
-    displayName: options?.displayName || capitalize(singularize(modelConfig.entity)),
-    displayNamePlural: options?.displayNamePlural || capitalize(modelConfig.entity),
+    displayName: options?.displayName || modelConfig.displayName || capitalize(singularize(modelConfig.entity)),
+    displayNamePlural: options?.displayNamePlural || modelConfig.displayNamePlural || capitalize(modelConfig.entity),
     apiPath: options?.apiPath,
-    defaultSort: options?.defaultSort,
-    defaultSortDirection: options?.defaultSortDirection,
+    defaultSort: options?.defaultSort || modelConfig.defaultSort,
+    defaultSortDirection: options?.defaultSortDirection || modelConfig.defaultSortDirection,
     searchFields: options?.searchFields || getSearchableFields(modelConfig.fields as FormFields),
     fetchFn: options?.fetchFn,
   };

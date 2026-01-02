@@ -54,6 +54,12 @@ export class User extends BaseModel {
   static table = usersTable;
   static primaryKey = "id";
 
+  // UI/Forms metadata
+  static displayName = "User";
+  static displayNamePlural = "Users";
+  static defaultSort = "createdAt";
+  static defaultSortDirection = "desc" as const;
+
   static casts = {
     createdAt: 'date' as const,
     updatedAt: 'date' as const,

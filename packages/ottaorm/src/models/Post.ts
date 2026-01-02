@@ -89,6 +89,12 @@ export class Post extends BaseModel {
   static table = postsTable;
   static primaryKey = "id";
 
+  // UI/Forms metadata
+  static displayName = "Post";
+  static displayNamePlural = "Posts";
+  static defaultSort = "createdAt";
+  static defaultSortDirection = "desc" as const;
+
   static casts = {
     published: 'boolean' as const,
     createdAt: 'date' as const,
