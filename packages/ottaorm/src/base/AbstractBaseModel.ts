@@ -7,6 +7,24 @@
 
 export type ModelFieldType = 'string' | 'number' | 'integer' | 'float' | 'date' | 'datetime' | 'boolean' | 'id' | 'json' | 'array';
 
+/**
+ * Relationship configuration for select/multiselect fields
+ */
+export interface RelationshipConfig {
+  /** Related model entity name (e.g., "users") */
+  entity: string;
+  /** API endpoint to fetch options (defaults to /api/ottaorm/{entity}) */
+  endpoint?: string;
+  /** Field to use as display label (defaults to "name") */
+  labelField?: string;
+  /** Field to use as value (defaults to "id") */
+  valueField?: string;
+  /** Additional fields to include in search */
+  searchFields?: string[];
+  /** Pre-filter options */
+  where?: Record<string, unknown>;
+}
+
 export interface ModelFieldDescriptor {
   type: ModelFieldType;
   primaryKey?: boolean;
@@ -23,14 +41,36 @@ export interface ModelFieldDescriptor {
     defaultValue?: any;
   };
   formConfig?: {
-    fieldType?: 'input' | 'textarea' | 'select' | 'multiselect' | 'date' | 'datetime' | 'json' | 'boolean' | 'number' | 'hidden';
+    fieldType?: 'input' | 'textarea' | 'select' | 'multiselect' | 'date' | 'datetime' | 'json' | 'boolean' | 'number' | 'email' | 'password' | 'url' | 'tel' | 'time' | 'file' | 'image' | 'hidden' | 'readonly';
     visible?: boolean;
     order?: number;
+    /** Relationship config for select/multiselect */
+    relationship?: RelationshipConfig;
+    /** Static options for select (if not using relationship) */
+    options?: Array<{ id: string; name: string; [key: string]: any }>;
+    /** Placeholder text override */
+    placeholder?: string;
+    /** Help text below field */
+    helpText?: string;
+    /** Accepted file types (for file/image) */
+    accept?: string;
+    /** Max file size in bytes */
+    maxSize?: number;
+    /** Number of rows (for textarea) */
+    rows?: number;
+    /** Min value (for number) */
+    min?: number;
+    /** Max value (for number) */
+    max?: number;
+    /** Step value (for number) */
+    step?: number;
   };
   tableConfig?: {
     visible?: boolean;
     order?: number;
     colWidth?: string | number;
+    /** Custom format for display */
+    format?: 'date' | 'datetime' | 'currency' | 'percentage' | 'boolean' | 'image' | 'link';
   };
   validation?: Record<string, any>;
 }
@@ -117,6 +157,27 @@ export abstract class AbstractBaseModel {
    * Validation rules
    */
   protected static validationRules: any = {};
+
+  /**
+   * Get field metadata for this model
+   * Used by @ottabase/forms for auto-generating CRUD forms
+   */
+  static getFields(): ModelFields {
+    return this.fields;
+  }
+
+  /**
+   * Get model configuration for forms package
+   */
+  static getModelConfig() {
+    return {
+      entity: this.entity,
+      primaryKey: this.primaryKey,
+      fields: this.fields,
+      defaults: this.defaults,
+      validationRules: this.validationRules,
+    };
+  }
 
   /**
    * Default values for new records
