@@ -1,6 +1,5 @@
 import { defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react";
-import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import path from "node:path";
 
 // SPA fallback plugin for client-side routing
@@ -38,9 +37,6 @@ export default defineConfig(async () => {
 
   return {
     plugins: [
-      TanStackRouterVite({
-        autoCodeSplitting: true,
-      }),
       tsconfigPaths({
         projects: [path.resolve(__dirname, "./tsconfig.json")],
         ignoreConfigErrors: true,
@@ -56,6 +52,31 @@ export default defineConfig(async () => {
     build: {
       outDir: "dist",
       sourcemap: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Separate vendor chunks to reduce main bundle size
+            'react-vendor': ['react', 'react-dom'],
+            'tanstack-vendor': ['@tanstack/react-router', '@tanstack/react-query'],
+            'mantine-vendor': [
+              '@mantine/core', 
+              '@mantine/hooks', 
+              '@mantine/modals',
+              '@mantine/notifications',
+              '@mantine/carousel'
+            ],
+            'ottabase-ui': [
+              '@ottabase/ui-components',
+              '@ottabase/ui-mantine',
+              '@ottabase/ui-shadcn',
+              '@ottabase/ui-code-highlight'
+            ],
+          },
+        },
+      },
+      // Increase chunk size warning limit to 1000 kB (from default 500 kB)
+      // since the app includes comprehensive demo pages
+      chunkSizeWarningLimit: 1000,
     },
     server: {
       port: 5174,
