@@ -7,28 +7,14 @@
 import React, { useMemo } from "react";
 import { clsx } from "clsx";
 import { ArrowLeft, Edit2, Trash2, Check, X, ExternalLink, Image as ImageIcon } from "lucide-react";
-import type { ModelConfig, FormFieldDescriptor } from "../types";
+import type { ModelDetailProps, ModelFieldDescriptor } from "../types";
 
-export interface ModelDetailProps<T = Record<string, unknown>> {
-  /** Model configuration */
-  config: ModelConfig<T>;
-  /** Record data to display */
-  data: T;
-  /** Edit action handler */
-  onEdit?: () => void;
-  /** Delete action handler */
-  onDelete?: () => void;
-  /** Back/close handler */
-  onBack?: () => void;
-  /** Loading state */
-  isLoading?: boolean;
-  /** Additional className */
-  className?: string;
-}
+// Re-export for backwards compatibility
+export type { ModelDetailProps } from "../types";
 
 interface FieldEntry {
   key: string;
-  field: FormFieldDescriptor;
+  field: ModelFieldDescriptor;
   order: number;
 }
 
@@ -97,7 +83,7 @@ export function ModelDetail<T extends Record<string, unknown>>({
             <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
               {displayName} Details
             </h2>
-            {recordId && (
+            {recordId != null && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 ID: {String(recordId)}
               </p>
@@ -175,7 +161,7 @@ export function ModelDetail<T extends Record<string, unknown>>({
 
 interface DetailValueProps {
   value: unknown;
-  field: FormFieldDescriptor;
+  field: ModelFieldDescriptor;
 }
 
 function DetailValue({ value, field }: DetailValueProps) {

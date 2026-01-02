@@ -8,30 +8,14 @@ import React, { useState, useMemo, useCallback } from "react";
 import { clsx } from "clsx";
 import { Loader2, Save, X } from "lucide-react";
 import { FormField } from "./FormField";
-import type { ModelConfig, FormFieldDescriptor } from "../types";
+import type { ModelFormProps, ModelFieldDescriptor } from "../types";
 
-export interface ModelFormProps<T = Record<string, unknown>> {
-  /** Model configuration */
-  config: ModelConfig<T>;
-  /** Form mode: create or edit */
-  mode: "create" | "edit";
-  /** Initial form data (for edit mode) */
-  initialData?: Partial<T>;
-  /** Submit handler */
-  onSubmit: (data: Partial<T>) => void | Promise<void>;
-  /** Cancel handler */
-  onCancel?: () => void;
-  /** Loading state */
-  isLoading?: boolean;
-  /** Additional className */
-  className?: string;
-  /** API base path for relationship fetches */
-  apiBasePath?: string;
-}
+// Re-export for backwards compatibility
+export type { ModelFormProps } from "../types";
 
 interface FieldEntry {
   key: string;
-  field: FormFieldDescriptor;
+  field: ModelFieldDescriptor;
   order: number;
 }
 

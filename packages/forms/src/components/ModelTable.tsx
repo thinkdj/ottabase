@@ -19,58 +19,14 @@ import {
   Plus,
   Check,
 } from "lucide-react";
-import type { ModelConfig, FormFieldDescriptor } from "../types";
+import type { ModelTableProps, ModelFieldDescriptor } from "../types";
 
-export interface ModelTableProps<T = Record<string, unknown>> {
-  /** Model configuration */
-  config: ModelConfig<T>;
-  /** Data to display */
-  data?: T[];
-  /** Loading state */
-  isLoading?: boolean;
-  /** Total count for pagination */
-  total?: number;
-  /** Current page */
-  page?: number;
-  /** Items per page */
-  perPage?: number;
-  /** Page change handler */
-  onPageChange?: (page: number) => void;
-  /** Row click handler */
-  onRowClick?: (record: T) => void;
-  /** View action handler */
-  onView?: (record: T) => void;
-  /** Edit action handler */
-  onEdit?: (record: T) => void;
-  /** Delete action handler */
-  onDelete?: (record: T) => void;
-  /** Create action handler */
-  onCreate?: () => void;
-  /** Sort change handler */
-  onSortChange?: (field: string, direction: "asc" | "desc") => void;
-  /** Current sort field */
-  sortField?: string;
-  /** Current sort direction */
-  sortDirection?: "asc" | "desc";
-  /** Search handler */
-  onSearch?: (query: string) => void;
-  /** Search placeholder */
-  searchPlaceholder?: string;
-  /** Enable row selection */
-  selectable?: boolean;
-  /** Selected row IDs */
-  selectedIds?: (string | number)[];
-  /** Selection change handler */
-  onSelectionChange?: (ids: (string | number)[]) => void;
-  /** Additional className */
-  className?: string;
-  /** Empty state message */
-  emptyMessage?: string;
-}
+// Re-export for backwards compatibility
+export type { ModelTableProps } from "../types";
 
 interface ColumnEntry {
   key: string;
-  field: FormFieldDescriptor;
+  field: ModelFieldDescriptor;
   order: number;
   width?: string | number;
 }
@@ -438,7 +394,7 @@ export function ModelTable<T extends Record<string, unknown>>({
 // Utility Functions
 // ============================================================
 
-function formatCellValue(value: unknown, field: FormFieldDescriptor): React.ReactNode {
+function formatCellValue(value: unknown, field: ModelFieldDescriptor): React.ReactNode {
   if (value === null || value === undefined) {
     return <span className="text-gray-400">-</span>;
   }

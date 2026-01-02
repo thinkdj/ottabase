@@ -10,34 +10,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ModelTable } from "./ModelTable";
 import { ModelDetail } from "./ModelDetail";
 import { ModelForm } from "./ModelForm";
-import type { ModelConfig, CrudViewMode } from "../types";
+import type { ModelCrudProps, CrudViewMode } from "../types";
 
-export interface ModelCrudProps<T = Record<string, unknown>> {
-  /** Model configuration */
-  config: ModelConfig<T>;
-  /** Initial view mode */
-  initialMode?: CrudViewMode;
-  /** Initially selected record ID (for detail/edit modes) */
-  initialRecordId?: string | number;
-  /** Callback when record is created */
-  onCreate?: (record: T) => void;
-  /** Callback when record is updated */
-  onUpdate?: (record: T) => void;
-  /** Callback when record is deleted */
-  onDelete?: (id: string | number) => void;
-  /** Custom header component */
-  header?: React.ReactNode;
-  /** Additional className */
-  className?: string;
-  /** API base path */
-  apiBasePath?: string;
-  /** Items per page */
-  perPage?: number;
-  /** Enable row selection */
-  selectable?: boolean;
-  /** Custom fetch function */
-  fetchFn?: typeof fetch;
-}
+// Re-export for backwards compatibility
+export type { ModelCrudProps } from "../types";
 
 interface PaginationResult<T> {
   data: T[];

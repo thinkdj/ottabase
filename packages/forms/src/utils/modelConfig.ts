@@ -4,7 +4,10 @@
 // Utilities for extracting configuration from OttaORM models
 // ============================================================
 
-import type { ModelConfig, FormFields } from "../types";
+import type { ModelConfig, ModelFields } from "../types";
+
+// Alias for clarity
+type FormFields = ModelFields;
 
 /**
  * OttaORM model class interface

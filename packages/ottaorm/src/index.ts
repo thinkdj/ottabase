@@ -42,6 +42,7 @@ export type {
   ModelFieldDescriptor,
   ModelFields,
   PaginationResult,
+  RelationshipConfig,
 } from "./base";
 
 /**

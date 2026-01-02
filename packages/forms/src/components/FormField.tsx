@@ -7,21 +7,10 @@
 import React, { useCallback } from "react";
 import { clsx } from "clsx";
 import { OttaSelect, type OttaSelectItem } from "@ottabase/ottaselect";
-import type { FormFieldDescriptor } from "../types";
+import type { FormFieldProps, ModelFieldDescriptor } from "../types";
 import { Calendar, Upload, Eye, EyeOff } from "lucide-react";
 
-export interface FormFieldProps {
-  name: string;
-  label: string;
-  value: unknown;
-  onChange: (value: unknown) => void;
-  field: FormFieldDescriptor;
-  error?: string;
-  disabled?: boolean;
-  className?: string;
-  /** API base path for relationship fetches */
-  apiBasePath?: string;
-}
+export type { FormFieldProps };
 
 /**
  * FormField - Renders the appropriate input based on field type
@@ -363,7 +352,7 @@ function SelectField({
 }: {
   value: unknown;
   onChange: (value: unknown) => void;
-  field: FormFieldDescriptor;
+  field: ModelFieldDescriptor;
   disabled: boolean;
   placeholder: string;
   apiBasePath: string;
@@ -571,7 +560,7 @@ function FileField({
 /**
  * Infer field type from model field descriptor
  */
-function inferFieldType(field: FormFieldDescriptor): string {
+function inferFieldType(field: ModelFieldDescriptor): string {
   // Use explicit formConfig.fieldType if provided
   if (field.formConfig?.fieldType) {
     return field.formConfig.fieldType;
@@ -623,7 +612,7 @@ function formatDateTimeValue(value: unknown): string {
 /**
  * Format value for display in readonly fields
  */
-function formatDisplayValue(value: unknown, field: FormFieldDescriptor): string {
+function formatDisplayValue(value: unknown, field: ModelFieldDescriptor): string {
   if (value === null || value === undefined) return "-";
 
   switch (field.type) {
