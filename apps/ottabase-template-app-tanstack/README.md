@@ -64,16 +64,17 @@ curl -X POST http://localhost:8790/api/ottaorm/init
 
 See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details.
 
-## Development
+## Scripts
 
-```bash
-pnpm dev              # Vite dev server (fast local DX)
-pnpm dev:worker       # Wrangler dev (with Cloudflare bindings)
-pnpm build            # Build for production
-pnpm preview          # Build + test with workerd locally
-pnpm deploy           # Deploy Worker + assets to Cloudflare
-pnpm type-check       # TypeScript type checking
-```
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Vite dev server (fast local DX) |
+| `pnpm dev:worker` | Wrangler dev with Cloudflare bindings |
+| `pnpm build` | Build for production |
+| `pnpm preview` | Build + run on `workerd` via Wrangler (Cloudflare-like) |
+| `pnpm deploy` | Build + deploy Worker + assets to Cloudflare |
+| `pnpm type-check` | TypeScript type checking |
+| `pnpm cf-typegen` | Generate Cloudflare types from wrangler.jsonc |
 
 ## Directory Structure
 

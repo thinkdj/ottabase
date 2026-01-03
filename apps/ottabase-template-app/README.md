@@ -60,15 +60,16 @@ curl -X POST http://localhost:3000/api/ottaorm/init
 
 See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details.
 
-## Development
+## Scripts
 
-```bash
-pnpm dev              # Start dev server (HMR)
-pnpm preview          # Test with Cloudflare runtime
-pnpm deploy           # Deploy to Cloudflare
-pnpm build            # Build for production
-pnpm type-check       # Type check
-```
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start Next.js dev server (HMR) |
+| `pnpm build` | Build Next.js app for production |
+| `pnpm preview` | Build + test with Cloudflare `workerd` runtime |
+| `pnpm deploy` | Build + deploy to Cloudflare Workers |
+| `pnpm type-check` | TypeScript type checking |
+| `pnpm cf-typegen` | Generate Cloudflare types from wrangler.jsonc |
 
 ## Project Structure
 
