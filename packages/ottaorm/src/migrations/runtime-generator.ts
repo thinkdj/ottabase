@@ -107,7 +107,7 @@ function generateCreateTableSQL(table: SQLiteTable): string {
  */
 async function getExistingTables(driver: DbDriver): Promise<Set<string>> {
   try {
-    // Use parameterized query to avoid SQL injection
+    // Query system tables to get list of user tables
     // Exclude system tables (sqlite_*) and migration tracking tables (_ottabase_*)
     const result = await driver.executeRaw(`
       SELECT name FROM sqlite_master

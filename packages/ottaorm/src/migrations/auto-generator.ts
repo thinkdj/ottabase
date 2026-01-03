@@ -166,10 +166,11 @@ export async function generateMigrations(config: MigrationGeneratorConfig): Prom
     const normalizedPath = drizzleConfigPath.replace(/\\/g, '/');
     
     // Validate config path to prevent command injection and directory traversal
-    // Must be a relative path starting with ./ or an absolute path, no .. allowed anywhere
+    // Must be a relative path starting with ./ or a simple filename, no .. allowed anywhere
+    // Allow dots in filename for configs like drizzle.dev.config.ts
     const isValidPath = (
-      /^\.\/[\w/-]+\.(ts|js)$/.test(normalizedPath) || // Relative path: ./some/path/file.ts
-      /^[\w/-]+\.(ts|js)$/.test(normalizedPath)         // Simple path: drizzle.config.ts
+      /^\.\/[\w./-]+\.(ts|js)$/.test(normalizedPath) || // Relative path: ./some/path/file.ts
+      /^[\w.-]+\.(ts|js)$/.test(normalizedPath)         // Simple path: drizzle.config.ts or drizzle.dev.config.ts
     ) && !/\.\./.test(normalizedPath);                  // No .. anywhere in path
     
     if (!isValidPath) {
