@@ -1,95 +1,171 @@
-# Database Schema (Codebase First Approach)
+# Automated Migrations
 
-This application uses Drizzle's **Option 2: Codebase First** approach for database migrations.
+OttaORM now supports **fully automated migrations** - no CLI commands, no manual SQL!
 
 ## How It Works
 
-1. **Schema is defined in TypeScript** (`ottabase/db/schema.ts`)
-2. **drizzle-kit push** pushes schema changes directly to D1
-3. **No SQL migration files** to manage
-4. **TypeScript schema is the single source of truth**
+1. **Define Models** with Drizzle table schemas
+2. **Export in schema.ts** (combines core + app tables)
+3. **Call `/api/ottaorm/init`** → Tables created automatically ✅
 
-## Schema Location
+## Quick Start
 
-```
-ottabase/
-├── db/
-│   └── schema.ts      # Combined schema (CORE + APP tables)
-├── models/
-│   └── Todo.ts        # App-specific model with Drizzle table
-└── migrations/
-    └── README.md      # This file
-```
-
-## Schema Structure
-
-The schema file (`ottabase/db/schema.ts`) combines:
-
-### Core Tables (from `@ottabase/ottaorm`)
-- `usersTable` - User accounts
-- `accountsTable` - OAuth accounts
-- `sessionsTable` - User sessions
-- `verificationTokensTable` - Email verification
-- `authenticatorsTable` - WebAuthn/Passkey
-- `postsTable` - Blog posts
-- `tagsTable` - Tags
-- `postTagsTable` - Post-tag relationships
-
-### App Tables
-- `todosTable` - Todo items (defined in `ottabase/models/Todo.ts`)
-
-## Commands
-
-```bash
-# Push schema changes to remote D1 database
-pnpm db:push
-
-# Open Drizzle Studio for database browsing
-pnpm db:studio
-```
-
-## Adding New Tables
-
-1. Create a new model file in `ottabase/models/`:
+### 1. Define Your Model
 
 ```typescript
 // ottabase/models/Project.ts
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { BaseModel } from "@ottabase/ottaorm";
 
+export const projectsTable = sqliteTable("projects", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+export class Project extends BaseModel {
+  static entity = "projects";
+  static table = projectsTable;
+  static primaryKey = "id";
+}
+```
+
+### 2. Export in Schema
+
+```typescript
+// ottabase/db/schema.ts
+export { usersTable, postsTable } from "@ottabase/ottaorm";  // Core
+export { todosTable } from "../models/Todo";                  // App
+export { projectsTable } from "../models/Project";            // NEW!
+```
+
+### 3. Initialize Database
+
+```bash
+# Development (no auth)
+curl -X POST http://localhost:8790/api/ottaorm/init
+
+# Production (requires MIGRATION_SECRET)
+curl -X POST https://your-app.com/api/ottaorm/init \
+  -H "Authorization: Bearer ${MIGRATION_SECRET}"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Successfully applied 1 change(s)",
+  "details": {
+    "tablesCreated": ["projects"],
+    "columnsAdded": [],
+    "customMigrationsRun": []
+  }
+}
+```
+
+## Adding New Fields
+
+Just add the field and re-run `/api/ottaorm/init`:
+
+```typescript
 export const projectsTable = sqliteTable("projects", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  status: text("status").default("active").notNull(), // NEW FIELD!
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 ```
 
-2. Export it in the schema file (`ottabase/db/schema.ts`):
+```bash
+curl -X POST http://localhost:8790/api/ottaorm/init
+# ✅ Column added automatically!
+```
+
+## Custom Migrations
+
+For seeds, indexes, or views, add custom migrations:
 
 ```typescript
-// Add to APP-SPECIFIC TABLES section
+// ottabase/migrations/index.ts
+import type { Migration } from "@ottabase/ottaorm";
+
+export const appMigrations: Migration[] = [
+  {
+    name: "0000_seed_admin_user",
+    up: async (db) => {
+      await db.execute(`
+        INSERT OR IGNORE INTO users (id, name, email, created_at, updated_at)
+        VALUES ('admin-001', 'Admin', 'admin@example.com',
+                strftime('%s', 'now') * 1000, strftime('%s', 'now') * 1000)
+      `);
+    },
+  },
+  {
+    name: "0001_add_indexes",
+    up: async (db) => {
+      await db.execute(`
+        CREATE INDEX IF NOT EXISTS idx_projects_status
+        ON projects(status)
+      `);
+    },
+  },
+];
+```
+
+See [custom/README.md](./custom/README.md) for examples.
+
+## Schema Structure
+
+The schema combines **core tables** (from `@ottabase/ottaorm`) + **app tables**:
+
+```typescript
+// ottabase/db/schema.ts
+
+// CORE TABLES (from @ottabase/ottaorm)
+export {
+  usersTable,
+  accountsTable,
+  sessionsTable,
+  postsTable,
+  tagsTable,
+} from "@ottabase/ottaorm";
+
+// APP-SPECIFIC TABLES
+export { todosTable } from "../models/Todo";
 export { projectsTable } from "../models/Project";
 ```
 
-3. Push the changes:
+## Alternative: Manual Push (Advanced)
+
+For advanced use cases, you can still use `drizzle-kit push`:
 
 ```bash
+# Push schema to remote D1
 pnpm db:push
+
+# Open Drizzle Studio
+pnpm db:studio
 ```
 
-## Environment Variables
-
-For remote D1, set these environment variables:
-
+This requires setting these environment variables:
 ```bash
 CLOUDFLARE_ACCOUNT_ID=your-account-id
-CLOUDFLARE_D1_DATABASE_ID=your-database-id  
+CLOUDFLARE_D1_DATABASE_ID=your-database-id
 CLOUDFLARE_API_TOKEN=your-api-token
 ```
 
 ## Benefits
 
-- ✅ **No migration files** - Schema TypeScript is the source of truth
-- ✅ **Type-safe** - Full TypeScript support with Drizzle ORM
-- ✅ **Automatic diff** - drizzle-kit detects schema changes
-- ✅ **Rapid prototyping** - Just edit TypeScript and push
-- ✅ **Production ready** - Used by many teams in production
+- ✅ **Zero-config** - No CLI commands needed
+- ✅ **Type-safe** - TypeScript schema = source of truth
+- ✅ **Auto-detection** - Creates tables & adds columns automatically
+- ✅ **Custom migrations** - For seeds, indexes, views
+- ✅ **Per-app** - Each app has its own schema
+- ✅ **Production-ready** - Secure with MIGRATION_SECRET
+
+## Documentation
+
+See the [Migration Guide](../../../../MIGRATION_GUIDE.md) for complete details.

@@ -1,52 +1,70 @@
 # Ottabase TanStack Template App
 
-Minimal React template using **TanStack Router** + **TanStack Query**, with Ottabase shared UI/state packages, and **first-class Cloudflare Workers deployment** via `wrangler`.
+TanStack Router + Query template with automated OttaORM migrations and Cloudflare Workers deployment.
 
 ## Features
 
-- **TanStack Router** - Type-safe routing with file-based structure
-- **TanStack Query** - Powerful async state management
-- **Vite** - Fast development server and optimized builds
-- **Cloudflare Workers** - Edge deployment with D1, KV, R2, Queues, Rate Limiting, and Durable Objects
-- **Mantine + shadcn/ui** - Flexible UI component libraries
-- **Jotai** - Global state management
-- **OttaORM** - Class-based Drizzle ORM with D1 support
+- **TanStack Router** - Type-safe routing
+- **TanStack Query** - Async state management
+- **OttaORM** - Automated migrations, no CLI needed
+- **Vite** - Fast dev server
+- **Cloudflare Workers** - D1, KV, R2, Queues, Durable Objects
+- **Mantine + shadcn/ui** - UI libraries
 
-## Directory Structure
+## Quick Start
 
-```
-├── cloudflare-worker.ts    # Cloudflare Worker entry point (API routes)
-├── ottabase/               # Server-side code
-│   ├── migrations/         # Database migrations
-│   └── models/             # OttaORM models (Todo, etc.)
-├── src/                    # React application
-│   ├── main.tsx           # App entry point
-│   ├── router.tsx         # TanStack Router configuration
-│   ├── ottabase/          # Client-side Ottabase config
-│   │   ├── config/        # App configuration
-│   │   ├── hooks/         # Custom hooks
-│   │   ├── providers/     # React providers
-│   │   └── state/         # Jotai atoms
-│   ├── pages/             # Page components
-│   │   └── demo/          # Demo pages showcasing features
-│   ├── providers/         # App providers wrapper
-│   └── styles/            # Global CSS
-├── index.html             # HTML template
-├── vite.config.ts         # Vite configuration
-├── wrangler.jsonc         # Cloudflare Workers configuration
-└── tailwind.config.cjs    # Tailwind CSS configuration
+```bash
+# Install
+pnpm install
+
+# Initialize database (creates all tables automatically)
+pnpm dev:worker &
+curl -X POST http://localhost:8790/api/ottaorm/init
+
+# Done! Tables created ✅
 ```
 
-## Scripts
+## Database Migrations
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Vite dev server (fast local DX) |
-| `pnpm build` | Build for production |
-| `pnpm preview` | Build + run on `workerd` via Wrangler (Cloudflare-like) |
-| `pnpm deploy` | Build + deploy Worker + assets to Cloudflare |
-| `pnpm type-check` | TypeScript type checking |
-| `pnpm cf-typegen` | Generate Cloudflare types from wrangler.jsonc |
+**Zero-config!** Just define Models and call `/api/ottaorm/init`:
+
+### 1. Define Model
+```typescript
+// ottabase/models/Todo.ts
+export const todosTable = sqliteTable("todos", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+});
+
+export class Todo extends BaseModel {
+  static entity = "todos";
+  static table = todosTable;
+}
+```
+
+### 2. Export in Schema
+```typescript
+// ottabase/db/schema.ts
+export { todosTable } from "../models/Todo";
+```
+
+### 3. Initialize
+```bash
+curl -X POST http://localhost:8790/api/ottaorm/init
+# ✅ Table created automatically!
+```
+
+See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details.
+
+## Development
+
+```bash
+pnpm dev              # Vite dev server (fast)
+pnpm dev:worker       # Wrangler dev (with bindings)
+pnpm preview          # Build + test locally
+pnpm deploy           # Deploy to Cloudflare
+```
+
 
 ## Routes
 
@@ -71,35 +89,25 @@ Minimal React template using **TanStack Router** + **TanStack Query**, with Otta
 - `/api/cloudflare/*` - Cloudflare service demos
 - `/api/ottaorm/*` - OttaORM CRUD endpoints
 
-## Local Development
+## Project Structure
 
-```bash
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
-
-# Run with Cloudflare Workers locally (requires wrangler)
-pnpm preview
+```
+apps/ottabase-template-app-tanstack/
+├── cloudflare-worker.ts       # Worker entry (API)
+├── ottabase/
+│   ├── models/Todo.ts         # App models
+│   ├── db/schema.ts           # Core + app tables
+│   └── migrations/
+│       ├── index.ts           # Custom migrations
+│       └── custom/            # Seeds, indexes
+├── src/
+│   ├── main.tsx               # React entry
+│   ├── router.tsx             # Routes
+│   └── pages/demo/            # Demo pages
+└── wrangler.jsonc             # Cloudflare config
 ```
 
-## Deployment
+## Documentation
 
-```bash
-# Deploy to Cloudflare Workers
-pnpm deploy
-```
-
-Before deploying, update `wrangler.jsonc` with your actual:
-- D1 database ID
-- KV namespace ID
-- R2 bucket name
-- Queue name
-
-## Deleting Demo Content
-
-In production apps, you can safely delete:
-- `src/pages/demo/` - All demo pages
-- Related routes in `src/router.tsx`
-- Demo API handlers in `cloudflare-worker.ts`
+- [Migration Guide](../../MIGRATION_GUIDE.md) - Auto-migration details
+- [Cloudflare Features](../../docs/cloudflare-features.md) - Setup guide
