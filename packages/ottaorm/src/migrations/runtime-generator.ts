@@ -29,6 +29,9 @@ function escapeSQLString(value: string): string {
  * Quote SQLite identifier (table name, column name, etc.)
  */
 function quoteIdentifier(identifier: string): string {
+  if (typeof identifier !== 'string') {
+    throw new TypeError('quoteIdentifier: identifier must be a string');
+  }
   return `"${identifier.replace(/"/g, '""')}"`;
 }
 
