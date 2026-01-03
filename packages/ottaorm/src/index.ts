@@ -29,6 +29,10 @@ export type { CrudRequest, CrudResponse } from "./crud";
 export { runMigrations, rollbackMigrations, coreMigrations } from "./migrations";
 export type { Migration } from "./migrations";
 
+// Automated migrations (NEW!)
+export { autoInit, collectTableSchemas, runAutoMigrations } from "./migrations";
+export type { AutoInitConfig, RuntimeMigrationConfig } from "./migrations";
+
 /**
  * Base models (Edge-safe)
  *
