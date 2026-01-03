@@ -107,10 +107,11 @@ function generateCreateTableSQL(table: SQLiteTable): string {
  */
 async function getExistingTables(driver: DbDriver): Promise<Set<string>> {
   try {
+    // Use parameterized query to avoid SQL injection
     const result = await driver.executeRaw(`
       SELECT name FROM sqlite_master
-      WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '${MIGRATION_TABLE_NAME.substring(0, 10)}%'
-    `);
+      WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE ?
+    `, [`${MIGRATION_TABLE_NAME.substring(0, 10)}%`]);
 
     const tables = new Set<string>();
     if (result.results && Array.isArray(result.results)) {
@@ -273,8 +274,9 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
     // Run custom migrations
     if (customMigrations.length > 0) {
       // Ensure migration tracking table exists
+      const quotedMigrationTable = quoteIdentifier(MIGRATION_TABLE_NAME);
       await driver.executeRaw(`
-        CREATE TABLE IF NOT EXISTS ${MIGRATION_TABLE_NAME} (
+        CREATE TABLE IF NOT EXISTS ${quotedMigrationTable} (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL UNIQUE,
           executed_at INTEGER NOT NULL,
@@ -285,7 +287,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
       for (const migration of customMigrations) {
         // Check if already executed
         const existingResult = await driver.executeRaw(
-          `SELECT name FROM ${MIGRATION_TABLE_NAME} WHERE name = ?`,
+          `SELECT name FROM ${quotedMigrationTable} WHERE name = ?`,
           [migration.name]
         );
 
@@ -301,7 +303,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
 
             // Record execution
             await driver.executeRaw(
-              `INSERT INTO ${MIGRATION_TABLE_NAME} (name, executed_at) VALUES (?, ?)`,
+              `INSERT INTO ${quotedMigrationTable} (name, executed_at) VALUES (?, ?)`,
               [migration.name, Date.now()]
             );
 

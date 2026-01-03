@@ -162,11 +162,14 @@ export async function generateMigrations(config: MigrationGeneratorConfig): Prom
   console.log('\n🔨 Generating migrations with Drizzle Kit...');
 
   try {
-    // Validate and sanitize the config path to prevent command injection
-    const sanitizedConfigPath = drizzleConfigPath.replace(/[;&|`$()]/g, '');
+    // Validate config path to prevent command injection
+    // Allow only safe characters: alphanumeric, dots, slashes, hyphens, underscores
+    if (!/^[\w./-]+$/.test(drizzleConfigPath)) {
+      throw new Error('Invalid drizzle config path: only alphanumeric characters, dots, slashes, hyphens, and underscores are allowed');
+    }
     
     // Run drizzle-kit generate with properly escaped argument
-    const { stdout, stderr } = await execAsync(`pnpm drizzle-kit generate --config="${sanitizedConfigPath}"`);
+    const { stdout, stderr } = await execAsync(`pnpm drizzle-kit generate --config="${drizzleConfigPath}"`);
 
     if (stdout) console.log(stdout);
     if (stderr) console.error(stderr);
