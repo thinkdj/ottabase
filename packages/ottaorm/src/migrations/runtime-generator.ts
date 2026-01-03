@@ -260,7 +260,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
             const columnMatch = alterSQL.match(/ADD\s+COLUMN\s+(".*?"|`.*?`|\[.*?\]|\S+)/i);
             const rawColumnName = columnMatch?.[1];
             const cleanedColumnName = rawColumnName
-              ? rawColumnName.replace(/^["`\[]|["`\]]$/g, '')
+              ? rawColumnName.replace(/^["`\[]/, '').replace(/["`\]]$/, '')
               : 'unknown_column';
             result.columnsAdded.push(`${tableName}.${cleanedColumnName}`);
           } catch (error: any) {

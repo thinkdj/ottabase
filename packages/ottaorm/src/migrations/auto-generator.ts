@@ -175,6 +175,7 @@ export async function generateMigrations(config: MigrationGeneratorConfig): Prom
     }
     
     // Use single quotes to prevent shell expansion of special characters
+    // Proper shell escaping: close quote, add escaped quote, reopen quote: ' -> '\''
     const { stdout, stderr } = await execAsync(`pnpm drizzle-kit generate --config='${drizzleConfigPath.replace(/'/g, "'\\''")}'`);
 
     if (stdout) console.log(stdout);

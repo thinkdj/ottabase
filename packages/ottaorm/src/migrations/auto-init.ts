@@ -160,8 +160,13 @@ export async function autoInit(config: AutoInitConfig): Promise<{
  * import * as schema from './db/schema';
  * const tables = collectTableSchemas(schema);
  */
-export function collectTableSchemas(schemaObject: Record<string, unknown>): Record<string, SQLiteTable> {
+export function collectTableSchemas(schemaObject: Record<string, unknown> | any): Record<string, SQLiteTable> {
   const tables: Record<string, SQLiteTable> = {};
+
+  // Runtime validation to handle any type safely
+  if (!schemaObject || typeof schemaObject !== 'object' || Array.isArray(schemaObject)) {
+    return tables;
+  }
 
   for (const [key, value] of Object.entries(schemaObject)) {
     // Check if this is a table (convention: ends with 'Table') and has a table-like shape
