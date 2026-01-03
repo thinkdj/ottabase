@@ -115,7 +115,65 @@ export const appMigrations: Migration[] = [
 ];
 ```
 
-See [custom/README.md](./custom/README.md) for examples.
+## Custom Migrations
+
+For seeds, indexes, or views, add custom migrations:
+
+```typescript
+// ottabase/migrations/index.ts
+import type { Migration } from "@ottabase/ottaorm";
+
+export const appMigrations: Migration[] = [
+  {
+    name: "0000_seed_admin_user",
+    up: async (db) => {
+      await db.execute(`
+        INSERT OR IGNORE INTO users (id, name, email, created_at, updated_at)
+        VALUES ('admin-001', 'Admin', 'admin@example.com',
+                strftime('%s', 'now') * 1000, strftime('%s', 'now') * 1000)
+      `);
+    },
+  },
+  {
+    name: "0001_add_indexes",
+    up: async (db) => {
+      await db.execute(`
+        CREATE INDEX IF NOT EXISTS idx_posts_author_published
+        ON posts(author_id, published);
+
+        CREATE INDEX IF NOT EXISTS idx_todos_user_completed
+        ON todos(user_id, completed);
+      `);
+    },
+  },
+  {
+    name: "0002_create_user_stats_view",
+    up: async (db) => {
+      await db.execute(`
+        CREATE VIEW IF NOT EXISTS user_stats AS
+        SELECT
+          u.id,
+          u.name,
+          COUNT(p.id) as post_count,
+          COUNT(t.id) as todo_count
+        FROM users u
+        LEFT JOIN posts p ON p.author_id = u.id
+        LEFT JOIN todos t ON t.user_id = u.id
+        GROUP BY u.id
+      `);
+    },
+  },
+];
+```
+
+### Best Practices
+
+- ✅ Use descriptive names: `0000_seed_data` not `migration1`
+- ✅ Use `IF NOT EXISTS` / `OR IGNORE` for idempotency
+- ✅ Keep migrations small and focused
+- ✅ Test in development first
+- ⚠️ Don't modify past migrations (create new ones)
+- ⚠️ Be careful with data migrations in production
 
 ## Schema Structure
 
@@ -165,7 +223,3 @@ CLOUDFLARE_API_TOKEN=your-api-token
 - ✅ **Custom migrations** - For seeds, indexes, views
 - ✅ **Per-app** - Each app has its own schema
 - ✅ **Production-ready** - Secure with MIGRATION_SECRET
-
-## Documentation
-
-See the [Migration Guide](../../../../MIGRATION_GUIDE.md) for complete details.

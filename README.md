@@ -70,9 +70,41 @@ pnpm clean                  # Clean all build artifacts
 ### Database & ORM
 
 - **@ottabase/db** - Multi-ORM support (Drizzle, Prisma) with D1 adapters
-- **@ottabase/ottaorm** - Type-safe ORM with migrations for D1/SQLite
+- **@ottabase/ottaorm** - Type-safe ORM with **automated migrations** for D1/SQLite
 - **@ottabase/cf** - Cloudflare bindings (D1, KV, R2, Queues, Rate Limiting)
 - **@ottabase/auth** - Auth.js v5 integration with D1 adapter
+
+#### OttaORM: Zero-Config Migrations
+
+OttaORM automatically creates tables from your Model definitions - no CLI commands needed!
+
+```typescript
+// 1. Define Model
+export const todosTable = sqliteTable("todos", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+});
+
+export class Todo extends BaseModel {
+  static entity = "todos";
+  static table = todosTable;
+}
+
+// 2. Export in schema.ts
+export { todosTable } from "../models/Todo";
+
+// 3. Initialize database
+curl -X POST http://localhost:3000/api/ottaorm/init
+// ✅ Table created automatically!
+```
+
+**Core + Per-App Architecture:**
+- Core models (User, Post, Tag) exported from `@ottabase/ottaorm`
+- Each app defines its own models in `ottabase/models/`
+- Schema combines core + app tables
+- Migrations run per-app against separate databases
+
+See [packages/ottaorm/README.md](./packages/ottaorm/README.md) for full details.
 
 ### UI Components
 

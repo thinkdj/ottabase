@@ -109,5 +109,6 @@ apps/ottabase-template-app-tanstack/
 
 ## Documentation
 
-- [Migration Guide](../../MIGRATION_GUIDE.md) - Auto-migration details
-- [Cloudflare Features](../../docs/cloudflare-features.md) - Setup guide
+- [OttaORM Package](../../packages/ottaorm/README.md) - Full ORM documentation
+- [Migrations Guide](./ottabase/migrations/README.md) - Database migrations
+- [Cloudflare Setup](../../CLOUDFLARE_DEPLOY.md) - Deployment guide
