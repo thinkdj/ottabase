@@ -257,7 +257,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
           try {
             await driver.executeRaw(alterSQL);
             // Extract column name from ALTER TABLE ... ADD COLUMN statement
-            const columnMatch = alterSQL.match(/ADD\s+COLUMN\s+(".*?"|`.*?`|\[.*?\]|\S+)/i);
+            const columnMatch = alterSQL.match(/ADD\s+COLUMN\s+("(?:""|[^"])*"|`(?:``|[^`])*`|\[(?:\]\]|[^\]])*\]|\S+)/i);
             const rawColumnName = columnMatch?.[1];
             let cleanedColumnName = 'unknown_column';
 
