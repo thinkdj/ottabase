@@ -11,7 +11,7 @@
 // Usage: Just call autoInit() and it handles everything!
 // ============================================================
 
-import type { DbDriver } from '@ottabase/db';
+import type { DbDriver } from '@ottabase/db/drizzle';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { runAutoMigrations } from './runtime-generator';
 import { Migration } from './index';

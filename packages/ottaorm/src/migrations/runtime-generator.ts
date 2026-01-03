@@ -9,7 +9,7 @@
 // to automatically detect and apply schema changes.
 // ============================================================
 
-import { type DbDriver } from '@ottabase/db';
+import { type DbDriver } from '@ottabase/db/drizzle';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
 
@@ -110,6 +110,10 @@ function generateCreateTableSQL(table: SQLiteTable): string {
  */
 async function getExistingTables(driver: DbDriver): Promise<Set<string>> {
   try {
+    if (!driver.executeRaw) {
+      throw new Error('Driver does not support executeRaw - required for automated migrations');
+    }
+
     // Query system tables to get list of user tables
     // Exclude system tables (sqlite_*) and migration tracking tables (_ottabase_*)
     const result = await driver.executeRaw(`
@@ -137,9 +141,20 @@ async function getExistingTables(driver: DbDriver): Promise<Set<string>> {
  * Get column information for an existing table
  */
 async function getTableColumns(driver: DbDriver, tableName: string): Promise<Set<string>> {
-  try {
+  try:
+    if (!driver.executeRaw) {
+      throw new Error('Driver does not support executeRaw - required for automated migrations');
+    }
+
     const quotedTableName = quoteIdentifier(tableName);
     const result = await driver.executeRaw(`PRAGMA table_info(${quotedTableName})`);
+=======
+    if (!driver.executeRaw) {
+      throw new Error('Driver does not support executeRaw - required for automated migrations');
+    }
+
+    const result = await driver.executeRaw(`PRAGMA table_info(${tableName})`);
+>>>>>>> 1c5b1ac (fix: Add executeRaw to DbDriver interface and add runtime checks)
 
     const columns = new Set<string>();
     if (result.results && Array.isArray(result.results)) {
@@ -208,6 +223,11 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
   errors: string[];
 }> {
   const { driver, tables, customMigrations = [], verbose = false } = config;
+
+  // Ensure driver supports executeRaw (required for automated migrations)
+  if (!driver.executeRaw) {
+    throw new Error('Driver does not support executeRaw method - automated migrations require a driver with executeRaw support (e.g., D1Driver)');
+  }
 
   const result = {
     tablesCreated: [] as string[],

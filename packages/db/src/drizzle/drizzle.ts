@@ -14,9 +14,14 @@ import type { SQL } from "drizzle-orm";
  */
 export interface DbDriver {
   /**
-   * Execute a raw SQL query
+   * Execute a raw SQL query using Drizzle SQL object
    */
   execute<T = unknown>(query: SQL): Promise<T[]>;
+
+  /**
+   * Execute raw SQL string (for DDL, PRAGMA, etc.)
+   */
+  executeRaw?(sql: string, params?: unknown[]): Promise<any>;
 
   /**
    * Get the underlying Drizzle database instance
