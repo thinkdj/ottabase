@@ -162,8 +162,11 @@ export async function generateMigrations(config: MigrationGeneratorConfig): Prom
   console.log('\n🔨 Generating migrations with Drizzle Kit...');
 
   try {
-    // Run drizzle-kit generate
-    const { stdout, stderr } = await execAsync(`pnpm drizzle-kit generate --config=${drizzleConfigPath}`);
+    // Validate and sanitize the config path to prevent command injection
+    const sanitizedConfigPath = drizzleConfigPath.replace(/[;&|`$()]/g, '');
+    
+    // Run drizzle-kit generate with properly escaped argument
+    const { stdout, stderr } = await execAsync(`pnpm drizzle-kit generate --config="${sanitizedConfigPath}"`);
 
     if (stdout) console.log(stdout);
     if (stderr) console.error(stderr);
@@ -252,7 +255,6 @@ ${customSqlFiles.length > 0 ? `// ==============================================
 // CUSTOM MIGRATIONS
 // ============================================================
 ${customSqlFiles.map((file, i) => {
-  const name = file.replace('.sql', '');
   return `import custom${i}Sql from './custom/${file}?raw';`;
 }).join('\n')}
 ` : ''}
@@ -260,7 +262,6 @@ ${generatedSqlFiles.length > 0 ? `// ===========================================
 // GENERATED MIGRATIONS
 // ============================================================
 ${generatedSqlFiles.map((file, i) => {
-  const name = file.replace('.sql', '');
   return `import generated${i}Sql from './generated/${file}?raw';`;
 }).join('\n')}
 ` : ''}

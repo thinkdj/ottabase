@@ -10,9 +10,27 @@
 // ============================================================
 
 import { type DbDriver } from '@ottabase/db';
-import { sql } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
+
+/**
+ * Migration tracking table name constant
+ */
+const MIGRATION_TABLE_NAME = '_ottabase_migrations';
+
+/**
+ * Escape single quotes in string values for SQL
+ */
+function escapeSQLString(value: string): string {
+  return value.replace(/'/g, "''");
+}
+
+/**
+ * Quote SQLite identifier (table name, column name, etc.)
+ */
+function quoteIdentifier(identifier: string): string {
+  return `"${identifier.replace(/"/g, '""')}"`;
+}
 
 export interface RuntimeMigrationConfig {
   /**
@@ -69,7 +87,8 @@ function generateCreateTableSQL(table: SQLiteTable): string {
     // Default value (simplified - Drizzle handles this via $defaultFn)
     if (col.default !== undefined && col.default !== null) {
       if (typeof col.default === 'string') {
-        def += ` DEFAULT '${col.default}'`;
+        const escapedDefault = escapeSQLString(col.default);
+        def += ` DEFAULT '${escapedDefault}'`;
       } else if (typeof col.default === 'number') {
         def += ` DEFAULT ${col.default}`;
       } else if (typeof col.default === 'boolean') {
@@ -90,7 +109,7 @@ async function getExistingTables(driver: DbDriver): Promise<Set<string>> {
   try {
     const result = await driver.executeRaw(`
       SELECT name FROM sqlite_master
-      WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_ottabase_%'
+      WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '${MIGRATION_TABLE_NAME.substring(0, 10)}%'
     `);
 
     const tables = new Set<string>();
@@ -114,7 +133,8 @@ async function getExistingTables(driver: DbDriver): Promise<Set<string>> {
  */
 async function getTableColumns(driver: DbDriver, tableName: string): Promise<Set<string>> {
   try {
-    const result = await driver.executeRaw(`PRAGMA table_info(${tableName})`);
+    const quotedTableName = quoteIdentifier(tableName);
+    const result = await driver.executeRaw(`PRAGMA table_info(${quotedTableName})`);
 
     const columns = new Set<string>();
     if (result.results && Array.isArray(result.results)) {
@@ -149,7 +169,8 @@ function generateAddColumnSQL(tableName: string, table: SQLiteTable, existingCol
       if (!col.notNull || col.default !== undefined) {
         if (col.default !== undefined && col.default !== null) {
           if (typeof col.default === 'string') {
-            def += ` DEFAULT '${col.default}'`;
+            const escapedDefault = escapeSQLString(col.default);
+            def += ` DEFAULT '${escapedDefault}'`;
           } else if (typeof col.default === 'number') {
             def += ` DEFAULT ${col.default}`;
           } else if (typeof col.default === 'boolean') {
@@ -199,7 +220,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
     }
 
     // Process each table from Models
-    for (const [key, table] of Object.entries(tables)) {
+    for (const table of Object.values(tables)) {
       const config = getTableConfig(table);
       const tableName = config.name;
 
@@ -233,7 +254,13 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
 
           try {
             await driver.executeRaw(alterSQL);
-            result.columnsAdded.push(`${tableName}.${alterSQL.match(/ADD COLUMN (\w+)/)?.[1]}`);
+            // Extract column name from ALTER TABLE ... ADD COLUMN statement
+            const columnMatch = alterSQL.match(/ADD\s+COLUMN\s+(".*?"|`.*?`|\[.*?\]|\S+)/i);
+            const rawColumnName = columnMatch?.[1];
+            const cleanedColumnName = rawColumnName
+              ? rawColumnName.replace(/^["`\[]|["`\]]$/g, '')
+              : 'unknown_column';
+            result.columnsAdded.push(`${tableName}.${cleanedColumnName}`);
           } catch (error: any) {
             const errorMsg = `Failed to alter table ${tableName}: ${error.message}`;
             result.errors.push(errorMsg);
@@ -247,7 +274,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
     if (customMigrations.length > 0) {
       // Ensure migration tracking table exists
       await driver.executeRaw(`
-        CREATE TABLE IF NOT EXISTS _ottabase_migrations (
+        CREATE TABLE IF NOT EXISTS ${MIGRATION_TABLE_NAME} (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL UNIQUE,
           executed_at INTEGER NOT NULL,
@@ -258,7 +285,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
       for (const migration of customMigrations) {
         // Check if already executed
         const existingResult = await driver.executeRaw(
-          `SELECT name FROM _ottabase_migrations WHERE name = ?`,
+          `SELECT name FROM ${MIGRATION_TABLE_NAME} WHERE name = ?`,
           [migration.name]
         );
 
@@ -274,7 +301,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
 
             // Record execution
             await driver.executeRaw(
-              `INSERT INTO _ottabase_migrations (name, executed_at) VALUES (?, ?)`,
+              `INSERT INTO ${MIGRATION_TABLE_NAME} (name, executed_at) VALUES (?, ?)`,
               [migration.name, Date.now()]
             );
 
