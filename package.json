@@ -45,8 +45,8 @@
     "storybook": "catalog:",
     "style-loader": "catalog:",
     "tsup": "catalog:",
-    "turbo": "^2.6.3",
-    "webpack": "^5.103.0"
+    "turbo": "^2.7.2",
+    "webpack": "^5.104.1"
   },
   "packageManager": "pnpm@10.24.0",
   "engines": {
