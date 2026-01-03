@@ -86,38 +86,7 @@ curl -X POST http://localhost:8790/api/ottaorm/init
 
 ## Custom Migrations
 
-For seeds, indexes, or views, add custom migrations:
-
-```typescript
-// ottabase/migrations/index.ts
-import type { Migration } from "@ottabase/ottaorm";
-
-export const appMigrations: Migration[] = [
-  {
-    name: "0000_seed_admin_user",
-    up: async (db) => {
-      await db.execute(`
-        INSERT OR IGNORE INTO users (id, name, email, created_at, updated_at)
-        VALUES ('admin-001', 'Admin', 'admin@example.com',
-                strftime('%s', 'now') * 1000, strftime('%s', 'now') * 1000)
-      `);
-    },
-  },
-  {
-    name: "0001_add_indexes",
-    up: async (db) => {
-      await db.execute(`
-        CREATE INDEX IF NOT EXISTS idx_projects_status
-        ON projects(status)
-      `);
-    },
-  },
-];
-```
-
-## Custom Migrations
-
-For seeds, indexes, or views, add custom migrations:
+For seeds, indexes, views, or complex operations, add custom migrations:
 
 ```typescript
 // ottabase/migrations/index.ts
@@ -174,6 +143,60 @@ export const appMigrations: Migration[] = [
 - ✅ Test in development first
 - ⚠️ Don't modify past migrations (create new ones)
 - ⚠️ Be careful with data migrations in production
+
+## Limitations
+
+SQLite's `ALTER TABLE` has restrictions. The automated system **cannot**:
+
+- ❌ **Change column types** - Use custom migration to recreate table
+- ❌ **Rename columns** - Use custom migration to recreate table
+- ❌ **Drop columns** - Use custom migration to recreate table
+- ❌ **Modify constraints** - Use custom migration to recreate table
+- ⚠️ **Add NOT NULL columns** - Must have `DEFAULT` value or use custom migration
+
+**Example: Adding NOT NULL column**
+```typescript
+// ✅ GOOD - Has default value
+status: text("status").default("active").notNull()
+
+// ❌ BAD - No default, will fail if table has data
+status: text("status").notNull()
+```
+
+## Troubleshooting
+
+### Migration fails with "NOT NULL constraint"
+**Problem**: Added NOT NULL column without DEFAULT to table with existing data.
+
+**Solution**: Add a DEFAULT value or use custom migration:
+```typescript
+{
+  name: "0003_add_status_column",
+  up: async (db) => {
+    await db.execute(`ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'active' NOT NULL`);
+  },
+}
+```
+
+### Need to rename/change column type
+**Problem**: Automated migrations can't change column types or rename columns.
+
+**Solution**: Create custom migration to recreate table:
+```typescript
+{
+  name: "0004_recreate_users_table",
+  up: async (db) => {
+    // 1. Create new table
+    await db.execute(`CREATE TABLE users_new (...)`);
+    // 2. Copy data
+    await db.execute(`INSERT INTO users_new SELECT ... FROM users`);
+    // 3. Drop old table
+    await db.execute(`DROP TABLE users`);
+    // 4. Rename new table
+    await db.execute(`ALTER TABLE users_new RENAME TO users`);
+  },
+}
+```
 
 ## Schema Structure
 

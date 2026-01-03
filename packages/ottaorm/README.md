@@ -501,6 +501,27 @@ export const appMigrations: Migration[] = [
 ];
 ```
 
+### Limitations
+
+SQLite's `ALTER TABLE` has restrictions. The automated system **cannot**:
+
+- ❌ **Change column types** - Use custom migration to recreate table
+- ❌ **Rename columns** - Use custom migration to recreate table
+- ❌ **Drop columns** - Use custom migration to recreate table
+- ❌ **Modify constraints** - Use custom migration to recreate table
+- ⚠️ **Add NOT NULL columns** - Must have `DEFAULT` value
+
+**Example:**
+```typescript
+// ✅ GOOD - Has default value
+status: text("status").default("active").notNull()
+
+// ❌ BAD - No default, will fail if table has data
+status: text("status").notNull()
+```
+
+For complex schema changes, use custom migrations. See [Migration READMEs](../../apps/ottabase-template-app/ottabase/migrations/README.md) for examples.
+
 ## Type Casting
 
 Automatic type conversion:
