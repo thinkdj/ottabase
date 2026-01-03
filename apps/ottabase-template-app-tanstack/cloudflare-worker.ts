@@ -13,9 +13,12 @@ import {
   registerModels,
   parseCrudRequest,
   handleCrud,
+  autoInit,
+  collectTableSchemas,
 } from "@ottabase/ottaorm";
 import { appMigrations } from "./ottabase/migrations";
 import { Todo } from "./ottabase/models/Todo";
+import * as schema from "./ottabase/db/schema";
 
 export { RealtimeActor };
 
@@ -639,14 +642,28 @@ export default {
         );
       }
 
+      // ============================================================
+      // AUTOMATED MIGRATIONS - No CLI Required!
+      // ============================================================
+      // This automatically:
+      // 1. Detects all tables from your Models
+      // 2. Creates tables that don't exist
+      // 3. Adds new columns to existing tables
+      // 4. Runs custom migrations
+      //
+      // Just define your Models and call this endpoint!
+      // ============================================================
       const driver = createD1Driver(env.OBCF_D1);
-      const result = await runMigrations(driver, [...coreMigrations, ...appMigrations]);
-      return json({
-        success: true,
-        message: "Database migrations completed successfully",
-        executed: result.executed,
-        skipped: result.skipped,
+      const tables = collectTableSchemas(schema);
+
+      const result = await autoInit({
+        driver,
+        schema: tables,
+        customMigrations: appMigrations,
+        verbose: true,
       });
+
+      return json(result);
     }
 
     // ============================================================

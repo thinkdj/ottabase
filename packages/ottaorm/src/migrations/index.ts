@@ -2,9 +2,16 @@
 // @ottabase/ottaorm - Migration System
 // ============================================================
 // Supports core migrations + per-app migrations
+// Now includes automatic runtime migration generation!
 // ============================================================
 
 import type { DbDriver } from "@ottabase/db/drizzle";
+
+// Export runtime migration generator
+export { autoMigrate, runAutoMigrations, type RuntimeMigrationConfig } from './runtime-generator';
+
+// Export automatic initialization (THE MAIN API!)
+export { autoInit, collectTableSchemas, type AutoInitConfig } from './auto-init';
 
 /**
  * Migration interface

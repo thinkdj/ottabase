@@ -1,8 +1,13 @@
 /**
  * OttaORM Database Initialization API
  *
- * This endpoint runs migrations to create database tables.
- * Runs CORE migrations (from @ottabase/ottaorm) + APP migrations (from ottabase/)
+ * This endpoint AUTOMATICALLY initializes your database:
+ * - Auto-detects tables from your Models
+ * - Creates missing tables
+ * - Adds new columns to existing tables
+ * - Runs custom migrations
+ *
+ * NO CLI REQUIRED - Just call this endpoint!
  *
  * Security:
  * - Development: No authentication required
@@ -11,10 +16,11 @@
 
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createD1Driver } from "@ottabase/db/drizzle-d1";
-import { coreMigrations, runMigrations } from "@ottabase/ottaorm";
+import { autoInit, collectTableSchemas } from "@ottabase/ottaorm";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { appMigrations } from "../../../../ottabase/migrations";
+import * as schema from "../../../../ottabase/db/schema";
 
 export const runtime = "edge";
 
@@ -93,18 +99,28 @@ async function handleMigration(request: NextRequest) {
     // Create driver
     const driver = createD1Driver(env.OBCF_D1);
 
-    // Run core migrations + app migrations
-    const result = await runMigrations(driver, [
-      ...coreMigrations,    // Core models: User, Account, Post, Tag
-      ...appMigrations       // App models: Todo
-    ]);
+    // Collect all table schemas from Models
+    const tables = collectTableSchemas(schema);
 
-    return NextResponse.json({
-      success: true,
-      message: "Database migrations completed successfully",
-      executed: result.executed,
-      skipped: result.skipped,
+    // ============================================================
+    // AUTOMATED MIGRATIONS - No CLI Required!
+    // ============================================================
+    // This automatically:
+    // 1. Detects all tables from your Models
+    // 2. Creates tables that don't exist
+    // 3. Adds new columns to existing tables
+    // 4. Runs custom migrations
+    //
+    // Just define your Models and call this endpoint!
+    // ============================================================
+    const result = await autoInit({
+      driver,
+      schema: tables,
+      customMigrations: appMigrations,
+      verbose: true,
     });
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Database initialization error:", error);
     return NextResponse.json(
