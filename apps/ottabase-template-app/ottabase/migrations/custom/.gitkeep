@@ -1,0 +1,5 @@
+# Custom SQL Migrations
+
+Place your custom SQL migration files here.
+
+Naming: `0000_description.sql`, `0001_another.sql`, etc.
