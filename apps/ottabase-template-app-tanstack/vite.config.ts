@@ -56,6 +56,26 @@ export default defineConfig(async () => {
     build: {
       outDir: "dist",
       sourcemap: true,
+      chunkSizeWarningLimit: 1500,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            mantine: [
+              "@mantine/core",
+              "@mantine/hooks",
+              "@mantine/modals",
+              "@mantine/notifications",
+              "@mantine/carousel",
+            ],
+            tanstack: [
+              "@tanstack/react-query",
+              "@tanstack/react-query-devtools",
+              "@tanstack/react-router",
+            ],
+            ottaeditor: ["@ottabase/ottaeditor"],
+          },
+        },
+      },
     },
     server: {
       port: 5174,

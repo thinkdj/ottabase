@@ -28,6 +28,7 @@ catalog:
   "@typescript-eslint/eslint-plugin": ^8.48.1
   "@typescript-eslint/parser": ^8.48.1
   autoprefixer: ^10.4.21
+  baseline-browser-mapping: ^2.9.11
   babel-loader: ^10.0.0
   class-variance-authority: ^0.7.0
   clsx: ^2.1.0

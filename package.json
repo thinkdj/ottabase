@@ -33,6 +33,7 @@
     "@storybook/addon-links": "catalog:",
     "@storybook/addon-styling-webpack": "catalog:",
     "@storybook/react-webpack5": "catalog:",
+    "baseline-browser-mapping": "catalog:",
     "@typescript-eslint/eslint-plugin": "catalog:",
     "@typescript-eslint/parser": "catalog:",
     "babel-loader": "catalog:",
