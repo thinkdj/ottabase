@@ -141,20 +141,13 @@ async function getExistingTables(driver: DbDriver): Promise<Set<string>> {
  * Get column information for an existing table
  */
 async function getTableColumns(driver: DbDriver, tableName: string): Promise<Set<string>> {
-  try:
+  try {
     if (!driver.executeRaw) {
       throw new Error('Driver does not support executeRaw - required for automated migrations');
     }
 
     const quotedTableName = quoteIdentifier(tableName);
     const result = await driver.executeRaw(`PRAGMA table_info(${quotedTableName})`);
-=======
-    if (!driver.executeRaw) {
-      throw new Error('Driver does not support executeRaw - required for automated migrations');
-    }
-
-    const result = await driver.executeRaw(`PRAGMA table_info(${tableName})`);
->>>>>>> 1c5b1ac (fix: Add executeRaw to DbDriver interface and add runtime checks)
 
     const columns = new Set<string>();
     if (result.results && Array.isArray(result.results)) {
