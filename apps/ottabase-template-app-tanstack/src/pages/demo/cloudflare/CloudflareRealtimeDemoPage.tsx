@@ -11,6 +11,8 @@ import {
     Textarea,
     toast,
 } from "@ottabase/ui-shadcn";
+import { api, ApiError, isApiError } from "@/lib/api";
+import { ApiErrorDisplay } from "@/components/ErrorBoundary";
 
 interface Message {
     id: string;
@@ -27,13 +29,6 @@ interface Stats {
     offlineMessagesQueued: number;
 }
 
-interface ServiceError {
-    error: string;
-    details?: string;
-    hint?: string;
-    environment?: string;
-}
-
 export function CloudflareRealtimeDemoPage() {
     const [client, setClient] = useState<RealtimeClient | null>(null);
     const [connectionState, setConnectionState] = useState<ConnectionState>(
@@ -43,7 +38,7 @@ export function CloudflareRealtimeDemoPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [serviceError, setServiceError] = useState<ServiceError | null>(null);
+    const [serviceError, setServiceError] = useState<ApiError | null>(null);
 
     const [channelToSubscribe, setChannelToSubscribe] = useState("");
     const [broadcastChannel, setBroadcastChannel] = useState("");
@@ -148,44 +143,36 @@ export function CloudflareRealtimeDemoPage() {
                 data = broadcastData;
             }
 
-            const response = await fetch("/api/cloudflare/realtime/broadcast", {
+            await api("/api/cloudflare/realtime/broadcast", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+                body: {
                     channels,
                     event: broadcastEvent,
                     data,
                     persistForOffline: persistOffline,
-                }),
+                },
             });
-
-            if (!response.ok) {
-                const result = (await response.json()) as { error?: string };
-                throw new Error(result.error || "Failed to broadcast");
-            }
 
             await fetchStats();
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "Failed to broadcast";
+            // API errors are automatically shown via toast by the global handler
+            // Just update local error state for inline display
+            const errorMessage = isApiError(err) ? err.message : "Failed to broadcast";
             setError(errorMessage);
-            toast.error("Broadcast failed", { description: errorMessage });
         }
     };
 
     const fetchStats = async () => {
         try {
-            const response = await fetch("/api/cloudflare/realtime/stats");
-            if (response.ok) {
-                const data = (await response.json()) as Stats;
-                setStats(data);
-                setServiceError(null);
-            } else if (response.status === 501) {
-                const errorData = (await response.json()) as ServiceError;
-                setServiceError(errorData);
+            const data = await api<Stats>("/api/cloudflare/realtime/stats");
+            setStats(data);
+            setServiceError(null);
+        } catch (err) {
+            if (isApiError(err) && err.status === 501) {
+                setServiceError(err);
                 setStats(null);
             }
-        } catch {
-            // Network errors are silently ignored (offline, etc.)
+            // Other errors are silently ignored (network errors, etc.)
         }
     };
 
@@ -215,21 +202,7 @@ export function CloudflareRealtimeDemoPage() {
             </div>
 
             {serviceError ? (
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 space-y-2">
-                    <p className="font-medium text-amber-700 dark:text-amber-400">
-                        {serviceError.error}
-                    </p>
-                    {serviceError.details && (
-                        <p className="text-sm text-amber-600 dark:text-amber-500">
-                            {serviceError.details}
-                        </p>
-                    )}
-                    {serviceError.hint && (
-                        <p className="text-sm font-mono bg-amber-500/10 rounded px-2 py-1 inline-block text-amber-700 dark:text-amber-400">
-                            {serviceError.hint}
-                        </p>
-                    )}
-                </div>
+                <ApiErrorDisplay error={serviceError} />
             ) : (
                 <div className="rounded-lg border bg-muted/50 p-4">
                     <p className="text-sm text-muted-foreground">
