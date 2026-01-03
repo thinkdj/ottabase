@@ -160,6 +160,8 @@ export async function autoInit(config: AutoInitConfig): Promise<{
  * import * as schema from './db/schema';
  * const tables = collectTableSchemas(schema);
  */
+export function collectTableSchemas(schemaObject: Record<string, unknown>): Record<string, SQLiteTable>;
+export function collectTableSchemas(schemaObject: any): Record<string, SQLiteTable>;
 export function collectTableSchemas(schemaObject: Record<string, unknown> | any): Record<string, SQLiteTable> {
   const tables: Record<string, SQLiteTable> = {};
 

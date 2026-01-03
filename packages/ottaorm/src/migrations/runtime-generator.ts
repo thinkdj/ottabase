@@ -259,9 +259,21 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
             // Extract column name from ALTER TABLE ... ADD COLUMN statement
             const columnMatch = alterSQL.match(/ADD\s+COLUMN\s+(".*?"|`.*?`|\[.*?\]|\S+)/i);
             const rawColumnName = columnMatch?.[1];
-            const cleanedColumnName = rawColumnName
-              ? rawColumnName.replace(/^["`\[]/, '').replace(/["`\]]$/, '')
-              : 'unknown_column';
+            let cleanedColumnName = 'unknown_column';
+            
+            if (rawColumnName) {
+              // Remove quotes/brackets: handle each type specifically
+              if (rawColumnName.startsWith('"') && rawColumnName.endsWith('"')) {
+                cleanedColumnName = rawColumnName.slice(1, -1);
+              } else if (rawColumnName.startsWith('`') && rawColumnName.endsWith('`')) {
+                cleanedColumnName = rawColumnName.slice(1, -1);
+              } else if (rawColumnName.startsWith('[') && rawColumnName.endsWith(']')) {
+                cleanedColumnName = rawColumnName.slice(1, -1);
+              } else {
+                cleanedColumnName = rawColumnName;
+              }
+            }
+            
             result.columnsAdded.push(`${tableName}.${cleanedColumnName}`);
           } catch (error: any) {
             const errorMsg = `Failed to alter table ${tableName}: ${error.message}`;
