@@ -169,9 +169,9 @@ export async function generateMigrations(config: MigrationGeneratorConfig): Prom
     // Must be a relative path starting with ./ or a simple filename, no .. allowed anywhere
     // Allow dots in filename for configs like drizzle.dev.config.ts
     const isValidPath = (
-      /^\.\/[\w./-]+\.(ts|js)$/.test(normalizedPath) || // Relative path: ./some/path/file.ts
-      /^[\w.-]+\.(ts|js)$/.test(normalizedPath)         // Simple path: drizzle.config.ts or drizzle.dev.config.ts
-    ) && !/\.\./.test(normalizedPath);                  // No .. anywhere in path
+      /^\.\/(?:[\w.-]+\/)*[\w.-]+\.(ts|js)$/.test(normalizedPath) || // Relative path: ./some/path/file.ts
+      /^[\w.-]+\.(ts|js)$/.test(normalizedPath)                      // Simple path: drizzle.config.ts or drizzle.dev.config.ts
+    ) && !/\.\./.test(normalizedPath);                               // No .. anywhere in path
     
     if (!isValidPath) {
       throw new Error('Invalid drizzle config path: must be a .ts or .js file with no directory traversal patterns');
