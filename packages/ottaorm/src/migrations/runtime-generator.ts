@@ -108,10 +108,11 @@ function generateCreateTableSQL(table: SQLiteTable): string {
 async function getExistingTables(driver: DbDriver): Promise<Set<string>> {
   try {
     // Use parameterized query to avoid SQL injection
+    // Exclude system tables (sqlite_*) and migration tracking tables (_ottabase_*)
     const result = await driver.executeRaw(`
       SELECT name FROM sqlite_master
-      WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE ?
-    `, [`${MIGRATION_TABLE_NAME.substring(0, 10)}%`]);
+      WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_ottabase_%'
+    `);
 
     const tables = new Set<string>();
     if (result.results && Array.isArray(result.results)) {
