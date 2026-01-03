@@ -260,20 +260,22 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
             const columnMatch = alterSQL.match(/ADD\s+COLUMN\s+(".*?"|`.*?`|\[.*?\]|\S+)/i);
             const rawColumnName = columnMatch?.[1];
             let cleanedColumnName = 'unknown_column';
-            
+
             if (rawColumnName) {
-              // Remove quotes/brackets: handle each type specifically
+              // Remove quotes/brackets and unescape internal doubled characters
               if (rawColumnName.startsWith('"') && rawColumnName.endsWith('"')) {
-                cleanedColumnName = rawColumnName.slice(1, -1);
+                // Double-quoted identifier: "" inside becomes "
+                cleanedColumnName = rawColumnName.slice(1, -1).replace(/""/g, '"');
               } else if (rawColumnName.startsWith('`') && rawColumnName.endsWith('`')) {
-                cleanedColumnName = rawColumnName.slice(1, -1);
+                // Backtick-quoted identifier: `` inside becomes `
+                cleanedColumnName = rawColumnName.slice(1, -1).replace(/``/g, '`');
               } else if (rawColumnName.startsWith('[') && rawColumnName.endsWith(']')) {
-                cleanedColumnName = rawColumnName.slice(1, -1);
+                // Bracket-quoted identifier: ]] inside becomes ]
+                cleanedColumnName = rawColumnName.slice(1, -1).replace(/]]/g, ']');
               } else {
                 cleanedColumnName = rawColumnName;
               }
             }
-            
             result.columnsAdded.push(`${tableName}.${cleanedColumnName}`);
           } catch (error: any) {
             const errorMsg = `Failed to alter table ${tableName}: ${error.message}`;
