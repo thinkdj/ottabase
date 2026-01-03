@@ -22,7 +22,7 @@ import type { Migration } from "@ottabase/ottaorm";
 /**
  * Custom migrations
  *
- * These run AFTER auto-generated table migrations.
+ * These run AFTER automatic table creation from Models.
  * Add your custom SQL migrations here.
  *
  * @example

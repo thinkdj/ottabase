@@ -13,7 +13,6 @@
 // ============================================================
 
 import { generateAllMigrations, generateSchema, generateMigrations, bundleMigrations } from '../src/migrations/auto-generator';
-import * as path from 'path';
 
 const command = process.argv[2] || 'all';
 

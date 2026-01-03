@@ -162,8 +162,24 @@ export async function generateMigrations(config: MigrationGeneratorConfig): Prom
   console.log('\n🔨 Generating migrations with Drizzle Kit...');
 
   try {
-    // Run drizzle-kit generate
-    const { stdout, stderr } = await execAsync(`pnpm drizzle-kit generate --config=${drizzleConfigPath}`);
+    // Normalize path separators to forward slashes to prevent platform-specific issues
+    const normalizedPath = drizzleConfigPath.replace(/\\/g, '/');
+    
+    // Validate config path to prevent command injection and directory traversal
+    // Must be a relative path starting with ./ or a simple filename, no .. allowed anywhere
+    // Allow dots in filename for configs like drizzle.dev.config.ts
+    const isValidPath = (
+      /^\.\/(?:[\w.-]+\/)*[\w.-]+\.(ts|js)$/.test(normalizedPath) || // Relative path: ./some/path/file.ts
+      /^[\w.-]+\.(ts|js)$/.test(normalizedPath)                      // Simple path: drizzle.config.ts or drizzle.dev.config.ts
+    ) && !/\.\./.test(normalizedPath);                               // No .. anywhere in path
+    
+    if (!isValidPath) {
+      throw new Error('Invalid drizzle config path: must be a .ts or .js file with no directory traversal patterns');
+    }
+    
+    // Use single quotes to prevent shell expansion of special characters
+    // Proper shell escaping: close quote, add escaped quote, reopen quote: ' -> '\''
+    const { stdout, stderr } = await execAsync(`pnpm drizzle-kit generate --config='${normalizedPath.replace(/'/g, "'\\''")}'`);
 
     if (stdout) console.log(stdout);
     if (stderr) console.error(stderr);
@@ -252,7 +268,6 @@ ${customSqlFiles.length > 0 ? `// ==============================================
 // CUSTOM MIGRATIONS
 // ============================================================
 ${customSqlFiles.map((file, i) => {
-  const name = file.replace('.sql', '');
   return `import custom${i}Sql from './custom/${file}?raw';`;
 }).join('\n')}
 ` : ''}
@@ -260,7 +275,6 @@ ${generatedSqlFiles.length > 0 ? `// ===========================================
 // GENERATED MIGRATIONS
 // ============================================================
 ${generatedSqlFiles.map((file, i) => {
-  const name = file.replace('.sql', '');
   return `import generated${i}Sql from './generated/${file}?raw';`;
 }).join('\n')}
 ` : ''}

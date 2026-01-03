@@ -10,9 +10,30 @@
 // ============================================================
 
 import { type DbDriver } from '@ottabase/db';
-import { sql } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
+
+/**
+ * Migration tracking table name constant
+ */
+const MIGRATION_TABLE_NAME = '_ottabase_migrations';
+
+/**
+ * Escape single quotes in string values for SQL
+ */
+function escapeSQLString(value: string): string {
+  return value.replace(/'/g, "''");
+}
+
+/**
+ * Quote SQLite identifier (table name, column name, etc.)
+ */
+function quoteIdentifier(identifier: string): string {
+  if (typeof identifier !== 'string') {
+    throw new TypeError('quoteIdentifier: identifier must be a string');
+  }
+  return `"${identifier.replace(/"/g, '""')}"`;
+}
 
 export interface RuntimeMigrationConfig {
   /**
@@ -49,7 +70,7 @@ function generateCreateTableSQL(table: SQLiteTable): string {
   const columns = config.columns;
 
   const columnDefs = columns.map(col => {
-    let def = `${col.name} ${col.getSQLType()}`;
+    let def = `${quoteIdentifier(col.name)} ${col.getSQLType()}`;
 
     // Primary key
     if (col.primary) {
@@ -69,7 +90,8 @@ function generateCreateTableSQL(table: SQLiteTable): string {
     // Default value (simplified - Drizzle handles this via $defaultFn)
     if (col.default !== undefined && col.default !== null) {
       if (typeof col.default === 'string') {
-        def += ` DEFAULT '${col.default}'`;
+        const escapedDefault = escapeSQLString(col.default);
+        def += ` DEFAULT '${escapedDefault}'`;
       } else if (typeof col.default === 'number') {
         def += ` DEFAULT ${col.default}`;
       } else if (typeof col.default === 'boolean') {
@@ -80,7 +102,7 @@ function generateCreateTableSQL(table: SQLiteTable): string {
     return def;
   });
 
-  return `CREATE TABLE IF NOT EXISTS ${tableName} (\n  ${columnDefs.join(',\n  ')}\n)`;
+  return `CREATE TABLE IF NOT EXISTS ${quoteIdentifier(tableName)} (\n  ${columnDefs.join(',\n  ')}\n)`;
 }
 
 /**
@@ -88,6 +110,8 @@ function generateCreateTableSQL(table: SQLiteTable): string {
  */
 async function getExistingTables(driver: DbDriver): Promise<Set<string>> {
   try {
+    // Query system tables to get list of user tables
+    // Exclude system tables (sqlite_*) and migration tracking tables (_ottabase_*)
     const result = await driver.executeRaw(`
       SELECT name FROM sqlite_master
       WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_ottabase_%'
@@ -114,7 +138,8 @@ async function getExistingTables(driver: DbDriver): Promise<Set<string>> {
  */
 async function getTableColumns(driver: DbDriver, tableName: string): Promise<Set<string>> {
   try {
-    const result = await driver.executeRaw(`PRAGMA table_info(${tableName})`);
+    const quotedTableName = quoteIdentifier(tableName);
+    const result = await driver.executeRaw(`PRAGMA table_info(${quotedTableName})`);
 
     const columns = new Set<string>();
     if (result.results && Array.isArray(result.results)) {
@@ -142,14 +167,15 @@ function generateAddColumnSQL(tableName: string, table: SQLiteTable, existingCol
 
   for (const col of columns) {
     if (!existingColumns.has(col.name)) {
-      let def = `${col.name} ${col.getSQLType()}`;
+      let def = `${quoteIdentifier(col.name)} ${col.getSQLType()}`;
 
       // Note: SQLite has limitations on ALTER TABLE
       // We can't add NOT NULL columns without a DEFAULT value
       if (!col.notNull || col.default !== undefined) {
         if (col.default !== undefined && col.default !== null) {
           if (typeof col.default === 'string') {
-            def += ` DEFAULT '${col.default}'`;
+            const escapedDefault = escapeSQLString(col.default);
+            def += ` DEFAULT '${escapedDefault}'`;
           } else if (typeof col.default === 'number') {
             def += ` DEFAULT ${col.default}`;
           } else if (typeof col.default === 'boolean') {
@@ -161,7 +187,7 @@ function generateAddColumnSQL(tableName: string, table: SQLiteTable, existingCol
           def += ' NOT NULL';
         }
 
-        alterStatements.push(`ALTER TABLE ${tableName} ADD COLUMN ${def}`);
+        alterStatements.push(`ALTER TABLE ${quoteIdentifier(tableName)} ADD COLUMN ${def}`);
       } else {
         console.warn(`⚠️  Cannot add NOT NULL column '${col.name}' to existing table '${tableName}' without DEFAULT value`);
         console.warn(`   Add a DEFAULT value to the column definition or handle the migration manually`);
@@ -199,7 +225,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
     }
 
     // Process each table from Models
-    for (const [key, table] of Object.entries(tables)) {
+    for (const table of Object.values(tables)) {
       const config = getTableConfig(table);
       const tableName = config.name;
 
@@ -233,7 +259,27 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
 
           try {
             await driver.executeRaw(alterSQL);
-            result.columnsAdded.push(`${tableName}.${alterSQL.match(/ADD COLUMN (\w+)/)?.[1]}`);
+            // Extract column name from ALTER TABLE ... ADD COLUMN statement
+            const columnMatch = alterSQL.match(/ADD\s+COLUMN\s+("(?:""|[^"])*"|`(?:``|[^`])*`|\[(?:\]\]|[^\]])*\]|\S+)/i);
+            const rawColumnName = columnMatch?.[1];
+            let cleanedColumnName = 'unknown_column';
+
+            if (rawColumnName) {
+              // Remove quotes/brackets and unescape internal doubled characters
+              if (rawColumnName.startsWith('"') && rawColumnName.endsWith('"')) {
+                // Double-quoted identifier: "" inside becomes "
+                cleanedColumnName = rawColumnName.slice(1, -1).replace(/""/g, '"');
+              } else if (rawColumnName.startsWith('`') && rawColumnName.endsWith('`')) {
+                // Backtick-quoted identifier: `` inside becomes `
+                cleanedColumnName = rawColumnName.slice(1, -1).replace(/``/g, '`');
+              } else if (rawColumnName.startsWith('[') && rawColumnName.endsWith(']')) {
+                // Bracket-quoted identifier: ]] inside becomes ]
+                cleanedColumnName = rawColumnName.slice(1, -1).replace(/]]/g, ']');
+              } else {
+                cleanedColumnName = rawColumnName;
+              }
+            }
+            result.columnsAdded.push(`${tableName}.${cleanedColumnName}`);
           } catch (error: any) {
             const errorMsg = `Failed to alter table ${tableName}: ${error.message}`;
             result.errors.push(errorMsg);
@@ -246,8 +292,9 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
     // Run custom migrations
     if (customMigrations.length > 0) {
       // Ensure migration tracking table exists
+      const quotedMigrationTable = quoteIdentifier(MIGRATION_TABLE_NAME);
       await driver.executeRaw(`
-        CREATE TABLE IF NOT EXISTS _ottabase_migrations (
+        CREATE TABLE IF NOT EXISTS ${quotedMigrationTable} (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL UNIQUE,
           executed_at INTEGER NOT NULL,
@@ -258,7 +305,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
       for (const migration of customMigrations) {
         // Check if already executed
         const existingResult = await driver.executeRaw(
-          `SELECT name FROM _ottabase_migrations WHERE name = ?`,
+          `SELECT name FROM ${quotedMigrationTable} WHERE name = ?`,
           [migration.name]
         );
 
@@ -274,7 +321,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
 
             // Record execution
             await driver.executeRaw(
-              `INSERT INTO _ottabase_migrations (name, executed_at) VALUES (?, ?)`,
+              `INSERT INTO ${quotedMigrationTable} (name, executed_at) VALUES (?, ?)`,
               [migration.name, Date.now()]
             );
 
