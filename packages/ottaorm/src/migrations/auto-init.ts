@@ -182,7 +182,7 @@ export function collectTableSchemas(schemaObject: Record<string, unknown> | any)
 
 /**
  * Type guard to check if a value is a SQLite table-like object
- * Checks for common Drizzle table properties to reduce false positives
+ * Uses duck typing to check for Drizzle table characteristics
  */
 function isSQLiteTableLike(value: unknown): value is SQLiteTable {
   if (!value || typeof value !== 'object') {
@@ -191,14 +191,13 @@ function isSQLiteTableLike(value: unknown): value is SQLiteTable {
   
   const obj = value as Record<string, unknown>;
   
-  // Drizzle tables have these key properties:
+  // Drizzle tables have these characteristics:
   // - name: string (table name)
-  // - Symbol.for('drizzle:Name'): string
-  // Additionally check that it's not a plain object (has symbols or methods)
+  // - They are not plain objects (have symbols or are class instances)
   return (
     'name' in obj &&
     typeof obj.name === 'string' &&
-    // Check for Drizzle-specific symbol or non-plain object characteristics
-    (Symbol.for('drizzle:Name') in obj || Object.getOwnPropertySymbols(obj).length > 0)
+    // Check that it's not a plain object literal
+    (Object.getOwnPropertySymbols(obj).length > 0 || obj.constructor !== Object)
   );
 }
