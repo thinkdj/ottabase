@@ -67,7 +67,7 @@ function generateCreateTableSQL(table: SQLiteTable): string {
   const columns = config.columns;
 
   const columnDefs = columns.map(col => {
-    let def = `${col.name} ${col.getSQLType()}`;
+    let def = `${quoteIdentifier(col.name)} ${col.getSQLType()}`;
 
     // Primary key
     if (col.primary) {
@@ -99,7 +99,7 @@ function generateCreateTableSQL(table: SQLiteTable): string {
     return def;
   });
 
-  return `CREATE TABLE IF NOT EXISTS ${tableName} (\n  ${columnDefs.join(',\n  ')}\n)`;
+  return `CREATE TABLE IF NOT EXISTS ${quoteIdentifier(tableName)} (\n  ${columnDefs.join(',\n  ')}\n)`;
 }
 
 /**
@@ -164,7 +164,7 @@ function generateAddColumnSQL(tableName: string, table: SQLiteTable, existingCol
 
   for (const col of columns) {
     if (!existingColumns.has(col.name)) {
-      let def = `${col.name} ${col.getSQLType()}`;
+      let def = `${quoteIdentifier(col.name)} ${col.getSQLType()}`;
 
       // Note: SQLite has limitations on ALTER TABLE
       // We can't add NOT NULL columns without a DEFAULT value
@@ -184,7 +184,7 @@ function generateAddColumnSQL(tableName: string, table: SQLiteTable, existingCol
           def += ' NOT NULL';
         }
 
-        alterStatements.push(`ALTER TABLE ${tableName} ADD COLUMN ${def}`);
+        alterStatements.push(`ALTER TABLE ${quoteIdentifier(tableName)} ADD COLUMN ${def}`);
       } else {
         console.warn(`⚠️  Cannot add NOT NULL column '${col.name}' to existing table '${tableName}' without DEFAULT value`);
         console.warn(`   Add a DEFAULT value to the column definition or handle the migration manually`);

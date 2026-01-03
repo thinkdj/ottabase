@@ -166,15 +166,14 @@ export async function generateMigrations(config: MigrationGeneratorConfig): Prom
     const normalizedPath = drizzleConfigPath.replace(/\\/g, '/');
     
     // Validate config path to prevent command injection and directory traversal
-    // Allow only safe characters: alphanumeric, dots, forward slashes, hyphens, underscores
-    // Prevent directory traversal patterns like ../
-    if (!/^[\w./-]+$/.test(normalizedPath) || /\.\.\//.test(normalizedPath)) {
-      throw new Error('Invalid drizzle config path: contains unsafe characters or directory traversal patterns');
-    }
+    // Must be a relative path starting with ./ or an absolute path, no .. allowed anywhere
+    const isValidPath = (
+      /^\.\/[\w/-]+\.(ts|js)$/.test(normalizedPath) || // Relative path: ./some/path/file.ts
+      /^[\w/-]+\.(ts|js)$/.test(normalizedPath)         // Simple path: drizzle.config.ts
+    ) && !/\.\./.test(normalizedPath);                  // No .. anywhere in path
     
-    // Additional validation: ensure it ends with .ts or .js
-    if (!/\.(ts|js)$/.test(normalizedPath)) {
-      throw new Error('Invalid drizzle config path: must be a .ts or .js file');
+    if (!isValidPath) {
+      throw new Error('Invalid drizzle config path: must be a .ts or .js file with no directory traversal patterns');
     }
     
     // Use single quotes to prevent shell expansion of special characters
