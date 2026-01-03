@@ -9,6 +9,7 @@ import {
     CardTitle,
     Input,
     Textarea,
+    toast,
 } from "@ottabase/ui-shadcn";
 
 interface Message {
@@ -26,6 +27,13 @@ interface Stats {
     offlineMessagesQueued: number;
 }
 
+interface ServiceError {
+    error: string;
+    details?: string;
+    hint?: string;
+    environment?: string;
+}
+
 export function CloudflareRealtimeDemoPage() {
     const [client, setClient] = useState<RealtimeClient | null>(null);
     const [connectionState, setConnectionState] = useState<ConnectionState>(
@@ -35,6 +43,7 @@ export function CloudflareRealtimeDemoPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [serviceError, setServiceError] = useState<ServiceError | null>(null);
 
     const [channelToSubscribe, setChannelToSubscribe] = useState("");
     const [broadcastChannel, setBroadcastChannel] = useState("");
@@ -70,7 +79,9 @@ export function CloudflareRealtimeDemoPage() {
             setClient(realtimeClient);
             clientRef.current = realtimeClient;
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to connect");
+            const errorMessage = err instanceof Error ? err.message : "Failed to connect";
+            setError(errorMessage);
+            toast.error("Connection failed", { description: errorMessage });
         }
     };
 
@@ -155,7 +166,9 @@ export function CloudflareRealtimeDemoPage() {
 
             await fetchStats();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to broadcast");
+            const errorMessage = err instanceof Error ? err.message : "Failed to broadcast";
+            setError(errorMessage);
+            toast.error("Broadcast failed", { description: errorMessage });
         }
     };
 
@@ -165,9 +178,14 @@ export function CloudflareRealtimeDemoPage() {
             if (response.ok) {
                 const data = (await response.json()) as Stats;
                 setStats(data);
+                setServiceError(null);
+            } else if (response.status === 501) {
+                const errorData = (await response.json()) as ServiceError;
+                setServiceError(errorData);
+                setStats(null);
             }
         } catch {
-            // ignore
+            // Network errors are silently ignored (offline, etc.)
         }
     };
 
@@ -196,12 +214,30 @@ export function CloudflareRealtimeDemoPage() {
                 </p>
             </div>
 
-            <div className="rounded-lg border bg-muted/50 p-4">
-                <p className="text-sm text-muted-foreground">
-                    Durable Objects may require deployment to test (depending on your local
-                    Wrangler setup).
-                </p>
-            </div>
+            {serviceError ? (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 space-y-2">
+                    <p className="font-medium text-amber-700 dark:text-amber-400">
+                        {serviceError.error}
+                    </p>
+                    {serviceError.details && (
+                        <p className="text-sm text-amber-600 dark:text-amber-500">
+                            {serviceError.details}
+                        </p>
+                    )}
+                    {serviceError.hint && (
+                        <p className="text-sm font-mono bg-amber-500/10 rounded px-2 py-1 inline-block text-amber-700 dark:text-amber-400">
+                            {serviceError.hint}
+                        </p>
+                    )}
+                </div>
+            ) : (
+                <div className="rounded-lg border bg-muted/50 p-4">
+                    <p className="text-sm text-muted-foreground">
+                        Durable Objects may require deployment to test (depending on your local
+                        Wrangler setup).
+                    </p>
+                </div>
+            )}
 
             {error ? (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
@@ -231,8 +267,12 @@ export function CloudflareRealtimeDemoPage() {
                             </div>
 
                             {!client ? (
-                                <Button onClick={handleConnect} className="w-full">
-                                    Connect
+                                <Button
+                                    onClick={handleConnect}
+                                    className="w-full"
+                                    disabled={!!serviceError}
+                                >
+                                    {serviceError ? "Service Unavailable" : "Connect"}
                                 </Button>
                             ) : (
                                 <Button onClick={handleDisconnect} variant="destructive" className="w-full">
@@ -331,7 +371,11 @@ export function CloudflareRealtimeDemoPage() {
                                 </span>
                             </label>
 
-                            <Button onClick={handleBroadcast} disabled={!broadcastChannel || !broadcastEvent} className="w-full">
+                            <Button
+                                onClick={handleBroadcast}
+                                disabled={!broadcastChannel || !broadcastEvent || !!serviceError}
+                                className="w-full"
+                            >
                                 Broadcast
                             </Button>
                         </CardContent>
@@ -387,7 +431,11 @@ export function CloudflareRealtimeDemoPage() {
                             <CardTitle className="text-base">System Stats</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            {stats ? (
+                            {serviceError ? (
+                                <p className="text-sm text-muted-foreground">
+                                    Stats unavailable - service not configured
+                                </p>
+                            ) : stats ? (
                                 <div className="space-y-3 text-sm">
                                     <div className="flex justify-between">
                                         <span className="text-muted-foreground">Total Connections:</span>
