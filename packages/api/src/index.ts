@@ -302,13 +302,17 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
       // Handle empty responses
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        // Return empty object for non-JSON responses
-        return {} as T;
+        // For non-JSON responses, there is no typed payload. Callers should use
+        // a union type (e.g. `T | void`) when invoking this helper for endpoints
+        // that may return non-JSON or empty bodies.
+        return undefined as unknown as T;
       }
 
       // Handle 204 No Content
       if (response.status === 204) {
-        return {} as T;
+        // 204 responses are defined to have no body. Callers should use a union
+        // type (e.g. `T | void`) for endpoints that may return 204.
+        return undefined as unknown as T;
       }
 
       return await response.json();
