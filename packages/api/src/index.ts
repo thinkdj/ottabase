@@ -151,6 +151,17 @@ export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
   headers?: Record<string, string>;
 }
 
+/** HTTP methods supported by the shorthand syntax */
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+/** API function signature with overloads for shorthand method syntax */
+export interface ApiFunction {
+  /** Standard call with options object */
+  <T = unknown>(endpoint: string, options?: ApiRequestOptions): Promise<T>;
+  /** Shorthand call with just HTTP method */
+  <T = unknown>(endpoint: string, method: HttpMethod): Promise<T>;
+}
+
 // ============================================================
 // API Client Factory
 // ============================================================
@@ -171,9 +182,13 @@ export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
  * const user = await api<User>("/users/me");
  * const posts = await api<Post[]>("/posts", { params: { limit: 10 } });
  * await api("/posts", { method: "POST", body: { title: "Hello" } });
+ *
+ * // Shorthand syntax for simple method calls
+ * await api("/posts/1", "DELETE");
+ * await api("/posts/1", "GET");
  * ```
  */
-export function createApiClient(config: ApiClientConfig = {}) {
+export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
   const {
     baseUrl = "",
     getAuthToken,
@@ -185,8 +200,14 @@ export function createApiClient(config: ApiClientConfig = {}) {
 
   return async function api<T = unknown>(
     endpoint: string,
-    options: ApiRequestOptions = {},
+    optionsOrMethod: ApiRequestOptions | HttpMethod = {},
   ): Promise<T> {
+    // Handle shorthand method syntax: api("/path", "DELETE")
+    const options: ApiRequestOptions =
+      typeof optionsOrMethod === "string"
+        ? { method: optionsOrMethod }
+        : optionsOrMethod;
+
     const {
       skipAuth = false,
       params,
@@ -344,10 +365,17 @@ export function createApiClient(config: ApiClientConfig = {}) {
  * ```typescript
  * import { api } from "@ottabase/api";
  *
+ * // Standard call
  * const data = await api<{ message: string }>("/api/health");
+ *
+ * // With options
+ * await api("/api/posts", { method: "POST", body: { title: "Hello" } });
+ *
+ * // Shorthand for simple method calls
+ * await api("/api/posts/1", "DELETE");
  * ```
  */
-export const api = createApiClient();
+export const api: ApiFunction = createApiClient();
 
 // ============================================================
 // Type Guards

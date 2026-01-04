@@ -77,6 +77,10 @@ function handleApiError(error: ApiError): void {
  *   body: { title: "Hello", content: "World" }
  * });
  *
+ * // Shorthand syntax for simple method calls
+ * await api("/api/posts/1", "DELETE");
+ * await api("/api/posts/1", "GET");
+ *
  * // Skip global error handling for local handling
  * try {
  *   await api("/api/sensitive", { skipAuth: true });
@@ -101,4 +105,4 @@ export const api = createApiClient({
 
 // Re-export types for convenience
 export { ApiError, isApiError, getErrorMessage, getErrorMessages } from "@ottabase/api";
-export type { ApiErrorResponse, ApiClientConfig, ApiRequestOptions } from "@ottabase/api";
+export type { ApiErrorResponse, ApiClientConfig, ApiRequestOptions, HttpMethod, ApiFunction } from "@ottabase/api";
