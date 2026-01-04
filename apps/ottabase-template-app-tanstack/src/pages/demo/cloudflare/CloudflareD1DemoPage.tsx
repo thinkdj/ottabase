@@ -8,6 +8,7 @@ import {
     CardTitle,
     Input,
 } from "@ottabase/ui-shadcn";
+import { api, isApiError } from "@/lib/api";
 
 interface Todo {
     id: string;
@@ -37,17 +38,11 @@ export function CloudflareD1DemoPage() {
     const initializeDb = async () => {
         try {
             setLoading(true);
-            const response = await fetch("/api/cloudflare/d1/init", { method: "POST" });
-
-            if (!response.ok) {
-                const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to initialize database");
-            }
-
+            await api("/api/cloudflare/d1/init", { method: "POST" });
             setDbReady(true);
             await loadTodos();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : "Unknown error");
         } finally {
             setLoading(false);
         }
@@ -56,20 +51,13 @@ export function CloudflareD1DemoPage() {
     const loadTodos = async () => {
         try {
             setLoading(true);
-            const response = await fetch("/api/cloudflare/d1/todos");
-
-            if (!response.ok) {
-                const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to load todos");
-            }
-
-            const data = (await response.json()) as { todos: TodoResponse[] };
+            const data = await api<{ todos: TodoResponse[] }>("/api/cloudflare/d1/todos");
             // Extract the actual todo data from the nested response
             const extractedTodos = data.todos.map((item) => item.data);
             setTodos(extractedTodos);
             setError(null);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : "Unknown error");
         } finally {
             setLoading(false);
         }
@@ -81,22 +69,15 @@ export function CloudflareD1DemoPage() {
 
         try {
             setLoading(true);
-            const response = await fetch("/api/cloudflare/d1/todos", {
+            await api("/api/cloudflare/d1/todos", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title: newTodo }),
+                body: { title: newTodo },
             });
-
-            if (!response.ok) {
-                const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to add todo");
-            }
-
             setNewTodo("");
             await loadTodos();
             setError(null);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : "Unknown error");
         } finally {
             setLoading(false);
         }
@@ -105,21 +86,14 @@ export function CloudflareD1DemoPage() {
     const toggleTodo = async (id: string, completed: boolean) => {
         try {
             setLoading(true);
-            const response = await fetch(`/api/cloudflare/d1/todos/${id}`, {
+            await api(`/api/cloudflare/d1/todos/${id}`, {
                 method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ completed: !completed }),
+                body: { completed: !completed },
             });
-
-            if (!response.ok) {
-                const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to update todo");
-            }
-
             await loadTodos();
             setError(null);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : "Unknown error");
         } finally {
             setLoading(false);
         }
@@ -128,19 +102,11 @@ export function CloudflareD1DemoPage() {
     const deleteTodo = async (id: string) => {
         try {
             setLoading(true);
-            const response = await fetch(`/api/cloudflare/d1/todos/${id}`, {
-                method: "DELETE",
-            });
-
-            if (!response.ok) {
-                const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to delete todo");
-            }
-
+            await api(`/api/cloudflare/d1/todos/${id}`, { method: "DELETE" });
             await loadTodos();
             setError(null);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : "Unknown error");
         } finally {
             setLoading(false);
         }

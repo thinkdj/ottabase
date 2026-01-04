@@ -1,4 +1,3 @@
-export * from "./api";
 export * from "./browser";
 export * from "./currency";
 export * from "./email";

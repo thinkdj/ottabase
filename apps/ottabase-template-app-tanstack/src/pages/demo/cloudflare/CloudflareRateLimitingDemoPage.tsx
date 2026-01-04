@@ -9,6 +9,7 @@ import {
     Input,
     Progress,
 } from "@ottabase/ui-shadcn";
+import { api, isApiError } from "@/lib/api";
 
 interface RateLimitResult {
     success: boolean;
@@ -31,45 +32,41 @@ export function CloudflareRateLimitingDemoPage() {
             setLoading(true);
             setError(null);
 
-            const response = await fetch("/api/cloudflare/rate-limiting", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ key }),
-            });
-
-            const data = (await response.json()) as {
+            const data = await api<{
                 message?: string;
                 error?: string;
                 limit: number;
                 remaining: number;
                 resetAfter: number;
-            };
+            }>("/api/cloudflare/rate-limiting", {
+                method: "POST",
+                body: { key },
+            });
 
-            if (response.status === 429) {
-                setResult({
-                    success: false,
-                    error: data.error,
-                    limit: data.limit,
-                    remaining: data.remaining,
-                    resetAfter: data.resetAfter,
-                });
-            } else if (!response.ok) {
-                setError(data.error || "Failed to test rate limit");
-                setResult(null);
-            } else {
-                setResult({
-                    success: true,
-                    message: data.message,
-                    limit: data.limit,
-                    remaining: data.remaining,
-                    resetAfter: data.resetAfter,
-                });
-            }
-
+            setResult({
+                success: true,
+                message: data.message,
+                limit: data.limit,
+                remaining: data.remaining,
+                resetAfter: data.resetAfter,
+            });
             setRequestCount((prev) => prev + 1);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
-            setResult(null);
+            if (isApiError(err) && err.status === 429) {
+                // Rate limit exceeded - still show the result
+                const errorData = err.toJSON();
+                setResult({
+                    success: false,
+                    error: err.message,
+                    limit: (errorData as unknown as RateLimitResult).limit || 10,
+                    remaining: (errorData as unknown as RateLimitResult).remaining || 0,
+                    resetAfter: (errorData as unknown as RateLimitResult).resetAfter || 60,
+                });
+                setRequestCount((prev) => prev + 1);
+            } else {
+                setError(isApiError(err) ? err.message : "Unknown error");
+                setResult(null);
+            }
         } finally {
             setLoading(false);
         }

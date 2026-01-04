@@ -5,7 +5,7 @@
  * - Type-safe error handling
  */
 
-import { createApiClient, type ApiError } from "@ottabase/utils/api";
+import { createApiClient, type ApiError } from "@ottabase/api";
 import { toast } from "@ottabase/ui-shadcn";
 
 /**
@@ -100,5 +100,5 @@ export const api = createApiClient({
 });
 
 // Re-export types for convenience
-export { ApiError, isApiError, getErrorMessage, getErrorMessages } from "@ottabase/utils/api";
-export type { ApiErrorResponse, ApiClientConfig, ApiRequestOptions } from "@ottabase/utils/api";
+export { ApiError, isApiError, getErrorMessage, getErrorMessages } from "@ottabase/api";
+export type { ApiErrorResponse, ApiClientConfig, ApiRequestOptions } from "@ottabase/api";

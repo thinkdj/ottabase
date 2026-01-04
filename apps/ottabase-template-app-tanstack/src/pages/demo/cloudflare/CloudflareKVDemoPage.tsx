@@ -9,6 +9,7 @@ import {
     Input,
     Textarea,
 } from "@ottabase/ui-shadcn";
+import { api, isApiError } from "@/lib/api";
 
 export function CloudflareKVDemoPage() {
     const [key, setKey] = useState("");
@@ -26,26 +27,20 @@ export function CloudflareKVDemoPage() {
             setLoading(true);
             setError(null);
 
-            const response = await fetch("/api/cloudflare/kv", {
+            await api("/api/cloudflare/kv", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+                body: {
                     key,
                     value,
                     ttl: ttl ? parseInt(ttl) : undefined,
-                }),
+                },
             });
-
-            if (!response.ok) {
-                const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to set value");
-            }
 
             setResult("Value set successfully!");
             setValue("");
             setTtl("");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : "Unknown error");
         } finally {
             setLoading(false);
         }
@@ -58,19 +53,13 @@ export function CloudflareKVDemoPage() {
             setLoading(true);
             setError(null);
 
-            const response = await fetch(
-                `/api/cloudflare/kv?key=${encodeURIComponent(key)}`,
-            );
+            const data = await api<{ value?: string | null }>("/api/cloudflare/kv", {
+                params: { key },
+            });
 
-            if (!response.ok) {
-                const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to get value");
-            }
-
-            const data = (await response.json()) as { value?: string | null };
             setResult(data.value ? `Value: ${data.value}` : "Key not found");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : "Unknown error");
         } finally {
             setLoading(false);
         }
@@ -83,20 +72,15 @@ export function CloudflareKVDemoPage() {
             setLoading(true);
             setError(null);
 
-            const response = await fetch(
-                `/api/cloudflare/kv?key=${encodeURIComponent(key)}`,
-                { method: "DELETE" },
-            );
-
-            if (!response.ok) {
-                const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to delete value");
-            }
+            await api("/api/cloudflare/kv", {
+                method: "DELETE",
+                params: { key },
+            });
 
             setResult("Value deleted successfully!");
             setKey("");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : "Unknown error");
         } finally {
             setLoading(false);
         }

@@ -1,5 +1,5 @@
 /**
- * @ottabase/utils/api
+ * @ottabase/api
  *
  * Type-safe API client with standardized error handling.
  * Supports auth token injection, configurable base URLs, and error callbacks.
@@ -342,7 +342,7 @@ export function createApiClient(config: ApiClientConfig = {}) {
  *
  * @example
  * ```typescript
- * import { api } from "@ottabase/utils/api";
+ * import { api } from "@ottabase/api";
  *
  * const data = await api<{ message: string }>("/api/health");
  * ```

@@ -9,6 +9,7 @@ import {
     Input,
     Textarea,
 } from "@ottabase/ui-shadcn";
+import { api, isApiError } from "@/lib/api";
 
 interface QueueMessage {
     key: string;
@@ -31,12 +32,10 @@ export function CloudflareQueuesDemoPage() {
 
     const loadMessages = async () => {
         try {
-            const response = await fetch("/api/cloudflare/queues");
-            if (!response.ok) return;
-            const data = (await response.json()) as { messages?: QueueMessage[] };
+            const data = await api<{ messages?: QueueMessage[] }>("/api/cloudflare/queues");
             setMessages(data.messages || []);
         } catch {
-            // ignore
+            // ignore - toast handles errors
         }
     };
 
@@ -65,23 +64,17 @@ export function CloudflareQueuesDemoPage() {
                 }
             }
 
-            const response = await fetch("/api/cloudflare/queues", {
+            await api("/api/cloudflare/queues", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message }),
+                body: { message },
             });
-
-            if (!response.ok) {
-                const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to send message");
-            }
 
             setSuccess("Message sent to queue successfully!");
             setUserId("");
             setCustomData("");
             await loadMessages();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : "Unknown error");
         } finally {
             setLoading(false);
         }
@@ -99,21 +92,15 @@ export function CloudflareQueuesDemoPage() {
                 data: { taskNumber: i + 1 },
             }));
 
-            const response = await fetch("/api/cloudflare/queues", {
+            await api("/api/cloudflare/queues", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ batch }),
+                body: { batch },
             });
-
-            if (!response.ok) {
-                const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to send batch");
-            }
 
             setSuccess(`Sent ${batchCount} messages to queue successfully!`);
             await loadMessages();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : "Unknown error");
         } finally {
             setLoading(false);
         }

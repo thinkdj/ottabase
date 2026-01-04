@@ -70,11 +70,6 @@
       "types": "./dist/timezone.d.ts",
       "import": "./dist/timezone.mjs",
       "require": "./dist/timezone.js"
-    },
-    "./api": {
-      "types": "./dist/api.d.ts",
-      "import": "./dist/api.mjs",
-      "require": "./dist/api.js"
     }
   },
   "files": [
@@ -82,16 +77,14 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts src/api.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts src/api.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts --format cjs,esm --dts --watch",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts",
     "type-check": "tsc --noEmit"
   },
   "keywords": [
     "utilities",
-    "api",
-    "fetch",
     "file",
     "string",
     "url",
