@@ -129,6 +129,21 @@ export function DemoIndexPage() {
                         </Button>
                     </CardContent>
                 </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>API Client</CardTitle>
+                        <CardDescription>
+                            Type-safe fetch wrapper with error handling, auth injection, and
+                            shorthand method syntax
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild variant="outline" className="w-full">
+                            <Link to="/demo/api">View API Demo</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
 
             <div className="mt-2 rounded-lg border bg-muted/50 p-6">

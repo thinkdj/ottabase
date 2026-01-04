@@ -25,6 +25,7 @@ import { CloudflareHyperdriveDemoPage } from "@/pages/demo/cloudflare/Cloudflare
 import { CloudflareQueuesDemoPage } from "@/pages/demo/cloudflare/CloudflareQueuesDemoPage";
 import { CloudflareRateLimitingDemoPage } from "@/pages/demo/cloudflare/CloudflareRateLimitingDemoPage";
 import { CloudflareRealtimeDemoPage } from "@/pages/demo/cloudflare/CloudflareRealtimeDemoPage";
+import { ApiDemoPage } from "@/pages/demo/api/ApiDemoPage";
 
 function RootLayout() {
     return (
@@ -197,6 +198,12 @@ const demoCloudflareRealtimeRoute = new Route({
     component: CloudflareRealtimeDemoPage,
 });
 
+const demoApiRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: "/demo/api",
+    component: ApiDemoPage,
+});
+
 const routeTree = rootRoute.addChildren([
     indexRoute,
     demoRoute,
@@ -215,6 +222,7 @@ const routeTree = rootRoute.addChildren([
     demoCloudflareQueuesRoute,
     demoCloudflareRateLimitingRoute,
     demoCloudflareRealtimeRoute,
+    demoApiRoute,
 ]);
 
 const browserHistory = createBrowserHistory();

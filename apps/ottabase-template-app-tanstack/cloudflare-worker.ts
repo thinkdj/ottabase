@@ -132,6 +132,34 @@ export default {
     }
 
     // ============================================================
+    // API Client Demo
+    // ============================================================
+
+    if (url.pathname === "/api/demo") {
+      if (request.method === "GET") {
+        return json({ message: "Hello from GET", timestamp: Date.now() });
+      }
+
+      if (request.method === "POST") {
+        const body = await readJson<{ name?: string }>(request);
+        return json({ message: `Hello, ${body.name || "World"}!`, timestamp: Date.now() });
+      }
+
+      if (request.method === "DELETE") {
+        return json({ message: "Resource deleted", timestamp: Date.now() });
+      }
+
+      return json({ error: "Method not allowed" }, { status: 405 });
+    }
+
+    if (url.pathname === "/api/demo/error") {
+      return json(
+        { error: "Something went wrong", code: "DEMO_ERROR", hint: "This is a demo error" },
+        { status: 500 },
+      );
+    }
+
+    // ============================================================
     // Cloudflare demos
     // ============================================================
 
