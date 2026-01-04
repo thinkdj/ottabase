@@ -44,15 +44,19 @@ function handleApiError(error: ApiError): void {
   }
 
   if (error.isServerError()) {
-    toast.error("Server error", {
-      description: "Something went wrong. Please try again later.",
+    toast.error(error.message, {
+      description: error.messages.length > 1
+        ? error.messages.join(" • ")
+        : error.details || error.hint || "Something went wrong",
     });
     return;
   }
 
   // Default error toast
   toast.error(error.message, {
-    description: error.details || error.hint,
+    description: error.messages.length > 1
+      ? error.messages.join(" • ")
+      : error.details || error.hint,
   });
 }
 
