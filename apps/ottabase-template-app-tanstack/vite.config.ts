@@ -103,9 +103,10 @@ export default defineConfig(async () => {
             
             // App chunks by feature
             if (id.includes("/src/pages/demo/")) {
-              const match = id.match(/\/pages\/demo\/([^\/]+)\//);
-              if (match) {
-                return `demo-${match[1]}`;
+              const parts = id.split("/");
+              const demoIndex = parts.indexOf("demo");
+              if (demoIndex !== -1 && demoIndex < parts.length - 1) {
+                return `demo-${parts[demoIndex + 1]}`;
               }
             }
           },

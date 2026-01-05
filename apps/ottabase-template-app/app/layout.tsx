@@ -59,25 +59,23 @@ export default function RootLayout({
       </head>
       <body>
         <div id="app-loading">
-          <div className="spinner"></div>
+          <div className="spinner" />
         </div>
         <Providers>{children}</Providers>
         <script dangerouslySetInnerHTML={{__html: `
           // Hide loading indicator once React hydrates
-          if (typeof window !== 'undefined') {
-            window.addEventListener('load', function() {
-              setTimeout(function() {
-                var loader = document.getElementById('app-loading');
-                if (loader) {
-                  loader.style.opacity = '0';
-                  loader.style.transition = 'opacity 0.3s';
-                  setTimeout(function() {
-                    loader.style.display = 'none';
-                  }, 300);
-                }
-              }, 100);
+          window.addEventListener('load', function() {
+            requestAnimationFrame(function() {
+              var loader = document.getElementById('app-loading');
+              if (loader) {
+                loader.style.opacity = '0';
+                loader.style.transition = 'opacity 0.3s';
+                loader.addEventListener('transitionend', function() {
+                  loader.style.display = 'none';
+                });
+              }
             });
-          }
+          });
         `}} />
       </body>
     </html>
