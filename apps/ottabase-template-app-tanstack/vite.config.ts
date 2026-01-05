@@ -62,20 +62,53 @@ export default defineConfig(async () => {
       chunkSizeWarningLimit: 1500,
       rollupOptions: {
         output: {
-          manualChunks: {
-            mantine: [
-              "@mantine/core",
-              "@mantine/hooks",
-              "@mantine/modals",
-              "@mantine/notifications",
-              "@mantine/carousel",
-            ],
-            tanstack: [
-              "@tanstack/react-query",
-              "@tanstack/react-query-devtools",
-              "@tanstack/react-router",
-            ],
-            ottaeditor: ["@ottabase/ottaeditor"],
+          manualChunks: (id) => {
+            // Core vendor chunks
+            if (id.includes("node_modules")) {
+              // React ecosystem
+              if (id.includes("react") || id.includes("react-dom")) {
+                return "vendor-react";
+              }
+              
+              // Mantine UI library
+              if (id.includes("@mantine/")) {
+                return "vendor-mantine";
+              }
+              
+              // TanStack libraries
+              if (id.includes("@tanstack/")) {
+                return "vendor-tanstack";
+              }
+              
+              // Radix UI - group all radix components together
+              if (id.includes("@radix-ui/")) {
+                return "vendor-radix";
+              }
+              
+              // Lucide icons
+              if (id.includes("lucide-react")) {
+                return "vendor-icons";
+              }
+              
+              // Editor libraries
+              if (id.includes("@ottabase/ottaeditor") || id.includes("@tiptap") || id.includes("prosemirror")) {
+                return "vendor-editor";
+              }
+              
+              // Other large dependencies
+              if (id.includes("html-react-parser") || id.includes("@wooorm") || id.includes("hast-util")) {
+                return "vendor-parser";
+              }
+            }
+            
+            // App chunks by feature
+            if (id.includes("/src/pages/demo/")) {
+              const parts = id.split("/");
+              const demoIndex = parts.indexOf("demo");
+              if (demoIndex !== -1 && demoIndex < parts.length - 1) {
+                return `demo-${parts[demoIndex + 1]}`;
+              }
+            }
           },
         },
       },
