@@ -41,6 +41,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-alert-dialog": "^1.1.4",
     "@radix-ui/react-aspect-ratio": "^1.1.1",
@@ -51,6 +52,7 @@
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-dropdown-menu": "^2.1.4",
     "@radix-ui/react-hover-card": "^1.1.4",
+    "@radix-ui/react-label": "^2.1.1",
     "@radix-ui/react-menubar": "^1.1.4",
     "@radix-ui/react-navigation-menu": "^1.2.3",
     "@radix-ui/react-popover": "^1.1.4",
@@ -58,6 +60,7 @@
     "@radix-ui/react-radio-group": "^1.2.2",
     "@radix-ui/react-scroll-area": "^1.2.2",
     "@radix-ui/react-select": "^2.1.4",
+    "@radix-ui/react-separator": "^1.1.1",
     "@radix-ui/react-slider": "^1.2.1",
     "@radix-ui/react-slot": "catalog:",
     "@radix-ui/react-switch": "catalog:",
@@ -68,9 +71,18 @@
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "cmdk": "^1.0.4",
+    "date-fns": "catalog:",
+    "embla-carousel-react": "^8.5.2",
+    "input-otp": "^1.4.1",
     "lucide-react": "^0.468.0",
+    "react-day-picker": "^9.4.4",
+    "react-hook-form": "^7.54.2",
+    "react-resizable-panels": "^2.1.7",
+    "recharts": "^2.15.0",
     "sonner": "catalog:",
-    "tailwind-merge": "catalog:"
+    "tailwind-merge": "catalog:",
+    "vaul": "^1.1.2",
+    "zod": "^3.24.1"
   },
   "peerDependencies": {
     "next": "catalog:",

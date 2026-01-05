@@ -232,3 +232,91 @@ export {
 export { Toggle, toggleVariants } from "./toggle";
 
 export { ToggleGroup, ToggleGroupItem } from "./toggle-group";
+
+// Additional components
+export { Calendar, CalendarDayButton } from "./calendar";
+
+export {
+  type CarouselApi,
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from "./carousel";
+
+export {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  ChartStyle,
+} from "./chart";
+
+export {
+  Drawer,
+  DrawerPortal,
+  DrawerOverlay,
+  DrawerTrigger,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerFooter,
+  DrawerTitle,
+  DrawerDescription,
+} from "./drawer";
+
+export {
+  useFormField,
+  Form,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormMessage,
+  FormField,
+} from "./form";
+
+export {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  InputOTPSeparator,
+} from "./input-otp";
+
+export {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "./resizable";
+
+export {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupAction,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInput,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+  useSidebar,
+} from "./sidebar";
+
+export { Toaster as SonnerToaster } from "./sonner";
