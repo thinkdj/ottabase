@@ -149,9 +149,6 @@ import {
     CarouselItem,
     CarouselNext,
     CarouselPrevious,
-    ChartContainer,
-    ChartTooltip,
-    ChartTooltipContent,
     Empty,
     EmptyDescription,
     EmptyTitle,
@@ -204,18 +201,9 @@ import {
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-
-const chartData = [
-    { name: "Jan", value: 400 },
-    { name: "Feb", value: 300 },
-    { name: "Mar", value: 600 },
-    { name: "Apr", value: 800 },
-    { name: "May", value: 500 },
-];
 
 const formSchema = z.object({
     username: z.string().min(2, "Username must be at least 2 characters"),
@@ -979,33 +967,6 @@ export function ShadcnDemoPage() {
                                 <CarouselPrevious />
                                 <CarouselNext />
                             </Carousel>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="md:col-span-2">
-                        <CardHeader>
-                            <CardTitle>Chart</CardTitle>
-                            <CardDescription>Data visualization</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ChartContainer
-                                config={{
-                                    value: {
-                                        label: "Value",
-                                        color: "hsl(var(--chart-1))",
-                                    },
-                                }}
-                                className="h-[200px] w-full"
-                            >
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={chartData}>
-                                        <XAxis dataKey="name" />
-                                        <YAxis />
-                                        <ChartTooltip content={<ChartTooltipContent />} />
-                                        <Bar dataKey="value" fill="var(--color-value)" />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </ChartContainer>
                         </CardContent>
                     </Card>
 
