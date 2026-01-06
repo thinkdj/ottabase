@@ -187,6 +187,11 @@
       "import": "./dist/textarea.mjs",
       "require": "./dist/textarea.js"
     },
+    "./toaster": {
+      "types": "./dist/toaster.d.ts",
+      "import": "./dist/toaster.mjs",
+      "require": "./dist/toaster.js"
+    },
     "./toggle-group": {
       "types": "./dist/toggle-group.d.ts",
       "import": "./dist/toggle-group.mjs",
@@ -337,6 +342,7 @@
     "react-day-picker": "^9.4.4",
     "react-hook-form": "^7.54.2",
     "react-resizable-panels": "^2.1.7",
+    "sonner": "catalog:",
     "tailwind-merge": "catalog:",
     "vaul": "^1.1.2",
     "zod": "^3.24.1"

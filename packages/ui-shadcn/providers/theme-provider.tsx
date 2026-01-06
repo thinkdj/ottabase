@@ -7,6 +7,7 @@ import {
 } from "next-themes";
 
 import { TooltipProvider } from "../components/ui/tooltip";
+import { Toaster } from "../components/ui/toaster";
 
 export interface ThemeProviderProps
   extends Omit<NextThemeProviderProps, "children"> {
@@ -19,6 +20,11 @@ export interface ShadcnThemeProviderProps extends ThemeProviderProps {
    * Enabled by default.
    */
   enableTooltipProvider?: boolean;
+  /**
+   * Adds the Sonner toaster component to render toast notifications.
+   * Disabled by default to avoid duplicate toasters.
+   */
+  enableToaster?: boolean;
   /**
    * Wrap children in the included next-themes provider. Disable when an app already
    * supplies its own NextThemes provider higher in the tree.
@@ -44,6 +50,7 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
 export function ShadcnProviders({
   children,
   enableTooltipProvider = true,
+  enableToaster = false,
   enableThemeProvider = true,
   ...themeProps
 }: ShadcnThemeProviderProps) {
@@ -54,8 +61,18 @@ export function ShadcnProviders({
   );
 
   if (!enableThemeProvider) {
-    return <>{content}</>;
+    return (
+      <>
+        {content}
+        {enableToaster ? <Toaster /> : null}
+      </>
+    );
   }
 
-  return <ThemeProvider {...themeProps}>{content}</ThemeProvider>;
+  return (
+    <ThemeProvider {...themeProps}>
+      {content}
+      {enableToaster ? <Toaster /> : null}
+    </ThemeProvider>
+  );
 }

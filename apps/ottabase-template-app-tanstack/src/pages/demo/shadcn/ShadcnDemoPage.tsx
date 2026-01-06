@@ -29,6 +29,7 @@ import {
     Skeleton,
     Spinner,
     toast,
+    Toaster,
 
     // Forms & Inputs
     Button,
@@ -1228,6 +1229,71 @@ export function ShadcnDemoPage() {
                             >
                                 Show Toast
                             </Button>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Toaster</CardTitle>
+                            <CardDescription>Toast notification container</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="text-sm text-muted-foreground">
+                                The Toaster component renders toast notifications. Click the buttons below to see different toast types.
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    onClick={() =>
+                                        toast.success("Success!", {
+                                            description: "Operation completed successfully",
+                                        })
+                                    }
+                                    variant="outline"
+                                >
+                                    Success Toast
+                                </Button>
+                                <Button
+                                    onClick={() =>
+                                        toast.error("Error!", {
+                                            description: "Something went wrong",
+                                        })
+                                    }
+                                    variant="outline"
+                                >
+                                    Error Toast
+                                </Button>
+                                <Button
+                                    onClick={() =>
+                                        toast.info("Info", {
+                                            description: "This is an informational message",
+                                        })
+                                    }
+                                    variant="outline"
+                                >
+                                    Info Toast
+                                </Button>
+                                <Button
+                                    onClick={() =>
+                                        toast.warning("Warning!", {
+                                            description: "Please be careful",
+                                        })
+                                    }
+                                    variant="outline"
+                                >
+                                    Warning Toast
+                                </Button>
+                                <Button
+                                    onClick={() =>
+                                        toast.loading("Loading...", {
+                                            description: "Processing your request",
+                                        })
+                                    }
+                                    variant="outline"
+                                >
+                                    Loading Toast
+                                </Button>
+                            </div>
+                            <Toaster />
                         </CardContent>
                     </Card>
                 </div>

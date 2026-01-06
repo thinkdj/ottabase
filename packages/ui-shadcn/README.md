@@ -5,6 +5,7 @@ Shared [shadcn/ui](https://ui.shadcn.com/) components and helpers used across Ot
 - A ready-to-use theme provider built on top of <code>next-themes</code>
 - Pre-configured Radix-based components aligned with shadcn defaults
 - A Tailwind-compatible utility <code>cn</code> helper
+- Optional Sonner toaster integration
 
 ## Usage
 
@@ -19,14 +20,14 @@ Install the dependency via the workspace catalog and add the package to any app:
 }
 ```
 
-Import the provider in your root layout to enable dark mode and tooltips:
+Import the provider in your root layout to enable dark mode, tooltips, and toasts:
 
 ```tsx
 // app/providers.tsx
 import { ShadcnProviders } from "@ottabase/ui-shadcn/providers";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  return <ShadcnProviders>{children}</ShadcnProviders>;
+  return <ShadcnProviders enableToaster>{children}</ShadcnProviders>;
 }
 ```
 

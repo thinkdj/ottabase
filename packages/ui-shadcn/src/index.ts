@@ -2,6 +2,8 @@ export { cn } from "./lib/utils";
 
 export * from "../components/ui";
 
+export { toast } from "sonner";
+
 export type {
   ThemeProviderProps,
   ShadcnThemeProviderProps,
