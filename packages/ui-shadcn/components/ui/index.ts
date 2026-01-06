@@ -16,7 +16,6 @@ export { Separator, type SeparatorProps } from "./separator";
 export { Switch } from "./switch";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
 export { Textarea, type TextareaProps } from "./textarea";
-export { Toaster, type ToasterProps } from "./toaster";
 export {
   Tooltip,
   TooltipContent,

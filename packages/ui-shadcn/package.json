@@ -187,11 +187,6 @@
       "import": "./dist/textarea.mjs",
       "require": "./dist/textarea.js"
     },
-    "./toaster": {
-      "types": "./dist/toaster.d.ts",
-      "import": "./dist/toaster.mjs",
-      "require": "./dist/toaster.js"
-    },
     "./toggle-group": {
       "types": "./dist/toggle-group.d.ts",
       "import": "./dist/toggle-group.mjs",
