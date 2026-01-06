@@ -247,11 +247,6 @@
       "import": "./dist/sidebar.mjs",
       "require": "./dist/sidebar.js"
     },
-    "./sonner": {
-      "types": "./dist/sonner.d.ts",
-      "import": "./dist/sonner.mjs",
-      "require": "./dist/sonner.js"
-    },
     "./button-group": {
       "types": "./dist/button-group.d.ts",
       "import": "./dist/button-group.mjs",
@@ -355,14 +350,12 @@
     "react-hook-form": "^7.54.2",
     "react-resizable-panels": "^2.1.7",
     "recharts": "^2.15.0",
-    "sonner": "catalog:",
     "tailwind-merge": "catalog:",
     "vaul": "^1.1.2",
     "zod": "^3.24.1"
   },
   "peerDependencies": {
     "next": "catalog:",
-    "next-themes": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
   },

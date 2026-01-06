@@ -319,8 +319,6 @@ export {
   useSidebar,
 } from "./sidebar";
 
-export { Toaster as SonnerToaster } from "./sonner";
-
 // Additional v4 components
 export {
   ButtonGroup,
