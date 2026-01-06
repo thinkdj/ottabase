@@ -4,12 +4,13 @@
 // Optimized QueryClient configuration for OttaORM apps
 // ============================================================
 
-import React, { useState } from "react";
+import React, { useState, createContext, useContext } from "react";
 import {
   QueryClient,
   QueryClientProvider,
   type QueryClientConfig,
 } from "@tanstack/react-query";
+import type { ApiClientFunction } from "./types";
 
 /**
  * Default query client configuration optimized for OttaORM
@@ -40,6 +41,18 @@ export const defaultQueryConfig: QueryClientConfig = {
 };
 
 /**
+ * Context for providing API client to hooks
+ */
+const ApiClientContext = createContext<ApiClientFunction | undefined>(undefined);
+
+/**
+ * Hook to access the injected API client
+ */
+export function useApiClient(): ApiClientFunction | undefined {
+  return useContext(ApiClientContext);
+}
+
+/**
  * Configuration options for OttaQueryProvider
  */
 export interface OttaQueryProviderProps {
@@ -48,6 +61,8 @@ export interface OttaQueryProviderProps {
   config?: Partial<QueryClientConfig>;
   /** Provide your own QueryClient instance */
   client?: QueryClient;
+  /** Provide a custom API client function (e.g., from @ottabase/api) */
+  apiClient?: ApiClientFunction;
 }
 
 /**
@@ -87,6 +102,7 @@ export function OttaQueryProvider({
   children,
   config,
   client,
+  apiClient,
 }: OttaQueryProviderProps) {
   const [queryClient] = useState(
     () =>
@@ -110,7 +126,11 @@ export function OttaQueryProvider({
   );
 
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <ApiClientContext.Provider value={apiClient}>
+        {children}
+      </ApiClientContext.Provider>
+    </QueryClientProvider>
   );
 }
 

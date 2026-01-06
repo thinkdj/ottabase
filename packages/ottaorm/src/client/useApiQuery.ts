@@ -12,6 +12,7 @@ import {
   type UseMutationOptions,
   type QueryKey,
 } from "@tanstack/react-query";
+import { useApiClient } from "./QueryProvider";
 
 /**
  * Generic API query hook for custom endpoints
@@ -51,9 +52,21 @@ export function useApiQuery<TData, TTransformed = TData>(options: {
     queryOptions,
   } = options;
 
+  const apiClient = useApiClient();
+
   return useQuery<TTransformed, Error>({
     queryKey,
     queryFn: async (): Promise<TTransformed> => {
+      // Use injected API client if available, otherwise fall back to raw fetch
+      if (apiClient) {
+        const data = await apiClient<TData>(endpoint, {
+          method,
+          body,
+        });
+        return (transform ? transform(data) : data) as TTransformed;
+      }
+
+      // Fallback to raw fetch for backward compatibility
       const response = await fetch(endpoint, {
         method,
         headers: body ? { "Content-Type": "application/json" } : undefined,
@@ -101,11 +114,21 @@ export function useApiMutation<TData, TVariables = unknown>(options: {
     mutationOptions,
   } = options;
   const queryClient = useQueryClient();
+  const apiClient = useApiClient();
 
   return useMutation<TData, Error, TVariables>({
     mutationFn: async (variables): Promise<TData> => {
       const url = typeof endpoint === "function" ? endpoint(variables) : endpoint;
 
+      // Use injected API client if available
+      if (apiClient) {
+        return await apiClient<TData>(url, {
+          method,
+          body: method !== "DELETE" ? variables : undefined,
+        });
+      }
+
+      // Fallback to raw fetch for backward compatibility
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },

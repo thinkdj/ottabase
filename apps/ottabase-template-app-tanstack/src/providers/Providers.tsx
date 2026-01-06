@@ -13,11 +13,9 @@ import { ProviderState } from "@ottabase/state";
 import { ProviderCodeHighlight } from "@ottabase/ui-code-highlight";
 import { ProviderUIBase } from "@ottabase/ui-base";
 import { ShadcnProviders } from "@ottabase/ui-shadcn/providers";
-import { createQueryClient, QueryClientProvider } from "@ottabase/ottaorm/client";
+import { OttaQueryProvider } from "@ottabase/ottaorm/client";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-
-// Create optimized query client from @ottabase/ottaorm/client
-const queryClient = createQueryClient();
+import { api } from "@/lib/api";
 
 export function Providers({ children }: { children: React.ReactNode }) {
     const fontFamilies = {
@@ -28,7 +26,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     return (
         <ProviderState>
-            <QueryClientProvider client={queryClient}>
+            <OttaQueryProvider apiClient={api}>
                 <ProviderUIBase
                     preventFOUC={appConfig.ui.preventFOUC}
                     preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
@@ -46,7 +44,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                     </ProviderFont>
                 </ProviderUIBase>
                 <ReactQueryDevtools initialIsOpen={false} />
-            </QueryClientProvider>
+            </OttaQueryProvider>
         </ProviderState>
     );
 }

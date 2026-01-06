@@ -5,6 +5,20 @@
 // ============================================================
 
 /**
+ * API client function signature for dependency injection.
+ * Compatible with @ottabase/api's ApiFunction interface.
+ */
+export interface ApiClientFunction {
+  <T = unknown>(endpoint: string, options?: {
+    method?: string;
+    body?: unknown;
+    params?: Record<string, string | number | boolean | undefined | null>;
+    headers?: Record<string, string>;
+    [key: string]: unknown;
+  }): Promise<T>;
+}
+
+/**
  * Pagination result structure (matches OttaORM.paginate output)
  */
 export interface PaginationResult<T> {

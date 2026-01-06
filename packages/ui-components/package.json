@@ -5,16 +5,27 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
+    "./blog-pagination": {
+      "types": "./dist/blog-pagination.d.ts",
+      "import": "./dist/blog-pagination.mjs",
+      "require": "./dist/blog-pagination.js"
+    },
     "./dark-mode-toggle": {
       "types": "./dist/dark-mode-toggle.d.ts",
       "import": "./dist/dark-mode-toggle.mjs",
       "require": "./dist/dark-mode-toggle.js"
+    },
+    "./history-go-back-button": {
+      "types": "./dist/history-go-back-button.d.ts",
+      "import": "./dist/history-go-back-button.mjs",
+      "require": "./dist/history-go-back-button.js"
     },
     "./logo": {
       "types": "./dist/logo.d.ts",
@@ -32,8 +43,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/dark-mode-toggle.ts src/logo.ts src/message-box.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/dark-mode-toggle.ts src/logo.ts src/message-box.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts src/blog-pagination.ts src/dark-mode-toggle.ts src/history-go-back-button.ts src/logo.ts src/message-box.ts --format cjs,esm --dts --clean --treeshake",
+    "dev": "tsup src/index.ts src/blog-pagination.ts src/dark-mode-toggle.ts src/history-go-back-button.ts src/logo.ts src/message-box.ts --format cjs,esm --dts --watch --treeshake",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts,.tsx",
     "type-check": "tsc --noEmit"

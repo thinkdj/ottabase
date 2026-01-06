@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -22,8 +23,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/provider.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/provider.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts src/provider.ts src/themeConfig.ts --format cjs,esm --dts --clean --treeshake",
+    "dev": "tsup src/index.ts src/provider.ts src/themeConfig.ts --format cjs,esm --dts --watch --treeshake",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts,.tsx",
     "type-check": "tsc --noEmit"
@@ -59,3 +60,4 @@
     "eslint": "catalog:"
   }
 }
+

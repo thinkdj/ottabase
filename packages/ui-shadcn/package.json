@@ -4,15 +4,211 @@
   "description": "Shared shadcn/ui components and providers for Ottabase apps",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
-  "types": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
+    "./accordion": {
+      "types": "./dist/accordion.d.ts",
+      "import": "./dist/accordion.mjs",
+      "require": "./dist/accordion.js"
+    },
+    "./alert-dialog": {
+      "types": "./dist/alert-dialog.d.ts",
+      "import": "./dist/alert-dialog.mjs",
+      "require": "./dist/alert-dialog.js"
+    },
+    "./alert": {
+      "types": "./dist/alert.d.ts",
+      "import": "./dist/alert.mjs",
+      "require": "./dist/alert.js"
+    },
+    "./aspect-ratio": {
+      "types": "./dist/aspect-ratio.d.ts",
+      "import": "./dist/aspect-ratio.mjs",
+      "require": "./dist/aspect-ratio.js"
+    },
+    "./avatar": {
+      "types": "./dist/avatar.d.ts",
+      "import": "./dist/avatar.mjs",
+      "require": "./dist/avatar.js"
+    },
+    "./badge": {
+      "types": "./dist/badge.d.ts",
+      "import": "./dist/badge.mjs",
+      "require": "./dist/badge.js"
+    },
+    "./breadcrumb": {
+      "types": "./dist/breadcrumb.d.ts",
+      "import": "./dist/breadcrumb.mjs",
+      "require": "./dist/breadcrumb.js"
+    },
+    "./button": {
+      "types": "./dist/button.d.ts",
+      "import": "./dist/button.mjs",
+      "require": "./dist/button.js"
+    },
+    "./card": {
+      "types": "./dist/card.d.ts",
+      "import": "./dist/card.mjs",
+      "require": "./dist/card.js"
+    },
+    "./checkbox": {
+      "types": "./dist/checkbox.d.ts",
+      "import": "./dist/checkbox.mjs",
+      "require": "./dist/checkbox.js"
+    },
+    "./collapsible": {
+      "types": "./dist/collapsible.d.ts",
+      "import": "./dist/collapsible.mjs",
+      "require": "./dist/collapsible.js"
+    },
+    "./command": {
+      "types": "./dist/command.d.ts",
+      "import": "./dist/command.mjs",
+      "require": "./dist/command.js"
+    },
+    "./context-menu": {
+      "types": "./dist/context-menu.d.ts",
+      "import": "./dist/context-menu.mjs",
+      "require": "./dist/context-menu.js"
+    },
+    "./dialog": {
+      "types": "./dist/dialog.d.ts",
+      "import": "./dist/dialog.mjs",
+      "require": "./dist/dialog.js"
+    },
+    "./dropdown-menu": {
+      "types": "./dist/dropdown-menu.d.ts",
+      "import": "./dist/dropdown-menu.mjs",
+      "require": "./dist/dropdown-menu.js"
+    },
+    "./empty": {
+      "types": "./dist/empty.d.ts",
+      "import": "./dist/empty.mjs",
+      "require": "./dist/empty.js"
+    },
+    "./hover-card": {
+      "types": "./dist/hover-card.d.ts",
+      "import": "./dist/hover-card.mjs",
+      "require": "./dist/hover-card.js"
+    },
+    "./input": {
+      "types": "./dist/input.d.ts",
+      "import": "./dist/input.mjs",
+      "require": "./dist/input.js"
+    },
+    "./label": {
+      "types": "./dist/label.d.ts",
+      "import": "./dist/label.mjs",
+      "require": "./dist/label.js"
+    },
+    "./menubar": {
+      "types": "./dist/menubar.d.ts",
+      "import": "./dist/menubar.mjs",
+      "require": "./dist/menubar.js"
+    },
+    "./navigation-menu": {
+      "types": "./dist/navigation-menu.d.ts",
+      "import": "./dist/navigation-menu.mjs",
+      "require": "./dist/navigation-menu.js"
+    },
+    "./pagination": {
+      "types": "./dist/pagination.d.ts",
+      "import": "./dist/pagination.mjs",
+      "require": "./dist/pagination.js"
+    },
+    "./popover": {
+      "types": "./dist/popover.d.ts",
+      "import": "./dist/popover.mjs",
+      "require": "./dist/popover.js"
+    },
+    "./progress": {
+      "types": "./dist/progress.d.ts",
+      "import": "./dist/progress.mjs",
+      "require": "./dist/progress.js"
+    },
+    "./radio-group": {
+      "types": "./dist/radio-group.d.ts",
+      "import": "./dist/radio-group.mjs",
+      "require": "./dist/radio-group.js"
+    },
+    "./scroll-area": {
+      "types": "./dist/scroll-area.d.ts",
+      "import": "./dist/scroll-area.mjs",
+      "require": "./dist/scroll-area.js"
+    },
+    "./select": {
+      "types": "./dist/select.d.ts",
+      "import": "./dist/select.mjs",
+      "require": "./dist/select.js"
+    },
+    "./separator": {
+      "types": "./dist/separator.d.ts",
+      "import": "./dist/separator.mjs",
+      "require": "./dist/separator.js"
+    },
+    "./sheet": {
+      "types": "./dist/sheet.d.ts",
+      "import": "./dist/sheet.mjs",
+      "require": "./dist/sheet.js"
+    },
+    "./skeleton": {
+      "types": "./dist/skeleton.d.ts",
+      "import": "./dist/skeleton.mjs",
+      "require": "./dist/skeleton.js"
+    },
+    "./slider": {
+      "types": "./dist/slider.d.ts",
+      "import": "./dist/slider.mjs",
+      "require": "./dist/slider.js"
+    },
+    "./switch": {
+      "types": "./dist/switch.d.ts",
+      "import": "./dist/switch.mjs",
+      "require": "./dist/switch.js"
+    },
+    "./table": {
+      "types": "./dist/table.d.ts",
+      "import": "./dist/table.mjs",
+      "require": "./dist/table.js"
+    },
+    "./tabs": {
+      "types": "./dist/tabs.d.ts",
+      "import": "./dist/tabs.mjs",
+      "require": "./dist/tabs.js"
+    },
+    "./textarea": {
+      "types": "./dist/textarea.d.ts",
+      "import": "./dist/textarea.mjs",
+      "require": "./dist/textarea.js"
+    },
+    "./toaster": {
+      "types": "./dist/toaster.d.ts",
+      "import": "./dist/toaster.mjs",
+      "require": "./dist/toaster.js"
+    },
+    "./toggle-group": {
+      "types": "./dist/toggle-group.d.ts",
+      "import": "./dist/toggle-group.mjs",
+      "require": "./dist/toggle-group.js"
+    },
+    "./toggle": {
+      "types": "./dist/toggle.d.ts",
+      "import": "./dist/toggle.mjs",
+      "require": "./dist/toggle.js"
+    },
+    "./tooltip": {
+      "types": "./dist/tooltip.d.ts",
+      "import": "./dist/tooltip.mjs",
+      "require": "./dist/tooltip.js"
+    },
     "./providers": {
-      "types": "./src/providers.ts",
+      "types": "./dist/providers.d.ts",
       "import": "./dist/providers.mjs",
       "require": "./dist/providers.js"
     },
@@ -26,8 +222,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/providers.ts --format cjs,esm --clean",
-    "dev": "tsup src/index.ts src/providers.ts --format cjs,esm --watch",
+    "build": "tsup src/index.ts src/providers.ts --format cjs,esm --dts --clean --treeshake",
+    "dev": "tsup src/index.ts src/providers.ts --format cjs,esm --dts --watch --treeshake",
     "clean": "rimraf dist",
     "lint": "eslint 'src/**/*.{ts,tsx}' 'components/**/*.{ts,tsx}' 'providers/**/*.{ts,tsx}'",
     "type-check": "tsc --noEmit"
@@ -62,12 +258,12 @@
     "@radix-ui/react-select": "^2.1.4",
     "@radix-ui/react-separator": "^1.1.1",
     "@radix-ui/react-slider": "^1.2.1",
-    "@radix-ui/react-slot": "catalog:",
-    "@radix-ui/react-switch": "catalog:",
-    "@radix-ui/react-tabs": "catalog:",
+    "@radix-ui/react-slot": "^1.1.1",
+    "@radix-ui/react-switch": "^1.1.1",
+    "@radix-ui/react-tabs": "^1.1.1",
     "@radix-ui/react-toggle": "^1.1.1",
     "@radix-ui/react-toggle-group": "^1.1.1",
-    "@radix-ui/react-tooltip": "catalog:",
+    "@radix-ui/react-tooltip": "^1.1.7",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "cmdk": "^1.0.4",

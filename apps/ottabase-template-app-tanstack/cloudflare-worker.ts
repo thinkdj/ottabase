@@ -18,6 +18,7 @@ import {
   collectTableSchemas,
 } from "@ottabase/ottaorm";
 import { ServiceError, errorResponse } from "@ottabase/utils/http-errors";
+import { jsonResponse } from "@ottabase/utils/http-response";
 import { appMigrations } from "./ottabase/migrations";
 import { Todo } from "./ottabase/models/Todo";
 import * as schema from "./ottabase/db/schema";
@@ -27,19 +28,6 @@ export { RealtimeActor };
 function isHtmlRequest(request: Request): boolean {
   const accept = request.headers.get("Accept");
   return !!accept && accept.includes("text/html");
-}
-
-function json(
-  body: unknown,
-  init?: { status?: number; headers?: Record<string, string> },
-): Response {
-  return new Response(JSON.stringify(body), {
-    status: init?.status ?? 200,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
 }
 
 async function readJson<T = any>(request: Request): Promise<T> {
@@ -140,16 +128,16 @@ export default {
 
       if (url.pathname === "/api/demo") {
         if (request.method === "GET") {
-          return json({ message: "Hello from GET", method: "GET", timestamp: Date.now() });
+          return jsonResponse({ message: "Hello from GET", method: "GET", timestamp: Date.now() });
         }
 
         if (request.method === "POST") {
           const body = await readJson<{ name?: string }>(request);
-          return json({ message: `Hello, ${body.name || "World"}!`, method: "POST", timestamp: Date.now() });
+          return jsonResponse({ message: `Hello, ${body.name || "World"}!`, method: "POST", timestamp: Date.now() });
         }
 
         if (request.method === "DELETE") {
-          return json({ message: "Resource deleted", method: "DELETE", timestamp: Date.now() });
+          return jsonResponse({ message: "Resource deleted", method: "DELETE", timestamp: Date.now() });
         }
 
         return errorResponse("Method not allowed", 405, { code: "METHOD_NOT_ALLOWED" });
@@ -188,7 +176,7 @@ export default {
             return errorResponse("Failed to get value", 500, { details: result.error.message });
           }
 
-          return json({ value: result.data });
+          return jsonResponse({ value: result.data });
         }
 
         if (request.method === "POST") {
@@ -204,7 +192,7 @@ export default {
           if (!result.success) {
             return errorResponse("Failed to set value", 500, { details: result.error.message });
           }
-          return json({ success: true });
+          return jsonResponse({ success: true });
         }
 
         if (request.method === "DELETE") {
@@ -215,7 +203,7 @@ export default {
           if (!result.success) {
             return errorResponse("Failed to delete value", 500, { details: result.error.message });
           }
-          return json({ success: true });
+          return jsonResponse({ success: true });
         }
 
         return errorResponse("Method not allowed", 405, { code: "METHOD_NOT_ALLOWED" });
@@ -230,7 +218,7 @@ export default {
         if (request.method === "GET") {
           if (url.searchParams.get("list") === "true") {
             const listing = await env.OBCF_R2.list({ limit: 100 });
-            return json({ objects: listing.objects });
+            return jsonResponse({ objects: listing.objects });
           }
 
           const key = url.searchParams.get("key");
@@ -268,14 +256,14 @@ export default {
           // But for this demo, we'll return a URL that points to this worker's GET endpoint
           const publicUrl = `/api/cloudflare/r2?key=${encodeURIComponent(key)}`;
 
-          return json({ success: true, data: { url: publicUrl } });
+          return jsonResponse({ success: true, data: { url: publicUrl } });
         }
 
         if (request.method === "DELETE") {
           const key = url.searchParams.get("key");
           if (!key) return errorResponse("key is required", 400);
           await env.OBCF_R2.delete(key);
-          return json({ success: true });
+          return jsonResponse({ success: true });
         }
 
         return errorResponse("Method not allowed", 405, { code: "METHOD_NOT_ALLOWED" });
@@ -313,7 +301,7 @@ export default {
           const variants = result.data.variants;
           const publicUrl = variants && variants.length > 0 ? variants[0] : null;
 
-          return json({
+          return jsonResponse({
             success: true,
             data: {
               url: publicUrl,
@@ -351,7 +339,7 @@ export default {
         registerConnection("default", createD1Driver(env.OBCF_D1));
         const count = (await Todo.all()).length;
 
-        return json({
+        return jsonResponse({
           success: true,
           message: "Database initialized successfully",
           info: `Found ${count} existing todos`,
@@ -367,7 +355,7 @@ export default {
 
         if (request.method === "GET") {
           const todos = await Todo.all({ orderBy: "createdAt", orderDirection: "desc" });
-          return json({ todos: todos.map((t) => t.toJson()) });
+          return jsonResponse({ todos: todos.map((t) => t.toJson()) });
         }
 
         if (request.method === "POST") {
@@ -384,7 +372,7 @@ export default {
             updatedAt: new Date(),
           });
 
-          return json({
+          return jsonResponse({
             success: true,
             message: "Todo created successfully",
             todo: todo.toJson(),
@@ -417,7 +405,7 @@ export default {
           todo.set("completed", body.completed);
           await todo.save();
 
-          return json({
+          return jsonResponse({
             success: true,
             message: "Todo updated successfully",
             todo: todo.toJson(),
@@ -431,7 +419,7 @@ export default {
           // Use static delete method instead of instance destroy
           await Todo.delete(id);
 
-          return json({ success: true, message: "Todo deleted successfully" });
+          return jsonResponse({ success: true, message: "Todo deleted successfully" });
         }
 
         return errorResponse("Method not allowed", 405, { code: "METHOD_NOT_ALLOWED" });
@@ -475,7 +463,7 @@ export default {
               }
             }
 
-            return json({
+            return jsonResponse({
               success: true,
               message: `Sent ${body.batch.length} messages to queue`,
               count: body.batch.length,
@@ -506,7 +494,7 @@ export default {
               }
             }
 
-            return json({ success: true, message: "Message sent to queue" });
+            return jsonResponse({ success: true, message: "Message sent to queue" });
           }
 
           return errorResponse("Either message or batch is required", 400);
@@ -540,7 +528,7 @@ export default {
             (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
           );
 
-          return json({ messages });
+          return jsonResponse({ messages });
         }
 
         return errorResponse("Method not allowed", 405, { code: "METHOD_NOT_ALLOWED" });
@@ -596,7 +584,7 @@ export default {
           } as any); // status is handled by errorResponse
         }
 
-        return json(
+        return jsonResponse(
           { success: true, message: "Request allowed", limit, remaining, resetAfter },
           { headers },
         );
@@ -653,7 +641,7 @@ export default {
           return errorResponse("Failed to broadcast message", 500, { details: result.error });
         }
 
-        return json({ success: true, channelsCount: body.channels.length });
+        return jsonResponse({ success: true, channelsCount: body.channels.length });
       }
 
       if (url.pathname === "/api/cloudflare/realtime/stats" && request.method === "GET") {
@@ -663,7 +651,7 @@ export default {
 
         const broadcaster = new RealtimeBroadcaster(env.OBCF_REALTIME);
         const stats = await broadcaster.getStats();
-        return json(
+        return jsonResponse(
           stats ?? {
             totalConnections: 0,
             channels: [],
@@ -707,7 +695,7 @@ export default {
           verbose: true,
         });
 
-        return json(result);
+        return jsonResponse(result);
       }
 
       // ============================================================
@@ -738,7 +726,7 @@ export default {
             fieldErrors: result.fieldErrors,
           });
         }
-        return json(result.data, { status: result.status });
+        return jsonResponse(result.data, { status: result.status });
       }
 
       // Serve built assets. If the asset isn't found and the client is requesting HTML,
@@ -770,3 +758,4 @@ export default {
     }
   },
 };
+
