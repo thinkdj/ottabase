@@ -355,7 +355,6 @@
     "zod": "^3.24.1"
   },
   "peerDependencies": {
-    "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
@@ -364,7 +363,6 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "eslint": "catalog:",
-    "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "rimraf": "catalog:",
