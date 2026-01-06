@@ -2,58 +2,58 @@
     "name": "crisp",
     "typography": {
         "heading": {
-            "fontFamily": "Public Sans",
-            "url": "https://fonts.googleapis.com/css2?family=Public+Sans:wght@500;600;700&display=swap"
+            "fontFamily": "Inter",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800&display=swap"
         },
         "body": {
-            "fontFamily": "Public Sans",
-            "url": "https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500&display=swap"
+            "fontFamily": "Inter",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
         },
         "handwriting": {
-            "fontFamily": "Patrick Hand",
-            "url": "https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap"
+            "fontFamily": "Caveat",
+            "url": "https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap"
         }
     },
-    "radius": "0.2rem",
+    "radius": "0.25rem",
     "spacing": {
-        "section": "2.5rem",
-        "card": "1.25rem",
+        "section": "2rem",
+        "card": "1rem",
         "element": "0.5rem"
     },
     "colors": {
         "light": {
             "background": "0 0% 100%",
-            "foreground": "218 54% 20%",
-            "primary": "216 100% 50%",
+            "foreground": "220 13% 20%",
+            "primary": "220 90% 48%",
             "primary-foreground": "0 0% 100%",
-            "secondary": "210 11% 96%",
-            "secondary-foreground": "218 54% 20%",
-            "muted": "210 11% 96%",
-            "muted-foreground": "218 54% 45%",
-            "accent": "210 11% 90%",
-            "accent-foreground": "218 54% 20%",
-            "destructive": "360 85% 60%",
+            "secondary": "220 14% 96%",
+            "secondary-foreground": "220 13% 25%",
+            "muted": "220 13% 91%",
+            "muted-foreground": "220 8% 45%",
+            "accent": "220 14% 96%",
+            "accent-foreground": "220 13% 25%",
+            "destructive": "0 84% 60%",
             "destructive-foreground": "0 0% 100%",
-            "border": "213 14% 88%",
-            "input": "0 0% 100%",
-            "ring": "216 100% 50%"
+            "border": "220 13% 89%",
+            "input": "220 14% 96%",
+            "ring": "220 90% 48%"
         },
         "dark": {
-            "background": "218 54% 10%",
-            "foreground": "210 11% 96%",
-            "primary": "216 100% 65%",
-            "primary-foreground": "0 0% 100%",
-            "secondary": "218 54% 15%",
-            "secondary-foreground": "210 11% 96%",
-            "muted": "218 54% 15%",
-            "muted-foreground": "216 20% 70%",
-            "accent": "218 54% 20%",
-            "accent-foreground": "210 11% 96%",
-            "destructive": "0 62% 40%",
-            "destructive-foreground": "0 0% 98%",
-            "border": "216 20% 20%",
-            "input": "218 54% 15%",
-            "ring": "216 100% 65%"
+            "background": "220 13% 9%",
+            "foreground": "220 14% 96%",
+            "primary": "220 90% 58%",
+            "primary-foreground": "220 13% 9%",
+            "secondary": "220 13% 18%",
+            "secondary-foreground": "220 14% 96%",
+            "muted": "220 13% 18%",
+            "muted-foreground": "220 10% 68%",
+            "accent": "220 13% 18%",
+            "accent-foreground": "220 14% 96%",
+            "destructive": "0 84% 60%",
+            "destructive-foreground": "220 13% 9%",
+            "border": "220 13% 18%",
+            "input": "220 13% 18%",
+            "ring": "220 90% 58%"
         }
     }
 }
