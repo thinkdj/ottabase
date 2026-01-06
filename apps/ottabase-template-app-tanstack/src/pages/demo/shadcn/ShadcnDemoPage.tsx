@@ -266,8 +266,8 @@ export function ShadcnDemoPage() {
                     </h1>
                 </div>
                 <p className="max-w-3xl text-muted-foreground">
-                    All 55 shadcn/ui components from <code>@ottabase/ui-shadcn</code>{" "}
-                    organized by category.
+                    shadcn/ui components from <code>@ottabase/ui-shadcn</code> organized
+                    by category.
                 </p>
             </div>
 
