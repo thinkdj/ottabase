@@ -745,13 +745,18 @@ export default {
       }
 
       const response = await env.OBCF_ASSETS.fetch(request);
-      if (response.status !== 404 || !isHtmlRequest(request)) {
-        return response;
+
+      // Handle SPA routes on direct navigation/refresh
+      if (isHtmlRequest(request)) {
+        const redirectStatuses = [301, 302, 303, 307, 308];
+        if (response.status === 404 || redirectStatuses.includes(response.status)) {
+          const indexUrl = new URL(request.url);
+          indexUrl.pathname = "/index.html";
+          return env.OBCF_ASSETS.fetch(new Request(indexUrl.toString(), request));
+        }
       }
 
-      const indexUrl = new URL(request.url);
-      indexUrl.pathname = "/index.html";
-      return env.OBCF_ASSETS.fetch(new Request(indexUrl.toString(), request));
+      return response;
     } catch (err) {
       console.error("Worker unhandled error:", err);
 
@@ -767,4 +772,3 @@ export default {
     }
   },
 };
-
