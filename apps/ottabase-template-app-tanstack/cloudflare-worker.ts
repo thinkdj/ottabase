@@ -25,6 +25,8 @@ import * as schema from "./ottabase/db/schema";
 
 export { RealtimeActor };
 
+const SPA_REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
 function isHtmlRequest(request: Request): boolean {
   const url = new URL(request.url);
   const pathname = url.pathname;
@@ -748,8 +750,7 @@ export default {
 
       // Handle SPA routes on direct navigation/refresh
       if (isHtmlRequest(request)) {
-        const redirectStatuses = [301, 302, 303, 307, 308];
-        if (response.status === 404 || redirectStatuses.includes(response.status)) {
+        if (response.status === 404 || SPA_REDIRECT_STATUSES.has(response.status)) {
           const indexUrl = new URL(request.url);
           indexUrl.pathname = "/index.html";
           return env.OBCF_ASSETS.fetch(new Request(indexUrl.toString(), request));
