@@ -15,6 +15,7 @@ export default defineConfig({
         // Use the build-specific tsconfig that doesn't inherit path mappings
         compilerOptions: {
             paths: {},
+            skipLibCheck: true,
         },
     },
     clean: true,
@@ -22,5 +23,8 @@ export default defineConfig({
         // Externalize all @ottabase packages to use their built types
         "@ottabase/ui-shadcn",
         "@ottabase/ottaorm",
+        // Externalize React to avoid type resolution issues during DTS build
+        "react",
+        "react-dom",
     ],
 });
