@@ -3,13 +3,13 @@
 // ============================================================
 //
 // Complete Auth.js (NextAuth.js) integration for Ottabase applications
-// with Cloudflare D1 support, provider presets, and Next.js helpers.
+// with Cloudflare D1 support, provider presets, and framework helpers.
 //
 // Quick Start:
 //   1. Add "auth" to features in db.config.ts
-//   2. Run pnpm db:generate
+//   2. Run pnpm ottaorm:migrate
 //   3. Create auth configuration with createOttabaseAuthConfig
-//   4. Use in Next.js App Router
+//   4. Use in your framework (Next.js, Remix, etc.)
 //
 // @see README.md for detailed documentation
 //
@@ -20,44 +20,26 @@
 // ============================================================
 export {
   authFeature,
-  authFeatureDrizzle,
-  authFeaturePrisma,
   registerAuthFeature,
 } from "./db.feature";
 
 // ============================================================
-// D1 ADAPTER - Unified Factory (ORM-agnostic)
+// D1 ADAPTER - Unified Factory
 // ============================================================
 export {
   createD1AuthAdapter,
   createD1AuthAdapterCached,
-  type AuthORM,
   type D1AuthAdapterOptions,
 } from "./adapter";
 
 // ============================================================
-// DRIZZLE ADAPTER (Recommended for D1)
+// DRIZZLE ADAPTER (Direct Exports)
 // ============================================================
 export {
-    createDrizzleD1AuthAdapter,
-    createDrizzleD1AuthAdapterCached,
-    type DrizzleD1AuthAdapterOptions
+  createDrizzleD1AuthAdapter,
+  createDrizzleD1AuthAdapterCached,
+  type DrizzleD1AuthAdapterOptions
 } from "./adapters/drizzle-adapter";
-
-// Convenience aliases
-export {
-    createDrizzleD1AuthAdapter as createDrizzleAuthAdapter,
-    createDrizzleD1AuthAdapterCached as createDrizzleAuthAdapterCached
-} from "./adapters/drizzle-adapter";
-
-// ============================================================
-// PRISMA ADAPTER (Legacy)
-// ============================================================
-//export {
-//    createPrismaD1AuthAdapter,
-//    createPrismaD1AuthAdapterCached,
-//    type PrismaD1AuthAdapterOptions
-//} from "./adapters/prisma-adapter";
 
 // ============================================================
 // CONFIGURATION HELPERS
@@ -72,12 +54,20 @@ export {
 // PROVIDER PRESETS
 // ============================================================
 export {
+  // OAuth Providers
   autoConfigureProviders,
   createAuth0Provider,
   createAzureAdProvider,
   createDiscordProvider,
   createGitHubProvider,
   createGoogleProvider,
+  // Credentials Provider
+  createCredentialsProvider,
+  createCustomCredentialsProvider,
+  // Email Providers (Magic Link)
+  createResendProvider,
+  createNodemailerProvider,
+  // Types
   type ProviderEnv,
   type ProviderOptions,
 } from "./providers";

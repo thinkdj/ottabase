@@ -12,7 +12,6 @@ import type { D1Database } from "@cloudflare/workers-types";
 import {
   createD1AuthAdapter,
   createD1AuthAdapterCached,
-  type AuthORM,
 } from "./adapter";
 
 /**
@@ -29,15 +28,6 @@ export interface OttabaseAuthConfigOptions {
    * @see https://authjs.dev/getting-started/providers
    */
   providers: NextAuthConfig["providers"];
-
-  /**
-   * ORM to use for the adapter
-   * - "prisma": Use Prisma ORM (legacy, requires @auth/prisma-adapter)
-   * - "drizzle": Use Drizzle ORM (recommended for D1)
-   *
-   * @default "drizzle"
-   */
-  orm?: AuthORM;
 
   /**
    * Session strategy
@@ -65,6 +55,17 @@ export interface OttabaseAuthConfigOptions {
    * @default false
    */
   log?: boolean | ("query" | "info" | "warn" | "error")[];
+
+  /**
+   * Custom user fields to include in auth queries
+   * @example ["role", "subscriptionTier", "organizationId"]
+   */
+  customUserFields?: string[];
+
+  /**
+   * Error handler for adapter operations
+   */
+  onError?: (error: Error, operation: string) => void;
 
   /**
    * Additional Auth.js configuration options
@@ -146,18 +147,19 @@ export function createOttabaseAuthConfig(
   const {
     d1,
     providers,
-    orm = "drizzle",
     sessionStrategy = "jwt",
     sessionMaxAge = 30 * 24 * 60 * 60, // 30 days
     useCachedAdapter = true,
     log = false,
+    customUserFields,
+    onError,
     authConfig = {},
   } = options;
 
-  // Create the D1 adapter with selected ORM
+  // Create the D1 adapter
   const adapter = useCachedAdapter
-    ? createD1AuthAdapterCached(d1, { log, orm })
-    : createD1AuthAdapter(d1, { log, orm });
+    ? createD1AuthAdapterCached(d1, { log, customUserFields, onError })
+    : createD1AuthAdapter(d1, { log, customUserFields, onError });
 
   // Build the complete Auth.js configuration
   const config: NextAuthConfig = {
@@ -185,11 +187,10 @@ export function createOttabaseAuthConfig(
  * Create a minimal Auth.js configuration for development
  *
  * This helper creates a simpler configuration suitable for development
- * with JWT sessions and logging enabled. Uses Drizzle ORM by default.
+ * with JWT sessions and logging enabled.
  *
  * @param d1 - The D1 database binding
  * @param providers - Auth.js providers
- * @param orm - Optional ORM selection (default: "drizzle")
  * @returns A development-focused Auth.js configuration
  *
  * @example
@@ -202,22 +203,14 @@ export function createOttabaseAuthConfig(
  *   ])
  * );
  * ```
- *
- * @example
- * ```typescript
- * // Using Prisma for development
- * createOttabaseAuthConfigDev(env.OBCF_D1, providers, "prisma");
- * ```
  */
 export function createOttabaseAuthConfigDev(
   d1: D1Database,
   providers: NextAuthConfig["providers"],
-  orm: AuthORM = "drizzle",
 ): NextAuthConfig {
   return createOttabaseAuthConfig({
     d1,
     providers,
-    orm,
     sessionStrategy: "jwt",
     useCachedAdapter: false,
     log: ["error", "warn"],

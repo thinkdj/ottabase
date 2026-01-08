@@ -2,11 +2,24 @@
 // @ottabase/auth - Provider Configuration Presets
 // ============================================================
 //
-// Pre-configured provider helpers for common OAuth providers.
-// These helpers ensure consistent configuration across all
-// Ottabase applications.
+// Pre-configured provider helpers for common providers:
+// - OAuth: Google, GitHub, Discord, Azure AD, Auth0
+// - Credentials: Username/password authentication
+// - Email: Magic link (passwordless) via Resend or Nodemailer
+//
+// Uses tree-shakeable imports for optimal bundle size.
 //
 // ============================================================
+
+import Google from "@auth/core/providers/google";
+import GitHub from "@auth/core/providers/github";
+import Discord from "@auth/core/providers/discord";
+import AzureAd from "@auth/core/providers/azure-ad";
+import Auth0 from "@auth/core/providers/auth0";
+import Credentials from "@auth/core/providers/credentials";
+import Resend from "@auth/core/providers/resend";
+import Nodemailer from "@auth/core/providers/nodemailer";
+
 
 /**
  * Environment variables for provider credentials
@@ -34,6 +47,13 @@ export interface ProviderEnv {
   AUTH0_CLIENT_ID?: string;
   AUTH0_CLIENT_SECRET?: string;
   AUTH0_ISSUER?: string;
+
+  // Email (Magic Link) - Resend
+  RESEND_API_KEY?: string;
+
+  // Email (Magic Link) - Nodemailer/SMTP
+  EMAIL_SERVER?: string; // smtp://user:pass@smtp.example.com:587
+  EMAIL_FROM?: string;
 }
 
 /**
@@ -84,17 +104,6 @@ export function createGoogleProvider(
   env: ProviderEnv,
   options: ProviderOptions = {},
 ) {
-  // Lazy load to avoid bundling providers that aren't used
-  let Google: any;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    Google = require("@auth/core/providers/google").default;
-  } catch {
-    throw new Error(
-      "@auth/core is not installed. Install with: pnpm add @auth/core",
-    );
-  }
-
   const { scopes = [], allowDangerousEmailAccountLinking = false } = options;
 
   return Google({
@@ -141,16 +150,6 @@ export function createGitHubProvider(
   env: ProviderEnv,
   options: ProviderOptions = {},
 ) {
-  let GitHub: any;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    GitHub = require("@auth/core/providers/github").default;
-  } catch {
-    throw new Error(
-      "@auth/core is not installed. Install with: pnpm add @auth/core",
-    );
-  }
-
   const { scopes = [], allowDangerousEmailAccountLinking = false } = options;
 
   return GitHub({
@@ -189,16 +188,6 @@ export function createDiscordProvider(
   env: ProviderEnv,
   options: ProviderOptions = {},
 ) {
-  let Discord: any;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    Discord = require("@auth/core/providers/discord").default;
-  } catch {
-    throw new Error(
-      "@auth/core is not installed. Install with: pnpm add @auth/core",
-    );
-  }
-
   const { scopes = [], allowDangerousEmailAccountLinking = false } = options;
 
   return Discord({
@@ -238,16 +227,6 @@ export function createAzureAdProvider(
   env: ProviderEnv,
   options: ProviderOptions = {},
 ) {
-  let AzureAd: any;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    AzureAd = require("@auth/core/providers/azure-ad").default;
-  } catch {
-    throw new Error(
-      "@auth/core is not installed. Install with: pnpm add @auth/core",
-    );
-  }
-
   const { scopes = [], allowDangerousEmailAccountLinking = false } = options;
 
   return AzureAd({
@@ -288,16 +267,6 @@ export function createAuth0Provider(
   env: ProviderEnv,
   options: ProviderOptions = {},
 ) {
-  let Auth0: any;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    Auth0 = require("@auth/core/providers/auth0").default;
-  } catch {
-    throw new Error(
-      "@auth/core is not installed. Install with: pnpm add @auth/core",
-    );
-  }
-
   const { allowDangerousEmailAccountLinking = false } = options;
 
   return Auth0({
@@ -358,4 +327,150 @@ export function autoConfigureProviders(env: ProviderEnv) {
   }
 
   return providers;
+}
+
+/**
+ * Create a Credentials provider for username/password authentication
+ *
+ * @param authorize - Function to validate credentials and return user
+ * @returns Provider configuration for Auth.js
+ *
+ * @example
+ * ```typescript
+ * import { createCredentialsProvider } from "@ottabase/auth";
+ *
+ * const provider = createCredentialsProvider(async (credentials) => {
+ *   const user = await db.user.findUnique({
+ *     where: { email: credentials.email }
+ *   });
+ *   
+ *   if (!user || !await bcrypt.compare(credentials.password, user.password)) {
+ *     return null;
+ *   }
+ *   
+ *   return { id: user.id, email: user.email, name: user.name };
+ * });
+ * ```
+ */
+export function createCredentialsProvider(
+  authorize: (credentials: Record<string, any>) => Promise<any>,
+) {
+  return Credentials({
+    credentials: {
+      email: { label: "Email", type: "email" },
+      password: { label: "Password", type: "password" },
+    },
+    authorize,
+  });
+}
+
+/**
+ * Create a custom Credentials provider with custom fields
+ *
+ * @param config - Credentials configuration
+ * @returns Provider configuration for Auth.js
+ *
+ * @example
+ * ```typescript
+ * import { createCustomCredentialsProvider } from "@ottabase/auth";
+ *
+ * const provider = createCustomCredentialsProvider({
+ *   credentials: {
+ *     username: { label: "Username", type: "text" },
+ *     password: { label: "Password", type: "password" },
+ *   },
+ *   authorize: async (credentials) => {
+ *     // Your validation logic
+ *     return { id: "1", name: "User" };
+ *   },
+ * });
+ * ```
+ */
+export function createCustomCredentialsProvider(config: {
+  credentials: Record<string, { label: string; type: string }>;
+  authorize: (credentials: Record<string, any>) => Promise<any>;
+}) {
+  return Credentials(config);
+}
+
+/**
+ * Create an Email provider for magic link authentication using Resend
+ *
+ * Requires environment variable:
+ * - RESEND_API_KEY
+ *
+ * @param env - Environment variables
+ * @param options - Email provider options
+ * @returns Provider configuration for Auth.js
+ *
+ * @example
+ * ```typescript
+ * import { createResendProvider } from "@ottabase/auth";
+ *
+ * const provider = createResendProvider(env, {
+ *   from: "noreply@example.com",
+ * });
+ * ```
+ */
+export function createResendProvider(
+  env: ProviderEnv,
+  options?: {
+    from?: string;
+  },
+) {
+  return Resend({
+    apiKey: env.RESEND_API_KEY,
+    from: options?.from || env.EMAIL_FROM || "noreply@example.com",
+  });
+}
+
+/**
+ * Create an Email provider for magic link authentication using Nodemailer/SMTP
+ *
+ * Requires environment variables:
+ * - EMAIL_SERVER (smtp connection string)
+ * - EMAIL_FROM
+ *
+ * @param env - Environment variables
+ * @returns Provider configuration for Auth.js
+ *
+ * @example
+ * ```typescript
+ * import { createNodemailerProvider } from "@ottabase/auth";
+ *
+ * // Uses EMAIL_SERVER and EMAIL_FROM from env
+ * const provider = createNodemailerProvider(env);
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // With custom SMTP config
+ * const provider = createNodemailerProvider(env, {
+ *   server: {
+ *     host: "smtp.example.com",
+ *     port: 587,
+ *     auth: {
+ *       user: "user@example.com",
+ *       pass: "password",
+ *     },
+ *   },
+ *   from: "noreply@example.com",
+ * });
+ * ```
+ */
+export function createNodemailerProvider(
+  env: ProviderEnv,
+  options?: {
+    server?: string | {
+      host: string;
+      port: number;
+      auth: { user: string; pass: string };
+    };
+    from?: string;
+  },
+) {
+  return Nodemailer({
+    server: options?.server || env.EMAIL_SERVER,
+    from: options?.from || env.EMAIL_FROM,
+  });
 }

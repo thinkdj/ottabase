@@ -1,341 +1,156 @@
 # @ottabase/auth
 
-Framework-agnostic Auth.js integration for Ottabase applications with Cloudflare D1 support and provider presets.
+Framework-agnostic Auth.js integration for Ottabase with Cloudflare D1 and Drizzle ORM.
 
 ## Features
 
-- 🔐 **Auth.js Integration** - Full Auth.js v5 support with D1 adapter
-- ☁️ **Cloudflare D1** - Native D1 database support  
-- 🎯 **Dual ORM Support** - Works with both **Drizzle** (recommended) and Prisma
-- 🚀 **Provider Presets** - Pre-configured Google, GitHub, Discord, Azure AD, Auth0
-- 🌐 **Framework-Agnostic** - Works with any framework (Next.js, Remix, SvelteKit, etc.)
-- 📦 **Reusable** - Works across all apps in your Ottabase monorepo
-- 🛡️ **Type-Safe** - Full TypeScript support with type inference
-- ⚡ **Edge-Optimized** - Drizzle adapter built for Cloudflare Workers
+- ✅ **Auth.js v5** - Full Auth.js support with Cloudflare D1
+- ✅ **Drizzle ORM** - Edge-optimized database adapter
+- ✅ **Framework Agnostic** - Works with Next.js, Remix, SvelteKit, Workers
+- ✅ **Multiple Auth Methods** - OAuth, Credentials, Magic Link (Email)
+- ✅ **Provider Presets** - Google, GitHub, Discord, Azure AD, Auth0, Resend, SMTP
+- ✅ **UI Components** - Ready-to-use login forms with shadcn/ui
+- ✅ **Custom Fields** - Extend user model per-app
+- ✅ **Error Handling** - Production-ready with custom handlers
 
 ## Installation
 
-The auth package is already included in your Ottabase monorepo. Install the required peer dependencies:
-
-### For Drizzle (Recommended for D1)
-
 ```bash
 pnpm add @auth/core drizzle-orm
-```
-
-### For Prisma (Legacy)
-
-```bash
-pnpm add @auth/core @auth/prisma-adapter
 ```
 
 ## Quick Start
 
 ### 1. Enable Auth Feature
 
-Add `"auth"` to your app's `db.config.ts`:
-
 ```typescript
-// apps/your-app/db.config.ts
-import { defineAppDbConfig } from "@ottabase/db";
-
+// db.config.ts
 export default defineAppDbConfig({
   appId: "your-app",
-  features: ["auth"], // Enable auth feature
+  features: ["auth"], // Adds auth tables to migrations
 });
 ```
 
-### 2. Run Database Migrations
-
-Auth tables are integrated into **OttaORM core migrations**. No separate schema generation needed!
-
-The following migrations are automatically included:
-- `001_create_users_table` - User accounts
-- `002_create_accounts_table` - OAuth provider accounts  
-- `006_create_sessions_table` - Active sessions
-- `007_create_verification_tokens_table` - Email verification tokens
-- `008_create_authenticators_table` - WebAuthn/Passkey credentials
-
-Run migrations:
+### 2. Run Migrations
 
 ```bash
-# In your app directory
 pnpm ottaorm:migrate
-
-# Or if using migration scripts
-pnpm migrate
 ```
 
-### 3. Create Auth Configuration
+Auth tables are in core OttaORM migrations (001, 002, 006, 007, 008).
+
+### 3. Configure Auth
 
 ```typescript
-// app/auth.ts (or wherever you configure auth)
-import { Auth } from "@auth/core";
 import { createOttabaseAuthConfig, createGoogleProvider } from "@ottabase/auth";
 
-// Get your D1 database binding (framework-specific)
-// For Cloudflare Workers: env.DB
-// For Next.js: process.env.DB or request env
-
 export const authConfig = createOttabaseAuthConfig({
-  d1: env.DB, // D1 database binding
-  providers: [
-    createGoogleProvider(env),
-    // Add more providers...
-  ],
+  d1: env.DB,
+  providers: [createGoogleProvider(env)],
 });
 ```
 
-## Configuration
+## Usage Examples
 
-### Database Schema Integration
-
-Auth tables are **integrated into OttaORM core migrations** - no separate schema files needed!
-
-The auth package provides models that work with OttaORM's migration system:
-
-- **User** & **Account** - Core auth tables (migrations 001-002)
-- **Session** - Active session tracking (migration 006)
-- **VerificationToken** - Email/SMS verification (migration 007)
-- **Authenticator** - WebAuthn/Passkey support (migration 008)
-
-All models are available via:
-
-```typescript
-import { User, Account, Session, VerificationToken, Authenticator } from "@ottabase/ottaorm/models";
-```
-
-### Choosing an ORM
-
-The auth package provides **separate adapter implementations** with clear separation:
-
-**🚀 Drizzle (Default & Recommended)**
-
-- ✅ Location: `src/adapters/drizzle-adapter.ts`
-- ✅ Migrations: Integrated in OttaORM core
-- ✅ Better edge/serverless performance
-- ✅ Smaller bundle size (~50% smaller)
-- ✅ Native D1 support without adapters
-- ✅ No build-time code generation required
-- ✅ Direct SQL queries for maximum performance
-
-**📦 Prisma (Legacy Support)**
-
-- 📁 Location: `src/adapters/prisma-adapter.ts`
-- 📁 Schema: `prisma/auth.schema.prisma`
-- Compatible with existing Prisma schemas
-- Requires `@auth/prisma-adapter`
-- Requires Prisma Client generation
-
-### D1 Adapter
-
-#### Using Drizzle (Recommended)
-
-```typescript
-import { createD1AuthAdapter } from "@ottabase/auth";
-
-// Basic usage (defaults to Drizzle)
-const adapter = createD1AuthAdapter(env.DB);
-
-// Explicit Drizzle with options
-const adapter = createD1AuthAdapter(env.DB, {
-  orm: "drizzle",
-  log: ["query", "error"],
-});
-
-// Cached adapter (recommended for production)
-import { createD1AuthAdapterCached } from "@ottabase/auth";
-const adapter = createD1AuthAdapterCached(env.DB);
-```
-
-#### Using Prisma (Legacy)
-
-```typescript
-import { createD1AuthAdapter } from "@ottabase/auth";
-
-// Explicit Prisma
-const adapter = createD1AuthAdapter(env.DB, {
-  orm: "prisma",
-  log: ["query", "error"],
-});
-
-// Or use the dedicated Prisma adapter
-import { createPrismaD1AuthAdapter } from "@ottabase/auth";
-const adapter = createPrismaD1AuthAdapter(env.DB);
-```
-
-#### Direct Drizzle Adapter Import
-
-For tree-shaking optimization, import the Drizzle adapter directly:
-
-```typescript
-import { createDrizzleAuthAdapter } from "@ottabase/auth";
-// or
-import { createDrizzleD1AuthAdapter } from "@ottabase/auth/adapters/drizzle";
-
-const adapter = createDrizzleAuthAdapter(env.DB, {
-  log: ["query", "error"],
-});
-```
-
-### Auth Configuration Options
+### Basic Configuration
 
 ```typescript
 import { createOttabaseAuthConfig } from "@ottabase/auth";
 
-createOttabaseAuthConfig({
+const config = createOttabaseAuthConfig({
   d1: env.DB,
-  providers: [/* ... */],
+  providers: [
+    createGoogleProvider(env),
+    createGitHubProvider(env),
+  ],
+});
+```
 
-  // ORM selection (default: "drizzle")
-  orm: "drizzle", // or "prisma"
+### With Custom User Fields
 
-  // Session strategy
-  sessionStrategy: "jwt", // or "database"
-  sessionMaxAge: 30 * 24 * 60 * 60, // 30 days
+```typescript
+// 1. Add fields to User table in your migration
+// ALTER TABLE User ADD COLUMN role TEXT;
+// ALTER TABLE User ADD COLUMN subscriptionTier TEXT;
 
-  // Use cached adapter
-  useCachedAdapter: true,
+// 2. Configure adapter to query custom fields
+const config = createOttabaseAuthConfig({
+  d1: env.DB,
+  providers: [...],
+  customUserFields: ["role", "subscriptionTier"],
+});
+```
 
-  // Enable logging
-  log: ["error", "warn"],
+### With Error Handling
 
-  // Additional Auth.js options
-  authConfig: {
-    callbacks: {
-      async jwt({ token, user }) {
-        if (user) token.id = user.id;
-        return token;
-      },
-    },
+```typescript
+const config = createOttabaseAuthConfig({
+  d1: env.DB,
+  providers: [...],
+  onError: (error, operation) => {
+    console.error(`Auth error in ${operation}:`, error);
+    // Report to your error tracking service
   },
 });
 ```
 
-## Provider Presets
-
-Pre-configured providers with sensible defaults:
-
-### Google
-
-```typescript
-import { createGoogleProvider } from "@ottabase/auth";
-
-// Basic usage (requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
-createGoogleProvider(env);
-
-// With additional scopes
-createGoogleProvider(env, {
-  scopes: ["https://www.googleapis.com/auth/calendar.readonly"],
-});
-```
-
-### GitHub
-
-```typescript
-import { createGitHubProvider } from "@ottabase/auth";
-
-// Basic usage (requires GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET)
-createGitHubProvider(env);
-
-// With additional scopes
-createGitHubProvider(env, {
-  scopes: ["repo", "read:org"],
-});
-```
-
-### Other Providers
-
-```typescript
-import {
-  createDiscordProvider,
-  createAzureAdProvider,
-  createAuth0Provider,
-} from "@ottabase/auth";
-
-// Discord (requires DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET)
-createDiscordProvider(env);
-
-// Azure AD (requires AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET, AZURE_AD_TENANT_ID)
-createAzureAdProvider(env);
-
-// Auth0 (requires AUTH0_CLIENT_ID, AUTH0_CLIENT_SECRET, AUTH0_ISSUER)
-createAuth0Provider(env);
-```
-
 ### Auto-Configure Providers
-
-Automatically configure all providers based on available environment variables:
 
 ```typescript
 import { autoConfigureProviders } from "@ottabase/auth";
 
-const providers = autoConfigureProviders(env);
-// Returns array of configured providers based on available credentials
-```
-
-## Session Utilities
-
-Helper functions for working with sessions:
-
-```typescript
-import {
-  isAuthenticated,
-  requireAuth,
-  getUserId,
-  getUserEmail,
-  hasVerifiedEmail,
-  serializeSession,
-} from "@ottabase/auth";
-
-// Check authentication
-const session = await getSession();
-if (isAuthenticated(session)) {
-  console.log(session.user.id);
-}
-
-// Require authentication (throws error if not authenticated)
-const session = requireAuth(await getSession());
-
-// Get user ID
-const userId = getUserId(await getSession()); // Returns string | null
-
-// Get user email
-const email = getUserEmail(await getSession()); // Returns string | null
-
-// Check verified email
-if (hasVerifiedEmail(await getSession())) {
-  // User has verified email
-}
-
-// Serialize for API responses
-const sessionData = serializeSession(await getSession());
+// Automatically enables providers based on env vars
+const config = createOttabaseAuthConfig({
+  d1: env.DB,
+  providers: autoConfigureProviders(env),
+});
 ```
 
 ## Framework Integration
 
-### Next.js
+### Next.js App Router
 
-For Next.js-specific helpers (middleware, API handlers, etc.), see the `ottabase-template-app` package which includes Next.js integration examples.
+```typescript
+// app/auth.ts
+import NextAuth from "next-auth";
+import { createOttabaseAuthConfig, createGoogleProvider } from "@ottabase/auth";
+
+export const { handlers, auth, signIn, signOut } = NextAuth((request) => {
+  const env = request?.env || process.env;
+  
+  return createOttabaseAuthConfig({
+    d1: env.OBCF_D1,
+    providers: [createGoogleProvider(env)],
+  });
+});
+```
+
+```typescript
+// middleware.ts
+export { auth as middleware } from "@/app/auth";
+
+export const config = {
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+};
+```
 
 ### Cloudflare Workers
 
 ```typescript
-// worker.ts
 import { Auth } from "@auth/core";
 import { createOttabaseAuthConfig } from "@ottabase/auth";
 
 export default {
   async fetch(request: Request, env: Env) {
-    const authConfig = createOttabaseAuthConfig({
+    const config = createOttabaseAuthConfig({
       d1: env.DB,
       providers: [/* ... */],
     });
-
-    const auth = Auth(request, authConfig);
+    
+    const auth = Auth(request, config);
     const session = await auth.getSession();
-
-    // Use session...
+    
+    return new Response(JSON.stringify(session));
   }
 };
 ```
@@ -355,127 +170,574 @@ export const handle = SvelteKitAuth(async ({ platform }) => {
 });
 ```
 
-### Remix
+## UI Components
+
+Pre-built, accessible login forms using shadcn/ui components. Import and use directly in your React apps.
+
+### Unified Login Form
+
+The `LoginForm` component provides a complete login experience with all methods:
 
 ```typescript
-// app/services/auth.server.ts
-import { Authenticator } from "remix-auth";
-import { createOttabaseAuthConfig } from "@ottabase/auth";
+import { LoginForm } from "@ottabase/auth/components";
+import { signIn } from "next-auth/react";
 
-export const authenticator = new Authenticator(sessionStorage);
+export function LoginPage() {
+  return (
+    <LoginForm
+      // Social providers
+      socialProviders={[
+        { id: "google", name: "Google" },
+        { id: "github", name: "GitHub" },
+      ]}
+      onSocialLogin={(providerId) => signIn(providerId)}
+      
+      // Credentials login
+      showCredentials
+      onCredentialsLogin={async ({ email, password }) => {
+        await signIn("credentials", { email, password });
+      }}
+      
+      // Magic link
+      showMagicLink
+      onMagicLinkSend={async (email) => {
+        await signIn("email", { email });
+      }}
+      
+      // Customization
+      title="Welcome back"
+      description="Sign in to continue"
+      showSignUp
+      onSignUpClick={() => router.push("/signup")}
+    />
+  );
+}
+```
 
-// Configure with Ottabase auth
-const authConfig = createOttabaseAuthConfig({
-  d1: context.cloudflare.env.DB,
-  providers: [/* ... */],
+### Auto-Configuration from Environment Variables
+
+Use helper functions to automatically detect which providers are configured:
+
+```typescript
+import { LoginForm, getLoginConfig } from "@ottabase/auth/components";
+import { signIn } from "next-auth/react";
+
+export function LoginPage() {
+  // Automatically detect configured providers from env vars
+  const config = getLoginConfig(process.env);
+
+  return (
+    <LoginForm
+      // Auto-configured based on env vars
+      socialProviders={config.socialProviders}
+      showCredentials={config.showCredentials}
+      showMagicLink={config.showMagicLink}
+      
+      // Handlers
+      onSocialLogin={(id) => signIn(id)}
+      onCredentialsLogin={async ({ email, password }) => {
+        await signIn("credentials", { email, password });
+      }}
+      onMagicLinkSend={async (email) => {
+        await signIn("email", { email });
+      }}
+      
+      title="Welcome back"
+    />
+  );
+}
+```
+
+**Helper functions:**
+- `getLoginConfig(env)` - Returns complete configuration
+- `getConfiguredSocialProviders(env)` - Returns only configured OAuth providers
+- `isEmailProviderConfigured(env)` - Checks if Resend or SMTP is configured
+
+```typescript
+import { 
+  getConfiguredSocialProviders, 
+  isEmailProviderConfigured 
+} from "@ottabase/auth/components";
+
+// Get only social providers that have credentials
+const socialProviders = getConfiguredSocialProviders(process.env);
+// Returns: [{ id: "google", name: "Google" }, { id: "github", name: "GitHub" }]
+
+// Check if magic link is available
+const canUseMagicLink = isEmailProviderConfigured(process.env);
+// Returns: true if RESEND_API_KEY or EMAIL_SERVER is set
+```
+
+### Individual Components
+
+#### Social Login Buttons
+
+```typescript
+import { SocialLoginButtons, SocialLoginDivider } from "@ottabase/auth/components";
+
+<SocialLoginButtons
+  providers={[
+    { id: "google", name: "Google" },
+    { id: "github", name: "GitHub" },
+    { id: "discord", name: "Discord" },
+  ]}
+  onProviderClick={(id) => signIn(id)}
+/>
+
+<SocialLoginDivider text="or" />
+```
+
+#### Credentials Form
+
+```typescript
+import { CredentialsForm } from "@ottabase/auth/components";
+
+<CredentialsForm
+  onSubmit={async ({ email, password }) => {
+    const result = await signIn("credentials", { email, password });
+    if (result?.error) {
+      setError(result.error);
+    }
+  }}
+  showForgotPassword
+  onForgotPassword={() => router.push("/forgot-password")}
+/>
+```
+
+#### Magic Link Form
+
+```typescript
+import { MagicLinkForm } from "@ottabase/auth/components";
+
+<MagicLinkForm
+  onSubmit={async (email) => {
+    await signIn("email", { email });
+    setSuccess(true);
+  }}
+  success={success}
+  successMessage="Check your inbox for the login link!"
+/>
+```
+
+### Styling
+
+Components use Tailwind CSS and follow shadcn/ui design patterns. They automatically inherit your app's theme.
+
+```typescript
+// Custom styling
+<LoginForm
+  className="shadow-xl"
+  // ... other props
+/>
+```
+
+## Providers
+
+### OAuth Providers
+
+```typescript
+import {
+  createGoogleProvider,
+  createGitHubProvider,
+  createDiscordProvider,
+  createAzureAdProvider,
+  createAuth0Provider,
+} from "@ottabase/auth";
+
+createGoogleProvider(env); // Requires GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+createGitHubProvider(env); // Requires GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
+createDiscordProvider(env); // Requires DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET
+createAzureAdProvider(env); // Requires AZURE_AD_* vars
+createAuth0Provider(env); // Requires AUTH0_* vars
+```
+
+#### With Custom Scopes
+
+```typescript
+createGoogleProvider(env, {
+  scopes: ["https://www.googleapis.com/auth/calendar.readonly"],
+});
+
+createGitHubProvider(env, {
+  scopes: ["repo", "read:org"],
 });
 ```
 
-## Database Schema
+### Credentials Provider (Username/Password)
 
-The auth feature includes these models:
+```typescript
+import { createCredentialsProvider } from "@ottabase/auth";
+import bcrypt from "bcryptjs";
 
-- **User** - User accounts with Auth.js relations
-- **Account** - OAuth provider accounts linked to users
-- **Session** - User sessions for database session strategy
-- **VerificationToken** - Email verification and magic link tokens
-- **Authenticator** - WebAuthn/Passkey credentials
+const credentialsProvider = createCredentialsProvider(async (credentials) => {
+  // Validate credentials against your database
+  const user = await db.user.findUnique({
+    where: { email: credentials.email }
+  });
 
-See [prisma/auth.schema.prisma](./prisma/auth.schema.prisma) for the complete schema.
+  if (!user || !await bcrypt.compare(credentials.password, user.passwordHash)) {
+    return null; // Invalid credentials
+  }
 
-## Migrations
+  // Return user object (without password!)
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+  };
+});
+```
 
-After enabling the auth feature:
+#### Custom Credentials Fields
 
-```bash
-# Generate Prisma client
-pnpm db:generate
+```typescript
+import { createCustomCredentialsProvider } from "@ottabase/auth";
 
-# Create migration
-pnpm db:migrate --name=add_auth
+const provider = createCustomCredentialsProvider({
+  credentials: {
+    username: { label: "Username", type: "text" },
+    password: { label: "Password", type: "password" },
+    domain: { label: "Domain", type: "text" },
+  },
+  authorize: async (credentials) => {
+    // Your custom validation logic
+    const user = await validateUser(
+      credentials.username,
+      credentials.password,
+      credentials.domain
+    );
+    
+    return user ? { id: user.id, name: user.name } : null;
+  },
+});
+```
 
-# Apply to D1 (development)
-wrangler d1 execute DB --local --file=prisma/migrations/<timestamp>_add_auth/migration.sql
+### Email Provider (Magic Link / Passwordless)
 
-# Apply to D1 (production)
-wrangler d1 execute DB --file=prisma/migrations/<timestamp>_add_auth/migration.sql
+#### Using Resend
+
+```typescript
+import { createResendProvider } from "@ottabase/auth";
+
+const emailProvider = createResendProvider(env, {
+  from: "noreply@yourdomain.com",
+});
+// Requires: RESEND_API_KEY env var
+```
+
+#### Using Nodemailer (SMTP)
+
+```typescript
+import { createNodemailerProvider } from "@ottabase/auth";
+
+// Option 1: Using env vars
+const emailProvider = createNodemailerProvider(env);
+// Requires: EMAIL_SERVER and EMAIL_FROM env vars
+
+// Option 2: Custom SMTP config
+const emailProvider = createNodemailerProvider(env, {
+  server: {
+    host: "smtp.gmail.com",
+    port: 587,
+    auth: {
+      user: "your.email@gmail.com",
+      pass: "your-app-password",
+    },
+  },
+  from: "noreply@yourdomain.com",
+});
+```
+
+## Session Utilities
+
+```typescript
+import {
+  isAuthenticated,
+  requireAuth,
+  getUserId,
+  getUserEmail,
+  hasVerifiedEmail,
+  serializeSession,
+} from "@ottabase/auth";
+
+// Check if authenticated
+const session = await getSession();
+if (isAuthenticated(session)) {
+  console.log(session.user.id);
+}
+
+// Require auth (throws if not authenticated)
+const session = requireAuth(await getSession());
+
+// Extract user data
+const userId = getUserId(session); // string | null
+const email = getUserEmail(session); // string | null
+const verified = hasVerifiedEmail(session); // boolean
+
+// Serialize for API responses
+const data = serializeSession(session);
+```
+
+## Configuration Options
+
+```typescript
+interface OttabaseAuthConfigOptions {
+  d1: D1Database;
+  providers: Provider[];
+  
+  // Optional
+  sessionStrategy?: "jwt" | "database"; // Default: "jwt"
+  sessionMaxAge?: number; // Default: 30 days
+  useCachedAdapter?: boolean; // Default: true
+  log?: boolean | ("query" | "info" | "warn" | "error")[];
+  customUserFields?: string[];
+  onError?: (error: Error, operation: string) => void;
+  authConfig?: Partial<AuthConfig>; // Additional Auth.js options
+}
+```
+
+## Adapter Options
+
+### Using the Unified Adapter
+
+```typescript
+import { createD1AuthAdapter } from "@ottabase/auth";
+
+const adapter = createD1AuthAdapter(env.DB, {
+  log: ["query", "error"],
+  customUserFields: ["role", "tier"],
+  onError: (error, operation) => {
+    console.error(`Error in ${operation}:`, error);
+  },
+});
+```
+
+### Using the Drizzle Adapter Directly
+
+```typescript
+import { createDrizzleD1AuthAdapter } from "@ottabase/auth";
+
+const adapter = createDrizzleD1AuthAdapter(env.DB, {
+  log: true,
+  customUserFields: ["organizationId"],
+});
+```
+
+### Cached Adapter (Recommended for Production)
+
+```typescript
+import { createD1AuthAdapterCached } from "@ottabase/auth";
+
+const adapter = createD1AuthAdapterCached(env.DB);
 ```
 
 ## Environment Variables
 
-Required environment variables for providers:
-
 ```bash
-# Google OAuth
+# Required for Auth.js
+AUTH_SECRET=your_random_secret  # Generate: openssl rand -base64 32
+
+# Google OAuth (optional)
 GOOGLE_CLIENT_ID=your_client_id
 GOOGLE_CLIENT_SECRET=your_client_secret
 
-# GitHub OAuth
+# GitHub OAuth (optional)
 GITHUB_CLIENT_ID=your_client_id
 GITHUB_CLIENT_SECRET=your_client_secret
 
-# Discord OAuth
+# Discord OAuth (optional)
 DISCORD_CLIENT_ID=your_client_id
 DISCORD_CLIENT_SECRET=your_client_secret
 
-# Azure AD
+# Azure AD (optional)
 AZURE_AD_CLIENT_ID=your_client_id
 AZURE_AD_CLIENT_SECRET=your_client_secret
 AZURE_AD_TENANT_ID=your_tenant_id
 
-# Auth0
+# Auth0 (optional)
 AUTH0_CLIENT_ID=your_client_id
 AUTH0_CLIENT_SECRET=your_client_secret
 AUTH0_ISSUER=https://your-domain.auth0.com
 
-# Auth.js
-AUTH_SECRET=your_random_secret
+# Email Provider - Resend (optional)
+RESEND_API_KEY=your_resend_api_key
+
+# Email Provider - Nodemailer/SMTP (optional)
+EMAIL_SERVER=smtp://user:password@smtp.example.com:587
+EMAIL_FROM=noreply@yourdomain.com
 ```
 
-Generate `AUTH_SECRET`:
+## Database Schema
 
-```bash
-openssl rand -base64 32
+Auth tables are managed by OttaORM migrations:
+
+| Table | Migration | Purpose |
+|-------|-----------|---------|
+| `User` | 001 | User accounts |
+| `Account` | 002 | OAuth provider accounts |
+| `Session` | 006 | Session storage (database strategy) |
+| `VerificationToken` | 007 | Email verification tokens |
+| `Authenticator` | 008 | WebAuthn/Passkey credentials |
+
+### Extending the User Model
+
+Add custom columns in your app's migrations:
+
+```sql
+-- In your migration file
+ALTER TABLE User ADD COLUMN role TEXT;
+ALTER TABLE User ADD COLUMN subscriptionTier TEXT;
+ALTER TABLE User ADD COLUMN organizationId TEXT;
+```
+
+Then configure the adapter:
+
+```typescript
+const config = createOttabaseAuthConfig({
+  d1: env.DB,
+  providers: [...],
+  customUserFields: ["role", "subscriptionTier", "organizationId"],
+});
+```
+
+## API Reference
+
+### Exports
+
+```typescript
+// Adapters
+export { createD1AuthAdapter, createD1AuthAdapterCached } from "@ottabase/auth";
+export { createDrizzleD1AuthAdapter, createDrizzleD1AuthAdapterCached } from "@ottabase/auth";
+
+// Config
+export { createOttabaseAuthConfig, createOttabaseAuthConfigDev } from "@ottabase/auth";
+
+// Providers - OAuth
+export {
+  createGoogleProvider,
+  createGitHubProvider,
+  createDiscordProvider,
+  createAzureAdProvider,
+  createAuth0Provider,
+  autoConfigureProviders,
+} from "@ottabase/auth";
+
+// Providers - Credentials
+export {
+  createCredentialsProvider,
+  createCustomCredentialsProvider,
+} from "@ottabase/auth";
+
+// Providers - Email (Magic Link)
+export {
+  createResendProvider,
+  createNodemailerProvider,
+} from "@ottabase/auth";
+
+// Session Utilities
+export {
+  isAuthenticated,
+  requireAuth,
+  getUserId,
+  getUserEmail,
+  hasVerifiedEmail,
+  serializeSession,
+} from "@ottabase/auth";
+
+// Feature
+export { authFeature, registerAuthFeature } from "@ottabase/auth";
+```
+
+## Advanced Usage
+
+### Custom Auth.js Configuration
+
+```typescript
+const config = createOttabaseAuthConfig({
+  d1: env.DB,
+  providers: [...],
+  authConfig: {
+    pages: {
+      signIn: "/login",
+      error: "/error",
+    },
+    callbacks: {
+      async jwt({ token, user }) {
+        if (user) {
+          token.id = user.id;
+          token.role = user.role;
+        }
+        return token;
+      },
+      async session({ session, token }) {
+        session.user.id = token.id;
+        session.user.role = token.role;
+        return session;
+      },
+    },
+  },
+});
+```
+
+### Development Configuration
+
+```typescript
+import { createOttabaseAuthConfigDev } from "@ottabase/auth";
+
+// Simplified config for development
+const config = createOttabaseAuthConfigDev(env.DB, [
+  createGoogleProvider(env),
+]);
+// Includes: JWT sessions, no caching, error/warn logging
 ```
 
 ## Architecture
 
-The `@ottabase/auth` package integrates with:
+```
+@ottabase/auth
+├── Uses @ottabase/db/drizzle-d1 for D1 driver
+├── Uses @ottabase/ottaorm for migrations (auth tables in core)
+├── Uses @auth/core for Auth.js functionality
+└── Uses drizzle-orm for database operations
+```
 
-- **@ottabase/db** - For feature registry, schema management, and Drizzle D1 driver
-- **@ottabase/cf** - For Prisma D1 client creation (legacy support)
-- **@auth/core** - Core Auth.js functionality (framework-agnostic)
-- **drizzle-orm** - Drizzle ORM for D1 (recommended)
-- **@auth/prisma-adapter** - Prisma adapter for Auth.js (optional/legacy)
+**Benefits:**
+- Framework-agnostic (works anywhere)
+- Tree-shakeable (optimal bundle size)
+- Type-safe (full TypeScript support)
+- Production-ready (error handling, caching)
+- Extensible (custom fields, error handlers)
 
-### ORM Strategy
+## Troubleshooting
 
-This package provides **two adapters**:
+### Provider not loading
 
-1. **Drizzle Adapter** (Recommended)
-   - Custom implementation in `src/adapters/drizzle-adapter.ts`
-   - Direct D1 SQL queries for maximum performance
-   - No build-time code generation required
-   - Smaller bundle size
-   - Uses `@ottabase/db/drizzle-d1` driver
+Make sure environment variables are set:
 
-2. **Prisma Adapter** (Legacy)
-   - Uses official `@auth/prisma-adapter`
-   - Requires Prisma Client generation
-   - Uses `@ottabase/cf/d1-prisma` for D1 support
-   - Maintained for backward compatibility
+```typescript
+// Check if provider credentials are available
+console.log(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET);
+```
 
-This ensures:
+### Custom fields not working
 
-- Clean separation of concerns (Cloudflare code in `cf`, database code in `db`)
-- Framework-agnostic auth package (no Next.js dependencies)
-- Consistent D1 usage across all Ottabase applications
-- Reusable across any framework
-- Maximum flexibility with ORM choice
+1. Verify columns exist in User table
+2. Match field names exactly (case-sensitive)
+3. Add fields to `customUserFields` array
 
-## API Reference
+### Errors not being caught
 
-See the [full API documentation](./src/index.ts) for detailed type information.
+Add error handler to see what's happening:
+
+```typescript
+const config = createOttabaseAuthConfig({
+  d1: env.DB,
+  providers: [...],
+  onError: (error, operation) => {
+    console.error(`Auth error in ${operation}:`, error);
+  },
+});
+```
 
 ## License
 

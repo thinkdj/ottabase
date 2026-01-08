@@ -7,14 +7,34 @@ import {
     Link,
     createBrowserHistory,
     lazyRouteComponent,
+    useNavigate,
 } from "@tanstack/react-router";
 import { APP_META } from "@/ottabase/config/app.config";
 import { DarkModeToggle } from "@ottabase/ui-components/dark-mode-toggle";
-import { Button } from "@ottabase/ui-shadcn";
+import { Button, Avatar, AvatarFallback, AvatarImage } from "@ottabase/ui-shadcn";
 import { api, isApiError } from "@/lib/api";
+import { useSession } from "@/lib/auth";
+import { LogIn, LogOut, User } from "lucide-react";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 
 function RootLayout() {
+    const { isAuthenticated, user, logout } = useSession();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        logout();
+        navigate({ to: "/" });
+    };
+
+    const userInitials = user?.name
+        ? user.name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase()
+        : user?.email[0].toUpperCase();
+
     return (
         <div className="min-h-screen bg-background font-sans">
             <header className="border-b">
@@ -33,10 +53,52 @@ function RootLayout() {
                         <Button asChild variant="ghost" size="sm">
                             <Link to="/demo">Demo</Link>
                         </Button>
-                        <Button asChild variant="ghost" size="sm">
-                            <Link to="/demo/theming">Themes</Link>
-                        </Button>
+
+                        {isAuthenticated && (
+                            <Button asChild variant="ghost" size="sm">
+                                <Link to="/dashboard">Dashboard</Link>
+                            </Button>
+                        )}
+
                         <DarkModeToggle type="button" title="Toggle dark/light mode" />
+
+                        {isAuthenticated ? (
+                            <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+                                <Button asChild variant="ghost" size="sm">
+                                    <Link to="/dashboard" className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                            {user?.image && <AvatarImage src={user.image} />}
+                                            <AvatarFallback className="text-xs">
+                                                {userInitials}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        {user?.name || user?.email}
+                                    </Link>
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleLogout}
+                                    title="Logout"
+                                >
+                                    <LogOut className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 ml-2">
+                                <Button asChild variant="ghost" size="sm">
+                                    <Link to="/register">
+                                        Sign up
+                                    </Link>
+                                </Button>
+                                <Button asChild variant="default" size="sm">
+                                    <Link to="/login" className="flex items-center gap-2">
+                                        <LogIn className="h-4 w-4" />
+                                        Login
+                                    </Link>
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </header>
@@ -236,6 +298,32 @@ const demoRendererRoute = new Route({
     component: lazyRouteComponent(() => import("@/pages/demo/renderer/RendererDemoPage").then((m) => ({ default: m.RendererDemoPage }))),
 });
 
+// Auth routes
+const loginRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: "/login",
+    component: lazyRouteComponent(() => import("@/pages/auth/LoginPage").then((m) => ({ default: m.LoginPage }))),
+});
+
+const registerRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: "/register",
+    component: lazyRouteComponent(() => import("@/pages/auth/RegisterPage").then((m) => ({ default: m.RegisterPage }))),
+});
+
+
+const dashboardRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: "/dashboard",
+    component: lazyRouteComponent(() => import("@/pages/auth/DashboardPage").then((m) => ({
+        default: () => (
+            <ProtectedRoute>
+                <m.DashboardPage />
+            </ProtectedRoute>
+        )
+    }))),
+});
+
 const routeTree = rootRoute.addChildren([
     indexRoute,
     demoRoute,
@@ -257,6 +345,9 @@ const routeTree = rootRoute.addChildren([
     demoApiRoute,
     demoThemingRoute,
     demoRendererRoute,
+    loginRoute,
+    registerRoute,
+    dashboardRoute,
 ]);
 
 const browserHistory = createBrowserHistory();

@@ -12,7 +12,7 @@
     "dev:be": "pnpm --filter @ottabase/ottabase-template-app-tanstack dev:worker",
     "dev:ui": "turbo dev --filter=@ottabase/ottabase-template-app-tanstack --filter=@ottabase/ui-*",
     "dev:pkg": "turbo dev --filter=@ottabase/*",
-    "build": "turbo build",
+    "build": "pnpm build:pkg && pnpm --filter @ottabase/ottabase-template-app-tanstack build",
     "build:app": "turbo build --filter=@ottabase/ottabase-template-app-tanstack...",
     "build:pkg": "turbo build --filter=./packages/*...",
     "lint": "turbo lint",
@@ -49,7 +49,7 @@
     "turbo": "^2.7.2",
     "webpack": "^5.104.1"
   },
-  "packageManager": "pnpm@10.24.0",
+  "packageManager": "pnpm@10.27.0",
   "engines": {
     "node": ">=24.0.0",
     "pnpm": ">=10.0.0"

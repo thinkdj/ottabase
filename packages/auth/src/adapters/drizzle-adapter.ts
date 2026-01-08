@@ -37,7 +37,29 @@ export interface DrizzleD1AuthAdapterOptions {
    * If not provided, a new driver will be created
    */
   driver?: D1Driver;
+
+  /**
+   * Custom user fields to include in queries
+   * These fields will be selected from the User table in addition to the standard fields
+   * 
+   * @example ["role", "subscriptionTier", "organizationId"]
+   */
+  customUserFields?: string[];
+
+  /**
+   * Error handler for adapter operations
+   * Called when an error occurs in any adapter method
+   * 
+   * @param error - The error that occurred
+   * @param operation - The operation that failed
+   */
+  onError?: (error: Error, operation: string) => void;
 }
+
+/**
+ * Standard Auth.js user fields that are always selected
+ */
+const STANDARD_USER_FIELDS = ["id", "name", "email", "emailVerified", "image"];
 
 /**
  * Create an Auth.js adapter for Cloudflare D1 using Drizzle ORM
@@ -69,13 +91,64 @@ export interface DrizzleD1AuthAdapterOptions {
  *   log: ["query", "error"]
  * });
  * ```
+ *
+ * @example
+ * ```typescript
+ * // With custom user fields
+ * const adapter = createDrizzleD1AuthAdapter(env.OBCF_D1, {
+ *   customUserFields: ["role", "subscriptionTier", "organizationId"]
+ * });
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // With error handling
+ * const adapter = createDrizzleD1AuthAdapter(env.OBCF_D1, {
+ *   onError: (error, operation) => {
+ *     console.error(`Auth adapter error in ${operation}:`, error);
+ *   }
+ * });
+ * ```
  */
+
+/**
+ * Handle errors in adapter operations
+ */
+function handleError(
+  error: unknown,
+  operation: string,
+  onError?: (error: Error, operation: string) => void
+): never {
+  const err = error instanceof Error ? error : new Error(String(error));
+
+  if (onError) {
+    onError(err, operation);
+  }
+
+  // Create new error with context
+  const enhancedError = new Error(`Auth adapter error in ${operation}: ${err.message}`);
+  throw enhancedError;
+}
+
+/**
+ * Get user fields SQL selection string
+ */
+function getUserFieldsSQL(customFields?: string[]): string {
+  const fields = [...STANDARD_USER_FIELDS];
+  if (customFields && customFields.length > 0) {
+    fields.push(...customFields);
+  }
+  return fields.join(", ");
+}
+
 export function createDrizzleD1AuthAdapter(
   d1: D1Database,
   options: DrizzleD1AuthAdapterOptions = {},
 ): Adapter {
   const driver = options.driver || createD1Driver(d1, { log: options.log });
   const d1Binding = driver.getD1();
+  const { customUserFields, onError } = options;
+  const userFieldsSQL = getUserFieldsSQL(customUserFields);
 
   return {
     // ============================================================
@@ -83,68 +156,80 @@ export function createDrizzleD1AuthAdapter(
     // ============================================================
 
     async createUser(user: Omit<AdapterUser, "id">): Promise<AdapterUser> {
-      const id = crypto.randomUUID();
-      const now = new Date().toISOString();
+      try {
+        const id = crypto.randomUUID();
+        const now = new Date().toISOString();
 
-      await d1Binding
-        .prepare(
-          `INSERT INTO User (id, name, email, emailVerified, image, createdAt, updatedAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .bind(
+        await d1Binding
+          .prepare(
+            `INSERT INTO User (id, name, email, emailVerified, image, createdAt, updatedAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .bind(
+            id,
+            user.name,
+            user.email,
+            user.emailVerified?.toISOString() || null,
+            user.image,
+            now,
+            now,
+          )
+          .run();
+
+        return {
           id,
-          user.name,
-          user.email,
-          user.emailVerified?.toISOString() || null,
-          user.image,
-          now,
-          now,
-        )
-        .run();
-
-      return {
-        id,
-        name: user.name,
-        email: user.email,
-        emailVerified: user.emailVerified,
-        image: user.image,
-      };
+          name: user.name,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          image: user.image,
+        };
+      } catch (error) {
+        return handleError(error, "createUser", onError);
+      }
     },
 
     async getUser(id: string): Promise<AdapterUser | null> {
-      const result = await d1Binding
-        .prepare(
-          `SELECT id, name, email, emailVerified, image FROM User WHERE id = ?`,
-        )
-        .bind(id)
-        .first<AdapterUser>();
+      try {
+        const result = await d1Binding
+          .prepare(
+            `SELECT ${userFieldsSQL} FROM User WHERE id = ?`,
+          )
+          .bind(id)
+          .first<AdapterUser>();
 
-      if (!result) return null;
+        if (!result) return null;
 
-      return {
-        ...result,
-        emailVerified: result.emailVerified
-          ? new Date(result.emailVerified as unknown as string)
-          : null,
-      };
+        return {
+          ...result,
+          emailVerified: result.emailVerified
+            ? new Date(result.emailVerified as unknown as string)
+            : null,
+        };
+      } catch (error) {
+        return handleError(error, "getUser", onError);
+      }
     },
 
     async getUserByEmail(email: string): Promise<AdapterUser | null> {
-      const result = await d1Binding
-        .prepare(
-          `SELECT id, name, email, emailVerified, image FROM User WHERE email = ?`,
-        )
-        .bind(email)
-        .first<AdapterUser>();
+      try {
+        const result = await d1Binding
+          .prepare(
+            `SELECT ${userFieldsSQL} FROM User WHERE email = ?`,
+          )
+          .bind(email)
+          .first<AdapterUser>();
 
-      if (!result) return null;
+        if (!result) return null;
 
-      return {
-        ...result,
-        emailVerified: result.emailVerified
-          ? new Date(result.emailVerified as unknown as string)
-          : null,
-      };
+        return {
+          ...result,
+          emailVerified: result.emailVerified
+            ? new Date(result.emailVerified as unknown as string)
+            : null,
+        };
+      } catch (error) {
+        return handleError(error, "getUserByEmail", onError);
+      }
     },
 
     async getUserByAccount({
@@ -154,79 +239,91 @@ export function createDrizzleD1AuthAdapter(
       providerAccountId: string;
       provider: string;
     }): Promise<AdapterUser | null> {
-      const result = await d1Binding
-        .prepare(
-          `SELECT u.id, u.name, u.email, u.emailVerified, u.image
-           FROM User u
-           INNER JOIN Account a ON u.id = a.userId
-           WHERE a.provider = ? AND a.providerAccountId = ?`,
-        )
-        .bind(provider, providerAccountId)
-        .first<AdapterUser>();
+      try {
+        const result = await d1Binding
+          .prepare(
+            `SELECT u.${userFieldsSQL.split(", ").map(f => `u.${f}`).join(", ")}
+             FROM User u
+             INNER JOIN Account a ON u.id = a.userId
+             WHERE a.provider = ? AND a.providerAccountId = ?`,
+          )
+          .bind(provider, providerAccountId)
+          .first<AdapterUser>();
 
-      if (!result) return null;
+        if (!result) return null;
 
-      return {
-        ...result,
-        emailVerified: result.emailVerified
-          ? new Date(result.emailVerified as unknown as string)
-          : null,
-      };
+        return {
+          ...result,
+          emailVerified: result.emailVerified
+            ? new Date(result.emailVerified as unknown as string)
+            : null,
+        };
+      } catch (error) {
+        return handleError(error, "getUserByAccount", onError);
+      }
     },
 
     async updateUser(
       user: Partial<AdapterUser> & Pick<AdapterUser, "id">,
     ): Promise<AdapterUser> {
-      const updates: string[] = [];
-      const values: any[] = [];
+      try {
+        const updates: string[] = [];
+        const values: any[] = [];
 
-      if (user.name !== undefined) {
-        updates.push("name = ?");
-        values.push(user.name);
+        if (user.name !== undefined) {
+          updates.push("name = ?");
+          values.push(user.name);
+        }
+        if (user.email !== undefined) {
+          updates.push("email = ?");
+          values.push(user.email);
+        }
+        if (user.emailVerified !== undefined) {
+          updates.push("emailVerified = ?");
+          values.push(user.emailVerified?.toISOString() || null);
+        }
+        if (user.image !== undefined) {
+          updates.push("image = ?");
+          values.push(user.image);
+        }
+
+        updates.push("updatedAt = ?");
+        values.push(new Date().toISOString());
+
+        values.push(user.id);
+
+        await d1Binding
+          .prepare(`UPDATE User SET ${updates.join(", ")} WHERE id = ?`)
+          .bind(...values)
+          .run();
+
+        const result = await d1Binding
+          .prepare(
+            `SELECT ${userFieldsSQL} FROM User WHERE id = ?`,
+          )
+          .bind(user.id)
+          .first<AdapterUser>();
+
+        return {
+          ...result!,
+          emailVerified: result!.emailVerified
+            ? new Date(result!.emailVerified as unknown as string)
+            : null,
+        };
+      } catch (error) {
+        return handleError(error, "updateUser", onError);
       }
-      if (user.email !== undefined) {
-        updates.push("email = ?");
-        values.push(user.email);
-      }
-      if (user.emailVerified !== undefined) {
-        updates.push("emailVerified = ?");
-        values.push(user.emailVerified?.toISOString() || null);
-      }
-      if (user.image !== undefined) {
-        updates.push("image = ?");
-        values.push(user.image);
-      }
-
-      updates.push("updatedAt = ?");
-      values.push(new Date().toISOString());
-
-      values.push(user.id);
-
-      await d1Binding
-        .prepare(`UPDATE User SET ${updates.join(", ")} WHERE id = ?`)
-        .bind(...values)
-        .run();
-
-      const result = await d1Binding
-        .prepare(
-          `SELECT id, name, email, emailVerified, image FROM User WHERE id = ?`,
-        )
-        .bind(user.id)
-        .first<AdapterUser>();
-
-      return {
-        ...result!,
-        emailVerified: result!.emailVerified
-          ? new Date(result!.emailVerified as unknown as string)
-          : null,
-      };
     },
 
     async deleteUser(userId: string): Promise<void> {
-      await d1Binding
-        .prepare(`DELETE FROM User WHERE id = ?`)
-        .bind(userId)
-        .run();
+      try {
+        await d1Binding
+          .prepare(`DELETE FROM User WHERE id = ?`)
+          .bind(userId)
+          .run();
+      } catch (error) {
+        return handleError(error, "deleteUser", onError);
+      }
     },
 
     // ============================================================
@@ -234,30 +331,34 @@ export function createDrizzleD1AuthAdapter(
     // ============================================================
 
     async linkAccount(account: AdapterAccount): Promise<AdapterAccount> {
-      const id = crypto.randomUUID();
+      try {
+        const id = crypto.randomUUID();
 
-      await d1Binding
-        .prepare(
-          `INSERT INTO Account (id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .bind(
-          id,
-          account.userId,
-          account.type,
-          account.provider,
-          account.providerAccountId,
-          account.refresh_token || null,
-          account.access_token || null,
-          account.expires_at || null,
-          account.token_type || null,
-          account.scope || null,
-          account.id_token || null,
-          account.session_state || null,
-        )
-        .run();
+        await d1Binding
+          .prepare(
+            `INSERT INTO Account (id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .bind(
+            id,
+            account.userId,
+            account.type,
+            account.provider,
+            account.providerAccountId,
+            account.refresh_token || null,
+            account.access_token || null,
+            account.expires_at || null,
+            account.token_type || null,
+            account.scope || null,
+            account.id_token || null,
+            account.session_state || null,
+          )
+          .run();
 
-      return { ...account, id };
+        return { ...account, id };
+      } catch (error) {
+        return handleError(error, "linkAccount", onError);
+      }
     },
 
     async unlinkAccount({
@@ -267,12 +368,16 @@ export function createDrizzleD1AuthAdapter(
       providerAccountId: string;
       provider: string;
     }): Promise<void> {
-      await d1Binding
-        .prepare(
-          `DELETE FROM Account WHERE provider = ? AND providerAccountId = ?`,
-        )
-        .bind(provider, providerAccountId)
-        .run();
+      try {
+        await d1Binding
+          .prepare(
+            `DELETE FROM Account WHERE provider = ? AND providerAccountId = ?`,
+          )
+          .bind(provider, providerAccountId)
+          .run();
+      } catch (error) {
+        return handleError(error, "unlinkAccount", onError);
+      }
     },
 
     // ============================================================
@@ -284,111 +389,137 @@ export function createDrizzleD1AuthAdapter(
       userId: string;
       expires: Date;
     }): Promise<AdapterSession> {
-      const id = crypto.randomUUID();
+      try {
+        const id = crypto.randomUUID();
 
-      await d1Binding
-        .prepare(
-          `INSERT INTO Session (id, sessionToken, userId, expires)
-           VALUES (?, ?, ?, ?)`,
-        )
-        .bind(
-          id,
-          session.sessionToken,
-          session.userId,
-          session.expires.toISOString(),
-        )
-        .run();
+        await d1Binding
+          .prepare(
+            `INSERT INTO Session (id, sessionToken, userId, expires)
+             VALUES (?, ?, ?, ?)`,
+          )
+          .bind(
+            id,
+            session.sessionToken,
+            session.userId,
+            session.expires.toISOString(),
+          )
+          .run();
 
-      return {
-        sessionToken: session.sessionToken,
-        userId: session.userId,
-        expires: session.expires,
-      };
+        return {
+          sessionToken: session.sessionToken,
+          userId: session.userId,
+          expires: session.expires,
+        };
+      } catch (error) {
+        return handleError(error, "createSession", onError);
+      }
     },
 
     async getSessionAndUser(
       sessionToken: string,
     ): Promise<{ session: AdapterSession; user: AdapterUser } | null> {
-      const result = await d1Binding
-        .prepare(
-          `SELECT
-            s.sessionToken, s.userId, s.expires,
-            u.id as user_id, u.name, u.email, u.emailVerified, u.image
-           FROM Session s
-           INNER JOIN User u ON s.userId = u.id
-           WHERE s.sessionToken = ?`,
-        )
-        .bind(sessionToken)
-        .first<any>();
+      try {
+        const userFields = userFieldsSQL.split(", ").map(f => `u.${f} as user_${f}`).join(", ");
 
-      if (!result) return null;
-
-      // Check if session is expired
-      if (new Date(result.expires) < new Date()) {
-        await d1Binding
-          .prepare(`DELETE FROM Session WHERE sessionToken = ?`)
+        const result = await d1Binding
+          .prepare(
+            `SELECT
+              s.sessionToken, s.userId, s.expires,
+              ${userFields}
+             FROM Session s
+             INNER JOIN User u ON s.userId = u.id
+             WHERE s.sessionToken = ?`,
+          )
           .bind(sessionToken)
-          .run();
-        return null;
-      }
+          .first<any>();
 
-      return {
-        session: {
-          sessionToken: result.sessionToken,
-          userId: result.userId,
-          expires: new Date(result.expires),
-        },
-        user: {
-          id: result.user_id,
-          name: result.name,
-          email: result.email,
-          emailVerified: result.emailVerified
-            ? new Date(result.emailVerified)
-            : null,
-          image: result.image,
-        },
-      };
+        if (!result) return null;
+
+        // Check if session is expired
+        if (new Date(result.expires) < new Date()) {
+          await d1Binding
+            .prepare(`DELETE FROM Session WHERE sessionToken = ?`)
+            .bind(sessionToken)
+            .run();
+          return null;
+        }
+
+        // Extract user fields from the result
+        const user: any = {};
+        STANDARD_USER_FIELDS.forEach(field => {
+          user[field] = result[`user_${field}`];
+        });
+        if (customUserFields) {
+          customUserFields.forEach(field => {
+            user[field] = result[`user_${field}`];
+          });
+        }
+
+        return {
+          session: {
+            sessionToken: result.sessionToken,
+            userId: result.userId,
+            expires: new Date(result.expires),
+          },
+          user: {
+            ...user,
+            emailVerified: user.emailVerified
+              ? new Date(user.emailVerified)
+              : null,
+          },
+        };
+      } catch (error) {
+        return handleError(error, "getSessionAndUser", onError);
+      }
     },
 
     async updateSession(
       session: Partial<AdapterSession> & Pick<AdapterSession, "sessionToken">,
     ): Promise<AdapterSession> {
-      const updates: string[] = [];
-      const values: any[] = [];
+      try {
+        const updates: string[] = [];
+        const values: any[] = [];
 
-      if (session.expires !== undefined) {
-        updates.push("expires = ?");
-        values.push(session.expires.toISOString());
+        if (session.expires !== undefined) {
+          updates.push("expires = ?");
+          values.push(session.expires.toISOString());
+        }
+
+        values.push(session.sessionToken);
+
+        await d1Binding
+          .prepare(
+            `UPDATE Session SET ${updates.join(", ")} WHERE sessionToken = ?`,
+          )
+          .bind(...values)
+          .run();
+
+        const result = await d1Binding
+          .prepare(
+            `SELECT sessionToken, userId, expires FROM Session WHERE sessionToken = ?`,
+          )
+          .bind(session.sessionToken)
+          .first<any>();
+
+        return {
+          sessionToken: result!.sessionToken,
+          userId: result!.userId,
+          expires: new Date(result!.expires),
+        };
+      } catch (error) {
+        return handleError(error, "updateSession", onError);
       }
-
-      values.push(session.sessionToken);
-
-      await d1Binding
-        .prepare(
-          `UPDATE Session SET ${updates.join(", ")} WHERE sessionToken = ?`,
-        )
-        .bind(...values)
-        .run();
-
-      const result = await d1Binding
-        .prepare(
-          `SELECT sessionToken, userId, expires FROM Session WHERE sessionToken = ?`,
-        )
-        .bind(session.sessionToken)
-        .first<any>();
-
-      return {
-        sessionToken: result!.sessionToken,
-        userId: result!.userId,
-        expires: new Date(result!.expires),
-      };
     },
 
     async deleteSession(sessionToken: string): Promise<void> {
-      await d1Binding
-        .prepare(`DELETE FROM Session WHERE sessionToken = ?`)
-        .bind(sessionToken)
-        .run();
+      try {
+        await d1Binding
+          .prepare(`DELETE FROM Session WHERE sessionToken = ?`)
+          .bind(sessionToken)
+          .run();
+      } catch (error) {
+        return handleError(error, "deleteSession", onError);
+      }
     },
 
     // ============================================================
@@ -398,15 +529,19 @@ export function createDrizzleD1AuthAdapter(
     async createVerificationToken(
       token: VerificationToken,
     ): Promise<VerificationToken> {
-      await d1Binding
-        .prepare(
-          `INSERT INTO VerificationToken (identifier, token, expires)
-           VALUES (?, ?, ?)`,
-        )
-        .bind(token.identifier, token.token, token.expires.toISOString())
-        .run();
+      try {
+        await d1Binding
+          .prepare(
+            `INSERT INTO VerificationToken (identifier, token, expires)
+             VALUES (?, ?, ?)`,
+          )
+          .bind(token.identifier, token.token, token.expires.toISOString())
+          .run();
 
-      return token;
+        return token;
+      } catch (error) {
+        return handleError(error, "createVerificationToken", onError);
+      }
     },
 
     async useVerificationToken({
@@ -416,27 +551,31 @@ export function createDrizzleD1AuthAdapter(
       identifier: string;
       token: string;
     }): Promise<VerificationToken | null> {
-      const result = await d1Binding
-        .prepare(
-          `SELECT identifier, token, expires FROM VerificationToken WHERE identifier = ? AND token = ?`,
-        )
-        .bind(identifier, token)
-        .first<any>();
+      try {
+        const result = await d1Binding
+          .prepare(
+            `SELECT identifier, token, expires FROM VerificationToken WHERE identifier = ? AND token = ?`,
+          )
+          .bind(identifier, token)
+          .first<any>();
 
-      if (!result) return null;
+        if (!result) return null;
 
-      await d1Binding
-        .prepare(
-          `DELETE FROM VerificationToken WHERE identifier = ? AND token = ?`,
-        )
-        .bind(identifier, token)
-        .run();
+        await d1Binding
+          .prepare(
+            `DELETE FROM VerificationToken WHERE identifier = ? AND token = ?`,
+          )
+          .bind(identifier, token)
+          .run();
 
-      return {
-        identifier: result.identifier,
-        token: result.token,
-        expires: new Date(result.expires),
-      };
+        return {
+          identifier: result.identifier,
+          token: result.token,
+          expires: new Date(result.expires),
+        };
+      } catch (error) {
+        return handleError(error, "useVerificationToken", onError);
+      }
     },
   };
 }

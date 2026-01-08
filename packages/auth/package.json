@@ -35,16 +35,20 @@
       "types": "./dist/adapters/drizzle-adapter.d.ts",
       "import": "./dist/adapters/drizzle-adapter.mjs",
       "require": "./dist/adapters/drizzle-adapter.js"
+    },
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "import": "./dist/components/index.mjs",
+      "require": "./dist/components/index.js"
     }
   },
   "files": [
     "dist",
-    "prisma",
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/adapter.ts src/adapters/drizzle-adapter.ts src/config.ts src/providers.ts src/session.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/adapter.ts src/adapters/drizzle-adapter.ts src/config.ts src/providers.ts src/session.ts --format cjs,esm --dts --watch",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts",
     "type-check": "tsc --noEmit"
@@ -53,7 +57,6 @@
     "auth",
     "authjs",
     "nextauth",
-    "prisma",
     "drizzle",
     "cloudflare-d1"
   ],
@@ -61,16 +64,14 @@
   "license": "MIT",
   "peerDependencies": {
     "@auth/core": ">=0.34.0",
-    "@auth/prisma-adapter": ">=2.0.0",
     "@ottabase/cf": "workspace:*",
     "@ottabase/db": "workspace:*",
-    "drizzle-orm": ">=0.30.0"
+    "drizzle-orm": ">=0.30.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   },
   "peerDependenciesMeta": {
     "@auth/core": {
-      "optional": true
-    },
-    "@auth/prisma-adapter": {
       "optional": true
     },
     "drizzle-orm": {
@@ -78,12 +79,18 @@
     }
   },
   "dependencies": {
-    "@ottabase/cf": "workspace:*"
+    "@ottabase/cf": "workspace:*",
+    "@ottabase/ui-shadcn": "workspace:*",
+    "lucide-react": "^0.468.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "@ottabase/db": "workspace:*",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "typescript": "catalog:",
     "tsup": "catalog:",
     "rimraf": "catalog:",

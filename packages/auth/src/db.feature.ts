@@ -1,11 +1,7 @@
-// ============================================================
-// @ottabase/auth - Feature Registration
-// ============================================================
-
 import { defineFeatureSchema, registerFeature } from "@ottabase/db/registry";
 
 /**
- * Auth feature schema definition for Drizzle (default)
+ * Auth feature schema definition for Drizzle
  *
  * Auth tables are integrated into OttaORM core migrations:
  * - 001_create_users_table
@@ -16,9 +12,9 @@ import { defineFeatureSchema, registerFeature } from "@ottabase/db/registry";
  *
  * No separate schema files needed - migrations are managed by OttaORM.
  */
-export const authFeatureDrizzle = defineFeatureSchema({
+export const authFeature = defineFeatureSchema({
   featureId: "auth",
-  name: "Authentication (Drizzle)",
+  name: "Authentication",
   description:
     "Auth.js (NextAuth.js) compatible authentication models for Drizzle + D1",
   packageName: "@ottabase/auth",
@@ -28,37 +24,11 @@ export const authFeatureDrizzle = defineFeatureSchema({
 });
 
 /**
- * Auth feature schema definition for Prisma (legacy)
- *
- * @deprecated Drizzle is recommended for D1. Use authFeatureDrizzle instead.
- */
-export const authFeaturePrisma = defineFeatureSchema({
-  featureId: "auth-prisma",
-  name: "Authentication (Prisma)",
-  description:
-    "Auth.js (NextAuth.js) compatible authentication models for Prisma",
-  packageName: "@ottabase/auth",
-  schemaPath: "prisma/auth.schema.prisma",
-  dependencies: [], // No dependencies, but extends User model from base
-  version: "1.0.0",
-});
-
-/**
- * Default auth feature (Drizzle)
- */
-export const authFeature = authFeatureDrizzle;
-
-/**
  * Register the auth feature with the global registry
- *
- * @param orm - ORM to use ("drizzle" or "prisma"), defaults to "drizzle"
  */
-export function registerAuthFeature(
-  orm: "drizzle" | "prisma" = "drizzle",
-): void {
-  const feature = orm === "drizzle" ? authFeatureDrizzle : authFeaturePrisma;
-  registerFeature(feature);
+export function registerAuthFeature(): void {
+  registerFeature(authFeature);
 }
 
-// Auto-register Drizzle feature by default
+// Auto-register auth feature by default
 registerAuthFeature();
