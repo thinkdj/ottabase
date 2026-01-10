@@ -49,6 +49,10 @@ export default defineConfig(async () => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    css: {
+      // Lightning CSS cannot safely transform some Tailwind arbitrary variants, so keep PostCSS handling
+      transformer: "postcss",
+    },
     build: {
       outDir: "dist",
       sourcemap: true,
