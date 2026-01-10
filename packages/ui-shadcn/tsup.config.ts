@@ -72,11 +72,12 @@ const entry = Object.fromEntries(
 ) as Record<string, string>;
 
 export default defineConfig({
-    entry,
-    format: ["cjs", "esm"],
-    dts: true,
-    clean: true,
-    treeshake: true,
-    splitting: true,
-    external: ["react", "react-dom"],
+  entry,
+  format: ["cjs", "esm"],
+  dts: true,
+  clean: true,
+  // Disable bundling so "use client" stays at the top of each component file.
+  bundle: false,
+  splitting: false,
+  external: ["react", "react-dom"],
 });
