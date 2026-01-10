@@ -47,6 +47,7 @@
     "style-loader": "catalog:",
     "tsup": "catalog:",
     "turbo": "^2.7.2",
+    "tailwindcss-animate": "catalog:",
     "webpack": "^5.104.1"
   },
   "packageManager": "pnpm@10.27.0",

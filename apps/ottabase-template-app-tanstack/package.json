@@ -68,6 +68,7 @@
     "postcss-preset-mantine": "catalog:",
     "postcss-simple-vars": "catalog:",
     "tailwindcss": "catalog:",
+    "tailwindcss-animate": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-tsconfig-paths": "catalog:",
