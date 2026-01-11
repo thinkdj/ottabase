@@ -12,7 +12,7 @@
     "dev:be": "pnpm --filter @ottabase/ottabase-template-app-tanstack dev:worker",
     "dev:ui": "turbo dev --filter=@ottabase/ottabase-template-app-tanstack --filter=@ottabase/ui-*",
     "dev:pkg": "turbo dev --filter=@ottabase/*",
-    "build": "pnpm build:pkg && pnpm --filter @ottabase/ottabase-template-app-tanstack build",
+    "build": "turbo build",
     "build:app": "turbo build --filter=@ottabase/ottabase-template-app-tanstack...",
     "build:pkg": "turbo build --filter=./packages/*...",
     "lint": "turbo lint",
