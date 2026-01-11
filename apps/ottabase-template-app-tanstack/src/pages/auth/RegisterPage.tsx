@@ -23,10 +23,14 @@ export function RegisterPage() {
             // Simulated API call
             await new Promise((resolve) => setTimeout(resolve, 1500));
 
-            // Check if email already exists (simulated)
-            const existingEmails = ["existing@example.com"]; // Simulated DB check
-            if (existingEmails.includes(data.email)) {
-                throw new Error("An account with this email already exists");
+            // Demo-only: simulated "email already exists" check.
+            // This runs in development builds to mimic backend validation.
+            // In production, real uniqueness checks must be performed on the server.
+            if (import.meta.env?.DEV) {
+                const simulatedExistingEmails = ["existing@example.com"];
+                if (simulatedExistingEmails.includes(data.email)) {
+                    throw new Error("An account with this email already exists");
+                }
             }
 
             // Simulated successful registration
