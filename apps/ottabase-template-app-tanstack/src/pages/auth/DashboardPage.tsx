@@ -30,13 +30,14 @@ export function DashboardPage() {
     }
 
     const expiresAt = session ? new Date(session.expires) : null;
+    const emailInitial = user.email?.[0]?.toUpperCase();
     const initials = user.name
         ? user.name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .toUpperCase()
-        : user.email[0].toUpperCase();
+              .split(" ")
+              .map((n) => n[0])
+              .join("")
+              .toUpperCase()
+        : emailInitial || "?";
 
     return (
         <div className="space-y-6">
