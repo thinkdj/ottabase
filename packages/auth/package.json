@@ -40,6 +40,21 @@
       "types": "./dist/components/index.d.ts",
       "import": "./dist/components/index.mjs",
       "require": "./dist/components/index.js"
+    },
+    "./backend": {
+      "types": "./dist/backend-handler.d.ts",
+      "import": "./dist/backend-handler.mjs",
+      "require": "./dist/backend-handler.js"
+    },
+    "./client": {
+      "types": "./dist/client-api.d.ts",
+      "import": "./dist/client-api.mjs",
+      "require": "./dist/client-api.js"
+    },
+    "./react": {
+      "types": "./dist/react-hooks.d.ts",
+      "import": "./dist/react-hooks.mjs",
+      "require": "./dist/react-hooks.js"
     }
   },
   "files": [
@@ -67,6 +82,7 @@
     "@ottabase/cf": "workspace:*",
     "@ottabase/db": "workspace:*",
     "drizzle-orm": ">=0.30.0",
+    "jotai": ">=2.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
   },
@@ -84,6 +100,7 @@
     "lucide-react": "^0.468.0"
   },
   "devDependencies": {
+    "@auth/core": "catalog:",
     "@cloudflare/workers-types": "catalog:",
     "@ottabase/db": "workspace:*",
     "@types/node": "catalog:",
@@ -91,6 +108,7 @@
     "@types/react-dom": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "jotai": "catalog:",
     "typescript": "catalog:",
     "tsup": "catalog:",
     "rimraf": "catalog:",

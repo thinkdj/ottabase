@@ -18,10 +18,7 @@
 // ============================================================
 // FEATURE REGISTRATION
 // ============================================================
-export {
-  authFeature,
-  registerAuthFeature,
-} from "./db.feature";
+export { authFeature, registerAuthFeature } from "./db.feature";
 
 // ============================================================
 // D1 ADAPTER - Unified Factory
@@ -38,7 +35,7 @@ export {
 export {
   createDrizzleD1AuthAdapter,
   createDrizzleD1AuthAdapterCached,
-  type DrizzleD1AuthAdapterOptions
+  type DrizzleD1AuthAdapterOptions,
 } from "./adapters/drizzle-adapter";
 
 // ============================================================
@@ -58,15 +55,15 @@ export {
   autoConfigureProviders,
   createAuth0Provider,
   createAzureAdProvider,
-  createDiscordProvider,
-  createGitHubProvider,
-  createGoogleProvider,
   // Credentials Provider
   createCredentialsProvider,
   createCustomCredentialsProvider,
+  createDiscordProvider,
+  createGitHubProvider,
+  createGoogleProvider,
+  createNodemailerProvider,
   // Email Providers (Magic Link)
   createResendProvider,
-  createNodemailerProvider,
   // Types
   type ProviderEnv,
   type ProviderOptions,
@@ -87,6 +84,48 @@ export {
 } from "./session";
 
 // ============================================================
+// BACKEND HANDLER (Cloudflare Workers)
+// ============================================================
+export {
+  createAuthConfig,
+  getSession,
+  handleAuthRequest,
+  hashPassword,
+  verifyPassword,
+  type AuthEnv,
+  type CreateAuthConfigOptions,
+  type CredentialsAuthorizeOptions,
+} from "./backend-handler";
+
+// ============================================================
+// CLIENT API (Frontend)
+// ============================================================
+export {
+  getCsrfToken,
+  getSession as getSessionClient,
+  isAuthenticated as isAuthenticatedClient,
+  sendMagicLink,
+  signInWithCredentials,
+  signInWithProvider,
+  signOut,
+  type AuthClientOptions,
+  type AuthResponse,
+  type AuthSession,
+  type SignInCredentials,
+} from "./client-api";
+
+// ============================================================
+// REACT HOOKS
+// ============================================================
+export {
+  useSession,
+  type Session,
+  type User,
+  type UseSessionOptions,
+} from "./react-hooks";
+
+// ============================================================
 // TYPE DEFINITIONS
 // ============================================================
 export type { AuthConfig } from "./types";
+
