@@ -134,9 +134,22 @@ function handleError(
  * Get user fields SQL selection string
  */
 function getUserFieldsSQL(customFields?: string[]): string {
+  const FIELD_NAME_REGEX = /^[A-Za-z0-9_]+$/;
+
   const fields = [...STANDARD_USER_FIELDS];
+
   if (customFields && customFields.length > 0) {
-    fields.push(...customFields);
+    for (const field of customFields) {
+      if (!FIELD_NAME_REGEX.test(field)) {
+        throw new Error(
+          `Invalid custom user field name "${field}". ` +
+            "Field names may only contain alphanumeric characters and underscore.",
+        );
+      }
+      if (!fields.includes(field)) {
+        fields.push(field);
+      }
+    }
   }
   return fields.join(", ");
 }
