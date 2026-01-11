@@ -12,7 +12,7 @@ import {
     AvatarImage,
     Badge,
 } from "@ottabase/ui-shadcn";
-import { LogOut, User, Mail, Calendar } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 export function DashboardPage() {
     const navigate = useNavigate();
