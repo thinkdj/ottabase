@@ -27,13 +27,17 @@ function RootLayout() {
         navigate({ to: "/" });
     };
 
-    const userInitials = user?.name
-        ? user.name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .toUpperCase()
-        : user?.email[0].toUpperCase();
+    const userInitials =
+        user?.name && user.name.trim().length > 0
+            ? user.name
+                  .split(" ")
+                  .filter((n) => n.length > 0)
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()
+            : user?.email && user.email.length > 0
+              ? user.email[0].toUpperCase()
+              : "?";
 
     return (
         <div className="min-h-screen bg-background font-sans">
