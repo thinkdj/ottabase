@@ -14,7 +14,7 @@ import { DarkModeToggle } from "@ottabase/ui-components/dark-mode-toggle";
 import { Button, Avatar, AvatarFallback, AvatarImage } from "@ottabase/ui-shadcn";
 import { api, isApiError } from "@/lib/api";
 import { useSession } from "@/lib/auth";
-import { LogIn, LogOut, User } from "lucide-react";
+import { LogIn, LogOut } from "lucide-react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 
