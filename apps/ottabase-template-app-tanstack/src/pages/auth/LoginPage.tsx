@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
-import { LoginForm, getLoginConfig } from "@ottabase/auth/components";
+import { LoginForm } from "@ottabase/auth/components";
 import { useSession } from "@/lib/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@ottabase/ui-shadcn";
 
