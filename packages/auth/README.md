@@ -715,8 +715,10 @@ const config = createOttabaseAuthConfigDev(env.DB, [
 Make sure environment variables are set:
 
 ```typescript
-// Check if provider credentials are available
-console.log(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET);
+// Check if provider credentials are available (without logging secrets)
+if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+  console.error("Missing Google OAuth environment variables");
+}
 ```
 
 ### Custom fields not working
