@@ -305,7 +305,8 @@ import { LoginForm } from "@ottabase/auth/components";
    - Visit `/login`
    - See auto-configured providers
    - Check warnings for missing config
-   - Try credentials login (works out-of-box)
+   - (Development only) Use the built-in credentials login to verify the flow locally.
+     **Do not use the default credentials handler in production** — you must implement a real `authorize` callback backed by your user store before deploying.
 
 ## 🎯 Summary
 
