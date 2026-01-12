@@ -128,7 +128,7 @@ export function ShortlinkForm({ shortlink, onSuccess, onCancel }: ShortlinkFormP
             required
             disabled={loading}
             className="flex-1"
-            pattern="[a-zA-Z0-9_-]+"
+            pattern="[a-zA-Z0-9_\-]+"
             title="Only letters, numbers, hyphens, and underscores"
           />
           <Button
