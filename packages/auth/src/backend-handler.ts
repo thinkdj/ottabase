@@ -177,7 +177,33 @@ export function createAuthConfig(
     sessionMaxAge: options?.sessionMaxAge ?? 30 * 24 * 60 * 60, // 30 days
     authConfig: {
       secret: env.AUTH_SECRET || "dev-secret-change-in-production",
-      trustHost: true, // Required for Cloudflare Workers
+      /**
+       * trustHost:
+       *   Cloudflare Workers and other edge runtimes often require `trustHost: true`
+       *   because the framework cannot reliably infer the public origin from the
+       *   incoming request (e.g. behind proxies / custom domains). In those
+       *   environments, Auth.js host checks would otherwise fail.
+       *
+       *   Security note:
+       *   - Enabling `trustHost` bypasses Auth.js' built‑in host validation and
+       *     makes this handler trust the host information provided by the platform.
+       *   - If your Cloudflare route / custom domain configuration is misconfigured
+       *     or if arbitrary Host headers are allowed to reach the Worker, this can
+       *     enable host‑header based attacks.
+       *
+       *   Recommended hardening:
+       *   - Configure a canonical external URL for your deployment (e.g. via
+       *     an `AUTH_URL`/`NEXTAUTH_URL` or similar env var at the application
+       *     level) and ensure Cloudflare only routes from trusted hostnames.
+       *   - Do NOT expose this Worker on untrusted / wildcard hosts without
+       *     additional protections.
+       *
+       *   Overrides / alternatives:
+       *   - If your environment does not require bypassing host checks, you can
+       *     override this setting via `options.authConfig.trustHost = false` and
+       *     configure Auth.js with an explicit `url` / allowed hosts.
+       */
+      trustHost: true,
       callbacks: {
         async jwt({ token, user }) {
           if (user) {
