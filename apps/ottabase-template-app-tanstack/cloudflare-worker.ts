@@ -1108,9 +1108,9 @@ export default {
               });
             }
 
-            // Track the click asynchronously (don't wait for it)
-            shortlink.trackClick().catch(() => {
-              // Ignore tracking errors
+            // Track the click asynchronously (don't wait for it), but log failures
+            shortlink.trackClick().catch((error) => {
+              console.error("Shortlink click tracking error:", error);
             });
 
             // Redirect to the full URL
