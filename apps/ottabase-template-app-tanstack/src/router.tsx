@@ -57,6 +57,9 @@ function RootLayout() {
                         <Button asChild variant="ghost" size="sm">
                             <Link to="/demo">Demo</Link>
                         </Button>
+                        <Button asChild variant="ghost" size="sm">
+                            <Link to="/shortlinks">Links</Link>
+                        </Button>
 
                         {isAuthenticated && (
                             <Button asChild variant="ghost" size="sm">
@@ -328,6 +331,13 @@ const dashboardRoute = new Route({
     }))),
 });
 
+// Shortlinks route
+const shortlinksRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: "/shortlinks",
+    component: lazyRouteComponent(() => import("@/pages/shortlinks/ShortlinksPage").then((m) => ({ default: m.ShortlinksPage }))),
+});
+
 const routeTree = rootRoute.addChildren([
     indexRoute,
     demoRoute,
@@ -352,6 +362,7 @@ const routeTree = rootRoute.addChildren([
     loginRoute,
     registerRoute,
     dashboardRoute,
+    shortlinksRoute,
 ]);
 
 const browserHistory = createBrowserHistory();

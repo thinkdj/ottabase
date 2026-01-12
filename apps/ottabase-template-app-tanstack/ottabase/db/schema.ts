@@ -33,3 +33,8 @@ export {
 // APP-SPECIFIC TABLES
 // ============================================================
 export { todosTable } from "../models/Todo";
+
+// ============================================================
+// SHORTLINKS (from @ottabase/shortlinks package)
+// ============================================================
+export { shortlinksTable } from "@ottabase/shortlinks/schema";

@@ -1,0 +1,26 @@
+{
+  "name": "@ottabase/shortlinks",
+  "version": "0.0.1",
+  "description": "Reusable shortlink management system for Cloudflare infrastructure",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./schema": {
+      "types": "./src/schema.ts",
+      "default": "./src/schema.ts"
+    }
+  },
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules"
+  },
+  "peerDependencies": {
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "drizzle-orm": "catalog:",
+    "typescript": "catalog:"
+  }
+}

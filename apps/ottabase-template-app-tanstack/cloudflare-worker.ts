@@ -24,6 +24,7 @@ import { jsonResponse } from "@ottabase/utils/http-response";
 import * as schema from "./ottabase/db/schema";
 import { appMigrations } from "./ottabase/migrations";
 import { Todo } from "./ottabase/models/Todo";
+import { Shortlink } from "./ottabase/models/Shortlink";
 
 export { RealtimeActor };
 
@@ -139,6 +140,179 @@ export default {
           ok: true,
           name: "ottabase-template-app-tanstack",
           timestamp: Date.now(),
+        });
+      }
+
+      // ============================================================
+      // Shortlink Management
+      // ============================================================
+
+      // List all shortlinks
+      if (url.pathname === "/api/shortlinks" && request.method === "GET") {
+        if (!env.OBCF_D1) {
+          return errorResponse("D1 database binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        registerConnection("default", createD1Driver(env.OBCF_D1));
+
+        const appName = url.searchParams.get("appName");
+        const type = url.searchParams.get("type");
+
+        let shortlinks;
+        if (appName) {
+          shortlinks = await Shortlink.byApp(appName, {
+            orderBy: "createdAt",
+            orderDirection: "desc",
+          });
+        } else if (type) {
+          shortlinks = await Shortlink.byType(type, {
+            orderBy: "createdAt",
+            orderDirection: "desc",
+          });
+        } else {
+          shortlinks = await Shortlink.all({
+            orderBy: "createdAt",
+            orderDirection: "desc",
+          });
+        }
+
+        return jsonResponse({
+          success: true,
+          data: shortlinks.map((s) => s.toJson()),
+          total: shortlinks.length,
+        });
+      }
+
+      // Create shortlink
+      if (url.pathname === "/api/shortlinks" && request.method === "POST") {
+        if (!env.OBCF_D1) {
+          return errorResponse("D1 database binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        registerConnection("default", createD1Driver(env.OBCF_D1));
+
+        const body = await readJson<{
+          fullUrl?: string;
+          shortCode?: string;
+          type?: string;
+          appName?: string;
+          expiryDate?: string | null;
+        }>(request);
+
+        if (!body.fullUrl || !body.shortCode) {
+          return errorResponse("fullUrl and shortCode are required", 400);
+        }
+
+        // Check if shortCode already exists
+        const existing = await Shortlink.findByCode(body.shortCode);
+        if (existing) {
+          return errorResponse("Short code already exists", 409, {
+            code: "DUPLICATE_SHORT_CODE",
+          });
+        }
+
+        try {
+          const shortlink = await Shortlink.create({
+            fullUrl: body.fullUrl,
+            shortCode: body.shortCode,
+            type: body.type || "redirect",
+            appName: body.appName || "default",
+            expiryDate: body.expiryDate ? new Date(body.expiryDate) : null,
+          });
+
+          return jsonResponse({
+            success: true,
+            data: shortlink.toJson(),
+          });
+        } catch (error) {
+          return errorResponse(
+            error instanceof Error ? error.message : "Failed to create shortlink",
+            400,
+            { code: "VALIDATION_ERROR" }
+          );
+        }
+      }
+
+      // Update shortlink
+      const shortlinkUpdateMatch = url.pathname.match(/^\/api\/shortlinks\/(.+)$/);
+      if (shortlinkUpdateMatch && request.method === "PATCH") {
+        if (!env.OBCF_D1) {
+          return errorResponse("D1 database binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        registerConnection("default", createD1Driver(env.OBCF_D1));
+
+        const id = shortlinkUpdateMatch[1];
+        const body = await readJson<{
+          fullUrl?: string;
+          shortCode?: string;
+          type?: string;
+          expiryDate?: string | null;
+        }>(request);
+
+        const shortlink = await Shortlink.find(id);
+        if (!shortlink) {
+          return errorResponse("Shortlink not found", 404);
+        }
+
+        // If updating shortCode, check for duplicates
+        if (body.shortCode && body.shortCode !== shortlink.get("shortCode")) {
+          const existing = await Shortlink.findByCode(body.shortCode);
+          if (existing) {
+            return errorResponse("Short code already exists", 409, {
+              code: "DUPLICATE_SHORT_CODE",
+            });
+          }
+          shortlink.set("shortCode", body.shortCode);
+        }
+
+        if (body.fullUrl) shortlink.set("fullUrl", body.fullUrl);
+        if (body.type) shortlink.set("type", body.type);
+        if (body.expiryDate !== undefined) {
+          shortlink.set("expiryDate", body.expiryDate ? new Date(body.expiryDate) : null);
+        }
+
+        try {
+          await shortlink.save();
+          return jsonResponse({
+            success: true,
+            data: shortlink.toJson(),
+          });
+        } catch (error) {
+          return errorResponse(
+            error instanceof Error ? error.message : "Failed to update shortlink",
+            400,
+            { code: "VALIDATION_ERROR" }
+          );
+        }
+      }
+
+      // Delete shortlink
+      if (shortlinkUpdateMatch && request.method === "DELETE") {
+        if (!env.OBCF_D1) {
+          return errorResponse("D1 database binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        registerConnection("default", createD1Driver(env.OBCF_D1));
+
+        const id = shortlinkUpdateMatch[1];
+        const shortlink = await Shortlink.find(id);
+        if (!shortlink) {
+          return errorResponse("Shortlink not found", 404);
+        }
+
+        await Shortlink.delete(id);
+        return jsonResponse({
+          success: true,
+          message: "Shortlink deleted successfully",
         });
       }
 
@@ -879,7 +1053,7 @@ export default {
         registerConnection("default", createD1Driver(env.OBCF_D1));
 
         // Register all models for dynamic lookup
-        registerModels([User, Post, Tag, Todo]);
+        registerModels([User, Post, Tag, Todo, Shortlink]);
 
         // Parse the request into a CrudRequest
         const crudRequest = await parseCrudRequest(
@@ -903,6 +1077,49 @@ export default {
           });
         }
         return jsonResponse(result.data, { status: result.status });
+      }
+
+      // ============================================================
+      // Shortlink Redirect Handler
+      // ============================================================
+      // Handle shortlink redirects (e.g., go.example.com/gh)
+      // Must be checked before static assets to intercept shortcodes
+      if (
+        env.OBCF_D1 &&
+        !url.pathname.startsWith("/api/") &&
+        !url.pathname.startsWith("/@") &&
+        url.pathname !== "/" &&
+        !/\.[a-zA-Z0-9]+$/.test(url.pathname)
+      ) {
+        try {
+          registerConnection("default", createD1Driver(env.OBCF_D1));
+
+          // Extract shortcode from path (remove leading slash)
+          const shortCode = url.pathname.substring(1);
+
+          const shortlink = await Shortlink.findByCode(shortCode);
+
+          if (shortlink) {
+            // Check if expired
+            if (shortlink.isExpired()) {
+              // Return 410 Gone for expired links
+              return errorResponse("This shortlink has expired", 410, {
+                code: "LINK_EXPIRED",
+              });
+            }
+
+            // Track the click asynchronously (don't wait for it)
+            shortlink.trackClick().catch(() => {
+              // Ignore tracking errors
+            });
+
+            // Redirect to the full URL
+            return Response.redirect(shortlink.get("fullUrl"), 302);
+          }
+        } catch (error) {
+          console.error("Shortlink redirect error:", error);
+          // Continue to serve assets if shortlink lookup fails
+        }
       }
 
       // Serve built assets. If the asset isn't found and the client is requesting HTML,

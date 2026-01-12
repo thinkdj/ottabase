@@ -36,6 +36,7 @@
     "@ottabase/ottaorm": "workspace:*",
     "@ottabase/ottarenderer": "workspace:*",
     "@ottabase/ottaselect": "workspace:*",
+    "@ottabase/shortlinks": "workspace:*",
     "@ottabase/state": "workspace:*",
     "@ottabase/ui-base": "workspace:*",
     "@ottabase/ui-code-highlight": "workspace:*",
