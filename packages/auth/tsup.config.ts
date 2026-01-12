@@ -14,7 +14,14 @@ export default defineConfig({
     "src/react-hooks.ts",
   ],
   format: ["cjs", "esm"],
-  dts: true,
+  // Use explicit DTS compiler options to avoid inheriting path mappings
+  // and to prevent type resolution issues from third-party libraries.
+  dts: {
+    compilerOptions: {
+      paths: {},
+      skipLibCheck: true,
+    },
+  },
   clean: true,
   external: [
     // Externalize all @ottabase packages to use their built types
