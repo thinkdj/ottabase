@@ -147,60 +147,6 @@ export default {
       }
 
       // ============================================================
-      // Generic OttaORM CRUD API
-      // ============================================================
-      // Handles all registered models via /api/ottaorm/{model}/{id?}
-      // GET    /api/ottaorm/shortlinks              - List all (paginated)
-      // GET    /api/ottaorm/shortlinks/123          - Get by ID
-      // POST   /api/ottaorm/shortlinks              - Create
-      // PATCH  /api/ottaorm/shortlinks/123          - Update
-      // DELETE /api/ottaorm/shortlinks/123          - Delete
-      // Query params: page, per_page, sort, order, where (JSON)
-      // ============================================================
-
-      if (url.pathname.startsWith("/api/ottaorm/")) {
-        if (!env.OBCF_D1) {
-          return errorResponse("D1 database binding not configured", 500, {
-            code: "CONFIG_ERROR",
-          });
-        }
-
-        // Initialize database connection and register models
-        registerConnection("default", createD1Driver(env.OBCF_D1));
-        registerModels([Shortlink, Todo, User, Post, Tag]);
-
-        // Parse the request into a CrudRequest
-        const crudRequest = await parseCrudRequest(
-          request,
-          url,
-          "/api/ottaorm",
-        );
-
-        if (!crudRequest) {
-          return errorResponse("Invalid CRUD request", 400, {
-            code: "INVALID_REQUEST",
-            hint: "Use /api/ottaorm/{model}/{id?} format",
-          });
-        }
-
-        // Handle the CRUD operation
-        const result = await handleCrud(crudRequest);
-
-        // Return response based on result
-        if (!result.success) {
-          return errorResponse(result.error || "Unknown error", result.status, {
-            code: result.code,
-            details: result.details,
-            hint: result.hint,
-            messages: result.messages,
-            fieldErrors: result.fieldErrors,
-          });
-        }
-
-        return jsonResponse(result.data, result.status);
-      }
-
-      // ============================================================
       // Shortlink Management (Legacy - use /api/ottaorm/shortlinks instead)
       // ============================================================
 
