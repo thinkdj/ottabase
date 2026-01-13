@@ -1,0 +1,36 @@
+{
+  "name": "@ottabase/referral",
+  "version": "0.0.1",
+  "description": "Reusable referral system with localStorage persistence and React provider",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./schema": {
+      "types": "./src/schema.ts",
+      "default": "./src/schema.ts"
+    },
+    "./provider": {
+      "types": "./src/provider.tsx",
+      "default": "./src/provider.tsx"
+    }
+  },
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules"
+  },
+  "peerDependencies": {
+    "drizzle-orm": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "drizzle-orm": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:"
+  }
+}
