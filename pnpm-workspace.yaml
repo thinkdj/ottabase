@@ -4,11 +4,17 @@ packages:
 
 catalog:
   "@auth/core": ^0.34.0
-  "@babel/core": ^7.28.5
-  "@babel/preset-env": ^7.28.5
-  "@babel/preset-react": ^7.28.5
-  "@babel/preset-typescript": ^7.28.5
+  "@babel/core": ^7.26.0
+  "@hookform/resolvers": ^3.9.1
+  "@babel/preset-env": ^7.26.0
+  "@babel/preset-react": ^7.26.0
+  "@babel/preset-typescript": ^7.26.0
   "@cloudflare/workers-types": ^4.20251210.0
+  "@mantine/carousel": ^8.3.1
+  "@mantine/core": ^8.3.1
+  "@mantine/hooks": ^8.3.1
+  "@mantine/modals": ^8.3.1
+  "@mantine/notifications": ^8.3.1
   "@prisma/adapter-d1": ^5.22.0
   "@prisma/client": ^5.22.0
   "@storybook/addon-docs": ^10.1.11
@@ -23,10 +29,10 @@ catalog:
   "@tanstack/react-query-devtools": ^5.90.16
   "@tanstack/react-router": ^1.145.2
   "@types/node": ^20.19.27
-  "@types/react": ^18.3.18
-  "@types/react-dom": ^18.3.5
-  "@typescript-eslint/eslint-plugin": ^8.52.0
-  "@typescript-eslint/parser": ^8.52.0
+  "@types/react": ^19.0.0
+  "@types/react-dom": ^19.0.0
+  "@typescript-eslint/eslint-plugin": ^8.53.0
+  "@typescript-eslint/parser": ^8.53.0
   "@vitejs/plugin-react": ^4.3.4
   autoprefixer: ^10.4.21
   babel-loader: ^10.0.0
@@ -37,11 +43,12 @@ catalog:
   css-loader: ^7.1.2
   date-fns: ^4.1.0
   date-fns-tz: ^3.2.0
-  drizzle-kit: ^0.30.5
+  drizzle-kit: ^0.31.8
   drizzle-orm: ^0.38.3
   eslint: ^9.39.2
+  highlight.js: ^11.11.1
   eslint-plugin-storybook: ^10.1.11
-  jotai: ^2.14.0
+  jotai: ^2.16.2
   localflare: ^0.1.2
   lucide-react: ^0.468.0
   mongodb: ^7.0.0
@@ -55,8 +62,9 @@ catalog:
   postcss-simple-vars: ^7.0.1
   prettier: ^3.0.0
   prisma: ^5.22.0
-  react: ^18.3.1
-  react-dom: ^18.3.1
+  react: ^19.2.3
+  react-dom: ^19.2.3
+  react-hook-form: ^7.54.2
   rimraf: ^6.1.2
   sonner: ^1.5.1
   storybook: ^10.1.11
@@ -71,3 +79,4 @@ catalog:
   vite: ^5.4.11
   vite-tsconfig-paths: ^5.1.4
   wrangler: ^4.54.0
+  zod: ^3.24.1

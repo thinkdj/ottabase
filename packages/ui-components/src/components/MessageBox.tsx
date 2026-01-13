@@ -43,10 +43,13 @@ const messageColorClass: Record<MessageTypes, string> = {
   loading: "text-blue-500 dark:text-blue-400",
 };
 
-const Loading: React.FC<{
+const Loading = ({
+  skeletonType = "spinner",
+  width,
+}: {
   skeletonType?: SkeletonVariant;
   width?: string | number;
-}> = ({ skeletonType = "spinner", width }) => {
+}): JSX.Element => {
   // Helper function to process width - add px if numeric, otherwise use as is
   // Type guard for processing width values
   const processWidth = (width?: string | number): string => {
@@ -119,7 +122,7 @@ const Loading: React.FC<{
   );
 };
 
-const MessageIcon: React.FC<{ type: MessageTypes }> = ({ type }) => {
+const MessageIcon = ({ type }: { type: MessageTypes }): JSX.Element => {
   const IconComponent = {
     info: IconInfoSquareRounded,
     error: IconSquareRoundedX,
@@ -172,13 +175,13 @@ const renderMessageContent = (
   return "An error has occurred.";
 };
 
-const MessageBox: React.FC<MessageBoxProps> = ({
+const MessageBox = ({
   isLoading,
   loadingType,
   message,
   messageType = "info",
   width,
-}) => {
+}: MessageBoxProps): JSX.Element => {
   if (isLoading) {
     return (
       <div className="flex h-full min-h-32 w-full flex-col items-center justify-center rounded-md p-8 text-center">

@@ -37,12 +37,12 @@ interface ProviderUIBaseProps {
   fontFamilies?: ProviderUIBaseFontFamilies;
 }
 
-export const ProviderUIBase: React.FC<ProviderUIBaseProps> = ({
+export const ProviderUIBase = ({
   children,
   preventFOUC = false,
   preventFOUCInsideIframe = false,
   fontFamilies,
-}) => {
+}: ProviderUIBaseProps): JSX.Element => {
   const mergedFontFamilies = {
     ...DEFAULT_FONT_FAMILIES,
     ...fontFamilies,

@@ -11,10 +11,10 @@ export default class AdvancedImageTool {
     private config: any;
     private data: AdvancedImageData;
     private wrapper: HTMLElement;
-    private imageContainer: HTMLElement;
-    private uploadArea: HTMLElement;
-    private urlInput: HTMLInputElement;
-    private fileInput: HTMLInputElement;
+    private imageContainer: HTMLElement | null = null;
+    private uploadArea: HTMLElement | null = null;
+    private urlInput: HTMLInputElement | null = null;
+    private fileInput: HTMLInputElement | null = null;
     private isUploading: boolean = false;
 
     static get toolbox() {

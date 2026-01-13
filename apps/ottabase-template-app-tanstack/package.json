@@ -19,12 +19,12 @@
   },
   "dependencies": {
     "@auth/core": "catalog:",
-    "@hookform/resolvers": "^3.9.1",
-    "@mantine/carousel": "^8.3.1",
-    "@mantine/core": "^8.3.1",
-    "@mantine/hooks": "^8.3.1",
-    "@mantine/modals": "^8.3.1",
-    "@mantine/notifications": "^8.3.1",
+    "@hookform/resolvers": "catalog:",
+    "@mantine/carousel": "catalog:",
+    "@mantine/core": "catalog:",
+    "@mantine/hooks": "catalog:",
+    "@mantine/modals": "catalog:",
+    "@mantine/notifications": "catalog:",
     "@ottabase/api": "workspace:*",
     "@ottabase/auth": "workspace:*",
     "@ottabase/cf": "workspace:*",
@@ -52,9 +52,9 @@
     "next-themes": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-hook-form": "^7.54.2",
+    "react-hook-form": "catalog:",
     "sonner": "catalog:",
-    "zod": "^3.24.1"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",

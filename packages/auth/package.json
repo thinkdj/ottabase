@@ -97,7 +97,7 @@
   "dependencies": {
     "@ottabase/cf": "workspace:*",
     "@ottabase/ui-shadcn": "workspace:*",
-    "lucide-react": "^0.468.0"
+    "lucide-react": "catalog:"
   },
   "devDependencies": {
     "@auth/core": "catalog:",
