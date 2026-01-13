@@ -131,6 +131,7 @@ See [packages/ottaorm/README.md](./packages/ottaorm/README.md) for full details.
 - **@ottabase/state** - Global state management with Jotai
 - **@ottabase/utils** - Utility functions (files, strings, timezone, etc.)
 - **@ottabase/config** - Shared configuration utilities
+- **@ottabase/referral** - Referral system with localStorage persistence and React provider
 
 ### Realtime & Advanced
 

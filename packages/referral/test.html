@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Referral Provider Test</title>
+</head>
+<body>
+    <h1>Referral Provider Test</h1>
+    <div id="status"></div>
+    <script type="module">
+        // Simple test to verify localStorage functionality
+        const storageKey = "ottabase.referral";
+        
+        // Check URL params
+        const url Params = new URLSearchParams(window.location.search);
+        const referrer = urlParams.get("referrer");
+        
+        const status = document.getElementById("status");
+        
+        if (referrer) {
+            // Save to localStorage
+            const data = {
+                referrerCode: referrer,
+                capturedAt: Date.now(),
+                expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000),
+                sourceUrl: window.location.href
+            };
+            localStorage.setItem(storageKey, JSON.stringify(data));
+            status.innerHTML = `<p>✅ Referral code "${referrer}" saved to localStorage</p>`;
+        } else {
+            // Check if we have an existing referral
+            const stored = localStorage.getItem(storageKey);
+            if (stored) {
+                const data = JSON.parse(stored);
+                status.innerHTML = `<p>✅ Found existing referral: ${data.referrerCode}</p>
+                    <p>Captured: ${new Date(data.capturedAt).toLocaleString()}</p>
+                    <p>Expires: ${new Date(data.expiresAt).toLocaleString()}</p>`;
+            } else {
+                status.innerHTML = `<p>ℹ️ No referral found. Try adding ?referrer=test123 to URL</p>`;
+            }
+        }
+        
+        // Test links
+        status.innerHTML += `
+            <h2>Test Links:</h2>
+            <ul>
+                <li><a href="?referrer=alice2024">Test with alice2024</a></li>
+                <li><a href="?referrer=bob-promo">Test with bob-promo</a></li>
+                <li><a href="test.html">Reload without params (should preserve referral)</a></li>
+            </ul>
+            <button onclick="localStorage.removeItem('${storageKey}'); location.reload()">Clear Referral</button>
+        `;
+    </script>
+</body>
+</html>
