@@ -22,7 +22,9 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", "jest.config.*", "vitest.config.*"]
+      "inputs": ["$TURBO_DEFAULT$", "jest.config.*", "vitest.config.*", "vitest.setup.*", "coverage/**"],
+      "outputs": ["coverage/**", ".vitest/**"],
+      "env": ["NODE_ENV=test", "PATH"]
     },
     "clean": {
       "cache": false

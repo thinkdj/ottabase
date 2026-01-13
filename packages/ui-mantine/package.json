@@ -27,7 +27,9 @@
     "dev": "tsup src/index.ts src/provider.ts src/themeConfig.ts --format cjs,esm --dts --watch --treeshake",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts,.tsx",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
   },
   "keywords": [
     "react",
@@ -60,4 +62,3 @@
     "eslint": "catalog:"
   }
 }
-

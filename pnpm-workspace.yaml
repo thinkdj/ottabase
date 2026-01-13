@@ -3,37 +3,38 @@ packages:
   - packages/*
 
 catalog:
-  "@auth/core": ^0.34.0
-  "@babel/core": ^7.26.0
-  "@hookform/resolvers": ^3.9.1
-  "@babel/preset-env": ^7.26.0
-  "@babel/preset-react": ^7.26.0
-  "@babel/preset-typescript": ^7.26.0
-  "@cloudflare/workers-types": ^4.20251210.0
-  "@mantine/carousel": ^8.3.1
-  "@mantine/core": ^8.3.1
-  "@mantine/hooks": ^8.3.1
-  "@mantine/modals": ^8.3.1
-  "@mantine/notifications": ^8.3.1
-  "@prisma/adapter-d1": ^5.22.0
-  "@prisma/client": ^5.22.0
-  "@storybook/addon-docs": ^10.1.11
-  "@storybook/addon-links": ^10.1.11
-  "@storybook/addon-styling-webpack": ^3.0.0
-  "@storybook/react-webpack5": ^10.1.11
-  "@storybook/test": ^9.1.15
-  "@tabler/icons-react": ^3.35.0
-  "@tailwindcss/forms": ^0.5.10
-  "@tailwindcss/typography": ^0.5.18
-  "@tanstack/react-query": ^5.90.16
-  "@tanstack/react-query-devtools": ^5.90.16
-  "@tanstack/react-router": ^1.145.2
-  "@types/node": ^20.19.27
-  "@types/react": ^19.0.0
-  "@types/react-dom": ^19.0.0
-  "@typescript-eslint/eslint-plugin": ^8.53.0
-  "@typescript-eslint/parser": ^8.53.0
-  "@vitejs/plugin-react": ^4.3.4
+  '@auth/core': ^0.34.0
+  '@babel/core': ^7.26.0
+  '@babel/preset-env': ^7.26.0
+  '@babel/preset-react': ^7.26.0
+  '@babel/preset-typescript': ^7.26.0
+  '@cloudflare/workers-types': ^4.20251210.0
+  '@hookform/resolvers': ^3.9.1
+  '@mantine/carousel': ^8.3.1
+  '@mantine/core': ^8.3.1
+  '@mantine/hooks': ^8.3.1
+  '@mantine/modals': ^8.3.1
+  '@mantine/notifications': ^8.3.1
+  '@prisma/adapter-d1': ^5.22.0
+  '@prisma/client': ^5.22.0
+  '@storybook/addon-docs': ^10.1.11
+  '@storybook/addon-links': ^10.1.11
+  '@storybook/addon-styling-webpack': ^3.0.0
+  '@storybook/react-webpack5': ^10.1.11
+  '@storybook/test': ^9.1.15
+  '@tabler/icons-react': ^3.35.0
+  '@tailwindcss/forms': ^0.5.10
+  '@tailwindcss/typography': ^0.5.18
+  '@tanstack/react-query': ^5.90.16
+  '@tanstack/react-query-devtools': ^5.90.16
+  '@tanstack/react-router': ^1.145.2
+  '@types/node': ^20.19.27
+  '@types/nodemailer': ^7.0.0
+  '@types/react': ^19.0.0
+  '@types/react-dom': ^19.0.0
+  '@typescript-eslint/eslint-plugin': ^8.53.0
+  '@typescript-eslint/parser': ^8.53.0
+  '@vitejs/plugin-react': ^4.7.0
   autoprefixer: ^10.4.21
   babel-loader: ^10.0.0
   class-variance-authority: ^0.7.0
@@ -46,15 +47,14 @@ catalog:
   drizzle-kit: ^0.31.8
   drizzle-orm: ^0.38.3
   eslint: ^9.39.2
-  highlight.js: ^11.11.1
   eslint-plugin-storybook: ^10.1.11
+  highlight.js: ^11.11.1
   jotai: ^2.16.2
   localflare: ^0.1.2
   lucide-react: ^0.468.0
   mongodb: ^7.0.0
   next-themes: ^0.4.6
   nodemailer: ^7.0.0
-  "@types/nodemailer": ^7.0.0
   postcss: ^8.5.6
   postcss-loader: ^8.2.0
   postcss-preset-env: ^9.6.0

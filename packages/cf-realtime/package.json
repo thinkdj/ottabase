@@ -31,7 +31,9 @@
     "dev": "tsup src/index.ts src/server/index.ts src/client/index.ts --format cjs,esm --dts --watch",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
   },
   "keywords": [
     "cloudflare",

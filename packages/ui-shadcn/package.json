@@ -301,7 +301,9 @@
     "dev": "tsup --watch",
     "clean": "rimraf dist",
     "lint": "eslint 'src/**/*.{ts,tsx}' 'components/**/*.{ts,tsx}' 'providers/**/*.{ts,tsx}'",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
   },
   "keywords": [
     "shadcn",

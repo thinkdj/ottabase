@@ -16,5 +16,9 @@
   },
   "dependencies": {
     "tailwind-merge": "catalog:"
+  },
+  "scripts": {
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
   }
 }

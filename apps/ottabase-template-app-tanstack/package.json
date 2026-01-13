@@ -11,6 +11,8 @@
     "preview": "pnpm build && wrangler dev",
     "deploy": "pnpm build && wrangler deploy",
     "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "wrangler": "wrangler",
     "db:push": "drizzle-kit push",

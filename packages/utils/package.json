@@ -97,7 +97,9 @@
     "dev": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts --format cjs,esm --dts --watch",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
   },
   "keywords": [
     "utilities",

@@ -40,7 +40,9 @@
     "dev": "tsup src/index.ts src/schema/concatenate.ts src/migrations/runner.ts src/migrations/d1-executor.ts src/cli/db-generate.ts src/cli/db-migrate.ts src/cli/db-migrate-apply.ts src/cli/db-migrate-status.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts --format cjs,esm --dts --watch",
     "clean": "rimraf dist",
     "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
   },
   "keywords": [
     "scripts",

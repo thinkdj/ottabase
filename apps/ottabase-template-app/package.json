@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
     "storybook": "storybook dev -p 6007",
     "storybook:build": "storybook build",
     "preview": "pnpm build && pnpm build:worker && wrangler dev",
