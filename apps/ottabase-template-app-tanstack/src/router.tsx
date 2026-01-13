@@ -262,6 +262,16 @@ const demoTimezoneRoute = new Route({
   ),
 });
 
+const demoReferralRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/demo/referral",
+  component: lazyRouteComponent(() =>
+    import("@/pages/demo/referral/ReferralDemoPage").then((m) => ({
+      default: m.ReferralDemoPage,
+    })),
+  ),
+});
+
 const demoCloudflareRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/demo/cloudflare",
@@ -456,6 +466,7 @@ const routeTree = rootRoute.addChildren([
   demoOttaOrmRoute,
   demoOttaFormsRoute,
   demoTimezoneRoute,
+  demoReferralRoute,
   demoCloudflareRoute,
   demoCloudflareD1Route,
   demoCloudflareKVRoute,

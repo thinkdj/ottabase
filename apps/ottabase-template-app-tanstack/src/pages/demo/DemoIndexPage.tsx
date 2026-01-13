@@ -159,6 +159,21 @@ export function DemoIndexPage() {
                         </Button>
                     </CardContent>
                 </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Referral System</CardTitle>
+                        <CardDescription>
+                            Automatic referral code detection from URL parameters with
+                            localStorage persistence and configurable expiry
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild variant="outline" className="w-full">
+                            <Link to="/demo/referral">View Referral Demo</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
 
             <div className="mt-2 rounded-lg border bg-muted/50 p-6">

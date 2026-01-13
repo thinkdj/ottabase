@@ -543,6 +543,9 @@ importers:
       '@ottabase/ottaselect':
         specifier: workspace:*
         version: link:../../packages/ottaselect
+      '@ottabase/referral':
+        specifier: workspace:*
+        version: link:../../packages/referral
       '@ottabase/shortlinks':
         specifier: workspace:*
         version: link:../../packages/shortlinks

@@ -18,7 +18,8 @@
     }
   },
   "scripts": {
-    "clean": "rm -rf .turbo node_modules"
+    "clean": "rm -rf .turbo node_modules",
+    "type-check": "tsc --noEmit"
   },
   "peerDependencies": {
     "drizzle-orm": "catalog:",
