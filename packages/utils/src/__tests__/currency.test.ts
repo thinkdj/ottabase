@@ -93,7 +93,7 @@ describe('Currency Utilities', () => {
       const formatted2 = formatCurrencyValue(100.5, 'USD', 2);
       const formatted0 = formatCurrencyValue(100.5, 'USD', 0);
       expect(formatted2).toContain('100');
-      expect(formatted0).toContain('100');
+      expect(formatted0).toContain('101');
     });
   });
 });
