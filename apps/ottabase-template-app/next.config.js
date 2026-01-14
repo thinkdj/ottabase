@@ -61,7 +61,7 @@ const nextConfig = {
     cssChunking: true, // default true
     optimizeCss: true, // default true
     optimizePackageImports: [
-      "@ottabase/ui-core",
+      "@ottabase/ui-base",
       "@ottabase/cf",
       "@ottabase/cf-realtime",
       "@ottabase/config",

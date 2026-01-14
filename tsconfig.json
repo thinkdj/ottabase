@@ -24,8 +24,8 @@
         "./packages/*/src"
       ],
       /* Individual package mappings for direct imports */
-      "@ottabase/ui-core": [
-        "./packages/ui-core/src"
+      "@ottabase/ui-base": [
+        "./packages/ui-base/src"
       ],
       "@ottabase/config": [
         "./packages/config/src"
@@ -69,7 +69,7 @@
   ],
   "references": [
     {
-      "path": "./packages/ui-core"
+      "path": "./packages/ui-base"
     },
     {
       "path": "./packages/config"

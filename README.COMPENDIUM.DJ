@@ -1,0 +1,38 @@
+Quick reference for all things related to this monorepo;
+
+# =============================================================================
+
+# TESTING
+
+# =============================================================================
+
+# All tests
+
+```shell
+pnpm test # All tests
+pnpm test:all # Explicit: all
+```
+
+# Selective testing
+
+```shell
+pnpm test:packages # Packages only
+pnpm test:apps # Apps only
+pnpm test:tanstack # TanStack app only
+pnpm test:next # Next.js app only
+```
+
+# Coverage reports
+
+```shell
+pnpm test:coverage # All with coverage
+pnpm test:coverage:packages # Packages with coverage
+pnpm test:coverage:apps # Apps with coverage
+```
+
+# Development
+
+```shell
+pnpm test:watch # Watch mode
+pnpm test:ui # Vitest UI (interactive)
+```

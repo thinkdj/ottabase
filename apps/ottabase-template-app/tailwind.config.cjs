@@ -6,7 +6,7 @@ module.exports = {
     "./app/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
     // include specific package sources for UI components
-    "../../packages/ui-core/src/**/*.{js,ts,jsx,tsx}",
+    "../../packages/ui-base/src/**/*.{js,ts,jsx,tsx}",
     "../../packages/ui-code-highlight/src/**/*.{js,ts,jsx,tsx}",
     "../../packages/ui-components/src/**/*.{js,ts,jsx,tsx}",
     "../../packages/ui-tailwind/src/**/*.{js,ts,jsx,tsx}",
@@ -17,7 +17,12 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ["var(--font-body)", "ui-sans-serif", "system-ui", "sans-serif"],
-        heading: ["var(--font-heading)", "ui-sans-serif", "system-ui", "sans-serif"],
+        heading: [
+          "var(--font-heading)",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
         handwriting: ["var(--font-handwriting)", "cursive"],
       },
       colors: {

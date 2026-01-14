@@ -1,42 +1,37 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from "vitest";
+import * as config from "../index";
 
-describe('Configuration Utilities', () => {
-  describe('Config Module', () => {
-    it('should export configuration utilities', () => {
-      const config = require('../index');
+describe("Configuration Utilities", () => {
+  describe("Config Module", () => {
+    it("should export configuration utilities", () => {
       expect(config).toBeDefined();
-      expect(typeof config).toBe('object');
+      expect(typeof config).toBe("object");
     });
   });
 
-  describe('Configuration Exports', () => {
-    it('should provide configuration helpers', () => {
-      const config = require('../index');
+  describe("Configuration Exports", () => {
+    it("should provide configuration helpers", () => {
       expect(config).toBeDefined();
     });
 
-    it('should support environment-based configuration', () => {
-      const config = require('../index');
+    it("should support environment-based configuration", () => {
       expect(config).toBeDefined();
     });
   });
 
-  describe('Type Safety', () => {
-    it('should export type definitions for configuration', () => {
+  describe("Type Safety", () => {
+    it("should export type definitions for configuration", () => {
       // Verify TypeScript types are available
-      const config = require('../index');
-      expect(typeof config).toBe('object');
+      expect(typeof config).toBe("object");
     });
   });
 
-  describe('Integration', () => {
-    it('should integrate with Ottabase ecosystem', () => {
-      const config = require('../index');
+  describe("Integration", () => {
+    it("should integrate with Ottabase ecosystem", () => {
       expect(config).toBeDefined();
     });
 
-    it('should support multiple environments', () => {
-      const config = require('../index');
+    it("should support multiple environments", () => {
       expect(config).toBeDefined();
     });
   });
