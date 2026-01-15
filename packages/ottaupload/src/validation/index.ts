@@ -85,7 +85,11 @@ export const fileMetadataSchema = z.object({
  */
 export const uploadResponseSchema = z.object({
   success: z.boolean(),
-  url: z.string().url().optional(),
+  // Allow both absolute URLs (http/https) and relative URLs starting with '/'
+  url: z
+    .string()
+    .regex(/^(https?:\/\/|\/)/, 'Invalid URL format')
+    .optional(),
   key: z.string().optional(),
   error: z.string().optional(),
 });
