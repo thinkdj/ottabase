@@ -1,6 +1,13 @@
-import '@testing-library/jest-dom';
-import { afterEach, vi, beforeAll, afterAll } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { createD1Driver } from "@ottabase/db/drizzle-d1";
+import { clearAllConnections, registerConnection } from "@ottabase/ottaorm";
+import "@testing-library/jest-dom";
+import { cleanup } from "@testing-library/react";
+import { afterAll, afterEach, beforeAll, vi } from "vitest";
+
+vi.mock("@ottabase/cf-realtime/server", () => ({
+  RealtimeActor: class RealtimeActor {},
+  RealtimeBroadcaster: class RealtimeBroadcaster {},
+}));
 
 // Cleanup after each test
 afterEach(() => {
@@ -10,8 +17,8 @@ afterEach(() => {
 // Mock Cloudflare Bindings
 beforeAll(() => {
   // Mock environment variables
-  process.env.ENVIRONMENT = 'test';
-  process.env.NODE_ENV = 'test';
+  process.env.ENVIRONMENT = "test";
+  process.env.NODE_ENV = "test";
 
   // Mock global fetch for tests
   global.fetch = vi.fn();
@@ -19,11 +26,14 @@ beforeAll(() => {
   // Mock Cloudflare bindings in global scope
   (global as any).OBCF_D1 = {
     prepare: vi.fn().mockReturnValue({
-      bind: vi.fn().mockReturnValue({}),
-      all: vi.fn(),
-      first: vi.fn(),
-      run: vi.fn(),
+      bind: vi.fn().mockReturnThis(),
+      raw: vi.fn().mockResolvedValue([]),
+      all: vi.fn().mockResolvedValue({ results: [], success: true }),
+      first: vi.fn().mockResolvedValue(null),
+      run: vi.fn().mockResolvedValue({ success: true, meta: {} }),
     }),
+    batch: vi.fn().mockResolvedValue([]),
+    exec: vi.fn().mockResolvedValue({}),
   };
 
   (global as any).OBCF_KV = {
@@ -56,10 +66,13 @@ beforeAll(() => {
   (global as any).OBCF_ASSETS = {
     fetch: vi.fn(),
   };
+
+  clearAllConnections();
+  registerConnection("default", createD1Driver((global as any).OBCF_D1));
 });
 
 // Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: vi.fn().mockImplementation((query) => ({
     matches: false,

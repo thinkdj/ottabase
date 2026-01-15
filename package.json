@@ -18,7 +18,7 @@
     "lint": "turbo lint",
     "type-check": "turbo type-check",
     "clean": "turbo clean",
-    "test": "turbo test",
+    "test": "turbo test -- --run",
     "test:all": "turbo test --filter=./packages/* --filter=./apps/*",
     "test:packages": "turbo test --filter=./packages/*",
     "test:apps": "turbo test --filter=./apps/*",

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import * as editor from '../index.ts';
 
 // Mock EditorJS wrapper component
 const MockEditor = ({ onSave }: { onSave?: (data: any) => void }) => (
@@ -30,17 +31,14 @@ describe('OttaEditor - EditorJS Wrapper', () => {
 
   describe('Plugin System', () => {
     it('should support plugin registration', () => {
-      const editor = require('../index');
       expect(editor).toBeDefined();
     });
 
     it('should handle multiple plugins', () => {
-      const editor = require('../index');
       expect(typeof editor).toBe('object');
     });
 
     it('should provide plugin management', () => {
-      const editor = require('../index');
       expect(editor).toBeDefined();
     });
   });
@@ -70,22 +68,18 @@ describe('OttaEditor - EditorJS Wrapper', () => {
 
   describe('Built-in Plugins', () => {
     it('should include header plugin', () => {
-      const editor = require('../index');
       expect(editor).toBeDefined();
     });
 
     it('should include code block plugin', () => {
-      const editor = require('../index');
       expect(editor).toBeDefined();
     });
 
     it('should include table plugin', () => {
-      const editor = require('../index');
       expect(editor).toBeDefined();
     });
 
     it('should include list plugins', () => {
-      const editor = require('../index');
       expect(editor).toBeDefined();
     });
   });

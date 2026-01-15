@@ -38,6 +38,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@ottabase/cf-realtime/server": path.resolve(
+        __dirname,
+        "./src/test-mocks/cf-realtime-server.ts",
+      ),
     },
   },
 });

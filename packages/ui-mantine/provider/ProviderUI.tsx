@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ReactNode, useMemo } from "react";
+import { ReactNode, useMemo } from "react";
 // Mantine
 import {
   createTheme,
@@ -12,7 +12,7 @@ import {
 import { ModalsProvider } from "@mantine/modals";
 import { Notifications } from "@mantine/notifications";
 //import {SpotlightProvider} from '@mantine/spotlight';
-import { Anchor, Group, rem, Text } from "@mantine/core";
+import { rem } from "@mantine/core";
 
 // Import theme presets
 import mantineAnt from "../themes/mantine-ant";
@@ -134,32 +134,5 @@ const ProviderUIMantine = ({
     </MantineProvider>
   );
 };
-
-// Spotlight actions wrapper
-function ActionsWrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <div>
-      {children}
-      <Group
-      //position="apart"
-      //px={15}
-      //py="xs"
-      //sx={(theme) => ({
-      //	borderTop: `${rem(1)} solid ${
-      //		theme.colorScheme === 'dark' ? theme.colors.dark[4] : theme.colors.gray[2]
-      //	}`,
-      //})
-      //}
-      >
-        <Text size="xs" c="dimmed">
-          Looking for detailed search?
-        </Text>
-        <Anchor size="xs" href="#">
-          Advanced search
-        </Anchor>
-      </Group>
-    </div>
-  );
-}
 
 export default ProviderUIMantine;

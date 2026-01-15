@@ -1,6 +1,7 @@
-import '@testing-library/jest-dom';
-import { afterEach, vi, beforeAll, afterAll } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import "@testing-library/jest-dom";
+import { cleanup } from "@testing-library/react";
+import { createElement } from "react";
+import { afterAll, afterEach, beforeAll, vi } from "vitest";
 
 // Cleanup after each test
 afterEach(() => {
@@ -8,12 +9,12 @@ afterEach(() => {
 });
 
 // Mock Next.js router
-vi.mock('next/router', () => ({
+vi.mock("next/router", () => ({
   useRouter: () => ({
     push: vi.fn(),
-    pathname: '/',
+    pathname: "/",
     query: {},
-    asPath: '/',
+    asPath: "/",
     isReady: true,
     replace: vi.fn(),
     back: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock('next/router', () => ({
 }));
 
 // Mock next/navigation
-vi.mock('next/navigation', () => ({
+vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
     back: vi.fn(),
@@ -31,18 +32,19 @@ vi.mock('next/navigation', () => ({
     refresh: vi.fn(),
   }),
   useSearchParams: () => new URLSearchParams(),
-  usePathname: () => '/',
+  usePathname: () => "/",
 }));
 
 // Mock next/image
-vi.mock('next/image', () => ({
-  default: ({ src, alt, ...props }: any) => <img src={src} alt={alt} {...props} />,
+vi.mock("next/image", () => ({
+  default: ({ src, alt, ...props }: any) =>
+    createElement("img", { src, alt, ...props }),
 }));
 
 // Mock Cloudflare Bindings for worker context
 beforeAll(() => {
   // Mock environment variables
-  process.env.NODE_ENV = 'test';
+  process.env.NODE_ENV = "test";
 
   // Mock global fetch for tests
   global.fetch = vi.fn();
@@ -82,7 +84,7 @@ beforeAll(() => {
 });
 
 // Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: vi.fn().mockImplementation((query) => ({
     matches: false,

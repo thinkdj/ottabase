@@ -1,135 +1,191 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { registerModel, registerModels, getModel, hasModel, getRegisteredModels, clearModelRegistry } from '../registry';
+import { beforeEach, describe, expect, it } from "vitest";
+import { BaseModel } from "../base/BaseModel";
+import {
+  clearModelRegistry,
+  getModel,
+  getRegisteredModels,
+  hasModel,
+  registerModel,
+  registerModels,
+} from "../registry";
 
-describe('OttaORM Model Registry', () => {
+class TestModel extends BaseModel {
+  static entity = "test";
+  static table = {} as any;
+  static primaryKey = "id";
+}
+
+class UserModel extends BaseModel {
+  static entity = "user";
+  static table = {} as any;
+  static primaryKey = "id";
+}
+
+class PostModel extends BaseModel {
+  static entity = "post";
+  static table = {} as any;
+  static primaryKey = "id";
+}
+
+class CommentModel extends BaseModel {
+  static entity = "comment";
+  static table = {} as any;
+  static primaryKey = "id";
+}
+
+describe("OttaORM Model Registry", () => {
   beforeEach(() => {
     clearModelRegistry();
   });
 
-  describe('registerModel', () => {
-    it('should register a single model', () => {
-      const TestModel = { name: 'Test', schema: {} };
-      registerModel('test', TestModel);
+  describe("registerModel", () => {
+    it("should register a single model", () => {
+      registerModel(TestModel);
 
-      expect(hasModel('test')).toBe(true);
+      expect(hasModel("test")).toBe(true);
     });
 
-    it('should store model with correct name', () => {
-      const TestModel = { name: 'User', schema: {} };
-      registerModel('user', TestModel);
+    it("should store model with correct name", () => {
+      registerModel(UserModel);
 
-      expect(getModel('user')).toEqual(TestModel);
+      expect(getModel("user")).toEqual(UserModel);
     });
 
-    it('should handle duplicate registrations', () => {
-      const Model1 = { name: 'Test1', schema: {} };
-      const Model2 = { name: 'Test2', schema: {} };
+    it("should handle duplicate registrations", () => {
+      class Model1 extends BaseModel {
+        static entity = "test";
+        static table = {} as any;
+        static primaryKey = "id";
+      }
 
-      registerModel('test', Model1);
-      registerModel('test', Model2);
+      class Model2 extends BaseModel {
+        static entity = "test";
+        static table = {} as any;
+        static primaryKey = "id";
+      }
 
-      expect(getModel('test')).toEqual(Model2);
-    });
-  });
+      registerModel(Model1);
+      registerModel(Model2);
 
-  describe('registerModels', () => {
-    it('should register multiple models at once', () => {
-      const models = {
-        user: { name: 'User', schema: {} },
-        post: { name: 'Post', schema: {} },
-        comment: { name: 'Comment', schema: {} },
-      };
-
-      registerModels(models);
-
-      expect(hasModel('user')).toBe(true);
-      expect(hasModel('post')).toBe(true);
-      expect(hasModel('comment')).toBe(true);
-    });
-
-    it('should handle empty object', () => {
-      expect(() => registerModels({})).not.toThrow();
+      expect(getModel("test")).toEqual(Model2);
     });
   });
 
-  describe('getModel', () => {
-    it('should retrieve registered model', () => {
-      const TestModel = { name: 'Test', schema: { id: 'string' } };
-      registerModel('test', TestModel);
+  describe("registerModels", () => {
+    it("should register multiple models at once", () => {
+      registerModels([UserModel, PostModel, CommentModel]);
 
-      const model = getModel('test');
+      expect(hasModel("user")).toBe(true);
+      expect(hasModel("post")).toBe(true);
+      expect(hasModel("comment")).toBe(true);
+    });
+
+    it("should handle empty object", () => {
+      expect(() => registerModels([])).not.toThrow();
+    });
+  });
+
+  describe("getModel", () => {
+    it("should retrieve registered model", () => {
+      registerModel(TestModel);
+
+      const model = getModel("test");
       expect(model).toEqual(TestModel);
     });
 
-    it('should return undefined for unregistered model', () => {
-      expect(getModel('nonexistent')).toBeUndefined();
+    it("should return undefined for unregistered model", () => {
+      expect(getModel("nonexistent")).toBeUndefined();
     });
   });
 
-  describe('hasModel', () => {
-    it('should detect registered models', () => {
-      registerModel('test', { name: 'Test', schema: {} });
-      expect(hasModel('test')).toBe(true);
+  describe("hasModel", () => {
+    it("should detect registered models", () => {
+      registerModel(TestModel);
+      expect(hasModel("test")).toBe(true);
     });
 
-    it('should return false for unregistered models', () => {
-      expect(hasModel('nonexistent')).toBe(false);
+    it("should return false for unregistered models", () => {
+      expect(hasModel("nonexistent")).toBe(false);
     });
   });
 
-  describe('getRegisteredModels', () => {
-    it('should return all registered models', () => {
-      const models = {
-        user: { name: 'User', schema: {} },
-        post: { name: 'Post', schema: {} },
-      };
-
-      registerModels(models);
+  describe("getRegisteredModels", () => {
+    it("should return all registered models", () => {
+      registerModels([UserModel, PostModel]);
       const registered = getRegisteredModels();
 
-      expect(registered).toHaveProperty('user');
-      expect(registered).toHaveProperty('post');
+      expect(registered).toContain("user");
+      expect(registered).toContain("post");
     });
 
-    it('should return empty object when no models registered', () => {
+    it("should return empty object when no models registered", () => {
       const registered = getRegisteredModels();
-      expect(Object.keys(registered)).toHaveLength(0);
+      expect(registered).toHaveLength(0);
     });
   });
 
-  describe('clearModelRegistry', () => {
-    it('should clear all registered models', () => {
-      registerModel('test1', { name: 'Test1', schema: {} });
-      registerModel('test2', { name: 'Test2', schema: {} });
+  describe("clearModelRegistry", () => {
+    it("should clear all registered models", () => {
+      class Test1Model extends BaseModel {
+        static entity = "test1";
+        static table = {} as any;
+        static primaryKey = "id";
+      }
+
+      class Test2Model extends BaseModel {
+        static entity = "test2";
+        static table = {} as any;
+        static primaryKey = "id";
+      }
+
+      registerModel(Test1Model);
+      registerModel(Test2Model);
 
       clearModelRegistry();
 
-      expect(hasModel('test1')).toBe(false);
-      expect(hasModel('test2')).toBe(false);
+      expect(hasModel("test1")).toBe(false);
+      expect(hasModel("test2")).toBe(false);
     });
 
-    it('should allow re-registration after clearing', () => {
-      registerModel('test', { name: 'Test', schema: {} });
-      clearModelRegistry();
-      registerModel('test', { name: 'NewTest', schema: {} });
+    it("should allow re-registration after clearing", () => {
+      class NewTestModel extends BaseModel {
+        static entity = "test";
+        static table = {} as any;
+        static primaryKey = "id";
+      }
 
-      expect(hasModel('test')).toBe(true);
+      registerModel(TestModel);
+      clearModelRegistry();
+      registerModel(NewTestModel);
+
+      expect(hasModel("test")).toBe(true);
     });
   });
 
-  describe('Edge Cases', () => {
-    it('should handle special characters in model names', () => {
-      const TestModel = { name: 'Test', schema: {} };
-      registerModel('user_profile', TestModel);
+  describe("Edge Cases", () => {
+    it("should handle special characters in model names", () => {
+      class UserProfileModel extends BaseModel {
+        static entity = "user_profile";
+        static table = {} as any;
+        static primaryKey = "id";
+      }
 
-      expect(hasModel('user_profile')).toBe(true);
+      registerModel(UserProfileModel);
+
+      expect(hasModel("user_profile")).toBe(true);
     });
 
-    it('should be case-sensitive', () => {
-      registerModel('User', { name: 'User', schema: {} });
+    it("should be case-sensitive", () => {
+      class UpperUserModel extends BaseModel {
+        static entity = "User";
+        static table = {} as any;
+        static primaryKey = "id";
+      }
 
-      expect(hasModel('User')).toBe(true);
-      expect(hasModel('user')).toBe(false);
+      registerModel(UpperUserModel);
+
+      expect(hasModel("User")).toBe(true);
+      expect(hasModel("user")).toBe(false);
     });
   });
 });
