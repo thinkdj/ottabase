@@ -302,6 +302,16 @@ const demoCloudflareR2Route = new Route({
   ),
 });
 
+const demoCloudflareFileUploadRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/demo/cloudflare/file-upload",
+  component: lazyRouteComponent(() =>
+    import("@/pages/demo/cloudflare/CloudflareFileUploadDemoPage").then((m) => ({
+      default: m.CloudflareFileUploadDemoPage,
+    })),
+  ),
+});
+
 const demoCloudflareImagesRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/demo/cloudflare/images",
@@ -460,6 +470,7 @@ const routeTree = rootRoute.addChildren([
   demoCloudflareD1Route,
   demoCloudflareKVRoute,
   demoCloudflareR2Route,
+  demoCloudflareFileUploadRoute,
   demoCloudflareImagesRoute,
   demoCloudflareHyperdriveRoute,
   demoCloudflareQueuesRoute,

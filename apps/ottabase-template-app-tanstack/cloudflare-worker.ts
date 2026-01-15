@@ -7,6 +7,8 @@ import { createImagesClient } from "@ottabase/cf/images";
 import { createKVClient } from "@ottabase/cf/kv";
 import { createQueuesClient } from "@ottabase/cf/queues";
 import { createRateLimitingClient } from "@ottabase/cf/rate-limiting";
+import { createR2Client } from "@ottabase/cf/r2";
+import { uploadFileToR2 } from "@ottabase/upload/server";
 import { createD1Driver } from "@ottabase/db/drizzle-d1";
 import {
   Post,
@@ -574,6 +576,78 @@ export default {
         return errorResponse("Method not allowed", 405, {
           code: "METHOD_NOT_ALLOWED",
         });
+      }
+
+      // Upload: /api/upload
+      if (url.pathname === "/api/upload") {
+        if (!env.OBCF_R2) {
+          return errorResponse("R2 bucket binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        if (request.method === "POST") {
+          try {
+            const formData = await request.formData();
+            const file = formData.get("file");
+
+            if (!(file instanceof File)) {
+              return errorResponse("file is required", 400);
+            }
+
+            // Create R2 client
+            const r2Client = createR2Client({ bucket: env.OBCF_R2 });
+
+            // Upload file
+            const result = await uploadFileToR2(file, r2Client, {
+              maxFileSize: 50 * 1024 * 1024, // 50MB max
+            });
+
+            if (result.success) {
+              return jsonResponse({
+                success: true,
+                url: result.url,
+                key: result.key,
+              });
+            } else {
+              return errorResponse(result.error || "Upload failed", 400);
+            }
+          } catch (error) {
+            return errorResponse(
+              error instanceof Error ? error.message : "Upload failed",
+              500,
+            );
+          }
+        }
+
+        return errorResponse("Method not allowed", 405, {
+          code: "METHOD_NOT_ALLOWED",
+        });
+      }
+
+      // Upload file download: /api/upload/file/:key
+      if (url.pathname.startsWith("/api/upload/file/")) {
+        if (!env.OBCF_R2) {
+          return errorResponse("R2 bucket binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        const key = url.pathname.replace("/api/upload/file/", "");
+        if (!key) {
+          return errorResponse("key is required", 400);
+        }
+
+        const object = await env.OBCF_R2.get(key);
+        if (!object) {
+          return errorResponse("File not found", 404);
+        }
+
+        const headers = new Headers();
+        object.writeHttpMetadata(headers);
+        headers.set("etag", object.httpEtag);
+
+        return new Response(object.body, { headers });
       }
 
       // Images: /api/cloudflare/images

@@ -26,6 +26,11 @@ export function CloudflareDemoIndexPage() {
             href: "/demo/cloudflare/r2",
         },
         {
+            name: "File Upload Package",
+            description: "Drag-and-drop file uploader with progress tracking",
+            href: "/demo/cloudflare/file-upload",
+        },
+        {
             name: "Images",
             description: "Image upload and transformation (docs)",
             href: "/demo/cloudflare/images",
