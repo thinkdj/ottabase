@@ -619,7 +619,13 @@ export default {
                   provider: "cloudflare-images",
                 });
               } else {
-                return errorResponse(result.error || "Upload failed", 400);
+                const errorCode = (result as any).code;
+                const status = errorCode === "CONFIG_ERROR" ? 500 : 400;
+                return errorResponse(
+                  result.error || "Upload failed",
+                  status,
+                  errorCode ? { code: errorCode } : undefined
+                );
               }
             } else {
               // R2 provider (default)
