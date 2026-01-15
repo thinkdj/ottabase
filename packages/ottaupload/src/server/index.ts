@@ -215,7 +215,7 @@ export function createFileMetadata(
 export function parseFormDataFiles(formData: FormData): File[] {
   const files: File[] = [];
 
-  for (const [key, value] of formData.entries()) {
+  for (const value of formData.values()) {
     if (value instanceof File) {
       files.push(value);
     }
