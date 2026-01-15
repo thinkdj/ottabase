@@ -52,7 +52,8 @@
     "@editorjs/raw": "^2.5.0",
     "@editorjs/table": "^2.4.1",
     "@editorjs/underline": "^1.1.0",
-    "@editorjs/warning": "^1.4.0"
+    "@editorjs/warning": "^1.4.0",
+    "@ottabase/ottaupload": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18.0.0",

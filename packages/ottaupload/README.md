@@ -90,6 +90,35 @@ const uploadResult = await uploadFile({
 });
 ```
 
+## Vanilla JavaScript Upload (Non-React)
+
+For use in vanilla JavaScript contexts (e.g., EditorJS tools, plain HTML), use the utilities:
+
+```typescript
+import { uploadFile } from '@ottabase/ottaupload/utils';
+import { validateFileType } from '@ottabase/ottaupload/validation';
+
+// Upload file with progress tracking
+const result = await uploadFile(file, {
+  endpoint: '/api/upload',
+  maxFileSize: 10 * 1024 * 1024, // 10MB
+  acceptedFileTypes: ['image/*'],
+  onProgress: (progress) => {
+    console.log(`Upload progress: ${progress}%`);
+  },
+  onSuccess: (response) => {
+    console.log('Upload successful:', response.url);
+  },
+  onError: (error) => {
+    console.error('Upload failed:', error.message);
+  }
+});
+
+if (result.success) {
+  console.log('File URL:', result.url);
+}
+```
+
 ## License
 
 MIT
