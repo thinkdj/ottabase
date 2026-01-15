@@ -1,4 +1,4 @@
-# @ottabase/upload
+# @ottabase/ottaupload
 
 File upload package with drag-and-drop, progress tracking, and Cloudflare R2 integration.
 
@@ -18,7 +18,7 @@ File upload package with drag-and-drop, progress tracking, and Cloudflare R2 int
 ## Installation
 
 ```bash
-pnpm add @ottabase/upload
+pnpm add @ottabase/ottaupload
 ```
 
 ## Usage
@@ -26,7 +26,7 @@ pnpm add @ottabase/upload
 ### Basic File Uploader
 
 ```tsx
-import { FileUploader } from '@ottabase/upload/client';
+import { FileUploader } from '@ottabase/ottaupload/client';
 
 function App() {
   return (
@@ -46,7 +46,7 @@ function App() {
 ### Browse Button Variant
 
 ```tsx
-import { FileUploader } from '@ottabase/upload/client';
+import { FileUploader } from '@ottabase/ottaupload/client';
 
 function App() {
   return (
@@ -76,8 +76,8 @@ function App() {
 ## Server Integration
 
 ```typescript
-import { uploadFile, validateUpload } from '@ottabase/upload/server';
-import { fileUploadSchema } from '@ottabase/upload/validation';
+import { uploadFile, validateUpload } from '@ottabase/ottaupload/server';
+import { fileUploadSchema } from '@ottabase/ottaupload/validation';
 
 // Validate upload request
 const result = fileUploadSchema.safeParse(request);

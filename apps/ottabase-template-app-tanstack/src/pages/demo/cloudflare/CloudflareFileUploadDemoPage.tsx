@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@ottabase/ui-shadcn";
-import { FileUploader } from "@ottabase/upload/client";
+import { FileUploader } from "@ottabase/ottaupload/client";
 
 export function CloudflareFileUploadDemoPage() {
     const [uploadMode, setUploadMode] = useState<"dropzone" | "button">("dropzone");
@@ -28,7 +28,7 @@ export function CloudflareFileUploadDemoPage() {
                 </Link>
                 <h1 className="text-4xl font-bold mb-2">File Upload Package</h1>
                 <p className="text-muted-foreground">
-                    Demonstration of the @ottabase/upload package with drag-and-drop,
+                    Demonstration of the @ottabase/ottaupload package with drag-and-drop,
                     progress tracking, and Cloudflare R2 integration.
                 </p>
             </div>
@@ -179,7 +179,7 @@ export function CloudflareFileUploadDemoPage() {
                 </CardHeader>
                 <CardContent>
                     <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
-                        <code>{`import { FileUploader } from '@ottabase/upload/client';
+                        <code>{`import { FileUploader } from '@ottabase/ottaupload/client';
 
 function MyComponent() {
   return (
@@ -202,7 +202,7 @@ function MyComponent() {
                 <CardHeader>
                     <CardTitle>Package Details</CardTitle>
                     <CardDescription>
-                        Information about the @ottabase/upload package
+                        Information about the @ottabase/ottaupload package
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -210,7 +210,7 @@ function MyComponent() {
                         <div>
                             <h4 className="font-semibold mb-1">Package Name</h4>
                             <code className="bg-gray-100 px-2 py-1 rounded">
-                                @ottabase/upload
+                                @ottabase/ottaupload
                             </code>
                         </div>
                         <div>
@@ -226,16 +226,16 @@ function MyComponent() {
                             <h4 className="font-semibold mb-1">Exports</h4>
                             <ul className="list-disc list-inside text-muted-foreground">
                                 <li>
-                                    <code>@ottabase/upload/client</code> - React components
+                                    <code>@ottabase/ottaupload/client</code> - React components
                                 </li>
                                 <li>
-                                    <code>@ottabase/upload/server</code> - Server utilities
+                                    <code>@ottabase/ottaupload/server</code> - Server utilities
                                 </li>
                                 <li>
-                                    <code>@ottabase/upload/validation</code> - Zod schemas
+                                    <code>@ottabase/ottaupload/validation</code> - Zod schemas
                                 </li>
                                 <li>
-                                    <code>@ottabase/upload/types</code> - TypeScript types
+                                    <code>@ottabase/ottaupload/types</code> - TypeScript types
                                 </li>
                             </ul>
                         </div>

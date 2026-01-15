@@ -1,5 +1,5 @@
 /**
- * @ottabase/upload
+ * @ottabase/ottaupload
  * File upload package with drag-and-drop, progress tracking, and Cloudflare R2 integration
  */
 

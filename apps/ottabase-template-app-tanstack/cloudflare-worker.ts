@@ -8,7 +8,7 @@ import { createKVClient } from "@ottabase/cf/kv";
 import { createQueuesClient } from "@ottabase/cf/queues";
 import { createRateLimitingClient } from "@ottabase/cf/rate-limiting";
 import { createR2Client } from "@ottabase/cf/r2";
-import { uploadFileToR2 } from "@ottabase/upload/server";
+import { uploadFileToR2 } from "@ottabase/ottaupload/server";
 import { createD1Driver } from "@ottabase/db/drizzle-d1";
 import {
   Post,

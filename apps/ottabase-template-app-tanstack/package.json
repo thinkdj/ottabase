@@ -45,7 +45,7 @@
     "@ottabase/ui-components": "workspace:*",
     "@ottabase/ui-mantine": "workspace:*",
     "@ottabase/ui-shadcn": "workspace:*",
-    "@ottabase/upload": "workspace:*",
+    "@ottabase/ottaupload": "workspace:*",
     "@ottabase/utils": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",

@@ -1,5 +1,5 @@
 {
-  "name": "@ottabase/upload",
+  "name": "@ottabase/ottaupload",
   "version": "1.0.0",
   "description": "File upload package with drag-and-drop, progress tracking, and Cloudflare R2 integration",
   "main": "dist/index.js",
