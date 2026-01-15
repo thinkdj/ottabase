@@ -1,21 +1,19 @@
 # @ottabase/ottaupload
 
-File upload package with drag-and-drop, progress tracking, and Cloudflare R2/Images integration.
+Production-ready file upload package with drag-and-drop UI, progress tracking, and multi-provider support for Cloudflare R2 and Cloudflare Images.
 
 ## Features
 
-- Drag-and-drop file upload with visual feedback
-- Multiple file upload support (configurable)
-- File type validation (configurable)
-- File size validation
-- Upload progress tracking
-- Clean, minimal shadcn/Notion-like design
-- TypeScript support
-- Zod validation schemas
-- Multiple provider support:
-  - **Cloudflare R2** (default) - Object storage for all file types
-  - **Cloudflare Images** - Optimized image delivery with automatic variants
-- Database tracking via `@ottabase/db`
+- 🎨 **Clean UI** - Minimal shadcn/Notion-like design with dropzone and button variants
+- 📤 **Drag & Drop** - Native drag-and-drop support with visual feedback
+- 📊 **Progress Tracking** - Real-time upload progress with percentage display
+- 🔄 **Multiple Files** - Batch upload support with configurable limits
+- ✅ **Validation** - File type, size validation with Zod schemas
+- 🌐 **Multi-Provider** - Cloudflare R2 (all files) and Cloudflare Images (optimized images)
+- 🪝 **React Hooks** - `useFileUpload` and `useDragAndDrop` hooks
+- 🎯 **Vanilla JS** - Non-React support for EditorJS tools and plain HTML
+- 📦 **TypeScript** - Full type safety with TypeScript definitions
+- 🔌 **Server Utils** - Ready-to-use server functions for R2 and Cloudflare Images
 
 ## Installation
 
@@ -23,9 +21,9 @@ File upload package with drag-and-drop, progress tracking, and Cloudflare R2/Ima
 pnpm add @ottabase/ottaupload
 ```
 
-## Usage
+## Quick Start
 
-### Basic File Uploader
+### React Component
 
 ```tsx
 import { FileUploader } from '@ottabase/ottaupload/client';
@@ -33,184 +31,330 @@ import { FileUploader } from '@ottabase/ottaupload/client';
 function App() {
   return (
     <FileUploader
-      onUpload={async (files) => {
-        // Handle file upload
-        console.log('Files to upload:', files);
-      }}
+      uploadEndpoint="/api/upload"
       maxFiles={5}
-      acceptedFileTypes={['image/*', 'application/pdf']}
       maxFileSize={10 * 1024 * 1024} // 10MB
+      acceptedFileTypes={['image/*', 'application/pdf']}
+      autoUpload={true}
+      onUploadComplete={(files) => console.log('Done!', files)}
     />
   );
 }
 ```
 
-### Browse Button Variant
+### Vanilla JavaScript
 
-```tsx
-import { FileUploader } from '@ottabase/ottaupload/client';
+```typescript
+import { uploadFile } from '@ottabase/ottaupload/utils';
 
-function App() {
-  return (
-    <FileUploader
-      variant="button"
-      onUpload={async (files) => {
-        // Handle file upload
-      }}
-    />
-  );
-}
+const result = await uploadFile(file, {
+  endpoint: '/api/upload',
+  maxFileSize: 10 * 1024 * 1024,
+  onProgress: (progress) => console.log(`${progress}%`),
+});
 ```
 
-## API
+## Component API
 
-### FileUploader Props
+### FileUploader
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `onUpload` | `(files: File[]) => Promise<void>` | Required | Callback when files are ready to upload |
-| `variant` | `'dropzone' \| 'button'` | `'dropzone'` | Upload UI variant |
-| `maxFiles` | `number` | `1` | Maximum number of files allowed |
-| `acceptedFileTypes` | `string[]` | `undefined` | Accepted MIME types (e.g., `['image/*', 'application/pdf']`) |
-| `maxFileSize` | `number` | `undefined` | Maximum file size in bytes |
-| `provider` | `'r2' \| 'cloudflare-images'` | `'r2'` | Upload provider (R2 for all files, Cloudflare Images for optimized image delivery) |
-| `disabled` | `boolean` | `false` | Disable the uploader |
+| `variant` | `'dropzone' \| 'button'` | `'dropzone'` | UI style |
+| `maxFiles` | `number` | `1` | Max file count |
+| `maxFileSize` | `number` | `undefined` | Max size in bytes |
+| `acceptedFileTypes` | `string[]` | `undefined` | MIME types (e.g., `['image/*']`) |
+| `provider` | `'r2' \| 'cloudflare-images'` | `'r2'` | Upload provider |
+| `uploadEndpoint` | `string` | `'/api/upload'` | API endpoint |
+| `autoUpload` | `boolean` | `false` | Auto-upload on select |
+| `disabled` | `boolean` | `false` | Disable uploader |
+| `onUploadComplete` | `(files) => void` | - | Success callback |
+| `onUploadError` | `(error) => void` | - | Error callback |
 
-## Provider Support
-
-### Using Cloudflare R2 (Default)
-
-R2 is the default provider for all file types. No configuration needed:
-
-```tsx
-import { FileUploader } from '@ottabase/ottaupload/client';
-
-function App() {
-  return (
-    <FileUploader
-      uploadEndpoint="/api/upload"
-      maxFiles={5}
-      autoUpload={true}
-    />
-  );
-}
-```
-
-### Using Cloudflare Images
-
-For image uploads, you can use Cloudflare Images for automatic optimization and delivery:
+### Button Variant
 
 ```tsx
-import { FileUploader } from '@ottabase/ottaupload/client';
-
-function App() {
-  return (
-    <FileUploader
-      provider="cloudflare-images"
-      uploadEndpoint="/api/upload"
-      acceptedFileTypes={['image/*']}
-      maxFiles={5}
-      autoUpload={true}
-    />
-  );
-}
+<FileUploader
+  variant="button"
+  maxFiles={1}
+  acceptedFileTypes={['image/*']}
+/>
 ```
 
-### Server-Side Configuration
+## Providers
 
-#### Cloudflare R2 Setup
+### Cloudflare R2 (Default)
 
+For all file types. Requires `OBCF_R2` binding.
+
+```tsx
+<FileUploader uploadEndpoint="/api/upload" />
+```
+
+**Server:**
 ```typescript
 import { uploadFileToR2 } from '@ottabase/ottaupload/server';
 import { createR2Client } from '@ottabase/cf/r2';
 
-// Upload to R2
 const r2Client = createR2Client({ bucket: env.OBCF_R2 });
 const result = await uploadFileToR2(file, r2Client, {
-  maxFileSize: 50 * 1024 * 1024, // 50MB
+  maxFileSize: 50 * 1024 * 1024,
 });
 ```
 
-#### Cloudflare Images Setup
+### Cloudflare Images
 
-Configure environment variables:
-- `CLOUDFLARE_ACCOUNT_ID` - Your Cloudflare account ID
-- `CLOUDFLARE_API_TOKEN` - API token with Images permissions
+For optimized image delivery with automatic variants. Requires:
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
 
+```tsx
+<FileUploader
+  provider="cloudflare-images"
+  acceptedFileTypes={['image/*']}
+  uploadEndpoint="/api/upload"
+/>
+```
+
+**Server:**
 ```typescript
 import { uploadFileToCloudflareImages } from '@ottabase/ottaupload/server';
 
-// Upload to Cloudflare Images
 const result = await uploadFileToCloudflareImages(file, {
   accountId: env.CLOUDFLARE_ACCOUNT_ID,
   apiToken: env.CLOUDFLARE_API_TOKEN,
   requireSignedURLs: false,
   metadata: { userId: 'user-123' }
 }, {
-  maxFileSize: 10 * 1024 * 1024, // 10MB
+  maxFileSize: 10 * 1024 * 1024,
 });
-
-if (result.success) {
-  console.log('Image URL:', result.url); // Public variant URL
-  console.log('Image ID:', result.key);
-}
 ```
 
-The API endpoint automatically handles both providers:
+## Server Setup
+
+### API Endpoint
 
 ```typescript
-// In your cloudflare-worker.ts
-if (url.pathname === "/api/upload") {
+// cloudflare-worker.ts
+import { uploadFileToR2, uploadFileToCloudflareImages } from '@ottabase/ottaupload/server';
+
+if (url.pathname === "/api/upload" && request.method === "POST") {
   const formData = await request.formData();
-  const file = formData.get("file");
-  const provider = formData.get("provider") || "r2"; // Defaults to R2
+  const file = formData.get("file") as File;
+  const provider = formData.get("provider") as string || "r2";
 
   if (provider === "cloudflare-images") {
-    // Upload to Cloudflare Images
-  } else {
-    // Upload to R2
+    const result = await uploadFileToCloudflareImages(file, {
+      accountId: env.CLOUDFLARE_ACCOUNT_ID,
+      apiToken: env.CLOUDFLARE_API_TOKEN,
+    });
+    return jsonResponse({ success: true, url: result.url, key: result.key });
   }
+
+  // R2 (default)
+  const r2Client = createR2Client({ bucket: env.OBCF_R2 });
+  const result = await uploadFileToR2(file, r2Client);
+  return jsonResponse({ success: true, url: result.url, key: result.key });
 }
 ```
 
-## Vanilla JavaScript Upload (Non-React)
-
-For use in vanilla JavaScript contexts (e.g., EditorJS tools, plain HTML), use the utilities:
+### File Retrieval
 
 ```typescript
-import { uploadFile } from '@ottabase/ottaupload/utils';
-import { validateFileType } from '@ottabase/ottaupload/validation';
+// R2
+import { getFileFromR2 } from '@ottabase/ottaupload/server';
+const file = await getFileFromR2(key, r2Client);
 
-// Upload file with progress tracking (R2 - default)
+// Cloudflare Images
+import { getFileFromCloudflareImages } from '@ottabase/ottaupload/server';
+const image = await getFileFromCloudflareImages(imageId, config);
+```
+
+## React Hooks
+
+### useFileUpload
+
+```tsx
+import { useFileUpload } from '@ottabase/ottaupload/client';
+
+const {
+  files,
+  isUploading,
+  addFiles,
+  uploadAll,
+  removeFile,
+  clearFiles,
+  retryUpload
+} = useFileUpload({
+  maxFiles: 5,
+  maxFileSize: 10 * 1024 * 1024,
+  uploadEndpoint: '/api/upload',
+  provider: 'r2',
+  autoUpload: true,
+  onUploadComplete: (files) => console.log('Done!'),
+  onUploadError: (error) => console.error(error),
+});
+```
+
+### useDragAndDrop
+
+```tsx
+import { useDragAndDrop } from '@ottabase/ottaupload/client';
+
+const { isDragging, dragHandlers } = useDragAndDrop({
+  onFilesDropped: (files) => console.log(files),
+  acceptedFileTypes: ['image/*'],
+});
+
+<div {...dragHandlers} className={isDragging ? 'highlight' : ''}>
+  Drop files here
+</div>
+```
+
+## Vanilla JavaScript
+
+For non-React contexts (EditorJS, plain HTML):
+
+```typescript
+import { uploadFile, uploadFiles } from '@ottabase/ottaupload/utils';
+
+// Single file
 const result = await uploadFile(file, {
   endpoint: '/api/upload',
-  provider: 'r2', // or 'cloudflare-images' for images
-  maxFileSize: 10 * 1024 * 1024, // 10MB
-  acceptedFileTypes: ['image/*'],
-  onProgress: (progress) => {
-    console.log(`Upload progress: ${progress}%`);
-  },
-  onSuccess: (response) => {
-    console.log('Upload successful:', response.url);
-  },
-  onError: (error) => {
-    console.error('Upload failed:', error.message);
-  }
-});
-
-if (result.success) {
-  console.log('File URL:', result.url);
-}
-
-// Upload to Cloudflare Images
-const imageResult = await uploadFile(imageFile, {
-  endpoint: '/api/upload',
   provider: 'cloudflare-images',
+  maxFileSize: 10 * 1024 * 1024,
   acceptedFileTypes: ['image/*'],
-  onProgress: (progress) => {
-    console.log(`Uploading image: ${progress}%`);
+  onProgress: (progress) => console.log(`${progress}%`),
+  onSuccess: (response) => console.log(response.url),
+  onError: (error) => console.error(error),
+});
+
+// Multiple files
+const results = await uploadFiles([file1, file2], {
+  endpoint: '/api/upload',
+  onProgress: (progress) => console.log(`${progress}%`),
+});
+```
+
+### EditorJS Integration
+
+```typescript
+import { AdvancedImageTool } from '@ottabase/ottaeditor';
+
+const editor = new EditorJS({
+  tools: {
+    image: {
+      class: AdvancedImageTool,
+      config: {
+        provider: 'cloudflare-images',
+        uploadEndpoint: '/api/upload',
+        maxFileSize: 10 * 1024 * 1024,
+      }
+    }
   }
 });
+```
+
+## Validation
+
+### Built-in Validators
+
+```typescript
+import {
+  validateFileSize,
+  validateFileType,
+  validateFiles,
+  formatFileSize,
+  generateFileKey
+} from '@ottabase/ottaupload/validation';
+
+// File size
+const isValid = validateFileSize(file, 10 * 1024 * 1024);
+
+// File type
+const isImage = validateFileType(file, ['image/*']);
+
+// Multiple files
+const result = validateFiles(files, {
+  maxFiles: 5,
+  maxFileSize: 10 * 1024 * 1024,
+  acceptedFileTypes: ['image/*', 'application/pdf']
+});
+
+// Utilities
+const size = formatFileSize(1048576); // "1 MB"
+const key = generateFileKey(file); // "2024/01/15/abc123-image.jpg"
+```
+
+### Zod Schemas
+
+```typescript
+import { fileUploadSchema } from '@ottabase/ottaupload/validation';
+
+const result = fileUploadSchema.safeParse(file);
+```
+
+## Types
+
+```typescript
+import type {
+  UploadFile,
+  UploadConfig,
+  UploadResponse,
+  UploadProvider,
+  FileMetadata,
+  CloudflareImagesConfig,
+  CloudflareImagesResponse
+} from '@ottabase/ottaupload/types';
+```
+
+## Advanced Usage
+
+### Custom Upload Handler
+
+```tsx
+<FileUploader
+  onUpload={async (files) => {
+    for (const file of files) {
+      const result = await customUpload(file);
+      console.log(result);
+    }
+  }}
+/>
+```
+
+### Manual Control
+
+```tsx
+const { files, addFiles, uploadAll } = useFileUpload({ autoUpload: false });
+
+<button onClick={() => input.click()}>Select Files</button>
+<button onClick={uploadAll}>Upload All</button>
+```
+
+### Retry Failed Uploads
+
+```tsx
+const { files, retryUpload } = useFileUpload();
+
+{files.map(file => (
+  <div key={file.id}>
+    {file.status === 'error' && (
+      <button onClick={() => retryUpload(file.id)}>Retry</button>
+    )}
+  </div>
+))}
+```
+
+## Package Structure
+
+```
+@ottabase/ottaupload
+├── /client        # React components and hooks
+├── /server        # Server-side utilities (R2, Cloudflare Images)
+├── /validation    # Validation functions and Zod schemas
+├── /types         # TypeScript type definitions
+└── /utils         # Vanilla JS utilities (non-React)
 ```
 
 ## License

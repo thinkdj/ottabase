@@ -65,13 +65,16 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.1.0",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "happy-dom": "^15.11.7",
     "react": "catalog:",
     "react-dom": "catalog:",
     "rimraf": "catalog:",
     "tsup": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "^4.0.17"
   }
 }
