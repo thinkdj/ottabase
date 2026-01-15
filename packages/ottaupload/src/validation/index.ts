@@ -62,7 +62,7 @@ export const uploadConfigSchema = z.object({
   maxFiles: z.number().min(1).max(100).default(1),
   maxFileSize: z.number().min(1).max(MAX_FILE_SIZE).optional(),
   acceptedFileTypes: z.array(z.string()).optional(),
-  uploadEndpoint: z.string().url().optional(),
+  uploadEndpoint: z.string().optional(),
   autoUpload: z.boolean().default(false),
 });
 
