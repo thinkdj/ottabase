@@ -21,6 +21,11 @@ export interface UploadFile {
 }
 
 /**
+ * Upload provider types
+ */
+export type UploadProvider = 'r2' | 'cloudflare-images';
+
+/**
  * Upload configuration options
  */
 export interface UploadConfig {
@@ -53,6 +58,12 @@ export interface UploadConfig {
    * @default false
    */
   autoUpload?: boolean;
+
+  /**
+   * Upload provider
+   * @default 'r2'
+   */
+  provider?: UploadProvider;
 }
 
 /**
@@ -141,7 +152,13 @@ export interface UploadServerOptions {
   allowedTypes?: string[];
 
   /**
-   * R2 bucket name
+   * Upload provider
+   * @default 'r2'
+   */
+  provider?: UploadProvider;
+
+  /**
+   * R2 bucket name (for R2 provider)
    */
   bucket?: string;
 
@@ -149,4 +166,46 @@ export interface UploadServerOptions {
    * Custom key generator
    */
   generateKey?: (file: File) => string;
+}
+
+/**
+ * Cloudflare Images configuration
+ */
+export interface CloudflareImagesConfig {
+  /**
+   * Cloudflare account ID
+   */
+  accountId: string;
+
+  /**
+   * Cloudflare API token with Images permissions
+   */
+  apiToken: string;
+
+  /**
+   * Optional custom ID for the image
+   */
+  customId?: string;
+
+  /**
+   * Whether to require signed URLs
+   * @default false
+   */
+  requireSignedURLs?: boolean;
+
+  /**
+   * Image metadata
+   */
+  metadata?: Record<string, string>;
+}
+
+/**
+ * Cloudflare Images response
+ */
+export interface CloudflareImagesResponse {
+  id: string;
+  filename: string;
+  uploaded: string;
+  requireSignedURLs: boolean;
+  variants: string[];
 }

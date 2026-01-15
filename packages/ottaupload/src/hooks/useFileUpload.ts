@@ -18,6 +18,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     acceptedFileTypes,
     uploadEndpoint = '/api/upload',
     autoUpload = false,
+    provider = 'r2',
     onUploadComplete,
     onUploadError,
     onUploadProgress,
@@ -77,6 +78,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
       // Create form data
       const formData = new FormData();
       formData.append('file', uploadFile.file);
+      formData.append('provider', provider);
 
       // Upload with progress tracking
       const xhr = new XMLHttpRequest();

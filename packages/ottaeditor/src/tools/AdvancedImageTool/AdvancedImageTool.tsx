@@ -49,6 +49,7 @@ export default class AdvancedImageTool {
         // Config defaults
         this.config.uploadEndpoint = this.config.uploadEndpoint || '/api/upload';
         this.config.maxFileSize = this.config.maxFileSize || 10 * 1024 * 1024; // 10MB default
+        this.config.provider = this.config.provider || 'r2'; // Default to R2
 
         // Accept legacy @editorjs/image data shape: { file: { url }, caption, withBorder, withBackground, stretched }
         const legacyUrl = data?.file?.url || '';
@@ -311,6 +312,7 @@ export default class AdvancedImageTool {
             // Use ottaupload utility for upload
             const result = await uploadFile(file, {
                 endpoint: this.config.uploadEndpoint,
+                provider: this.config.provider,
                 maxFileSize: this.config.maxFileSize,
                 acceptedFileTypes: ['image/*'],
                 onProgress: (progress) => {

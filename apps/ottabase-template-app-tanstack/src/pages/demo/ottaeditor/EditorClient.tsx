@@ -192,9 +192,7 @@ export function EditorClient() {
                             tool: AdvancedImageTool as unknown as BlockToolConstructable,
                             config: {
                                 provider: uploadProvider,
-                                uploadEndpoint: uploadProvider === 'r2'
-                                    ? '/api/cloudflare/r2'
-                                    : '/api/cloudflare/images',
+                                uploadEndpoint: '/api/upload',
                             },
                         },
                     ],

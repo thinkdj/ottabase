@@ -3,7 +3,13 @@
  */
 
 import type { R2Client } from '@ottabase/cf';
-import type { UploadServerOptions, FileMetadata, UploadResponse } from '../types';
+import type {
+  UploadServerOptions,
+  FileMetadata,
+  UploadResponse,
+  CloudflareImagesConfig,
+  CloudflareImagesResponse
+} from '../types';
 import {
   validateFileSize,
   validateFileType,
@@ -232,4 +238,197 @@ export function createUploadFormData(file: File, additionalData?: Record<string,
   }
 
   return formData;
+}
+
+/**
+ * Upload a file to Cloudflare Images
+ */
+export async function uploadFileToCloudflareImages(
+  file: File,
+  config: CloudflareImagesConfig,
+  options: UploadServerOptions = {}
+): Promise<UploadResponse> {
+  try {
+    // Validate file size
+    if (options.maxFileSize && !validateFileSize(file, options.maxFileSize)) {
+      return {
+        success: false,
+        error: `File size exceeds maximum of ${formatFileSize(options.maxFileSize)}`,
+      };
+    }
+
+    // Validate file type - Cloudflare Images only accepts images
+    const imageTypes = ['image/*'];
+    if (!validateFileType(file, imageTypes)) {
+      return {
+        success: false,
+        error: 'Only image files are allowed for Cloudflare Images',
+      };
+    }
+
+    // Create form data
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Add optional custom ID
+    if (config.customId) {
+      formData.append('id', config.customId);
+    }
+
+    // Add metadata if provided
+    if (config.metadata) {
+      formData.append('metadata', JSON.stringify(config.metadata));
+    }
+
+    // Add requireSignedURLs flag
+    if (config.requireSignedURLs) {
+      formData.append('requireSignedURLs', 'true');
+    }
+
+    // Upload to Cloudflare Images API
+    const uploadUrl = `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/images/v1`;
+
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.apiToken}`,
+      },
+      body: formData,
+    });
+
+    const result = await response.json() as {
+      success: boolean;
+      result?: CloudflareImagesResponse;
+      errors?: Array<{ message: string }>;
+    };
+
+    if (!response.ok || !result.success) {
+      const errorMessage = result.errors?.[0]?.message || 'Upload to Cloudflare Images failed';
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+
+    if (!result.result) {
+      return {
+        success: false,
+        error: 'No result returned from Cloudflare Images',
+      };
+    }
+
+    // Get the public variant URL (or first variant if public not available)
+    const imageId = result.result.id;
+    const variants = result.result.variants;
+
+    // Cloudflare Images provides multiple variants, use 'public' variant by default
+    const publicVariant = variants.find(v => v.includes('/public')) || variants[0];
+
+    return {
+      success: true,
+      key: imageId,
+      url: publicVariant,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Get file from Cloudflare Images
+ */
+export async function getFileFromCloudflareImages(
+  imageId: string,
+  config: CloudflareImagesConfig
+): Promise<{ success: boolean; url?: string; metadata?: any; error?: string }> {
+  try {
+    const detailsUrl = `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/images/v1/${imageId}`;
+
+    const response = await fetch(detailsUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${config.apiToken}`,
+      },
+    });
+
+    const result = await response.json() as {
+      success: boolean;
+      result?: CloudflareImagesResponse;
+      errors?: Array<{ message: string }>;
+    };
+
+    if (!response.ok || !result.success) {
+      return {
+        success: false,
+        error: result.errors?.[0]?.message || 'Failed to get image from Cloudflare Images',
+      };
+    }
+
+    if (!result.result) {
+      return {
+        success: false,
+        error: 'Image not found',
+      };
+    }
+
+    const publicVariant = result.result.variants.find(v => v.includes('/public')) || result.result.variants[0];
+
+    return {
+      success: true,
+      url: publicVariant,
+      metadata: {
+        id: result.result.id,
+        filename: result.result.filename,
+        uploaded: result.result.uploaded,
+        requireSignedURLs: result.result.requireSignedURLs,
+        variants: result.result.variants,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Delete file from Cloudflare Images
+ */
+export async function deleteFileFromCloudflareImages(
+  imageId: string,
+  config: CloudflareImagesConfig
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const deleteUrl = `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/images/v1/${imageId}`;
+
+    const response = await fetch(deleteUrl, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${config.apiToken}`,
+      },
+    });
+
+    const result = await response.json() as {
+      success: boolean;
+      errors?: Array<{ message: string }>;
+    };
+
+    if (!response.ok || !result.success) {
+      return {
+        success: false,
+        error: result.errors?.[0]?.message || 'Failed to delete image from Cloudflare Images',
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
 }

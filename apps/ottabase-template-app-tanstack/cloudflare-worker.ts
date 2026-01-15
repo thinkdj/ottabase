@@ -8,7 +8,7 @@ import { createKVClient } from "@ottabase/cf/kv";
 import { createQueuesClient } from "@ottabase/cf/queues";
 import { createRateLimitingClient } from "@ottabase/cf/rate-limiting";
 import { createR2Client } from "@ottabase/cf/r2";
-import { uploadFileToR2 } from "@ottabase/ottaupload/server";
+import { uploadFileToR2, uploadFileToCloudflareImages } from "@ottabase/ottaupload/server";
 import { createD1Driver } from "@ottabase/db/drizzle-d1";
 import {
   Post,
@@ -580,37 +580,73 @@ export default {
 
       // Upload: /api/upload
       if (url.pathname === "/api/upload") {
-        if (!env.OBCF_R2) {
-          return errorResponse("R2 bucket binding not configured", 500, {
-            code: "CONFIG_ERROR",
-          });
-        }
-
         if (request.method === "POST") {
           try {
             const formData = await request.formData();
             const file = formData.get("file");
+            const provider = (formData.get("provider") as string) || "r2";
 
             if (!(file instanceof File)) {
               return errorResponse("file is required", 400);
             }
 
-            // Create R2 client
-            const r2Client = createR2Client({ bucket: env.OBCF_R2 });
+            // Handle different providers
+            if (provider === "cloudflare-images") {
+              // Cloudflare Images provider
+              const accountId = env.CLOUDFLARE_ACCOUNT_ID as string;
+              const apiToken = env.CLOUDFLARE_API_TOKEN as string;
 
-            // Upload file
-            const result = await uploadFileToR2(file, r2Client, {
-              maxFileSize: 50 * 1024 * 1024, // 50MB max
-            });
+              if (!accountId || !apiToken) {
+                return errorResponse(
+                  "Cloudflare Images not configured. Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN",
+                  500,
+                  { code: "CONFIG_ERROR" }
+                );
+              }
 
-            if (result.success) {
-              return jsonResponse({
-                success: true,
-                url: result.url,
-                key: result.key,
+              const result = await uploadFileToCloudflareImages(file, {
+                accountId,
+                apiToken,
+              }, {
+                maxFileSize: 10 * 1024 * 1024, // 10MB max for images
               });
+
+              if (result.success) {
+                return jsonResponse({
+                  success: true,
+                  url: result.url,
+                  key: result.key,
+                  provider: "cloudflare-images",
+                });
+              } else {
+                return errorResponse(result.error || "Upload failed", 400);
+              }
             } else {
-              return errorResponse(result.error || "Upload failed", 400);
+              // R2 provider (default)
+              if (!env.OBCF_R2) {
+                return errorResponse("R2 bucket binding not configured", 500, {
+                  code: "CONFIG_ERROR",
+                });
+              }
+
+              // Create R2 client
+              const r2Client = createR2Client({ bucket: env.OBCF_R2 });
+
+              // Upload file
+              const result = await uploadFileToR2(file, r2Client, {
+                maxFileSize: 50 * 1024 * 1024, // 50MB max
+              });
+
+              if (result.success) {
+                return jsonResponse({
+                  success: true,
+                  url: result.url,
+                  key: result.key,
+                  provider: "r2",
+                });
+              } else {
+                return errorResponse(result.error || "Upload failed", 400);
+              }
             }
           } catch (error) {
             return errorResponse(

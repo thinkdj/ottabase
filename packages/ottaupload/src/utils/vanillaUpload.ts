@@ -3,13 +3,14 @@
  * Provides the same functionality as React hooks but without React dependencies
  */
 
-import type { UploadResponse } from '../types';
+import type { UploadResponse, UploadProvider } from '../types';
 import { validateFileSize, validateFileType, formatFileSize } from '../validation';
 
 export interface VanillaUploadOptions {
   endpoint?: string;
   maxFileSize?: number;
   acceptedFileTypes?: string[];
+  provider?: UploadProvider;
   onProgress?: (progress: number) => void;
   onSuccess?: (response: UploadResponse) => void;
   onError?: (error: Error) => void;
@@ -27,6 +28,7 @@ export async function uploadFile(
     endpoint = '/api/upload',
     maxFileSize,
     acceptedFileTypes,
+    provider = 'r2',
     onProgress,
     onSuccess,
     onError,
@@ -60,6 +62,7 @@ export async function uploadFile(
     // Create form data
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('provider', provider);
 
     // Upload with progress tracking
     return new Promise<UploadResponse>((resolve, reject) => {
