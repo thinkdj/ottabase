@@ -6,7 +6,6 @@
     "skipLibCheck": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "composite": true,
     "declaration": true,
     "declarationMap": true,
     "noEmit": false,
