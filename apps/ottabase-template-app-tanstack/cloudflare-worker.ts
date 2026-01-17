@@ -426,11 +426,61 @@ export default {
           });
         }
 
+        function isValidIpAddress(rawValue: string | null): string {
+          if (!rawValue) {
+            return "unknown";
+          }
+
+          // Some headers (like X-Forwarded-For) can contain multiple IPs.
+          const candidate = rawValue.split(",")[0]!.trim();
+          if (!candidate) {
+            return "unknown";
+          }
+
+          const ipv4Regex = /^(?:\d{1,3}\.){3}\d{1,3}$/;
+          const ipv6Regex = /^[0-9a-fA-F:]+$/;
+
+          if (ipv4Regex.test(candidate)) {
+            const parts = candidate.split(".");
+            const validOctets = parts.every((part) => {
+              const n = Number(part);
+              return Number.isInteger(n) && n >= 0 && n <= 255;
+            });
+            if (!validOctets) {
+              return "unknown";
+            }
+            return candidate;
+          }
+
+          if (ipv6Regex.test(candidate) && candidate.includes(":")) {
+            return candidate;
+          }
+
+          return "unknown";
+        }
+
+        function getClientIpAddress(request: Request): string {
+          // NOTE: IP addresses from headers are not trustworthy and must not be
+          // used for authentication, authorization, or other security decisions.
+          const headerCandidates = [
+            "CF-Connecting-IP",
+            "X-Forwarded-For",
+            "X-Real-IP",
+          ];
+
+          for (const header of headerCandidates) {
+            const headerValue = request.headers.get(header);
+            const validIp = isValidIpAddress(headerValue);
+            if (validIp !== "unknown") {
+              return validIp;
+            }
+          }
+
+          return "unknown";
+        }
+
         // Extract IP and user agent
-        const ipAddress = request.headers.get("CF-Connecting-IP") ||
-                         request.headers.get("X-Forwarded-For") ||
-                         request.headers.get("X-Real-IP") ||
-                         "unknown";
+        const ipAddress = getClientIpAddress(request);
         const userAgent = request.headers.get("User-Agent") || "unknown";
 
         // Create tracking record
