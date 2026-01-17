@@ -34,6 +34,7 @@ import { appMigrations } from "./ottabase/migrations";
 import { ReferralTracking } from "./ottabase/models/ReferralTracking";
 import { Shortlink } from "./ottabase/models/Shortlink";
 import { Todo } from "./ottabase/models/Todo";
+import { processReferralAttribution } from "./ottabase/helpers/referral-attribution";
 
 export { RealtimeActor };
 
@@ -563,66 +564,6 @@ export default {
         });
       }
 
-      // Set pending referral for auth (before signup)
-      if (url.pathname === "/api/referrals/set-pending" && request.method === "POST") {
-        if (!env.OBCF_KV) {
-          return errorResponse("KV binding not configured", 500, {
-            code: "CONFIG_ERROR",
-          });
-        }
-
-        const body = await readJson<{
-          referralCode?: string;
-          sessionId?: string;
-        }>(request);
-
-        if (!body.referralCode || !body.sessionId) {
-          return errorResponse("referralCode and sessionId are required", 400);
-        }
-
-        // Store pending referral in KV (expires in 1 hour)
-        const kv = createKVClient({ namespace: env.OBCF_KV as any });
-        const key = `pending_referral:${body.sessionId}`;
-
-        await kv.putText(key, body.referralCode, {
-          expirationTtl: 3600, // 1 hour
-        });
-
-        return jsonResponse({
-          success: true,
-        });
-      }
-
-      // Get pending referral
-      if (url.pathname === "/api/referrals/get-pending" && request.method === "GET") {
-        if (!env.OBCF_KV) {
-          return errorResponse("KV binding not configured", 500, {
-            code: "CONFIG_ERROR",
-          });
-        }
-
-        const sessionId = url.searchParams.get("sessionId");
-
-        if (!sessionId) {
-          return errorResponse("sessionId is required", 400);
-        }
-
-        const kv = createKVClient({ namespace: env.OBCF_KV as any });
-        const key = `pending_referral:${sessionId}`;
-
-        const result = await kv.getText(key);
-
-        if (!result.success || !result.data) {
-          return jsonResponse({
-            referralCode: null,
-          });
-        }
-
-        return jsonResponse({
-          referralCode: result.data,
-        });
-      }
-
       // List tracking records (with filters and pagination)
       if (url.pathname === "/api/referrals/tracking" && request.method === "GET") {
         if (!env.OBCF_D1) {
@@ -662,6 +603,71 @@ export default {
           perPage,
           path: "/api/referrals/tracking",
         });
+      }
+
+      // ============================================================
+      // Custom Registration with Referral Attribution
+      // ============================================================
+
+      // This is a demo endpoint showing how to handle registration with referral attribution
+      // In production, you'd integrate this logic into your Auth.js callbacks
+      if (url.pathname === "/api/auth/register" && request.method === "POST") {
+        if (!env.OBCF_D1) {
+          return errorResponse("D1 database binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        registerConnection("default", createD1Driver(env.OBCF_D1));
+
+        const body = await readJson<{
+          email?: string;
+          password?: string;
+          name?: string;
+          referralCode?: string;
+        }>(request);
+
+        if (!body.email || !body.password) {
+          return errorResponse("email and password are required", 400);
+        }
+
+        try {
+          // TODO: In production, you would:
+          // 1. Hash the password
+          // 2. Validate email uniqueness
+          // 3. Create user in database
+          // 4. Send verification email
+
+          // For demo purposes, create a mock user
+          const newUser = await User.create({
+            email: body.email,
+            name: body.name,
+            emailVerified: null,
+          });
+
+          const newUserId = newUser.get("id");
+
+          // Process referral attribution if referralCode provided
+          let attributionResult;
+          if (body.referralCode) {
+            attributionResult = await processReferralAttribution({
+              newUserId,
+              referralCode: body.referralCode,
+            });
+          }
+
+          return jsonResponse({
+            success: true,
+            user: newUser.toJson(),
+            referralAttribution: attributionResult || null,
+          });
+        } catch (error) {
+          console.error("Registration error:", error);
+          return errorResponse(
+            error instanceof Error ? error.message : "Registration failed",
+            500
+          );
+        }
       }
 
       // ============================================================

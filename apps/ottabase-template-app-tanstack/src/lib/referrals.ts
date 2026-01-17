@@ -115,59 +115,6 @@ export async function trackReferralClick(
   }
 }
 
-/**
- * Set pending referral for authentication (before signup)
- */
-export async function setPendingReferralForAuth(
-  referralCode: string,
-  sessionId: string
-): Promise<boolean> {
-  try {
-    const response = await api("/api/referrals/set-pending", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        referralCode,
-        sessionId,
-      }),
-    });
-
-    if (!response.ok) {
-      console.error("Failed to set pending referral:", await response.text());
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Error setting pending referral:", error);
-    return false;
-  }
-}
-
-/**
- * Get pending referral from server
- */
-export async function getPendingReferral(
-  sessionId: string
-): Promise<string | null> {
-  try {
-    const response = await api(
-      `/api/referrals/get-pending?sessionId=${encodeURIComponent(sessionId)}`
-    );
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    return data.referralCode || null;
-  } catch (error) {
-    console.error("Error getting pending referral:", error);
-    return null;
-  }
-}
 
 /**
  * Extract UTM parameters from URL

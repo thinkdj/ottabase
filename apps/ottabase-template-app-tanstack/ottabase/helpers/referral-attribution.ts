@@ -7,14 +7,10 @@
 
 import { User } from "@ottabase/ottaorm/models";
 import { ReferralTracking } from "../models/ReferralTracking";
-import type { KVNamespace } from "@cloudflare/workers-types";
-import { createKVClient } from "@ottabase/cf/kv";
 
 export interface ReferralAttributionOptions {
   newUserId: string;
-  sessionId?: string;
-  referralCode?: string;
-  kvNamespace?: KVNamespace;
+  referralCode: string;
 }
 
 export interface ReferralAttributionResult {
@@ -29,11 +25,9 @@ export interface ReferralAttributionResult {
  * Process referral attribution for a newly created user
  *
  * This function:
- * 1. Gets the pending referral code from KV (if sessionId provided)
- * 2. Looks up the referrer by referralUsername
- * 3. Sets the new user's referredById field
- * 4. Updates ReferralTracking records from pending to completed
- * 5. Clears the pending referral from KV
+ * 1. Looks up the referrer by referralUsername
+ * 2. Sets the new user's referredById field
+ * 3. Updates ReferralTracking records from pending to completed
  *
  * @param options - Attribution options
  * @returns Attribution result
@@ -41,23 +35,10 @@ export interface ReferralAttributionResult {
 export async function processReferralAttribution(
   options: ReferralAttributionOptions
 ): Promise<ReferralAttributionResult> {
-  const { newUserId, sessionId, referralCode: providedCode, kvNamespace } = options;
-
-  let referralCode = providedCode;
+  const { newUserId, referralCode } = options;
 
   try {
-    // 1. Get pending referral code from KV if not provided
-    if (!referralCode && sessionId && kvNamespace) {
-      const kv = createKVClient({ namespace: kvNamespace as any });
-      const key = `pending_referral:${sessionId}`;
-      const result = await kv.getText(key);
-
-      if (result.success && result.data) {
-        referralCode = result.data;
-      }
-    }
-
-    // If no referral code found, nothing to attribute
+    // If no referral code, nothing to attribute
     if (!referralCode) {
       return {
         attributed: false,
@@ -65,7 +46,7 @@ export async function processReferralAttribution(
       };
     }
 
-    // 2. Look up the referrer by referralUsername
+    // 1. Look up the referrer by referralUsername
     const referrer = await User.findByReferralUsername(referralCode);
 
     if (!referrer) {
@@ -89,27 +70,20 @@ export async function processReferralAttribution(
       };
     }
 
-    // 3. Set the new user's referredById field
+    // 2. Set the new user's referredById field
     const newUser = await User.find(newUserId);
     if (newUser) {
       newUser.set("referredById", referrerId);
       await newUser.save();
     }
 
-    // 4. Update ReferralTracking records from pending to completed
+    // 3. Update ReferralTracking records from pending to completed
     const pendingRecords = await ReferralTracking.findPendingByCode(referralCode);
 
     let updatedCount = 0;
     for (const record of pendingRecords) {
       await record.markCompleted(newUserId);
       updatedCount++;
-    }
-
-    // 5. Clear the pending referral from KV
-    if (sessionId && kvNamespace) {
-      const kv = createKVClient({ namespace: kvNamespace as any });
-      const key = `pending_referral:${sessionId}`;
-      await kv.delete(key);
     }
 
     console.log(
@@ -129,47 +103,5 @@ export async function processReferralAttribution(
       trackingRecordsUpdated: 0,
       error: error instanceof Error ? error.message : "Unknown error",
     };
-  }
-}
-
-/**
- * Get pending referral code for a session
- *
- * @param sessionId - Session ID
- * @param kvNamespace - KV namespace
- * @returns Referral code or null
- */
-export async function getPendingReferralCode(
-  sessionId: string,
-  kvNamespace: KVNamespace
-): Promise<string | null> {
-  try {
-    const kv = createKVClient({ namespace: kvNamespace as any });
-    const key = `pending_referral:${sessionId}`;
-    const result = await kv.getText(key);
-
-    return result.success && result.data ? result.data : null;
-  } catch (error) {
-    console.error("Error getting pending referral code:", error);
-    return null;
-  }
-}
-
-/**
- * Clear pending referral code for a session
- *
- * @param sessionId - Session ID
- * @param kvNamespace - KV namespace
- */
-export async function clearPendingReferralCode(
-  sessionId: string,
-  kvNamespace: KVNamespace
-): Promise<void> {
-  try {
-    const kv = createKVClient({ namespace: kvNamespace as any });
-    const key = `pending_referral:${sessionId}`;
-    await kv.delete(key);
-  } catch (error) {
-    console.error("Error clearing pending referral code:", error);
   }
 }

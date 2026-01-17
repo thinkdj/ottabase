@@ -15,6 +15,33 @@ The referral system for Ottabase is a complete, framework-agnostic solution that
 
 ## Architecture
 
+### Simple Flow Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. User clicks: example.com?ref=johndoe                        │
+│    ↓                                                            │
+│ 2. ReferralTracker (client):                                   │
+│    - Stores "johndoe" in localStorage                          │
+│    - Calls /api/referrals/track → creates DB record (pending)  │
+│    - Cleans URL (removes ?ref= param)                          │
+│    ↓                                                            │
+│ 3. User registers:                                             │
+│    - Client sends referralCode from localStorage                │
+│    - POST /api/auth/register { email, password, referralCode } │
+│    ↓                                                            │
+│ 4. Server (processReferralAttribution):                        │
+│    - Looks up User by referralUsername                         │
+│    - Sets new user's referredById                              │
+│    - Updates ReferralTracking: pending → completed             │
+│    ↓                                                            │
+│ 5. Done! ✅                                                     │
+└─────────────────────────────────────────────────────────────────┘
+
+🎯 Key Point: Everything lives in D1 database + client localStorage
+             No KV, no external dependencies!
+```
+
 ### Package Structure
 
 ```
@@ -183,35 +210,32 @@ Response: 200
 - Must be unique
 - Returns 400 with error if validation fails
 
-### Set Pending Referral (Before Signup)
+### Register with Referral Attribution
 
 ```
-POST /api/referrals/set-pending
+POST /api/auth/register
 Content-Type: application/json
 
 {
-  "referralCode": "johndoe",
-  "sessionId": "session-123"
-}
-
-Response: 200
-{
-  "success": true
-}
-```
-
-Stores the referral code in KV for 1 hour, to be retrieved during signup.
-
-### Get Pending Referral
-
-```
-GET /api/referrals/get-pending?sessionId={sessionId}
-
-Response: 200
-{
+  "email": "user@example.com",
+  "password": "password123",
+  "name": "John Doe",
   "referralCode": "johndoe"
 }
+
+Response: 200
+{
+  "success": true,
+  "user": { ... },
+  "referralAttribution": {
+    "attributed": true,
+    "referrerId": "...",
+    "trackingRecordsUpdated": 1
+  }
+}
 ```
+
+**Note:** This is a demo endpoint. In production, integrate `processReferralAttribution()` into your Auth.js callbacks.
 
 ### List Tracking Records
 
@@ -293,12 +317,6 @@ clearStoredReferralCode();
 // Track referral click
 await trackReferralClick("johndoe", { utm: { ... } });
 
-// Set pending referral for auth
-await setPendingReferralForAuth("johndoe", sessionId);
-
-// Get pending referral
-const code = await getPendingReferral(sessionId);
-
 // Extract UTM params from URL
 const utm = extractUtmParams();
 
@@ -317,13 +335,15 @@ Use during user creation to handle referral attribution:
 
 ```typescript
 import { processReferralAttribution } from "@/ottabase/helpers/referral-attribution";
+import { getStoredReferralCode } from "@/lib/referrals";
 
 // In Auth.js callback or registration endpoint
+// Get referral code from client (passed during registration)
+const referralCode = getStoredReferralCode(); // Or from registration form data
+
 const result = await processReferralAttribution({
   newUserId: user.id,
-  sessionId: session.id, // Optional
-  referralCode: "johndoe", // Optional (will check KV if not provided)
-  kvNamespace: env.OBCF_KV,
+  referralCode: referralCode,
 });
 
 if (result.attributed) {
@@ -333,12 +353,11 @@ if (result.attributed) {
 ```
 
 **What it does:**
-1. Gets pending referral code from KV (if sessionId provided)
+1. Validates referralCode is provided
 2. Looks up referrer by referralUsername
 3. Sets new user's `referredById` field
 4. Updates ReferralTracking records: `pending` → `completed`
-5. Clears pending referral from KV
-6. Prevents self-referral
+5. Prevents self-referral
 
 ### Model Methods
 
@@ -376,18 +395,38 @@ The `RegisterPage` has been enhanced to:
 2. **Handle attribution** - Passes referral code during registration
 3. **Visual feedback** - Shows expiry countdown
 
-For production Auth.js integration, add to your auth callbacks:
+For production Auth.js integration, you have two options:
+
+**Option 1: Pass referral code from client during registration**
+
+```typescript
+// In your registration form
+const referralCode = getStoredReferralCode();
+
+// Send to server
+await fetch("/api/auth/register", {
+  method: "POST",
+  body: JSON.stringify({
+    email,
+    password,
+    referralCode, // Pass from localStorage
+  }),
+});
+```
+
+**Option 2: Custom Auth.js callback**
 
 ```typescript
 // In auth.config.ts or similar
 callbacks: {
   async signIn({ user, account, profile }) {
-    // Process referral attribution
-    if (user.id) {
+    // Get referral code from request/session context
+    const referralCode = /* extract from request */;
+
+    if (user.id && referralCode) {
       await processReferralAttribution({
         newUserId: user.id,
-        sessionId: /* get from cookie/context */,
-        kvNamespace: env.OBCF_KV,
+        referralCode,
       });
     }
     return true;
@@ -417,12 +456,18 @@ if (!result.valid) {
 
 ## Local Storage
 
-The system uses these localStorage keys:
+The system uses browser localStorage as the **only temporary storage** for referral codes (no KV, no external dependencies):
 
 - `ottabase_referralCode` - Stored referral code
 - `ottabase_referralTimestamp` - Timestamp when code was stored
 
 **Expiry:** 90 days (configurable via `REFERRAL_EXPIRY_MS`)
+
+**Why localStorage?**
+- Simple, no backend dependencies for temporary storage
+- Persists across sessions until conversion or expiry
+- Client-side first-touch attribution
+- Referral code is passed directly to server during registration
 
 ## Key Behaviors
 
@@ -469,14 +514,14 @@ When a user changes their referral username:
 
 ## Production Considerations
 
-1. **Auth.js Integration** - Add `processReferralAttribution()` to sign-in callback
-2. **Session Management** - Ensure sessionId is available for pending referrals
-3. **Rate Limiting** - Add rate limiting to tracking endpoint to prevent abuse
-4. **Analytics** - Consider adding analytics events for referral conversions
-5. **Fraud Prevention** - Implement IP-based duplicate detection
-6. **Email Notifications** - Notify referrers when someone signs up
-7. **Rewards** - Add reward logic for successful referrals
-8. **Multi-tenancy** - Add `appName` field if using multi-tenant setup
+1. **Auth.js Integration** - Add `processReferralAttribution()` to sign-in callback or pass referralCode from client
+2. **Rate Limiting** - Add rate limiting to tracking endpoint to prevent abuse
+3. **Analytics** - Consider adding analytics events for referral conversions
+4. **Fraud Prevention** - Implement IP-based duplicate detection
+5. **Email Notifications** - Notify referrers when someone signs up
+6. **Rewards** - Add reward logic for successful referrals
+7. **Multi-tenancy** - Add `appName` field if using multi-tenant setup
+8. **Database Indexes** - Ensure proper indexes on `userId`, `referralCode`, and `status` fields for performance
 
 ## Deployment Steps
 
@@ -519,9 +564,10 @@ When a user changes their referral username:
 
 **Attribution not working:**
 - Check `processReferralAttribution()` is called during signup
-- Verify KV namespace is configured
+- Verify referralCode is passed from client to server
 - Check database for pending tracking records
-- Verify sessionId is passed correctly
+- Verify the referral code matches a user's `referralUsername`
+- Check browser localStorage for stored referral code
 
 **Username validation failing:**
 - Must be 3-20 characters
