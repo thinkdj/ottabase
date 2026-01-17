@@ -42,6 +42,11 @@ export const appConfig = createAppConfig({
         enabled: false,
         shortcuts: [],
       },
+      referrals: {
+        enabled: true,
+        trackClicks: true, // Set to false to disable click tracking (only track conversions)
+        expiryDays: 90, // How long stored referral codes are valid
+      },
       crudHub: {
         apiBaseUrl: "/api/crudhub",
         urlBase: "crudhub",
@@ -83,6 +88,9 @@ export const PAGE_SIZE_OPTIONS = appConfig.features.pagination.sizeOptions;
 
 // Spotlight
 export const SPOTLIGHT_CONFIG = appConfig.features.spotlight;
+
+// Referrals
+export const REFERRALS_CONFIG = appConfig.features.referrals;
 
 // Layout
 export const UI_LAYOUT = appConfig.ui.layout;

@@ -5,14 +5,21 @@
  */
 
 import { api } from "./api";
-import {
-  REFERRAL_EXPIRY_MS,
-  isReferralExpired,
-} from "@ottabase/referrals";
+import { REFERRALS_CONFIG } from "@/ottabase/config/app.config";
 
 // Local storage keys
 const REFERRAL_CODE_KEY = "ottabase_referralCode";
 const REFERRAL_TIMESTAMP_KEY = "ottabase_referralTimestamp";
+
+// Calculate expiry based on config
+const REFERRAL_EXPIRY_MS = REFERRALS_CONFIG.expiryDays * 24 * 60 * 60 * 1000;
+
+/**
+ * Check if a referral timestamp has expired based on app config
+ */
+function isReferralExpired(timestamp: number): boolean {
+  return Date.now() - timestamp > REFERRAL_EXPIRY_MS;
+}
 
 /**
  * Get the stored referral code (if valid and not expired)

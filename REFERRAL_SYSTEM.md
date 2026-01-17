@@ -257,6 +257,76 @@ Response: 200
 - `page` - Page number (default: 1)
 - `perPage` - Items per page (default: 20)
 
+## Configuration
+
+The referral system can be configured per app via `src/ottabase/config/app.config.ts`:
+
+```typescript
+features: {
+  referrals: {
+    enabled: true,        // Enable/disable entire referral system
+    trackClicks: true,    // Enable/disable click tracking (still tracks conversions)
+    expiryDays: 90,       // How long stored referral codes are valid (days)
+  },
+}
+```
+
+### Configuration Options
+
+#### `enabled` (default: `true`)
+- **Type:** `boolean`
+- **Description:** Master switch for the entire referral system
+- **When disabled:**
+  - ReferralTracker component won't run
+  - No referral codes stored in localStorage
+  - No click tracking
+  - Conversions still work if referralCode is manually passed to server
+
+#### `trackClicks` (default: `true`)
+- **Type:** `boolean`
+- **Description:** Controls whether referral clicks are tracked in the database
+- **When disabled:**
+  - Referral codes still stored in localStorage (for attribution)
+  - No `/api/referrals/track` API calls made
+  - No `ReferralTracking` records created with status `pending`
+  - Conversions still tracked when users sign up
+  - **Use case:** Reduce database writes, only care about final conversions
+
+#### `expiryDays` (default: `90`)
+- **Type:** `number`
+- **Description:** Number of days a stored referral code remains valid
+- **Behavior:** Expired codes are automatically cleared from localStorage
+- **Common values:** 30, 60, 90, 180, 365
+
+### Example Configurations
+
+**Minimal tracking (conversions only):**
+```typescript
+referrals: {
+  enabled: true,
+  trackClicks: false,  // No click tracking
+  expiryDays: 90,
+}
+```
+
+**Extended attribution window:**
+```typescript
+referrals: {
+  enabled: true,
+  trackClicks: true,
+  expiryDays: 180,  // 6 months
+}
+```
+
+**Disabled:**
+```typescript
+referrals: {
+  enabled: false,
+  trackClicks: false,
+  expiryDays: 90,
+}
+```
+
 ## Client-Side Implementation
 
 ### Automatic Tracking
@@ -278,11 +348,12 @@ function RootLayout() {
 ```
 
 **Behavior:**
-1. Checks URL for `?ref=` parameter
-2. Validates and stores referral code in localStorage (if not already stored)
-3. Sends tracking request to API
-4. Cleans URL (removes `?ref=` parameter)
-5. Respects first-touch attribution
+1. Checks if referral system is enabled in config
+2. Checks URL for `?ref=` parameter
+3. Validates and stores referral code in localStorage (if not already stored)
+4. Optionally sends tracking request to API (if `trackClicks` is enabled)
+5. Cleans URL (removes `?ref=` parameter)
+6. Respects first-touch attribution
 
 ### Referral Dashboard
 
@@ -461,13 +532,14 @@ The system uses browser localStorage as the **only temporary storage** for refer
 - `ottabase_referralCode` - Stored referral code
 - `ottabase_referralTimestamp` - Timestamp when code was stored
 
-**Expiry:** 90 days (configurable via `REFERRAL_EXPIRY_MS`)
+**Expiry:** Configurable via `referrals.expiryDays` in app config (default: 90 days)
 
 **Why localStorage?**
 - Simple, no backend dependencies for temporary storage
 - Persists across sessions until conversion or expiry
 - Client-side first-touch attribution
 - Referral code is passed directly to server during registration
+- Works even when `trackClicks` is disabled
 
 ## Key Behaviors
 
@@ -499,6 +571,7 @@ When a user changes their referral username:
 
 ## Testing Checklist
 
+**Basic Flow:**
 - [ ] Visit site with `?ref=validcode` - code should be stored
 - [ ] Visit again with `?ref=differentcode` - first code should remain
 - [ ] Check localStorage for stored code
@@ -511,6 +584,12 @@ When a user changes their referral username:
 - [ ] Copy referral link - should include new username
 - [ ] Test with invalid code - should return 404
 - [ ] Test with expired code (mock timestamp) - should be cleared
+
+**Configuration Testing:**
+- [ ] Set `enabled: false` - ReferralTracker should not run
+- [ ] Set `trackClicks: false` - Code stored but no API call made
+- [ ] Set `expiryDays: 30` - Code expires after 30 days
+- [ ] Verify conversions still work with `trackClicks: false`
 
 ## Production Considerations
 

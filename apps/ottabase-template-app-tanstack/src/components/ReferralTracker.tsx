@@ -3,6 +3,11 @@
  *
  * Automatically tracks referral links when the ?ref parameter is present in the URL.
  * Place this component at the root of your app to enable referral tracking.
+ *
+ * Configuration options (via app.config.ts):
+ * - enabled: Enable/disable the entire referral system
+ * - trackClicks: Enable/disable click tracking (still tracks conversions)
+ * - expiryDays: How long stored referral codes are valid
  */
 
 import { useEffect, useRef } from "react";
@@ -12,9 +17,15 @@ import {
   trackReferralClick,
   cleanReferralFromUrl,
 } from "@/lib/referrals";
+import { REFERRALS_CONFIG } from "@/ottabase/config/app.config";
 
 export function ReferralTracker() {
   const hasTracked = useRef(false);
+
+  // Check if referral system is enabled
+  if (!REFERRALS_CONFIG.enabled) {
+    return null;
+  }
 
   useEffect(() => {
     // Only run once
@@ -38,10 +49,13 @@ export function ReferralTracker() {
         "Already have a stored referral code (first-touch wins):",
         existingCode
       );
-      // Still track the click, but don't overwrite the stored code
-      trackReferralClick(referralCode).catch((error) => {
-        console.error("Failed to track referral click:", error);
-      });
+
+      // Optionally track the click (even though code won't be stored)
+      if (REFERRALS_CONFIG.trackClicks) {
+        trackReferralClick(referralCode).catch((error) => {
+          console.error("Failed to track referral click:", error);
+        });
+      }
 
       // Clean URL
       cleanReferralFromUrl();
@@ -51,16 +65,20 @@ export function ReferralTracker() {
     // Store the referral code (first-touch)
     storeReferralCode(referralCode);
 
-    // Track the click
-    trackReferralClick(referralCode)
-      .then((success) => {
-        if (success) {
-          console.log("Referral click tracked successfully");
-        }
-      })
-      .catch((error) => {
-        console.error("Failed to track referral click:", error);
-      });
+    // Optionally track the click in database
+    if (REFERRALS_CONFIG.trackClicks) {
+      trackReferralClick(referralCode)
+        .then((success) => {
+          if (success) {
+            console.log("Referral click tracked successfully");
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to track referral click:", error);
+        });
+    } else {
+      console.log("Click tracking disabled - referral code stored for conversion tracking only");
+    }
 
     // Clean URL (remove ref parameter)
     cleanReferralFromUrl();
