@@ -1,8 +1,14 @@
 {
-  "extends": "@ottabase/config/tsconfig.base.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "skipLibCheck": true,
+    "lib": [
+      "esnext",
+      "dom",
+      "dom.iterable"
+    ]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
