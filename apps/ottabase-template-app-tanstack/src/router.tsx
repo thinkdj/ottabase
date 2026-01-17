@@ -9,6 +9,7 @@ import {
   AvatarFallback,
   AvatarImage,
   Button,
+  Toaster,
 } from "@ottabase/ui-shadcn";
 import {
   Link,
@@ -53,6 +54,7 @@ function RootLayout() {
   return (
     <div className="min-h-screen bg-background font-sans">
       <ReferralTracker />
+      <Toaster />
       <header className="border-b">
         <div
           className={`mx-auto flex items-center justify-between px-4 py-3 ${containerClass}`}

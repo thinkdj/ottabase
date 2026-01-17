@@ -5,9 +5,26 @@
  */
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { getStoredReferralCode, getReferralExpiryInfo, clearStoredReferralCode } from "@/lib/referrals";
 import { validateReferralUsername } from "@ottabase/referrals";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@ottabase/ui-shadcn";
 
 interface ReferralStats {
   total: number;
@@ -29,6 +46,14 @@ interface ReferralData {
   tracking: any[];
 }
 
+interface TrackingPaginationData {
+  data: any[];
+  total: number;
+  page: number;
+  perPage: number;
+  totalPages: number;
+}
+
 interface ReferralDashboardProps {
   userId: string;
 }
@@ -41,6 +66,12 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
 
+  // Pagination for tracking records
+  const [trackingPage, setTrackingPage] = useState(1);
+  const [trackingPerPage] = useState(10);
+  const [trackingData, setTrackingData] = useState<TrackingPaginationData | null>(null);
+  const [loadingTracking, setLoadingTracking] = useState(false);
+
   // Stored referral info (if user arrived via referral)
   const storedCode = getStoredReferralCode();
   const expiryInfo = getReferralExpiryInfo();
@@ -48,6 +79,10 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
   useEffect(() => {
     loadData();
   }, [userId]);
+
+  useEffect(() => {
+    loadTrackingData();
+  }, [userId, trackingPage]);
 
   const loadData = async () => {
     try {
@@ -68,11 +103,33 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
     }
   };
 
+  const loadTrackingData = async () => {
+    try {
+      setLoadingTracking(true);
+      const response = await api(
+        `/api/referrals/tracking?userId=${userId}&page=${trackingPage}&perPage=${trackingPerPage}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to load tracking data");
+      }
+
+      const data = await response.json();
+      setTrackingData(data);
+    } catch (err) {
+      console.error("Error loading tracking data:", err);
+      toast.error("Failed to load activity data");
+    } finally {
+      setLoadingTracking(false);
+    }
+  };
+
   const handleUpdateUsername = async () => {
     // Validate
     const validation = validateReferralUsername(newUsername);
     if (!validation.valid) {
       setUsernameError(validation.error || "Invalid username");
+      toast.error(validation.error || "Invalid username");
       return;
     }
 
@@ -98,9 +155,11 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
 
       // Reload data
       await loadData();
-      alert("Username updated successfully!");
+      toast.success("Username updated successfully!");
     } catch (err) {
-      setUsernameError(err instanceof Error ? err.message : "Failed to update username");
+      const errorMsg = err instanceof Error ? err.message : "Failed to update username";
+      setUsernameError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setUpdating(false);
     }
@@ -111,14 +170,13 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
 
     const link = `${window.location.origin}?ref=${data.user.referralUsername}`;
     navigator.clipboard.writeText(link);
-    alert("Referral link copied to clipboard!");
+    toast.success("Referral link copied to clipboard!");
   };
 
   const handleClearStoredReferral = () => {
-    if (confirm("Are you sure you want to clear the stored referral code?")) {
-      clearStoredReferralCode();
-      window.location.reload();
-    }
+    clearStoredReferralCode();
+    toast.success("Stored referral code cleared");
+    window.location.reload();
   };
 
   if (loading) {
@@ -143,24 +201,32 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <div className="text-sm text-gray-600 dark:text-gray-400">Total Clicks</div>
-          <div className="text-3xl font-bold">{data.stats.total}</div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <div className="text-sm text-gray-600 dark:text-gray-400">Conversions</div>
-          <div className="text-3xl font-bold text-green-600">{data.stats.completed}</div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <div className="text-sm text-gray-600 dark:text-gray-400">Pending</div>
-          <div className="text-3xl font-bold text-yellow-600">{data.stats.pending}</div>
-        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-muted-foreground">Total Clicks</div>
+            <div className="text-3xl font-bold">{data.stats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-muted-foreground">Conversions</div>
+            <div className="text-3xl font-bold text-green-600">{data.stats.completed}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-muted-foreground">Pending</div>
+            <div className="text-3xl font-bold text-yellow-600">{data.stats.pending}</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Username Management */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Your Referral Username</h2>
-        <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Referral Username</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">
               Referral Username
@@ -173,18 +239,17 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
                 placeholder="e.g., johndoe"
                 className="flex-1 px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
               />
-              <button
+              <Button
                 onClick={handleUpdateUsername}
                 disabled={updating || !newUsername}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
               >
                 {updating ? "Updating..." : "Update"}
-              </button>
+              </Button>
             </div>
             {usernameError && (
               <div className="text-sm text-red-600 mt-1">{usernameError}</div>
             )}
-            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <div className="text-sm text-muted-foreground mt-1">
               3-20 characters, letters/numbers/underscore only
             </div>
           </div>
@@ -197,35 +262,38 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
               </p>
             </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Referral Link */}
       {referralLink && (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Your Referral Link</h2>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={referralLink}
-              readOnly
-              className="flex-1 px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600"
-            />
-            <button
-              onClick={handleCopyLink}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-            >
-              Copy
-            </button>
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Referral Link</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={referralLink}
+                readOnly
+                className="flex-1 px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600"
+              />
+              <Button onClick={handleCopyLink} variant="default">
+                Copy
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Stored Referral Info (if user arrived via referral) */}
       {storedCode && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">You Were Referred!</h2>
-          <div className="space-y-2">
+        <Card className="bg-blue-50 dark:bg-blue-900/20">
+          <CardHeader>
+            <CardTitle>You Were Referred!</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
             <p>
               <strong>Referral Code:</strong> {storedCode}
             </p>
@@ -236,62 +304,114 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
             <p>
               <strong>Days Remaining:</strong> {expiryInfo.daysRemaining || 0}
             </p>
-            <button
-              onClick={handleClearStoredReferral}
-              className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
-            >
-              Clear Stored Referral
-            </button>
-          </div>
-        </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="mt-2">
+                  Clear Stored Referral
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear Stored Referral?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove the stored referral code from your browser.
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearStoredReferral}>
+                    Clear
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Recent Tracking */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-        {data.tracking.length === 0 ? (
-          <p className="text-gray-600 dark:text-gray-400">No activity yet</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b dark:border-gray-700">
-                  <th className="text-left py-2">Status</th>
-                  <th className="text-left py-2">IP Address</th>
-                  <th className="text-left py-2">Created</th>
-                  <th className="text-left py-2">Converted</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.tracking.slice(0, 10).map((track: any) => (
-                  <tr key={track.id} className="border-b dark:border-gray-700">
-                    <td className="py-2">
-                      <span
-                        className={`px-2 py-1 rounded text-sm ${
-                          track.status === "completed"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                            : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                        }`}
-                      >
-                        {track.status}
-                      </span>
-                    </td>
-                    <td className="py-2 text-sm">{track.ipAddress}</td>
-                    <td className="py-2 text-sm">
-                      {new Date(track.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="py-2 text-sm">
-                      {track.conversionAt
-                        ? new Date(track.conversionAt).toLocaleDateString()
-                        : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {/* Recent Tracking with Pagination */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingTracking ? (
+            <p className="text-muted-foreground">Loading activity...</p>
+          ) : !trackingData || trackingData.data.length === 0 ? (
+            <p className="text-muted-foreground">No activity yet</p>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b dark:border-gray-700">
+                      <th className="text-left py-2">Status</th>
+                      <th className="text-left py-2">IP Address</th>
+                      <th className="text-left py-2">Created</th>
+                      <th className="text-left py-2">Converted</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trackingData.data.map((track: any) => (
+                      <tr key={track.id} className="border-b dark:border-gray-700">
+                        <td className="py-2">
+                          <span
+                            className={`px-2 py-1 rounded text-sm ${
+                              track.status === "completed"
+                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                            }`}
+                          >
+                            {track.status}
+                          </span>
+                        </td>
+                        <td className="py-2 text-sm">{track.ipAddress}</td>
+                        <td className="py-2 text-sm">
+                          {new Date(track.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="py-2 text-sm">
+                          {track.conversionAt
+                            ? new Date(track.conversionAt).toLocaleDateString()
+                            : "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {trackingData.totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Page {trackingData.page} of {trackingData.totalPages} (
+                    {trackingData.total} total)
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTrackingPage((p) => Math.max(1, p - 1))}
+                      disabled={trackingPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTrackingPage((p) => Math.min(trackingData.totalPages, p + 1))}
+                      disabled={trackingPage === trackingData.totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
