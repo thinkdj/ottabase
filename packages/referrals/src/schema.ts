@@ -26,7 +26,7 @@ export const referralTrackingTable = sqliteTable(
     // Click metadata
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
-    referer: text("referer"), // HTTP Referer header
+    referer: text("referer"), // HTTP "Referer" header (intentionally uses the historical header spelling for the column name)
 
     // UTM and additional metadata (JSON)
     meta: text("meta", { mode: "json" }).$type<{
