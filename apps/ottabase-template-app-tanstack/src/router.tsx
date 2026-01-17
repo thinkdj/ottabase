@@ -1,4 +1,5 @@
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ReferralTracker } from "@/components/ReferralTracker";
 import { api, isApiError } from "@/lib/api";
 import { useSession } from "@/lib/auth";
 import { APP_META } from "@/ottabase/config/app.config";
@@ -51,6 +52,7 @@ function RootLayout() {
 
   return (
     <div className="min-h-screen bg-background font-sans">
+      <ReferralTracker />
       <header className="border-b">
         <div
           className={`mx-auto flex items-center justify-between px-4 py-3 ${containerClass}`}
@@ -77,9 +79,14 @@ function RootLayout() {
             </Button>
 
             {isAuthenticated && (
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/dashboard">Dashboard</Link>
-              </Button>
+              <>
+                <Button asChild variant="ghost" size="sm">
+                  <Link to="/dashboard">Dashboard</Link>
+                </Button>
+                <Button asChild variant="ghost" size="sm">
+                  <Link to="/referrals">Referrals</Link>
+                </Button>
+              </>
             )}
 
             <DarkModeToggle type="button" title="Toggle dark/light mode" />
@@ -466,6 +473,17 @@ const migrationStatusRoute = new Route({
   ),
 });
 
+// Referrals route
+const referralsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/referrals",
+  component: lazyRouteComponent(() =>
+    import("@/pages/referrals/ReferralsPage").then((m) => ({
+      default: m.ReferralsPage,
+    })),
+  ),
+});
+
 // Admin route
 const adminRoute = new Route({
   getParentRoute: () => rootRoute,
@@ -508,6 +526,7 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute,
   shortlinksRoute,
   migrationStatusRoute,
+  referralsRoute,
   adminRoute,
 ]);
 

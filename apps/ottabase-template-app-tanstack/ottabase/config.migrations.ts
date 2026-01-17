@@ -12,6 +12,7 @@
 
 import type { Migration } from "@ottabase/ottaorm";
 import { shortlinksTable } from "@ottabase/shortlinks/schema";
+import { referralTrackingTable } from "@ottabase/referrals/schema";
 
 /**
  * 1. REGISTRY
@@ -21,6 +22,10 @@ const PACKAGE_REGISTRY = {
   shortlinks: {
     tables: { shortlinksTable },
     migrations: [] as Migration[], // Add package-specific migrations here if any
+  },
+  referrals: {
+    tables: { referralTrackingTable },
+    migrations: [] as Migration[],
   },
 } as const;
 
@@ -33,6 +38,7 @@ export type MigrationPackageName = keyof typeof PACKAGE_REGISTRY;
 
 export const migrationConfig: Record<MigrationPackageName, boolean> = {
   shortlinks: true,
+  referrals: true,
 };
 
 // ============================================================

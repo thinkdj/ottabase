@@ -31,6 +31,7 @@ import {
 } from "@ottabase/utils/pagination";
 import { getAllSchemas } from "./ottabase/db/schemas-helper";
 import { appMigrations } from "./ottabase/migrations";
+import { ReferralTracking } from "./ottabase/models/ReferralTracking";
 import { Shortlink } from "./ottabase/models/Shortlink";
 import { Todo } from "./ottabase/models/Todo";
 
@@ -172,7 +173,7 @@ export default {
 
         // Initialize database connection and register models
         registerConnection("default", createD1Driver(env.OBCF_D1));
-        registerModels([Shortlink, Todo, User, Post, Tag]);
+        registerModels([Shortlink, Todo, User, Post, Tag, ReferralTracking]);
 
         // Parse the request into a CrudRequest
         const crudRequest = await parseCrudRequest(
@@ -388,6 +389,278 @@ export default {
         return jsonResponse({
           success: true,
           message: "Shortlink deleted successfully",
+        });
+      }
+
+      // ============================================================
+      // Referral System API
+      // ============================================================
+
+      // Track referral click
+      if (url.pathname === "/api/referrals/track" && request.method === "POST") {
+        if (!env.OBCF_D1) {
+          return errorResponse("D1 database binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        registerConnection("default", createD1Driver(env.OBCF_D1));
+
+        const body = await readJson<{
+          referralCode?: string;
+          referer?: string;
+          meta?: Record<string, any>;
+        }>(request);
+
+        if (!body.referralCode) {
+          return errorResponse("referralCode is required", 400);
+        }
+
+        // Find the user by referral username
+        const referrer = await User.findByReferralUsername(body.referralCode);
+
+        if (!referrer) {
+          return errorResponse("Invalid referral code", 404, {
+            code: "INVALID_REFERRAL_CODE",
+          });
+        }
+
+        // Extract IP and user agent
+        const ipAddress = request.headers.get("CF-Connecting-IP") ||
+                         request.headers.get("X-Forwarded-For") ||
+                         request.headers.get("X-Real-IP") ||
+                         "unknown";
+        const userAgent = request.headers.get("User-Agent") || "unknown";
+
+        // Create tracking record
+        const tracking = await ReferralTracking.create({
+          userId: referrer.get("id"),
+          referralCode: body.referralCode,
+          status: "pending",
+          ipAddress,
+          userAgent,
+          referer: body.referer || request.headers.get("Referer") || null,
+          meta: body.meta || {},
+        });
+
+        return jsonResponse({
+          success: true,
+          tracking: tracking.toJson(),
+        });
+      }
+
+      // Get referral stats
+      if (url.pathname === "/api/referrals/stats" && request.method === "GET") {
+        if (!env.OBCF_D1) {
+          return errorResponse("D1 database binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        registerConnection("default", createD1Driver(env.OBCF_D1));
+
+        // TODO: Get userId from session
+        const userId = url.searchParams.get("userId");
+
+        if (!userId) {
+          return errorResponse("userId is required", 400);
+        }
+
+        const stats = await ReferralTracking.getStats(userId);
+
+        return jsonResponse(stats);
+      }
+
+      // Get user referral data
+      if (url.pathname === "/api/referrals/user" && request.method === "GET") {
+        if (!env.OBCF_D1) {
+          return errorResponse("D1 database binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        registerConnection("default", createD1Driver(env.OBCF_D1));
+
+        // TODO: Get userId from session
+        const userId = url.searchParams.get("userId");
+
+        if (!userId) {
+          return errorResponse("userId is required", 400);
+        }
+
+        const user = await User.find(userId);
+
+        if (!user) {
+          return errorResponse("User not found", 404);
+        }
+
+        const stats = await ReferralTracking.getStats(userId);
+        const trackingRecords = await ReferralTracking.forUser(userId, { limit: 100 });
+
+        return jsonResponse({
+          user: {
+            id: user.get("id"),
+            name: user.get("name"),
+            email: user.get("email"),
+            referralUsername: user.get("referralUsername"),
+            referredById: user.get("referredById"),
+          },
+          stats,
+          tracking: trackingRecords.map((t) => t.toJson()),
+        });
+      }
+
+      // Update referral username
+      if (url.pathname === "/api/referrals/username" && request.method === "PUT") {
+        if (!env.OBCF_D1) {
+          return errorResponse("D1 database binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        registerConnection("default", createD1Driver(env.OBCF_D1));
+
+        const body = await readJson<{
+          userId?: string;
+          referralUsername?: string;
+        }>(request);
+
+        // TODO: Get userId from session instead
+        if (!body.userId || !body.referralUsername) {
+          return errorResponse("userId and referralUsername are required", 400);
+        }
+
+        // Validate username format
+        const { validateReferralUsername } = await import("@ottabase/referrals");
+        const validation = validateReferralUsername(body.referralUsername);
+
+        if (!validation.valid) {
+          return errorResponse(validation.error || "Invalid username", 400, {
+            code: "INVALID_USERNAME",
+          });
+        }
+
+        // Check if username is already taken
+        const existing = await User.findByReferralUsername(body.referralUsername);
+        if (existing && existing.get("id") !== body.userId) {
+          return errorResponse("Username already taken", 400, {
+            code: "USERNAME_TAKEN",
+          });
+        }
+
+        // Update user
+        const user = await User.find(body.userId);
+        if (!user) {
+          return errorResponse("User not found", 404);
+        }
+
+        user.set("referralUsername", body.referralUsername);
+        await user.save();
+
+        return jsonResponse({
+          success: true,
+          user: user.toJson(),
+        });
+      }
+
+      // Set pending referral for auth (before signup)
+      if (url.pathname === "/api/referrals/set-pending" && request.method === "POST") {
+        if (!env.OBCF_KV) {
+          return errorResponse("KV binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        const body = await readJson<{
+          referralCode?: string;
+          sessionId?: string;
+        }>(request);
+
+        if (!body.referralCode || !body.sessionId) {
+          return errorResponse("referralCode and sessionId are required", 400);
+        }
+
+        // Store pending referral in KV (expires in 1 hour)
+        const kv = createKVClient({ namespace: env.OBCF_KV as any });
+        const key = `pending_referral:${body.sessionId}`;
+
+        await kv.putText(key, body.referralCode, {
+          expirationTtl: 3600, // 1 hour
+        });
+
+        return jsonResponse({
+          success: true,
+        });
+      }
+
+      // Get pending referral
+      if (url.pathname === "/api/referrals/get-pending" && request.method === "GET") {
+        if (!env.OBCF_KV) {
+          return errorResponse("KV binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        const sessionId = url.searchParams.get("sessionId");
+
+        if (!sessionId) {
+          return errorResponse("sessionId is required", 400);
+        }
+
+        const kv = createKVClient({ namespace: env.OBCF_KV as any });
+        const key = `pending_referral:${sessionId}`;
+
+        const result = await kv.getText(key);
+
+        if (!result.success || !result.data) {
+          return jsonResponse({
+            referralCode: null,
+          });
+        }
+
+        return jsonResponse({
+          referralCode: result.data,
+        });
+      }
+
+      // List tracking records (with filters and pagination)
+      if (url.pathname === "/api/referrals/tracking" && request.method === "GET") {
+        if (!env.OBCF_D1) {
+          return errorResponse("D1 database binding not configured", 500, {
+            code: "CONFIG_ERROR",
+          });
+        }
+
+        registerConnection("default", createD1Driver(env.OBCF_D1));
+
+        // TODO: Get userId from session
+        const userId = url.searchParams.get("userId");
+
+        if (!userId) {
+          return errorResponse("userId is required", 400);
+        }
+
+        const { page, perPage } = parsePaginationParams(url.searchParams);
+        const status = url.searchParams.get("status") as "pending" | "completed" | "invalid" | null;
+
+        const offset = (page - 1) * perPage;
+        const trackingRecords = await ReferralTracking.forUser(userId, {
+          status: status || undefined,
+          limit: perPage,
+          offset,
+        });
+
+        // Get total count
+        const allRecords = await ReferralTracking.forUser(userId, {
+          status: status || undefined,
+        });
+
+        return paginatedJsonResponse({
+          data: trackingRecords.map((t) => t.toJson()),
+          total: allRecords.length,
+          page,
+          perPage,
+          path: "/api/referrals/tracking",
         });
       }
 

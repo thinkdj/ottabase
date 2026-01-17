@@ -13,6 +13,9 @@ export const usersTable = sqliteTable("users", {
   name: text("name"),
   email: text("email").notNull().unique(),
   image: text("image"),
+  // Referral fields
+  referralUsername: text("referral_username").unique(),
+  referredById: text("referred_by_id"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
@@ -129,6 +132,36 @@ export class User extends BaseModel {
         visible: false,
       },
     },
+    referralUsername: {
+      type: 'string',
+      editable: true,
+      unique: true,
+      uiConfig: {
+        label: 'Referral Username',
+        description: 'Your unique referral identifier (3-20 chars, letters/numbers/underscore)',
+      },
+      formConfig: {
+        visible: true,
+        fieldType: 'input',
+      },
+      tableConfig: {
+        visible: true,
+      },
+    },
+    referredById: {
+      type: 'string',
+      editable: false,
+      uiConfig: {
+        label: 'Referred By',
+        description: 'ID of the user who referred this user',
+      },
+      formConfig: {
+        visible: false,
+      },
+      tableConfig: {
+        visible: false,
+      },
+    },
   };
 
   protected static validationRules = {
@@ -204,5 +237,34 @@ export class User extends BaseModel {
    */
   getDisplayName(): string {
     return this.get('name') || this.get('email');
+  }
+
+  /**
+   * Get the user who referred this user (BelongsTo User)
+   */
+  async referrer() {
+    const referredById = this.get('referredById');
+    if (!referredById) return null;
+
+    return User.find(referredById);
+  }
+
+  /**
+   * Get users referred by this user (HasMany User)
+   */
+  async referrals(options?: {
+    select?: string[];
+    orderBy?: string;
+    orderDirection?: 'asc' | 'desc';
+    limit?: number;
+  }) {
+    return this.hasMany(User, 'referredById', options);
+  }
+
+  /**
+   * Find user by referral username
+   */
+  static async findByReferralUsername(username: string) {
+    return this.first({ referralUsername: username });
   }
 }

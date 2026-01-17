@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { RegisterForm, type RegisterFormData } from "@ottabase/auth/components";
 import { useSession } from "@/lib/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@ottabase/ui-shadcn";
 import { ArrowLeft } from "lucide-react";
+import { getStoredReferralCode, getReferralExpiryInfo } from "@/lib/referrals";
 
 export function RegisterPage() {
     const navigate = useNavigate();
@@ -11,6 +12,18 @@ export function RegisterPage() {
     const [error, setError] = useState<string>();
     const [isLoading, setIsLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [referralCode, setReferralCode] = useState<string | null>(null);
+    const [referralExpiry, setReferralExpiry] = useState<{ daysRemaining: number } | null>(null);
+
+    // Check for stored referral code on mount
+    useEffect(() => {
+        const code = getStoredReferralCode();
+        if (code) {
+            setReferralCode(code);
+            const expiry = getReferralExpiryInfo();
+            setReferralExpiry({ daysRemaining: expiry.daysRemaining || 0 });
+        }
+    }, []);
 
     const handleRegister = async (data: RegisterFormData) => {
         setIsLoading(true);
@@ -34,14 +47,28 @@ export function RegisterPage() {
             }
 
             // Simulated successful registration
+            const userId = Math.random().toString(36).substring(7);
             const mockSession = {
                 user: {
-                    id: Math.random().toString(36).substring(7),
+                    id: userId,
                     email: data.email,
                     name: data.name,
                 },
                 expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             };
+
+            // Handle referral attribution if there's a stored referral code
+            if (referralCode) {
+                // In a real implementation, this would be handled server-side during user creation
+                // For demo purposes, we'll just log it
+                console.log("User registered with referral code:", referralCode);
+                console.log("TODO: Attribute user", userId, "to referrer with code:", referralCode);
+
+                // In production, the server would:
+                // 1. Look up the referrer by referralUsername
+                // 2. Set the new user's referredById field
+                // 3. Update ReferralTracking records from pending to completed
+            }
 
             // Log them in immediately after registration
             login(mockSession);
@@ -74,6 +101,16 @@ export function RegisterPage() {
                     <p className="text-muted-foreground">
                         Sign up to get started
                     </p>
+                    {referralCode && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-sm">
+                            <p className="font-medium">You were referred by: <strong>{referralCode}</strong></p>
+                            {referralExpiry && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Referral expires in {referralExpiry.daysRemaining} days
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <Card>

@@ -1,0 +1,23 @@
+{
+  "name": "@ottabase/referrals",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist .turbo node_modules"
+  },
+  "dependencies": {
+    "@ottabase/db": "workspace:*",
+    "drizzle-orm": "^0.37.0"
+  },
+  "devDependencies": {
+    "@ottabase/config": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}
