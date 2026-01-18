@@ -3,6 +3,7 @@ import { defineConfig } from "tsup";
 export default defineConfig({
   entry: [
     "src/index.ts",
+    "src/registry.ts",
     "src/templates/index.ts",
     "src/providers/index.ts",
     "src/providers/resend.ts",

@@ -44,3 +44,12 @@ export {
   type CloudflareEmailBinding,
   type MailChannelsConfig,
 } from "./providers/index";
+
+// Template Registry
+export {
+  templateRegistry,
+  registerTemplate,
+  getTemplate,
+  getTemplateNames,
+  hasTemplate,
+} from "./registry";
