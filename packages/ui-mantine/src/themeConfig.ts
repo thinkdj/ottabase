@@ -3,7 +3,12 @@ import type { MantineThemeOverride } from "@mantine/core";
 // Mantine Theme Configuration Types
 export interface MantineThemeConfig {
   // Core theme selection - uses theme from packages/ui-core/themes/
-  baseTheme: "mantine-shadcn" | "mantine-vercel" | string;
+  baseTheme:
+    | "mantine-slate"
+    | "mantine-graphite"
+    | "mantine-azure"
+    | "mantine-aurora"
+    | string;
 
   // App-specific overrides
   primaryColor?: string;

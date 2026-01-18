@@ -15,10 +15,10 @@ import { Notifications } from "@mantine/notifications";
 import { rem } from "@mantine/core";
 
 // Import theme presets
-import mantineAnt from "../themes/mantine-ant";
-import mantineShadcn from "../themes/mantine-shadcn";
-import mantineStripe from "../themes/mantine-stripe";
-import mantineVercel from "../themes/mantine-vercel";
+import mantineAurora from "../themes/mantine-aurora";
+import mantineAzure from "../themes/mantine-azure";
+import mantineGraphite from "../themes/mantine-graphite";
+import mantineSlate from "../themes/mantine-slate";
 
 /* Import Mantine CSS */
 import "@mantine/carousel/styles.css";
@@ -26,10 +26,10 @@ import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
 export type MantineThemePreset =
-  | "mantine-shadcn"
-  | "mantine-vercel"
-  | "mantine-ant"
-  | "mantine-stripe";
+  | "mantine-slate"
+  | "mantine-graphite"
+  | "mantine-azure"
+  | "mantine-aurora";
 
 interface ProviderUIMantineProps {
   children: ReactNode;
@@ -54,7 +54,7 @@ const ProviderUIMantine = ({
   themeColors = {},
   primaryColor = "blue",
   scale = 1.0,
-  baseTheme = "mantine-shadcn",
+  baseTheme = "mantine-slate",
   themeOverride,
   colorScheme,
 }: ProviderUIMantineProps) => {
@@ -65,13 +65,13 @@ const ProviderUIMantine = ({
 
   // Get the base theme preset
   const themePresets: Record<MantineThemePreset, MantineThemeOverride> = {
-    "mantine-shadcn": mantineShadcn,
-    "mantine-vercel": mantineVercel,
-    "mantine-ant": mantineAnt,
-    "mantine-stripe": mantineStripe,
+    "mantine-slate": mantineSlate,
+    "mantine-graphite": mantineGraphite,
+    "mantine-azure": mantineAzure,
+    "mantine-aurora": mantineAurora,
   };
 
-  const selectedBaseTheme = themePresets[baseTheme] || mantineShadcn;
+  const selectedBaseTheme = themePresets[baseTheme] || mantineSlate;
 
   const mantineDefaultTheme: MantineThemeOverride = {
     defaultRadius: "sm",

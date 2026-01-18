@@ -7,14 +7,14 @@ import { atom } from "jotai";
 
 // Mantine theme preset type (specific to this app)
 export type MantineThemePreset =
-  | "mantine-shadcn"
-  | "mantine-vercel"
-  | "mantine-ant"
-  | "mantine-stripe";
+  | "mantine-slate"
+  | "mantine-graphite"
+  | "mantine-azure"
+  | "mantine-aurora";
 
 // Mantine theme preset atom (separate from main app state)
 export const mantineThemePresetAtom =
-  atom<MantineThemePreset>("mantine-shadcn");
+  atom<MantineThemePreset>("mantine-slate");
 
 // Extend BaseUser if needed
 export interface AppUser extends BaseUser {

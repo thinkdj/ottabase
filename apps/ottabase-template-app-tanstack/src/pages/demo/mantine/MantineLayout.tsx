@@ -5,13 +5,13 @@ import { atom, useAtomValue } from "jotai";
 
 // Mantine theme preset (local to this demo component)
 export type MantineThemePreset =
-  | "mantine-shadcn"
-  | "mantine-vercel"
-  | "mantine-ant"
-  | "mantine-stripe";
+  | "mantine-slate"
+  | "mantine-graphite"
+  | "mantine-azure"
+  | "mantine-aurora";
 
 export const mantineThemePresetAtom =
-  atom<MantineThemePreset>("mantine-shadcn");
+  atom<MantineThemePreset>("mantine-slate");
 
 export function MantineLayout({ children }: { children: React.ReactNode }) {
     const globalTheme = useAtomValue(themeAtom);

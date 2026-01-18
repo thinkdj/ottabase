@@ -5,10 +5,10 @@ export { default as ProviderUIMantine } from "../provider/ProviderUI";
 export type { ThemeColors, MantineThemePreset } from "../provider/ProviderUI";
 
 // Export themes
-export { default as mantineShadcn } from "../themes/mantine-shadcn";
-export { default as mantineVercel } from "../themes/mantine-vercel";
-export { default as mantineAnt } from "../themes/mantine-ant";
-export { default as mantineStripe } from "../themes/mantine-stripe";
+export { default as mantineSlate } from "../themes/mantine-slate";
+export { default as mantineGraphite } from "../themes/mantine-graphite";
+export { default as mantineAzure } from "../themes/mantine-azure";
+export { default as mantineAurora } from "../themes/mantine-aurora";
 
 // Export theme configuration utilities
 export type { MantineThemeConfig } from "./themeConfig";

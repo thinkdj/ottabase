@@ -3,12 +3,12 @@ import type { MantineThemeConfig } from "@ottabase/ui-mantine";
 /**
  * Mantine theme configuration for the Ottabase Template App
  *
- * This configuration extends the base mantine-shadcn theme from packages/ui-mantine/themes
+ * This configuration extends the base mantine-slate theme from packages/ui-mantine/themes
  * with app-specific customizations for the template app's visual design language.
  */
 export const mantineThemeConfig: MantineThemeConfig = {
-  // Use the ShadCN-inspired base theme as foundation
-  baseTheme: "mantine-shadcn",
+  // Use the slate base theme as foundation
+  baseTheme: "mantine-slate",
 
   // App-specific brand colors
   primaryColor: "blue",

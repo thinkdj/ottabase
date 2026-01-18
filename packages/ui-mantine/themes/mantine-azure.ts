@@ -11,15 +11,15 @@ const rgba = (color: string, alpha: number): string => {
 };
 
 /**
- * A comprehensive Mantine theme that replicates Ant Design system with dark mode support:
- * - Ant Design's signature blue color palette
- * - Professional, structured layouts with clear hierarchy
- * - Optimized for enterprise applications and dashboards
- * - Consistent spacing and typography following Ant Design principles
+ * A comprehensive Mantine theme built for structured enterprise dashboards:
+ * - Signature blue color palette with clear hierarchy
+ * - Professional, structured layouts for analytics experiences
+ * - Optimized for admin applications and dashboards
+ * - Consistent spacing and typography for an orderly feel
  * - Comprehensive component overrides with proper dark/light mode compatibility
  * - Clean, accessible design with proper focus states
  */
-export const mantineAnt: MantineThemeOverride = {
+export const mantineAzure: MantineThemeOverride = {
   primaryColor: "blue",
   primaryShade: 6,
   fontFamily:
@@ -38,9 +38,9 @@ export const mantineAnt: MantineThemeOverride = {
     },
   },
 
-  // Ant Design's color system
+  // Azure color system
   colors: {
-    // Ant Design Blue (Primary)
+    // Azure Blue (Primary)
     blue: [
       "#e6f7ff",
       "#bae7ff",
@@ -53,7 +53,7 @@ export const mantineAnt: MantineThemeOverride = {
       "#003a8c",
       "#002766",
     ],
-    // Ant Design Red (Error/Danger)
+    // Alert Red (Error/Danger)
     red: [
       "#fff2f0",
       "#ffece6",
@@ -66,7 +66,7 @@ export const mantineAnt: MantineThemeOverride = {
       "#ad2102",
       "#871400",
     ],
-    // Ant Design Green (Success)
+    // Success Green
     green: [
       "#f6ffed",
       "#d9f7be",
@@ -79,7 +79,7 @@ export const mantineAnt: MantineThemeOverride = {
       "#135200",
       "#092b00",
     ],
-    // Ant Design Gold/Orange (Warning)
+    // Warning Gold/Orange
     yellow: [
       "#fffbe6",
       "#fff1b8",
@@ -92,7 +92,7 @@ export const mantineAnt: MantineThemeOverride = {
       "#874d00",
       "#613400",
     ],
-    // Ant Design Gray (Neutral)
+    // Neutral Gray
     gray: [
       "#ffffff",
       "#fafafa",
@@ -120,7 +120,7 @@ export const mantineAnt: MantineThemeOverride = {
     ],
   },
 
-  // Ant Design spacing and radius system
+  // Structured spacing and radius system
   defaultRadius: "sm",
   radius: {
     xs: "2px",
@@ -137,7 +137,7 @@ export const mantineAnt: MantineThemeOverride = {
     xl: "32px",
   },
 
-  // Typography scale following Ant Design
+  // Typography scale for structured layouts
   fontSizes: {
     xs: "12px",
     sm: "14px",
@@ -154,7 +154,7 @@ export const mantineAnt: MantineThemeOverride = {
     xl: "1.5",
   },
 
-  // Ant Design shadow system
+  // Structured shadow system
   shadows: {
     xs: "0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02)",
     sm: "0 1px 2px -2px rgba(0, 0, 0, 0.16), 0 3px 6px 0 rgba(0, 0, 0, 0.12), 0 5px 12px 4px rgba(0, 0, 0, 0.09)",
@@ -163,7 +163,7 @@ export const mantineAnt: MantineThemeOverride = {
     xl: "0 12px 48px rgba(0, 0, 0, 0.18)",
   },
 
-  // Comprehensive component overrides for Ant Design aesthetic with dark mode support
+  // Comprehensive component overrides for the azure aesthetic with dark mode support
   components: {
     Button: {
       defaultProps: {
@@ -671,4 +671,4 @@ export const mantineAnt: MantineThemeOverride = {
   },
 };
 
-export default mantineAnt;
+export default mantineAzure;

@@ -2,13 +2,13 @@ import { createDefaultAppState } from "@ottabase/state";
 import { atom } from "jotai";
 
 export type MantineThemePreset =
-  | "mantine-shadcn"
-  | "mantine-vercel"
-  | "mantine-ant"
-  | "mantine-stripe";
+  | "mantine-slate"
+  | "mantine-graphite"
+  | "mantine-azure"
+  | "mantine-aurora";
 
 export const mantineThemePresetAtom = atom<MantineThemePreset>(
-  "mantine-shadcn"
+  "mantine-slate"
 );
 
 const appState = createDefaultAppState();

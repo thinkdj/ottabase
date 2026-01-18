@@ -5,7 +5,7 @@ Mantine UI components and providers for Ottabase applications. This package prov
 ## Features
 
 - **ProviderUIMantine**: Main UI provider that wires Mantine, notifications, and modal support
-- **Pre-built Themes**: ShadCN, Vercel, Ant Design, and Stripe-inspired themes
+- **Pre-built Themes**: Slate, Graphite, Azure, and Aurora presets
 - **Theme Management**: Syncs with global theme state (themeAtom from @ottabase/state)
 - **Theme Configuration**: Utilities for creating and validating custom themes
 - **FOUC Prevention**: Flash of unstyled content prevention helpers
@@ -59,10 +59,10 @@ This provider is a **controlled component**. It does not manage the theme state 
 import { ProviderUIMantineBase } from '@ottabase/ui-base';
 import {
   ProviderUIMantine,
-  mantineShadcn,
-  mantineVercel,
-  mantineAnt,
-  mantineStripe
+  mantineSlate,
+  mantineGraphite,
+  mantineAzure,
+  mantineAurora
 } from '@ottabase/ui-mantine';
 import { useAtomValue } from 'jotai';
 import { themeAtom } from '@/ottabase/state/appGlobalState';
@@ -73,7 +73,7 @@ function App({ children }) {
   return (
     <ProviderUIMantineBase>
       <ProviderUIMantine
-        themeOverride={mantineShadcn}
+        themeOverride={mantineSlate}
         colorScheme={theme as 'light' | 'dark'}
       >
         {children}
@@ -90,12 +90,12 @@ import { ProviderUIMantineBase } from '@ottabase/ui-base';
 import {
   ProviderUIMantine,
   createMantineTheme,
-  mantineShadcn,
+  mantineSlate,
   type MantineThemeConfig
 } from '@ottabase/ui-mantine';
 
 const myThemeConfig: MantineThemeConfig = {
-  baseTheme: "mantine-shadcn",
+  baseTheme: "mantine-slate",
   primaryColor: "blue",
   primaryShade: 6,
   colors: {
@@ -121,7 +121,7 @@ const myThemeConfig: MantineThemeConfig = {
   },
 };
 
-const customTheme = createMantineTheme(myThemeConfig, mantineShadcn);
+const customTheme = createMantineTheme(myThemeConfig, mantineSlate);
 
 function App({ children }) {
   const theme = useAtomValue(themeAtom);
@@ -141,10 +141,10 @@ function App({ children }) {
 
 ## Available Themes
 
-- **mantineShadcn**: ShadCN/UI inspired theme with neutral slate colors
-- **mantineVercel**: Vercel-inspired clean and modern theme
-- **mantineAnt**: Ant Design inspired theme
-- **mantineStripe**: Stripe-inspired professional theme
+- **mantineSlate**: Neutral slate theme with minimal UI patterns
+- **mantineGraphite**: High-contrast monochrome theme
+- **mantineAzure**: Structured blue theme for dashboards
+- **mantineAurora**: Luminous violet/blue theme with premium accents
 
 ## Theme System Architecture
 
@@ -193,9 +193,9 @@ ui-mantine/
 ├── provider/
 │   └── ProviderUIMantine.tsx   # Mantine provider component
 ├── themes/
-│   ├── mantine-shadcn.ts
-│   ├── mantine-vercel.ts
-│   ├── mantine-ant.ts
-│   └── mantine-stripe.ts
+│   ├── mantine-slate.ts
+│   ├── mantine-graphite.ts
+│   ├── mantine-azure.ts
+│   └── mantine-aurora.ts
 └── package.json
 ```

@@ -115,10 +115,10 @@ export function MantineDemoPage() {
               <Group gap="xs">
                 {(
                   [
-                    "mantine-shadcn",
-                    "mantine-vercel",
-                    "mantine-ant",
-                    "mantine-stripe",
+                    "mantine-slate",
+                    "mantine-graphite",
+                    "mantine-azure",
+                    "mantine-aurora",
                   ] as MantineThemePreset[]
                 ).map((preset) => (
                   <Button

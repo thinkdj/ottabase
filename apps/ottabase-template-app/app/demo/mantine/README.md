@@ -40,10 +40,10 @@ The main demo page showcasing:
 
 ### [components/ThemeSwitcher.tsx](components/ThemeSwitcher.tsx)
 A custom component that allows switching between different Mantine theme presets:
-- mantine-shadcn (minimal design)
-- mantine-vercel (high-contrast)
-- mantine-ant (enterprise design)
-- mantine-stripe (fintech aesthetic)
+- mantine-slate (minimal design)
+- mantine-graphite (high-contrast)
+- mantine-azure (enterprise design)
+- mantine-aurora (fintech aesthetic)
 - app-override (custom brand colors)
 
 ## How to Use Mantine in Your App

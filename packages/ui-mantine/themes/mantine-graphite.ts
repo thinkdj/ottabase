@@ -11,16 +11,16 @@ const rgba = (color: string, alpha: number): string => {
 };
 
 /**
- * A Mantine theme that replicates Vercel's homepage design language:
+ * A Mantine theme built around a graphite monochrome design language:
  * - Ultra-minimal aesthetic with stark black/white contrast
- * - Geist Sans font (fallback to Inter)
+ * - Geometric sans font stack (fallback to Inter)
  * - Extremely subtle borders and shadows
  * - Sharp, precise geometric shapes
  * - Gradient accents and modern animations
  * - Focus on typography hierarchy and white space
- * - Consistent with vercel.com design patterns
+ * - Consistent, high-contrast layout patterns
  */
-export const mantineVercel: MantineThemeOverride = {
+export const mantineGraphite: MantineThemeOverride = {
   primaryColor: "dark",
   primaryShade: 9,
   fontFamily:
@@ -39,9 +39,9 @@ export const mantineVercel: MantineThemeOverride = {
     },
   },
 
-  // Vercel's exact color system
+  // Graphite monochrome color system
   colors: {
-    // Vercel's grayscale system
+    // Graphite grayscale system
     dark: [
       "#fafafa", // gray-50
       "#f4f4f5", // gray-100
@@ -66,7 +66,7 @@ export const mantineVercel: MantineThemeOverride = {
       "#27272a",
       "#18181b",
     ],
-    // Vercel's accent colors
+    // Accent colors
     blue: [
       "#eff6ff",
       "#dbeafe",
@@ -165,7 +165,7 @@ export const mantineVercel: MantineThemeOverride = {
     ],
   },
 
-  // Vercel's precise spacing and sizing
+  // Graphite spacing and sizing
   defaultRadius: 8,
   radius: {
     xs: "4px",
@@ -183,7 +183,7 @@ export const mantineVercel: MantineThemeOverride = {
     xl: "32px",
   },
 
-  // Vercel's minimal shadow system
+  // Graphite shadow system
   shadows: {
     xs: "0 0 0 1px rgba(0, 0, 0, 0.05)",
     sm: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
@@ -192,7 +192,7 @@ export const mantineVercel: MantineThemeOverride = {
     xl: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
   },
 
-  // Typography scale matching Vercel
+  // Typography scale for graphite layouts
   fontSizes: {
     xs: "0.75rem", // 12px
     sm: "0.875rem", // 14px
@@ -209,7 +209,7 @@ export const mantineVercel: MantineThemeOverride = {
     xl: "1.65",
   },
 
-  // Component overrides for Vercel aesthetic
+  // Component overrides for the graphite aesthetic
   components: {
     Button: {
       defaultProps: {
@@ -694,7 +694,7 @@ export const mantineVercel: MantineThemeOverride = {
         } as Record<string, React.CSSProperties>),
     },
 
-    // Tabs with Vercel styling
+    // Tabs with graphite styling
     Tabs: {
       styles: (theme: any) =>
         ({
@@ -724,12 +724,12 @@ export const mantineVercel: MantineThemeOverride = {
     },
   },
 
-  // Vercel-specific design tokens
+  // Graphite-specific design tokens
   other: {
-    vercelGradient: "linear-gradient(to right, #000000, #262626)",
-    vercelBlur: "blur(12px)",
-    vercelTransition: "all 0.2s ease",
+    graphiteGradient: "linear-gradient(to right, #000000, #262626)",
+    graphiteBlur: "blur(12px)",
+    graphiteTransition: "all 0.2s ease",
   },
 };
 
-export default mantineVercel;
+export default mantineGraphite;
