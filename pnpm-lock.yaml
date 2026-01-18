@@ -546,6 +546,9 @@ importers:
       '@ottabase/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@ottabase/email':
+        specifier: workspace:*
+        version: link:../../packages/email
       '@ottabase/forms':
         specifier: workspace:*
         version: link:../../packages/forms

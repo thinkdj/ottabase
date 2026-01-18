@@ -441,6 +441,16 @@ const demoRendererRoute = new Route({
   ),
 });
 
+const demoEmailRoute = new Route({
+  getParentRoute: () => demoLayoutRoute,
+  path: "email",
+  component: lazyRouteComponent(() =>
+    import("@/pages/demo/email/EmailDemoPage").then((m) => ({
+      default: m.EmailDemoPage,
+    })),
+  ),
+});
+
 // Auth routes
 const loginRoute = new Route({
   getParentRoute: () => rootRoute,
@@ -551,6 +561,7 @@ demoLayoutRoute.addChildren([
   demoThemingRoute,
   demoStateRoute,
   demoRendererRoute,
+  demoEmailRoute,
 ]);
 
 const routeTree = rootRoute.addChildren([
