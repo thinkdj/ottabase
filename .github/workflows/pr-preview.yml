@@ -461,11 +461,12 @@ EOF
             > wrangler.preview.jsonc
 
           tmpfile=$(mktemp)
+          trap 'rm -f "$tmpfile"' EXIT
           if ! jq --arg name "${PREVIEW_WORKER_NAME}" '.name = $name' wrangler.preview.jsonc > "$tmpfile"; then
-            rm -f "$tmpfile"
             exit 1
           fi
           mv "$tmpfile" wrangler.preview.jsonc
+          trap - EXIT
 
           if grep -q "PRODUCTION_" wrangler.preview.jsonc; then
             echo "❌ ERROR: Secret substitution incomplete"
@@ -486,15 +487,16 @@ EOF
         continue-on-error: false
 
       - name: Preview deployment summary
-        if: always()
+        if: success()
         run: |
           PREVIEW_URL="https://${{ env.PREVIEW_WORKER_NAME }}.${{ steps.config.outputs.worker-subdomain }}.workers.dev/"
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ Preview deployed: ${PREVIEW_URL}"
-          else
-            echo "❌ Preview deployment failed"
-            exit 1
-          fi
+          echo "✅ Preview deployed: ${PREVIEW_URL}"
+
+      - name: Preview deployment failure summary
+        if: failure()
+        run: |
+          PREVIEW_URL="https://${{ env.PREVIEW_WORKER_NAME }}.${{ steps.config.outputs.worker-subdomain }}.workers.dev/"
+          echo "❌ Preview deployment failed: ${PREVIEW_URL}"
 
   # Cleanup preview when PR closes
   cleanup-preview:
@@ -520,10 +522,13 @@ EOF
         continue-on-error: true
 
       - name: Cleanup summary
+        if: success()
         run: |
           PREVIEW_URL="https://${{ env.PREVIEW_WORKER_NAME }}.${{ steps.cleanup-config.outputs.worker-subdomain }}.workers.dev/"
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "🧹 Preview worker cleaned up (or already absent): ${PREVIEW_URL}"
-          else
-            echo "⚠️ Cleanup may have failed for ${PREVIEW_URL}"
-          fi
+          echo "🧹 Preview worker cleaned up (or already absent): ${PREVIEW_URL}"
+
+      - name: Cleanup failure summary
+        if: failure()
+        run: |
+          PREVIEW_URL="https://${{ env.PREVIEW_WORKER_NAME }}.${{ steps.cleanup-config.outputs.worker-subdomain }}.workers.dev/"
+          echo "⚠️ Cleanup may have failed for ${PREVIEW_URL}"
