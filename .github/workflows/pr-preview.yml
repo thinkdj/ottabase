@@ -56,9 +56,13 @@ jobs:
           echo "🎯 Target apps: ${TARGET_APPS[*]}"
 
           # Detect changes (informational only for previews)
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
-          echo "📝 Changed files:"
-          echo "$CHANGED_FILES"
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD 2>/dev/null || true)
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "ℹ️ No change information available (shallow clone or initial commit)"
+          else
+            echo "📝 Changed files:"
+            echo "$CHANGED_FILES"
+          fi
           echo ""
 
           MATRIX_JSON='{"include":['
@@ -193,7 +197,10 @@ EOF
           fi
           echo "worker-subdomain=${WORKER_SUBDOMAIN}" >> $GITHUB_OUTPUT
 
-          VERIFY_PATHS=$(echo "${CONFIG}" | jq -r '.verifyPaths[]?' || echo "")
+          if ! VERIFY_PATHS=$(echo "${CONFIG}" | jq -r '.verifyPaths[]?'); then
+            echo "❌ Failed to read verifyPaths from config"
+            exit 1
+          fi
           echo "verify-paths<<EOF" >> $GITHUB_OUTPUT
           echo "${VERIFY_PATHS}" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -463,6 +470,7 @@ EOF
           tmpfile=$(mktemp)
           trap 'rm -f "$tmpfile"' EXIT
           if ! jq --arg name "${PREVIEW_WORKER_NAME}" '.name = $name' wrangler.preview.jsonc > "$tmpfile"; then
+            echo "❌ Failed to set preview worker name in wrangler config"
             exit 1
           fi
           mv "$tmpfile" wrangler.preview.jsonc
