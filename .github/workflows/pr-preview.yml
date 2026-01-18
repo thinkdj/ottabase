@@ -465,7 +465,7 @@ EOF
 import os
 import pathlib
 
-src = pathlib.Path("${WRANGLER_CONFIG}")
+src = pathlib.Path(os.environ["WRANGLER_CONFIG_PATH"])
 dst = pathlib.Path("wrangler.preview.jsonc")
 
 content = src.read_text()
@@ -491,7 +491,6 @@ PY
             echo "❌ Failed to move generated wrangler config"
             exit 1
           fi
-          trap - EXIT
 
           if grep -q "PRODUCTION_" wrangler.preview.jsonc; then
             echo "❌ ERROR: Secret substitution incomplete"
@@ -501,10 +500,12 @@ PY
           fi
 
           echo "✅ Preview configuration generated successfully"
+          trap - EXIT
         env:
           D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
           KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_CONFIG_PATH: ${{ steps.config.outputs.wrangler-config }}
 
       - name: Deploy preview to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
