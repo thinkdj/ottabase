@@ -458,24 +458,27 @@ EOF
             exit 1
           fi
 
-          PREVIEW_NAME="${{ env.PREVIEW_WORKER_NAME }}"
+          python - <<'PY'
+import os
+import pathlib
 
-          escape_sed() {
-            echo "$1" | sed -e 's/[&/\\]/\\&/g'
-          }
+config_path = pathlib.Path(os.environ["WRANGLER_CONFIG"])
+content = config_path.read_text()
 
-          D1_ESCAPED=$(escape_sed "${D1_DATABASE_ID}")
-          KV_ESCAPED=$(escape_sed "${KV_NAMESPACE_ID}")
-          ACCOUNT_ESCAPED=$(escape_sed "${CLOUDFLARE_ACCOUNT_ID}")
+replacements = {
+    "PRODUCTION_D1_DATABASE_ID": os.environ.get("D1_DATABASE_ID", ""),
+    "PRODUCTION_KV_NAMESPACE_ID": os.environ.get("KV_NAMESPACE_ID", ""),
+    "YOUR_CLOUDFLARE_ACCOUNT_ID": os.environ.get("CLOUDFLARE_ACCOUNT_ID", ""),
+}
 
-          sed -e "s/PRODUCTION_D1_DATABASE_ID/${D1_ESCAPED}/g" \
-              -e "s/PRODUCTION_KV_NAMESPACE_ID/${KV_ESCAPED}/g" \
-              -e "s/YOUR_CLOUDFLARE_ACCOUNT_ID/${ACCOUNT_ESCAPED}/g" \
-              "${WRANGLER_CONFIG}" > wrangler.preview.jsonc
+for key, value in replacements.items():
+    content = content.replace(key, value)
+
+pathlib.Path("wrangler.preview.jsonc").write_text(content)
+PY
 
           if grep -q "PRODUCTION_" wrangler.preview.jsonc; then
             echo "❌ ERROR: Secret substitution incomplete"
-            grep "PRODUCTION_" wrangler.preview.jsonc
             rm -f wrangler.preview.jsonc
             exit 1
           fi
@@ -485,6 +488,7 @@ EOF
           D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
           KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
 
       - name: Deploy preview to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
