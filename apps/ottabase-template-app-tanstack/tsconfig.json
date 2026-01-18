@@ -21,6 +21,7 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
+    "worker/**/*.ts",
     "vite.config.ts",
     "cloudflare-worker.ts",
     "cloudflare-env.d.ts"
