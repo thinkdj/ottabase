@@ -34,6 +34,7 @@ import {
   wrapWithBaseTemplate,
   bodyComponents,
   getTemplateNames,
+  renderTemplate,
   type BaseTemplateConfig,
   type LoginEmailData,
 } from "@ottabase/email";
@@ -92,12 +93,25 @@ const DEFAULT_NOTIFICATION_DATA = {
   preheader: "You have a new notification",
 };
 
+// Default subjects for each template type
+const DEFAULT_SUBJECTS: Record<TemplateType, string> = {
+  login: "Sign in to {{appName}}",
+  "verification-code": "Your verification code",
+  "spaced-out-welcome": "Welcome to {{appName}}",
+  "spaced-out-notification": "{{title}}",
+  custom: "Custom Email",
+  "custom-spaced": "Custom Spaced Email",
+};
+
 export function EmailDemoPage() {
   const [templateType, setTemplateType] = useState<TemplateType>("login");
   const [viewMode, setViewMode] = useState<"preview" | "html">("preview");
 
   // Template configuration
   const [config, setConfig] = useState<BaseTemplateConfig>(DEFAULT_CONFIG);
+
+  // Subject line (can contain Handlebars variables)
+  const [subject, setSubject] = useState<string>(DEFAULT_SUBJECTS.login);
 
   // Template data (JSON)
   const [dataJson, setDataJson] = useState<string>(
@@ -130,6 +144,16 @@ export function EmailDemoPage() {
       return null;
     }
   }, [dataJson]);
+
+  // Render the subject line with template variables
+  const renderedSubject = useMemo(() => {
+    if (!parsedData) return subject;
+    try {
+      return renderTemplate(subject, { ...config, ...parsedData });
+    } catch {
+      return subject;
+    }
+  }, [subject, config, parsedData]);
 
   // Generate rendered HTML
   const renderedHtml = useMemo(() => {
@@ -177,6 +201,7 @@ export function EmailDemoPage() {
   // Handle template change
   const handleTemplateChange = (type: TemplateType) => {
     setTemplateType(type);
+    setSubject(DEFAULT_SUBJECTS[type]);
     switch (type) {
       case "login":
         setDataJson(JSON.stringify(DEFAULT_LOGIN_DATA, null, 2));
@@ -194,7 +219,6 @@ export function EmailDemoPage() {
         setDataJson(
           JSON.stringify(
             {
-              subject: "Custom Email",
               body: `${bodyComponents.heading("Custom Email")}${bodyComponents.paragraph("This is a custom email body using the default Notion-style template.")}${bodyComponents.button("Click Me", "https://example.com", config.primaryColor || "#000000")}`,
             },
             null,
@@ -206,7 +230,6 @@ export function EmailDemoPage() {
         setDataJson(
           JSON.stringify(
             {
-              subject: "Custom Spaced Email",
               preheader: "A custom email with the spaced-out template",
               body: `${spacedOutComponents.heading("Spaced Out Custom")}${spacedOutComponents.paragraph("This uses the more airy, Dunked/Linear inspired template.")}${spacedOutComponents.highlight("Highlight boxes look great for important info.")}${spacedOutComponents.button("Take Action", "https://example.com", config.primaryColor || "#5046e5")}`,
             },
@@ -221,6 +244,7 @@ export function EmailDemoPage() {
   // Reset to defaults
   const handleReset = () => {
     setConfig(DEFAULT_CONFIG);
+    setSubject(DEFAULT_SUBJECTS[templateType]);
     handleTemplateChange(templateType);
     setSendStatus("idle");
     setSendMessage("");
@@ -262,7 +286,7 @@ export function EmailDemoPage() {
         },
         body: JSON.stringify({
           to: recipients,
-          subject: `[Test] ${config.appName || "Email"} - ${templateType}`,
+          subject: `[Test] ${renderedSubject}`,
           html: renderedHtml,
         }),
       });
@@ -366,15 +390,33 @@ export function EmailDemoPage() {
             </CardContent>
           </Card>
 
-          {/* Branding Configuration */}
+          {/* Subject & Branding Configuration */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Branding</CardTitle>
+              <CardTitle className="text-sm font-medium">Subject & Branding</CardTitle>
               <CardDescription>
-                Configure the base template styling
+                Configure email subject line and template styling
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="subject">Subject Line</Label>
+                <Input
+                  id="subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="Email subject..."
+                />
+                {renderedSubject !== subject && (
+                  <p className="text-xs text-muted-foreground">
+                    Preview: <span className="font-medium">{renderedSubject}</span>
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Use {"{{appName}}"}, {"{{title}}"}, etc. for dynamic values
+                </p>
+              </div>
+              <Separator />
               <div className="space-y-2">
                 <Label htmlFor="appName">App Name</Label>
                 <Input
@@ -494,20 +536,27 @@ export function EmailDemoPage() {
           </CardHeader>
           <CardContent>
             {viewMode === "preview" ? (
-              <div className="border rounded-lg overflow-hidden bg-white">
-                {renderedHtml ? (
-                  <iframe
-                    srcDoc={renderedHtml}
-                    className="w-full min-h-[600px] border-0"
-                    title="Email Preview"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-[400px] text-muted-foreground">
-                    {jsonError
-                      ? "Fix JSON errors to see preview"
-                      : "No preview available"}
-                  </div>
-                )}
+              <div className="space-y-3">
+                {/* Subject Preview */}
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Subject:</span>
+                  <span className="font-medium">{renderedSubject}</span>
+                </div>
+                <div className="border rounded-lg overflow-hidden bg-white">
+                  {renderedHtml ? (
+                    <iframe
+                      srcDoc={renderedHtml}
+                      className="w-full min-h-[600px] border-0"
+                      title="Email Preview"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+                      {jsonError
+                        ? "Fix JSON errors to see preview"
+                        : "No preview available"}
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="border rounded-lg overflow-auto bg-muted/30 max-h-[600px]">

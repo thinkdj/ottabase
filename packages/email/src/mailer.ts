@@ -37,6 +37,8 @@ export interface SendTemplateOptions<T = TemplateData> {
   replyTo?: string | EmailAddress;
   /** Override template config for this email */
   templateConfig?: BaseTemplateConfig;
+  /** Override the template's default subject line */
+  subject?: string;
 }
 
 /**
@@ -80,7 +82,7 @@ export class Mailer {
   async send<T>(
     options: SendTemplateOptions<T>
   ): Promise<SendEmailResult> {
-    const { template, data, to, from, replyTo, templateConfig } = options;
+    const { template, data, to, from, replyTo, templateConfig, subject: subjectOverride } = options;
 
     const fromAddress = from ?? this.defaultFrom;
     if (!fromAddress) {
@@ -92,8 +94,9 @@ export class Mailer {
 
     const mergedConfig = { ...this.templateConfig, ...templateConfig };
 
-    // Render subject with data
-    const subject = renderTemplate(template.subject, {
+    // Render subject with data (use override if provided)
+    const subjectTemplate = subjectOverride ?? template.subject;
+    const subject = renderTemplate(subjectTemplate, {
       ...mergedConfig,
       ...data,
     } as TemplateData);
