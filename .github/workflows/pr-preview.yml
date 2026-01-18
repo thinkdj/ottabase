@@ -197,10 +197,7 @@ EOF
           fi
           echo "worker-subdomain=${WORKER_SUBDOMAIN}" >> $GITHUB_OUTPUT
 
-          if ! VERIFY_PATHS=$(echo "${CONFIG}" | jq -r '.verifyPaths[]?'); then
-            echo "❌ Failed to read verifyPaths from config"
-            exit 1
-          fi
+          VERIFY_PATHS=$(echo "${CONFIG}" | jq -r '.verifyPaths[]?' 2>/dev/null || true)
           echo "verify-paths<<EOF" >> $GITHUB_OUTPUT
           echo "${VERIFY_PATHS}" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -461,29 +458,24 @@ EOF
             exit 1
           fi
 
-          python - <<'PY'
-import os
-import pathlib
+          PREVIEW_NAME="${{ env.PREVIEW_WORKER_NAME }}"
 
-src = pathlib.Path(os.environ["WRANGLER_CONFIG_PATH"])
-dst = pathlib.Path("wrangler.preview.jsonc")
+          escape_sed() {
+            echo "$1" | sed -e 's/[&/\\]/\\&/g'
+          }
 
-content = src.read_text()
-replacements = {
-    "PRODUCTION_D1_DATABASE_ID": os.environ.get("D1_DATABASE_ID", ""),
-    "PRODUCTION_KV_NAMESPACE_ID": os.environ.get("KV_NAMESPACE_ID", ""),
-    "YOUR_CLOUDFLARE_ACCOUNT_ID": os.environ.get("CLOUDFLARE_ACCOUNT_ID", ""),
-}
+          D1_ESCAPED=$(escape_sed "${D1_DATABASE_ID}")
+          KV_ESCAPED=$(escape_sed "${KV_NAMESPACE_ID}")
+          ACCOUNT_ESCAPED=$(escape_sed "${CLOUDFLARE_ACCOUNT_ID}")
 
-for key, value in replacements.items():
-    content = content.replace(key, value)
-
-dst.write_text(content)
-PY
+          sed -e "s/PRODUCTION_D1_DATABASE_ID/${D1_ESCAPED}/g" \
+              -e "s/PRODUCTION_KV_NAMESPACE_ID/${KV_ESCAPED}/g" \
+              -e "s/YOUR_CLOUDFLARE_ACCOUNT_ID/${ACCOUNT_ESCAPED}/g" \
+              "${WRANGLER_CONFIG}" > wrangler.preview.jsonc
 
           tmpfile=$(mktemp)
           trap 'rm -f "$tmpfile"' EXIT
-          if ! jq --arg name "${PREVIEW_WORKER_NAME}" '.name = $name' wrangler.preview.jsonc > "$tmpfile"; then
+          if ! jq --arg name "${PREVIEW_NAME}" '.name = $name' wrangler.preview.jsonc > "$tmpfile"; then
             echo "❌ Failed to set preview worker name in wrangler config"
             exit 1
           fi
@@ -505,7 +497,6 @@ PY
           D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
           KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          WRANGLER_CONFIG_PATH: ${{ steps.config.outputs.wrangler-config }}
 
       - name: Deploy preview to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
@@ -513,7 +504,7 @@ PY
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/${{ matrix.folder }}
-          command: deploy --env ${{ steps.config.outputs.wrangler-env }} --name ${{ env.PREVIEW_WORKER_NAME }} --config wrangler.preview.jsonc
+          command: deploy --env ${{ steps.config.outputs.wrangler-env }} --config wrangler.preview.jsonc
         continue-on-error: false
 
       - name: Preview deployment summary
