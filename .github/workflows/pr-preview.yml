@@ -73,7 +73,7 @@ jobs:
             else
               for dir in apps/*/; do
                 if [ -f "${dir}package.json" ]; then
-                  PKG_NAME=$(cat "${dir}package.json" | grep '"name"' | head -1 | sed 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+                  PKG_NAME=$(jq -r '.name // empty' "${dir}package.json")
                   if [ "$PKG_NAME" == "$target_app" ]; then
                     APP_FOLDER=$(basename "$dir")
                     break
@@ -96,7 +96,7 @@ jobs:
               continue
             fi
 
-            PKG_NAME=$(cat "$PKG_JSON" | grep '"name"' | head -1 | sed 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+            PKG_NAME=$(jq -r '.name // empty' "$PKG_JSON")
 
             if [ -f "$CONFIG_JSON" ]; then
               CONFIG=$(cat "$CONFIG_JSON")
@@ -451,14 +451,14 @@ jobs:
             exit 1
           fi
 
-          cat ${WRANGLER_CONFIG} | \
+          cat "${WRANGLER_CONFIG}" | \
             sed -e "s/PRODUCTION_D1_DATABASE_ID/${{ secrets.D1_DATABASE_ID }}/g" \
                 -e "s/PRODUCTION_KV_NAMESPACE_ID/${{ secrets.KV_NAMESPACE_ID }}/g" \
                 -e "s/YOUR_CLOUDFLARE_ACCOUNT_ID/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/g" \
             > wrangler.preview.jsonc
 
           tmpfile=$(mktemp)
-          jq --arg name "${PREVIEW_WORKER_NAME}" '.name = $name' wrangler.preview.jsonc > "$tmpfile" && mv "$tmpfile" wrangler.preview.jsonc
+          jq --arg name "${PREVIEW_WORKER_NAME}" '.name = $name' wrangler.preview.jsonc > "$tmpfile" && mv "$tmpfile" wrangler.preview.jsonc || { rm -f "$tmpfile"; exit 1; }
 
           if grep -q "PRODUCTION_" wrangler.preview.jsonc; then
             echo "❌ ERROR: Secret substitution incomplete"
