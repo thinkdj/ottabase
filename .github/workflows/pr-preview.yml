@@ -461,11 +461,25 @@ EOF
             exit 1
           fi
 
-          cat "${WRANGLER_CONFIG}" | \
-            sed -e "s/PRODUCTION_D1_DATABASE_ID/${{ secrets.D1_DATABASE_ID }}/g" \
-                -e "s/PRODUCTION_KV_NAMESPACE_ID/${{ secrets.KV_NAMESPACE_ID }}/g" \
-                -e "s/YOUR_CLOUDFLARE_ACCOUNT_ID/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/g" \
-            > wrangler.preview.jsonc
+          python - <<'PY'
+import os
+import pathlib
+
+src = pathlib.Path("${WRANGLER_CONFIG}")
+dst = pathlib.Path("wrangler.preview.jsonc")
+
+content = src.read_text()
+replacements = {
+    "PRODUCTION_D1_DATABASE_ID": os.environ.get("D1_DATABASE_ID", ""),
+    "PRODUCTION_KV_NAMESPACE_ID": os.environ.get("KV_NAMESPACE_ID", ""),
+    "YOUR_CLOUDFLARE_ACCOUNT_ID": os.environ.get("CLOUDFLARE_ACCOUNT_ID", ""),
+}
+
+for key, value in replacements.items():
+    content = content.replace(key, value)
+
+dst.write_text(content)
+PY
 
           tmpfile=$(mktemp)
           trap 'rm -f "$tmpfile"' EXIT
@@ -473,7 +487,10 @@ EOF
             echo "❌ Failed to set preview worker name in wrangler config"
             exit 1
           fi
-          mv "$tmpfile" wrangler.preview.jsonc
+          if ! mv "$tmpfile" wrangler.preview.jsonc; then
+            echo "❌ Failed to move generated wrangler config"
+            exit 1
+          fi
           trap - EXIT
 
           if grep -q "PRODUCTION_" wrangler.preview.jsonc; then
@@ -484,6 +501,10 @@ EOF
           fi
 
           echo "✅ Preview configuration generated successfully"
+        env:
+          D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
+          KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy preview to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
