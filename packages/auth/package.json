@@ -98,6 +98,7 @@
   },
   "dependencies": {
     "@ottabase/cf": "workspace:*",
+    "@ottabase/email": "workspace:*",
     "@ottabase/ui-shadcn": "workspace:*",
     "lucide-react": "catalog:"
   },

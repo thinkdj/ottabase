@@ -17,6 +17,7 @@
 import { Auth, type AuthConfig } from "@auth/core";
 import type { D1Database } from "@cloudflare/workers-types";
 import { createOttabaseAuthConfig } from "./config";
+import { createOttabaseEmailProvider } from "./email-provider";
 import type { ProviderEnv } from "./providers";
 import {
   autoConfigureProviders,
@@ -24,6 +25,7 @@ import {
   createNodemailerProvider,
   createResendProvider,
 } from "./providers";
+import type { BaseTemplateConfig } from "@ottabase/email";
 
 /**
  * Environment interface for auth handler
@@ -32,6 +34,12 @@ import {
 export interface AuthEnv extends ProviderEnv {
   AUTH_SECRET?: string;
   OBCF_D1?: D1Database;
+  /** App name for email templates */
+  APP_NAME?: string;
+  /** Primary brand color (hex) for email templates */
+  APP_PRIMARY_COLOR?: string;
+  /** Logo URL for email templates */
+  APP_LOGO_URL?: string;
 }
 
 /**
@@ -110,6 +118,17 @@ export interface CreateAuthConfigOptions extends CredentialsAuthorizeOptions {
    * Enable verbose logging
    */
   verbose?: boolean;
+
+  /**
+   * Use @ottabase/email templates for magic link emails
+   * @default true
+   */
+  useOttabaseEmailTemplates?: boolean;
+
+  /**
+   * Email template configuration (branding)
+   */
+  emailTemplateConfig?: BaseTemplateConfig;
 }
 
 /**
@@ -147,9 +166,29 @@ export function createAuthConfig(
   }
 
   // Configure email provider (magic link)
+  const useOttabaseTemplates = options?.useOttabaseEmailTemplates !== false;
+
   if (env.RESEND_API_KEY) {
-    providers.push(createResendProvider(env));
-    if (verbose) console.log("✅ Magic Link via Resend enabled");
+    if (useOttabaseTemplates) {
+      // Use @ottabase/email templates for beautiful branded emails
+      providers.push(
+        createOttabaseEmailProvider({
+          from: env.EMAIL_FROM || "noreply@example.com",
+          resendApiKey: env.RESEND_API_KEY,
+          templateConfig: {
+            appName: env.APP_NAME || "Ottabase",
+            primaryColor: env.APP_PRIMARY_COLOR || "#000000",
+            logoUrl: env.APP_LOGO_URL,
+            ...options?.emailTemplateConfig,
+          },
+        })
+      );
+      if (verbose) console.log("✅ Magic Link via Resend with @ottabase/email templates enabled");
+    } else {
+      // Use Auth.js built-in Resend provider
+      providers.push(createResendProvider(env));
+      if (verbose) console.log("✅ Magic Link via Resend enabled");
+    }
   } else if (env.EMAIL_SERVER && env.EMAIL_FROM) {
     providers.push(createNodemailerProvider(env));
     if (verbose) console.log("✅ Magic Link via SMTP enabled");

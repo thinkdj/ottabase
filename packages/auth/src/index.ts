@@ -58,12 +58,21 @@ export {
   createGitHubProvider,
   createGoogleProvider,
   createNodemailerProvider,
-  // Email Providers (Magic Link)
+  // Email Providers (Magic Link) - Auth.js built-in
   createResendProvider,
   // Types
   type ProviderEnv,
   type ProviderOptions,
 } from "./providers";
+
+// ============================================================
+// CUSTOM EMAIL PROVIDER (@ottabase/email integration)
+// ============================================================
+export {
+  createOttabaseEmailProvider,
+  createEmailProviderFromEnv,
+  type CustomEmailProviderConfig,
+} from "./email-provider";
 
 // ============================================================
 // SESSION UTILITIES

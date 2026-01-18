@@ -12,6 +12,7 @@ export default defineConfig({
     "src/backend-handler.ts",
     "src/client-api.ts",
     "src/react-hooks.ts",
+    "src/email-provider.ts",
   ],
   format: ["cjs", "esm"],
   // Use explicit DTS compiler options to avoid inheriting path mappings
@@ -24,9 +25,8 @@ export default defineConfig({
   },
   clean: true,
   external: [
-    // Externalize all @ottabase packages to use their built types
-    "@ottabase/ui-shadcn",
-    "@ottabase/ottaorm",
+    // Externalize all @ottabase packages (including subpaths) to use their built types
+    /^@ottabase\/.*/,
     // Externalize React to avoid type resolution issues during DTS build
     "react",
     "react-dom",
