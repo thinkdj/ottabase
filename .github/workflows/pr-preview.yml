@@ -105,18 +105,21 @@ jobs:
                 echo "⚠️  Warning: No cloudflare-config.json or wrangler.jsonc for ${APP_FOLDER}, skipping"
                 continue
               fi
-              CONFIG='{
-                "deployable": true,
-                "appType": "tanstack",
-                "buildCommand": "build",
-                "workerBuildCommand": null,
-                "outputDirectory": "dist",
-                "verifyPaths": ["dist", "cloudflare-worker.ts"],
-                "wranglerConfig": "wrangler.jsonc",
-                "wranglerEnv": "production",
-                "healthCheckPath": "/",
-                "requiresSecrets": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "D1_DATABASE_ID", "KV_NAMESPACE_ID"]
-              }'
+              CONFIG=$(cat <<'EOF'
+{
+  "deployable": true,
+  "appType": "tanstack",
+  "buildCommand": "build",
+  "workerBuildCommand": null,
+  "outputDirectory": "dist",
+  "verifyPaths": ["dist", "cloudflare-worker.ts"],
+  "wranglerConfig": "wrangler.jsonc",
+  "wranglerEnv": "production",
+  "healthCheckPath": "/",
+  "requiresSecrets": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "D1_DATABASE_ID", "KV_NAMESPACE_ID"]
+}
+EOF
+)
             fi
 
             DEPLOYABLE=$(echo "$CONFIG" | jq -r '.deployable // true')
@@ -458,7 +461,11 @@ jobs:
             > wrangler.preview.jsonc
 
           tmpfile=$(mktemp)
-          jq --arg name "${PREVIEW_WORKER_NAME}" '.name = $name' wrangler.preview.jsonc > "$tmpfile" && mv "$tmpfile" wrangler.preview.jsonc || { rm -f "$tmpfile"; exit 1; }
+          if ! jq --arg name "${PREVIEW_WORKER_NAME}" '.name = $name' wrangler.preview.jsonc > "$tmpfile"; then
+            rm -f "$tmpfile"
+            exit 1
+          fi
+          mv "$tmpfile" wrangler.preview.jsonc
 
           if grep -q "PRODUCTION_" wrangler.preview.jsonc; then
             echo "❌ ERROR: Secret substitution incomplete"
