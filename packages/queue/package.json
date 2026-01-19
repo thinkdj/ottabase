@@ -37,8 +37,9 @@
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "@types/node": "catalog:",
+    "tsup": "catalog:",
     "typescript": "catalog:",
-    "tsup": "catalog:"
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "@cloudflare/workers-types": "^4.0.0"
