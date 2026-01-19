@@ -6,7 +6,7 @@ import {
   CardTitle,
 } from "@ottabase/ui-shadcn";
 import { Link } from "@tanstack/react-router";
-import { Activity, Database, UserPlus } from "lucide-react";
+import { Activity, Database, Layers, UserPlus } from "lucide-react";
 
 export function AdminIndexPage() {
   const adminLinks = [
@@ -24,6 +24,14 @@ export function AdminIndexPage() {
         "View referral statistics, manage usernames, and track conversions.",
       href: "/admin/referrals",
       icon: UserPlus,
+      disabled: false,
+    },
+    {
+      title: "Queue Management",
+      description:
+        "Monitor background job queues, view processing stats, and manage failed jobs.",
+      href: "/admin/queues",
+      icon: Layers,
       disabled: false,
     },
     {

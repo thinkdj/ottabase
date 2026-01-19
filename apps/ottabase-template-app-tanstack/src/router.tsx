@@ -540,6 +540,17 @@ const adminReferralsRoute = new Route({
   ),
 });
 
+// Admin Queue Management route
+const adminQueueRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/admin/queues",
+  component: lazyRouteComponent(() =>
+    import("@/pages/admin/AdminQueuePage").then((m) => ({
+      default: m.AdminQueuePage,
+    })),
+  ),
+});
+
 demoLayoutRoute.addChildren([
   demoIndexRoute,
   demoMantineRoute,
@@ -577,6 +588,7 @@ const routeTree = rootRoute.addChildren([
   referralsRoute,
   adminRoute,
   adminReferralsRoute,
+  adminQueueRoute,
 ]);
 
 const browserHistory = createBrowserHistory();

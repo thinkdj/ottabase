@@ -102,14 +102,15 @@ export interface HandlerOptions {
 
 /**
  * Processor options
+ * Note: env parameter is optional in callbacks for flexibility
  */
-export interface ProcessorOptions {
+export interface ProcessorOptions<E = unknown> {
   /** Called when a job fails all retries */
-  onFailure?: (job: QueuedJob, error: Error) => Promise<void> | void;
+  onFailure?: (job: QueuedJob, error: Error, env?: E) => Promise<void> | void;
   /** Called before processing each job */
-  onBeforeProcess?: (job: QueuedJob) => Promise<void> | void;
+  onBeforeProcess?: (job: QueuedJob, env?: E) => Promise<void> | void;
   /** Called after successfully processing each job */
-  onAfterProcess?: (job: QueuedJob) => Promise<void> | void;
+  onAfterProcess?: (job: QueuedJob, env?: E) => Promise<void> | void;
 }
 
 // Re-export Cloudflare types for convenience

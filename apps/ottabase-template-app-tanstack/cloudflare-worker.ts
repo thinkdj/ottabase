@@ -7,7 +7,12 @@ import {
 import { createImagesClient } from "@ottabase/cf/images";
 import { createKVClient } from "@ottabase/cf/kv";
 import { dispatch, dispatchBatch } from "@ottabase/queue";
-import { queueHandler } from "./ottabase/queue";
+import {
+  queueHandler,
+  getQueueStats,
+  getRecentProcessedJobs,
+  getFailedJobs,
+} from "./ottabase/queue";
 import { createR2Client } from "@ottabase/cf/r2";
 import { createRateLimitingClient } from "@ottabase/cf/rate-limiting";
 import { createD1Driver } from "@ottabase/db/drizzle-d1";
@@ -1531,6 +1536,112 @@ export default {
         return errorResponse("Method not allowed", 405, {
           code: "METHOD_NOT_ALLOWED",
         });
+      }
+
+      // Admin Queue Management: /api/admin/queues
+      if (url.pathname === "/api/admin/queues" || url.pathname.startsWith("/api/admin/queues/")) {
+        // Get queue stats and overview
+        if (url.pathname === "/api/admin/queues" && request.method === "GET") {
+          const stats = await getQueueStats(env);
+
+          // Get pending messages count from KV
+          let pendingCount = 0;
+          if (env.OBCF_KV) {
+            const kv = createKVClient({ namespace: env.OBCF_KV as any });
+            const listResult = await kv.list({ prefix: "queue:message:" });
+            if (listResult.success) {
+              pendingCount = listResult.data.keys.length;
+            }
+          }
+
+          // Registered handlers info
+          const registeredHandlers = [
+            { type: "send-email", description: "Send email notifications" },
+            { type: "process-order", description: "Process order transactions" },
+            { type: "generate-report", description: "Generate reports asynchronously" },
+            { type: "sync-data", description: "Synchronize data between systems" },
+            { type: "batch-task", description: "Generic batch processing task" },
+          ];
+
+          return jsonResponse({
+            stats,
+            pendingCount,
+            registeredHandlers,
+            queueBinding: env.OBCF_QUEUE ? "configured" : "not configured",
+          });
+        }
+
+        // Get recent processed jobs
+        if (url.pathname === "/api/admin/queues/processed" && request.method === "GET") {
+          const limit = parseInt(url.searchParams.get("limit") || "50");
+          const jobs = await getRecentProcessedJobs(env, Math.min(limit, 100));
+          return jsonResponse({ jobs });
+        }
+
+        // Get failed jobs
+        if (url.pathname === "/api/admin/queues/failed" && request.method === "GET") {
+          const limit = parseInt(url.searchParams.get("limit") || "50");
+          const jobs = await getFailedJobs(env, Math.min(limit, 100));
+          return jsonResponse({ jobs });
+        }
+
+        // Get pending (dispatched but not processed) jobs
+        if (url.pathname === "/api/admin/queues/pending" && request.method === "GET") {
+          if (!env.OBCF_KV) {
+            return errorResponse("KV binding not configured", 500, {
+              code: "CONFIG_ERROR",
+            });
+          }
+
+          const kv = createKVClient({ namespace: env.OBCF_KV as any });
+          const limit = parseInt(url.searchParams.get("limit") || "50");
+          const listResult = await kv.list({ prefix: "queue:message:", limit: Math.min(limit, 100) });
+
+          if (!listResult.success) {
+            return errorResponse("Failed to list pending jobs", 500);
+          }
+
+          const jobs: any[] = [];
+          for (const key of listResult.data.keys) {
+            const result = await kv.get(key.name);
+            if (result.success && result.data) {
+              try {
+                const message = JSON.parse(result.data as string);
+                jobs.push({ key: key.name, ...message });
+              } catch {
+                // ignore
+              }
+            }
+          }
+
+          jobs.sort(
+            (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime()
+          );
+
+          return jsonResponse({ jobs });
+        }
+
+        // Reset queue stats (for testing/admin purposes)
+        if (url.pathname === "/api/admin/queues/reset-stats" && request.method === "POST") {
+          if (!env.OBCF_KV) {
+            return errorResponse("KV binding not configured", 500, {
+              code: "CONFIG_ERROR",
+            });
+          }
+
+          const kv = createKVClient({ namespace: env.OBCF_KV as any });
+          await kv.put("queue:stats", JSON.stringify({
+            totalDispatched: 0,
+            totalProcessed: 0,
+            totalFailed: 0,
+            byJobType: {},
+            lastUpdated: new Date().toISOString(),
+          }));
+
+          return jsonResponse({ success: true, message: "Stats reset" });
+        }
+
+        return errorResponse("Not found", 404, { code: "NOT_FOUND" });
       }
 
       // Rate limiting: /api/cloudflare/rate-limiting

@@ -87,9 +87,9 @@ export function createRegistry<E = unknown>(): HandlerRegistry<E> {
  */
 export class QueueProcessor<E = unknown> {
   private registry: HandlerRegistry<E>;
-  private options: ProcessorOptions;
+  private options: ProcessorOptions<E>;
 
-  constructor(registry: HandlerRegistry<E>, options: ProcessorOptions = {}) {
+  constructor(registry: HandlerRegistry<E>, options: ProcessorOptions<E> = {}) {
     this.registry = registry;
     this.options = options;
   }
@@ -154,7 +154,7 @@ export class QueueProcessor<E = unknown> {
     try {
       // Before hook
       if (this.options.onBeforeProcess) {
-        await this.options.onBeforeProcess(job);
+        await this.options.onBeforeProcess(job, env);
       }
 
       // Execute handler
@@ -162,7 +162,7 @@ export class QueueProcessor<E = unknown> {
 
       // After hook
       if (this.options.onAfterProcess) {
-        await this.options.onAfterProcess(job);
+        await this.options.onAfterProcess(job, env);
       }
 
       // Auto-ack if not already acked/retried
@@ -181,7 +181,8 @@ export class QueueProcessor<E = unknown> {
         if (this.options.onFailure) {
           await this.options.onFailure(
             job,
-            error instanceof Error ? error : new Error(String(error))
+            error instanceof Error ? error : new Error(String(error)),
+            env
           );
         }
 
@@ -203,7 +204,7 @@ export class QueueProcessor<E = unknown> {
  */
 export function createProcessor<E = unknown>(
   registry: HandlerRegistry<E>,
-  options?: ProcessorOptions
+  options?: ProcessorOptions<E>
 ): QueueProcessor<E> {
   return new QueueProcessor(registry, options);
 }
@@ -226,7 +227,7 @@ export function createProcessor<E = unknown>(
  */
 export function createQueueHandler<E = unknown>(
   registry: HandlerRegistry<E>,
-  options?: ProcessorOptions
+  options?: ProcessorOptions<E>
 ): (batch: MessageBatch<QueuedJob>, env: E) => Promise<void> {
   const processor = createProcessor(registry, options);
   return (batch, env) => processor.process(batch, env);
