@@ -10,3 +10,12 @@ export {
   type CloudflareEmailMessage,
   type MailChannelsConfig,
 } from "./cloudflare";
+
+// Nodemailer provider (Node.js only, for local dev with HELO, MailHog, etc.)
+export {
+  createNodemailerProvider,
+  createHeloProvider,
+  createMailhogProvider,
+  type SmtpConfig,
+  type NodemailerProviderConfig,
+} from "./nodemailer";

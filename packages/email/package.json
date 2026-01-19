@@ -36,6 +36,11 @@
       "types": "./dist/providers/cloudflare.d.ts",
       "import": "./dist/providers/cloudflare.mjs",
       "require": "./dist/providers/cloudflare.js"
+    },
+    "./providers/nodemailer": {
+      "types": "./dist/providers/nodemailer.d.ts",
+      "import": "./dist/providers/nodemailer.mjs",
+      "require": "./dist/providers/nodemailer.js"
     }
   },
   "files": [
@@ -63,7 +68,11 @@
   "dependencies": {
     "handlebars": "catalog:"
   },
+  "optionalDependencies": {
+    "nodemailer": "^6.9.0"
+  },
   "devDependencies": {
+    "@types/nodemailer": "^6.4.0",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "rimraf": "catalog:",

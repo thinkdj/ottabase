@@ -743,6 +743,122 @@ export default {
       }
 
       // ============================================================
+      // Email Send API (for testing with HELO/Nodemailer)
+      // ============================================================
+      if (url.pathname === "/api/email/send" && request.method === "POST") {
+        const body = await readJson<{
+          to: string | string[];
+          subject: string;
+          html: string;
+          text?: string;
+          from?: string;
+        }>(request);
+
+        if (!body.to || !body.subject || !body.html) {
+          return errorResponse("to, subject, and html are required", 400);
+        }
+
+        // Get SMTP configuration from environment
+        const smtpHost = (env as any).SMTP_HOST || "localhost";
+        const smtpPort = parseInt((env as any).SMTP_PORT || "2525", 10);
+        const emailFrom = (env as any).EMAIL_FROM || body.from || "test@example.com";
+
+        try {
+          // Dynamic import nodemailer (only works in Node.js/wrangler dev)
+          const nodemailer = await import("nodemailer");
+
+          const transporter = nodemailer.default.createTransport({
+            host: smtpHost,
+            port: smtpPort,
+            secure: false,
+            tls: {
+              rejectUnauthorized: false,
+            },
+          });
+
+          const recipients = Array.isArray(body.to) ? body.to : [body.to];
+
+          // Send to each recipient
+          const results = await Promise.all(
+            recipients.map(async (to) => {
+              try {
+                const info = await transporter.sendMail({
+                  from: emailFrom,
+                  to,
+                  subject: body.subject,
+                  html: body.html,
+                  text: body.text,
+                });
+                return { to, success: true, messageId: info.messageId };
+              } catch (err) {
+                return { to, success: false, error: err instanceof Error ? err.message : "Unknown error" };
+              }
+            })
+          );
+
+          const allSuccess = results.every((r) => r.success);
+
+          return jsonResponse({
+            success: allSuccess,
+            results,
+            message: allSuccess
+              ? `Sent ${recipients.length} email(s) successfully`
+              : "Some emails failed to send",
+          });
+        } catch (error) {
+          // Nodemailer not available (edge runtime) - try Resend fallback
+          const resendKey = (env as any).RESEND_API_KEY || (env as any).AUTH_RESEND_KEY;
+
+          if (resendKey) {
+            try {
+              const recipients = Array.isArray(body.to) ? body.to : [body.to];
+
+              const response = await fetch("https://api.resend.com/emails", {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${resendKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  from: emailFrom,
+                  to: recipients,
+                  subject: body.subject,
+                  html: body.html,
+                  text: body.text,
+                }),
+              });
+
+              if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error((err as any).message || `Resend API error: ${response.status}`);
+              }
+
+              const result = await response.json();
+              return jsonResponse({
+                success: true,
+                results: [{ success: true, id: (result as any).id }],
+                message: "Email sent via Resend",
+              });
+            } catch (resendError) {
+              return errorResponse(
+                `Failed to send email: ${resendError instanceof Error ? resendError.message : "Unknown error"}`,
+                500
+              );
+            }
+          }
+
+          return errorResponse(
+            "Email sending not available. Configure SMTP_HOST/SMTP_PORT for local dev or RESEND_API_KEY for production.",
+            500,
+            {
+              code: "EMAIL_NOT_CONFIGURED",
+              hint: "For local dev with HELO: set SMTP_HOST=localhost and SMTP_PORT=2525",
+            }
+          );
+        }
+      }
+
+      // ============================================================
       // Authentication - Auth.js Routes
       // ============================================================
       // Handles all Auth.js routes: /api/auth/signin, /api/auth/signout,
