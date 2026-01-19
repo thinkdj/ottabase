@@ -4,6 +4,7 @@ import {
     Button,
     Card,
     CardContent,
+    CardDescription,
     CardHeader,
     CardTitle,
     Input,
@@ -20,10 +21,19 @@ interface QueueMessage {
     type: "single" | "batch";
 }
 
+// Available job types from the registry
+const JOB_TYPES = [
+    { value: "send-email", label: "Send Email", description: "Dispatch an email job" },
+    { value: "process-order", label: "Process Order", description: "Process an order" },
+    { value: "generate-report", label: "Generate Report", description: "Generate a report" },
+    { value: "sync-data", label: "Sync Data", description: "Synchronize data" },
+    { value: "batch-task", label: "Batch Task", description: "Generic batch task" },
+] as const;
+
 export function CloudflareQueuesDemoPage() {
-    const [userId, setUserId] = useState("");
-    const [action, setAction] = useState("send-email");
-    const [customData, setCustomData] = useState("");
+    const [jobType, setJobType] = useState<string>("send-email");
+    const [payload, setPayload] = useState('{\n  "to": "user@example.com",\n  "subject": "Welcome!"\n}');
+    const [delay, setDelay] = useState<number>(0);
     const [batchCount, setBatchCount] = useState(3);
     const [messages, setMessages] = useState<QueueMessage[]>([]);
     const [loading, setLoading] = useState(false);
@@ -45,7 +55,19 @@ export function CloudflareQueuesDemoPage() {
         return () => clearInterval(interval);
     }, []);
 
-    const handleSendMessage = async (e: React.FormEvent) => {
+    // Update payload template when job type changes
+    useEffect(() => {
+        const templates: Record<string, string> = {
+            "send-email": '{\n  "to": "user@example.com",\n  "subject": "Welcome!",\n  "template": "welcome"\n}',
+            "process-order": '{\n  "orderId": "ORD-12345",\n  "userId": "user-123"\n}',
+            "generate-report": '{\n  "reportType": "monthly-sales",\n  "params": { "month": 1, "year": 2024 }\n}',
+            "sync-data": '{\n  "source": "crm",\n  "target": "analytics",\n  "entityType": "orders"\n}',
+            "batch-task": '{\n  "taskNumber": 1,\n  "data": { "key": "value" }\n}',
+        };
+        setPayload(templates[jobType] || '{}');
+    }, [jobType]);
+
+    const handleDispatchJob = async (e: React.FormEvent) => {
         e.preventDefault();
 
         try {
@@ -53,25 +75,24 @@ export function CloudflareQueuesDemoPage() {
             setError(null);
             setSuccess(null);
 
-            const message: Record<string, unknown> = { action };
-            if (userId) message.userId = userId;
-
-            if (customData) {
-                try {
-                    message.data = JSON.parse(customData);
-                } catch {
-                    message.data = customData;
-                }
+            let parsedPayload: unknown;
+            try {
+                parsedPayload = JSON.parse(payload);
+            } catch {
+                setError("Invalid JSON payload");
+                return;
             }
 
             await api("/api/cloudflare/queues", {
                 method: "POST",
-                body: { message },
+                body: {
+                    type: jobType,
+                    payload: parsedPayload,
+                    ...(delay > 0 ? { delay } : {}),
+                },
             });
 
-            setSuccess("Message sent to queue successfully!");
-            setUserId("");
-            setCustomData("");
+            setSuccess(`Job dispatched: ${jobType}${delay > 0 ? ` (delay: ${delay}s)` : ""}`);
             await loadMessages();
         } catch (err) {
             setError(isApiError(err) ? err.message : "Unknown error");
@@ -80,7 +101,7 @@ export function CloudflareQueuesDemoPage() {
         }
     };
 
-    const handleSendBatch = async () => {
+    const handleDispatchBatch = async () => {
         try {
             setLoading(true);
             setError(null);
@@ -97,7 +118,7 @@ export function CloudflareQueuesDemoPage() {
                 body: { batch },
             });
 
-            setSuccess(`Sent ${batchCount} messages to queue successfully!`);
+            setSuccess(`Dispatched ${batchCount} jobs to queue!`);
             await loadMessages();
         } catch (err) {
             setError(isApiError(err) ? err.message : "Unknown error");
@@ -113,69 +134,107 @@ export function CloudflareQueuesDemoPage() {
             </Button>
 
             <div>
-                <h1 className="mb-2 text-3xl font-semibold">Queues Demo</h1>
-                <p className="text-muted-foreground">Async message queue processing</p>
+                <h1 className="mb-2 text-3xl font-semibold">Queue Demo</h1>
+                <p className="text-muted-foreground">
+                    Async job dispatching with @ottabase/queue
+                </p>
             </div>
 
-            {error ? (
+            <Card className="border-dashed">
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">How it works</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm text-muted-foreground">
+                    <p>
+                        <strong>1. Dispatch:</strong> Jobs are dispatched to a Cloudflare Queue with a type and payload
+                    </p>
+                    <p>
+                        <strong>2. Process:</strong> The queue handler routes jobs to registered handlers
+                    </p>
+                    <p>
+                        <strong>3. Retry:</strong> Failed jobs are automatically retried (up to 3 times by default)
+                    </p>
+                    <pre className="mt-3 overflow-x-auto rounded bg-muted p-3 text-xs">
+{`// Dispatch a job from anywhere
+import { dispatch } from "@ottabase/queue";
+
+await dispatch(env.OBCF_QUEUE, "send-email", {
+  to: "user@example.com",
+  subject: "Welcome!",
+});`}
+                    </pre>
+                </CardContent>
+            </Card>
+
+            {error && (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
                     <p className="text-sm text-destructive">{error}</p>
                 </div>
-            ) : null}
+            )}
 
-            {success ? (
+            {success && (
                 <div className="rounded-lg border bg-muted/50 p-4">
                     <p className="text-sm">{success}</p>
                 </div>
-            ) : null}
+            )}
 
             <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-base">Send Single Message</CardTitle>
+                        <CardTitle className="text-base">Dispatch Job</CardTitle>
+                        <CardDescription>Send a job to the queue with typed payload</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={handleSendMessage} className="space-y-4">
+                        <form onSubmit={handleDispatchJob} className="space-y-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">User ID (optional)</label>
-                                <Input
-                                    value={userId}
-                                    onChange={(e) => setUserId(e.target.value)}
-                                    placeholder="user-123"
-                                    disabled={loading}
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Action</label>
+                                <label className="text-sm font-medium">Job Type</label>
                                 <select
-                                    value={action}
-                                    onChange={(e) => setAction(e.target.value)}
+                                    value={jobType}
+                                    onChange={(e) => setJobType(e.target.value)}
                                     disabled={loading}
-                                    aria-label="Queue action"
+                                    aria-label="Job type"
                                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 >
-                                    <option value="send-email">send-email</option>
-                                    <option value="process-order">process-order</option>
-                                    <option value="generate-report">generate-report</option>
-                                    <option value="sync-data">sync-data</option>
+                                    {JOB_TYPES.map((type) => (
+                                        <option key={type.value} value={type.value}>
+                                            {type.label}
+                                        </option>
+                                    ))}
                                 </select>
+                                <p className="text-xs text-muted-foreground">
+                                    {JOB_TYPES.find((t) => t.value === jobType)?.description}
+                                </p>
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Custom Data (JSON, optional)</label>
+                                <label className="text-sm font-medium">Payload (JSON)</label>
                                 <Textarea
-                                    value={customData}
-                                    onChange={(e) => setCustomData(e.target.value)}
-                                    placeholder='{"key": "value"}'
+                                    value={payload}
+                                    onChange={(e) => setPayload(e.target.value)}
                                     disabled={loading}
-                                    rows={3}
-                                    className="font-mono"
+                                    rows={5}
+                                    className="font-mono text-xs"
                                 />
                             </div>
 
-                            <Button type="submit" disabled={loading || !action} className="w-full">
-                                Send Message
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Delay (seconds)</label>
+                                <Input
+                                    type="number"
+                                    value={delay}
+                                    onChange={(e) => setDelay(parseInt(e.target.value) || 0)}
+                                    min={0}
+                                    max={43200}
+                                    disabled={loading}
+                                    placeholder="0 = immediate"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Max delay: 43200 seconds (12 hours)
+                                </p>
+                            </div>
+
+                            <Button type="submit" disabled={loading} className="w-full">
+                                Dispatch Job
                             </Button>
                         </form>
                     </CardContent>
@@ -183,11 +242,12 @@ export function CloudflareQueuesDemoPage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-base">Send Batch</CardTitle>
+                        <CardTitle className="text-base">Batch Dispatch</CardTitle>
+                        <CardDescription>Send multiple jobs at once</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Number of Messages</label>
+                            <label className="text-sm font-medium">Number of Jobs</label>
                             <Input
                                 type="number"
                                 value={batchCount}
@@ -201,23 +261,21 @@ export function CloudflareQueuesDemoPage() {
                         <div className="rounded-lg bg-muted p-4">
                             <p className="mb-2 text-xs font-medium text-muted-foreground">Preview:</p>
                             <pre className="overflow-x-auto text-xs">
-                                {JSON.stringify(
-                                    {
-                                        userId: "user-1",
-                                        action: "batch-task",
-                                        data: { taskNumber: 1 },
-                                    },
-                                    null,
-                                    2,
-                                )}
+{`{
+  type: "batch-task",
+  payload: {
+    userId: "user-1",
+    data: { taskNumber: 1 }
+  }
+}`}
                             </pre>
                             <p className="mt-2 text-xs text-muted-foreground">
-                                ...and {Math.max(0, batchCount - 1)} more messages
+                                ...and {Math.max(0, batchCount - 1)} more jobs
                             </p>
                         </div>
 
-                        <Button onClick={handleSendBatch} disabled={loading || batchCount < 1} className="w-full">
-                            Send Batch ({batchCount} messages)
+                        <Button onClick={handleDispatchBatch} disabled={loading || batchCount < 1} className="w-full">
+                            Dispatch Batch ({batchCount} jobs)
                         </Button>
                     </CardContent>
                 </Card>
@@ -225,20 +283,39 @@ export function CloudflareQueuesDemoPage() {
 
             <Card>
                 <CardHeader>
+                    <CardTitle className="text-base">Registered Handlers</CardTitle>
+                    <CardDescription>Job types that can be processed</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+                        {JOB_TYPES.map((type) => (
+                            <div
+                                key={type.value}
+                                className="rounded-lg border p-3"
+                            >
+                                <p className="font-mono text-sm">{type.value}</p>
+                                <p className="text-xs text-muted-foreground">{type.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
                     <div className="flex items-center justify-between gap-2">
-                        <CardTitle className="text-base">Recent Messages</CardTitle>
+                        <div>
+                            <CardTitle className="text-base">Recent Jobs</CardTitle>
+                            <CardDescription>Jobs stored in KV for demo (expires after 1 hour)</CardDescription>
+                        </div>
                         <Button onClick={loadMessages} disabled={loading} variant="outline" size="sm">
                             Refresh
                         </Button>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                        Messages are stored in KV for demo purposes and expire after 1 hour
-                    </p>
-
                     {messages.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No messages sent yet</p>
+                        <p className="text-sm text-muted-foreground">No jobs dispatched yet</p>
                     ) : (
                         <div className="space-y-2">
                             {messages.map((msg) => (
@@ -246,21 +323,21 @@ export function CloudflareQueuesDemoPage() {
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="min-w-0 flex-1">
                                             <div className="mb-1 flex items-center gap-2">
-                                                <span className="text-sm font-medium">
-                                                    {msg.action || "No action"}
+                                                <span className="font-mono text-sm font-medium">
+                                                    {msg.action || "unknown"}
                                                 </span>
                                                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                                                     {msg.type}
                                                 </span>
                                             </div>
-                                            {msg.userId ? (
+                                            {msg.userId && (
                                                 <p className="text-xs text-muted-foreground">User: {msg.userId}</p>
-                                            ) : null}
-                                            {msg.data ? (
+                                            )}
+                                            {msg.data && (
                                                 <pre className="mt-2 overflow-x-auto rounded bg-muted p-2 text-xs">
                                                     {JSON.stringify(msg.data, null, 2)}
                                                 </pre>
-                                            ) : null}
+                                            )}
                                         </div>
                                         <span className="text-xs text-muted-foreground">
                                             {new Date(msg.sentAt).toLocaleTimeString()}

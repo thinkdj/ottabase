@@ -6,7 +6,8 @@ import {
 } from "@ottabase/cf-realtime/server";
 import { createImagesClient } from "@ottabase/cf/images";
 import { createKVClient } from "@ottabase/cf/kv";
-import { createQueuesClient } from "@ottabase/cf/queues";
+import { dispatch, dispatchBatch } from "@ottabase/queue";
+import { queueHandler } from "./ottabase/queue";
 import { createR2Client } from "@ottabase/cf/r2";
 import { createRateLimitingClient } from "@ottabase/cf/rate-limiting";
 import { createD1Driver } from "@ottabase/db/drizzle-d1";
@@ -1357,20 +1358,70 @@ export default {
             });
           }
 
-          const body = await readJson<{ message?: unknown; batch?: unknown[] }>(
-            request,
-          );
-          const queue = createQueuesClient({ queue: env.OBCF_QUEUE });
+          const body = await readJson<{
+            type?: string;
+            payload?: unknown;
+            message?: { action?: string; userId?: string; data?: unknown };
+            batch?: Array<{ action?: string; userId?: string; data?: unknown }>;
+            delay?: number;
+          }>(request);
 
-          if (Array.isArray(body.batch)) {
-            const messages = body.batch.map((msg) => ({ body: msg }));
-            const result = await queue.sendBatch(messages);
+          // New dispatch API: { type, payload, delay? }
+          if (body.type && body.payload !== undefined) {
+            const result = await dispatch(
+              env.OBCF_QUEUE,
+              body.type,
+              body.payload,
+              body.delay ? { delay: body.delay } : undefined
+            );
+
             if (!result.success) {
-              return errorResponse("Failed to send batch", 500, {
+              return errorResponse("Failed to dispatch job", 500, {
                 details: result.error.message,
               });
             }
 
+            // Store in KV for demo display
+            if (env.OBCF_KV) {
+              try {
+                const kv = createKVClient({ namespace: env.OBCF_KV as any });
+                const key = `queue:message:${Date.now()}`;
+                await kv.put(
+                  key,
+                  JSON.stringify({
+                    action: body.type,
+                    data: body.payload,
+                    sentAt: new Date().toISOString(),
+                    type: "single",
+                  }),
+                  { expirationTtl: 3600 }
+                );
+              } catch {
+                // ignore
+              }
+            }
+
+            return jsonResponse({
+              success: true,
+              message: `Job dispatched: ${body.type}`,
+            });
+          }
+
+          // Legacy batch API for demo compatibility
+          if (Array.isArray(body.batch)) {
+            const jobs = body.batch.map((msg) => ({
+              type: msg.action || "batch-task",
+              payload: { userId: msg.userId, data: msg.data, ...msg },
+            }));
+
+            const result = await dispatchBatch(env.OBCF_QUEUE, jobs);
+            if (!result.success) {
+              return errorResponse("Failed to dispatch batch", 500, {
+                details: result.error.message,
+              });
+            }
+
+            // Store in KV for demo display
             if (env.OBCF_KV) {
               try {
                 const kv = createKVClient({ namespace: env.OBCF_KV as any });
@@ -1384,7 +1435,7 @@ export default {
                       sentAt: new Date().toISOString(),
                       type: "batch",
                     }),
-                    { expirationTtl: 3600 },
+                    { expirationTtl: 3600 }
                   );
                 }
               } catch {
@@ -1394,19 +1445,25 @@ export default {
 
             return jsonResponse({
               success: true,
-              message: `Sent ${body.batch.length} messages to queue`,
+              message: `Dispatched ${body.batch.length} jobs to queue`,
               count: body.batch.length,
             });
           }
 
+          // Legacy single message API for demo compatibility
           if (body.message) {
-            const result = await queue.send(body.message);
+            const msg = body.message;
+            const jobType = msg.action || "batch-task";
+            const payload = { userId: msg.userId, data: msg.data, action: msg.action };
+
+            const result = await dispatch(env.OBCF_QUEUE, jobType, payload);
             if (!result.success) {
-              return errorResponse("Failed to send message", 500, {
+              return errorResponse("Failed to dispatch job", 500, {
                 details: result.error.message,
               });
             }
 
+            // Store in KV for demo display
             if (env.OBCF_KV) {
               try {
                 const kv = createKVClient({ namespace: env.OBCF_KV as any });
@@ -1414,11 +1471,11 @@ export default {
                 await kv.put(
                   key,
                   JSON.stringify({
-                    ...(body.message as any),
+                    ...(msg as any),
                     sentAt: new Date().toISOString(),
                     type: "single",
                   }),
-                  { expirationTtl: 3600 },
+                  { expirationTtl: 3600 }
                 );
               } catch {
                 // ignore
@@ -1427,11 +1484,14 @@ export default {
 
             return jsonResponse({
               success: true,
-              message: "Message sent to queue",
+              message: "Job dispatched to queue",
             });
           }
 
-          return errorResponse("Either message or batch is required", 400);
+          return errorResponse(
+            "Either { type, payload } or { message } or { batch } is required",
+            400
+          );
         }
 
         if (request.method === "GET") {
@@ -1874,4 +1934,8 @@ export default {
       );
     }
   },
+
+  // Queue consumer handler
+  // Processes jobs from the Cloudflare Queue using registered handlers
+  queue: queueHandler,
 };
