@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createJob, createDispatcher, Dispatcher } from "../job";
 import { createRegistry, HandlerRegistry, createProcessor } from "../processor";
-import type { QueuedJob, JobContext, DispatchOptions } from "../types";
+import type { QueuedJob, JobContext, DispatchOptions, DedupeStore } from "../types";
 
 describe("Queue Package", () => {
   describe("Job Creation", () => {
@@ -31,6 +31,24 @@ describe("Queue Package", () => {
       const job2 = createJob("task", {});
 
       expect(job1.meta?.id).not.toBe(job2.meta?.id);
+    });
+
+    it("should include priority in job metadata", () => {
+      const job = createJob("task", {}, { priority: "high" });
+      expect(job.meta?.priority).toBe("high");
+    });
+
+    it("should include chained jobs in metadata", () => {
+      const job = createJob("task", {}, {
+        then: [
+          { type: "follow-up", payload: { id: 1 } },
+          { type: "notify", payload: { id: 2 }, delay: 60 },
+        ],
+      });
+
+      expect(job.meta?.chain).toHaveLength(2);
+      expect(job.meta?.chain?.[0].type).toBe("follow-up");
+      expect(job.meta?.chain?.[1].delay).toBe(60);
     });
   });
 
@@ -130,8 +148,6 @@ describe("Queue Package", () => {
     });
 
     it("should handle dispatch errors gracefully", async () => {
-      // The dispatcher wraps the queue with QueuesClient
-      // When the underlying queue throws, it should return an error result
       const mockQueue = {
         send: vi.fn().mockRejectedValue(new Error("Queue unavailable")),
         sendBatch: vi.fn(),
@@ -140,11 +156,304 @@ describe("Queue Package", () => {
 
       const result = await dispatcher.dispatch("task", {});
 
-      // The QueuesClient catches errors and returns { success: false, error }
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeDefined();
       }
+    });
+  });
+
+  describe("Deduplication", () => {
+    it("should dispatch job when no duplicate exists", async () => {
+      const mockQueue = { send: vi.fn().mockResolvedValue({ success: true }), sendBatch: vi.fn() };
+      const mockDedupeStore: DedupeStore = {
+        get: vi.fn().mockResolvedValue(null),
+        put: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const dispatcher = createDispatcher({
+        queue: mockQueue as any,
+        dedupeStore: mockDedupeStore,
+      });
+
+      const result = await dispatcher.dispatch("sync-user", { userId: 123 }, {
+        uniqueKey: "user-123",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.dispatched).toBe(true);
+      }
+      expect(mockDedupeStore.get).toHaveBeenCalledWith("dedupe:sync-user:user-123");
+      expect(mockDedupeStore.put).toHaveBeenCalled();
+    });
+
+    it("should skip dispatch when duplicate exists", async () => {
+      const mockQueue = { send: vi.fn(), sendBatch: vi.fn() };
+      const mockDedupeStore: DedupeStore = {
+        get: vi.fn().mockResolvedValue("1234567890"),
+        put: vi.fn(),
+      };
+
+      const dispatcher = createDispatcher({
+        queue: mockQueue as any,
+        dedupeStore: mockDedupeStore,
+      });
+
+      const result = await dispatcher.dispatch("sync-user", { userId: 123 }, {
+        uniqueKey: "user-123",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.dispatched).toBe(false);
+      }
+      expect(mockQueue.send).not.toHaveBeenCalled();
+    });
+
+    it("should use custom TTL for deduplication", async () => {
+      const mockQueue = { send: vi.fn().mockResolvedValue({ success: true }), sendBatch: vi.fn() };
+      const mockDedupeStore: DedupeStore = {
+        get: vi.fn().mockResolvedValue(null),
+        put: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const dispatcher = createDispatcher({
+        queue: mockQueue as any,
+        dedupeStore: mockDedupeStore,
+      });
+
+      await dispatcher.dispatch("task", {}, {
+        uniqueKey: "key-1",
+        uniqueFor: 600, // 10 minutes
+      });
+
+      expect(mockDedupeStore.put).toHaveBeenCalledWith(
+        "dedupe:task:key-1",
+        expect.any(String),
+        { expirationTtl: 600 }
+      );
+    });
+
+    it("should dispatch without uniqueKey even with dedupeStore", async () => {
+      const mockQueue = { send: vi.fn().mockResolvedValue({ success: true }), sendBatch: vi.fn() };
+      const mockDedupeStore: DedupeStore = {
+        get: vi.fn(),
+        put: vi.fn(),
+      };
+
+      const dispatcher = createDispatcher({
+        queue: mockQueue as any,
+        dedupeStore: mockDedupeStore,
+      });
+
+      const result = await dispatcher.dispatch("task", {});
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.dispatched).toBe(true);
+      }
+      expect(mockDedupeStore.get).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Priority Queues", () => {
+    it("should create dispatcher with priority queues", () => {
+      const mockHighQueue = { send: vi.fn(), sendBatch: vi.fn() };
+      const mockNormalQueue = { send: vi.fn(), sendBatch: vi.fn() };
+      const mockLowQueue = { send: vi.fn(), sendBatch: vi.fn() };
+
+      const dispatcher = createDispatcher({
+        priorityQueues: {
+          high: mockHighQueue as any,
+          normal: mockNormalQueue as any,
+          low: mockLowQueue as any,
+        },
+      });
+
+      expect(dispatcher).toBeInstanceOf(Dispatcher);
+    });
+
+    it("should route high priority jobs to high queue", async () => {
+      const mockHighQueue = { send: vi.fn().mockResolvedValue({ success: true }), sendBatch: vi.fn() };
+      const mockNormalQueue = { send: vi.fn(), sendBatch: vi.fn() };
+
+      const dispatcher = createDispatcher({
+        priorityQueues: {
+          high: mockHighQueue as any,
+          normal: mockNormalQueue as any,
+        },
+      });
+
+      await dispatcher.dispatch("urgent", { alert: true }, { priority: "high" });
+
+      expect(mockHighQueue.send).toHaveBeenCalled();
+      expect(mockNormalQueue.send).not.toHaveBeenCalled();
+    });
+
+    it("should route low priority jobs to low queue", async () => {
+      const mockNormalQueue = { send: vi.fn(), sendBatch: vi.fn() };
+      const mockLowQueue = { send: vi.fn().mockResolvedValue({ success: true }), sendBatch: vi.fn() };
+
+      const dispatcher = createDispatcher({
+        priorityQueues: {
+          normal: mockNormalQueue as any,
+          low: mockLowQueue as any,
+        },
+      });
+
+      await dispatcher.dispatch("cleanup", {}, { priority: "low" });
+
+      expect(mockLowQueue.send).toHaveBeenCalled();
+      expect(mockNormalQueue.send).not.toHaveBeenCalled();
+    });
+
+    it("should use default priority when not specified", async () => {
+      const mockHighQueue = { send: vi.fn(), sendBatch: vi.fn() };
+      const mockNormalQueue = { send: vi.fn().mockResolvedValue({ success: true }), sendBatch: vi.fn() };
+
+      const dispatcher = createDispatcher({
+        priorityQueues: {
+          high: mockHighQueue as any,
+          normal: mockNormalQueue as any,
+        },
+        defaultPriority: "normal",
+      });
+
+      await dispatcher.dispatch("task", {});
+
+      expect(mockNormalQueue.send).toHaveBeenCalled();
+      expect(mockHighQueue.send).not.toHaveBeenCalled();
+    });
+
+    it("should batch dispatch to respective priority queues", async () => {
+      const mockHighQueue = { send: vi.fn(), sendBatch: vi.fn().mockResolvedValue({ success: true }) };
+      const mockNormalQueue = { send: vi.fn(), sendBatch: vi.fn().mockResolvedValue({ success: true }) };
+
+      const dispatcher = createDispatcher({
+        priorityQueues: {
+          high: mockHighQueue as any,
+          normal: mockNormalQueue as any,
+        },
+        defaultPriority: "normal",
+      });
+
+      const result = await dispatcher.dispatchBatch([
+        { type: "urgent", payload: {}, options: { priority: "high" } },
+        { type: "normal-task", payload: {} },
+        { type: "another-urgent", payload: {}, options: { priority: "high" } },
+      ]);
+
+      expect(result.success).toBe(true);
+      expect(mockHighQueue.sendBatch).toHaveBeenCalled();
+      expect(mockNormalQueue.sendBatch).toHaveBeenCalled();
+
+      // Check high queue got 2 jobs
+      const highBatchCall = mockHighQueue.sendBatch.mock.calls[0][0];
+      expect(highBatchCall).toHaveLength(2);
+
+      // Check normal queue got 1 job
+      const normalBatchCall = mockNormalQueue.sendBatch.mock.calls[0][0];
+      expect(normalBatchCall).toHaveLength(1);
+    });
+  });
+
+  describe("Job Chaining", () => {
+    it("should dispatch chained jobs after successful processing", async () => {
+      const handler = vi.fn();
+      const registry = createRegistry().register("main-job", handler);
+
+      const mockChainQueue = { send: vi.fn().mockResolvedValue({ success: true }), sendBatch: vi.fn() };
+      const processor = createProcessor(registry, {
+        chainQueue: mockChainQueue as any,
+      });
+
+      const mockMessage = {
+        body: {
+          type: "main-job",
+          payload: { id: 1 },
+          meta: {
+            chain: [
+              { type: "follow-up", payload: { parentId: 1 } },
+              { type: "notify", payload: { parentId: 1 }, delay: 60 },
+            ],
+          },
+        },
+        ack: vi.fn(),
+        retry: vi.fn(),
+        attempts: 1,
+      };
+
+      await processor.process({ messages: [mockMessage], queue: "test" } as any, {});
+
+      expect(handler).toHaveBeenCalled();
+      expect(mockChainQueue.send).toHaveBeenCalledTimes(2);
+
+      // Check first chained job
+      const firstCall = mockChainQueue.send.mock.calls[0][0];
+      expect(firstCall.type).toBe("follow-up");
+
+      // Check second chained job has delay
+      const secondCall = mockChainQueue.send.mock.calls[1];
+      expect(secondCall[0].type).toBe("notify");
+      expect(secondCall[1]).toEqual({ delaySeconds: 60 });
+    });
+
+    it("should not dispatch chained jobs if handler fails", async () => {
+      const handler = vi.fn().mockRejectedValue(new Error("Handler failed"));
+      const registry = createRegistry().register("failing-job", handler);
+
+      const mockChainQueue = { send: vi.fn(), sendBatch: vi.fn() };
+      const processor = createProcessor(registry, {
+        chainQueue: mockChainQueue as any,
+      });
+
+      const mockMessage = {
+        body: {
+          type: "failing-job",
+          payload: {},
+          meta: {
+            chain: [{ type: "should-not-run", payload: {} }],
+            maxAttempts: 1,
+          },
+        },
+        ack: vi.fn(),
+        retry: vi.fn(),
+        attempts: 1,
+      };
+
+      await processor.process({ messages: [mockMessage], queue: "test" } as any, {});
+
+      expect(mockChainQueue.send).not.toHaveBeenCalled();
+    });
+
+    it("should warn if chained jobs exist but no chainQueue configured", async () => {
+      const handler = vi.fn();
+      const registry = createRegistry().register("job-with-chain", handler);
+      const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const processor = createProcessor(registry); // No chainQueue
+
+      const mockMessage = {
+        body: {
+          type: "job-with-chain",
+          payload: {},
+          meta: {
+            chain: [{ type: "chained", payload: {} }],
+          },
+        },
+        ack: vi.fn(),
+        retry: vi.fn(),
+        attempts: 1,
+      };
+
+      await processor.process({ messages: [mockMessage], queue: "test" } as any, {});
+
+      expect(consoleWarn).toHaveBeenCalledWith(
+        expect.stringContaining("no chainQueue configured")
+      );
+
+      consoleWarn.mockRestore();
     });
   });
 
