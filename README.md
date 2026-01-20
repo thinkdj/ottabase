@@ -12,6 +12,7 @@ ottabase/
 │   ├── ottaorm/       # Fat models, auto-migrations, CRUD
 │   ├── db/            # Drizzle D1 driver
 │   ├── cf/            # Cloudflare bindings (D1, KV, R2, Queues)
+│   ├── queue/         # Job queue (Laravel-style dispatch/handlers)
 │   ├── auth/          # Auth.js v5 with D1
 │   ├── state/         # Global state (Jotai)
 │   ├── ui-shadcn/     # shadcn/ui components
@@ -162,6 +163,7 @@ createTodo.mutate({ title: "New Todo" });
 | `@ottabase/ottaorm` | Fat models, CRUD, relationships, auto-migrations |
 | `@ottabase/db` | Drizzle D1 driver (`createD1Driver`) |
 | `@ottabase/cf` | D1, KV, R2, Queues, Rate Limiting wrappers |
+| `@ottabase/queue` | Job queue system (dispatch, handlers, deduplication, chaining, priority) |
 | `@ottabase/auth` | Auth.js v5 with D1 adapter |
 
 ### UI

@@ -139,6 +139,7 @@ export const {
 | `@ottabase/ottaorm` | Fat models, CRUD, relationships, auto-migrations |
 | `@ottabase/db` | Drizzle D1 driver (`createD1Driver`) |
 | `@ottabase/cf` | D1, KV, R2, Queues, Rate Limiting wrappers |
+| `@ottabase/queue` | Job queue (dispatch, handlers, deduplication, chaining, priority) |
 | `@ottabase/auth` | Auth.js v5 with D1 adapter |
 | `@ottabase/ui-shadcn` | shadcn/ui components |
 | `@ottabase/ui-mantine` | Mantine provider, pre-built themes |

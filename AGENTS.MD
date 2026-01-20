@@ -220,6 +220,30 @@ import { FileUploader, useFileUpload } from "@ottabase/ottaupload/client";
 import { uploadFileToR2 } from "@ottabase/ottaupload/server";
 ```
 
+### @ottabase/queue
+
+Laravel-style job queue for Cloudflare Queues.
+
+```typescript
+import { dispatch, createRegistry, createQueueHandler } from "@ottabase/queue";
+
+// Dispatch jobs
+await dispatch(env.MY_QUEUE, "send-email", { to: "user@example.com" });
+
+// With deduplication, chaining, priority
+await dispatcher.dispatch("sync-user", payload, {
+  uniqueKey: "user-123",     // Deduplication
+  priority: "high",          // Priority queues
+  then: [{ type: "notify" }] // Job chaining
+});
+
+// Process jobs
+const registry = createRegistry<Env>()
+  .register("send-email", async (job, ctx) => { /* handler */ });
+
+export default { queue: createQueueHandler(registry) };
+```
+
 ### @ottabase/cf-realtime
 
 WebSocket pub/sub (Pusher alternative).
