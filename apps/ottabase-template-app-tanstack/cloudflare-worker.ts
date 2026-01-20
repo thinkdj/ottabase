@@ -13,6 +13,12 @@ import {
   getRecentProcessedJobs,
   getFailedJobs,
   incrementDispatchStats,
+  getDLQJobs,
+  getDLQJob,
+  deleteDLQJob,
+  retryDLQJob,
+  retryAllDLQJobs,
+  purgeDLQ,
 } from "./ottabase/queue";
 import { createR2Client } from "@ottabase/cf/r2";
 import { createRateLimitingClient } from "@ottabase/cf/rate-limiting";
@@ -1653,11 +1659,71 @@ export default {
             totalDispatched: 0,
             totalProcessed: 0,
             totalFailed: 0,
+            totalDLQ: 0,
             byJobType: {},
             lastUpdated: new Date().toISOString(),
           }));
 
           return jsonResponse({ success: true, message: "Stats reset" });
+        }
+
+        // ================================================================
+        // Dead Letter Queue (DLQ) Endpoints
+        // ================================================================
+
+        // List DLQ jobs with pagination
+        if (url.pathname === "/api/admin/queues/dlq" && request.method === "GET") {
+          const limit = parseInt(url.searchParams.get("limit") || "50");
+          const cursor = url.searchParams.get("cursor") || undefined;
+          const result = await getDLQJobs(env, Math.min(limit, 100), cursor);
+          return jsonResponse(result);
+        }
+
+        // Retry all DLQ jobs
+        if (url.pathname === "/api/admin/queues/dlq/retry-all" && request.method === "POST") {
+          const result = await retryAllDLQJobs(env);
+          return jsonResponse(result);
+        }
+
+        // Purge all DLQ jobs
+        if (url.pathname === "/api/admin/queues/dlq" && request.method === "DELETE") {
+          const deleted = await purgeDLQ(env);
+          return jsonResponse({ success: true, deleted });
+        }
+
+        // Handle individual DLQ job operations: /api/admin/queues/dlq/:id
+        const dlqJobMatch = url.pathname.match(/^\/api\/admin\/queues\/dlq\/([^/]+)$/);
+        if (dlqJobMatch) {
+          const jobId = dlqJobMatch[1];
+
+          // Get single DLQ job
+          if (request.method === "GET") {
+            const job = await getDLQJob(env, jobId);
+            if (!job) {
+              return errorResponse("Job not found", 404, { code: "NOT_FOUND" });
+            }
+            return jsonResponse({ job });
+          }
+
+          // Delete DLQ job
+          if (request.method === "DELETE") {
+            const deleted = await deleteDLQJob(env, jobId);
+            if (!deleted) {
+              return errorResponse("Job not found", 404, { code: "NOT_FOUND" });
+            }
+            return jsonResponse({ success: true });
+          }
+        }
+
+        // Retry single DLQ job: /api/admin/queues/dlq/:id/retry
+        const dlqRetryMatch = url.pathname.match(/^\/api\/admin\/queues\/dlq\/([^/]+)\/retry$/);
+        if (dlqRetryMatch && request.method === "POST") {
+          const jobId = dlqRetryMatch[1];
+          const result = await retryDLQJob(env, jobId);
+          if (!result.success) {
+            return errorResponse(result.error || "Retry failed", 400, { code: "RETRY_FAILED" });
+          }
+          return jsonResponse({ success: true, message: "Job re-queued" });
         }
 
         return errorResponse("Not found", 404, { code: "NOT_FOUND" });
