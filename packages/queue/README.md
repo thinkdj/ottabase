@@ -220,10 +220,12 @@ interface JobContext<E> {
   env: E;           // Worker environment
   attempt: number;  // Current attempt
   message: Message; // Raw CF message
-  ack(): void;      // Mark complete
-  retry(): void;    // Retry job
+  ack(): void;      // Mark complete (prevents auto-ack)
+  retry(): void;    // Retry job (prevents auto-ack)
 }
 ```
+
+**Auto-ack behavior:** Jobs are automatically acknowledged (acked) when the handler completes successfully. If you call `ctx.ack()` or `ctx.retry()` explicitly, the auto-ack is disabled—so it's safe to call these methods and return normally without double-acking.
 
 ## License
 

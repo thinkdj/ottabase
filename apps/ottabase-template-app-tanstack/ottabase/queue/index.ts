@@ -197,13 +197,14 @@ export function createAppQueueRegistry() {
     });
 }
 
-// Track job start times for duration calculation
-const jobStartTimes = new Map<string, number>();
-
 /**
  * Create queue handler with stats tracking
  */
 export function createAppQueueHandler() {
+  // Track job start times for duration calculation
+  // Scoped to this handler instance to avoid module-level memory leaks
+  const jobStartTimes = new Map<string, number>();
+
   return createQueueHandler(createAppQueueRegistry(), {
     onBeforeProcess: async (job: QueuedJob) => {
       const jobId = job.meta?.id || "unknown";
