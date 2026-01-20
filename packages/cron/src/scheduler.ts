@@ -327,6 +327,11 @@ export function createTaskRepository<M extends {
     set(key: string, value: unknown): void;
     save(): Promise<void>;
   }>>;
+  find(id: string): Promise<{
+    get(key: string): unknown;
+    set(key: string, value: unknown): void;
+    save(): Promise<void>;
+  } | null>;
 }>(Model: M): TaskRepository {
   return {
     async getDueTasks(): Promise<ScheduledTaskRecord[]> {
@@ -351,8 +356,7 @@ export function createTaskRepository<M extends {
     },
 
     async markRunning(id: string): Promise<void> {
-      const tasks = await Model.due();
-      const task = tasks.find((t) => t.get("id") === id);
+      const task = await Model.find(id);
       if (task) {
         task.set("lastStatus", "running");
         await task.save();
@@ -360,8 +364,7 @@ export function createTaskRepository<M extends {
     },
 
     async markCompleted(id: string, nextRunAt: Date): Promise<void> {
-      const tasks = await Model.due();
-      const task = tasks.find((t) => t.get("id") === id);
+      const task = await Model.find(id);
       if (task) {
         task.set("lastStatus", "success");
         task.set("lastRunAt", new Date());
@@ -373,8 +376,7 @@ export function createTaskRepository<M extends {
     },
 
     async markFailed(id: string, error: string, nextRunAt: Date): Promise<void> {
-      const tasks = await Model.due();
-      const task = tasks.find((t) => t.get("id") === id);
+      const task = await Model.find(id);
       if (task) {
         task.set("lastStatus", "failed");
         task.set("lastRunAt", new Date());

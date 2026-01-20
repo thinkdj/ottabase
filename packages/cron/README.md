@@ -113,6 +113,42 @@ await ScheduledTask.create({
 crons = ["* * * * *"]  # Every minute tick
 ```
 
+### 4. Pushing to Queue from Scheduled Tasks
+
+Handlers can dispatch jobs to `@ottabase/queue` for heavy/retriable work:
+
+```typescript
+import { createScheduler } from "@ottabase/cron";
+import { dispatch } from "@ottabase/queue";
+
+const scheduler = createScheduler<Env>()
+  // Light work: run directly
+  .handler("cleanup:sessions", async ({ env }) => {
+    await env.DB.execute("DELETE FROM sessions WHERE expires < ?", [Date.now()]);
+  })
+  // Heavy work: push to queue for async processing with retries
+  .handler("process:reports", async ({ env, payload }) => {
+    // Dispatch to queue - will be processed by queue consumer with retries
+    await dispatch(env.QUEUE, "generate-report", {
+      reportId: payload.reportId,
+      userId: payload.userId,
+    });
+  })
+  // Batch work: fan out to multiple queue jobs
+  .handler("daily:notifications", async ({ env }) => {
+    const users = await getActiveUsers(env.DB);
+    for (const user of users) {
+      await dispatch(env.QUEUE, "send-notification", { userId: user.id });
+    }
+  });
+```
+
+This pattern keeps cron handlers fast (just dispatch) while leveraging queue for:
+- Automatic retries on failure
+- Parallel processing
+- Rate limiting
+- Dead letter queue for failed jobs
+
 ## Cron Parser Utilities
 
 ```typescript
