@@ -12,6 +12,7 @@ import {
   getQueueStats,
   getRecentProcessedJobs,
   getFailedJobs,
+  incrementDispatchStats,
 } from "./ottabase/queue";
 import { createR2Client } from "@ottabase/cf/r2";
 import { createRateLimitingClient } from "@ottabase/cf/rate-limiting";
@@ -1406,6 +1407,9 @@ export default {
               }
             }
 
+            // Increment dispatch stats
+            await incrementDispatchStats(env, body.type);
+
             return jsonResponse({
               success: true,
               message: `Job dispatched: ${body.type}`,
@@ -1448,6 +1452,18 @@ export default {
               }
             }
 
+            // Increment dispatch stats for each job type
+            const jobTypeCounts = jobs.reduce(
+              (acc, job) => {
+                acc[job.type] = (acc[job.type] || 0) + 1;
+                return acc;
+              },
+              {} as Record<string, number>
+            );
+            for (const [jobType, count] of Object.entries(jobTypeCounts)) {
+              await incrementDispatchStats(env, jobType, count);
+            }
+
             return jsonResponse({
               success: true,
               message: `Dispatched ${body.batch.length} jobs to queue`,
@@ -1486,6 +1502,9 @@ export default {
                 // ignore
               }
             }
+
+            // Increment dispatch stats
+            await incrementDispatchStats(env, jobType);
 
             return jsonResponse({
               success: true,

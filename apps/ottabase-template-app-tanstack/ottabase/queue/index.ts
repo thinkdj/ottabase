@@ -96,6 +96,24 @@ async function updateStats(
 }
 
 /**
+ * Increment dispatch stats when jobs are dispatched
+ * Call this from dispatch endpoints to track totalDispatched accurately
+ */
+export async function incrementDispatchStats(
+  env: CloudflareEnv,
+  jobType: string,
+  count = 1
+): Promise<void> {
+  await updateStats(env, (stats) => {
+    stats.totalDispatched += count;
+    if (!stats.byJobType[jobType]) {
+      stats.byJobType[jobType] = { dispatched: 0, processed: 0, failed: 0 };
+    }
+    stats.byJobType[jobType].dispatched += count;
+  });
+}
+
+/**
  * Store processed job record
  */
 async function storeProcessedJob(
