@@ -251,14 +251,14 @@ export function AdminQueuePage() {
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Pending Jobs</CardDescription>
-            <CardTitle className="text-3xl">{overview?.pendingCount ?? 0}</CardTitle>
+            <CardDescription>Total Dispatched</CardDescription>
+            <CardTitle className="text-3xl">{stats?.totalDispatched ?? 0}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground">Waiting to be processed</p>
+            <p className="text-xs text-muted-foreground">Jobs sent to queue</p>
           </CardContent>
         </Card>
 
@@ -289,6 +289,16 @@ export function AdminQueuePage() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">Awaiting manual retry</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Success Rate</CardDescription>
+            <CardTitle className="text-3xl">{successRate}%</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">Completion rate</p>
           </CardContent>
         </Card>
       </div>

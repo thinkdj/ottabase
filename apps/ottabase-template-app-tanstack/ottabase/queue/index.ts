@@ -26,9 +26,6 @@ const DLQ_PREFIX = "queue:dlq:";
 const HISTORY_TTL = 86400; // 24 hours for processed/failed history
 const DLQ_TTL = 604800; // 7 days for dead letter queue
 
-// Default max retries before moving to DLQ
-const DEFAULT_MAX_RETRIES = 3;
-
 /**
  * Queue statistics stored in KV
  */
