@@ -54,10 +54,9 @@
       "@ottabase/utils": [
         "./packages/utils/src"
       ],
-      /* "@ottabase/ui-shadcn": ["./packages/ui-shadcn/src"],
-      "@ottabase/ui-shadcn/*": [
-        "./packages/ui-shadcn/src/*"
-      ] */
+      "@ottabase/cron": [
+        "./packages/cron/src"
+      ]
     }
   },
   "include": [
@@ -97,6 +96,9 @@
     },
     {
       "path": "./packages/ui-shadcn"
+    },
+    {
+      "path": "./packages/cron"
     }
   ]
 }
