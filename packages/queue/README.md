@@ -39,15 +39,13 @@ await dispatchBatch(env.MY_QUEUE, [
 ```ts
 import { createRegistry, createQueueHandler } from "@ottabase/queue";
 
-// Create handler registry
 const registry = createRegistry<Env>()
   .register("send-email", async (job, ctx) => {
     const { to, subject } = job.payload;
     await sendEmail(to, subject);
   })
   .register("process-order", async (job, ctx) => {
-    const { orderId } = job.payload;
-    await processOrder(orderId, ctx.env.DB);
+    await processOrder(job.payload.orderId, ctx.env.DB);
   });
 
 // Export in worker
@@ -57,7 +55,97 @@ export default {
 };
 ```
 
-### With Lifecycle Hooks
+## Deduplication
+
+Prevent duplicate jobs within a time window using KV:
+
+```ts
+import { createDispatcher } from "@ottabase/queue";
+
+const dispatcher = createDispatcher({
+  queue: env.MY_QUEUE,
+  dedupeStore: env.KV, // Cloudflare KV namespace
+});
+
+// Won't dispatch if same uniqueKey sent within 5 minutes (default)
+await dispatcher.dispatch("sync-user", { userId: 123 }, {
+  uniqueKey: "user-123",
+  uniqueFor: 300, // TTL in seconds (optional, default 300)
+});
+
+// Result shows if job was actually dispatched
+const result = await dispatcher.dispatch("sync-user", { userId: 123 }, {
+  uniqueKey: "user-123",
+});
+// result.data.dispatched === false (duplicate skipped)
+```
+
+## Job Chaining
+
+Dispatch follow-up jobs automatically after success:
+
+```ts
+await dispatch(env.MY_QUEUE, "process-order", { orderId: 123 }, {
+  then: [
+    { type: "send-receipt", payload: { orderId: 123 } },
+    { type: "notify-warehouse", payload: { orderId: 123 }, delay: 60 },
+    { type: "schedule-followup", payload: { orderId: 123 }, delay: 86400 },
+  ],
+});
+```
+
+Enable chaining in processor:
+
+```ts
+const handler = createQueueHandler(registry, {
+  chainQueue: env.MY_QUEUE, // Required for chaining
+});
+```
+
+## Priority Queues
+
+Route jobs to different queues based on priority:
+
+```ts
+import { createDispatcher } from "@ottabase/queue";
+
+// Configure with multiple queues
+const dispatcher = createDispatcher({
+  priorityQueues: {
+    high: env.HIGH_PRIORITY_QUEUE,
+    normal: env.NORMAL_QUEUE,
+    low: env.LOW_PRIORITY_QUEUE,
+  },
+  defaultPriority: "normal",
+});
+
+// Dispatch with priority
+await dispatcher.dispatch("urgent-alert", { message: "Server down!" }, {
+  priority: "high",
+});
+
+await dispatcher.dispatch("cleanup-task", { older: 30 }, {
+  priority: "low",
+});
+```
+
+In `wrangler.toml`:
+
+```toml
+[[queues.producers]]
+queue = "high-priority-queue"
+binding = "HIGH_PRIORITY_QUEUE"
+
+[[queues.producers]]
+queue = "normal-queue"
+binding = "NORMAL_QUEUE"
+
+[[queues.producers]]
+queue = "low-priority-queue"
+binding = "LOW_PRIORITY_QUEUE"
+```
+
+## Lifecycle Hooks
 
 ```ts
 const handler = createQueueHandler(registry, {
@@ -68,12 +156,13 @@ const handler = createQueueHandler(registry, {
     console.log(`Completed: ${job.type}`);
   },
   onFailure: async (job, error, env) => {
-    console.error(`Failed: ${job.type}`, error.message);
+    await env.KV.put(`failed:${job.meta?.id}`, JSON.stringify({ job, error: error.message }));
   },
+  chainQueue: env.MY_QUEUE, // Enable job chaining
 });
 ```
 
-## API
+## API Reference
 
 ### Dispatching
 
@@ -92,17 +181,21 @@ const handler = createQueueHandler(registry, {
 | `registry.setDefault(handler)` | Handle unknown types |
 | `createQueueHandler(registry, options?)` | Create worker export |
 
-### Options
+### DispatchOptions
 
 ```ts
 interface DispatchOptions {
-  delay?: number;      // 0-43200 seconds
-  maxAttempts?: number;
+  delay?: number;        // 0-43200 seconds
+  maxAttempts?: number;  // Default: 3
   tags?: string[];
+  priority?: "high" | "normal" | "low";
+  uniqueKey?: string;    // Deduplication key
+  uniqueFor?: number;    // Dedup TTL (default: 300s)
+  then?: ChainedJob[];   // Jobs to dispatch on success
 }
 ```
 
-## Job Structure
+### Job Structure
 
 ```ts
 interface QueuedJob<T> {
@@ -112,13 +205,15 @@ interface QueuedJob<T> {
     id: string;
     dispatchedAt: string;
     attempts: number;
-    maxAttempts: number;
-    tags: string[];
+    maxAttempts?: number;
+    tags?: string[];
+    priority?: "high" | "normal" | "low";
+    chain?: ChainedJob[];
   };
 }
 ```
 
-## Handler Context
+### Handler Context
 
 ```ts
 interface JobContext<E> {

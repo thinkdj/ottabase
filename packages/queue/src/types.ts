@@ -6,6 +6,21 @@
 import type { Queue, MessageBatch, Message } from "@cloudflare/workers-types";
 
 /**
+ * Job priority levels
+ */
+export type JobPriority = "high" | "normal" | "low";
+
+/**
+ * Chained job definition - jobs to dispatch after current job succeeds
+ */
+export interface ChainedJob<T = unknown> {
+  type: string;
+  payload: T;
+  /** Delay in seconds before processing the chained job */
+  delay?: number;
+}
+
+/**
  * Represents a queued job payload
  */
 export interface QueuedJob<T = unknown> {
@@ -31,6 +46,10 @@ export interface JobMeta {
   maxAttempts?: number;
   /** Custom tags for filtering/tracking */
   tags?: string[];
+  /** Jobs to dispatch after this job succeeds */
+  chain?: ChainedJob[];
+  /** Priority level */
+  priority?: JobPriority;
 }
 
 /**
@@ -43,6 +62,18 @@ export interface DispatchOptions {
   maxAttempts?: number;
   /** Custom tags for filtering/tracking */
   tags?: string[];
+  /** Job priority (requires priority queues configured) */
+  priority?: JobPriority;
+
+  // Deduplication options
+  /** Unique key for deduplication (combined with job type) */
+  uniqueKey?: string;
+  /** Time window in seconds for deduplication (default: 300 = 5 min) */
+  uniqueFor?: number;
+
+  // Job chaining
+  /** Jobs to dispatch after this job succeeds */
+  then?: ChainedJob[];
 }
 
 /**
@@ -51,6 +82,23 @@ export interface DispatchOptions {
 export interface QueueConfig {
   /** Cloudflare Queue binding */
   queue: Queue;
+}
+
+/**
+ * Priority queue configuration
+ */
+export interface PriorityQueues {
+  high?: Queue;
+  normal?: Queue;
+  low?: Queue;
+}
+
+/**
+ * KV namespace interface for deduplication
+ */
+export interface DedupeStore {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
 }
 
 /**
@@ -111,6 +159,10 @@ export interface ProcessorOptions<E = unknown> {
   onBeforeProcess?: (job: QueuedJob, env?: E) => Promise<void> | void;
   /** Called after successfully processing each job */
   onAfterProcess?: (job: QueuedJob, env?: E) => Promise<void> | void;
+  /** Queue for dispatching chained jobs (required for job chaining) */
+  chainQueue?: Queue;
+  /** Priority queues for chained jobs */
+  chainPriorityQueues?: PriorityQueues;
 }
 
 // Re-export Cloudflare types for convenience

@@ -12,8 +12,12 @@ import type {
   ProcessorOptions,
   MessageBatch,
   Message,
+  ChainedJob,
+  Queue,
+  PriorityQueues,
 } from "./types";
 import type { QueueMessage, QueueMessageBatch } from "./adapters/types";
+import { createCloudflareAdapter } from "./adapters/cloudflare";
 
 /**
  * Job handler registry
@@ -187,6 +191,64 @@ export class QueueProcessor<E = unknown> {
   }
 
   /**
+   * Dispatch chained jobs after successful processing
+   */
+  private async dispatchChainedJobs(
+    chainedJobs: ChainedJob[],
+    env: E
+  ): Promise<void> {
+    const queue = this.options.chainQueue;
+    const priorityQueues = this.options.chainPriorityQueues;
+
+    if (!queue && !priorityQueues) {
+      console.warn(
+        "[Queue] Job has chained jobs but no chainQueue configured, skipping chain dispatch"
+      );
+      return;
+    }
+
+    for (const chainedJob of chainedJobs) {
+      try {
+        // Determine which queue to use based on priority
+        let targetQueue: Queue | undefined = queue;
+
+        if (priorityQueues) {
+          // For chained jobs, we don't have priority info, so use normal queue
+          targetQueue = priorityQueues.normal ?? queue;
+        }
+
+        if (!targetQueue) {
+          console.warn(`[Queue] No queue available for chained job: ${chainedJob.type}`);
+          continue;
+        }
+
+        const adapter = createCloudflareAdapter({ queue: targetQueue });
+
+        const job: QueuedJob = {
+          type: chainedJob.type,
+          payload: chainedJob.payload,
+          meta: {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+            dispatchedAt: new Date().toISOString(),
+            attempts: 0,
+          },
+        };
+
+        await adapter.send(job, {
+          delaySeconds: chainedJob.delay,
+        });
+
+        console.log(`[Queue] Dispatched chained job: ${chainedJob.type}`);
+      } catch (error) {
+        console.error(
+          `[Queue] Failed to dispatch chained job ${chainedJob.type}:`,
+          error
+        );
+      }
+    }
+  }
+
+  /**
    * Process a normalized message
    */
   private async processNormalizedMessage(
@@ -234,6 +296,11 @@ export class QueueProcessor<E = unknown> {
       // After hook
       if (this.options.onAfterProcess) {
         await this.options.onAfterProcess(job, env);
+      }
+
+      // Dispatch chained jobs on success
+      if (job.meta?.chain && job.meta.chain.length > 0) {
+        await this.dispatchChainedJobs(job.meta.chain, env);
       }
 
       // Auto-ack if not already acked/retried
