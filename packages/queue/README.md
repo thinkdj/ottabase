@@ -156,11 +156,47 @@ const handler = createQueueHandler(registry, {
     console.log(`Completed: ${job.type}`);
   },
   onFailure: async (job, error, env) => {
-    await env.KV.put(`failed:${job.meta?.id}`, JSON.stringify({ job, error: error.message }));
+    // Store in Dead Letter Queue for manual retry
+    await storeToDLQ(env.KV, job, error);
   },
   chainQueue: env.MY_QUEUE, // Enable job chaining
 });
 ```
+
+## Dead Letter Queue (DLQ)
+
+Use `onFailure` hook to store failed jobs for manual retry:
+
+```ts
+// Store failed job with full payload for retry
+async function storeToDLQ(kv: KVNamespace, job: QueuedJob, error: Error) {
+  const key = `dlq:${Date.now()}:${job.meta?.id}`;
+  await kv.put(key, JSON.stringify({
+    id: job.meta?.id,
+    type: job.type,
+    payload: job.payload,
+    error: error.message,
+    failedAt: new Date().toISOString(),
+    attempts: job.meta?.attempts || 1,
+  }), { expirationTtl: 604800 }); // 7 days
+}
+
+// Retry a job from DLQ
+async function retryFromDLQ(queue: Queue, kv: KVNamespace, jobId: string) {
+  const job = await kv.get(`dlq:${jobId}`, "json");
+  if (!job) return { success: false, error: "Not found" };
+
+  await dispatch(queue, job.type, job.payload);
+  await kv.delete(`dlq:${jobId}`);
+  return { success: true };
+}
+```
+
+See `ottabase/queue/index.ts` in the template app for a complete DLQ implementation with:
+- Paginated listing (handles 100k+ jobs)
+- Single/bulk retry
+- Purge functionality
+- Admin UI integration
 
 ## API Reference
 
