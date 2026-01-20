@@ -28,6 +28,15 @@
  * ]);
  * ```
  *
+ * @example Using adapters (advanced)
+ * ```ts
+ * import { createDispatcher } from "@ottabase/queue";
+ * import { createCloudflareAdapter } from "@ottabase/queue/adapters";
+ *
+ * const adapter = createCloudflareAdapter({ queue: env.MY_QUEUE });
+ * const dispatcher = createDispatcher({ adapter });
+ * ```
+ *
  * @example Processing jobs
  * ```ts
  * import { createRegistry, createQueueHandler } from "@ottabase/queue/processor";
@@ -59,6 +68,7 @@ export {
   dispatch,
   dispatchBatch,
 } from "./job";
+export type { DispatcherConfig } from "./job";
 
 // Queue processing
 export {
@@ -85,3 +95,12 @@ export type {
   MessageBatch,
   Message,
 } from "./types";
+
+// Adapter types (re-export for convenience)
+export type {
+  QueueAdapter,
+  AdapterResult,
+  SendOptions,
+  QueueMessage,
+  QueueMessageBatch,
+} from "./adapters/types";

@@ -1,9 +1,8 @@
 /**
  * Job Module
- * Create and dispatch jobs to Cloudflare Queues
+ * Create and dispatch jobs to queues using adapters
  */
 
-import { createQueuesClient } from "@ottabase/cf/queues";
 import type {
   QueuedJob,
   DispatchOptions,
@@ -11,6 +10,8 @@ import type {
   QueueResult,
   JobMeta,
 } from "./types";
+import type { QueueAdapter } from "./adapters/types";
+import { createCloudflareAdapter } from "./adapters/cloudflare";
 
 /**
  * Generate a unique job ID
@@ -49,14 +50,27 @@ export function createJob<T = unknown>(
 }
 
 /**
+ * Dispatcher configuration
+ * Supports both adapter-based and legacy queue-based config
+ */
+export type DispatcherConfig =
+  | { adapter: QueueAdapter }
+  | QueueConfig;
+
+/**
  * Queue dispatcher class
- * Handles sending jobs to a Cloudflare Queue
+ * Handles sending jobs to a queue using an adapter
  */
 export class Dispatcher {
-  private queueClient: ReturnType<typeof createQueuesClient<QueuedJob>>;
+  private adapter: QueueAdapter;
 
-  constructor(config: QueueConfig) {
-    this.queueClient = createQueuesClient<QueuedJob>({ queue: config.queue });
+  constructor(config: DispatcherConfig) {
+    if ("adapter" in config) {
+      this.adapter = config.adapter;
+    } else {
+      // Backwards compatibility: create CloudflareAdapter from queue binding
+      this.adapter = createCloudflareAdapter({ queue: config.queue });
+    }
   }
 
   /**
@@ -69,7 +83,7 @@ export class Dispatcher {
   ): Promise<QueueResult> {
     const job = createJob(type, payload, options);
 
-    const result = await this.queueClient.send(job, {
+    const result = await this.adapter.send(job, {
       delaySeconds: options?.delay,
     });
 
@@ -91,7 +105,7 @@ export class Dispatcher {
       options: j.options?.delay ? { delaySeconds: j.options.delay } : undefined,
     }));
 
-    const result = await this.queueClient.sendBatch(queuedJobs);
+    const result = await this.adapter.sendBatch(queuedJobs);
 
     if (!result.success) {
       return { success: false, error: result.error };
@@ -101,17 +115,17 @@ export class Dispatcher {
   }
 
   /**
-   * Get the raw queue client for advanced usage
+   * Get the adapter instance
    */
-  getRawClient() {
-    return this.queueClient;
+  getAdapter(): QueueAdapter {
+    return this.adapter;
   }
 }
 
 /**
  * Create a dispatcher instance
  */
-export function createDispatcher(config: QueueConfig): Dispatcher {
+export function createDispatcher(config: DispatcherConfig): Dispatcher {
   return new Dispatcher(config);
 }
 

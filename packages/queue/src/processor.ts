@@ -13,6 +13,7 @@ import type {
   MessageBatch,
   Message,
 } from "./types";
+import type { QueueMessage, QueueMessageBatch } from "./adapters/types";
 
 /**
  * Job handler registry
@@ -82,6 +83,16 @@ export function createRegistry<E = unknown>(): HandlerRegistry<E> {
 }
 
 /**
+ * Normalized message interface (works with both CF and adapter messages)
+ */
+interface NormalizedMessage {
+  body: QueuedJob;
+  attempts: number;
+  ack: () => void;
+  retry: () => void;
+}
+
+/**
  * Queue Processor
  * Processes incoming queue batches using registered handlers
  */
@@ -95,7 +106,7 @@ export class QueueProcessor<E = unknown> {
   }
 
   /**
-   * Process a batch of queue messages
+   * Process a batch of queue messages (Cloudflare MessageBatch)
    * This is the main entry point for the Cloudflare Worker queue handler
    */
   async process(batch: MessageBatch<QueuedJob>, env: E): Promise<void> {
@@ -103,25 +114,85 @@ export class QueueProcessor<E = unknown> {
       batch.messages.map((message) => this.processMessage(message, env))
     );
 
-    // Log any failures (but don't throw - let individual message handling decide retry/ack)
+    this.logFailures(results, batch.messages.length);
+  }
+
+  /**
+   * Process a batch using adapter's generic message format
+   * Use this when working with adapters other than Cloudflare
+   */
+  async processAdapterBatch(
+    batch: QueueMessageBatch<QueuedJob>,
+    env: E
+  ): Promise<void> {
+    const results = await Promise.allSettled(
+      batch.messages.map((message) => this.processAdapterMessage(message, env))
+    );
+
+    this.logFailures(results, batch.messages.length);
+  }
+
+  private logFailures(
+    results: PromiseSettledResult<void>[],
+    total: number
+  ): void {
     const failures = results.filter(
       (r): r is PromiseRejectedResult => r.status === "rejected"
     );
 
     if (failures.length > 0) {
       console.error(
-        `[Queue] ${failures.length}/${batch.messages.length} messages failed:`,
+        `[Queue] ${failures.length}/${total} messages failed:`,
         failures.map((f) => f.reason)
       );
     }
   }
 
   /**
-   * Process a single message
+   * Process a single Cloudflare message
    */
   private async processMessage(
     message: Message<QueuedJob>,
     env: E
+  ): Promise<void> {
+    return this.processNormalizedMessage(
+      {
+        body: message.body,
+        attempts: message.attempts,
+        ack: () => message.ack(),
+        retry: () => message.retry(),
+      },
+      env,
+      message // Pass original for JobContext
+    );
+  }
+
+  /**
+   * Process a single adapter message
+   */
+  private async processAdapterMessage(
+    message: QueueMessage<QueuedJob>,
+    env: E
+  ): Promise<void> {
+    return this.processNormalizedMessage(
+      {
+        body: message.body,
+        attempts: message.attempts,
+        ack: () => message.ack(),
+        retry: () => message.retry(),
+      },
+      env,
+      undefined // No original CF message for adapter messages
+    );
+  }
+
+  /**
+   * Process a normalized message
+   */
+  private async processNormalizedMessage(
+    message: NormalizedMessage,
+    env: E,
+    originalMessage?: Message<QueuedJob>
   ): Promise<void> {
     const job = message.body;
 
@@ -144,7 +215,7 @@ export class QueueProcessor<E = unknown> {
 
     // Create context
     const ctx: JobContext<E> = {
-      message,
+      message: originalMessage ?? (message as unknown as Message<QueuedJob>),
       env,
       attempt: message.attempts,
       ack: () => message.ack(),
