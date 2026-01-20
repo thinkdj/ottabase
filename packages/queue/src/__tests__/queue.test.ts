@@ -523,6 +523,48 @@ describe("Queue Package", () => {
       expect(mockMessage.ack).not.toHaveBeenCalled();
     });
 
+    it("should not double-ack when handler explicitly calls ack", async () => {
+      const handler = vi.fn().mockImplementation((job, ctx) => {
+        ctx.ack(); // Handler explicitly acks
+      });
+      const registry = createRegistry().register("explicit-ack", handler);
+      const processor = createProcessor(registry);
+
+      const mockMessage = {
+        body: { type: "explicit-ack", payload: {} },
+        ack: vi.fn(),
+        retry: vi.fn(),
+        attempts: 1,
+      };
+
+      await processor.process({ messages: [mockMessage], queue: "test" } as any, {});
+
+      // Should only be called once (by handler), not twice
+      expect(mockMessage.ack).toHaveBeenCalledTimes(1);
+    });
+
+    it("should respect handler explicit retry and not auto-ack", async () => {
+      const handler = vi.fn().mockImplementation((job, ctx) => {
+        ctx.retry(); // Handler wants to retry later
+        // Returns normally without throwing
+      });
+      const registry = createRegistry().register("explicit-retry", handler);
+      const processor = createProcessor(registry);
+
+      const mockMessage = {
+        body: { type: "explicit-retry", payload: {} },
+        ack: vi.fn(),
+        retry: vi.fn(),
+        attempts: 1,
+      };
+
+      await processor.process({ messages: [mockMessage], queue: "test" } as any, {});
+
+      // Should retry (called by handler), not ack
+      expect(mockMessage.retry).toHaveBeenCalledTimes(1);
+      expect(mockMessage.ack).not.toHaveBeenCalled();
+    });
+
     it("should ack and call onFailure after max attempts", async () => {
       const handler = vi.fn().mockRejectedValue(new Error("Handler failed"));
       const onFailure = vi.fn();

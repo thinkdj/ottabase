@@ -275,13 +275,22 @@ export class QueueProcessor<E = unknown> {
       return;
     }
 
-    // Create context
+    // Track if handler explicitly called ack/retry
+    let handled = false;
+
+    // Create context with tracked ack/retry
     const ctx: JobContext<E> = {
       message: originalMessage ?? (message as unknown as Message<QueuedJob>),
       env,
       attempt: message.attempts,
-      ack: () => message.ack(),
-      retry: () => message.retry(),
+      ack: () => {
+        handled = true;
+        message.ack();
+      },
+      retry: () => {
+        handled = true;
+        message.retry();
+      },
     };
 
     try {
@@ -298,13 +307,15 @@ export class QueueProcessor<E = unknown> {
         await this.options.onAfterProcess(job, env);
       }
 
-      // Dispatch chained jobs on success
-      if (job.meta?.chain && job.meta.chain.length > 0) {
+      // Dispatch chained jobs on success (only if not retrying)
+      if (!handled && job.meta?.chain && job.meta.chain.length > 0) {
         await this.dispatchChainedJobs(job.meta.chain, env);
       }
 
-      // Auto-ack if not already acked/retried
-      message.ack();
+      // Auto-ack only if handler didn't explicitly call ack/retry
+      if (!handled) {
+        message.ack();
+      }
     } catch (error) {
       const maxAttempts =
         registered?.options?.maxAttempts ?? job.meta?.maxAttempts ?? 3;
