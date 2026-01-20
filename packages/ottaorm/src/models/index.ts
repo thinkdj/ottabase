@@ -34,3 +34,11 @@ export {
   type VerificationTokenType,
 } from "./VerificationToken";
 
+// Cron scheduler
+export {
+  ScheduledTask,
+  scheduledTasksTable,
+  type NewScheduledTaskType,
+  type ScheduledTaskType,
+} from "./ScheduledTask";
+

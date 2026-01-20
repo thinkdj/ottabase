@@ -6,7 +6,7 @@ import {
   CardTitle,
 } from "@ottabase/ui-shadcn";
 import { Link } from "@tanstack/react-router";
-import { Activity, Database, Layers, UserPlus } from "lucide-react";
+import { Activity, Clock, Database, Layers, UserPlus } from "lucide-react";
 
 export function AdminIndexPage() {
   const adminLinks = [
@@ -32,6 +32,14 @@ export function AdminIndexPage() {
         "Monitor background job queues, view processing stats, and manage failed jobs.",
       href: "/admin/queues",
       icon: Layers,
+      disabled: false,
+    },
+    {
+      title: "Scheduled Tasks",
+      description:
+        "Manage DB-driven cron jobs, view run history, and schedule new tasks.",
+      href: "/admin/cron",
+      icon: Clock,
       disabled: false,
     },
     {

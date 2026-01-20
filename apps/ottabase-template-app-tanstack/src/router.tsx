@@ -551,6 +551,17 @@ const adminQueueRoute = new Route({
   ),
 });
 
+// Admin Cron/Scheduled Tasks route
+const adminCronRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/admin/cron",
+  component: lazyRouteComponent(() =>
+    import("@/pages/admin/AdminCronPage").then((m) => ({
+      default: m.AdminCronPage,
+    })),
+  ),
+});
+
 demoLayoutRoute.addChildren([
   demoIndexRoute,
   demoMantineRoute,
@@ -589,6 +600,7 @@ const routeTree = rootRoute.addChildren([
   adminRoute,
   adminReferralsRoute,
   adminQueueRoute,
+  adminCronRoute,
 ]);
 
 const browserHistory = createBrowserHistory();
