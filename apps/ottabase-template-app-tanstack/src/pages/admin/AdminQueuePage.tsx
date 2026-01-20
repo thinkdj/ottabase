@@ -321,43 +321,25 @@ export function AdminQueuePage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Pending Jobs</CardTitle>
-              <CardDescription>Jobs waiting to be processed (from KV storage)</CardDescription>
+              <CardDescription>Jobs waiting to be processed</CardDescription>
             </CardHeader>
             <CardContent>
               {loadingPending ? (
                 <p className="text-sm text-muted-foreground">Loading...</p>
-              ) : pendingData?.jobs.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No pending jobs</p>
-              ) : (
-                <div className="space-y-2">
-                  {pendingData?.jobs.map((job) => (
-                    <div key={job.key} className="rounded-lg border p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="mb-1 flex items-center gap-2">
-                            <span className="font-mono text-sm font-medium">
-                              {job.action || "unknown"}
-                            </span>
-                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                              {job.type}
-                            </span>
-                          </div>
-                          {job.userId && (
-                            <p className="text-xs text-muted-foreground">User: {job.userId}</p>
-                          )}
-                          {job.data && (
-                            <pre className="mt-2 overflow-x-auto rounded bg-muted p-2 text-xs">
-                              {JSON.stringify(job.data, null, 2)}
-                            </pre>
-                          )}
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(job.sentAt).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+              ) : (overview?.pendingCount ?? 0) > 0 ? (
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
+                    <p className="text-sm text-blue-800">
+                      <strong>{overview?.pendingCount} job(s)</strong> waiting in queue
+                    </p>
+                    <p className="mt-1 text-xs text-blue-600">
+                      Cloudflare Queues don't provide an API to inspect pending messages.
+                      Job details are only available after processing.
+                    </p>
+                  </div>
                 </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No pending jobs in queue</p>
               )}
             </CardContent>
           </Card>
