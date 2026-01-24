@@ -250,13 +250,17 @@ export class ScheduledTask extends BaseModel {
   }
 
   /**
-   * Get tasks that are due to run (nextRunAt <= now)
+   * Get tasks that are due to run (nextRunAt <= now and not already running)
+   * Excludes tasks with lastStatus="running" to prevent race conditions
    */
   static async due() {
     const now = new Date();
     const tasks = await this.where({ isActive: true });
     return tasks.filter((task) => {
       const nextRun = task.get("nextRunAt") as Date | null;
+      const lastStatus = task.get("lastStatus") as string | null;
+      // Skip if already running (prevents race condition with concurrent workers)
+      if (lastStatus === "running") return false;
       return nextRun && nextRun <= now;
     });
   }

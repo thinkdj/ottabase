@@ -97,7 +97,11 @@ export interface ScheduledTaskRecord {
 
 export interface TaskRepository {
   getDueTasks(): Promise<ScheduledTaskRecord[]>;
-  markRunning(id: string): Promise<void>;
+  /**
+   * Attempt to mark task as running (acquire lock).
+   * Returns true if successful, false if another worker got there first.
+   */
+  markRunning(id: string): Promise<boolean>;
   markCompleted(id: string, nextRunAt: Date): Promise<void>;
   markFailed(id: string, error: string, nextRunAt: Date): Promise<void>;
 }
@@ -233,8 +237,13 @@ export class Scheduler<E = unknown> {
     };
 
     try {
-      // Mark as running
-      await repository.markRunning(task.id);
+      // Attempt to acquire lock by marking as running
+      const acquired = await repository.markRunning(task.id);
+      if (!acquired) {
+        // Another worker got there first
+        this.logger.info(`Task "${task.name}" already running, skipping`);
+        return false;
+      }
       this.logger.info(`Running task "${task.name}"`);
 
       // Before hook
@@ -355,12 +364,19 @@ export function createTaskRepository<M extends {
       }));
     },
 
-    async markRunning(id: string): Promise<void> {
+    async markRunning(id: string): Promise<boolean> {
       const task = await Model.find(id);
-      if (task) {
-        task.set("lastStatus", "running");
-        await task.save();
+      if (!task) return false;
+
+      // Check if already running (another worker got there first)
+      const currentStatus = task.get("lastStatus") as string | null;
+      if (currentStatus === "running") {
+        return false;
       }
+
+      task.set("lastStatus", "running");
+      await task.save();
+      return true;
     },
 
     async markCompleted(id: string, nextRunAt: Date): Promise<void> {

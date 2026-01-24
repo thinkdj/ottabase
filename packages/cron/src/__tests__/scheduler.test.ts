@@ -29,7 +29,7 @@ const createMockTask = (overrides: Partial<ScheduledTaskRecord> = {}): Scheduled
 // Mock repository
 const createMockRepository = (tasks: ScheduledTaskRecord[] = []): TaskRepository => ({
   getDueTasks: vi.fn().mockResolvedValue(tasks),
-  markRunning: vi.fn().mockResolvedValue(undefined),
+  markRunning: vi.fn().mockResolvedValue(true), // Default: lock acquired
   markCompleted: vi.fn().mockResolvedValue(undefined),
   markFailed: vi.fn().mockResolvedValue(undefined),
 });
@@ -324,6 +324,50 @@ describe("Scheduler", () => {
       await expect(
         scheduler.runTask("unknown", mockEnv)
       ).rejects.toThrow("No handler registered for task: unknown");
+    });
+  });
+
+  describe("race condition handling", () => {
+    it("should skip task if another worker acquired lock", async () => {
+      const handlerFn = vi.fn();
+      const task = createMockTask();
+      const repository = createMockRepository([task]);
+      const ctx = createMockCtx();
+
+      // Simulate another worker already acquired the lock
+      (repository.markRunning as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+
+      const scheduler = createScheduler<TestEnv>().handler(
+        "test:handler",
+        handlerFn
+      );
+
+      await scheduler.tick(mockEnv, ctx, repository);
+      await ctx.flush();
+
+      expect(repository.markRunning).toHaveBeenCalledWith(task.id);
+      expect(handlerFn).not.toHaveBeenCalled();
+      expect(repository.markCompleted).not.toHaveBeenCalled();
+    });
+
+    it("should not mark task as failed if lock was not acquired", async () => {
+      const handlerFn = vi.fn();
+      const task = createMockTask();
+      const repository = createMockRepository([task]);
+      const ctx = createMockCtx();
+
+      // Simulate another worker already acquired the lock
+      (repository.markRunning as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+
+      const scheduler = createScheduler<TestEnv>().handler(
+        "test:handler",
+        handlerFn
+      );
+
+      await scheduler.tick(mockEnv, ctx, repository);
+      await ctx.flush();
+
+      expect(repository.markFailed).not.toHaveBeenCalled();
     });
   });
 });
