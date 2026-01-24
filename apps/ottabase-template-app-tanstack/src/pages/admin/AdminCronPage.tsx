@@ -88,7 +88,24 @@ export function AdminCronPage() {
     payload: "",
     isActive: true,
   });
+  const [payloadError, setPayloadError] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  // Validate payload is valid JSON (or empty)
+  const validatePayload = (payload: string): boolean => {
+    if (!payload.trim()) {
+      setPayloadError(null);
+      return true;
+    }
+    try {
+      JSON.parse(payload);
+      setPayloadError(null);
+      return true;
+    } catch {
+      setPayloadError("Invalid JSON. Please enter valid JSON or leave empty.");
+      return false;
+    }
+  };
 
   // Fetch cron overview
   const { data: overview, isLoading, refetch } = useQuery({
@@ -107,6 +124,7 @@ export function AdminCronPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "cron"] });
       setIsCreating(false);
+      setPayloadError(null);
       setNewTask({
         name: "",
         description: "",
@@ -148,6 +166,9 @@ export function AdminCronPage() {
 
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validatePayload(newTask.payload)) {
+      return;
+    }
     createMutation.mutate(newTask);
   };
 
@@ -321,9 +342,16 @@ export function AdminCronPage() {
                   id="payload"
                   placeholder='{"key": "value"}'
                   value={newTask.payload}
-                  onChange={(e) => setNewTask({ ...newTask, payload: e.target.value })}
-                  className="font-mono text-sm"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setNewTask({ ...newTask, payload: value });
+                    validatePayload(value);
+                  }}
+                  className={`font-mono text-sm ${payloadError ? "border-red-500" : ""}`}
                 />
+                {payloadError && (
+                  <p className="text-xs text-red-600">{payloadError}</p>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -342,7 +370,10 @@ export function AdminCronPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsCreating(false)}
+                  onClick={() => {
+                    setIsCreating(false);
+                    setPayloadError(null);
+                  }}
                 >
                   Cancel
                 </Button>

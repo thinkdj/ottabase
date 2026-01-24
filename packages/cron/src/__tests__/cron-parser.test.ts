@@ -86,6 +86,45 @@ describe("matchesCron", () => {
     expect(matchesCron("0 0 15 6 *", june)).toBe(true);
     expect(matchesCron("0 0 15 7 *", june)).toBe(false);
   });
+
+  // Tests for OR logic when both day and weekday are restricted
+  describe("day/weekday OR logic", () => {
+    it("should match when day matches but weekday does not (both restricted)", () => {
+      // June 15, 2024 is a Saturday (weekday=6)
+      // "0 0 15 * 1" = 15th of month OR Monday
+      // Day 15 matches, but it's Saturday not Monday - should still match (OR logic)
+      const date = new Date("2024-06-15T00:00:00");
+      expect(matchesCron("0 0 15 * 1", date)).toBe(true);
+    });
+
+    it("should match when weekday matches but day does not (both restricted)", () => {
+      // June 17, 2024 is a Monday (weekday=1)
+      // "0 0 15 * 1" = 15th of month OR Monday
+      // It's day 17 not 15, but it's Monday - should match (OR logic)
+      const date = new Date("2024-06-17T00:00:00");
+      expect(matchesCron("0 0 15 * 1", date)).toBe(true);
+    });
+
+    it("should not match when neither day nor weekday matches (both restricted)", () => {
+      // June 16, 2024 is a Sunday (weekday=0)
+      // "0 0 15 * 1" = 15th of month OR Monday
+      // It's day 16 not 15, and it's Sunday not Monday - should NOT match
+      const date = new Date("2024-06-16T00:00:00");
+      expect(matchesCron("0 0 15 * 1", date)).toBe(false);
+    });
+
+    it("should only check day when weekday is wildcard", () => {
+      const date = new Date("2024-06-15T00:00:00"); // Saturday
+      expect(matchesCron("0 0 15 * *", date)).toBe(true);
+      expect(matchesCron("0 0 14 * *", date)).toBe(false);
+    });
+
+    it("should only check weekday when day is wildcard", () => {
+      const saturday = new Date("2024-06-15T00:00:00"); // Saturday=6
+      expect(matchesCron("0 0 * * 6", saturday)).toBe(true);
+      expect(matchesCron("0 0 * * 1", saturday)).toBe(false);
+    });
+  });
 });
 
 describe("getNextRun", () => {

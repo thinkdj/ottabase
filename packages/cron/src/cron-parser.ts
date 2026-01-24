@@ -103,6 +103,11 @@ export function parseCron(expression: string): ParsedCron {
 
 /**
  * Check if a date matches a cron expression
+ *
+ * Standard cron behavior for day-of-month (DOM) and day-of-week (DOW):
+ * - If both DOM and DOW are wildcards (*), day always matches
+ * - If only one is wildcard, only the restricted field is checked
+ * - If both are restricted, the date matches if EITHER field matches (OR logic)
  */
 export function matchesCron(expression: string, date: Date): boolean {
   const cron = parseCron(expression);
@@ -113,13 +118,26 @@ export function matchesCron(expression: string, date: Date): boolean {
   const month = date.getMonth() + 1; // JS months are 0-indexed
   const weekday = date.getDay(); // 0 = Sunday
 
-  return (
-    cron.minutes.includes(minute) &&
-    cron.hours.includes(hour) &&
-    cron.days.includes(day) &&
-    cron.months.includes(month) &&
-    cron.weekdays.includes(weekday)
-  );
+  // Check basic fields
+  if (!cron.minutes.includes(minute)) return false;
+  if (!cron.hours.includes(hour)) return false;
+  if (!cron.months.includes(month)) return false;
+
+  // Day/weekday matching uses OR logic when both are restricted
+  const dayMatches = cron.days.includes(day);
+  const weekdayMatches = cron.weekdays.includes(weekday);
+  const dayIsWildcard = cron.days.length === 31;
+  const weekdayIsWildcard = cron.weekdays.length === 7;
+
+  if (dayIsWildcard && weekdayIsWildcard) {
+    return true; // Both wildcards - always match
+  } else if (dayIsWildcard) {
+    return weekdayMatches; // Only check weekday
+  } else if (weekdayIsWildcard) {
+    return dayMatches; // Only check day
+  } else {
+    return dayMatches || weekdayMatches; // OR logic when both restricted
+  }
 }
 
 /**
