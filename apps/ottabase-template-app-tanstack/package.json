@@ -38,6 +38,7 @@
     "@ottabase/ottaeditor": "workspace:*",
     "@ottabase/ottaorm": "workspace:*",
     "@ottabase/queue": "workspace:*",
+    "@ottabase/referrals": "workspace:*",
     "@ottabase/ottarenderer": "workspace:*",
     "@ottabase/ottaselect": "workspace:*",
     "@ottabase/shortlinks": "workspace:*",

@@ -9,23 +9,23 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     },
     "./job": {
       "types": "./dist/job.d.ts",
-      "import": "./dist/job.mjs",
-      "require": "./dist/job.js"
+      "import": "./dist/job.js",
+      "require": "./dist/job.cjs"
     },
     "./processor": {
       "types": "./dist/processor.d.ts",
-      "import": "./dist/processor.mjs",
-      "require": "./dist/processor.js"
+      "import": "./dist/processor.js",
+      "require": "./dist/processor.cjs"
     },
     "./adapters": {
       "types": "./dist/adapters/index.d.ts",
-      "import": "./dist/adapters/index.mjs",
-      "require": "./dist/adapters/index.js"
+      "import": "./dist/adapters/index.js",
+      "require": "./dist/adapters/index.cjs"
     }
   },
   "sideEffects": false,

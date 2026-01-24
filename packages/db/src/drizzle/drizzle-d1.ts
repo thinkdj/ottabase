@@ -9,7 +9,16 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { SQL } from "drizzle-orm";
 import { drizzle as drizzleD1 } from "drizzle-orm/d1";
-import { BaseDbDriver, type DbDriverConfig } from "./drizzle";
+import {
+  BaseDbDriver,
+  raw,
+  type DbDriverConfig,
+  type DbRawResult,
+} from "./drizzle";
+
+// Re-export raw query functionality
+export { raw, type DbRawResult };
+
 
 /**
  * D1-specific driver configuration

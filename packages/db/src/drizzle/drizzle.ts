@@ -80,3 +80,64 @@ export abstract class BaseDbDriver implements DbDriver {
     }
   }
 }
+
+/**
+ * Result from a raw SQL query
+ */
+export interface DbRawResult<T = unknown> {
+  results: T[];
+  success: boolean;
+  meta?: {
+    changes?: number;
+    duration?: number;
+    last_row_id?: number;
+  };
+}
+
+/**
+ * Execute a raw SQL query using the driver
+ *
+ * @param driver - Database driver instance
+ * @param sql - SQL query string
+ * @param params - Optional query parameters
+ * @returns Query results
+ *
+ * @example
+ * ```typescript
+ * import { raw } from "@ottabase/db/drizzle";
+ *
+ * const driver = createD1Driver(env.OBCF_D1);
+ * const result = await raw(driver, "SELECT * FROM users WHERE id = ?", [userId]);
+ * console.log(result.results);
+ * ```
+ */
+export async function raw<T = unknown>(
+  driver: DbDriver,
+  sql: string,
+  params?: unknown[],
+): Promise<DbRawResult<T>> {
+  const result = await driver.executeRaw(sql, params);
+
+  // Normalize D1 response format
+  if (result && typeof result === "object" && "results" in result) {
+    return {
+      results: result.results as T[],
+      success: result.success ?? true,
+      meta: result.meta,
+    };
+  }
+
+  // Handle array response
+  if (Array.isArray(result)) {
+    return {
+      results: result as T[],
+      success: true,
+    };
+  }
+
+  return {
+    results: [],
+    success: true,
+    meta: result,
+  };
+}
