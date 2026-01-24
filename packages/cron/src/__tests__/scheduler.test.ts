@@ -16,7 +16,6 @@ const createMockTask = (overrides: Partial<ScheduledTaskRecord> = {}): Scheduled
   task: "test:handler",
   payload: null,
   isActive: true,
-  timezone: "UTC",
   lastRunAt: null,
   nextRunAt: new Date(Date.now() - 1000), // Due
   lastStatus: null,
@@ -29,7 +28,7 @@ const createMockTask = (overrides: Partial<ScheduledTaskRecord> = {}): Scheduled
 // Mock repository
 const createMockRepository = (tasks: ScheduledTaskRecord[] = []): TaskRepository => ({
   getDueTasks: vi.fn().mockResolvedValue(tasks),
-  markRunning: vi.fn().mockResolvedValue(true), // Default: lock acquired
+  acquireLock: vi.fn().mockResolvedValue(true), // Default: lock acquired
   markCompleted: vi.fn().mockResolvedValue(undefined),
   markFailed: vi.fn().mockResolvedValue(undefined),
 });
@@ -41,7 +40,6 @@ const createMockCtx = () => {
     waitUntil: vi.fn((p: Promise<unknown>) => {
       promises.push(p);
     }),
-    // Helper to await all waitUntil promises
     async flush() {
       await Promise.all(promises);
     },
@@ -113,12 +111,10 @@ describe("Scheduler", () => {
       );
 
       await scheduler.tick(mockEnv, ctx, repository);
-
-      // Wait for waitUntil promises
       await ctx.flush();
 
       expect(repository.getDueTasks).toHaveBeenCalled();
-      expect(repository.markRunning).toHaveBeenCalledWith(task.id);
+      expect(repository.acquireLock).toHaveBeenCalledWith(task.id);
       expect(handlerFn).toHaveBeenCalled();
       expect(repository.markCompleted).toHaveBeenCalled();
     });
@@ -327,15 +323,15 @@ describe("Scheduler", () => {
     });
   });
 
-  describe("race condition handling", () => {
-    it("should skip task if another worker acquired lock", async () => {
+  describe("atomic locking", () => {
+    it("should skip task if lock not acquired", async () => {
       const handlerFn = vi.fn();
       const task = createMockTask();
       const repository = createMockRepository([task]);
       const ctx = createMockCtx();
 
       // Simulate another worker already acquired the lock
-      (repository.markRunning as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+      (repository.acquireLock as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
       const scheduler = createScheduler<TestEnv>().handler(
         "test:handler",
@@ -345,7 +341,7 @@ describe("Scheduler", () => {
       await scheduler.tick(mockEnv, ctx, repository);
       await ctx.flush();
 
-      expect(repository.markRunning).toHaveBeenCalledWith(task.id);
+      expect(repository.acquireLock).toHaveBeenCalledWith(task.id);
       expect(handlerFn).not.toHaveBeenCalled();
       expect(repository.markCompleted).not.toHaveBeenCalled();
     });
@@ -357,7 +353,7 @@ describe("Scheduler", () => {
       const ctx = createMockCtx();
 
       // Simulate another worker already acquired the lock
-      (repository.markRunning as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+      (repository.acquireLock as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
       const scheduler = createScheduler<TestEnv>().handler(
         "test:handler",

@@ -96,6 +96,7 @@ CREATE TABLE scheduled_tasks (
 ```typescript
 import { createScheduler, createTaskRepository } from "@ottabase/cron";
 import { ScheduledTask } from "@ottabase/ottaorm/models";
+import { createD1Driver } from "@ottabase/db/drizzle-d1";
 
 const scheduler = createScheduler<Env>()
   .handler("cleanup:sessions", async ({ env }) => {
@@ -112,12 +113,15 @@ export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     // Run tick every minute to check for due tasks
     if (event.cron === "* * * * *") {
-      const repository = createTaskRepository(ScheduledTask);
+      const driver = createD1Driver(env.OBCF_D1);
+      const repository = createTaskRepository(ScheduledTask, driver);
       await scheduler.tick(env, ctx, repository);
     }
   },
 };
 ```
+
+The `createTaskRepository` requires a database driver for atomic locking - this ensures only one worker executes a task even when multiple workers are triggered simultaneously.
 
 ### 2. Add Tasks to Database
 
