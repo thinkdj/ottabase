@@ -6,6 +6,8 @@ Two modes:
 1. **Static Handler** - Code-defined cron jobs (simple, no DB)
 2. **DB Scheduler** - Laravel-style scheduler with tasks in database
 
+> **Note:** All schedules are evaluated in **UTC timezone**. Cloudflare Workers run in UTC, so cron expressions like `0 9 * * *` will trigger at 9:00 AM UTC.
+
 ## Installation
 
 ```bash
@@ -238,7 +240,7 @@ await task.markFailed("Error message", nextRunAt);
 | task | text | Handler name to execute |
 | payload | text | JSON payload |
 | isActive | boolean | Whether task is active |
-| timezone | text | Timezone (default: UTC) |
+| timezone | text | Reserved for future use (currently ignored, all schedules run in UTC) |
 | lastRunAt | timestamp | Last execution time |
 | nextRunAt | timestamp | Next scheduled run |
 | lastStatus | text | "success", "failed", "running" |

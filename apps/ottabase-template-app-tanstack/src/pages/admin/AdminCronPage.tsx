@@ -310,7 +310,7 @@ export function AdminCronPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="schedule">Schedule</Label>
+                  <Label htmlFor="schedule">Schedule (UTC)</Label>
                   <Select
                     value={newTask.schedule}
                     onValueChange={(value) => setNewTask({ ...newTask, schedule: value })}
@@ -332,6 +332,9 @@ export function AdminCronPage() {
                     onChange={(e) => setNewTask({ ...newTask, schedule: e.target.value })}
                     className="mt-2"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    All schedules run in UTC timezone
+                  </p>
                 </div>
 
                 <div className="space-y-2">

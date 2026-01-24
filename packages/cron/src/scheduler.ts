@@ -77,6 +77,10 @@ export interface RegisteredHandler<E = unknown> {
   description?: string;
 }
 
+/**
+ * Record representing a scheduled task from the database.
+ * Note: All schedules are evaluated in UTC. Timezone support may be added in future versions.
+ */
 export interface ScheduledTaskRecord {
   id: string;
   name: string;
@@ -86,7 +90,6 @@ export interface ScheduledTaskRecord {
   task: string;
   payload?: string | null;
   isActive: boolean;
-  timezone?: string | null;
   lastRunAt?: Date | null;
   nextRunAt?: Date | null;
   lastStatus?: string | null;
@@ -354,7 +357,6 @@ export function createTaskRepository<M extends {
         task: task.get("task") as string,
         payload: task.get("payload") as string | null,
         isActive: task.get("isActive") as boolean,
-        timezone: task.get("timezone") as string | null,
         lastRunAt: task.get("lastRunAt") as Date | null,
         nextRunAt: task.get("nextRunAt") as Date | null,
         lastStatus: task.get("lastStatus") as string | null,
