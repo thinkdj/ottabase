@@ -166,6 +166,9 @@ export function AdminCronPage() {
 
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newTask.task) {
+      return; // Handler is required
+    }
     if (!validatePayload(newTask.payload)) {
       return;
     }
@@ -278,12 +281,15 @@ export function AdminCronPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="task">Handler</Label>
+                  <Label htmlFor="task">
+                    Handler <span className="text-red-500">*</span>
+                  </Label>
                   <Select
                     value={newTask.task}
                     onValueChange={(value) => setNewTask({ ...newTask, task: value })}
+                    required
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={!newTask.task ? "border-muted-foreground/50" : ""}>
                       <SelectValue placeholder="Select handler" />
                     </SelectTrigger>
                     <SelectContent>
@@ -298,6 +304,9 @@ export function AdminCronPage() {
                       )}
                     </SelectContent>
                   </Select>
+                  {!newTask.task && (
+                    <p className="text-xs text-muted-foreground">Required</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">

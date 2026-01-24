@@ -21,13 +21,17 @@ interface CronField {
 function parseField(field: string, min: number, max: number): CronField {
   const values: number[] = [];
 
-  // Handle step values (e.g., */5)
+  // Handle step values (e.g., */5, 10-20/3)
   let step: number | undefined;
   let fieldPart = field;
 
   if (field.includes("/")) {
     const [base, stepStr] = field.split("/");
-    step = parseInt(stepStr, 10);
+    const parsedStep = parseInt(stepStr, 10);
+    if (isNaN(parsedStep) || parsedStep <= 0) {
+      throw new Error(`Invalid step value: "${stepStr}"`);
+    }
+    step = parsedStep;
     fieldPart = base === "*" ? `${min}-${max}` : base;
   }
 
@@ -48,6 +52,12 @@ function parseField(field: string, min: number, max: number): CronField {
       const [startStr, endStr] = part.split("-");
       const start = parseInt(startStr, 10);
       const end = parseInt(endStr, 10);
+
+      // Validate range values
+      if (isNaN(start) || isNaN(end)) {
+        throw new Error(`Invalid range: "${part}"`);
+      }
+
       for (let i = start; i <= end; i++) {
         if (i >= min && i <= max && !values.includes(i)) {
           values.push(i);
@@ -55,15 +65,28 @@ function parseField(field: string, min: number, max: number): CronField {
       }
     } else {
       const value = parseInt(part, 10);
+      if (isNaN(value)) {
+        throw new Error(`Invalid value: "${part}"`);
+      }
       if (value >= min && value <= max && !values.includes(value)) {
         values.push(value);
       }
     }
   }
 
-  // Apply step
+  // Apply step: generate values starting from minimum, incrementing by step
+  // Standard cron semantics: start from the first value, add step repeatedly
   if (step && values.length > 0) {
-    const stepped = values.filter((_, i) => i % step! === 0);
+    const sortedValues = values.sort((a, b) => a - b);
+    const startValue = sortedValues[0];
+    const endValue = sortedValues[sortedValues.length - 1];
+    const stepped: number[] = [];
+
+    // Generate stepped values from start to end
+    for (let i = startValue; i <= endValue; i += step) {
+      stepped.push(i);
+    }
+
     return { values: stepped, step };
   }
 

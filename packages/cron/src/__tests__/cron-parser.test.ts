@@ -51,6 +51,21 @@ describe("parseCron", () => {
     expect(() => parseCron("* * *")).toThrow("Invalid cron expression");
     expect(() => parseCron("* * * * * *")).toThrow("Invalid cron expression");
   });
+
+  it("should throw on invalid range values", () => {
+    expect(() => parseCron("abc-5 * * * *")).toThrow("Invalid range");
+    expect(() => parseCron("1-xyz * * * *")).toThrow("Invalid range");
+  });
+
+  it("should throw on invalid step values", () => {
+    expect(() => parseCron("*/abc * * * *")).toThrow("Invalid step value");
+    expect(() => parseCron("*/0 * * * *")).toThrow("Invalid step value");
+    expect(() => parseCron("*/-1 * * * *")).toThrow("Invalid step value");
+  });
+
+  it("should throw on invalid single values", () => {
+    expect(() => parseCron("abc * * * *")).toThrow("Invalid value");
+  });
 });
 
 describe("matchesCron", () => {
