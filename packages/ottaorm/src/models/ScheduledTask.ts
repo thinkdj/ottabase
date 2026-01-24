@@ -147,9 +147,9 @@ export class ScheduledTask extends BaseModel {
         visible: true,
         fieldType: "select",
         options: [
-          { value: "handler", label: "Handler" },
-          { value: "command", label: "Command" },
-          { value: "url", label: "URL" },
+          { id: "handler", name: "Handler" },
+          { id: "command", name: "Command" },
+          { id: "url", name: "URL" },
         ],
       },
       tableConfig: { visible: true },
@@ -182,7 +182,7 @@ export class ScheduledTask extends BaseModel {
       type: "boolean",
       editable: true,
       uiConfig: { label: "Active" },
-      formConfig: { visible: true, fieldType: "checkbox" },
+      formConfig: { visible: true, fieldType: "boolean" },
       tableConfig: { visible: true },
     },
     timezone: {
@@ -233,7 +233,7 @@ export class ScheduledTask extends BaseModel {
     },
   };
 
-  constructor(data: { [key: string]: unknown }) {
+  constructor(data: { [key: string]: any }) {
     const params: IModelConstructorParams = { entity: ScheduledTask.entity, data };
     super(params);
   }
