@@ -61,6 +61,12 @@ export interface PaginationConfig {
   sizeOptions: number[];
 }
 
+export interface ReferralsConfig {
+  enabled: boolean;
+  trackClicks: boolean;
+  expiryDays: number;
+}
+
 export interface AppConfig {
   /** Unique app identifier for multi-app database sharing */
   appId: string;
@@ -100,6 +106,7 @@ export interface AppConfig {
     crudHub: CrudHubConfig;
     auth: AuthConfig;
     pagination: PaginationConfig;
+    referrals: ReferralsConfig;
   };
 
   // Model Configuration
@@ -126,6 +133,7 @@ export interface ConfigOptions {
       crudHub?: Partial<CrudHubConfig>;
       auth?: Partial<AuthConfig>;
       pagination?: Partial<PaginationConfig>;
+      referrals?: Partial<ReferralsConfig>;
     };
     model?: Partial<AppConfig["model"]>;
   };

@@ -6,6 +6,7 @@ export type {
   ConfigOptions,
   CrudHubConfig,
   PaginationConfig,
+  ReferralsConfig,
   SpotlightConfig,
   SupportedUIFramework,
   ThemeColors,
@@ -88,6 +89,12 @@ export const DEFAULT_PAGINATION_CONFIG = {
   sizeOptions: [5, 10, 20, 50, 100],
 } as const;
 
+export const DEFAULT_REFERRALS_CONFIG = {
+  enabled: false,
+  trackClicks: true,
+  expiryDays: 30,
+} as const;
+
 // Common storage keys
 export const STORAGE_KEYS = {
   THEME: "theme",
@@ -142,6 +149,11 @@ export const ENV_KEYS = {
   // Pagination
   PAGE_SIZE_DEFAULT: "PAGE_SIZE_DEFAULT",
   PAGE_SIZE_MAX: "PAGE_SIZE_MAX",
+
+  // Referrals
+  REFERRALS_ENABLED: "REFERRALS_ENABLED",
+  REFERRALS_TRACK_CLICKS: "REFERRALS_TRACK_CLICKS",
+  REFERRALS_EXPIRY_DAYS: "REFERRALS_EXPIRY_DAYS",
 
   // Model
   MODEL_DEFAULT_REL_KEY: "MODEL_DEFAULT_REL_KEY",

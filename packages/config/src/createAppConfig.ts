@@ -225,6 +225,20 @@ export function createAppConfig(options: ConfigOptions = {}): AppConfig {
           5, 10, 20, 50, 100,
         ],
       },
+      referrals: {
+        enabled: getBoolEnv(
+          "REFERRALS_ENABLED",
+          defaults.features?.referrals?.enabled ?? false,
+        ),
+        trackClicks: getBoolEnv(
+          "REFERRALS_TRACK_CLICKS",
+          defaults.features?.referrals?.trackClicks ?? true,
+        ),
+        expiryDays: getNumberEnv(
+          "REFERRALS_EXPIRY_DAYS",
+          defaults.features?.referrals?.expiryDays ?? 30,
+        ),
+      },
     },
 
     model: {
