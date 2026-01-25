@@ -232,7 +232,7 @@ export function OttaORMDemoPage() {
                   aria-label="Select post author"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
-                  <option value="">Select author...</option>
+                  <option key="_placeholder" value="">Select author...</option>
                   {users.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.name ||
