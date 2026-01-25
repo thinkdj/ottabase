@@ -1,0 +1,38 @@
+{
+  "name": "@ottabase/ottablog",
+  "version": "0.0.1",
+  "description": "Blog and content management system for Ottabase apps - supports blog posts, changelogs, and documentation",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./schema": {
+      "types": "./src/schema.ts",
+      "default": "./src/schema.ts"
+    }
+  },
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "peerDependencies": {
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "drizzle-orm": "catalog:",
+    "typescript": "catalog:"
+  },
+  "keywords": [
+    "blog",
+    "cms",
+    "content",
+    "changelog",
+    "documentation",
+    "ottabase",
+    "cloudflare",
+    "d1"
+  ]
+}
