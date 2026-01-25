@@ -55,6 +55,9 @@ import { appMigrations } from "./ottabase/migrations";
 import { ReferralTracking } from "./ottabase/models/ReferralTracking";
 import { Shortlink } from "./ottabase/models/Shortlink";
 import { Todo } from "./ottabase/models/Todo";
+import { BlogPost } from "./ottabase/models/BlogPost";
+import { BlogCategory } from "./ottabase/models/BlogCategory";
+import { BlogTag } from "./ottabase/models/BlogTag";
 import { registerAppEmailTemplates } from "./src/email/templates";
 
 export { RealtimeActor };
@@ -298,7 +301,7 @@ export default {
 
         // Initialize database connection and register models
         registerConnection("default", createD1Driver(env.OBCF_D1));
-        registerModels([Shortlink, Todo, User, Post, Tag, ReferralTracking]);
+        registerModels([Shortlink, Todo, User, Post, Tag, ReferralTracking, BlogPost, BlogCategory, BlogTag]);
 
         // Parse the request into a CrudRequest
         const crudRequest = await parseCrudRequest(
@@ -1972,7 +1975,7 @@ export default {
         registerConnection("default", createD1Driver(env.OBCF_D1));
 
         // Register all models for dynamic lookup
-        registerModels([User, Post, Tag, Todo, Shortlink, ReferralTracking]);
+        registerModels([User, Post, Tag, Todo, Shortlink, ReferralTracking, BlogPost, BlogCategory, BlogTag]);
 
         // Parse the request into a CrudRequest
         const crudRequest = await parseCrudRequest(
