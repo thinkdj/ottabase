@@ -394,7 +394,7 @@ export function AdminBlogEditorPage() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="content" className="mt-4">
+            <TabsContent value="content" className="mt-4 data-[state=inactive]:hidden" forceMount>
               <Card>
                 <CardHeader>
                   <CardTitle>Main Content</CardTitle>
@@ -411,7 +411,7 @@ export function AdminBlogEditorPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="notes" className="mt-4">
+            <TabsContent value="notes" className="mt-4 data-[state=inactive]:hidden" forceMount>
               <Card>
                 <CardHeader>
                   <CardTitle>Private Notes</CardTitle>
@@ -428,7 +428,7 @@ export function AdminBlogEditorPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="footnotes" className="mt-4">
+            <TabsContent value="footnotes" className="mt-4 data-[state=inactive]:hidden" forceMount>
               <Card>
                 <CardHeader>
                   <CardTitle>Footnotes & References</CardTitle>
