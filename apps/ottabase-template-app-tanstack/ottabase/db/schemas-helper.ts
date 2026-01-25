@@ -29,7 +29,7 @@ import {
   categoriesTable as blogCategoriesTable,
   tagsTable as blogTagsTable,
   postTagsTable as blogPostTagsTable,
-} from "@ottabase/ottablog/schema";
+} from "@ottabase/ottablog";
 import { getEnabledPackageTables } from "../config.migrations";
 import { todosTable } from "../models/Todo";
 

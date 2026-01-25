@@ -17,8 +17,14 @@
  *
  * @example
  * ```typescript
- * import { postsTable, categoriesTable, tagsTable } from "@ottabase/ottablog/schema";
- * import { generateSlug, calculateReadingTime, CONTENT_TYPES } from "@ottabase/ottablog";
+ * import {
+ *   postsTable,
+ *   categoriesTable,
+ *   tagsTable,
+ *   generateSlug,
+ *   calculateReadingTime,
+ *   CONTENT_TYPES,
+ * } from "@ottabase/ottablog";
  * ```
  */
 

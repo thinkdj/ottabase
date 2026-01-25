@@ -5,8 +5,8 @@
  * Supports multiple content types, SEO, hero images, and OttaEditor content.
  */
 import { BaseModel, ModelFields } from "@ottabase/ottaorm";
-import { postsTable } from "@ottabase/ottablog/schema";
 import {
+  postsTable,
   CONTENT_TYPES,
   POST_STATUSES,
   calculateReadingTime,

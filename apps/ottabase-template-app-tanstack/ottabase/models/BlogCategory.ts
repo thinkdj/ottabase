@@ -4,8 +4,7 @@
  * OttaORM model for blog categories with hierarchy support.
  */
 import { BaseModel, ModelFields } from "@ottabase/ottaorm";
-import { categoriesTable } from "@ottabase/ottablog/schema";
-import { generateSlug } from "@ottabase/ottablog";
+import { categoriesTable, generateSlug } from "@ottabase/ottablog";
 
 export type BlogCategoryType = typeof categoriesTable.$inferSelect;
 export type NewBlogCategoryType = typeof categoriesTable.$inferInsert;

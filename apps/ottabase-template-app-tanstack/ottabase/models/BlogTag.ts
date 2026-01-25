@@ -4,8 +4,7 @@
  * OttaORM model for blog tags.
  */
 import { BaseModel, ModelFields } from "@ottabase/ottaorm";
-import { tagsTable } from "@ottabase/ottablog/schema";
-import { generateSlug } from "@ottabase/ottablog";
+import { tagsTable, generateSlug } from "@ottabase/ottablog";
 
 export type BlogTagType = typeof tagsTable.$inferSelect;
 export type NewBlogTagType = typeof tagsTable.$inferInsert;
