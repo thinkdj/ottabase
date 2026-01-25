@@ -76,7 +76,12 @@ export function AdminBlogListPage() {
 
   const handleDelete = async (id: string, title: string) => {
     if (window.confirm(`Are you sure you want to delete "${title}"?`)) {
-      await deletePost.mutateAsync(id);
+      try {
+        await deletePost.mutateAsync(id);
+      } catch (err) {
+        console.error("Failed to delete blog post:", err);
+        window.alert(`Failed to delete "${title}". Please try again.`);
+      }
     }
   };
 
