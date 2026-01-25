@@ -562,6 +562,37 @@ const adminCronRoute = new Route({
   ),
 });
 
+// Admin Blog routes
+const adminBlogRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/admin/blog",
+  component: lazyRouteComponent(() =>
+    import("@/pages/admin/blog/AdminBlogListPage").then((m) => ({
+      default: m.AdminBlogListPage,
+    })),
+  ),
+});
+
+const adminBlogNewRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/admin/blog/new",
+  component: lazyRouteComponent(() =>
+    import("@/pages/admin/blog/AdminBlogEditorPage").then((m) => ({
+      default: m.AdminBlogEditorPage,
+    })),
+  ),
+});
+
+const adminBlogEditRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/admin/blog/$postId/edit",
+  component: lazyRouteComponent(() =>
+    import("@/pages/admin/blog/AdminBlogEditorPage").then((m) => ({
+      default: m.AdminBlogEditorPage,
+    })),
+  ),
+});
+
 demoLayoutRoute.addChildren([
   demoIndexRoute,
   demoMantineRoute,
@@ -601,6 +632,9 @@ const routeTree = rootRoute.addChildren([
   adminReferralsRoute,
   adminQueueRoute,
   adminCronRoute,
+  adminBlogRoute,
+  adminBlogNewRoute,
+  adminBlogEditRoute,
 ]);
 
 const browserHistory = createBrowserHistory();

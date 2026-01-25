@@ -24,6 +24,12 @@ import {
   usersTable,
   verificationTokensTable,
 } from "@ottabase/ottaorm";
+import {
+  postsTable as blogPostsTable,
+  categoriesTable as blogCategoriesTable,
+  tagsTable as blogTagsTable,
+  postTagsTable as blogPostTagsTable,
+} from "@ottabase/ottablog/schema";
 import { getEnabledPackageTables } from "../config.migrations";
 import { todosTable } from "../models/Todo";
 
@@ -46,6 +52,11 @@ export function getAllSchemas() {
   // 2. App-specific schemas
   const appTables = {
     todosTable,
+    // Blog tables from @ottabase/ottablog
+    blogPostsTable,
+    blogCategoriesTable,
+    blogTagsTable,
+    blogPostTagsTable,
   };
 
   // 3. Package schemas from enabled packages (shortlinks, etc.)
@@ -79,6 +90,10 @@ export function getSchemaSummary() {
 
   const appTables = {
     todosTable,
+    blogPostsTable,
+    blogCategoriesTable,
+    blogTagsTable,
+    blogPostTagsTable,
   };
 
   const packageTables = getEnabledPackageTables();

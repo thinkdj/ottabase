@@ -65,6 +65,8 @@ export interface Author {
   id: string;
   /** Display name */
   name: string;
+  /** Author email */
+  email?: string;
   /** Author avatar URL */
   avatar?: string;
   /** Author bio */

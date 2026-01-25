@@ -6,10 +6,18 @@ import {
   CardTitle,
 } from "@ottabase/ui-shadcn";
 import { Link } from "@tanstack/react-router";
-import { Activity, Clock, Database, Layers, UserPlus } from "lucide-react";
+import { Activity, Clock, Database, FileText, Layers, UserPlus } from "lucide-react";
 
 export function AdminIndexPage() {
   const adminLinks = [
+    {
+      title: "Blog Management",
+      description:
+        "Create and manage blog posts, changelogs, and documentation.",
+      href: "/admin/blog",
+      icon: FileText,
+      disabled: false,
+    },
     {
       title: "Migration Status",
       description:

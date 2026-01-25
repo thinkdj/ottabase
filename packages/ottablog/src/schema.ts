@@ -143,9 +143,25 @@ export const postsTable = sqliteTable(
       noFollow?: boolean;
     }>(),
 
+    // Private notes (author-only, not shown publicly) - EditorJS JSON format
+    privateNotes: text("private_notes", { mode: "json" }).$type<{
+      time?: number;
+      blocks: Array<{ id?: string; type: string; data: Record<string, unknown> }>;
+      version?: string;
+    }>(),
+
+    // Public footnotes/endnotes - EditorJS JSON format
+    footnotes: text("footnotes", { mode: "json" }).$type<{
+      time?: number;
+      blocks: Array<{ id?: string; type: string; data: Record<string, unknown> }>;
+      version?: string;
+    }>(),
+
     // Author information
     authorId: text("author_id"),
     authorName: text("author_name"),
+    authorEmail: text("author_email"),
+    authorAvatar: text("author_avatar"),
 
     // Reading time estimate (stored for performance)
     readingTimeMinutes: integer("reading_time_minutes"),
@@ -163,8 +179,11 @@ export const postsTable = sqliteTable(
     // Scheduled publish date (for scheduled posts)
     publishAt: integer("publish_at", { mode: "timestamp" }),
 
-    // Actual publish date
+    // Actual publish date (editorial/display date)
     publishedAt: integer("published_at", { mode: "timestamp" }),
+
+    // When post was actually made live (system timestamp)
+    postedAt: integer("posted_at", { mode: "timestamp" }),
 
     // App identifier for multi-app database sharing
     appId: text("app_id"),
