@@ -239,6 +239,31 @@ export class BaseModel extends AbstractBaseModel {
   }
 
   /**
+   * Prepare data for database operations
+   * Converts string dates to Date objects based on model casts
+   */
+  protected static prepareForDatabase(data: Record<string, any>): Record<string, any> {
+    const prepared = { ...data };
+
+    if (this.casts) {
+      for (const [key, castType] of Object.entries(this.casts)) {
+        if ((castType === 'date' || castType === 'datetime') && prepared[key] !== undefined && prepared[key] !== null) {
+          const value = prepared[key];
+          // Convert string dates to Date objects
+          if (typeof value === 'string') {
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+              prepared[key] = date;
+            }
+          }
+        }
+      }
+    }
+
+    return prepared;
+  }
+
+  /**
    * Create a new record
    */
   static async create<T extends typeof BaseModel>(
@@ -249,8 +274,8 @@ export class BaseModel extends AbstractBaseModel {
     const db = this.getDriver(driver).getDb();
     const table = this.getTable();
 
-    // Merge with defaults
-    const createData = { ...this.defaults, ...data };
+    // Merge with defaults and prepare for database
+    const createData = this.prepareForDatabase({ ...this.defaults, ...data });
 
     // Cloudflare Workers (workerd) disallows random generation in module/global scope,
     // so model schemas avoid crypto.randomUUID() defaults. Generate ids at runtime.
@@ -288,9 +313,12 @@ export class BaseModel extends AbstractBaseModel {
       throw new Error(`Primary key column ${this.primaryKey} not found`);
     }
 
+    // Prepare data for database (convert string dates, etc.)
+    const updateData = this.prepareForDatabase(data);
+
     const result = await db
       .update(table)
-      .set(data)
+      .set(updateData)
       .where(eq(pkColumn, id))
       .returning();
 
