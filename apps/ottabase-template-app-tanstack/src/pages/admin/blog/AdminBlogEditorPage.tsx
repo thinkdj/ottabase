@@ -720,13 +720,29 @@ function BlogEditorForm({
                 <Button
                   variant="destructive"
                   className="w-full"
-                  onClick={() => {
+                  onClick={async () => {
                     if (
                       window.confirm(
                         "Are you sure you want to delete this post?",
                       )
                     ) {
-                      // Delete and navigate away
+                      // Attempt to delete the post before navigating away
+                      try {
+                        const pathSegments = window.location.pathname
+                          .split("/")
+                          .filter(Boolean);
+                        const postId = pathSegments[pathSegments.length - 1];
+
+                        if (postId) {
+                          await fetch(
+                            `/api/admin/blog/${encodeURIComponent(postId)}`,
+                            { method: "DELETE" },
+                          );
+                        }
+                      } catch (error) {
+                        // Log the error but still navigate away to avoid trapping the user
+                        console.error("Failed to delete post:", error);
+                      }
                       navigate({ to: "/admin/blog" });
                     }
                   }}
