@@ -138,9 +138,9 @@ export function AdminBlogEditorPage() {
   const [activeTab, setActiveTab] = useState("content");
 
   // API hooks
-  const { data: existingPost, isLoading: isLoadingPost } = blogPostHooks.useGet(postId || "");
+  const { data: existingPost, isLoading: isLoadingPost } = blogPostHooks.useDetail(postId || "");
   const createPost = blogPostHooks.useCreate();
-  const updatePost = blogPostHooks.useUpdate(postId || "");
+  const updatePost = blogPostHooks.useUpdate();
 
   const isSaving = createPost.isPending || updatePost.isPending;
 
@@ -285,7 +285,7 @@ export function AdminBlogEditorPage() {
       };
 
       if (isEditMode && postId) {
-        await updatePost.mutateAsync(postData);
+        await updatePost.mutateAsync({ id: postId, data: postData });
       } else {
         await createPost.mutateAsync(postData);
       }
