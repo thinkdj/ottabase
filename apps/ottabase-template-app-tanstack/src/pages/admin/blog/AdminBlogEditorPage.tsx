@@ -4,15 +4,23 @@
  * Full-featured blog post editor with OttaEditor integration,
  * hero image upload, SEO settings, and all post fields.
  */
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { createModelHooks } from "@ottabase/ottaorm/client";
+import {
+  CONTENT_TYPES,
+  POST_STATUSES,
+  generateSlug,
+  type ContentType,
+  type HeroImage,
+  type PostStatus,
+  type SeoMeta,
+} from "@ottabase/ottablog";
 import {
   AdvancedImageTool,
   useOttaEditor,
   type BlockToolConstructable,
   type OutputData,
+  type ToolSettings,
 } from "@ottabase/ottaeditor";
+import { createModelHooks } from "@ottabase/ottaorm/client";
 import {
   Badge,
   Button,
@@ -29,29 +37,21 @@ import {
   TabsTrigger,
   Textarea,
 } from "@ottabase/ui-shadcn";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
   ArrowLeft,
-  Save,
-  Eye,
-  Send,
   FileText,
-  Settings,
   Image as ImageIcon,
-  Search,
-  StickyNote,
   Loader2,
+  Save,
+  Search,
+  Send,
+  Settings,
+  StickyNote,
   Trash2,
   X,
 } from "lucide-react";
-import {
-  CONTENT_TYPES,
-  POST_STATUSES,
-  generateSlug,
-  type ContentType,
-  type PostStatus,
-  type HeroImage,
-  type SeoMeta,
-} from "@ottabase/ottablog";
+import { useState } from "react";
 
 interface BlogPost {
   id: string;
@@ -77,12 +77,6 @@ interface BlogPost {
 
 const blogPostHooks = createModelHooks<BlogPost>({ entityName: "blog_posts" });
 
-const emptyEditorData: OutputData = {
-  time: Date.now(),
-  blocks: [],
-  version: "2.30.7",
-};
-
 // Editor configuration with image upload
 const getEditorConfig = (placeholder: string) => ({
   defaultPlugins: "all" as const,
@@ -95,95 +89,119 @@ const getEditorConfig = (placeholder: string) => ({
       config: {
         provider: "r2",
         uploadEndpoint: "/api/upload",
-      },
+      } as ToolSettings,
     },
   ],
 });
 
+// Wrapper component that handles data loading
 export function AdminBlogEditorPage() {
-  const navigate = useNavigate();
   const params = useParams({ strict: false });
   const postId = (params as { postId?: string }).postId;
   const isEditMode = Boolean(postId);
 
-  // Form state
-  const [title, setTitle] = useState("");
-  const [slug, setSlug] = useState("");
-  const [excerpt, setExcerpt] = useState("");
-  const [contentType, setContentType] = useState<ContentType>("blog");
-  const [status, setStatus] = useState<PostStatus>("draft");
-  const [authorName, setAuthorName] = useState("");
-  const [isFeatured, setIsFeatured] = useState(false);
-  const [allowComments, setAllowComments] = useState(true);
-  const [publishedAt, setPublishedAt] = useState("");
+  // Fetch data in the wrapper
+  const { data: existingPost, isLoading: isLoadingPost } =
+    blogPostHooks.useDetail(postId || "");
+
+  // Show loading state until data is ready (for edit mode)
+  if (isEditMode && (isLoadingPost || !existingPost)) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Render the form only when data is ready
+  return (
+    <BlogEditorForm
+      postId={postId}
+      isEditMode={isEditMode}
+      initialData={existingPost ?? undefined}
+    />
+  );
+}
+
+// Inner component that uses the editor hook - only mounted when data is ready
+interface BlogEditorFormProps {
+  postId?: string;
+  isEditMode: boolean;
+  initialData?: BlogPost;
+}
+
+function BlogEditorForm({
+  postId,
+  isEditMode,
+  initialData,
+}: BlogEditorFormProps) {
+  const navigate = useNavigate();
+
+  // Form state - initialized from props
+  const [title, setTitle] = useState(initialData?.title || "");
+  const [slug, setSlug] = useState(initialData?.slug || "");
+  const [excerpt, setExcerpt] = useState(initialData?.excerpt || "");
+  const [contentType, setContentType] = useState<ContentType>(
+    initialData?.contentType || "blog",
+  );
+  const [status, setStatus] = useState<PostStatus>(
+    initialData?.status || "draft",
+  );
+  const [authorName, setAuthorName] = useState(initialData?.authorName || "");
+  const [isFeatured, setIsFeatured] = useState(
+    initialData?.isFeatured || false,
+  );
+  const [allowComments, setAllowComments] = useState(
+    initialData?.allowComments ?? true,
+  );
+  const [publishedAt, setPublishedAt] = useState(
+    initialData?.publishedAt
+      ? new Date(initialData.publishedAt).toISOString().slice(0, 16)
+      : "",
+  );
 
   // Hero image state
-  const [heroImage, setHeroImage] = useState<HeroImage | null>(null);
-  const [heroImageUrl, setHeroImageUrl] = useState("");
-  const [heroImageAlt, setHeroImageAlt] = useState("");
+  const [heroImage, setHeroImage] = useState<HeroImage | null>(
+    initialData?.heroImage || null,
+  );
   const [isUploadingHero, setIsUploadingHero] = useState(false);
 
-  // SEO state
-  const [seoTitle, setSeoTitle] = useState("");
-  const [seoDescription, setSeoDescription] = useState("");
-  const [seoKeywords, setSeoKeywords] = useState("");
-  const [seoNoIndex, setSeoNoIndex] = useState(false);
-
-  // Content editors
-  const mainEditor = useOttaEditor(getEditorConfig("Start writing your post..."));
-  const notesEditor = useOttaEditor(getEditorConfig("Private notes (not shown publicly)..."));
-  const footnotesEditor = useOttaEditor(getEditorConfig("Add footnotes and references..."));
-
-  // Active tab
-  const [activeTab, setActiveTab] = useState("content");
+  // SEO state - initialized from props
+  const [seoTitle, setSeoTitle] = useState(initialData?.seoMeta?.title || "");
+  const [seoDescription, setSeoDescription] = useState(
+    initialData?.seoMeta?.description || "",
+  );
+  const [seoKeywords, setSeoKeywords] = useState(
+    initialData?.seoMeta?.keywords?.join(", ") || "",
+  );
+  const [seoNoIndex, setSeoNoIndex] = useState(
+    initialData?.seoMeta?.noIndex || false,
+  );
 
   // API hooks
-  const { data: existingPost, isLoading: isLoadingPost } = blogPostHooks.useDetail(postId || "");
   const createPost = blogPostHooks.useCreate();
   const updatePost = blogPostHooks.useUpdate();
 
   const isSaving = createPost.isPending || updatePost.isPending;
 
-  // Load existing post data
-  useEffect(() => {
-    if (existingPost && isEditMode) {
-      setTitle(existingPost.title || "");
-      setSlug(existingPost.slug || "");
-      setExcerpt(existingPost.excerpt || "");
-      setContentType(existingPost.contentType || "blog");
-      setStatus(existingPost.status || "draft");
-      setAuthorName(existingPost.authorName || "");
-      setIsFeatured(existingPost.isFeatured || false);
-      setAllowComments(existingPost.allowComments ?? true);
-      setPublishedAt(existingPost.publishedAt ? new Date(existingPost.publishedAt).toISOString().slice(0, 16) : "");
+  // Active tab
+  const [activeTab, setActiveTab] = useState("content");
 
-      // Hero image
-      if (existingPost.heroImage) {
-        setHeroImage(existingPost.heroImage);
-        setHeroImageUrl(existingPost.heroImage.url || "");
-        setHeroImageAlt(existingPost.heroImage.alt || "");
-      }
+  // Content editors - initialData is guaranteed to be available in edit mode
+  const mainEditor = useOttaEditor({
+    ...getEditorConfig("Start writing your post..."),
+    data: initialData?.content ?? undefined,
+  });
 
-      // SEO
-      if (existingPost.seoMeta) {
-        setSeoTitle(existingPost.seoMeta.title || "");
-        setSeoDescription(existingPost.seoMeta.description || "");
-        setSeoKeywords(existingPost.seoMeta.keywords?.join(", ") || "");
-        setSeoNoIndex(existingPost.seoMeta.noIndex || false);
-      }
+  const notesEditor = useOttaEditor({
+    ...getEditorConfig("Private notes (not shown publicly)..."),
+    data: initialData?.privateNotes ?? undefined,
+  });
 
-      // Load editor content after editors are ready
-      if (mainEditor.isReady && existingPost.content) {
-        mainEditor.render(existingPost.content);
-      }
-      if (notesEditor.isReady && existingPost.privateNotes) {
-        notesEditor.render(existingPost.privateNotes);
-      }
-      if (footnotesEditor.isReady && existingPost.footnotes) {
-        footnotesEditor.render(existingPost.footnotes);
-      }
-    }
-  }, [existingPost, isEditMode, mainEditor.isReady, notesEditor.isReady, footnotesEditor.isReady]);
+  const footnotesEditor = useOttaEditor({
+    ...getEditorConfig("Add footnotes and references..."),
+    data: initialData?.footnotes ?? undefined,
+  });
 
   // Auto-generate slug from title
   const handleTitleChange = (newTitle: string) => {
@@ -194,7 +212,9 @@ export function AdminBlogEditorPage() {
   };
 
   // Handle hero image upload
-  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHeroImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -210,12 +230,14 @@ export function AdminBlogEditorPage() {
 
       if (!response.ok) throw new Error("Upload failed");
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        url?: string;
+        cfImageId?: string;
+      };
       if (data.url) {
-        setHeroImageUrl(data.url);
         setHeroImage({
           url: data.url,
-          alt: heroImageAlt || file.name,
+          alt: heroImage?.alt || file.name,
           cfImageId: data.cfImageId,
         });
       }
@@ -227,21 +249,16 @@ export function AdminBlogEditorPage() {
     }
   };
 
-  // Update hero image from URL
-  const updateHeroFromUrl = () => {
-    if (heroImageUrl) {
-      setHeroImage({
-        url: heroImageUrl,
-        alt: heroImageAlt,
-      });
-    }
+  // Update hero image URL
+  const handleHeroUrlChange = (url: string) => {
+    setHeroImage(url ? { url, alt: heroImage?.alt || "" } : null);
   };
 
-  // Remove hero image
-  const removeHeroImage = () => {
-    setHeroImage(null);
-    setHeroImageUrl("");
-    setHeroImageAlt("");
+  // Update hero image alt
+  const handleHeroAltChange = (alt: string) => {
+    if (heroImage) {
+      setHeroImage({ ...heroImage, alt });
+    }
   };
 
   // Save post
@@ -261,7 +278,12 @@ export function AdminBlogEditorPage() {
       const seoMeta: SeoMeta = {
         title: seoTitle || undefined,
         description: seoDescription || undefined,
-        keywords: seoKeywords ? seoKeywords.split(",").map((k) => k.trim()).filter(Boolean) : undefined,
+        keywords: seoKeywords
+          ? seoKeywords
+              .split(",")
+              .map((k) => k.trim())
+              .filter(Boolean)
+          : undefined,
         noIndex: seoNoIndex,
         ogType: "article",
         twitterCard: "summary_large_image",
@@ -281,7 +303,10 @@ export function AdminBlogEditorPage() {
         authorName: authorName || undefined,
         isFeatured,
         allowComments,
-        publishedAt: publishNow && !publishedAt ? new Date().toISOString() : (publishedAt || undefined),
+        publishedAt:
+          publishNow && !publishedAt
+            ? new Date().toISOString()
+            : publishedAt || undefined,
       };
 
       if (isEditMode && postId) {
@@ -296,14 +321,6 @@ export function AdminBlogEditorPage() {
       alert("Failed to save post. Please try again.");
     }
   };
-
-  if (isEditMode && isLoadingPost) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 pb-16">
@@ -334,11 +351,19 @@ export function AdminBlogEditorPage() {
             onClick={() => handleSave(false)}
             disabled={isSaving}
           >
-            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {isSaving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
             Save Draft
           </Button>
           <Button onClick={() => handleSave(true)} disabled={isSaving}>
-            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+            {isSaving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
             Publish
           </Button>
         </div>
@@ -384,7 +409,10 @@ export function AdminBlogEditorPage() {
                 <StickyNote className="h-4 w-4" />
                 Notes
               </TabsTrigger>
-              <TabsTrigger value="footnotes" className="flex items-center gap-2">
+              <TabsTrigger
+                value="footnotes"
+                className="flex items-center gap-2"
+              >
                 <FileText className="h-4 w-4" />
                 Footnotes
               </TabsTrigger>
@@ -394,7 +422,7 @@ export function AdminBlogEditorPage() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="content" className="mt-4 data-[state=inactive]:hidden" forceMount>
+            <TabsContent value="content" className="mt-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Main Content</CardTitle>
@@ -411,7 +439,7 @@ export function AdminBlogEditorPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="notes" className="mt-4 data-[state=inactive]:hidden" forceMount>
+            <TabsContent value="notes" className="mt-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Private Notes</CardTitle>
@@ -428,12 +456,13 @@ export function AdminBlogEditorPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="footnotes" className="mt-4 data-[state=inactive]:hidden" forceMount>
+            <TabsContent value="footnotes" className="mt-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Footnotes & References</CardTitle>
                   <CardDescription>
-                    Add footnotes, citations, and references (shown at the end of the post)
+                    Add footnotes, citations, and references (shown at the end
+                    of the post)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -546,7 +575,7 @@ export function AdminBlogEditorPage() {
                     variant="destructive"
                     size="icon"
                     className="absolute top-2 right-2"
-                    onClick={removeHeroImage}
+                    onClick={() => setHeroImage(null)}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -578,28 +607,18 @@ export function AdminBlogEditorPage() {
 
               <div className="space-y-2">
                 <Label>Or paste URL</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={heroImageUrl}
-                    onChange={(e) => setHeroImageUrl(e.target.value)}
-                    placeholder="https://..."
-                  />
-                  <Button variant="outline" onClick={updateHeroFromUrl}>
-                    Set
-                  </Button>
-                </div>
+                <Input
+                  value={heroImage?.url || ""}
+                  onChange={(e) => handleHeroUrlChange(e.target.value)}
+                  placeholder="https://..."
+                />
               </div>
 
               <div className="space-y-2">
                 <Label>Alt Text</Label>
                 <Input
-                  value={heroImageAlt}
-                  onChange={(e) => {
-                    setHeroImageAlt(e.target.value);
-                    if (heroImage) {
-                      setHeroImage({ ...heroImage, alt: e.target.value });
-                    }
-                  }}
+                  value={heroImage?.alt || ""}
+                  onChange={(e) => handleHeroAltChange(e.target.value)}
                   placeholder="Describe the image..."
                 />
               </div>
@@ -619,7 +638,9 @@ export function AdminBlogEditorPage() {
                 <Label>Content Type</Label>
                 <select
                   value={contentType}
-                  onChange={(e) => setContentType(e.target.value as ContentType)}
+                  onChange={(e) =>
+                    setContentType(e.target.value as ContentType)
+                  }
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   {Object.entries(CONTENT_TYPES).map(([value, { label }]) => (
@@ -700,7 +721,11 @@ export function AdminBlogEditorPage() {
                   variant="destructive"
                   className="w-full"
                   onClick={() => {
-                    if (window.confirm("Are you sure you want to delete this post?")) {
+                    if (
+                      window.confirm(
+                        "Are you sure you want to delete this post?",
+                      )
+                    ) {
                       // Delete and navigate away
                       navigate({ to: "/admin/blog" });
                     }
