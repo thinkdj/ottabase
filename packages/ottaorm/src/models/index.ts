@@ -4,13 +4,6 @@
 
 // Core models - Fat Model Pattern
 export { Account, accountsTable, type AccountType, type NewAccountType } from "./Account";
-export {
-  Post,
-  postTagsTable,
-  postsTable,
-  type NewPostType,
-  type PostType,
-} from "./Post";
 export { Tag, tagsTable, type NewTagType, type TagType } from "./Tag";
 export { User, usersTable, type NewUserType, type UserType } from "./User";
 

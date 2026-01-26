@@ -1,15 +1,15 @@
 export {
-  BlogSeries,
+  PostSeries,
   seriesTable,
-  BlogCategory,
+  PostCategory,
   categoriesTable,
-  BlogTag,
+  Tag,
   tagsTable,
-  BlogPost,
+  Post,
   postsTable,
-  BlogPostTag,
+  PostTag,
   postTagsTable,
-  BlogPostVersion,
+  PostVersion,
   postVersionsTable,
 } from "./models";
 export type {

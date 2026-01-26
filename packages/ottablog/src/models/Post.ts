@@ -22,7 +22,7 @@ import {
  * Posts table - main content storage
  */
 export const postsTable = sqliteTable(
-  "blog_posts",
+  "posts",
   {
     id: text("id")
       .primaryKey()
@@ -158,29 +158,29 @@ export const postsTable = sqliteTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    index("blog_posts_slug_idx").on(table.slug),
-    index("blog_posts_status_idx").on(table.status),
-    index("blog_posts_content_type_idx").on(table.contentType),
-    index("blog_posts_category_id_idx").on(table.categoryId),
-    index("blog_posts_series_id_idx").on(table.seriesId),
-    index("blog_posts_author_id_idx").on(table.authorId),
-    index("blog_posts_app_id_idx").on(table.appId),
-    index("blog_posts_published_at_idx").on(table.publishedAt),
-    index("blog_posts_is_featured_idx").on(table.isFeatured),
+    index("posts_slug_idx").on(table.slug),
+    index("posts_status_idx").on(table.status),
+    index("posts_content_type_idx").on(table.contentType),
+    index("posts_category_id_idx").on(table.categoryId),
+    index("posts_series_id_idx").on(table.seriesId),
+    index("posts_author_id_idx").on(table.authorId),
+    index("posts_app_id_idx").on(table.appId),
+    index("posts_published_at_idx").on(table.publishedAt),
+    index("posts_is_featured_idx").on(table.isFeatured),
   ],
 );
 
 export type Post = typeof postsTable.$inferSelect;
 export type NewPost = typeof postsTable.$inferInsert;
 
-export type BlogPostType = typeof postsTable.$inferSelect;
-export type NewBlogPostType = typeof postsTable.$inferInsert;
+export type PostType = typeof postsTable.$inferSelect;
+export type NewPostType = typeof postsTable.$inferInsert;
 
 /**
- * BlogPost Model - Fat Model Pattern
+ * Post Model - Fat Model Pattern
  */
-export class BlogPost extends BaseModel {
-  static entity = "blog_posts";
+export class Post extends BaseModel {
+  static entity = "posts";
   static table = postsTable;
   static primaryKey = "id";
 
@@ -700,12 +700,12 @@ export class BlogPost extends BaseModel {
   static async findBySlug(
     slug: string,
     options?: { appId?: string },
-  ): Promise<BlogPost | null> {
+  ): Promise<Post | null> {
     const query: Record<string, unknown> = { slug };
     if (options?.appId) query.appId = options.appId;
 
     const results = await this.where(query);
-    return results.length > 0 ? (results[0] as BlogPost) : null;
+    return results.length > 0 ? (results[0] as Post) : null;
   }
 
   /**
@@ -812,7 +812,7 @@ export class BlogPost extends BaseModel {
   }
 
   /**
-   * Get tags for this post (BelongsToMany BlogTag via postTagsTable)
+   * Get tags for this post (BelongsToMany Tag via postTagsTable)
    */
   async tags(options?: {
     select?: string[];
@@ -820,10 +820,10 @@ export class BlogPost extends BaseModel {
     orderDirection?: "asc" | "desc";
     withPivot?: string[];
   }) {
-    const { BlogTag } = await import("./BlogTag");
-    const { postTagsTable } = await import("./BlogPostTag");
+    const { Tag } = await import("./Tag");
+    const { postTagsTable } = await import("./PostTag");
 
-    return this.belongsToMany(BlogTag, postTagsTable, {
+    return this.belongsToMany(Tag, postTagsTable, {
       foreignKey: "postId",
       otherKey: "tagId",
       ...options,

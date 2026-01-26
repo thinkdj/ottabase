@@ -16,8 +16,6 @@ import {
   type TemplateVariables,
 } from "@ottabase/email";
 import {
-  Post,
-  Tag,
   User,
   autoInit,
   handleCrud,
@@ -26,11 +24,11 @@ import {
   registerModels,
 } from "@ottabase/ottaorm";
 import {
-  BlogCategory,
-  BlogPost,
-  BlogPostVersion,
-  BlogSeries,
-  BlogTag,
+  PostCategory,
+  Post,
+  PostVersion,
+  PostSeries,
+  Tag,
 } from "@ottabase/ottablog";
 import { ReferralTracking } from "@ottabase/referrals";
 import { Shortlink } from "@ottabase/shortlinks";
@@ -312,11 +310,9 @@ export default {
           Post,
           Tag,
           ReferralTracking,
-          BlogPost,
-          BlogCategory,
-          BlogTag,
-          BlogSeries,
-          BlogPostVersion,
+          PostCategory,
+          PostSeries,
+          PostVersion,
         ]);
 
         // Parse the request into a CrudRequest
@@ -2050,11 +2046,9 @@ export default {
           Todo,
           Shortlink,
           ReferralTracking,
-          BlogPost,
-          BlogCategory,
-          BlogTag,
-          BlogSeries,
-          BlogPostVersion,
+          PostCategory,
+          PostSeries,
+          PostVersion,
         ]);
 
         // Parse the request into a CrudRequest

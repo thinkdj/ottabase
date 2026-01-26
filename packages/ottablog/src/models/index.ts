@@ -1,32 +1,32 @@
-export { BlogSeries, seriesTable } from "./BlogSeries";
+export { PostSeries, seriesTable } from "./PostSeries";
 export type {
   Series,
   NewSeries,
-  BlogSeriesType,
-  NewBlogSeriesType,
-} from "./BlogSeries";
+  PostSeriesType,
+  NewPostSeriesType,
+} from "./PostSeries";
 
-export { BlogCategory, categoriesTable } from "./BlogCategory";
+export { PostCategory, categoriesTable } from "./PostCategory";
 export type {
   Category,
   NewCategory,
-  BlogCategoryType,
-  NewBlogCategoryType,
-} from "./BlogCategory";
+  PostCategoryType,
+  NewPostCategoryType,
+} from "./PostCategory";
 
-export { BlogTag, tagsTable } from "./BlogTag";
-export type { Tag, NewTag, BlogTagType, NewBlogTagType } from "./BlogTag";
+export { Tag, tagsTable } from "./Tag";
+export type { Tag, NewTag, TagType, NewTagType } from "./Tag";
 
-export { BlogPost, postsTable } from "./BlogPost";
-export type { Post, NewPost, BlogPostType, NewBlogPostType } from "./BlogPost";
+export { Post, postsTable } from "./Post";
+export type { Post, NewPost, PostType, NewPostType } from "./Post";
 
-export { BlogPostTag, postTagsTable } from "./BlogPostTag";
-export type { PostTag, NewPostTag } from "./BlogPostTag";
+export { PostTag, postTagsTable } from "./PostTag";
+export type { PostTag, NewPostTag } from "./PostTag";
 
-export { BlogPostVersion, postVersionsTable } from "./BlogPostVersion";
+export { PostVersion, postVersionsTable } from "./PostVersion";
 export type {
   PostVersion,
   NewPostVersion,
-  BlogPostVersionType,
-  NewBlogPostVersionType,
-} from "./BlogPostVersion";
+  PostVersionType,
+  NewPostVersionType,
+} from "./PostVersion";

@@ -587,12 +587,12 @@ The package includes these core models (in `@ottabase/ottaorm`):
 
 - **User** - Users with name, email, image
 - **Account** - OAuth provider accounts (NextAuth)
-- **Post** - Blog posts with title, slug, content, author
 - **Tag** - Tags with name and slug
-- **Post_Tags** - Many-to-many pivot table for posts and tags
 - **Session** - User sessions
 - **VerificationToken** - Email verification tokens
 - **Authenticator** - WebAuthn/Passkey credentials
+
+**Note:** The Post model has been moved to `@ottabase/ottablog` as a comprehensive blog/content management model with enhanced features.
 
 ## Architecture
 

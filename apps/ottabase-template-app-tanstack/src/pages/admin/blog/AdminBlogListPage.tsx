@@ -46,7 +46,7 @@ interface BlogPost {
   updatedAt: string;
 }
 
-const blogPostHooks = createModelHooks<BlogPost>({ entityName: "blog_posts" });
+const blogPostHooks = createModelHooks<BlogPost>({ entityName: "posts" });
 
 export function AdminBlogListPage() {
   const [searchQuery, setSearchQuery] = useState("");

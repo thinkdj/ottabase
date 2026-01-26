@@ -56,9 +56,9 @@ interface BlogSeries {
   isComplete: boolean;
 }
 
-const blogPostHooks = createModelHooks<BlogPost>({ entityName: "blog_posts" });
+const blogPostHooks = createModelHooks<BlogPost>({ entityName: "posts" });
 const blogSeriesHooks = createModelHooks<BlogSeries>({
-  entityName: "blog_series",
+  entityName: "series",
 });
 
 const formatDate = (date: string) => {

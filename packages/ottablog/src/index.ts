@@ -30,17 +30,17 @@
 
 // Models + schema exports (fat models)
 export {
-  BlogSeries,
+  PostSeries,
   seriesTable,
-  BlogCategory,
+  PostCategory,
   categoriesTable,
-  BlogTag,
+  Tag,
   tagsTable,
-  BlogPost,
+  Post,
   postsTable,
-  BlogPostTag,
+  PostTag,
   postTagsTable,
-  BlogPostVersion,
+  PostVersion,
   postVersionsTable,
 } from "./models";
 
@@ -58,16 +58,16 @@ export type {
   NewPostTag,
   PostVersion,
   NewPostVersion,
-  BlogSeriesType,
-  NewBlogSeriesType,
-  BlogCategoryType,
-  NewBlogCategoryType,
-  BlogTagType,
-  NewBlogTagType,
-  BlogPostType,
-  NewBlogPostType,
-  BlogPostVersionType,
-  NewBlogPostVersionType,
+  PostSeriesType,
+  NewPostSeriesType,
+  PostCategoryType,
+  NewPostCategoryType,
+  TagType,
+  NewTagType,
+  PostType,
+  NewPostType,
+  PostVersionType,
+  NewPostVersionType,
 } from "./models";
 
 // Type exports

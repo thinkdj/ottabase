@@ -1,5 +1,5 @@
 /**
- * BlogSeries Model
+ * PostSeries Model
  *
  * OttaORM model for blog series - groups related posts into ordered collections.
  * Perfect for multi-part tutorials, article series, or themed content.
@@ -13,7 +13,7 @@ import { generateSlug } from "../types";
  * Series table - group related posts into a series
  */
 export const seriesTable = sqliteTable(
-  "blog_series",
+  "series",
   {
     id: text("id")
       .primaryKey()
@@ -56,19 +56,19 @@ export const seriesTable = sqliteTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    index("blog_series_slug_idx").on(table.slug),
-    index("blog_series_app_id_idx").on(table.appId),
+    index("series_slug_idx").on(table.slug),
+    index("series_app_id_idx").on(table.appId),
   ],
 );
 
 export type Series = typeof seriesTable.$inferSelect;
 export type NewSeries = typeof seriesTable.$inferInsert;
 
-export type BlogSeriesType = typeof seriesTable.$inferSelect;
-export type NewBlogSeriesType = typeof seriesTable.$inferInsert;
+export type PostSeriesType = typeof seriesTable.$inferSelect;
+export type NewPostSeriesType = typeof seriesTable.$inferInsert;
 
-export class BlogSeries extends BaseModel {
-  static entity = "blog_series";
+export class PostSeries extends BaseModel {
+  static entity = "series";
   static table = seriesTable;
   static primaryKey = "id";
 
@@ -274,12 +274,12 @@ export class BlogSeries extends BaseModel {
   static async findBySlug(
     slug: string,
     options?: { appId?: string },
-  ): Promise<BlogSeries | null> {
+  ): Promise<PostSeries | null> {
     const query: Record<string, unknown> = { slug };
     if (options?.appId) query.appId = options.appId;
 
     const results = await this.where(query);
-    return results.length > 0 ? (results[0] as BlogSeries) : null;
+    return results.length > 0 ? (results[0] as PostSeries) : null;
   }
 
   // ==================== Instance Methods ====================

@@ -1,5 +1,5 @@
 /**
- * BlogPostVersion Model
+ * PostVersion Model
  *
  * OttaORM model for blog post version history.
  * Stores snapshots of post content on each save for version tracking.
@@ -7,13 +7,13 @@
 import { BaseModel, ModelFields } from "@ottabase/ottaorm";
 import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { postsTable } from "./BlogPost";
+import { postsTable } from "./Post";
 
 /**
  * Post Versions table - content versioning history
  */
 export const postVersionsTable = sqliteTable(
-  "blog_post_versions",
+  "post_versions",
   {
     id: text("id")
       .primaryKey()
@@ -73,23 +73,23 @@ export const postVersionsTable = sqliteTable(
       .default(sql`(unixepoch())`),
   },
   (table) => [
-    index("blog_post_versions_post_id_idx").on(table.postId),
-    index("blog_post_versions_version_number_idx").on(
+    index("post_versions_post_id_idx").on(table.postId),
+    index("post_versions_version_number_idx").on(
       table.postId,
       table.versionNumber,
     ),
-    index("blog_post_versions_created_at_idx").on(table.createdAt),
+    index("post_versions_created_at_idx").on(table.createdAt),
   ],
 );
 
 export type PostVersion = typeof postVersionsTable.$inferSelect;
 export type NewPostVersion = typeof postVersionsTable.$inferInsert;
 
-export type BlogPostVersionType = typeof postVersionsTable.$inferSelect;
-export type NewBlogPostVersionType = typeof postVersionsTable.$inferInsert;
+export type PostVersionType = typeof postVersionsTable.$inferSelect;
+export type NewPostVersionType = typeof postVersionsTable.$inferInsert;
 
-export class BlogPostVersion extends BaseModel {
-  static entity = "blog_post_versions";
+export class PostVersion extends BaseModel {
+  static entity = "post_versions";
   static table = postVersionsTable;
   static primaryKey = "id";
 
@@ -264,9 +264,9 @@ export class BlogPostVersion extends BaseModel {
   /**
    * Get the latest version for a post
    */
-  static async latestForPost(postId: string): Promise<BlogPostVersion | null> {
+  static async latestForPost(postId: string): Promise<PostVersion | null> {
     const versions = await this.forPost(postId, { limit: 1 });
-    return versions.length > 0 ? (versions[0] as BlogPostVersion) : null;
+    return versions.length > 0 ? (versions[0] as PostVersion) : null;
   }
 
   /**
@@ -275,9 +275,9 @@ export class BlogPostVersion extends BaseModel {
   static async getVersion(
     postId: string,
     versionNumber: number,
-  ): Promise<BlogPostVersion | null> {
+  ): Promise<PostVersion | null> {
     const results = await this.where({ postId, versionNumber });
-    return results.length > 0 ? (results[0] as BlogPostVersion) : null;
+    return results.length > 0 ? (results[0] as PostVersion) : null;
   }
 
   /**

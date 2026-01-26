@@ -1,7 +1,7 @@
 /**
- * BlogPostTag Model
+ * PostTag Model
  *
- * Junction table for blog posts and tags.
+ * Junction table for posts and tags.
  */
 import { BaseModel } from "@ottabase/ottaorm";
 import { sql } from "drizzle-orm";
@@ -12,14 +12,14 @@ import {
   sqliteTable,
   text,
 } from "drizzle-orm/sqlite-core";
-import { postsTable } from "./BlogPost";
-import { tagsTable } from "./BlogTag";
+import { postsTable } from "./Post";
+import { tagsTable } from "./Tag";
 
 /**
  * Post-Tags junction table for many-to-many relationship
  */
 export const postTagsTable = sqliteTable(
-  "blog_post_tags",
+  "post_tags",
   {
     postId: text("post_id")
       .notNull()
@@ -36,16 +36,16 @@ export const postTagsTable = sqliteTable(
   },
   (table) => [
     primaryKey({ columns: [table.postId, table.tagId] }),
-    index("blog_post_tags_post_id_idx").on(table.postId),
-    index("blog_post_tags_tag_id_idx").on(table.tagId),
+    index("post_tags_post_id_idx").on(table.postId),
+    index("post_tags_tag_id_idx").on(table.tagId),
   ],
 );
 
 export type PostTag = typeof postTagsTable.$inferSelect;
 export type NewPostTag = typeof postTagsTable.$inferInsert;
 
-export class BlogPostTag extends BaseModel {
-  static entity = "blog_post_tags";
+export class PostTag extends BaseModel {
+  static entity = "post_tags";
   static table = postTagsTable;
   static primaryKey = "postId";
 }

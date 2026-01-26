@@ -99,9 +99,9 @@ interface BlogPostVersion {
   changeNote: string | null;
 }
 
-const blogPostHooks = createModelHooks<BlogPost>({ entityName: "blog_posts" });
-const blogSeriesHooks = createModelHooks<BlogSeries>({ entityName: "blog_series" });
-const blogPostVersionHooks = createModelHooks<BlogPostVersion>({ entityName: "blog_post_versions" });
+const blogPostHooks = createModelHooks<BlogPost>({ entityName: "posts" });
+const blogSeriesHooks = createModelHooks<BlogSeries>({ entityName: "series" });
+const blogPostVersionHooks = createModelHooks<BlogPostVersion>({ entityName: "post_versions" });
 
 // Editor configuration with image upload
 const getEditorConfig = (placeholder: string) => ({

@@ -1,7 +1,7 @@
 /**
- * BlogTag Model
+ * Tag Model
  *
- * OttaORM model for blog tags.
+ * OttaORM model for tags.
  */
 import { BaseModel, ModelFields } from "@ottabase/ottaorm";
 import { sql } from "drizzle-orm";
@@ -12,7 +12,7 @@ import { generateSlug } from "../types";
  * Tags table - flexible content labeling
  */
 export const tagsTable = sqliteTable(
-  "blog_tags",
+  "tags",
   {
     id: text("id")
       .primaryKey()
@@ -36,19 +36,19 @@ export const tagsTable = sqliteTable(
       .default(sql`(unixepoch())`),
   },
   (table) => [
-    index("blog_tags_slug_idx").on(table.slug),
-    index("blog_tags_app_id_idx").on(table.appId),
+    index("tags_slug_idx").on(table.slug),
+    index("tags_app_id_idx").on(table.appId),
   ],
 );
 
 export type Tag = typeof tagsTable.$inferSelect;
 export type NewTag = typeof tagsTable.$inferInsert;
 
-export type BlogTagType = typeof tagsTable.$inferSelect;
-export type NewBlogTagType = typeof tagsTable.$inferInsert;
+export type TagType = typeof tagsTable.$inferSelect;
+export type NewTagType = typeof tagsTable.$inferInsert;
 
-export class BlogTag extends BaseModel {
-  static entity = "blog_tags";
+export class Tag extends BaseModel {
+  static entity = "tags";
   static table = tagsTable;
   static primaryKey = "id";
 
@@ -160,12 +160,12 @@ export class BlogTag extends BaseModel {
   static async findBySlug(
     slug: string,
     options?: { appId?: string },
-  ): Promise<BlogTag | null> {
+  ): Promise<Tag | null> {
     const query: Record<string, unknown> = { slug };
     if (options?.appId) query.appId = options.appId;
 
     const results = await this.where(query);
-    return results.length > 0 ? (results[0] as BlogTag) : null;
+    return results.length > 0 ? (results[0] as Tag) : null;
   }
 
   /**

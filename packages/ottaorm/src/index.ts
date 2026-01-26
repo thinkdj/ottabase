@@ -59,9 +59,6 @@ export {
   usersTable,
   Account,
   accountsTable,
-  Post,
-  postsTable,
-  postTagsTable,
   Tag,
   tagsTable,
   // Auth.js SQL models (Edge-safe)
@@ -77,8 +74,6 @@ export type {
   NewUserType,
   AccountType,
   NewAccountType,
-  PostType,
-  NewPostType,
   TagType,
   NewTagType,
   AuthenticatorType,

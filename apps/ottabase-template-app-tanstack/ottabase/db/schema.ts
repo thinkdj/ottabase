@@ -19,20 +19,17 @@
 import {
   accountsTable,
   authenticatorsTable,
-  postsTable,
-  postTagsTable,
   sessionsTable,
-  tagsTable,
   usersTable,
   verificationTokensTable,
 } from "@ottabase/ottaorm";
 import {
-  categoriesTable as blogCategoriesTable,
-  postTagsTable as blogPostTagsTable,
-  postVersionsTable as blogPostVersionsTable,
-  postsTable as blogPostsTable,
-  seriesTable as blogSeriesTable,
-  tagsTable as blogTagsTable,
+  categoriesTable,
+  postTagsTable,
+  postVersionsTable,
+  postsTable,
+  seriesTable,
+  tagsTable,
 } from "@ottabase/ottablog";
 import { referralTrackingTable } from "@ottabase/referrals";
 import { shortlinksTable } from "@ottabase/shortlinks";
@@ -40,10 +37,7 @@ import { shortlinksTable } from "@ottabase/shortlinks";
 export {
   accountsTable,
   authenticatorsTable,
-  postsTable,
-  postTagsTable,
   sessionsTable,
-  tagsTable,
   usersTable,
   verificationTokensTable,
 };
@@ -57,12 +51,12 @@ export { todosTable } from "../models/Todo";
 // PACKAGE TABLES (from enabled packages)
 // ============================================================
 export {
-  blogCategoriesTable,
-  blogPostTagsTable,
-  blogPostVersionsTable,
-  blogPostsTable,
-  blogSeriesTable,
-  blogTagsTable,
+  categoriesTable,
+  postTagsTable,
+  postVersionsTable,
+  postsTable,
+  seriesTable,
+  tagsTable,
   referralTrackingTable,
   shortlinksTable,
 };

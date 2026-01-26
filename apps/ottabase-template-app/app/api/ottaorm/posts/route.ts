@@ -6,7 +6,8 @@
 
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createD1Driver } from "@ottabase/db/drizzle-d1";
-import { Post, registerConnection } from "@ottabase/ottaorm";
+import { registerConnection } from "@ottabase/ottaorm";
+import { Post } from "@ottabase/ottablog";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 

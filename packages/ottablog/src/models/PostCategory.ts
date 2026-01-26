@@ -1,7 +1,7 @@
 /**
- * BlogCategory Model
+ * PostCategory Model
  *
- * OttaORM model for blog categories with hierarchy support.
+ * OttaORM model for post categories with hierarchy support.
  */
 import { BaseModel, ModelFields } from "@ottabase/ottaorm";
 import { sql } from "drizzle-orm";
@@ -12,7 +12,7 @@ import { generateSlug } from "../types";
  * Categories table - hierarchical content organization
  */
 export const categoriesTable = sqliteTable(
-  "blog_categories",
+  "categories",
   {
     id: text("id")
       .primaryKey()
@@ -47,20 +47,20 @@ export const categoriesTable = sqliteTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    index("blog_categories_slug_idx").on(table.slug),
-    index("blog_categories_app_id_idx").on(table.appId),
-    index("blog_categories_parent_id_idx").on(table.parentId),
+    index("categories_slug_idx").on(table.slug),
+    index("categories_app_id_idx").on(table.appId),
+    index("categories_parent_id_idx").on(table.parentId),
   ],
 );
 
 export type Category = typeof categoriesTable.$inferSelect;
 export type NewCategory = typeof categoriesTable.$inferInsert;
 
-export type BlogCategoryType = typeof categoriesTable.$inferSelect;
-export type NewBlogCategoryType = typeof categoriesTable.$inferInsert;
+export type PostCategoryType = typeof categoriesTable.$inferSelect;
+export type NewPostCategoryType = typeof categoriesTable.$inferInsert;
 
-export class BlogCategory extends BaseModel {
-  static entity = "blog_categories";
+export class PostCategory extends BaseModel {
+  static entity = "categories";
   static table = categoriesTable;
   static primaryKey = "id";
 
@@ -249,12 +249,12 @@ export class BlogCategory extends BaseModel {
   static async findBySlug(
     slug: string,
     options?: { appId?: string },
-  ): Promise<BlogCategory | null> {
+  ): Promise<PostCategory | null> {
     const query: Record<string, unknown> = { slug };
     if (options?.appId) query.appId = options.appId;
 
     const results = await this.where(query);
-    return results.length > 0 ? (results[0] as BlogCategory) : null;
+    return results.length > 0 ? (results[0] as PostCategory) : null;
   }
 
   // ==================== Instance Methods ====================
