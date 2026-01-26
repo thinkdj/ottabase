@@ -408,26 +408,6 @@ const post = await Post.create({
 - `series` - Content series grouping
 - `post_tags` - Many-to-many junction table
 
-## Breaking Changes from v1
-
-The `Post` model was moved from `@ottabase/ottaorm` to `@ottabase/ottablog` for enhanced features.
-
-**Migration:**
-```typescript
-// Old (no longer works)
-import { Post } from "@ottabase/ottaorm";
-
-// New (correct)
-import { Post } from "@ottabase/ottablog";
-```
-
-**Model Name Changes:**
-- `BlogPost` → `Post`
-- `BlogCategory` → `PostCategory`
-- `BlogTag` → `Tag`
-- `BlogPostVersion` → `PostVersion`
-- `BlogSeries` → `PostSeries`
-
 ## Benefits
 
 - **Type-Safe** - Full TypeScript support with IDE autocomplete
