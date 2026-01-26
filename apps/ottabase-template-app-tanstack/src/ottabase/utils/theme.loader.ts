@@ -3,6 +3,7 @@ import defaultTheme from '../config/themes/default.json';
 import neoTheme from '../config/themes/neo.json';
 import crispTheme from '../config/themes/crisp.json';
 import funkyTheme from '../config/themes/funky.json';
+import artisanTheme from '../config/themes/artisan.json';
 
 // Registry of available themes
 const themes: Record<string, ThemeConfig> = {
@@ -10,6 +11,7 @@ const themes: Record<string, ThemeConfig> = {
     neo: neoTheme as ThemeConfig,
     crisp: crispTheme as ThemeConfig,
     funky: funkyTheme as ThemeConfig,
+    artisan: artisanTheme as ThemeConfig,
 };
 
 export const getAvailableThemes = () => Object.keys(themes);

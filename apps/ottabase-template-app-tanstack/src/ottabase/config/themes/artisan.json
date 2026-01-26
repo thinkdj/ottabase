@@ -1,0 +1,59 @@
+{
+    "name": "artisan",
+    "typography": {
+        "heading": {
+            "fontFamily": "Outfit",
+            "url": "https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&display=swap"
+        },
+        "body": {
+            "fontFamily": "Inter",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        },
+        "handwriting": {
+            "fontFamily": "Playfair Display",
+            "url": "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap"
+        }
+    },
+    "radius": "0.5rem",
+    "spacing": {
+        "section": "2.5rem",
+        "card": "1.5rem",
+        "element": "0.75rem"
+    },
+    "colors": {
+        "light": {
+            "background": "35 50% 97%",
+            "foreground": "20 32% 32%",
+            "primary": "20 28% 62%",
+            "primary-foreground": "30 50% 97%",
+            "secondary": "25 32% 87%",
+            "secondary-foreground": "20 32% 32%",
+            "muted": "25 32% 87%",
+            "muted-foreground": "20 15% 55%",
+            "accent": "160 71% 33%",
+            "accent-foreground": "30 50% 97%",
+            "destructive": "330 64% 50%",
+            "destructive-foreground": "30 50% 97%",
+            "border": "25 40% 90%",
+            "input": "25 40% 90%",
+            "ring": "20 28% 62%"
+        },
+        "dark": {
+            "background": "20 29% 25%",
+            "foreground": "30 60% 97%",
+            "primary": "20 23% 60%",
+            "primary-foreground": "20 29% 25%",
+            "secondary": "20 20% 40%",
+            "secondary-foreground": "30 60% 97%",
+            "muted": "20 20% 40%",
+            "muted-foreground": "25 20% 70%",
+            "accent": "160 48% 50%",
+            "accent-foreground": "20 29% 25%",
+            "destructive": "330 70% 52%",
+            "destructive-foreground": "30 60% 97%",
+            "border": "20 20% 35%",
+            "input": "20 20% 35%",
+            "ring": "20 23% 60%"
+        }
+    }
+}
