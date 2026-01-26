@@ -2051,6 +2051,8 @@ export default {
           BlogPost,
           BlogCategory,
           BlogTag,
+          BlogSeries,
+          BlogPostVersion,
         ]);
 
         // Parse the request into a CrudRequest
