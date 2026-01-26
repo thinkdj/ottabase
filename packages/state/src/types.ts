@@ -7,9 +7,8 @@
 export type Theme = "light" | "dark";
 
 // Theme details type
-export interface ThemeDetails {
+export interface ThemeInfo {
   name: string; // e.g., "default", "neo", "crisp", "funky"
-  mode: Theme;
 }
 
 // Sidebar state type
@@ -33,17 +32,15 @@ export interface AppState<TUser extends BaseUser = BaseUser> {
   appName: string;
 
   // Theme
-  theme: Theme;
-  themeDetails: ThemeDetails;
+  theme: Theme; // "light" | "dark" - the current mode
+  themeInfo: ThemeInfo; // Theme name and metadata
 
   // User
   user: TUser | null;
   isAuthenticated: boolean;
 
   // UI State
-  sidebarOpen: boolean;
-  sidebarCollapsed: boolean;
-  sidebarWidth: number; // Sidebar width in pixels (e.g., 250 for open, 60 for collapsed)
+  sidebarState: SidebarState; // Consolidated sidebar state
   scale: number; // UI magnification factor (1.0 = 100%)
   zoom: number; // Browser zoom level (1.0 = 100%)
 

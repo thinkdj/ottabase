@@ -1,8 +1,8 @@
 import { useThemeManager } from "@/ottabase/hooks/useThemeManager";
-import { useThemeDetailsManager } from "@/ottabase/hooks/useThemeDetailsManager";
+import { useThemeInfoManager } from "@/ottabase/hooks/useThemeInfoManager";
 
 export function ThemeManager() {
     useThemeManager();
-    useThemeDetailsManager();
+    useThemeInfoManager();
     return null;
 }

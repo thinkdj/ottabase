@@ -7,14 +7,13 @@ import {
   isAuthenticatedAtom,
   isLoadingAtom,
   scaleAtom,
-  sidebarCollapsedAtom,
-  sidebarOpenAtom,
-  sidebarWidthAtom,
+  sidebarStateAtom,
   themeAtom,
-  themeDetailsAtom,
+  themeInfoAtom,
   userAtom,
   zoomAtom,
   type AppUser,
+  type SidebarState,
 } from "@/ottabase/state/appState";
 import {
   Badge,
@@ -34,12 +33,10 @@ export function StateDemoPage() {
 
   // Individual atoms
   const [theme, setTheme] = useAtom(themeAtom);
-  const themeDetails = useAtomValue(themeDetailsAtom);
+  const themeInfo = useAtomValue(themeInfoAtom);
   const [user, setUser] = useAtom(userAtom);
   const [isAuthenticated, setIsAuthenticated] = useAtom(isAuthenticatedAtom);
-  const [sidebarOpen, setSidebarOpen] = useAtom(sidebarOpenAtom);
-  const [sidebarCollapsed, setSidebarCollapsed] = useAtom(sidebarCollapsedAtom);
-  const [sidebarWidth, setSidebarWidth] = useAtom(sidebarWidthAtom);
+  const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
   const [scale, setScale] = useAtom(scaleAtom);
   const zoom = useAtomValue(zoomAtom);
   const [isLoading, setIsLoading] = useAtom(isLoadingAtom);
@@ -127,28 +124,32 @@ export function StateDemoPage() {
         </CardContent>
       </Card>
 
-      {/* Theme Details */}
+      {/* Theme Info */}
       <Card>
         <CardHeader>
-          <CardTitle>🎭 Theme Details</CardTitle>
+          <CardTitle>🎭 Theme Info</CardTitle>
           <CardDescription>
-            Uses: <code className="bg-muted px-1 rounded">themeDetailsAtom</code>
+            Uses: <code className="bg-muted px-1 rounded">themeInfoAtom</code> (theme name),{" "}
+            <code className="bg-muted px-1 rounded">themeAtom</code> (mode)
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             <div className="flex items-center gap-4">
               <span className="text-muted-foreground">
-                Theme Name: <Badge variant="outline">{themeDetails.name}</Badge>
+                Theme Name: <Badge variant="outline">{themeInfo.name}</Badge>
               </span>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-muted-foreground">
-                Mode: <Badge variant="outline">{themeDetails.mode}</Badge>
+                Mode: <Badge variant="outline">{theme}</Badge>
+              </span>
+              <span className="text-sm text-muted-foreground">
+                (synced from themeAtom)
               </span>
             </div>
             <div className="bg-muted p-4 rounded-lg text-sm font-mono">
-              {JSON.stringify(themeDetails, null, 2)}
+              {JSON.stringify({ name: themeInfo.name, mode: theme }, null, 2)}
             </div>
           </div>
         </CardContent>
@@ -207,9 +208,7 @@ export function StateDemoPage() {
         <CardHeader>
           <CardTitle>📱 Sidebar State</CardTitle>
           <CardDescription>
-            Uses: <code className="bg-muted px-1 rounded">sidebarOpenAtom</code>
-            , <code className="bg-muted px-1 rounded">sidebarCollapsedAtom</code>
-            , <code className="bg-muted px-1 rounded">sidebarWidthAtom</code> - Persisted
+            Uses: <code className="bg-muted px-1 rounded">sidebarStateAtom</code> - Persisted
             to localStorage
           </CardDescription>
         </CardHeader>
@@ -218,8 +217,10 @@ export function StateDemoPage() {
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={sidebarOpen}
-                onChange={(e) => setSidebarOpen(e.target.checked)}
+                checked={sidebarState.isOpen}
+                onChange={(e) =>
+                  setSidebarState({ ...sidebarState, isOpen: e.target.checked })
+                }
                 className="w-4 h-4 rounded"
               />
               <span>Sidebar Open</span>
@@ -227,8 +228,10 @@ export function StateDemoPage() {
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={sidebarCollapsed}
-                onChange={(e) => setSidebarCollapsed(e.target.checked)}
+                checked={sidebarState.isCollapsed}
+                onChange={(e) =>
+                  setSidebarState({ ...sidebarState, isCollapsed: e.target.checked })
+                }
                 className="w-4 h-4 rounded"
               />
               <span>Sidebar Collapsed</span>
@@ -238,7 +241,7 @@ export function StateDemoPage() {
           <div className="space-y-3 border-t pt-4">
             <div className="flex items-center gap-4">
               <span className="text-muted-foreground">
-                Width: <Badge variant="outline">{sidebarWidth}px</Badge>
+                Width: <Badge variant="outline">{sidebarState.width}px</Badge>
               </span>
             </div>
             <div className="flex items-center gap-4">
@@ -247,29 +250,40 @@ export function StateDemoPage() {
                 min="50"
                 max="350"
                 step="10"
-                value={sidebarWidth}
-                onChange={(e) => setSidebarWidth(parseInt(e.target.value))}
+                value={sidebarState.width}
+                onChange={(e) =>
+                  setSidebarState({
+                    ...sidebarState,
+                    width: parseInt(e.target.value),
+                  })
+                }
                 className="w-full max-w-xs"
               />
               <div className="flex gap-2">
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setSidebarWidth(60)}
+                  onClick={() =>
+                    setSidebarState({ ...sidebarState, width: 60 })
+                  }
                 >
                   Collapsed
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setSidebarWidth(250)}
+                  onClick={() =>
+                    setSidebarState({ ...sidebarState, width: 250 })
+                  }
                 >
                   Default
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setSidebarWidth(300)}
+                  onClick={() =>
+                    setSidebarState({ ...sidebarState, width: 300 })
+                  }
                 >
                   Wide
                 </Button>
@@ -280,23 +294,15 @@ export function StateDemoPage() {
           <div className="bg-muted p-4 rounded-lg text-sm space-y-2">
             <p className="font-semibold text-foreground">Persistence Info</p>
             <p className="text-muted-foreground">
-              ✅ All sidebar state is persisted to localStorage under key:{" "}
+              ✅ Sidebar state is persisted to localStorage under key:{" "}
               <code className="bg-background px-1 rounded">ottabase.sidebar.state</code>
             </p>
             <p className="text-muted-foreground">
-              State survives page refresh and browser restart. Try changing the values
-              above and refreshing the page!
+              Single atom with all properties: isOpen, isCollapsed, width. Try changing
+              values and refreshing the page!
             </p>
             <pre className="bg-background p-2 rounded text-xs overflow-x-auto mt-2">
-              {JSON.stringify(
-                {
-                  isOpen: sidebarOpen,
-                  isCollapsed: sidebarCollapsed,
-                  width: sidebarWidth,
-                },
-                null,
-                2
-              )}
+              {JSON.stringify(sidebarState, null, 2)}
             </pre>
           </div>
         </CardContent>
