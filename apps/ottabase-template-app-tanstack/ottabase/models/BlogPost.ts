@@ -36,6 +36,8 @@ export class BlogPost extends BaseModel {
     viewCount: "number" as const,
     readingTimeMinutes: "number" as const,
     wordCount: "number" as const,
+    seriesOrder: "number" as const,
+    maxVersionsToKeep: "number" as const,
     createdAt: "date" as const,
     updatedAt: "date" as const,
     publishAt: "date" as const,
@@ -199,6 +201,39 @@ export class BlogPost extends BaseModel {
       tableConfig: {
         visible: true,
         colWidth: 150,
+      },
+    },
+    seriesId: {
+      type: "string",
+      editable: true,
+      filterable: true,
+      uiConfig: {
+        label: "Series",
+        description: "Part of a series",
+      },
+      formConfig: {
+        visible: true,
+        fieldType: "select",
+      },
+      tableConfig: {
+        visible: true,
+        colWidth: 150,
+      },
+    },
+    seriesOrder: {
+      type: "number",
+      editable: true,
+      sortable: true,
+      uiConfig: {
+        label: "Series Order",
+        description: "Position within the series (1, 2, 3...)",
+      },
+      formConfig: {
+        visible: true,
+        fieldType: "number",
+      },
+      tableConfig: {
+        visible: false,
       },
     },
     heroImage: {
@@ -398,6 +433,21 @@ export class BlogPost extends BaseModel {
         colWidth: 150,
       },
     },
+    maxVersionsToKeep: {
+      type: "number",
+      editable: true,
+      uiConfig: {
+        label: "Version History",
+        description: "Number of versions to keep (empty = keep all)",
+      },
+      formConfig: {
+        visible: true,
+        fieldType: "select",
+      },
+      tableConfig: {
+        visible: false,
+      },
+    },
     createdAt: {
       type: "date",
       editable: false,
@@ -555,6 +605,28 @@ export class BlogPost extends BaseModel {
     return this.where(query, {
       orderBy: options?.orderBy || "publishedAt",
       orderDirection: options?.orderDirection || "desc",
+      limit: options?.limit,
+    });
+  }
+
+  /**
+   * Get posts in a series
+   */
+  static async bySeries(
+    seriesId: string,
+    options?: {
+      status?: PostStatus;
+      appId?: string;
+      limit?: number;
+    }
+  ) {
+    const query: Record<string, unknown> = { seriesId };
+    if (options?.status) query.status = options.status;
+    if (options?.appId) query.appId = options.appId;
+
+    return this.where(query, {
+      orderBy: "seriesOrder",
+      orderDirection: "asc",
       limit: options?.limit,
     });
   }

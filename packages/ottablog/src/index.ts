@@ -30,14 +30,18 @@
 
 // Schema exports
 export {
+  seriesTable,
   categoriesTable,
   tagsTable,
   postsTable,
   postTagsTable,
+  postVersionsTable,
 } from "./schema";
 
 // Type exports from schema
 export type {
+  Series,
+  NewSeries,
   Category,
   NewCategory,
   Tag,
@@ -46,6 +50,8 @@ export type {
   NewPost,
   PostTag,
   NewPostTag,
+  PostVersion,
+  NewPostVersion,
 } from "./schema";
 
 // Type exports
@@ -68,3 +74,11 @@ export {
   generateSlug,
   extractExcerpt,
 } from "./types";
+
+// Components (React)
+export { BlogRenderer, BlogExcerptCard } from "./components/BlogRenderer";
+export type {
+  BlogPostData,
+  BlogRendererProps,
+  BlogExcerptCardProps,
+} from "./components/BlogRenderer";

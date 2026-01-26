@@ -11,6 +11,10 @@
     "./schema": {
       "types": "./src/schema.ts",
       "default": "./src/schema.ts"
+    },
+    "./renderer": {
+      "types": "./src/components/BlogRenderer.tsx",
+      "default": "./src/components/BlogRenderer.tsx"
     }
   },
   "scripts": {
@@ -19,10 +23,17 @@
     "test:coverage": "vitest --coverage"
   },
   "peerDependencies": {
-    "drizzle-orm": "catalog:"
+    "drizzle-orm": "catalog:",
+    "react": "^18 || ^19",
+    "@ottabase/ottarenderer": "workspace:*"
+  },
+  "dependencies": {
+    "@ottabase/ottarenderer": "workspace:*"
   },
   "devDependencies": {
+    "@types/react": "catalog:",
     "drizzle-orm": "catalog:",
+    "react": "catalog:",
     "typescript": "catalog:"
   },
   "keywords": [

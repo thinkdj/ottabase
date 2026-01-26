@@ -58,6 +58,8 @@ import { Todo } from "./ottabase/models/Todo";
 import { BlogPost } from "./ottabase/models/BlogPost";
 import { BlogCategory } from "./ottabase/models/BlogCategory";
 import { BlogTag } from "./ottabase/models/BlogTag";
+import { BlogSeries } from "./ottabase/models/BlogSeries";
+import { BlogPostVersion } from "./ottabase/models/BlogPostVersion";
 import { registerAppEmailTemplates } from "./src/email/templates";
 
 export { RealtimeActor };
@@ -301,7 +303,7 @@ export default {
 
         // Initialize database connection and register models
         registerConnection("default", createD1Driver(env.OBCF_D1));
-        registerModels([Shortlink, Todo, User, Post, Tag, ReferralTracking, BlogPost, BlogCategory, BlogTag]);
+        registerModels([Shortlink, Todo, User, Post, Tag, ReferralTracking, BlogPost, BlogCategory, BlogTag, BlogSeries, BlogPostVersion]);
 
         // Parse the request into a CrudRequest
         const crudRequest = await parseCrudRequest(

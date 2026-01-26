@@ -41,7 +41,9 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
   ArrowLeft,
   FileText,
+  History,
   Image as ImageIcon,
+  Layers,
   Loader2,
   Save,
   Search,
@@ -62,6 +64,8 @@ interface BlogPost {
   contentType: ContentType;
   status: PostStatus;
   categoryId: string | null;
+  seriesId: string | null;
+  seriesOrder: number | null;
   heroImage: HeroImage | null;
   seoMeta: SeoMeta | null;
   privateNotes: OutputData | null;
@@ -72,10 +76,32 @@ interface BlogPost {
   isFeatured: boolean;
   allowComments: boolean;
   publishedAt: string | null;
+  maxVersionsToKeep: number | null;
+  wordCount: number | null;
   appId: string | null;
 }
 
+interface BlogSeries {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  isComplete: boolean;
+}
+
+interface BlogPostVersion {
+  id: string;
+  postId: string;
+  versionNumber: number;
+  title: string;
+  createdAt: string;
+  wordCount: number | null;
+  changeNote: string | null;
+}
+
 const blogPostHooks = createModelHooks<BlogPost>({ entityName: "blog_posts" });
+const blogSeriesHooks = createModelHooks<BlogSeries>({ entityName: "blog_series" });
+const blogPostVersionHooks = createModelHooks<BlogPostVersion>({ entityName: "blog_post_versions" });
 
 // Editor configuration with image upload
 const getEditorConfig = (placeholder: string) => ({
@@ -178,9 +204,37 @@ function BlogEditorForm({
     initialData?.seoMeta?.noIndex || false,
   );
 
+  // Series state
+  const [seriesId, setSeriesId] = useState<string | null>(
+    initialData?.seriesId || null,
+  );
+  const [seriesOrder, setSeriesOrder] = useState<number | null>(
+    initialData?.seriesOrder || null,
+  );
+
+  // Version history settings
+  const [maxVersionsToKeep, setMaxVersionsToKeep] = useState<number | null>(
+    initialData?.maxVersionsToKeep || null,
+  );
+
+  // Fetch series list for dropdown
+  const { data: seriesListData } = blogSeriesHooks.useList();
+  const seriesList = seriesListData?.data || [];
+
+  // Fetch version history for this post (edit mode only)
+  const { data: versionsData, refetch: refetchVersions } = blogPostVersionHooks.useList({
+    where: postId ? { postId } : undefined,
+    orderBy: "versionNumber",
+    orderDirection: "desc",
+    limit: 20,
+  });
+  const versions = isEditMode ? (versionsData?.data || []) : [];
+
   // API hooks
   const createPost = blogPostHooks.useCreate();
   const updatePost = blogPostHooks.useUpdate();
+  const createVersion = blogPostVersionHooks.useCreate();
+  const deleteVersion = blogPostVersionHooks.useDelete();
 
   const isSaving = createPost.isPending || updatePost.isPending;
 
@@ -261,6 +315,42 @@ function BlogEditorForm({
     }
   };
 
+  // Calculate word count from EditorJS content
+  const calculateWordCount = (data: OutputData | null): number => {
+    if (!data?.blocks) return 0;
+    let text = "";
+    for (const block of data.blocks) {
+      if (block.data?.text) text += " " + block.data.text;
+      if (block.data?.items) {
+        for (const item of block.data.items as string[]) {
+          text += " " + item;
+        }
+      }
+    }
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  };
+
+  // Get next version number
+  const getNextVersionNumber = (): number => {
+    if (versions.length === 0) return 1;
+    const maxVersion = Math.max(...versions.map((v) => v.versionNumber));
+    return maxVersion + 1;
+  };
+
+  // Prune old versions if maxVersionsToKeep is set
+  const pruneOldVersions = async (keepCount: number) => {
+    if (keepCount < 1 || versions.length <= keepCount) return;
+
+    const versionsToDelete = versions.slice(keepCount);
+    for (const version of versionsToDelete) {
+      try {
+        await deleteVersion.mutateAsync(version.id);
+      } catch (error) {
+        console.error("Failed to delete old version:", error);
+      }
+    }
+  };
+
   // Save post
   const handleSave = async (publishNow = false) => {
     if (!title.trim()) {
@@ -273,6 +363,9 @@ function BlogEditorForm({
       const content = await mainEditor.save();
       const privateNotes = await notesEditor.save();
       const footnotes = await footnotesEditor.save();
+
+      // Calculate word count
+      const wordCount = calculateWordCount(content);
 
       // Build SEO meta
       const seoMeta: SeoMeta = {
@@ -307,10 +400,39 @@ function BlogEditorForm({
           publishNow && !publishedAt
             ? new Date().toISOString()
             : publishedAt || undefined,
+        seriesId: seriesId || undefined,
+        seriesOrder: seriesOrder || undefined,
+        maxVersionsToKeep: maxVersionsToKeep || undefined,
+        wordCount,
       };
+
+      // Create version snapshot before saving (edit mode only)
+      if (isEditMode && postId && initialData) {
+        try {
+          await createVersion.mutateAsync({
+            postId,
+            versionNumber: getNextVersionNumber(),
+            title: initialData.title,
+            content: initialData.content,
+            excerpt: initialData.excerpt,
+            privateNotes: initialData.privateNotes,
+            footnotes: initialData.footnotes,
+            wordCount: initialData.wordCount,
+          });
+        } catch (error) {
+          console.error("Failed to create version:", error);
+          // Continue with save even if version creation fails
+        }
+      }
 
       if (isEditMode && postId) {
         await updatePost.mutateAsync({ id: postId, data: postData });
+
+        // Prune old versions if setting is enabled
+        if (maxVersionsToKeep && maxVersionsToKeep > 0) {
+          await refetchVersions();
+          await pruneOldVersions(maxVersionsToKeep);
+        }
       } else {
         await createPost.mutateAsync(postData);
       }
@@ -707,6 +829,146 @@ function BlogEditorForm({
                   <Label htmlFor="allowComments">Allow Comments</Label>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Series */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Layers className="h-4 w-4" />
+                Series
+              </CardTitle>
+              <CardDescription>
+                Group this post with related content
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Series</Label>
+                <select
+                  value={seriesId || ""}
+                  onChange={(e) => setSeriesId(e.target.value || null)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">No series</option>
+                  {seriesList.map((series) => (
+                    <option key={series.id} value={series.id}>
+                      {series.title}
+                      {series.isComplete ? " ✓" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {seriesId && (
+                <div className="space-y-2">
+                  <Label>Order in Series</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={seriesOrder || ""}
+                    onChange={(e) =>
+                      setSeriesOrder(
+                        e.target.value ? parseInt(e.target.value, 10) : null,
+                      )
+                    }
+                    placeholder="1, 2, 3..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Position within the series (e.g., Part 1, Part 2)
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Version History */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="h-4 w-4" />
+                Version History
+              </CardTitle>
+              <CardDescription>
+                Track changes and restore previous versions
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Keep Previous Versions</Label>
+                <select
+                  value={maxVersionsToKeep || ""}
+                  onChange={(e) =>
+                    setMaxVersionsToKeep(
+                      e.target.value ? parseInt(e.target.value, 10) : null,
+                    )
+                  }
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Keep all versions</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                    <option key={n} value={n}>
+                      Keep last {n} version{n > 1 ? "s" : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Older versions will be automatically deleted on save
+                </p>
+              </div>
+
+              {isEditMode && versions.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Recent Versions ({versions.length})</Label>
+                  <div className="max-h-[200px] overflow-y-auto rounded-md border divide-y">
+                    {versions.map((version) => (
+                      <div
+                        key={version.id}
+                        className="flex items-center justify-between p-2 text-sm hover:bg-muted/50"
+                      >
+                        <div>
+                          <span className="font-medium">
+                            v{version.versionNumber}
+                          </span>
+                          <span className="text-muted-foreground ml-2">
+                            {new Date(version.createdAt).toLocaleDateString()}
+                          </span>
+                          {version.wordCount && (
+                            <span className="text-muted-foreground ml-2">
+                              {version.wordCount} words
+                            </span>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-destructive hover:text-destructive"
+                          onClick={async () => {
+                            if (
+                              window.confirm(
+                                `Delete version ${version.versionNumber}?`,
+                              )
+                            ) {
+                              await deleteVersion.mutateAsync(version.id);
+                              refetchVersions();
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {isEditMode && versions.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No version history yet. Versions are created when you save
+                  changes.
+                </p>
+              )}
             </CardContent>
           </Card>
 

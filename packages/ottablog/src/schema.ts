@@ -2,6 +2,58 @@ import { sql } from "drizzle-orm";
 import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
+ * Series table - group related posts into a series
+ *
+ * Perfect for multi-part tutorials, article series, or themed collections
+ */
+export const seriesTable = sqliteTable(
+  "blog_series",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+
+    // Series title
+    title: text("title").notNull(),
+
+    // URL-friendly slug
+    slug: text("slug").notNull(),
+
+    // Series description
+    description: text("description"),
+
+    // Cover image for the series
+    coverImage: text("cover_image", { mode: "json" }).$type<{
+      url: string;
+      alt?: string;
+    }>(),
+
+    // Whether the series is complete or ongoing
+    isComplete: integer("is_complete", { mode: "boolean" }).notNull().default(false),
+
+    // Display order in series listings
+    sortOrder: integer("sort_order").notNull().default(0),
+
+    // App identifier for multi-app database sharing
+    appId: text("app_id"),
+
+    // Timestamps
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`)
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("blog_series_slug_idx").on(table.slug),
+    index("blog_series_app_id_idx").on(table.appId),
+  ]
+);
+
+/**
  * Categories table - hierarchical content organization
  *
  * Supports nested categories via parentId for docs/guides structure
@@ -119,6 +171,12 @@ export const postsTable = sqliteTable(
     // Category reference
     categoryId: text("category_id"),
 
+    // Series reference (for multi-part content)
+    seriesId: text("series_id"),
+
+    // Order within the series (1, 2, 3, etc.)
+    seriesOrder: integer("series_order"),
+
     // Hero/featured image as JSON
     heroImage: text("hero_image", { mode: "json" }).$type<{
       url: string;
@@ -188,6 +246,9 @@ export const postsTable = sqliteTable(
     // App identifier for multi-app database sharing
     appId: text("app_id"),
 
+    // Version retention setting (null = keep all, 1-10 = keep last N versions)
+    maxVersionsToKeep: integer("max_versions_to_keep"),
+
     // Timestamps
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
@@ -203,6 +264,7 @@ export const postsTable = sqliteTable(
     index("blog_posts_status_idx").on(table.status),
     index("blog_posts_content_type_idx").on(table.contentType),
     index("blog_posts_category_id_idx").on(table.categoryId),
+    index("blog_posts_series_id_idx").on(table.seriesId),
     index("blog_posts_author_id_idx").on(table.authorId),
     index("blog_posts_app_id_idx").on(table.appId),
     index("blog_posts_published_at_idx").on(table.publishedAt),
@@ -236,7 +298,70 @@ export const postTagsTable = sqliteTable(
   ]
 );
 
+/**
+ * Post Versions table - content versioning history
+ *
+ * Stores a snapshot of post content on each save for version history
+ */
+export const postVersionsTable = sqliteTable(
+  "blog_post_versions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+
+    // Reference to the post
+    postId: text("post_id")
+      .notNull()
+      .references(() => postsTable.id, { onDelete: "cascade" }),
+
+    // Version number (auto-incremented per post)
+    versionNumber: integer("version_number").notNull(),
+
+    // Snapshot of content at this version
+    title: text("title").notNull(),
+    content: text("content", { mode: "json" }).$type<{
+      time?: number;
+      blocks: Array<{ id?: string; type: string; data: Record<string, unknown> }>;
+      version?: string;
+    }>(),
+    excerpt: text("excerpt"),
+    privateNotes: text("private_notes", { mode: "json" }).$type<{
+      time?: number;
+      blocks: Array<{ id?: string; type: string; data: Record<string, unknown> }>;
+      version?: string;
+    }>(),
+    footnotes: text("footnotes", { mode: "json" }).$type<{
+      time?: number;
+      blocks: Array<{ id?: string; type: string; data: Record<string, unknown> }>;
+      version?: string;
+    }>(),
+
+    // Word count at this version
+    wordCount: integer("word_count"),
+
+    // Who made this change (optional)
+    changedBy: text("changed_by"),
+
+    // Optional change note/reason
+    changeNote: text("change_note"),
+
+    // When this version was created
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [
+    index("blog_post_versions_post_id_idx").on(table.postId),
+    index("blog_post_versions_version_number_idx").on(table.postId, table.versionNumber),
+    index("blog_post_versions_created_at_idx").on(table.createdAt),
+  ]
+);
+
 // Type exports
+export type Series = typeof seriesTable.$inferSelect;
+export type NewSeries = typeof seriesTable.$inferInsert;
+
 export type Category = typeof categoriesTable.$inferSelect;
 export type NewCategory = typeof categoriesTable.$inferInsert;
 
@@ -248,3 +373,6 @@ export type NewPost = typeof postsTable.$inferInsert;
 
 export type PostTag = typeof postTagsTable.$inferSelect;
 export type NewPostTag = typeof postTagsTable.$inferInsert;
+
+export type PostVersion = typeof postVersionsTable.$inferSelect;
+export type NewPostVersion = typeof postVersionsTable.$inferInsert;

@@ -72,6 +72,9 @@ function RootLayout() {
               <Link to="/">Home</Link>
             </Button>
             <Button asChild variant="ghost" size="sm">
+              <Link to="/blog">Blog</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
               <Link to="/demo">Demo</Link>
             </Button>
             <Button asChild variant="ghost" size="sm">
@@ -593,6 +596,27 @@ const adminBlogEditRoute = new Route({
   ),
 });
 
+// Public Blog routes
+const blogListRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/blog",
+  component: lazyRouteComponent(() =>
+    import("@/pages/blog/BlogListPage").then((m) => ({
+      default: m.BlogListPage,
+    })),
+  ),
+});
+
+const blogDetailRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/blog/$slug",
+  component: lazyRouteComponent(() =>
+    import("@/pages/blog/BlogDetailPage").then((m) => ({
+      default: m.BlogDetailPage,
+    })),
+  ),
+});
+
 demoLayoutRoute.addChildren([
   demoIndexRoute,
   demoMantineRoute,
@@ -635,6 +659,8 @@ const routeTree = rootRoute.addChildren([
   adminBlogRoute,
   adminBlogNewRoute,
   adminBlogEditRoute,
+  blogListRoute,
+  blogDetailRoute,
 ]);
 
 const browserHistory = createBrowserHistory();
