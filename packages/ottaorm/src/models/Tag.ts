@@ -59,6 +59,9 @@ export type NewTagType = typeof tagsTable.$inferInsert;
  *
  * // Get all tags
  * const tags = await Tag.all({ orderBy: "name" });
+ *
+ * // Generate slug
+ * const slug = Tag.generateSlug("My New Tag");
  * ```
  */
 export class Tag extends BaseModel {
@@ -182,43 +185,6 @@ export class Tag extends BaseModel {
   constructor(data: { [key: string]: any }) {
     const params: IModelConstructorParams = { entity: Tag.entity, data };
     super(params);
-  }
-
-  // ============================================================
-  // RELATIONSHIPS
-  // ============================================================
-
-  /**
-   * Get posts with this tag (BelongsToMany Post via postTagsTable)
-   *
-   * @example
-   * ```typescript
-   * const tag = await Tag.first({ slug: 'javascript' });
-   *
-   * // Get all posts
-   * const posts = await tag.posts();
-   *
-   * // Get only published posts with specific fields
-   * const posts = await tag.posts({
-   *   select: ['id', 'title', 'slug', 'published'],
-   *   orderBy: 'createdAt',
-   *   orderDirection: 'desc'
-   * });
-   * ```
-   */
-  async posts(options?: {
-    select?: string[];
-    orderBy?: string;
-    orderDirection?: 'asc' | 'desc';
-  }) {
-    // Dynamic import
-    const { Post, postTagsTable } = await import("./Post");
-
-    return this.belongsToMany(Post, postTagsTable, {
-      foreignKey: 'tagId',
-      otherKey: 'postId',
-      ...options
-    });
   }
 
   // ============================================================

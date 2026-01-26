@@ -55,8 +55,8 @@ export type NewUserType = typeof usersTable.$inferInsert;
  *   email: "john@example.com"
  * });
  *
- * // Get user's posts
- * const posts = await user.posts();
+ * // Get user's accounts
+ * const accounts = await user.accounts();
  * ```
  */
 export class User extends BaseModel {
@@ -199,21 +199,6 @@ export class User extends BaseModel {
   // ============================================================
   // RELATIONSHIPS
   // ============================================================
-
-  /**
-   * Get posts authored by this user (HasMany Post)
-   */
-  async posts(options?: {
-    select?: string[];
-    orderBy?: string;
-    orderDirection?: 'asc' | 'desc';
-    limit?: number;
-  }) {
-    // Dynamic import
-    const { Post } = await import("./Post");
-
-    return this.hasMany(Post, 'authorId', options);
-  }
 
   /**
    * Get authentication accounts for this user (HasMany Account)
