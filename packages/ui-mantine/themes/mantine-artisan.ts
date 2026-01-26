@@ -13,16 +13,16 @@ const rgba = (color: string, alpha: number): string => {
 /**
  * Artisan Theme - Creative Yet Minimal, Artistic Yet Classy
  *
- * A sophisticated design system inspired by gallery aesthetics:
- * - Warm taupe as primary color for refined elegance
- * - Curated accent colors: emerald, amber, and rose
+ * A sophisticated design system inspired by luxury galleries:
+ * - Deep burgundy wine primary for refined elegance
+ * - Vibrant gold accents for artistic flair
  * - Minimal but intentional spacing and typography
  * - Artistic details with refined transitions
  * - Cream to charcoal palette for classy simplicity
  * - Premium aesthetic with gallery-like precision
  */
 export const mantineArtisan: MantineThemeOverride = {
-  primaryColor: "taupe",
+  primaryColor: "burgundy",
   primaryShade: 6,
   fontFamily:
     'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
@@ -42,18 +42,18 @@ export const mantineArtisan: MantineThemeOverride = {
 
   // Curated artistic color palette inspired by galleries
   colors: {
-    // Primary neutral - Warm Taupe (refined, gallery-like)
-    taupe: [
-      "#faf7f2",
-      "#f3ede6",
-      "#e8dfd5",
-      "#dccfc1",
-      "#cfb8a8",
-      "#c39f8d",
-      "#b68a74",
-      "#a0765c",
-      "#8b6649",
-      "#6d5337",
+    // Primary - Deep Burgundy Wine (refined, sophisticated)
+    burgundy: [
+      "#faf8fa",
+      "#f5f1f4",
+      "#e8dfe6",
+      "#dbc9d5",
+      "#d0b4c6",
+      "#c49fb7",
+      "#b88aa8",
+      "#a5728c",
+      "#945b7a",
+      "#784768",
     ],
     // Keep as 'dark' for Mantine compatibility
     dark: [
@@ -68,31 +68,31 @@ export const mantineArtisan: MantineThemeOverride = {
       "#6d5347",
       "#52402f",
     ],
-    // Accent: Deep Emerald (artistic, sophisticated)
-    emerald: [
-      "#e9f6f0",
-      "#cfe9e1",
-      "#a4d9c9",
-      "#76c4ae",
-      "#52b494",
-      "#37a07f",
-      "#268970",
-      "#1c7462",
-      "#146055",
-      "#0e4a42",
+    // Accent: Deep Teal (artistic depth and sophistication)
+    teal: [
+      "#e6f9f7",
+      "#c0efea",
+      "#99e5dd",
+      "#6dd9ce",
+      "#4ccfc1",
+      "#2bc4b4",
+      "#1aa89f",
+      "#138c85",
+      "#0f706c",
+      "#0b5654",
     ],
-    // Accent: Warm Amber (artistic warmth)
-    amber: [
-      "#fffaf0",
-      "#ffe8cc",
-      "#ffd699",
-      "#ffc966",
-      "#ffb84d",
-      "#ffa726",
-      "#ff9500",
-      "#e68a00",
-      "#cc7a00",
-      "#a35f00",
+    // Accent: Vibrant Gold (artistic warmth and prestige)
+    gold: [
+      "#fffef5",
+      "#fffbeb",
+      "#fff8d6",
+      "#fff5b2",
+      "#fff28e",
+      "#ffed5f",
+      "#ffe833",
+      "#e8d51b",
+      "#d1c410",
+      "#b3ad00",
     ],
     // Accent: Dusty Rose (artistic subtlety)
     rose: [
@@ -194,11 +194,11 @@ export const mantineArtisan: MantineThemeOverride = {
 
   // Artistic shadow system - softer, more atmospheric
   shadows: {
-    xs: "0 1px 2px 0 rgb(107 83 55 / 0.04)",
-    sm: "0 2px 4px 0 rgb(107 83 55 / 0.08), 0 1px 2px -1px rgb(107 83 55 / 0.04)",
-    md: "0 4px 8px -2px rgb(107 83 55 / 0.12), 0 2px 4px -2px rgb(107 83 55 / 0.08)",
-    lg: "0 8px 16px -4px rgb(107 83 55 / 0.15), 0 4px 8px -4px rgb(107 83 55 / 0.1)",
-    xl: "0 20px 25px -5px rgb(107 83 55 / 0.2), 0 10px 15px -6px rgb(107 83 55 / 0.15)",
+    xs: "0 1px 2px 0 rgb(184 138 168 / 0.04)",
+    sm: "0 2px 4px 0 rgb(184 138 168 / 0.08), 0 1px 2px -1px rgb(184 138 168 / 0.04)",
+    md: "0 4px 8px -2px rgb(184 138 168 / 0.12), 0 2px 4px -2px rgb(184 138 168 / 0.08)",
+    lg: "0 8px 16px -4px rgb(184 138 168 / 0.15), 0 4px 8px -4px rgb(184 138 168 / 0.1)",
+    xl: "0 20px 25px -5px rgb(184 138 168 / 0.2), 0 10px 15px -6px rgb(184 138 168 / 0.15)",
   },
 
   // Comprehensive component overrides for the artisan aesthetic
@@ -224,14 +224,14 @@ export const mantineArtisan: MantineThemeOverride = {
             letterSpacing: "0.3px",
             "&:focus": {
               outline: "none",
-              boxShadow: `0 0 0 2px ${theme.colorScheme === "dark" ? rgba(theme.colors.taupe[2], 0.3) : rgba(theme.colors.taupe[6], 0.2)}`,
+              boxShadow: `0 0 0 2px ${theme.colorScheme === "dark" ? rgba(theme.colors.burgundy[2], 0.3) : rgba(theme.colors.burgundy[6], 0.2)}`,
             },
           },
           filled: {
-            backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[5] : theme.colors.taupe[6],
-            color: theme.colorScheme === "dark" ? theme.colors.taupe[0] : theme.colors.taupe[0],
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[5] : theme.colors.burgundy[6],
+            color: theme.colorScheme === "dark" ? theme.colors.burgundy[0] : theme.colors.burgundy[0],
             "&:hover": {
-              backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[4] : theme.colors.taupe[7],
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[4] : theme.colors.burgundy[7],
               transform: "translateY(-1px)",
               boxShadow: "0 4px 8px -2px rgb(107 83 55 / 0.12)",
             },
@@ -245,22 +245,22 @@ export const mantineArtisan: MantineThemeOverride = {
             backgroundColor: "var(--mantine-color-body)",
             color: "var(--mantine-color-text)",
             "&:hover": {
-              backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[8] : theme.colors.taupe[1],
-              borderColor: theme.colorScheme === "dark" ? theme.colors.taupe[6] : theme.colors.taupe[5],
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[8] : theme.colors.burgundy[1],
+              borderColor: theme.colorScheme === "dark" ? theme.colors.burgundy[6] : theme.colors.burgundy[5],
             },
           },
           subtle: {
             backgroundColor: "transparent",
             color: "var(--mantine-color-text)",
             "&:hover": {
-              backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[8] : theme.colors.taupe[1],
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[8] : theme.colors.burgundy[1],
             },
           },
           light: {
-            backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[8] : theme.colors.taupe[1],
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[8] : theme.colors.burgundy[1],
             color: "var(--mantine-color-text)",
             "&:hover": {
-              backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[7] : theme.colors.taupe[2],
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[7] : theme.colors.burgundy[2],
             },
           },
         } as Record<string, React.CSSProperties>),
@@ -317,12 +317,12 @@ export const mantineArtisan: MantineThemeOverride = {
             padding: "0.625rem 1rem",
             transition: "all 0.2s ease",
             "&:focus": {
-              borderColor: theme.colors.taupe[5],
-              boxShadow: `0 0 0 3px ${rgba(theme.colors.taupe[5], 0.15)}`,
+              borderColor: theme.colors.burgundy[5],
+              boxShadow: `0 0 0 3px ${rgba(theme.colors.burgundy[5], 0.15)}`,
               outline: "none",
             },
             "&::placeholder": {
-              color: theme.colors.taupe[3],
+              color: theme.colors.burgundy[3],
               fontSize: "0.875rem",
               fontWeight: "400",
             },
@@ -353,8 +353,8 @@ export const mantineArtisan: MantineThemeOverride = {
             fontWeight: "400",
             padding: "0.625rem 1rem",
             "&:focus": {
-              borderColor: theme.colors.taupe[5],
-              boxShadow: `0 0 0 3px ${rgba(theme.colors.taupe[5], 0.15)}`,
+              borderColor: theme.colors.burgundy[5],
+              boxShadow: `0 0 0 3px ${rgba(theme.colors.burgundy[5], 0.15)}`,
             },
           },
           dropdown: {
@@ -369,7 +369,7 @@ export const mantineArtisan: MantineThemeOverride = {
             fontSize: "0.875rem",
             padding: "0.625rem 1rem",
             "&[data-hovered]": {
-              backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[7] : theme.colors.taupe[1],
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[7] : theme.colors.burgundy[1],
               color: "var(--mantine-color-text)",
             },
           },
@@ -390,8 +390,8 @@ export const mantineArtisan: MantineThemeOverride = {
             resize: "vertical",
             transition: "all 0.2s ease",
             "&:focus": {
-              borderColor: theme.colors.taupe[5],
-              boxShadow: `0 0 0 3px ${rgba(theme.colors.taupe[5], 0.15)}`,
+              borderColor: theme.colors.burgundy[5],
+              boxShadow: `0 0 0 3px ${rgba(theme.colors.burgundy[5], 0.15)}`,
             },
           },
         } as Record<string, React.CSSProperties>),
@@ -405,9 +405,9 @@ export const mantineArtisan: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           root: {
-            backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[7] : theme.colors.taupe[1],
-            color: theme.colorScheme === "dark" ? theme.colors.taupe[1] : theme.colors.taupe[7],
-            border: `1px solid ${theme.colorScheme === "dark" ? theme.colors.taupe[6] : theme.colors.taupe[2]}`,
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[7] : theme.colors.burgundy[1],
+            color: theme.colorScheme === "dark" ? theme.colors.burgundy[1] : theme.colors.burgundy[7],
+            border: `1px solid ${theme.colorScheme === "dark" ? theme.colors.burgundy[6] : theme.colors.burgundy[2]}`,
             fontWeight: "500",
             fontSize: "0.75rem",
             height: "1.5rem",
@@ -430,9 +430,9 @@ export const mantineArtisan: MantineThemeOverride = {
             transition: "all 0.2s ease",
             "&:checked": {
               backgroundColor: "var(--mantine-color-body)",
-              borderColor: theme.colorScheme === "dark" ? theme.colors.taupe[3] : theme.colors.taupe[6],
+              borderColor: theme.colorScheme === "dark" ? theme.colors.burgundy[3] : theme.colors.burgundy[6],
               "&::before": {
-                backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[3] : theme.colors.taupe[6],
+                backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[3] : theme.colors.burgundy[6],
                 width: "0.375rem",
                 height: "0.375rem",
                 borderRadius: "50%",
@@ -444,7 +444,7 @@ export const mantineArtisan: MantineThemeOverride = {
               },
             },
             "&:focus": {
-              boxShadow: `0 0 0 3px ${rgba(theme.colors.taupe[5], 0.2)}`,
+              boxShadow: `0 0 0 3px ${rgba(theme.colors.burgundy[5], 0.2)}`,
             },
           },
           label: {
@@ -467,8 +467,8 @@ export const mantineArtisan: MantineThemeOverride = {
             backgroundColor: "var(--mantine-color-body)",
             transition: "all 0.2s ease",
             "&:checked": {
-              backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[3] : theme.colors.taupe[6],
-              borderColor: theme.colorScheme === "dark" ? theme.colors.taupe[3] : theme.colors.taupe[6],
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[3] : theme.colors.burgundy[6],
+              borderColor: theme.colorScheme === "dark" ? theme.colors.burgundy[3] : theme.colors.burgundy[6],
             },
           },
           label: {
@@ -483,17 +483,17 @@ export const mantineArtisan: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           track: {
-            backgroundColor: theme.colors.taupe[2],
+            backgroundColor: theme.colors.burgundy[2],
             border: "none",
             width: "3rem",
             height: "1.625rem",
             transition: "all 0.3s cubic-bezier(0.35, 0.1, 0.25, 1)",
             "&[dataChecked]": {
-              backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[4] : theme.colors.taupe[5],
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[4] : theme.colors.burgundy[5],
             },
           },
           thumb: {
-            backgroundColor: theme.colors.taupe[0],
+            backgroundColor: theme.colors.burgundy[0],
             border: "none",
             width: "1.375rem",
             height: "1.375rem",
@@ -540,13 +540,13 @@ export const mantineArtisan: MantineThemeOverride = {
             overflow: "hidden",
           },
           thead: {
-            backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[8] : theme.colors.taupe[0],
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[8] : theme.colors.burgundy[0],
           },
           th: {
             padding: "1rem",
             fontSize: "0.875rem",
             fontWeight: "600",
-            color: theme.colorScheme === "dark" ? theme.colors.taupe[2] : theme.colors.taupe[7],
+            color: theme.colorScheme === "dark" ? theme.colors.burgundy[2] : theme.colors.burgundy[7],
             borderBottom: "1px solid var(--mantine-color-default-border)",
             letterSpacing: "0.3px",
             "&:not(:last-child)": {
@@ -564,7 +564,7 @@ export const mantineArtisan: MantineThemeOverride = {
           tr: {
             transition: "all 0.2s ease",
             "&:hover": {
-              backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[8] : theme.colors.taupe[0],
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[8] : theme.colors.burgundy[0],
             },
           },
         } as Record<string, React.CSSProperties>),
@@ -574,12 +574,12 @@ export const mantineArtisan: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           root: {
-            backgroundColor: theme.colors.taupe[1],
+            backgroundColor: theme.colors.burgundy[1],
             borderRadius: "9999px",
             height: "0.5rem",
           },
           bar: {
-            backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[4] : theme.colors.taupe[6],
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[4] : theme.colors.burgundy[6],
             borderRadius: "9999px",
             transition: "all 0.4s cubic-bezier(0.35, 0.1, 0.25, 1)",
           },
@@ -590,7 +590,7 @@ export const mantineArtisan: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           tabsList: {
-            backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[8] : theme.colors.taupe[0],
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[8] : theme.colors.burgundy[0],
             padding: "0.375rem",
             borderRadius: theme.radius.lg,
             gap: "0.25rem",
@@ -600,7 +600,7 @@ export const mantineArtisan: MantineThemeOverride = {
             fontSize: "0.875rem",
             fontWeight: "500",
             padding: "0.625rem 1.25rem",
-            color: theme.colors.taupe[4],
+            color: theme.colors.burgundy[4],
             transition: "all 0.25s cubic-bezier(0.35, 0.1, 0.25, 1)",
             "&[data-active]": {
               backgroundColor: "var(--mantine-color-body)",
@@ -627,7 +627,7 @@ export const mantineArtisan: MantineThemeOverride = {
             padding: "0.625rem 1rem",
             transition: "all 0.15s ease",
             "&[data-hovered]": {
-              backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[7] : theme.colors.taupe[1],
+              backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[7] : theme.colors.burgundy[1],
               color: "var(--mantine-color-text)",
             },
           },
@@ -650,8 +650,8 @@ export const mantineArtisan: MantineThemeOverride = {
       styles: (theme: any) =>
         ({
           tooltip: {
-            backgroundColor: theme.colorScheme === "dark" ? theme.colors.taupe[2] : theme.colors.taupe[7],
-            color: theme.colorScheme === "dark" ? theme.colors.taupe[8] : theme.colors.taupe[0],
+            backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[2] : theme.colors.burgundy[7],
+            color: theme.colorScheme === "dark" ? theme.colors.burgundy[8] : theme.colors.burgundy[0],
             borderRadius: theme.radius.md,
             fontSize: "0.75rem",
             padding: "0.625rem 0.875rem",
