@@ -993,10 +993,20 @@ importers:
         version: 5.9.3
 
   packages/ottablog:
+    dependencies:
+      '@ottabase/ottarenderer':
+        specifier: workspace:*
+        version: link:../ottarenderer
     devDependencies:
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.7
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.38.4(@cloudflare/workers-types@4.20251225.0)(@prisma/client@5.22.0(prisma@5.22.0))(@types/react@19.2.7)(prisma@5.22.0)(react@19.2.3)
+      react:
+        specifier: 'catalog:'
+        version: 19.2.3
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
