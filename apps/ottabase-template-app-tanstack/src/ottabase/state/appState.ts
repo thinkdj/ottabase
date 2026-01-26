@@ -16,6 +16,7 @@ const { appStateAtom, atoms, createAtom } = createAppState<AppUser>({
     theme: "light",
     sidebarOpen: true,
     sidebarCollapsed: false,
+    sidebarWidth: 250, // Default sidebar width
   },
 });
 
@@ -27,6 +28,7 @@ export const {
   isAuthenticatedAtom,
   sidebarOpenAtom,
   sidebarCollapsedAtom,
+  sidebarWidthAtom,
   scaleAtom,
   zoomAtom,
   isLoadingAtom,

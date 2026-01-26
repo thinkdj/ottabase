@@ -14,6 +14,7 @@ const DEFAULT_STATE: Omit<AppState, "appName"> = {
   isAuthenticated: false,
   sidebarOpen: true,
   sidebarCollapsed: false,
+  sidebarWidth: 250, // Default sidebar width in pixels
   scale: 1.0,
   zoom: 1.0,
   isLoading: false,
@@ -64,6 +65,7 @@ export function createAppState<TUser extends BaseUser = BaseUser>(
   const isAuthenticatedAtom = createAtom("isAuthenticated");
   const sidebarOpenAtom = createAtom("sidebarOpen");
   const sidebarCollapsedAtom = createAtom("sidebarCollapsed");
+  const sidebarWidthAtom = createAtom("sidebarWidth");
   const scaleAtom = createAtom("scale");
   const zoomAtom = createAtom("zoom");
   const isLoadingAtom = createAtom("isLoading");
@@ -83,6 +85,7 @@ export function createAppState<TUser extends BaseUser = BaseUser>(
       isAuthenticatedAtom,
       sidebarOpenAtom,
       sidebarCollapsedAtom,
+      sidebarWidthAtom,
       scaleAtom,
       zoomAtom,
       isLoadingAtom,

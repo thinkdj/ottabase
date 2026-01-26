@@ -12,6 +12,13 @@ export interface ThemeDetails {
   mode: Theme;
 }
 
+// Sidebar state type
+export interface SidebarState {
+  isOpen: boolean;
+  isCollapsed: boolean;
+  width: number; // Width in pixels
+}
+
 // Base user interface - apps can extend this
 export interface BaseUser {
   id: string;
@@ -36,6 +43,7 @@ export interface AppState<TUser extends BaseUser = BaseUser> {
   // UI State
   sidebarOpen: boolean;
   sidebarCollapsed: boolean;
+  sidebarWidth: number; // Sidebar width in pixels (e.g., 250 for open, 60 for collapsed)
   scale: number; // UI magnification factor (1.0 = 100%)
   zoom: number; // Browser zoom level (1.0 = 100%)
 
