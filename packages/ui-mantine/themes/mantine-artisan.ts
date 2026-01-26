@@ -44,42 +44,29 @@ export const mantineArtisan: MantineThemeOverride = {
   colors: {
     // Primary - Deep Burgundy Wine (refined, sophisticated)
     burgundy: [
-      "#faf8fa",
-      "#f5f1f4",
-      "#e8dfe6",
-      "#dbc9d5",
-      "#d0b4c6",
-      "#c49fb7",
-      "#b88aa8",
-      "#a5728c",
-      "#945b7a",
-      "#784768",
+      "#faf7f4",
+      "#f0e6eb",
+      "#e5cdd8",
+      "#d4a8b9",
+      "#c68da3",
+      "#b8729a",
+      "#a8577d",
+      "#8b3a62",
+      "#6d2d50",
+      "#522040",
     ],
-    // Keep as 'dark' for Mantine compatibility
+    // Keep as 'dark' for Mantine compatibility (matches dark mode colors)
     dark: [
-      "#f9f7f5",
-      "#ede8e3",
-      "#dfd5cb",
-      "#d0c3b5",
-      "#bfada0",
-      "#ae998d",
-      "#9d8579",
-      "#8a7061",
-      "#6d5347",
-      "#52402f",
-    ],
-    // Accent: Deep Teal (artistic depth and sophistication)
-    teal: [
-      "#e6f9f7",
-      "#c0efea",
-      "#99e5dd",
-      "#6dd9ce",
-      "#4ccfc1",
-      "#2bc4b4",
-      "#1aa89f",
-      "#138c85",
-      "#0f706c",
-      "#0b5654",
+      "#faf7f4",
+      "#f0e6eb",
+      "#e5cdd8",
+      "#d4a8b9",
+      "#c68da3",
+      "#b8729a",
+      "#a8577d",
+      "#1a1318",
+      "#120d11",
+      "#0a0608",
     ],
     // Accent: Vibrant Gold (artistic warmth and prestige)
     gold: [
@@ -93,6 +80,19 @@ export const mantineArtisan: MantineThemeOverride = {
       "#e8d51b",
       "#d1c410",
       "#b3ad00",
+    ],
+    // Accent: Warm cream (for secondary elements)
+    cream: [
+      "#faf7f4",
+      "#f5f0e9",
+      "#f0e9e0",
+      "#ebe2d7",
+      "#e6dace",
+      "#e1d2c5",
+      "#dccabc",
+      "#d7c2b3",
+      "#d2baaa",
+      "#cdb2a1",
     ],
     // Accent: Dusty Rose (artistic subtlety)
     rose: [
@@ -194,11 +194,11 @@ export const mantineArtisan: MantineThemeOverride = {
 
   // Artistic shadow system - softer, more atmospheric
   shadows: {
-    xs: "0 1px 2px 0 rgb(184 138 168 / 0.04)",
-    sm: "0 2px 4px 0 rgb(184 138 168 / 0.08), 0 1px 2px -1px rgb(184 138 168 / 0.04)",
-    md: "0 4px 8px -2px rgb(184 138 168 / 0.12), 0 2px 4px -2px rgb(184 138 168 / 0.08)",
-    lg: "0 8px 16px -4px rgb(184 138 168 / 0.15), 0 4px 8px -4px rgb(184 138 168 / 0.1)",
-    xl: "0 20px 25px -5px rgb(184 138 168 / 0.2), 0 10px 15px -6px rgb(184 138 168 / 0.15)",
+    xs: "0 1px 2px 0 rgb(168 87 125 / 0.04)",
+    sm: "0 2px 4px 0 rgb(168 87 125 / 0.08), 0 1px 2px -1px rgb(168 87 125 / 0.04)",
+    md: "0 4px 8px -2px rgb(168 87 125 / 0.12), 0 2px 4px -2px rgb(168 87 125 / 0.08)",
+    lg: "0 8px 16px -4px rgb(168 87 125 / 0.15), 0 4px 8px -4px rgb(168 87 125 / 0.1)",
+    xl: "0 20px 25px -5px rgb(168 87 125 / 0.2), 0 10px 15px -6px rgb(168 87 125 / 0.15)",
   },
 
   // Comprehensive component overrides for the artisan aesthetic
@@ -233,11 +233,11 @@ export const mantineArtisan: MantineThemeOverride = {
             "&:hover": {
               backgroundColor: theme.colorScheme === "dark" ? theme.colors.burgundy[4] : theme.colors.burgundy[7],
               transform: "translateY(-1px)",
-              boxShadow: "0 4px 8px -2px rgb(107 83 55 / 0.12)",
+              boxShadow: "0 4px 8px -2px rgb(168 87 125 / 0.12)",
             },
             "&:active": {
               transform: "translateY(0)",
-              boxShadow: "0 2px 4px 0 rgb(107 83 55 / 0.08)",
+              boxShadow: "0 2px 4px 0 rgb(168 87 125 / 0.08)",
             },
           },
           outline: {
@@ -277,12 +277,12 @@ export const mantineArtisan: MantineThemeOverride = {
           root: {
             backgroundColor: "var(--mantine-color-body)",
             border: "1px solid var(--mantine-color-default-border)",
-            boxShadow: "0 2px 4px 0 rgb(107 83 55 / 0.08)",
+            boxShadow: "0 2px 4px 0 rgb(168 87 125 / 0.08)",
             borderRadius: theme.radius.lg,
             padding: theme.spacing.lg,
             transition: "all 0.25s cubic-bezier(0.35, 0.1, 0.25, 1)",
             "&:hover": {
-              boxShadow: "0 4px 8px -2px rgb(107 83 55 / 0.12)",
+              boxShadow: "0 4px 8px -2px rgb(168 87 125 / 0.12)",
             },
           },
         } as Record<string, React.CSSProperties>),
@@ -362,7 +362,7 @@ export const mantineArtisan: MantineThemeOverride = {
             borderRadius: theme.radius.md,
             backgroundColor: "var(--mantine-color-body)",
             padding: "0.375rem",
-            boxShadow: "0 4px 8px -2px rgb(107 83 55 / 0.12)",
+            boxShadow: "0 4px 8px -2px rgb(168 87 125 / 0.12)",
           },
           item: {
             borderRadius: theme.radius.sm,
@@ -497,7 +497,7 @@ export const mantineArtisan: MantineThemeOverride = {
             border: "none",
             width: "1.375rem",
             height: "1.375rem",
-            boxShadow: "0 2px 4px 0 rgb(107 83 55 / 0.15)",
+            boxShadow: "0 2px 4px 0 rgb(168 87 125 / 0.15)",
             transition: "all 0.3s cubic-bezier(0.35, 0.1, 0.25, 1)",
           },
         } as Record<string, React.CSSProperties>),
@@ -515,7 +515,7 @@ export const mantineArtisan: MantineThemeOverride = {
             borderRadius: theme.radius.lg,
             backgroundColor: "var(--mantine-color-body)",
             border: "1px solid var(--mantine-color-default-border)",
-            boxShadow: "0 8px 16px -4px rgb(107 83 55 / 0.15)",
+            boxShadow: "0 8px 16px -4px rgb(168 87 125 / 0.15)",
           },
           header: {
             backgroundColor: "var(--mantine-color-body)",
@@ -605,7 +605,7 @@ export const mantineArtisan: MantineThemeOverride = {
             "&[data-active]": {
               backgroundColor: "var(--mantine-color-body)",
               color: "var(--mantine-color-text)",
-              boxShadow: "0 2px 4px 0 rgb(107 83 55 / 0.08)",
+              boxShadow: "0 2px 4px 0 rgb(168 87 125 / 0.08)",
             },
           },
         } as Record<string, React.CSSProperties>),
@@ -619,7 +619,7 @@ export const mantineArtisan: MantineThemeOverride = {
             borderRadius: theme.radius.lg,
             backgroundColor: "var(--mantine-color-body)",
             padding: "0.375rem",
-            boxShadow: "0 4px 8px -2px rgb(107 83 55 / 0.12)",
+            boxShadow: "0 4px 8px -2px rgb(168 87 125 / 0.12)",
           },
           item: {
             borderRadius: theme.radius.md,
@@ -641,7 +641,7 @@ export const mantineArtisan: MantineThemeOverride = {
             border: "1px solid var(--mantine-color-default-border)",
             borderRadius: theme.radius.lg,
             backgroundColor: "var(--mantine-color-body)",
-            boxShadow: "0 4px 8px -2px rgb(107 83 55 / 0.12)",
+            boxShadow: "0 4px 8px -2px rgb(168 87 125 / 0.12)",
           },
         } as Record<string, React.CSSProperties>),
     },
@@ -656,7 +656,7 @@ export const mantineArtisan: MantineThemeOverride = {
             fontSize: "0.75rem",
             padding: "0.625rem 0.875rem",
             border: "none",
-            boxShadow: "0 2px 4px 0 rgb(107 83 55 / 0.15)",
+            boxShadow: "0 2px 4px 0 rgb(168 87 125 / 0.15)",
             fontWeight: "500",
           },
         } as Record<string, React.CSSProperties>),
