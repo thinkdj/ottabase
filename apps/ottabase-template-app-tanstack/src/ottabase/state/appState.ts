@@ -22,11 +22,13 @@ const { appStateAtom, atoms, createAtom } = createAppState<AppUser>({
 // Export individual atoms for component use
 export const {
   themeAtom,
+  themeDetailsAtom,
   userAtom,
   isAuthenticatedAtom,
   sidebarOpenAtom,
   sidebarCollapsedAtom,
   scaleAtom,
+  zoomAtom,
   isLoadingAtom,
 } = atoms;
 

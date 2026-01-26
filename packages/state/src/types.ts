@@ -6,6 +6,12 @@
 // Theme type
 export type Theme = "light" | "dark";
 
+// Theme details type
+export interface ThemeDetails {
+  name: string; // e.g., "default", "neo", "crisp", "funky"
+  mode: Theme;
+}
+
 // Base user interface - apps can extend this
 export interface BaseUser {
   id: string;
@@ -21,6 +27,7 @@ export interface AppState<TUser extends BaseUser = BaseUser> {
 
   // Theme
   theme: Theme;
+  themeDetails: ThemeDetails;
 
   // User
   user: TUser | null;
@@ -30,6 +37,7 @@ export interface AppState<TUser extends BaseUser = BaseUser> {
   sidebarOpen: boolean;
   sidebarCollapsed: boolean;
   scale: number; // UI magnification factor (1.0 = 100%)
+  zoom: number; // Browser zoom level (1.0 = 100%)
 
   // Loading states
   isLoading: boolean;

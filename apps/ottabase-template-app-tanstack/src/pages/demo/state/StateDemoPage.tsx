@@ -10,7 +10,9 @@ import {
   sidebarCollapsedAtom,
   sidebarOpenAtom,
   themeAtom,
+  themeDetailsAtom,
   userAtom,
+  zoomAtom,
   type AppUser,
 } from "@/ottabase/state/appState";
 import {
@@ -31,11 +33,13 @@ export function StateDemoPage() {
 
   // Individual atoms
   const [theme, setTheme] = useAtom(themeAtom);
+  const themeDetails = useAtomValue(themeDetailsAtom);
   const [user, setUser] = useAtom(userAtom);
   const [isAuthenticated, setIsAuthenticated] = useAtom(isAuthenticatedAtom);
   const [sidebarOpen, setSidebarOpen] = useAtom(sidebarOpenAtom);
   const [sidebarCollapsed, setSidebarCollapsed] = useAtom(sidebarCollapsedAtom);
   const [scale, setScale] = useAtom(scaleAtom);
+  const zoom = useAtomValue(zoomAtom);
   const [isLoading, setIsLoading] = useAtom(isLoadingAtom);
 
   // Demo actions
@@ -117,6 +121,33 @@ export function StateDemoPage() {
               Current: <Badge variant="outline">{theme}</Badge>
             </span>
             <Button onClick={toggleTheme}>Toggle Theme</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Theme Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle>🎭 Theme Details</CardTitle>
+          <CardDescription>
+            Uses: <code className="bg-muted px-1 rounded">themeDetailsAtom</code>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <span className="text-muted-foreground">
+                Theme Name: <Badge variant="outline">{themeDetails.name}</Badge>
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-muted-foreground">
+                Mode: <Badge variant="outline">{themeDetails.mode}</Badge>
+              </span>
+            </div>
+            <div className="bg-muted p-4 rounded-lg text-sm font-mono">
+              {JSON.stringify(themeDetails, null, 2)}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -259,6 +290,33 @@ export function StateDemoPage() {
                   150%
                 </Button>
               </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Browser Zoom */}
+      <Card>
+        <CardHeader>
+          <CardTitle>🖥️ Browser Zoom</CardTitle>
+          <CardDescription>
+            Uses: <code className="bg-muted px-1 rounded">zoomAtom</code> - Browser
+            zoom level (detected from window.devicePixelRatio)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <span className="text-muted-foreground">
+                Zoom: <Badge variant="outline">{(zoom * 100).toFixed(0)}%</Badge>
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Try using your browser's zoom controls (Ctrl+, Ctrl-, or Cmd+, Cmd-) to
+              change the zoom level. The value will update automatically.
+            </p>
+            <div className="bg-muted p-4 rounded-lg text-sm font-mono">
+              {JSON.stringify({ zoom, devicePixelRatio: window.devicePixelRatio }, null, 2)}
             </div>
           </div>
         </CardContent>
