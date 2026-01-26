@@ -598,23 +598,30 @@ The package includes these core models (in `@ottabase/ottaorm`):
 
 ```
 @ottabase/ottaorm (CORE)
-├── User, Post, Tag, Account (Models)
+├── User, Tag, Account (Models)
 ├── Auto-migration system
 └── Base model & utilities
+
+@ottabase/ottablog (CONTENT)
+├── Post, PostCategory, PostVersion, PostSeries (Models)
+├── Tag system with type support
+└── Content management utilities
 
 Your App
 ├── ottabase/
 │   ├── models/Todo.ts           # App-specific models
-│   ├── db/schema.ts             # Core + app tables
+│   ├── db/schema.ts             # Core + blog + app tables
 │   └── migrations/index.ts      # Custom migrations
 └── /api/ottaorm/init            # Auto-creates everything!
 ```
 
 **Core + Per-App Architecture:**
-- Core models exported from `@ottabase/ottaorm`
+- Core models exported from `@ottabase/ottaorm` (User, Account, Tag, etc.)
+- Blog/Content models exported from `@ottabase/ottablog` (Post, PostCategory, etc.)
 - Each app defines its own models in `ottabase/models/`
-- Schema combines core + app tables
+- Schema combines core + blog + app tables
 - Migrations run per-app against separate databases
+- Type column on categories/tags enables multi-content-type support
 
 ## Complete Example: API Route
 
