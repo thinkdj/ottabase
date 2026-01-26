@@ -436,17 +436,24 @@ const { appStateAtom, atoms } = createAppState({
   appName: "My App",
 });
 
-export const { themeAtom, userAtom, sidebarOpenAtom } = atoms;
+export const { themeAtom, themeInfoAtom, userAtom, sidebarStateAtom } = atoms;
 
 // 2. Use in components
 import { useAtom, useAtomValue } from "jotai";
-import { themeAtom, userAtom } from "@/ottabase/state/appState";
+import { themeAtom, themeInfoAtom, userAtom, sidebarStateAtom } from "@/ottabase/state/appState";
 
 function MyComponent() {
   const theme = useAtomValue(themeAtom);
-  const [user, setUser] = useAtom(userAtom);
-  
-  return <div>Theme: {theme}</div>;
+  const themeInfo = useAtomValue(themeInfoAtom);
+  const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
+
+  return (
+    <div>
+      Theme: {theme}
+      ThemeName: {themeInfo.name}
+      SidebarWidth: {sidebarState.width}px
+    </div>
+  );
 }`}
           </pre>
         </CardContent>

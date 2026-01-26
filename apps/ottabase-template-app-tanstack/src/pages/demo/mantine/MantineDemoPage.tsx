@@ -1,7 +1,7 @@
 import { APP_META, appConfig } from "@/ottabase/config/app.config";
 import {
   appStateAtom,
-  sidebarOpenAtom,
+  sidebarStateAtom,
   themeAtom,
 } from "@/ottabase/state/appState";
 import { OttaSelect, type OttaSelectItem } from "@ottabase/ottaselect";
@@ -50,7 +50,7 @@ const sampleItems = [
 export function MantineDemoPage() {
   const appState = useAtomValue(appStateAtom);
   const [theme, setTheme] = useAtom(themeAtom);
-  const [sidebarOpen, setSidebarOpen] = useAtom(sidebarOpenAtom);
+  const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
   const [mantineTheme, setMantineTheme] = useAtom(mantineThemePresetAtom);
 
   const [localCounter, setLocalCounter] = useState(0);
@@ -139,9 +139,12 @@ export function MantineDemoPage() {
             <Group justify="space-between">
               <Text>Sidebar Open:</Text>
               <Switch
-                checked={sidebarOpen}
+                checked={sidebarState.isOpen}
                 onChange={(event) =>
-                  setSidebarOpen(event.currentTarget.checked)
+                  setSidebarState({
+                    ...sidebarState,
+                    isOpen: event.currentTarget.checked,
+                  })
                 }
               />
             </Group>
