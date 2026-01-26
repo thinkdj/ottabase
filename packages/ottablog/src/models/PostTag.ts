@@ -3,7 +3,7 @@
  *
  * Junction table for posts and tags.
  */
-import { BaseModel } from "@ottabase/ottaorm";
+import { BaseModel, ModelFields } from "@ottabase/ottaorm";
 import { sql } from "drizzle-orm";
 import {
   index,
@@ -53,4 +53,28 @@ export class PostTag extends BaseModel {
   static entity = "post_tags";
   static table = postTagsTable;
   static primaryKey = "postId";
+
+  protected static fields: ModelFields = {
+    postId: {
+      type: "string",
+      editable: false,
+      uiConfig: {
+        label: "Post ID",
+      },
+    },
+    tagId: {
+      type: "string",
+      editable: false,
+      uiConfig: {
+        label: "Tag ID",
+      },
+    },
+    createdAt: {
+      type: "date",
+      editable: false,
+      uiConfig: {
+        label: "Created",
+      },
+    },
+  };
 }
