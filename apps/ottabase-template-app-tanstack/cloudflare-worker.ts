@@ -6,20 +6,6 @@ import {
 } from "@ottabase/cf-realtime/server";
 import { createImagesClient } from "@ottabase/cf/images";
 import { createKVClient } from "@ottabase/cf/kv";
-import { dispatch, dispatchBatch } from "@ottabase/queue";
-import {
-  queueHandler,
-  getQueueStats,
-  getRecentProcessedJobs,
-  getFailedJobs,
-  incrementDispatchStats,
-  getDLQJobs,
-  getDLQJob,
-  deleteDLQJob,
-  retryDLQJob,
-  retryAllDLQJobs,
-  purgeDLQ,
-} from "./ottabase/queue";
 import { createR2Client } from "@ottabase/cf/r2";
 import { createRateLimitingClient } from "@ottabase/cf/rate-limiting";
 import { createD1Driver } from "@ottabase/db/drizzle-d1";
@@ -43,6 +29,7 @@ import {
   uploadFileToCloudflareImages,
   uploadFileToR2,
 } from "@ottabase/ottaupload/server";
+import { dispatch, dispatchBatch } from "@ottabase/queue";
 import { ServiceError, errorResponse } from "@ottabase/utils/http-errors";
 import { jsonResponse } from "@ottabase/utils/http-response";
 import {
@@ -52,14 +39,27 @@ import {
 import { getAllSchemas } from "./ottabase/db/schemas-helper";
 import { processReferralAttribution } from "./ottabase/helpers/referral-attribution";
 import { appMigrations } from "./ottabase/migrations";
+import { BlogCategory } from "./ottabase/models/BlogCategory";
+import { BlogPost } from "./ottabase/models/BlogPost";
+import { BlogPostVersion } from "./ottabase/models/BlogPostVersion";
+import { BlogSeries } from "./ottabase/models/BlogSeries";
+import { BlogTag } from "./ottabase/models/BlogTag";
 import { ReferralTracking } from "./ottabase/models/ReferralTracking";
 import { Shortlink } from "./ottabase/models/Shortlink";
 import { Todo } from "./ottabase/models/Todo";
-import { BlogPost } from "./ottabase/models/BlogPost";
-import { BlogCategory } from "./ottabase/models/BlogCategory";
-import { BlogTag } from "./ottabase/models/BlogTag";
-import { BlogSeries } from "./ottabase/models/BlogSeries";
-import { BlogPostVersion } from "./ottabase/models/BlogPostVersion";
+import {
+  deleteDLQJob,
+  getDLQJob,
+  getDLQJobs,
+  getFailedJobs,
+  getQueueStats,
+  getRecentProcessedJobs,
+  incrementDispatchStats,
+  purgeDLQ,
+  queueHandler,
+  retryAllDLQJobs,
+  retryDLQJob,
+} from "./ottabase/queue";
 import { registerAppEmailTemplates } from "./src/email/templates";
 
 export { RealtimeActor };
@@ -176,7 +176,7 @@ export default {
         "Access-Control-Allow-Credentials": "true",
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Vary": "Origin",
+        Vary: "Origin",
       };
 
       if (url.pathname.startsWith("/api/") && request.method === "OPTIONS") {
@@ -303,7 +303,19 @@ export default {
 
         // Initialize database connection and register models
         registerConnection("default", createD1Driver(env.OBCF_D1));
-        registerModels([Shortlink, Todo, User, Post, Tag, ReferralTracking, BlogPost, BlogCategory, BlogTag, BlogSeries, BlogPostVersion]);
+        registerModels([
+          Shortlink,
+          Todo,
+          User,
+          Post,
+          Tag,
+          ReferralTracking,
+          BlogPost,
+          BlogCategory,
+          BlogTag,
+          BlogSeries,
+          BlogPostVersion,
+        ]);
 
         // Parse the request into a CrudRequest
         const crudRequest = await parseCrudRequest(
@@ -719,9 +731,8 @@ export default {
         }
 
         // Validate username format
-        const { validateReferralUsername } = await import(
-          "@ottabase/referrals"
-        );
+        const { validateReferralUsername } =
+          await import("@ottabase/referrals");
         const validation = validateReferralUsername(body.referralUsername);
 
         if (!validation.valid) {
@@ -1389,7 +1400,7 @@ export default {
               env.OBCF_QUEUE,
               body.type,
               body.payload,
-              body.delay ? { delay: body.delay } : undefined
+              body.delay ? { delay: body.delay } : undefined,
             );
 
             if (!result.success) {
@@ -1411,7 +1422,7 @@ export default {
                     sentAt: new Date().toISOString(),
                     type: "single",
                   }),
-                  { expirationTtl: 3600 }
+                  { expirationTtl: 3600 },
                 );
               } catch {
                 // ignore
@@ -1455,7 +1466,7 @@ export default {
                       sentAt: new Date().toISOString(),
                       type: "batch",
                     }),
-                    { expirationTtl: 3600 }
+                    { expirationTtl: 3600 },
                   );
                 }
               } catch {
@@ -1469,7 +1480,7 @@ export default {
                 acc[job.type] = (acc[job.type] || 0) + 1;
                 return acc;
               },
-              {} as Record<string, number>
+              {} as Record<string, number>,
             );
             for (const [jobType, count] of Object.entries(jobTypeCounts)) {
               await incrementDispatchStats(env, jobType, count);
@@ -1486,7 +1497,11 @@ export default {
           if (body.message) {
             const msg = body.message;
             const jobType = msg.action || "batch-task";
-            const payload = { userId: msg.userId, data: msg.data, action: msg.action };
+            const payload = {
+              userId: msg.userId,
+              data: msg.data,
+              action: msg.action,
+            };
 
             const result = await dispatch(env.OBCF_QUEUE, jobType, payload);
             if (!result.success) {
@@ -1507,7 +1522,7 @@ export default {
                     sentAt: new Date().toISOString(),
                     type: "single",
                   }),
-                  { expirationTtl: 3600 }
+                  { expirationTtl: 3600 },
                 );
               } catch {
                 // ignore
@@ -1525,7 +1540,7 @@ export default {
 
           return errorResponse(
             "Either { type, payload } or { message } or { batch } is required",
-            400
+            400,
           );
         }
 
@@ -1569,7 +1584,10 @@ export default {
       }
 
       // Admin Queue Management: /api/admin/queues
-      if (url.pathname === "/api/admin/queues" || url.pathname.startsWith("/api/admin/queues/")) {
+      if (
+        url.pathname === "/api/admin/queues" ||
+        url.pathname.startsWith("/api/admin/queues/")
+      ) {
         // Get queue stats and overview
         if (url.pathname === "/api/admin/queues" && request.method === "GET") {
           const stats = await getQueueStats(env);
@@ -1587,10 +1605,22 @@ export default {
           // Registered handlers info
           const registeredHandlers = [
             { type: "send-email", description: "Send email notifications" },
-            { type: "process-order", description: "Process order transactions" },
-            { type: "generate-report", description: "Generate reports asynchronously" },
-            { type: "sync-data", description: "Synchronize data between systems" },
-            { type: "batch-task", description: "Generic batch processing task" },
+            {
+              type: "process-order",
+              description: "Process order transactions",
+            },
+            {
+              type: "generate-report",
+              description: "Generate reports asynchronously",
+            },
+            {
+              type: "sync-data",
+              description: "Synchronize data between systems",
+            },
+            {
+              type: "batch-task",
+              description: "Generic batch processing task",
+            },
           ];
 
           return jsonResponse({
@@ -1602,21 +1632,30 @@ export default {
         }
 
         // Get recent processed jobs
-        if (url.pathname === "/api/admin/queues/processed" && request.method === "GET") {
+        if (
+          url.pathname === "/api/admin/queues/processed" &&
+          request.method === "GET"
+        ) {
           const limit = parseInt(url.searchParams.get("limit") || "50");
           const jobs = await getRecentProcessedJobs(env, Math.min(limit, 100));
           return jsonResponse({ jobs });
         }
 
         // Get failed jobs
-        if (url.pathname === "/api/admin/queues/failed" && request.method === "GET") {
+        if (
+          url.pathname === "/api/admin/queues/failed" &&
+          request.method === "GET"
+        ) {
           const limit = parseInt(url.searchParams.get("limit") || "50");
           const jobs = await getFailedJobs(env, Math.min(limit, 100));
           return jsonResponse({ jobs });
         }
 
         // Get pending (dispatched but not processed) jobs
-        if (url.pathname === "/api/admin/queues/pending" && request.method === "GET") {
+        if (
+          url.pathname === "/api/admin/queues/pending" &&
+          request.method === "GET"
+        ) {
           if (!env.OBCF_KV) {
             return errorResponse("KV binding not configured", 500, {
               code: "CONFIG_ERROR",
@@ -1625,7 +1664,10 @@ export default {
 
           const kv = createKVClient({ namespace: env.OBCF_KV as any });
           const limit = parseInt(url.searchParams.get("limit") || "50");
-          const listResult = await kv.list({ prefix: "queue:message:", limit: Math.min(limit, 100) });
+          const listResult = await kv.list({
+            prefix: "queue:message:",
+            limit: Math.min(limit, 100),
+          });
 
           if (!listResult.success) {
             return errorResponse("Failed to list pending jobs", 500);
@@ -1645,14 +1687,18 @@ export default {
           }
 
           jobs.sort(
-            (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime()
+            (a, b) =>
+              new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
           );
 
           return jsonResponse({ jobs });
         }
 
         // Reset queue stats (for testing/admin purposes)
-        if (url.pathname === "/api/admin/queues/reset-stats" && request.method === "POST") {
+        if (
+          url.pathname === "/api/admin/queues/reset-stats" &&
+          request.method === "POST"
+        ) {
           if (!env.OBCF_KV) {
             return errorResponse("KV binding not configured", 500, {
               code: "CONFIG_ERROR",
@@ -1660,14 +1706,17 @@ export default {
           }
 
           const kv = createKVClient({ namespace: env.OBCF_KV as any });
-          await kv.put("queue:stats", JSON.stringify({
-            totalDispatched: 0,
-            totalProcessed: 0,
-            totalFailed: 0,
-            totalDLQ: 0,
-            byJobType: {},
-            lastUpdated: new Date().toISOString(),
-          }));
+          await kv.put(
+            "queue:stats",
+            JSON.stringify({
+              totalDispatched: 0,
+              totalProcessed: 0,
+              totalFailed: 0,
+              totalDLQ: 0,
+              byJobType: {},
+              lastUpdated: new Date().toISOString(),
+            }),
+          );
 
           return jsonResponse({ success: true, message: "Stats reset" });
         }
@@ -1677,7 +1726,10 @@ export default {
         // ================================================================
 
         // List DLQ jobs with pagination
-        if (url.pathname === "/api/admin/queues/dlq" && request.method === "GET") {
+        if (
+          url.pathname === "/api/admin/queues/dlq" &&
+          request.method === "GET"
+        ) {
           const limit = parseInt(url.searchParams.get("limit") || "50");
           const cursor = url.searchParams.get("cursor") || undefined;
           const result = await getDLQJobs(env, Math.min(limit, 100), cursor);
@@ -1685,19 +1737,27 @@ export default {
         }
 
         // Retry all DLQ jobs
-        if (url.pathname === "/api/admin/queues/dlq/retry-all" && request.method === "POST") {
+        if (
+          url.pathname === "/api/admin/queues/dlq/retry-all" &&
+          request.method === "POST"
+        ) {
           const result = await retryAllDLQJobs(env);
           return jsonResponse(result);
         }
 
         // Purge all DLQ jobs
-        if (url.pathname === "/api/admin/queues/dlq" && request.method === "DELETE") {
+        if (
+          url.pathname === "/api/admin/queues/dlq" &&
+          request.method === "DELETE"
+        ) {
           const deleted = await purgeDLQ(env);
           return jsonResponse({ success: true, deleted });
         }
 
         // Handle individual DLQ job operations: /api/admin/queues/dlq/:id
-        const dlqJobMatch = url.pathname.match(/^\/api\/admin\/queues\/dlq\/([^/]+)$/);
+        const dlqJobMatch = url.pathname.match(
+          /^\/api\/admin\/queues\/dlq\/([^/]+)$/,
+        );
         if (dlqJobMatch) {
           const jobId = dlqJobMatch[1];
 
@@ -1721,12 +1781,16 @@ export default {
         }
 
         // Retry single DLQ job: /api/admin/queues/dlq/:id/retry
-        const dlqRetryMatch = url.pathname.match(/^\/api\/admin\/queues\/dlq\/([^/]+)\/retry$/);
+        const dlqRetryMatch = url.pathname.match(
+          /^\/api\/admin\/queues\/dlq\/([^/]+)\/retry$/,
+        );
         if (dlqRetryMatch && request.method === "POST") {
           const jobId = dlqRetryMatch[1];
           const result = await retryDLQJob(env, jobId);
           if (!result.success) {
-            return errorResponse(result.error || "Retry failed", 400, { code: "RETRY_FAILED" });
+            return errorResponse(result.error || "Retry failed", 400, {
+              code: "RETRY_FAILED",
+            });
           }
           return jsonResponse({ success: true, message: "Job re-queued" });
         }
@@ -1977,7 +2041,17 @@ export default {
         registerConnection("default", createD1Driver(env.OBCF_D1));
 
         // Register all models for dynamic lookup
-        registerModels([User, Post, Tag, Todo, Shortlink, ReferralTracking, BlogPost, BlogCategory, BlogTag]);
+        registerModels([
+          User,
+          Post,
+          Tag,
+          Todo,
+          Shortlink,
+          ReferralTracking,
+          BlogPost,
+          BlogCategory,
+          BlogTag,
+        ]);
 
         // Parse the request into a CrudRequest
         const crudRequest = await parseCrudRequest(
@@ -2120,7 +2194,133 @@ export default {
         }
       }
 
-      return response;
+      // ============================================================
+      // Admin DB Management API
+      // ============================================================
+
+      // List all tables
+      if (url.pathname === "/api/admin/db/tables" && request.method === "GET") {
+        if (!env.OBCF_D1) {
+          return errorResponse("D1 database binding not configured", 500);
+        }
+
+        try {
+          const result = await env.OBCF_D1.prepare(
+            `SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name`,
+          ).all();
+
+          return jsonResponse({
+            tables: result.results.map((r: any) => r.name),
+          });
+        } catch (e) {
+          return errorResponse(
+            e instanceof Error ? e.message : "Failed to list tables",
+            500,
+          );
+        }
+      }
+
+      // Get table data
+      const dbTableMatch = url.pathname.match(
+        /^\/api\/admin\/db\/tables\/([a-zA-Z0-9_]+)$/,
+      );
+      if (dbTableMatch && request.method === "GET") {
+        if (!env.OBCF_D1) {
+          return errorResponse("D1 database binding not configured", 500);
+        }
+
+        const tableName = dbTableMatch[1];
+        const { page = 1, perPage = 25 } = parsePaginationParams(
+          url.searchParams,
+        );
+        const offset = (page - 1) * perPage;
+
+        try {
+          // Get table info (columns)
+          const columnsResult = await env.OBCF_D1.prepare(
+            `PRAGMA table_info("${tableName}")`,
+          ).all();
+          const columns = columnsResult.results;
+
+          // Get total count
+          const countResult = await env.OBCF_D1.prepare(
+            `SELECT count(*) as total FROM "${tableName}"`,
+          ).first();
+          const total = (countResult as any)?.total || 0;
+
+          // Get rows
+          // Note: NOT SECURE for public facing apps, but okay for admin internal use if properly protected
+          // We validate tableName via regex in the route match above
+          const rowsResult = await env.OBCF_D1.prepare(
+            `SELECT * FROM "${tableName}" LIMIT ? OFFSET ?`,
+          )
+            .bind(perPage, offset)
+            .all();
+
+          return jsonResponse({
+            tableName,
+            columns,
+            rows: rowsResult.results,
+            pagination: {
+              page,
+              perPage,
+              total,
+              totalPages: Math.ceil(total / perPage),
+            },
+          });
+        } catch (e) {
+          return errorResponse(
+            e instanceof Error ? e.message : "Failed to fetch table data",
+            500,
+          );
+        }
+      }
+
+      // Delete row
+      const dbRowDeleteMatch = url.pathname.match(
+        /^\/api\/admin\/db\/tables\/([a-zA-Z0-9_]+)\/(.+)$/,
+      );
+      if (dbRowDeleteMatch && request.method === "DELETE") {
+        if (!env.OBCF_D1) {
+          return errorResponse("D1 database binding not configured", 500);
+        }
+
+        const tableName = dbRowDeleteMatch[1];
+        const id = dbRowDeleteMatch[2];
+        const pkField = url.searchParams.get("pk") || "id";
+
+        try {
+          // Verify table exists first to avoid SQL injection on tableName (though regex helps)
+          // and to ensure we are deleting from a valid table
+          const tableExists = await env.OBCF_D1.prepare(
+            `SELECT name FROM sqlite_schema WHERE type='table' AND name = ?`,
+          )
+            .bind(tableName)
+            .first();
+
+          if (!tableExists) {
+            return errorResponse("Table not found", 404);
+          }
+
+          // Execute delete
+          // Using strict identifier quoting for table name and PK field
+          const query = `DELETE FROM "${tableName}" WHERE "${pkField}" = ?`;
+          await env.OBCF_D1.prepare(query).bind(id).run();
+
+          return jsonResponse({
+            success: true,
+            message: `Deleted row where ${pkField} = ${id}`,
+          });
+        } catch (e) {
+          return errorResponse(
+            e instanceof Error ? e.message : "Failed to delete row",
+            500,
+          );
+        }
+      }
+
+      // Last route specific match - return 404 if nothing else matched
+      return errorResponse("Not found", 404);
     } catch (err) {
       console.error("Worker unhandled error:", err);
 

@@ -6,7 +6,14 @@ import {
   CardTitle,
 } from "@ottabase/ui-shadcn";
 import { Link } from "@tanstack/react-router";
-import { Activity, Clock, Database, FileText, Layers, UserPlus } from "lucide-react";
+import {
+  Activity,
+  Clock,
+  Database,
+  FileText,
+  Layers,
+  UserPlus,
+} from "lucide-react";
 
 export function AdminIndexPage() {
   const adminLinks = [
@@ -23,6 +30,13 @@ export function AdminIndexPage() {
       description:
         "Check database schema status, view migration history, and initialize tables.",
       href: "/migration-status",
+      icon: Database,
+      disabled: false,
+    },
+    {
+      title: "Database Manager",
+      description: "Directly view and manage database tables and records.",
+      href: "/admin/db",
       icon: Database,
       disabled: false,
     },

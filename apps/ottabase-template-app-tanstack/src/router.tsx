@@ -607,6 +607,23 @@ const blogListRoute = new Route({
   ),
 });
 
+const adminDbRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/admin/db",
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      table: (search.table as string) || "",
+      page: Number(search.page) || 1,
+      perPage: Number(search.perPage) || 25,
+    };
+  },
+  component: lazyRouteComponent(() =>
+    import("@/pages/admin/AdminDbPage").then((m) => ({
+      default: m.AdminDbPage,
+    })),
+  ),
+});
+
 const blogDetailRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/blog/$slug",
@@ -659,6 +676,7 @@ const routeTree = rootRoute.addChildren([
   adminBlogRoute,
   adminBlogNewRoute,
   adminBlogEditRoute,
+  adminDbRoute,
   blogListRoute,
   blogDetailRoute,
 ]);
