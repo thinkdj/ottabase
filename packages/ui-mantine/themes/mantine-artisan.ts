@@ -31,8 +31,8 @@ export const mantineArtisan: MantineThemeOverride = {
       '"Sohne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     fontWeight: "700",
     sizes: {
-      h1: { fontSize: "2.5rem", lineHeight: "1.15", fontWeight: "700", letterSpacing: "-0.015em" },
-      h2: { fontSize: "2rem", lineHeight: "1.2", fontWeight: "700", letterSpacing: "-0.01em" },
+      h1: { fontSize: "2.5rem", lineHeight: "1.15", fontWeight: "700" },
+      h2: { fontSize: "2rem", lineHeight: "1.2", fontWeight: "700" },
       h3: { fontSize: "1.5rem", lineHeight: "1.3", fontWeight: "700" },
       h4: { fontSize: "1.25rem", lineHeight: "1.4", fontWeight: "600" },
       h5: { fontSize: "1.125rem", lineHeight: "1.5", fontWeight: "600" },
