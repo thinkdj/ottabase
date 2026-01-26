@@ -30,14 +30,18 @@ export const tagsTable = sqliteTable(
     // App identifier for multi-app database sharing
     appId: text("app_id"),
 
+    // Content type this tag applies to (post, news, docs, etc.)
+    type: text("type").notNull().default("post"),
+
     // Timestamps
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .default(sql`(unixepoch())`),
   },
   (table) => [
-    index("tags_slug_idx").on(table.slug),
-    index("tags_app_id_idx").on(table.appId),
+    index("tags_slug_type_idx").on(table.slug, table.type),
+    index("tags_app_id_type_idx").on(table.appId, table.type),
+    index("tags_type_idx").on(table.type),
   ],
 );
 
@@ -118,6 +122,24 @@ export class Tag extends BaseModel {
         label: "Color",
         description: "Tag color (hex code)",
         placeholder: "#3b82f6",
+      },
+      formConfig: {
+        visible: true,
+        fieldType: "input",
+      },
+      tableConfig: {
+        visible: true,
+        colWidth: 100,
+      },
+    },
+    type: {
+      type: "string",
+      editable: true,
+      filterable: true,
+      uiConfig: {
+        label: "Type",
+        description: "Content type (post, news, docs, etc.)",
+        defaultValue: "post",
       },
       formConfig: {
         visible: true,

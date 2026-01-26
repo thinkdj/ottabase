@@ -36,6 +36,9 @@ export const categoriesTable = sqliteTable(
     // App identifier for multi-app database sharing
     appId: text("app_id"),
 
+    // Content type this category applies to (post, news, docs, etc.)
+    type: text("type").notNull().default("post"),
+
     // Timestamps
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
@@ -47,9 +50,10 @@ export const categoriesTable = sqliteTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    index("categories_slug_idx").on(table.slug),
-    index("categories_app_id_idx").on(table.appId),
+    index("categories_slug_type_idx").on(table.slug, table.type),
+    index("categories_app_id_type_idx").on(table.appId, table.type),
     index("categories_parent_id_idx").on(table.parentId),
+    index("categories_type_idx").on(table.type),
   ],
 );
 
@@ -170,6 +174,24 @@ export class PostCategory extends BaseModel {
         label: "Sort Order",
         description: "Display order (lower = first)",
         defaultValue: 0,
+      },
+      formConfig: {
+        visible: true,
+        fieldType: "input",
+      },
+      tableConfig: {
+        visible: true,
+        colWidth: 100,
+      },
+    },
+    type: {
+      type: "string",
+      editable: true,
+      filterable: true,
+      uiConfig: {
+        label: "Type",
+        description: "Content type (post, news, docs, etc.)",
+        defaultValue: "post",
       },
       formConfig: {
         visible: true,
