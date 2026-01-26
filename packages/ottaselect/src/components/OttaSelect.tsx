@@ -541,9 +541,9 @@ export function OttaSelect({
           ref={chipsContainerRef}
           className="flex items-center gap-1 flex-1 overflow-hidden"
         >
-          {visibleItems.map((item) => (
+          {visibleItems.map((item, index) => (
             <Chip
-              key={item.id}
+              key={item.id || `chip-${index}`}
               item={item}
               renderChip={renderChip}
               onRemove={handleRemoveChip}
@@ -722,7 +722,7 @@ export function OttaSelect({
 
                   return (
                     <button
-                      key={item.id}
+                      key={item.id || `item-${index}`}
                       type="button"
                       data-index={index}
                       onClick={() => handleSelect(item)}

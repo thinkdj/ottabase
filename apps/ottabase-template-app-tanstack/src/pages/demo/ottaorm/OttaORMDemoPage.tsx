@@ -185,8 +185,11 @@ export function OttaORMDemoPage() {
                     </p>
                   </div>
                 ) : (
-                  users.map((user) => (
-                    <div key={user.id} className="rounded-lg border p-4">
+                  users.map((user, index) => (
+                    <div
+                      key={user.id || `user-${index}`}
+                      className="rounded-lg border p-4"
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="font-medium">
@@ -232,16 +235,20 @@ export function OttaORMDemoPage() {
                   aria-label="Select post author"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
-                  <option key="_placeholder" value="">Select author...</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name ||
-                        user.email ||
-                        (user.id
-                          ? `User ${user.id.substring(0, 8)}`
-                          : "Unknown User")}
-                    </option>
-                  ))}
+                  {[
+                    <option key="_placeholder" value="">
+                      Select author...
+                    </option>,
+                    ...users.map((user, index) => (
+                      <option key={user.id || `opt-${index}`} value={user.id}>
+                        {user.name ||
+                          user.email ||
+                          (user.id
+                            ? `User ${user.id.substring(0, 8)}`
+                            : "Unknown User")}
+                      </option>
+                    )),
+                  ]}
                 </select>
                 <Input
                   value={newPostTitle}
@@ -270,8 +277,11 @@ export function OttaORMDemoPage() {
                     </p>
                   </div>
                 ) : (
-                  posts.map((post) => (
-                    <div key={post.id} className="rounded-lg border p-4">
+                  posts.map((post, index) => (
+                    <div
+                      key={post.id || `post-${index}`}
+                      className="rounded-lg border p-4"
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="font-medium">{post.title}</p>

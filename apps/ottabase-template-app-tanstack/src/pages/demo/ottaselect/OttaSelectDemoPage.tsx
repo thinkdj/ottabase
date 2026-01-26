@@ -411,9 +411,9 @@ export function OttaSelectDemoPage() {
             />
             {multiCountries && multiCountries.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
-                {multiCountries.map((country) => (
+                {multiCountries.map((country, index) => (
                   <span
-                    key={country.id}
+                    key={country.id || `country-${index}`}
                     className="inline-flex items-center gap-1 px-2 py-1 bg-muted rounded-full text-sm"
                   >
                     {country.flag} {country.name}
@@ -490,9 +490,9 @@ export function OttaSelectDemoPage() {
             />
             {paginatedSelection && paginatedSelection.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
-                {paginatedSelection.map((country) => (
+                {paginatedSelection.map((country, index) => (
                   <span
-                    key={country.id}
+                    key={country.id || `country-pag-${index}`}
                     className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-sm"
                   >
                     {country.flag} {country.name}
