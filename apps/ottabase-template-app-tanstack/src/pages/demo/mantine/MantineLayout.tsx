@@ -8,7 +8,8 @@ export type MantineThemePreset =
   | "mantine-slate"
   | "mantine-graphite"
   | "mantine-azure"
-  | "mantine-aurora";
+  | "mantine-aurora"
+  | "mantine-artisan";
 
 export const mantineThemePresetAtom =
   atom<MantineThemePreset>("mantine-slate");

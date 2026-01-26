@@ -151,6 +151,7 @@ export default function DemoPage() {
                     "mantine-graphite",
                     "mantine-azure",
                     "mantine-aurora",
+                    "mantine-artisan",
                   ] as MantineThemePreset[]
                 ).map((preset) => (
                   <Button

@@ -10,7 +10,8 @@ export type MantineThemePreset =
   | "mantine-slate"
   | "mantine-graphite"
   | "mantine-azure"
-  | "mantine-aurora";
+  | "mantine-aurora"
+  | "mantine-artisan";
 
 // Mantine theme preset atom (separate from main app state)
 export const mantineThemePresetAtom =

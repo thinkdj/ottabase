@@ -119,6 +119,7 @@ export function MantineDemoPage() {
                     "mantine-graphite",
                     "mantine-azure",
                     "mantine-aurora",
+                    "mantine-artisan",
                   ] as MantineThemePreset[]
                 ).map((preset) => (
                   <Button
