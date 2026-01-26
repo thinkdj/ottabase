@@ -19,6 +19,7 @@ import mantineAurora from "../themes/mantine-aurora";
 import mantineAzure from "../themes/mantine-azure";
 import mantineGraphite from "../themes/mantine-graphite";
 import mantineSlate from "../themes/mantine-slate";
+import mantineArtisan from "../themes/mantine-artisan";
 
 /* Import Mantine CSS */
 import "@mantine/carousel/styles.css";
@@ -29,7 +30,8 @@ export type MantineThemePreset =
   | "mantine-slate"
   | "mantine-graphite"
   | "mantine-azure"
-  | "mantine-aurora";
+  | "mantine-aurora"
+  | "mantine-artisan";
 
 interface ProviderUIMantineProps {
   children: ReactNode;
@@ -69,6 +71,7 @@ const ProviderUIMantine = ({
     "mantine-graphite": mantineGraphite,
     "mantine-azure": mantineAzure,
     "mantine-aurora": mantineAurora,
+    "mantine-artisan": mantineArtisan,
   };
 
   const selectedBaseTheme = themePresets[baseTheme] || mantineSlate;

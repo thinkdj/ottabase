@@ -9,6 +9,7 @@ export { default as mantineSlate } from "../themes/mantine-slate";
 export { default as mantineGraphite } from "../themes/mantine-graphite";
 export { default as mantineAzure } from "../themes/mantine-azure";
 export { default as mantineAurora } from "../themes/mantine-aurora";
+export { default as mantineArtisan } from "../themes/mantine-artisan";
 
 // Export theme configuration utilities
 export type { MantineThemeConfig } from "./themeConfig";
