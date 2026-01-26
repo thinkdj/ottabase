@@ -73,11 +73,19 @@ export const postVersionsTable = sqliteTable(
       .default(sql`(unixepoch())`),
   },
   (table) => [
-    index("post_versions_post_id_idx").on(table.postId),
-    index("post_versions_version_number_idx").on(
+    // Get versions for a post in order: postId + versionNumber (DESC)
+    index("post_versions_post_id_version_idx").on(
       table.postId,
       table.versionNumber,
     ),
+
+    // Get latest version for a post ordered by creation time
+    index("post_versions_post_id_created_at_idx").on(
+      table.postId,
+      table.createdAt,
+    ),
+
+    // Find versions by creation date for cleanup/archival
     index("post_versions_created_at_idx").on(table.createdAt),
   ],
 );

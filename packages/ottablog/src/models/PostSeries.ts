@@ -56,7 +56,23 @@ export const seriesTable = sqliteTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    // Lookup by slug
     index("series_slug_idx").on(table.slug),
+
+    // List series by app ordered: appId + isComplete + sortOrder
+    index("series_app_id_complete_order_idx").on(
+      table.appId,
+      table.isComplete,
+      table.sortOrder,
+    ),
+
+    // Find complete/incomplete series: isComplete + sortOrder
+    index("series_is_complete_sort_order_idx").on(
+      table.isComplete,
+      table.sortOrder,
+    ),
+
+    // App ID single index for other filtering
     index("series_app_id_idx").on(table.appId),
   ],
 );

@@ -35,8 +35,13 @@ export const postTagsTable = sqliteTable(
       .default(sql`(unixepoch())`),
   },
   (table) => [
+    // Composite primary key prevents duplicate tag assignments
     primaryKey({ columns: [table.postId, table.tagId] }),
+
+    // Get all tags for a post: postId (foreign key)
     index("post_tags_post_id_idx").on(table.postId),
+
+    // Get all posts with a tag: tagId (foreign key)
     index("post_tags_tag_id_idx").on(table.tagId),
   ],
 );

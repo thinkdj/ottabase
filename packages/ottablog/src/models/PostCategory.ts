@@ -50,9 +50,26 @@ export const categoriesTable = sqliteTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    // Lookup by slug with type filtering
     index("categories_slug_type_idx").on(table.slug, table.type),
+
+    // Multi-tenant with type: appId + type for filtering categories by content type
     index("categories_app_id_type_idx").on(table.appId, table.type),
-    index("categories_parent_id_idx").on(table.parentId),
+
+    // Hierarchy traversal: parentId + sortOrder for getting children ordered
+    index("categories_parent_id_sort_order_idx").on(
+      table.parentId,
+      table.sortOrder,
+    ),
+
+    // Root categories: parentId + appId + type + sortOrder
+    index("categories_parent_id_app_id_type_idx").on(
+      table.parentId,
+      table.appId,
+      table.type,
+    ),
+
+    // Type filtering single index for flexibility
     index("categories_type_idx").on(table.type),
   ],
 );

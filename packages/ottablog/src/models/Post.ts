@@ -158,15 +158,54 @@ export const postsTable = sqliteTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    // Lookup by slug (unique per appId)
     index("posts_slug_idx").on(table.slug),
-    index("posts_status_idx").on(table.status),
-    index("posts_content_type_idx").on(table.contentType),
-    index("posts_category_id_idx").on(table.categoryId),
-    index("posts_series_id_idx").on(table.seriesId),
-    index("posts_author_id_idx").on(table.authorId),
+
+    // Published posts query: status + publishedAt (DESC) for sorting
+    index("posts_status_published_at_idx").on(table.status, table.publishedAt),
+
+    // Multi-tenant filtering: appId + status + publishedAt for common queries
+    index("posts_app_id_status_published_at_idx").on(
+      table.appId,
+      table.status,
+      table.publishedAt,
+    ),
+
+    // Content type filtering: appId + contentType + status
+    index("posts_app_id_content_type_status_idx").on(
+      table.appId,
+      table.contentType,
+      table.status,
+    ),
+
+    // Author's posts: authorId + status + publishedAt
+    index("posts_author_id_status_published_at_idx").on(
+      table.authorId,
+      table.status,
+      table.publishedAt,
+    ),
+
+    // Category posts: categoryId + status + publishedAt
+    index("posts_category_id_status_published_at_idx").on(
+      table.categoryId,
+      table.status,
+      table.publishedAt,
+    ),
+
+    // Series ordering: seriesId + seriesOrder
+    index("posts_series_id_order_idx").on(table.seriesId, table.seriesOrder),
+
+    // Featured posts: isFeatured + publishedAt for featured queries
+    index("posts_is_featured_published_at_idx").on(
+      table.isFeatured,
+      table.publishedAt,
+    ),
+
+    // Scheduled posts: publishAt for auto-publish scheduling
+    index("posts_publish_at_idx").on(table.publishAt),
+
+    // App ID single index for other multi-tenant filtering
     index("posts_app_id_idx").on(table.appId),
-    index("posts_published_at_idx").on(table.publishedAt),
-    index("posts_is_featured_idx").on(table.isFeatured),
   ],
 );
 

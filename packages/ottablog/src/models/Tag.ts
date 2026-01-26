@@ -39,8 +39,13 @@ export const tagsTable = sqliteTable(
       .default(sql`(unixepoch())`),
   },
   (table) => [
+    // Lookup by slug with type filtering
     index("tags_slug_type_idx").on(table.slug, table.type),
+
+    // Multi-tenant with type: appId + type for filtering tags by content type
     index("tags_app_id_type_idx").on(table.appId, table.type),
+
+    // Type filtering single index for flexibility
     index("tags_type_idx").on(table.type),
   ],
 );
