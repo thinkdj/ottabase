@@ -554,11 +554,12 @@ jobs:
           echo "preview-name=${BASE_NAME}-pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
 
       - name: Delete preview worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: delete ${{ steps.cleanup-name.outputs.preview-name }}
+        run: |
+          npm install -g wrangler
+          wrangler delete ${{ steps.cleanup-name.outputs.preview-name }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         continue-on-error: true
 
       - name: Cleanup summary
