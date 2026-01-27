@@ -106,6 +106,7 @@ export function AdminDbPage() {
     },
     onSuccess: () => {
       toast.success("Table dropped successfully");
+      setIsDropTableDialogOpen(false);
       queryClient.invalidateQueries({
         queryKey: ["admin", "db", "tables"],
       });
@@ -116,6 +117,7 @@ export function AdminDbPage() {
     },
     onError: (err) => {
       toast.error(isApiError(err) ? err.message : "Failed to drop table");
+      // Keep dialog open on error so user can retry or cancel
     },
   });
 
@@ -151,7 +153,7 @@ export function AdminDbPage() {
       return;
     }
     deleteTableMutation.mutate(selectedTable);
-    setIsDropTableDialogOpen(false);
+    // Dialog closes on success, stays open on error
   };
 
   const handleDelete = (row: Record<string, any>) => {
@@ -392,19 +394,29 @@ export function AdminDbPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Drop Table "{selectedTable}"?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Drop Table <code className="font-mono">{selectedTable}</code>?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the
-              table "{selectedTable}" and all of its data from the database.
+              table <code className="font-mono">{selectedTable}</code> and all
+              of its data from the database.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel
+              disabled={deleteTableMutation.status === "pending"}
+            >
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDropTable}
+              disabled={deleteTableMutation.status === "pending"}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Drop Table
+              {deleteTableMutation.status === "pending"
+                ? "Dropping..."
+                : "Drop Table"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
