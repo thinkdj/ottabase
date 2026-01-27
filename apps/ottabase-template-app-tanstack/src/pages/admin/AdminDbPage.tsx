@@ -1,5 +1,13 @@
 import { api, isApiError } from "@/lib/api";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Card,
   CardContent,
@@ -16,6 +24,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Database, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 interface TableDataResponse {
@@ -38,6 +47,7 @@ export function AdminDbPage() {
   const perPage = search.perPage;
 
   const queryClient = useQueryClient();
+  const [isDropTableDialogOpen, setIsDropTableDialogOpen] = useState(false);
 
   // Load tables list
   const { data: tablesData, isLoading: tablesLoading } = useQuery({
@@ -124,14 +134,13 @@ export function AdminDbPage() {
 
   const handleDropTable = () => {
     if (!selectedTable) return;
+    setIsDropTableDialogOpen(true);
+  };
 
-    if (
-      confirm(
-        `Are you sure you want to DROP the table "${selectedTable}"? This action CANNOT be undone and will delete ALL data in this table.`,
-      )
-    ) {
-      deleteTableMutation.mutate(selectedTable);
-    }
+  const handleConfirmDropTable = () => {
+    if (!selectedTable) return;
+    deleteTableMutation.mutate(selectedTable);
+    setIsDropTableDialogOpen(false);
   };
 
   const handleDelete = (row: Record<string, any>) => {
@@ -364,6 +373,31 @@ export function AdminDbPage() {
           )}
         </div>
       </div>
+
+      {/* Drop Table Confirmation Dialog */}
+      <AlertDialog
+        open={isDropTableDialogOpen}
+        onOpenChange={setIsDropTableDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Drop Table "{selectedTable}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              table "{selectedTable}" and all of its data from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDropTable}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Drop Table
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
