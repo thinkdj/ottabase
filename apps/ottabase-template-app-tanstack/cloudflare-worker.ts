@@ -17,6 +17,7 @@ import {
 } from "@ottabase/email";
 import {
   User,
+  Tag,
   autoInit,
   handleCrud,
   parseCrudRequest,
@@ -28,7 +29,6 @@ import {
   Post,
   PostVersion,
   PostSeries,
-  Tag,
 } from "@ottabase/ottablog";
 import { ReferralTracking } from "@ottabase/referrals";
 import { Shortlink } from "@ottabase/shortlinks";
