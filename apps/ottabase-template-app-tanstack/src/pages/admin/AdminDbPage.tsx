@@ -134,11 +134,22 @@ export function AdminDbPage() {
 
   const handleDropTable = () => {
     if (!selectedTable) return;
+    // Validate that the selected table exists in our tables list
+    if (!tablesData?.tables.includes(selectedTable)) {
+      toast.error("Invalid table selected");
+      return;
+    }
     setIsDropTableDialogOpen(true);
   };
 
   const handleConfirmDropTable = () => {
     if (!selectedTable) return;
+    // Validate that the selected table exists in our tables list
+    if (!tablesData?.tables.includes(selectedTable)) {
+      toast.error("Invalid table selected");
+      setIsDropTableDialogOpen(false);
+      return;
+    }
     deleteTableMutation.mutate(selectedTable);
     setIsDropTableDialogOpen(false);
   };
