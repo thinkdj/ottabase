@@ -8,8 +8,8 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@ottabase/ui-shadcn";
 import { ModelCrud, createModelConfig, defineModelConfig } from "@ottabase/forms";
-import { User } from "@ottabase/ottaorm/models";
-import { Post, Tag } from "@ottabase/ottablog";
+import { User, Tag } from "@ottabase/ottaorm/models";
+import { Post } from "@ottabase/ottablog";
 import type { ModelConfig } from "@ottabase/forms";
 
 // Create model configs from OttaORM models
