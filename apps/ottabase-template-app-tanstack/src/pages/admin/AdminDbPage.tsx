@@ -1,5 +1,13 @@
 import { api, isApiError } from "@/lib/api";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Card,
   CardContent,
@@ -16,6 +24,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Database, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 interface TableDataResponse {
@@ -38,6 +47,7 @@ export function AdminDbPage() {
   const perPage = search.perPage;
 
   const queryClient = useQueryClient();
+  const [isDropTableDialogOpen, setIsDropTableDialogOpen] = useState(false);
 
   // Load tables list
   const { data: tablesData, isLoading: tablesLoading } = useQuery({
@@ -96,6 +106,7 @@ export function AdminDbPage() {
     },
     onSuccess: () => {
       toast.success("Table dropped successfully");
+      setIsDropTableDialogOpen(false);
       queryClient.invalidateQueries({
         queryKey: ["admin", "db", "tables"],
       });
@@ -106,6 +117,7 @@ export function AdminDbPage() {
     },
     onError: (err) => {
       toast.error(isApiError(err) ? err.message : "Failed to drop table");
+      // Keep dialog open on error so user can retry or cancel
     },
   });
 
@@ -124,14 +136,24 @@ export function AdminDbPage() {
 
   const handleDropTable = () => {
     if (!selectedTable) return;
-
-    if (
-      confirm(
-        `Are you sure you want to DROP the table "${selectedTable}"? This action CANNOT be undone and will delete ALL data in this table.`,
-      )
-    ) {
-      deleteTableMutation.mutate(selectedTable);
+    // Validate that the selected table exists in our tables list
+    if (!tablesData?.tables.includes(selectedTable)) {
+      toast.error("Invalid table selected");
+      return;
     }
+    setIsDropTableDialogOpen(true);
+  };
+
+  const handleConfirmDropTable = () => {
+    if (!selectedTable) return;
+    // Validate that the selected table exists in our tables list
+    if (!tablesData?.tables.includes(selectedTable)) {
+      toast.error("Invalid table selected");
+      setIsDropTableDialogOpen(false);
+      return;
+    }
+    deleteTableMutation.mutate(selectedTable);
+    // Dialog closes on success, stays open on error
   };
 
   const handleDelete = (row: Record<string, any>) => {
@@ -364,6 +386,41 @@ export function AdminDbPage() {
           )}
         </div>
       </div>
+
+      {/* Drop Table Confirmation Dialog */}
+      <AlertDialog
+        open={isDropTableDialogOpen}
+        onOpenChange={setIsDropTableDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Drop Table <code className="font-mono">{selectedTable}</code>?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              table <code className="font-mono">{selectedTable}</code> and all
+              of its data from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={deleteTableMutation.status === "pending"}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDropTable}
+              disabled={deleteTableMutation.status === "pending"}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteTableMutation.status === "pending"
+                ? "Dropping..."
+                : "Drop Table"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
