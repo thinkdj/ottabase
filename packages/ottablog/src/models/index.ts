@@ -1,32 +1,37 @@
+// Series exports
 export { PostSeries, seriesTable } from "./PostSeries";
 export type {
-  Series,
+  NewPostSeriesType,
   NewSeries,
   PostSeriesType,
-  NewPostSeriesType,
+  Series,
 } from "./PostSeries";
 
-export { PostCategory, categoriesTable } from "./PostCategory";
+// Category exports
+export { categoriesTable, PostCategory } from "./PostCategory";
 export type {
   Category,
   NewCategory,
-  PostCategoryType,
   NewPostCategoryType,
+  PostCategoryType,
 } from "./PostCategory";
 
+// Tag exports
 export { Tag, tagsTable } from "./Tag";
-export type { Tag, NewTag, TagType, NewTagType } from "./Tag";
+export type { NewTag, NewTagType, TagType } from "./Tag";
 
+// Post exports
 export { Post, postsTable } from "./Post";
-export type { Post, NewPost, PostType, NewPostType } from "./Post";
+export type { NewPost, NewPostType, PostType } from "./Post";
 
+// PostTag exports
 export { PostTag, postTagsTable } from "./PostTag";
-export type { PostTag, NewPostTag } from "./PostTag";
+export type { NewPostTag } from "./PostTag";
 
+// PostVersion exports
 export { PostVersion, postVersionsTable } from "./PostVersion";
 export type {
-  PostVersion,
   NewPostVersion,
-  PostVersionType,
   NewPostVersionType,
+  PostVersionType,
 } from "./PostVersion";

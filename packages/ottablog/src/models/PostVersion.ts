@@ -90,7 +90,6 @@ export const postVersionsTable = sqliteTable(
   ],
 );
 
-export type PostVersion = typeof postVersionsTable.$inferSelect;
 export type NewPostVersion = typeof postVersionsTable.$inferInsert;
 
 export type PostVersionType = typeof postVersionsTable.$inferSelect;

@@ -50,7 +50,6 @@ export const tagsTable = sqliteTable(
   ],
 );
 
-export type Tag = typeof tagsTable.$inferSelect;
 export type NewTag = typeof tagsTable.$inferInsert;
 
 export type TagType = typeof tagsTable.$inferSelect;

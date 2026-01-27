@@ -12,7 +12,7 @@ import {
   sqliteTable,
   text,
 } from "drizzle-orm/sqlite-core";
-import { postsTable } from "./Post";
+import { postsTable } from "./tables/PostTable";
 import { tagsTable } from "./Tag";
 
 /**
@@ -46,7 +46,6 @@ export const postTagsTable = sqliteTable(
   ],
 );
 
-export type PostTag = typeof postTagsTable.$inferSelect;
 export type NewPostTag = typeof postTagsTable.$inferInsert;
 
 export class PostTag extends BaseModel {
