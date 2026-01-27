@@ -17,13 +17,15 @@
 import {
   accountsTable,
   authenticatorsTable,
-  postsTable,
-  postTagsTable,
   sessionsTable,
   tagsTable,
   usersTable,
   verificationTokensTable,
 } from "@ottabase/ottaorm";
+import {
+  postsTable,
+  postTagsTable,
+} from "@ottabase/ottablog";
 import { getEnabledPackageTables } from "../config.migrations";
 import { todosTable } from "../models/Todo";
 
@@ -31,30 +33,35 @@ import { todosTable } from "../models/Todo";
  * Get all table schemas organized by source
  */
 export function getAllSchemas() {
-  // 1. Core schemas from @ottabase/ottaorm (users, posts, auth tables, etc.)
+  // 1. Core schemas from @ottabase/ottaorm (users, auth tables, etc.)
   const coreTables = {
     accountsTable,
     authenticatorsTable,
-    postsTable,
-    postTagsTable,
     sessionsTable,
     tagsTable,
     usersTable,
     verificationTokensTable,
   };
 
-  // 2. App-specific schemas
+  // 2. Blog/Content schemas from @ottabase/ottablog
+  const blogTables = {
+    postsTable,
+    postTagsTable,
+  };
+
+  // 3. App-specific schemas
   const appTables = {
     todosTable,
   };
 
-  // 3. Package schemas from enabled packages (shortlinks, etc.)
+  // 4. Package schemas from enabled packages (shortlinks, etc.)
   const packageTables = getEnabledPackageTables();
 
   // Combine all schemas
   // Note: Later entries override earlier ones if there are duplicates
   const allSchemas = {
     ...coreTables,
+    ...blogTables,
     ...appTables,
     ...packageTables,
   };
@@ -69,12 +76,15 @@ export function getSchemaSummary() {
   const coreTables = {
     accountsTable,
     authenticatorsTable,
-    postsTable,
-    postTagsTable,
     sessionsTable,
     tagsTable,
     usersTable,
     verificationTokensTable,
+  };
+
+  const blogTables = {
+    postsTable,
+    postTagsTable,
   };
 
   const appTables = {
@@ -85,9 +95,10 @@ export function getSchemaSummary() {
 
   return {
     core: Object.keys(coreTables),
+    blog: Object.keys(blogTables),
     app: Object.keys(appTables),
     packages: Object.keys(packageTables),
-    total: Object.keys({ ...coreTables, ...appTables, ...packageTables })
+    total: Object.keys({ ...coreTables, ...blogTables, ...appTables, ...packageTables })
       .length,
   };
 }
