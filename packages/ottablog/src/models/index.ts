@@ -16,9 +16,8 @@ export type {
   PostCategoryType,
 } from "./PostCategory";
 
-// BlogTag exports (blog-specific tags with color and type)
-export { BlogTag, blogTagsTable } from "./Tag";
-export type { NewBlogTag, NewBlogTagType, BlogTagType } from "./Tag";
+// Note: For tags, use the core Tag model from @ottabase/ottaorm
+// PostTag (below) is the junction table linking posts to core tags
 
 // Post exports
 export { Post, postsTable } from "./Post";

@@ -4,7 +4,7 @@
  * OttaORM model for blog posts using @ottabase/ottablog schema.
  * Supports multiple content types, SEO, hero images, and OttaEditor content.
  */
-import { BaseModel, ModelFields } from "@ottabase/ottaorm";
+import { BaseModel, ModelFields, Tag } from "@ottabase/ottaorm";
 import {
   calculateReadingTime,
   CONTENT_TYPES,
@@ -16,7 +16,6 @@ import {
   type PostStatus,
 } from "../types";
 import { postTagsTable } from "./PostTag";
-import { Tag } from "./Tag";
 
 /**
  * Posts table - main content storage
@@ -668,7 +667,8 @@ export class Post extends BaseModel {
   }
 
   /**
-   * Get tags for this post (BelongsToMany Tag via postTagsTable)
+   * Get tags for this post (BelongsToMany via postTagsTable)
+   * Uses the core Tag model from @ottabase/ottaorm
    */
   async tags(options?: {
     select?: string[];

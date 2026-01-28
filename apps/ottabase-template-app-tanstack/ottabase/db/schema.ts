@@ -24,7 +24,6 @@ import {
   verificationTokensTable,
 } from "@ottabase/ottaorm";
 import {
-  blogTagsTable,
   categoriesTable,
   postTagsTable,
   postVersionsTable,
@@ -51,7 +50,6 @@ export { todosTable } from "../models/Todo";
 // PACKAGE TABLES (from enabled packages)
 // ============================================================
 export {
-  blogTagsTable,
   categoriesTable,
   postTagsTable,
   postVersionsTable,

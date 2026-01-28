@@ -10,7 +10,7 @@
  * - SEO metadata support
  * - Hero images with Cloudflare Images integration
  * - Categories with hierarchy support
- * - Tags with many-to-many relationships
+ * - Tags via core Tag model from @ottabase/ottaorm (PostTag junction)
  * - Multi-app database sharing via appId
  * - Reading time calculation
  * - Slug generation
@@ -18,13 +18,16 @@
  * @example
  * ```typescript
  * import {
+ *   Post,
+ *   PostCategory,
+ *   PostTag,
  *   postsTable,
  *   categoriesTable,
- *   blogTagsTable,
  *   generateSlug,
  *   calculateReadingTime,
  *   CONTENT_TYPES,
  * } from "@ottabase/ottablog";
+ * import { Tag } from "@ottabase/ottaorm"; // Core tag model
  * ```
  */
 
@@ -34,8 +37,6 @@ export {
   seriesTable,
   PostCategory,
   categoriesTable,
-  BlogTag,
-  blogTagsTable,
   Post,
   postsTable,
   PostTag,
@@ -50,8 +51,6 @@ export type {
   NewSeries,
   Category,
   NewCategory,
-  BlogTag,
-  NewBlogTag,
   Post,
   NewPost,
   PostTag,
@@ -62,8 +61,6 @@ export type {
   NewPostSeriesType,
   PostCategoryType,
   NewPostCategoryType,
-  BlogTagType,
-  NewBlogTagType,
   PostType,
   NewPostType,
   PostVersionType,

@@ -1,9 +1,10 @@
 /**
  * PostTag Model
  *
- * Junction table for posts and tags.
+ * Junction table linking posts to tags (many-to-many).
+ * Uses the core Tag model from @ottabase/ottaorm.
  */
-import { BaseModel, ModelFields } from "@ottabase/ottaorm";
+import { BaseModel, ModelFields, tagsTable } from "@ottabase/ottaorm";
 import { sql } from "drizzle-orm";
 import {
   index,
@@ -13,10 +14,10 @@ import {
   text,
 } from "drizzle-orm/sqlite-core";
 import { postsTable } from "./tables/PostTable";
-import { blogTagsTable } from "./Tag";
 
 /**
  * Post-Tags junction table for many-to-many relationship
+ * Links posts to the core Tag model from @ottabase/ottaorm
  */
 export const postTagsTable = sqliteTable(
   "post_tags",
@@ -27,7 +28,7 @@ export const postTagsTable = sqliteTable(
 
     tagId: text("tag_id")
       .notNull()
-      .references(() => blogTagsTable.id, { onDelete: "cascade" }),
+      .references(() => tagsTable.id, { onDelete: "cascade" }),
 
     // When the tag was added
     createdAt: integer("created_at", { mode: "timestamp" })
