@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Post, PostCategory, Tag, PostVersion, PostSeries, PostTag } from "../models";
+import { Post, PostCategory, PostVersion, PostSeries, PostTag, PostTagLink } from "../models";
 
 describe("ottablog models", () => {
   describe("Post model", () => {
@@ -77,19 +77,19 @@ describe("ottablog models", () => {
     });
   });
 
-  describe("Tag model", () => {
+  describe("PostTag model", () => {
     it("should have correct entity configuration", () => {
-      expect(Tag.entity).toBe("tags");
-      expect(Tag.primaryKey).toBe("id");
-      expect(Tag.table).toBeDefined();
+      expect(PostTag.entity).toBe("post_tags");
+      expect(PostTag.primaryKey).toBe("id");
+      expect(PostTag.table).toBeDefined();
     });
 
     it("should have correct casts defined", () => {
-      expect(Tag.casts).toHaveProperty("createdAt");
+      expect(PostTag.casts).toHaveProperty("createdAt");
     });
 
     it("should have field metadata for type column", () => {
-      const fields = Tag.getFields();
+      const fields = PostTag.getFields();
       expect(fields).toHaveProperty("type");
       expect(fields.type.type).toBe("string");
       expect(fields.type.editable).toBe(true);
@@ -97,16 +97,76 @@ describe("ottablog models", () => {
     });
 
     it("should have color field configured", () => {
-      const fields = Tag.getFields();
+      const fields = PostTag.getFields();
       expect(fields).toHaveProperty("color");
       expect(fields.color.type).toBe("string");
       expect(fields.color.editable).toBe(true);
     });
 
     it("should have validation rules for name", () => {
-      const rules = (Tag as any).validationRules;
+      const rules = (PostTag as any).validationRules;
       expect(rules).toHaveProperty("name");
       expect(rules.name.rules).toContain("required");
+    });
+
+    it("should have static findBySlug method", () => {
+      expect(PostTag.findBySlug).toBeDefined();
+      expect(typeof PostTag.findBySlug).toBe("function");
+    });
+
+    it("should have static forApp method", () => {
+      expect(PostTag.forApp).toBeDefined();
+      expect(typeof PostTag.forApp).toBe("function");
+    });
+
+    it("should have static byType method", () => {
+      expect(PostTag.byType).toBeDefined();
+      expect(typeof PostTag.byType).toBe("function");
+    });
+
+    it("should have generateSlug instance method", () => {
+      expect(PostTag.prototype.generateSlug).toBeDefined();
+      expect(typeof PostTag.prototype.generateSlug).toBe("function");
+    });
+
+    it("should have getStyle instance method", () => {
+      expect(PostTag.prototype.getStyle).toBeDefined();
+      expect(typeof PostTag.prototype.getStyle).toBe("function");
+    });
+  });
+
+  describe("PostTagLink model (junction table)", () => {
+    it("should have correct entity configuration", () => {
+      expect(PostTagLink.entity).toBe("post_tag_links");
+      expect(PostTagLink.primaryKey).toBe("postId");
+      expect(PostTagLink.table).toBeDefined();
+    });
+
+    it("should have field metadata defined", () => {
+      const fields = PostTagLink.getFields();
+      expect(fields).toHaveProperty("postId");
+      expect(fields).toHaveProperty("tagId");
+      expect(fields).toHaveProperty("createdAt");
+    });
+
+    it("should have static linkTag method", () => {
+      expect(PostTagLink.linkTag).toBeDefined();
+      expect(typeof PostTagLink.linkTag).toBe("function");
+    });
+
+    it("should have static unlinkTag method", () => {
+      expect(PostTagLink.unlinkTag).toBeDefined();
+      expect(typeof PostTagLink.unlinkTag).toBe("function");
+    });
+
+    it("should have static forPost method", () => {
+      expect(PostTagLink.forPost).toBeDefined();
+      expect(typeof PostTagLink.forPost).toBe("function");
+    });
+
+    it("should have static forTag method", () => {
+      expect(PostTagLink.forTag).toBeDefined();
+      expect(typeof PostTagLink.forTag).toBe("function");
     });
   });
 
@@ -153,20 +213,6 @@ describe("ottablog models", () => {
     });
   });
 
-  describe("PostTag model", () => {
-    it("should have correct entity configuration", () => {
-      expect(PostTag.entity).toBe("post_tags");
-      expect(PostTag.primaryKey).toBe("postId");
-      expect(PostTag.table).toBeDefined();
-    });
-
-    it("should have field metadata defined", () => {
-      const fields = PostTag.getFields();
-      expect(fields).toHaveProperty("postId");
-      expect(fields).toHaveProperty("tagId");
-    });
-  });
-
   describe("Type column support", () => {
     it("PostCategory should support type field", () => {
       const fields = PostCategory.getFields();
@@ -174,15 +220,15 @@ describe("ottablog models", () => {
       expect(fields.type.uiConfig.description).toContain("post, news, docs");
     });
 
-    it("Tag should support type field", () => {
-      const fields = Tag.getFields();
+    it("PostTag should support type field", () => {
+      const fields = PostTag.getFields();
       expect(fields.type).toBeDefined();
       expect(fields.type.uiConfig.description).toContain("post, news, docs");
     });
 
     it("Both should have type as default 'post'", () => {
       const catFields = PostCategory.getFields();
-      const tagFields = Tag.getFields();
+      const tagFields = PostTag.getFields();
       expect(catFields.type.uiConfig.defaultValue).toBe("post");
       expect(tagFields.type.uiConfig.defaultValue).toBe("post");
     });
@@ -226,16 +272,6 @@ describe("ottablog models", () => {
       expect(typeof Post.prototype.incrementViews).toBe("function");
     });
 
-    it("Tag should have generateSlug method", () => {
-      expect(Tag.prototype.generateSlug).toBeDefined();
-      expect(typeof Tag.prototype.generateSlug).toBe("function");
-    });
-
-    it("Tag should have getStyle method", () => {
-      expect(Tag.prototype.getStyle).toBeDefined();
-      expect(typeof Tag.prototype.getStyle).toBe("function");
-    });
-
     it("PostCategory should have generateSlug method", () => {
       expect(PostCategory.prototype.generateSlug).toBeDefined();
       expect(typeof PostCategory.prototype.generateSlug).toBe("function");
@@ -276,16 +312,6 @@ describe("ottablog models", () => {
     it("PostCategory should have static children method", () => {
       expect(PostCategory.children).toBeDefined();
       expect(typeof PostCategory.children).toBe("function");
-    });
-
-    it("Tag should have static findBySlug method", () => {
-      expect(Tag.findBySlug).toBeDefined();
-      expect(typeof Tag.findBySlug).toBe("function");
-    });
-
-    it("Tag should have static forApp method", () => {
-      expect(Tag.forApp).toBeDefined();
-      expect(typeof Tag.forApp).toBe("function");
     });
 
     it("PostSeries should have static list method", () => {

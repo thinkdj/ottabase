@@ -13,11 +13,11 @@
 import type { Migration } from "@ottabase/ottaorm";
 import {
   categoriesTable,
+  postTagLinksTable,
   postTagsTable,
   postVersionsTable,
   postsTable,
   seriesTable,
-  tagsTable,
 } from "@ottabase/ottablog";
 import { referralTrackingTable } from "@ottabase/referrals";
 import { shortlinksTable } from "@ottabase/shortlinks";
@@ -31,9 +31,9 @@ const PACKAGE_REGISTRY = {
     tables: {
       seriesTable,
       categoriesTable,
-      tagsTable,
       postsTable,
       postTagsTable,
+      postTagLinksTable,
       postVersionsTable,
     },
     migrations: [] as Migration[],

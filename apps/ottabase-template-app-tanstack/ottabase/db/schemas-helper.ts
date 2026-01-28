@@ -25,6 +25,7 @@ import {
 import {
   postsTable,
   postTagsTable,
+  postTagLinksTable,
 } from "@ottabase/ottablog";
 import { getEnabledPackageTables } from "../config.migrations";
 import { todosTable } from "../models/Todo";
@@ -47,6 +48,7 @@ export function getAllSchemas() {
   const blogTables = {
     postsTable,
     postTagsTable,
+    postTagLinksTable,
   };
 
   // 3. App-specific schemas
@@ -85,6 +87,7 @@ export function getSchemaSummary() {
   const blogTables = {
     postsTable,
     postTagsTable,
+    postTagLinksTable,
   };
 
   const appTables = {

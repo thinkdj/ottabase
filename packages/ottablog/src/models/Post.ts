@@ -15,8 +15,8 @@ import {
   type EditorJSData,
   type PostStatus,
 } from "../types";
-import { postTagsTable } from "./PostTag";
-import { Tag } from "./Tag";
+import { PostTag } from "./PostTag";
+import { postTagLinksTable } from "./PostTagLink";
 
 /**
  * Posts table - main content storage
@@ -668,7 +668,7 @@ export class Post extends BaseModel {
   }
 
   /**
-   * Get tags for this post (BelongsToMany Tag via postTagsTable)
+   * Get tags for this post (BelongsToMany PostTag via postTagLinksTable)
    */
   async tags(options?: {
     select?: string[];
@@ -676,7 +676,7 @@ export class Post extends BaseModel {
     orderDirection?: "asc" | "desc";
     withPivot?: string[];
   }) {
-    return this.belongsToMany(Tag, postTagsTable, {
+    return this.belongsToMany(PostTag, postTagLinksTable, {
       foreignKey: "postId",
       otherKey: "tagId",
       ...options,

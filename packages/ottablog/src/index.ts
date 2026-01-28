@@ -10,19 +10,24 @@
  * - SEO metadata support
  * - Hero images with Cloudflare Images integration
  * - Categories with hierarchy support
- * - Tags with many-to-many relationships
+ * - PostTag model for blog-specific tags (with color, type)
  * - Multi-app database sharing via appId
  * - Reading time calculation
  * - Slug generation
  *
+ * Note: For universal/non-blog tags, use Tag from @ottabase/ottaorm
+ *
  * @example
  * ```typescript
  * import {
+ *   Post,
+ *   PostCategory,
+ *   PostTag,
+ *   PostTagLink,
  *   postsTable,
  *   categoriesTable,
- *   tagsTable,
+ *   postTagsTable,
  *   generateSlug,
- *   calculateReadingTime,
  *   CONTENT_TYPES,
  * } from "@ottabase/ottablog";
  * ```
@@ -34,12 +39,12 @@ export {
   seriesTable,
   PostCategory,
   categoriesTable,
-  Tag,
-  tagsTable,
   Post,
   postsTable,
   PostTag,
   postTagsTable,
+  PostTagLink,
+  postTagLinksTable,
   PostVersion,
   postVersionsTable,
 } from "./models";
@@ -50,20 +55,20 @@ export type {
   NewSeries,
   Category,
   NewCategory,
-  Tag,
-  NewTag,
   Post,
   NewPost,
   PostTag,
-  NewPostTag,
+  PostTagType,
+  NewPostTagType,
+  PostTagLink,
+  PostTagLinkType,
+  NewPostTagLinkType,
   PostVersion,
   NewPostVersion,
   PostSeriesType,
   NewPostSeriesType,
   PostCategoryType,
   NewPostCategoryType,
-  TagType,
-  NewTagType,
   PostType,
   NewPostType,
   PostVersionType,
