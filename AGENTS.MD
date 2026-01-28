@@ -1,451 +1,215 @@
 # Agents & Architecture
 
-Monorepo using **pnpm workspaces** + **Turborepo**. TanStack Router + Vite app with Cloudflare Workers deployment.
+Ottabase is a Cloudflare-first monorepo for solo SaaS founders. It ships shared packages plus two starter apps. The primary template app is React + TanStack Router + Vite at apps/ottabase-template-app-tanstack (copy it for new apps).
 
 ## Structure
+- apps/
+	- ottabase-template-app/ (Next.js 15 + OpenNext reference)
+	- ottabase-template-app-tanstack/ (React + TanStack Router template to copy)
+- packages/ (shared libraries and features)
+- docs/ (platform docs)
 
-```
-ottabase/
-├── apps/
-│   └── ottabase-template-app-tanstack/  # Primary app (TanStack + Workers)
-└── packages/                            # Shared code
-```
-
-## Local Development
-
-- **OS**: Windows 11
-- **Terminal**: Command Prompt (cmd) - avoid PowerShell due to path issues
-- **Runtime**: Node.js 24+
-- **Package Manager**: pnpm with workspaces
-- **Build**: Turborepo
-
-```bash
-pnpm build:pkg    # Build packages first
-pnpm dev          # Vite + Wrangler dev
-```
+## Local Development (Windows)
+- OS: Windows 11
+- Terminal: cmd.exe (avoid PowerShell path issues)
+- Runtime: Node.js 24+
+- Package manager: pnpm workspaces
+- Build: Turborepo
+- Common commands:
+	- pnpm build:pkg
+	- pnpm dev
+	- pnpm dev:worker (TanStack app with Wrangler)
 
 ## Core Concepts
 
-### OttaORM: Fat Model System
+### OttaORM (fat model system)
+- Every model extends BaseModel and must set static entity/table/primaryKey.
+- Drivers are per-request: setDriver(createD1Driver(env.OBCF_D1)).
+- Schemas are collected from core models, app models, and package models.
+- Auto-migrations: POST /api/ottaorm/init.
+	- Adds tables/columns only (no rename/drop).
+	- New NOT NULL columns must have DEFAULT values.
+- registerModels([...]) enables /api/ottaorm/{entity} CRUD.
+- createModelHooks(...) generates TanStack Query hooks.
 
-**Central to the codebase.** All data models inherit from `BaseModel`. Each model is self-contained with:
-
-- Drizzle table schema
-- Type casting
-- Field metadata (UI config, validation)
-- Relationships (belongsTo, hasMany, hasOne, belongsToMany)
-- Custom methods
-
-```typescript
-import { BaseModel } from "@ottabase/ottaorm";
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+```ts
+import { BaseModel, registerModels, setDriver } from "@ottabase/ottaorm";
+import { createD1Driver } from "@ottabase/db/drizzle-d1";
+import { sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const todosTable = sqliteTable("todos", {
-  id: text("id").primaryKey(),
-  title: text("title").notNull(),
-  completed: integer("completed", { mode: "boolean" }).default(false),
-  userId: text("user_id"),
+	id: text("id").primaryKey(),
+	title: text("title").notNull(),
 });
 
 export class Todo extends BaseModel {
-  static entity = "todos";
-  static table = todosTable;
-  static primaryKey = "id";
-  
-  static casts = {
-    completed: "boolean" as const,
-  };
-
-  async user() {
-    const { User } = await import("@ottabase/ottaorm");
-    return this.belongsTo(User, "userId");
-  }
-
-  async toggle() {
-    this.set("completed", !this.get("completed"));
-    return this.save();
-  }
+	static entity = "todos";
+	static table = todosTable;
+	static primaryKey = "id";
 }
+
+setDriver(createD1Driver(env.OBCF_D1));
+registerModels([Todo]);
 ```
 
+### Package-owned tables (DB integration)
+If a package ships tables/models, integrate it the same way as app models.
 
-### Schema Collection (3 Sources)
+Steps:
+1) Export package tables in app schema.
+2) Register package models in app bootstrap (worker or API entry).
+3) Run /api/ottaorm/init for migrations.
+4) Add client hooks if needed.
 
-Tables are collected from 3 sources for auto-migrations:
+```ts
+// apps/*/ottabase/db/schema.ts
+export { shortlinksTable } from "@ottabase/shortlinks";
 
-```typescript
-// ottabase/db/schemas-helper.ts
-export function getAllSchemas() {
-  // 1. CORE - from @ottabase/ottaorm (users, posts, auth tables)
-  const coreTables = { usersTable, postsTable, sessionsTable, ... };
-
-  // 2. APP - app-specific models
-  const appTables = { todosTable };
-
-  // 3. PACKAGES - enabled packages (shortlinks, referrals)
-  const packageTables = getEnabledPackageTables();
-
-  return { ...coreTables, ...appTables, ...packageTables };
-}
+// apps/*/ottabase/registry.ts (or worker entry)
+import { registerModels } from "@ottabase/ottaorm";
+import { Shortlink } from "@ottabase/shortlinks";
+registerModels([Shortlink]);
 ```
 
-### Model Registry (for CRUD API)
-
-Register models for dynamic lookup by entity name:
-
-```typescript
-import { registerModels, User, Post, Tag } from "@ottabase/ottaorm";
-import { Todo } from "./models/Todo";
-import { Shortlink } from "./models/Shortlink";
-
-// Register all models for /api/ottaorm/{entity} CRUD
-registerModels([User, Post, Tag, Todo, Shortlink]);
-```
-
-Then generic CRUD works: `GET /api/ottaorm/todos`, `POST /api/ottaorm/shortlinks`, etc.
-
-### Auto-Migrations
-
-Tables created/updated automatically:
-
-```bash
-curl -X POST http://localhost:3004/api/ottaorm/init
-```
-
-**Capabilities:**
-- ✅ Create new tables
-- ✅ Add columns to existing tables
-- ⚠️ New NOT NULL columns need DEFAULT values
-- ❌ Cannot rename/drop columns (use custom migration)
-
-### Client Hooks
-
-TanStack Query hooks generated from models:
-
-```typescript
-// ottabase/hooks/useTodo.ts
-import { createModelHooks } from "@ottabase/ottaorm/client";
-
-export const {
-  useList: useTodos,
-  useDetail: useTodo,
-  useCreate: useCreateTodo,
-  useUpdate: useUpdateTodo,
-  useDelete: useDeleteTodo,
-  useInfiniteList: useTodosInfinite,
-} = createModelHooks<TodoType>({ entity: "todos" });
-```
-
-## Package Guide
-
-### @ottabase/ottaorm
-
-Fat model ORM. Core models: User, Post, Tag, Account, Session.
-
-```typescript
-import { 
-  BaseModel, 
-  setDriver,
-  autoInit,
-  collectTableSchemas,
-  User, Post, Tag
-} from "@ottabase/ottaorm";
-```
-
-### @ottabase/db
-
-D1 database driver.
-
-```typescript
-import { createD1Driver } from "@ottabase/db/drizzle-d1";
-
-const driver = createD1Driver(env.OBCF_D1);
-setDriver(driver);
-```
-
-### @ottabase/cf
-
-Cloudflare service wrappers.
-
-```typescript
-import { createD1Client } from "@ottabase/cf/d1";
-import { createKVClient } from "@ottabase/cf/kv";
-import { createR2Client } from "@ottabase/cf/r2";
-import { createRateLimitingClient } from "@ottabase/cf/rate-limiting";
-```
-
-### @ottabase/auth
-
-Auth.js v5 with D1.
-
-```typescript
-import { createOttabaseAuthConfig, createGoogleProvider } from "@ottabase/auth";
-
-const config = createOttabaseAuthConfig({
-  d1: env.OBCF_D1,
-  providers: [createGoogleProvider(env)],
-});
-```
-
-### @ottabase/state
-
-Global state (Jotai).
-
-```typescript
-import { createDefaultAppState } from "@ottabase/state";
-
-const { appStateAtom, atoms } = createDefaultAppState();
-export const { themeAtom, userAtom, scaleAtom } = atoms;
-```
-
-### @ottabase/utils
-
-Utilities with tree-shakeable imports.
-
-```typescript
-import { toUTC, formatInUserTimezone } from "@ottabase/utils/timezone";
-import { makeSlug, isValidUrl } from "@ottabase/utils/url";
-import { changeCase, isEmail } from "@ottabase/utils/string";
-```
-
-### @ottabase/ottaupload
-
-File uploads to R2 or Cloudflare Images.
-
-```typescript
-// Client
-import { FileUploader, useFileUpload } from "@ottabase/ottaupload/client";
-
-// Server
-import { uploadFileToR2 } from "@ottabase/ottaupload/server";
-```
-
-### @ottabase/queue
-
-Laravel-style job queue for Cloudflare Queues.
-
-```typescript
-import { dispatch, createRegistry, createQueueHandler } from "@ottabase/queue";
-
-// Dispatch jobs
-await dispatch(env.MY_QUEUE, "send-email", { to: "user@example.com" });
-
-// With deduplication, chaining, priority
-await dispatcher.dispatch("sync-user", payload, {
-  uniqueKey: "user-123",     // Deduplication
-  priority: "high",          // Priority queues
-  then: [{ type: "notify" }] // Job chaining
-});
-
-// Process jobs
-const registry = createRegistry<Env>()
-  .register("send-email", async (job, ctx) => { /* handler */ });
-
-export default { queue: createQueueHandler(registry) };
-```
-
-### @ottabase/cf-realtime
-
-WebSocket pub/sub (Pusher alternative).
-
-```typescript
-// Client
-import { RealtimeClient } from "@ottabase/cf-realtime";
-client.subscribe("channel", (event, data) => {});
-
-// Server
-import { RealtimeBroadcaster } from "@ottabase/cf-realtime/server";
-await broadcaster.send("channel", "event", { data });
-```
-
-## Adding a New Package with Model
-
-When a package provides its own database table:
-
-### 1. Package: Export schema only
-
-```typescript
-// packages/mypackage/src/schema.ts
-import { sqliteTable, text } from "drizzle-orm/sqlite-core";
-
-export const myTable = sqliteTable("mytable", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-});
-```
-
-### 2. App: Create model
-
-```typescript
-// apps/my-app/ottabase/models/MyModel.ts
-import { BaseModel } from "@ottabase/ottaorm";
-import { myTable } from "@ottabase/mypackage/schema";
-
-export class MyModel extends BaseModel {
-  static entity = "mytable";
-  static table = myTable;
-  static primaryKey = "id";
-  
-  // App-specific logic here
-}
-```
-
-### 3. App: Register in schema
-
-```typescript
-// ottabase/db/schema.ts
-export { myTable } from "@ottabase/mypackage/schema";
-```
-
-### 4. App: Create hooks
-
-```typescript
-// ottabase/hooks/useMyModel.ts
-import { createModelHooks } from "@ottabase/ottaorm/client";
-
-export const {
-  useList,
-  useCreate,
-  useUpdate,
-  useDelete,
-} = createModelHooks({ entity: "mytable" });
-```
-
-### 5. Run migrations
-
-```bash
-curl -X POST http://localhost:3004/api/ottaorm/init
-```
+### Multi-app database sharing
+- Use @ottabase/config to set appId and scopeByAppId.
+- Packages with appId columns: @ottabase/ottaorm core models, @ottabase/shortlinks, @ottabase/referrals, @ottabase/ottablog.
+- Env:
+	- APP_ID="my-app"
+	- SCOPE_BY_APP_ID="true"
+
+## App Locations
+- apps/*/ottabase/models/ (OttaORM models)
+- apps/*/ottabase/db/schema.ts (table exports)
+- apps/*/ottabase/migrations/ (custom migrations)
+- apps/ottabase-template-app/app/api/* (Next.js route handlers)
+- apps/ottabase-template-app-tanstack/cloudflare-worker.ts (Worker routes)
+- apps/ottabase-template-app-tanstack/src/ (client app)
+
+## UI Conventions
+- Prefer Tailwind classes and shared components.
+- Always include dark mode classes when styling.
+- Icons: use @tabler/icons-react (Lucide/Radix as fallback).
+- Keep components DRY; reuse @ottabase/ui-* and shared components.
+
+## API and Auth Conventions
+- Use @ottabase/api (or app wrapper like src/lib/api.ts) instead of raw fetch.
+- Next.js route.ts inside a module should include the module prefix in the API path.
+- For Auth.js v5 in React, use next-auth/react useSession.
+
+## Packages (what they do and how to use)
+
+### Data, ORM, Auth, Config
+- @ottabase/ottaorm
+	- Fat model ORM with auto-migrations and CRUD.
+	- Core models: User, Account, Session, Post, Tag, VerificationToken, Authenticator, ScheduledTask.
+	- Use createModelHooks for client queries/mutations.
+- @ottabase/db
+	- Drizzle D1 driver: createD1Driver, raw SQL helper.
+	- Prisma client in @ottabase/db/prisma/client is NOT for D1.
+	- For D1 + Prisma, use @ottabase/cf/d1-prisma.
+- @ottabase/api
+	- Type-safe fetch client with ApiError handling.
+	- TanStack template wraps it in src/lib/api.ts for app-wide config.
+- @ottabase/auth
+	- Auth.js v5 + D1 + Drizzle adapter.
+	- Auth tables come from OttaORM core migrations.
+	- Use createOttabaseAuthConfig and createD1AuthAdapterCached.
+- @ottabase/config
+	- App config + env-driven defaults (appId, UI framework, storage).
+	- Use envPrefix for Vite when needed.
+- @ottabase/scripts
+	- Prisma schema concatenation via db-prisma-schema-concatenate.
+	- Configure ottabase/prisma/prisma.config.js and run pnpm db:generate.
+
+### Cloudflare Platform
+- @ottabase/cf
+	- Typed bindings for D1, KV, R2, Images, Queues, Rate Limiting, Hyperdrive.
+- @ottabase/cf-realtime
+	- Durable Object WebSocket pub/sub.
+	- Requires OBCF_REALTIME binding + wrangler DO migration.
+- @ottabase/queue
+	- Cloudflare Queues jobs with registry + handler.
+	- Supports dedupe (KV), chaining, priority queues.
+- @ottabase/cron
+	- Static cron handlers or DB-backed scheduler (ScheduledTask model).
+	- All schedules run in UTC.
+	- Heavy work should dispatch to @ottabase/queue.
+- @ottabase/email
+	- Handlebars templates + mailer helpers.
+	- Resend provider (edge-safe), Nodemailer for Node, Cloudflare provider stub.
+
+### UI and UX
+- @ottabase/ui-base
+	- CSS reset + base styles. Use ProviderUIBase or import styles.
+- @ottabase/ui-mantine
+	- Mantine provider + theme presets.
+	- Controlled by themeAtom from @ottabase/state (pass colorScheme).
+- @ottabase/ui-shadcn
+	- shadcn/ui components + ShadcnProviders (next-themes).
+	- Add package paths to tailwind content and import styles.css.
+- @ottabase/ui-tailwind
+	- Shared Tailwind base config + tailwind.base.css.
+- @ottabase/ui-components
+	- Shared Logo + DarkModeToggle (Mantine + next-themes + Tabler icons).
+- @ottabase/ui-code-highlight
+	- ProviderCodeHighlight wrapper for syntax highlighting.
+- @ottabase/ottaeditor
+	- EditorJS wrapper with default plugins and useOttaEditor hook.
+- @ottabase/ottarenderer
+	- Render EditorJS blocks + HTML; import @ottabase/ottarenderer/styles.
+	- Uses custom renderers (AdvancedImage, Checklist, Code, etc).
+- @ottabase/ottaselect
+	- Flexible select with Tailwind + dark mode.
+	- Add packages/ottaselect/src to tailwind content.
+- @ottabase/ottaupload
+	- Dropzone/button uploader + hooks + server helpers.
+	- R2 requires OBCF_R2; Images requires CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN.
+- @ottabase/forms
+	- Auto-generated CRUD UI from OttaORM model metadata.
+	- Peer deps: React + TanStack Query. Uses @ottabase/ottaselect.
+
+### Feature Packages
+- @ottabase/shortlinks
+	- Shortlink model + schema (appId-aware).
+	- Register Shortlink and export shortlinksTable in schema.
+- @ottabase/referrals
+	- Referral tracking model + schema.
+	- Integrate with user model fields (referralUsername, referredById).
+- @ottabase/ottablog
+	- Blog/changelog/doc models + renderer.
+	- Uses EditorJS content; register BlogPost/BlogTag/etc and export tables.
+- @ottabase/hello-world
+	- Simple demo component.
+
+### Utilities
+- @ottabase/utils
+	- Tree-shakeable utilities (timezone, string, url, http, pagination, git).
+	- Timezone rule: store UTC in DB, format in user timezone.
 
 ## Dependency Rules
-
-### Adding New Dependencies
-
-**Decision flow:**
-
-1. **Will multiple packages/apps use this?** → Add to `pnpm-workspace.yaml` catalog
-2. **Only one package/app needs it?** → Add directly to that package's `package.json`
-3. **Is it a framework/runtime dep for a shared package?** → Add as `peerDependency`
-
-### When to Use Catalog (pnpm-workspace.yaml)
-
-Add to catalog when:
-- ✅ Used by 2+ packages/apps (react, typescript, drizzle-orm)
-- ✅ Core framework libraries (mantine, tanstack, jotai)
-- ✅ Shared tooling (tsup, vitest, eslint)
-
-```yaml
-# pnpm-workspace.yaml
-catalog:
-  react: ^19.1.0
-  typescript: ~5.8.4
-  drizzle-orm: ^0.44.2
-```
-
-Then reference in package.json:
-
-```json
-{ "react": "catalog:" }
-```
-
-### When to Use Local (package.json only)
-
-Add locally when:
-- ✅ Package-specific utility (e.g., `editorjs` only in `ottaeditor`)
-- ✅ App-specific tool not needed elsewhere
-- ✅ Experimental/testing before promoting to catalog
-
-```bash
-# Add to specific package
-pnpm add --filter @ottabase/ottaeditor @editorjs/editorjs
-
-# Add to specific app
-pnpm add --filter @ottabase/template-app-tanstack some-package
-```
-
-### Workspace Protocol
-
-Internal packages always use `workspace:*`:
-
-```json
-{ "@ottabase/ottaorm": "workspace:*" }
-```
-
-### Peer Dependencies
-
-Shared packages declare framework deps as peers to avoid duplication:
-
-```json
-{
-  "peerDependencies": {
-    "react": "catalog:",
-    "drizzle-orm": "catalog:"
-  }
-}
-```
-
-### Adding to Catalog Steps
-
-```bash
-# 1. Add to pnpm-workspace.yaml catalog section
-# 2. Add to root package.json if needed for scripts
-pnpm add -w new-package
-
-# 3. Reference in consuming package.json
-{ "new-package": "catalog:" }
-
-# 4. Install
-pnpm install
-```
-
-## File Locations
-
-| Purpose | Location |
-|---------|----------|
-| Models | `apps/*/ottabase/models/` |
-| Schema | `apps/*/ottabase/db/schema.ts` |
-| Client hooks | `apps/*/ottabase/hooks/` or `src/ottabase/hooks/` |
-| Migrations | `apps/*/ottabase/migrations/` |
-| API routes | `apps/*/cloudflare-worker.ts` |
-| Pages | `apps/*/src/pages/` |
-
-## Anti-Patterns
-
-❌ Circular deps between packages  
-❌ Direct file imports across package boundaries  
-❌ Framework-specific code in generic packages  
-❌ Package-specific lock files  
-❌ Implicit dependencies  
-❌ Missing type definitions  
-❌ Models without `static entity` and `static table`  
+- Use pnpm workspace catalog for shared libs (react, typescript, drizzle-orm).
+- Use workspace:* for internal packages.
+- Shared framework deps in packages should be peerDependencies.
+- Add package-specific deps locally when only one package needs them.
 
 ## Commands Reference
+- pnpm build:pkg
+- pnpm dev
+- pnpm dev:worker
+- pnpm build
+- pnpm test
+- pnpm lint
+- pnpm type-check
+- pnpm storybook
 
-```bash
-# Dev
-pnpm dev                          # All apps
-pnpm dev:worker                   # Worker only
-
-# Build
-pnpm build                        # Everything
-pnpm build:pkg                    # Packages only
-pnpm build --filter=@ottabase/ui-mantine
-
-# Test
-pnpm test
-pnpm test --filter=@ottabase/ottaorm
-
-# Quality
-pnpm lint
-pnpm type-check
-
-# Docs
-pnpm storybook
-```
-
-## VS Code
-
-Install recommended extensions in `.vscode/extensions.json` for Prettier format-on-save.
+## Docs and References
+- apps/ottabase-template-app/README.md (Next.js template)
+- apps/ottabase-template-app-tanstack/README.md (TanStack template)
+- packages/ottaorm/README.md
+- packages/ottablog/src/models (fat model examples)
+- CLOUDFLARE_CONFIGURATION_GUIDE.md
+- apps/ottabase-template-app/ottabase/migrations/README.md
 
 ---
 
