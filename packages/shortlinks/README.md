@@ -1,73 +1,103 @@
 # @ottabase/shortlinks
 
-A reusable shortlink management system designed for Cloudflare infrastructure.
+URL shortener with fat model for Ottabase apps.
 
-## Features
+## Quick Start
 
-- 🔗 URL shortening with custom identifiers
-- 🎯 Multi-app database sharing via opt-in `appId` column
-- ⏰ Optional expiry dates
-- 📊 Click tracking and analytics
-- 🏗️ Built on Drizzle ORM for Cloudflare D1
-- 🔄 Reusable across monorepo apps
+### 1. Register Model
 
-## Installation
+```typescript
+// cloudflare-worker.ts
+import { Shortlink } from "@ottabase/shortlinks";
+import { registerModels } from "@ottabase/ottaorm";
+
+registerModels([Shortlink]);
+```
+
+### 2. Export Table in Schema
+
+```typescript
+// ottabase/db/schema.ts
+export { shortlinksTable } from "@ottabase/shortlinks";
+```
+
+### 3. Run Migrations
 
 ```bash
-pnpm add @ottabase/shortlinks
+curl -X POST http://localhost:3004/api/ottaorm/init
 ```
 
 ## Usage
 
-### Import Model + Schema
-
 ```typescript
-import { Shortlink, shortlinksTable } from "@ottabase/shortlinks";
-```
+import { Shortlink } from "@ottabase/shortlinks";
 
-### Import Types
-
-```typescript
-import type { ShortlinkRecord, CreateShortlinkRequest } from "@ottabase/shortlinks";
-```
-
-## Database Schema
-
-The package exports a `shortlinksTable` Drizzle schema with the following fields:
-
-- `id` - UUID primary key
-- `fullUrl` - Destination URL
-- `shortCode` - Unique short identifier
-- `type` - Link type (redirect, tracking, internal, external)
-- `appId` - Nullable app identifier (auto-set when `scopeByAppId: true` in config)
-- `expiryDate` - Optional expiry timestamp
-- `clicks` - Click counter
-- `lastClickedAt` - Last click timestamp
-- `createdAt` - Creation timestamp
-- `updatedAt` - Last update timestamp
-
-## Example
-
-```typescript
-import { drizzle } from "drizzle-orm/d1";
-import { shortlinksTable } from "@ottabase/shortlinks";
-
-// Create a shortlink
-await db.insert(shortlinksTable).values({
+// Create
+const link = await Shortlink.create({
   fullUrl: "https://github.com/ottabase",
   shortCode: "gh",
   type: "redirect",
-  appName: "myapp",
 });
 
-// Query shortlinks
-const link = await db
-  .select()
-  .from(shortlinksTable)
-  .where(eq(shortlinksTable.shortCode, "gh"))
-  .get();
+// Find by code
+const link = await Shortlink.findByCode("gh");
+
+// Check expiry
+if (link.isExpired()) {
+  return errorResponse("Link expired", 410);
+}
+
+// Track click
+await link.trackClick();
+
+// Redirect
+return Response.redirect(link.get("fullUrl"), 302);
 ```
 
-## License
+## Redirect Handler
 
-MIT
+```typescript
+// cloudflare-worker.ts
+if (!url.pathname.startsWith("/api/") && url.pathname !== "/") {
+  const shortCode = url.pathname.substring(1);
+  const link = await Shortlink.findByCode(shortCode);
+
+  if (link && !link.isExpired()) {
+    link.trackClick(); // Fire and forget
+    return Response.redirect(link.get("fullUrl"), 302);
+  }
+}
+```
+
+## Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | text | UUID primary key |
+| `fullUrl` | text | Destination URL |
+| `shortCode` | text | Unique short identifier |
+| `type` | text | redirect, tracking, internal |
+| `appId` | text | Multi-app support (nullable) |
+| `expiryDate` | timestamp | Optional expiration |
+| `clicks` | integer | Click count |
+| `lastClickedAt` | timestamp | Last click time |
+| `createdAt` | timestamp | Created at |
+| `updatedAt` | timestamp | Updated at |
+
+## Link Types
+
+```typescript
+import { ShortlinkTypes } from "@ottabase/shortlinks";
+
+ShortlinkTypes.REDIRECT  // "redirect"
+ShortlinkTypes.TRACKING  // "tracking"
+ShortlinkTypes.INTERNAL  // "internal"
+```
+
+## Exports
+
+```typescript
+import { Shortlink, shortlinksTable } from "@ottabase/shortlinks";
+import { ShortlinkTypes } from "@ottabase/shortlinks";
+import type { ShortlinkRecord, NewShortlinkRecord } from "@ottabase/shortlinks";
+```

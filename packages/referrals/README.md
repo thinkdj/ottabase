@@ -1,66 +1,131 @@
 # @ottabase/referrals
 
-Referral system package for Ottabase. Provides schema, validation, and types for implementing a complete referral tracking system.
+Referral tracking system with fat model for Ottabase apps.
 
-## Features
+## Quick Start
 
-- **Referral username**: Unique, user-chosen identifier for referral links
-- **First-touch attribution**: First valid referral code wins
-- **90-day expiry window**: Stored referral codes expire automatically
-- **Click tracking**: Every referral click creates a tracking record
-- **Conversion tracking**: Updates from `pending` to `completed` on signup
-- **Metadata capture**: IP, user agent, UTM params, referrer
+### 1. Register Model
+
+```typescript
+// cloudflare-worker.ts
+import { ReferralTracking } from "@ottabase/referrals";
+import { registerModels } from "@ottabase/ottaorm";
+
+registerModels([ReferralTracking]);
+```
+
+### 2. Export Table in Schema
+
+```typescript
+// ottabase/db/schema.ts
+export { referralTrackingTable } from "@ottabase/referrals";
+```
+
+### 3. Add Fields to User Model
+
+```sql
+-- In your migration
+ALTER TABLE users ADD COLUMN referral_username TEXT UNIQUE;
+ALTER TABLE users ADD COLUMN referred_by_id TEXT;
+```
+
+### 4. Run Migrations
+
+```bash
+curl -X POST http://localhost:3004/api/ottaorm/init
+```
 
 ## Usage
 
-### Schema
-
-```typescript
-import { referralTrackingTable } from "@ottabase/referrals";
-```
-
-### Model
+### Track Referral Click
 
 ```typescript
 import { ReferralTracking } from "@ottabase/referrals";
+
+// When user clicks referral link
+const tracking = await ReferralTracking.create({
+  userId: referrerId,
+  referralCode: "johndoe",
+  status: "pending",
+  ipAddress: request.headers.get("CF-Connecting-IP"),
+  userAgent: request.headers.get("User-Agent"),
+  referer: request.headers.get("Referer"),
+  meta: { utm_source: "twitter" },
+});
 ```
 
-### Validation
+### Convert on Signup
+
+```typescript
+// When referred user signs up
+const tracking = await ReferralTracking.first({
+  referralCode: storedCode,
+  status: "pending",
+});
+
+if (tracking) {
+  tracking.set("status", "completed");
+  tracking.set("referredUserId", newUser.id);
+  tracking.set("conversionAt", new Date());
+  await tracking.save();
+
+  // Update referrer's user record
+  newUser.set("referredById", tracking.get("userId"));
+  await newUser.save();
+}
+```
+
+### Get Stats
+
+```typescript
+const stats = await ReferralTracking.getStats(userId);
+// { totalClicks: 50, completedReferrals: 12, pendingReferrals: 5 }
+```
+
+### Query Records
+
+```typescript
+// Get all for user
+const records = await ReferralTracking.forUser(userId, {
+  status: "completed",
+  limit: 50,
+});
+
+// Find by code
+const record = await ReferralTracking.findByCode("johndoe");
+```
+
+## Validate Username
 
 ```typescript
 import { validateReferralUsername } from "@ottabase/referrals";
 
-const result = validateReferralUsername("myusername");
+const result = validateReferralUsername("my-username");
 if (!result.valid) {
-  console.error(result.error);
+  return errorResponse(result.error, 400);
 }
 ```
 
-## Database Schema
+## Schema
 
-### ReferralTracking Table
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | text | UUID primary key |
+| `userId` | text | Referrer user ID |
+| `referralCode` | text | Code used at click |
+| `referredUserId` | text | Converted user ID |
+| `status` | text | pending, completed, invalid |
+| `ipAddress` | text | Click IP |
+| `userAgent` | text | Browser user agent |
+| `referer` | text | HTTP referer |
+| `meta` | json | Extra metadata (UTM) |
+| `createdAt` | timestamp | Click time |
+| `conversionAt` | timestamp | Conversion time |
 
-- `id`: Unique tracking ID
-- `userId`: Referrer user ID
-- `referralCode`: Code used at click time
-- `referredUserId`: Converted user ID (null until signup)
-- `status`: pending | completed | invalid
-- `ipAddress`: Click IP address
-- `userAgent`: Browser user agent
-- `referer`: HTTP referer header
-- `meta`: JSON metadata (UTM params, headers)
-- `createdAt`: Click timestamp
-- `conversionAt`: Conversion timestamp
+## Exports
 
-## Integration
-
-This package should be integrated with:
-
-1. User model (add `referralUsername` and `referredById` fields)
-2. Signup flow (attribute new users to referrers)
-3. Frontend (tracking component, dashboard)
-4. API routes (tracking, stats, username management)
-
-
-
-See the TanStack app implementation for a complete example.
+```typescript
+import { ReferralTracking, referralTrackingTable } from "@ottabase/referrals";
+import { validateReferralUsername } from "@ottabase/referrals";
+import type { ReferralTrackingRecord, ReferralTrackingInsert } from "@ottabase/referrals";
+```
