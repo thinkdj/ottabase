@@ -16,9 +16,9 @@ export type {
   PostCategoryType,
 } from "./PostCategory";
 
-// Tag exports
-export { Tag, tagsTable } from "./Tag";
-export type { NewTag, NewTagType, TagType } from "./Tag";
+// BlogTag exports (blog-specific tags with color and type)
+export { BlogTag, blogTagsTable } from "./Tag";
+export type { NewBlogTag, NewBlogTagType, BlogTagType } from "./Tag";
 
 // Post exports
 export { Post, postsTable } from "./Post";

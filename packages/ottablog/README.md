@@ -27,7 +27,7 @@ pnpm add @ottabase/ottablog @ottabase/ottaorm @ottabase/db drizzle-orm
 ### 1. Use Models in Your App
 
 ```typescript
-import { Post, PostCategory, Tag, PostSeries } from "@ottabase/ottablog";
+import { Post, PostCategory, BlogTag, PostSeries } from "@ottabase/ottablog";
 import { setDriver } from "@ottabase/ottaorm";
 import { createD1Driver } from "@ottabase/db/drizzle-d1";
 
@@ -59,7 +59,7 @@ const tags = await post.tags();
 export {
   postsTable,
   categoriesTable,
-  tagsTable,
+  blogTagsTable,
   postVersionsTable,
   seriesTable,
   postTagsTable,
@@ -345,12 +345,12 @@ Register models for dynamic CRUD:
 
 ```typescript
 import { registerModels } from "@ottabase/ottaorm";
-import { Post, PostCategory, Tag, PostVersion, PostSeries } from "@ottabase/ottablog";
+import { Post, PostCategory, BlogTag, PostVersion, PostSeries } from "@ottabase/ottablog";
 
 registerModels([
   Post,
   PostCategory,
-  Tag,
+  BlogTag,
   PostVersion,
   PostSeries,
 ]);

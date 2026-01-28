@@ -1,7 +1,8 @@
 /**
- * Tag Model
+ * BlogTag Model
  *
- * OttaORM model for tags.
+ * OttaORM model for blog-specific tags with color and type support.
+ * For universal/core tags, use Tag from @ottabase/ottaorm.
  */
 import { BaseModel, ModelFields } from "@ottabase/ottaorm";
 import { sql } from "drizzle-orm";
@@ -9,10 +10,10 @@ import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { generateSlug } from "../types";
 
 /**
- * Tags table - flexible content labeling
+ * Blog tags table - blog-specific content labeling with color and type
  */
-export const tagsTable = sqliteTable(
-  "tags",
+export const blogTagsTable = sqliteTable(
+  "blog_tags",
   {
     id: text("id")
       .primaryKey()
@@ -40,24 +41,24 @@ export const tagsTable = sqliteTable(
   },
   (table) => [
     // Lookup by slug with type filtering
-    index("tags_slug_type_idx").on(table.slug, table.type),
+    index("blog_tags_slug_type_idx").on(table.slug, table.type),
 
     // Multi-tenant with type: appId + type for filtering tags by content type
-    index("tags_app_id_type_idx").on(table.appId, table.type),
+    index("blog_tags_app_id_type_idx").on(table.appId, table.type),
 
     // Type filtering single index for flexibility
-    index("tags_type_idx").on(table.type),
+    index("blog_tags_type_idx").on(table.type),
   ],
 );
 
-export type NewTag = typeof tagsTable.$inferInsert;
+export type NewBlogTag = typeof blogTagsTable.$inferInsert;
 
-export type TagType = typeof tagsTable.$inferSelect;
-export type NewTagType = typeof tagsTable.$inferInsert;
+export type BlogTagType = typeof blogTagsTable.$inferSelect;
+export type NewBlogTagType = typeof blogTagsTable.$inferInsert;
 
-export class Tag extends BaseModel {
-  static entity = "tags";
-  static table = tagsTable;
+export class BlogTag extends BaseModel {
+  static entity = "blog_tags";
+  static table = blogTagsTable;
   static primaryKey = "id";
 
   static casts = {
@@ -181,17 +182,17 @@ export class Tag extends BaseModel {
   // ==================== Query Scopes ====================
 
   /**
-   * Find tag by slug
+   * Find blog tag by slug
    */
   static async findBySlug(
     slug: string,
     options?: { appId?: string },
-  ): Promise<Tag | null> {
+  ): Promise<BlogTag | null> {
     const query: Record<string, unknown> = { slug };
     if (options?.appId) query.appId = options.appId;
 
     const results = await this.where(query);
-    return results.length > 0 ? (results[0] as Tag) : null;
+    return results.length > 0 ? (results[0] as BlogTag) : null;
   }
 
   /**

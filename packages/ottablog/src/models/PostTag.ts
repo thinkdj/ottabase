@@ -13,7 +13,7 @@ import {
   text,
 } from "drizzle-orm/sqlite-core";
 import { postsTable } from "./tables/PostTable";
-import { tagsTable } from "./Tag";
+import { blogTagsTable } from "./Tag";
 
 /**
  * Post-Tags junction table for many-to-many relationship
@@ -27,7 +27,7 @@ export const postTagsTable = sqliteTable(
 
     tagId: text("tag_id")
       .notNull()
-      .references(() => tagsTable.id, { onDelete: "cascade" }),
+      .references(() => blogTagsTable.id, { onDelete: "cascade" }),
 
     // When the tag was added
     createdAt: integer("created_at", { mode: "timestamp" })

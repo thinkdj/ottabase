@@ -24,12 +24,12 @@ import {
   verificationTokensTable,
 } from "@ottabase/ottaorm";
 import {
+  blogTagsTable,
   categoriesTable,
   postTagsTable,
   postVersionsTable,
   postsTable,
   seriesTable,
-  tagsTable,
 } from "@ottabase/ottablog";
 import { referralTrackingTable } from "@ottabase/referrals";
 import { shortlinksTable } from "@ottabase/shortlinks";
@@ -51,12 +51,12 @@ export { todosTable } from "../models/Todo";
 // PACKAGE TABLES (from enabled packages)
 // ============================================================
 export {
+  blogTagsTable,
   categoriesTable,
   postTagsTable,
   postVersionsTable,
   postsTable,
   seriesTable,
-  tagsTable,
   referralTrackingTable,
   shortlinksTable,
 };
