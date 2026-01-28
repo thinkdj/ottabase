@@ -30,6 +30,7 @@ import {
   PostVersion,
   PostSeries,
   PostTag,
+  PostTagLink,
 } from "@ottabase/ottablog";
 import { ReferralTracking } from "@ottabase/referrals";
 import { Shortlink } from "@ottabase/shortlinks";
@@ -310,6 +311,7 @@ export default {
           User,
           Post,
           PostTag,
+          PostTagLink,
           Tag,
           ReferralTracking,
           PostCategory,
@@ -2045,6 +2047,7 @@ export default {
           User,
           Post,
           PostTag,
+          PostTagLink,
           Tag,
           Todo,
           Shortlink,

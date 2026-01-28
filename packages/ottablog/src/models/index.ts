@@ -16,16 +16,17 @@ export type {
   PostCategoryType,
 } from "./PostCategory";
 
-// Note: For tags, use the core Tag model from @ottabase/ottaorm
-// PostTag (below) is the junction table linking posts to core tags
-
 // Post exports
 export { Post, postsTable } from "./Post";
 export type { NewPost, NewPostType, PostType } from "./Post";
 
-// PostTag exports
+// PostTag exports (blog-specific tag entity)
 export { PostTag, postTagsTable } from "./PostTag";
-export type { NewPostTag } from "./PostTag";
+export type { NewPostTagType, PostTagType } from "./PostTag";
+
+// PostTagLink exports (junction table for Post <-> PostTag)
+export { PostTagLink, postTagLinksTable } from "./PostTagLink";
+export type { NewPostTagLinkType, PostTagLinkType } from "./PostTagLink";
 
 // PostVersion exports
 export { PostVersion, postVersionsTable } from "./PostVersion";

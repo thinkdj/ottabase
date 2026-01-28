@@ -4,7 +4,7 @@
  * OttaORM model for blog posts using @ottabase/ottablog schema.
  * Supports multiple content types, SEO, hero images, and OttaEditor content.
  */
-import { BaseModel, ModelFields, Tag } from "@ottabase/ottaorm";
+import { BaseModel, ModelFields } from "@ottabase/ottaorm";
 import {
   calculateReadingTime,
   CONTENT_TYPES,
@@ -15,7 +15,8 @@ import {
   type EditorJSData,
   type PostStatus,
 } from "../types";
-import { postTagsTable } from "./PostTag";
+import { PostTag } from "./PostTag";
+import { postTagLinksTable } from "./PostTagLink";
 
 /**
  * Posts table - main content storage
@@ -667,8 +668,7 @@ export class Post extends BaseModel {
   }
 
   /**
-   * Get tags for this post (BelongsToMany via postTagsTable)
-   * Uses the core Tag model from @ottabase/ottaorm
+   * Get tags for this post (BelongsToMany PostTag via postTagLinksTable)
    */
   async tags(options?: {
     select?: string[];
@@ -676,7 +676,7 @@ export class Post extends BaseModel {
     orderDirection?: "asc" | "desc";
     withPivot?: string[];
   }) {
-    return this.belongsToMany(Tag, postTagsTable, {
+    return this.belongsToMany(PostTag, postTagLinksTable, {
       foreignKey: "postId",
       otherKey: "tagId",
       ...options,

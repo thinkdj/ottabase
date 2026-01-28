@@ -7,6 +7,8 @@ export {
   postsTable,
   PostTag,
   postTagsTable,
+  PostTagLink,
+  postTagLinksTable,
   PostVersion,
   postVersionsTable,
 } from "./models";
@@ -18,7 +20,11 @@ export type {
   Post,
   NewPost,
   PostTag,
-  NewPostTag,
+  PostTagType,
+  NewPostTagType,
+  PostTagLink,
+  PostTagLinkType,
+  NewPostTagLinkType,
   PostVersion,
   NewPostVersion,
 } from "./models";

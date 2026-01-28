@@ -13,6 +13,7 @@
 import type { Migration } from "@ottabase/ottaorm";
 import {
   categoriesTable,
+  postTagLinksTable,
   postTagsTable,
   postVersionsTable,
   postsTable,
@@ -24,7 +25,6 @@ import { shortlinksTable } from "@ottabase/shortlinks";
 /**
  * 1. REGISTRY
  * Map package names to their table definitions and optional migrations.
- * Note: Tags use the core tagsTable from @ottabase/ottaorm (included in schemas-helper.ts)
  */
 const PACKAGE_REGISTRY = {
   ottablog: {
@@ -33,6 +33,7 @@ const PACKAGE_REGISTRY = {
       categoriesTable,
       postsTable,
       postTagsTable,
+      postTagLinksTable,
       postVersionsTable,
     },
     migrations: [] as Migration[],
