@@ -189,12 +189,12 @@ category.generateSlug();
 - `type` - Content type (post, news, docs, etc.) - **NEW: Enables reuse for multiple content types**
 - `appId` - Multi-app identifier
 
-### Tag
+### PostTag
 
 Flexible tagging system with type support.
 
 ```typescript
-const tag = await Tag.create({
+const tag = await PostTag.create({
   name: "React",
   slug: "react",
   color: "#61dafb",
@@ -202,8 +202,8 @@ const tag = await Tag.create({
 });
 
 // Query methods
-await Tag.findBySlug("react", { appId: "app-123" });
-await Tag.forApp("app-123");
+await PostTag.findBySlug("react", { appId: "app-123" });
+await PostTag.forApp("app-123");
 
 // Instance methods
 tag.generateSlug();
