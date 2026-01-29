@@ -412,10 +412,10 @@ const post = await Post.create({
 
 - `posts` - Blog posts with full content management
 - `categories` - Category hierarchy with type support
-- `tags` - Flexible tagging system with type support
+- `post_tags` - Blog-specific tags with color and type support
 - `post_versions` - Version history tracking
 - `series` - Content series grouping
-- `post_tags` - Many-to-many junction table
+- `post_tag_links` - Many-to-many junction table between posts and post_tags
 
 ## Benefits
 
