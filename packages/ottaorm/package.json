@@ -7,19 +7,19 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "import": "./src/index.ts",
-      "require": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
     },
     "./models": {
-      "types": "./src/models/index.ts",
-      "import": "./src/models/index.ts",
-      "require": "./src/models/index.ts"
+      "types": "./dist/models/index.d.ts",
+      "import": "./dist/models/index.mjs",
+      "require": "./dist/models/index.js"
     },
     "./base": {
-      "types": "./src/base/index.ts",
-      "import": "./src/base/index.ts",
-      "require": "./src/base/index.ts"
+      "types": "./dist/base/index.d.ts",
+      "import": "./dist/base/index.mjs",
+      "require": "./dist/base/index.js"
     },
     "./client": {
       "types": "./dist/client/index.d.ts",
