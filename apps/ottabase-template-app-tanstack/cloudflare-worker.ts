@@ -141,6 +141,19 @@ async function simulateRateLimit(env: CloudflareEnv, key: string) {
   };
 }
 
+
+function initAdminCron(env: CloudflareEnv): Response | null {
+  if (!env.OBCF_D1) {
+    return errorResponse("D1 database binding not configured", 500, {
+      code: "CONFIG_ERROR",
+    });
+  }
+
+  registerConnection("default", createD1Driver(env.OBCF_D1));
+  registerModels([ScheduledTask]);
+  return null;
+}
+
 async function checkMigrationAuth(
   request: Request,
   env: CloudflareEnv,
@@ -288,14 +301,8 @@ export default {
 
       // List tasks and stats
       if (url.pathname === "/api/admin/cron" && request.method === "GET") {
-        if (!env.OBCF_D1) {
-          return errorResponse("D1 database binding not configured", 500, {
-            code: "CONFIG_ERROR",
-          });
-        }
-
-        registerConnection("default", createD1Driver(env.OBCF_D1));
-        registerModels([ScheduledTask]);
+        const initErr = initAdminCron(env);
+        if (initErr) return initErr;
 
         // Get all tasks
         const tasks = await ScheduledTask.all();
@@ -334,14 +341,8 @@ export default {
 
       // Create task
       if (url.pathname === "/api/admin/cron" && request.method === "POST") {
-        if (!env.OBCF_D1) {
-          return errorResponse("D1 database binding not configured", 500, {
-            code: "CONFIG_ERROR",
-          });
-        }
-
-        registerConnection("default", createD1Driver(env.OBCF_D1));
-        registerModels([ScheduledTask]);
+        const initErr = initAdminCron(env);
+        if (initErr) return initErr;
 
         const body = await readJson<{
           name?: string;
@@ -383,14 +384,8 @@ export default {
       // Handle specific task operations
       const cronTaskMatch = url.pathname.match(/^\/api\/admin\/cron\/(.+)$/);
       if (cronTaskMatch) {
-        if (!env.OBCF_D1) {
-          return errorResponse("D1 database binding not configured", 500, {
-            code: "CONFIG_ERROR",
-          });
-        }
-
-        registerConnection("default", createD1Driver(env.OBCF_D1));
-        registerModels([ScheduledTask]);
+        const initErr = initAdminCron(env);
+        if (initErr) return initErr;
 
         const taskId = cronTaskMatch[1];
         const isToggle = taskId.endsWith("/toggle");
