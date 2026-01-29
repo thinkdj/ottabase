@@ -4,7 +4,7 @@
  * Junction table linking Posts to PostTags (many-to-many relationship).
  */
 import { BaseModel, ModelFields } from "@ottabase/ottaorm";
-import { sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
 	index,
 	integer,
@@ -92,10 +92,15 @@ export class PostTagLink extends BaseModel {
 	 * Unlink a tag from a post
 	 */
 	static async unlinkTag(postId: string, tagId: string): Promise<void> {
-		const link = await this.first({ postId, tagId });
-		if (link) {
-			await this.delete(link.get("postId"));
-		}
+		const db = this.getDriver().getDb();
+		await db
+			.delete(postTagLinksTable)
+			.where(
+				and(
+					eq(postTagLinksTable.postId, postId),
+					eq(postTagLinksTable.tagId, tagId),
+				),
+			);
 	}
 
 	/**

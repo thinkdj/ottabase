@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { Post, PostCategory, PostVersion, PostSeries, PostTag, PostTagLink } from "../models";
+import { describe, it, expect, vi } from "vitest";
+import { Post, PostCategory, PostVersion, PostSeries, PostTag, PostTagLink, postTagLinksTable } from "../models";
 
 describe("ottablog models", () => {
   describe("Post model", () => {
@@ -140,6 +140,25 @@ describe("ottablog models", () => {
       expect(PostTagLink.entity).toBe("post_tag_links");
       expect(PostTagLink.primaryKey).toBe("postId");
       expect(PostTagLink.table).toBeDefined();
+    });
+
+    it("unlinkTag should not delete by postId alone", async () => {
+      const deleteSpy = vi.spyOn(PostTagLink, "delete");
+
+      const whereMock = vi.fn();
+      const deleteMock = vi.fn(() => ({ where: whereMock }));
+      const getDriverSpy = vi
+        .spyOn(PostTagLink as any, "getDriver")
+        .mockReturnValue({ getDb: () => ({ delete: deleteMock }) });
+
+      await PostTagLink.unlinkTag("post-1", "tag-1");
+
+      expect(deleteSpy).not.toHaveBeenCalled();
+      expect(deleteMock).toHaveBeenCalledWith(postTagLinksTable);
+      expect(whereMock).toHaveBeenCalledTimes(1);
+
+      getDriverSpy.mockRestore();
+      deleteSpy.mockRestore();
     });
 
     it("should have field metadata defined", () => {
