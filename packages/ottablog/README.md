@@ -341,7 +341,7 @@ const appCategories = await PostCategory.where({
 });
 
 // Filter tags by app and type
-const appTags = await Tag.where({
+const appTags = await PostTag.where({
   type: "blog",
   appId: "app-123"
 });
