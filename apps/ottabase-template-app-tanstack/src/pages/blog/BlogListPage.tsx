@@ -3,11 +3,11 @@
  *
  * Displays published blog posts with filtering and pagination.
  */
-import { createModelHooks } from "@ottabase/ottaorm/client";
 import { CONTENT_TYPES, type ContentType } from "@ottabase/ottablog";
-import { Button, Card, CardContent, Input } from "@ottabase/ui-shadcn";
+import { createModelHooks } from "@ottabase/ottaorm/client";
+import { Card, CardContent, Input } from "@ottabase/ui-shadcn";
 import { Link } from "@tanstack/react-router";
-import { Calendar, Clock, Search, Tag, User } from "lucide-react";
+import { Calendar, Clock, Search, User } from "lucide-react";
 import { useState } from "react";
 
 interface BlogPost {
@@ -65,8 +65,8 @@ export function BlogListPage() {
   // Fetch series for filter dropdown
   const { data: seriesData } = blogSeriesHooks.useList();
 
-  const posts = postsData?.data || [];
-  const series = seriesData?.data || [];
+  const posts = postsData || [];
+  const series = seriesData || [];
 
   // Filter by search
   const filteredPosts = search

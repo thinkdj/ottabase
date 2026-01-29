@@ -15,18 +15,19 @@
 // ============================================================
 
 import {
+  postsTable,
+  postTagLinksTable,
+  postTagsTable,
+} from "@ottabase/ottablog";
+import {
   accountsTable,
   authenticatorsTable,
+  scheduledTasksTable,
   sessionsTable,
   tagsTable,
   usersTable,
   verificationTokensTable,
 } from "@ottabase/ottaorm";
-import {
-  postsTable,
-  postTagsTable,
-  postTagLinksTable,
-} from "@ottabase/ottablog";
 import { getEnabledPackageTables } from "../config.migrations";
 import { todosTable } from "../models/Todo";
 
@@ -42,6 +43,7 @@ export function getAllSchemas() {
     tagsTable,
     usersTable,
     verificationTokensTable,
+    scheduledTasksTable,
   };
 
   // 2. Blog/Content schemas from @ottabase/ottablog
@@ -82,6 +84,7 @@ export function getSchemaSummary() {
     tagsTable,
     usersTable,
     verificationTokensTable,
+    scheduledTasksTable,
   };
 
   const blogTables = {
@@ -101,7 +104,11 @@ export function getSchemaSummary() {
     blog: Object.keys(blogTables),
     app: Object.keys(appTables),
     packages: Object.keys(packageTables),
-    total: Object.keys({ ...coreTables, ...blogTables, ...appTables, ...packageTables })
-      .length,
+    total: Object.keys({
+      ...coreTables,
+      ...blogTables,
+      ...appTables,
+      ...packageTables,
+    }).length,
   };
 }

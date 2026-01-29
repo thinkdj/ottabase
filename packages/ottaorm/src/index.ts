@@ -4,21 +4,21 @@
 
 // Connection management (multi-database support)
 export {
-  registerConnection,
+  clearAllConnections,
+  clearConnection,
   getConnection,
   hasConnection,
-  clearConnection,
-  clearAllConnections
+  registerConnection,
 } from "./context";
 
 // Model registry (for dynamic model lookup)
 export {
+  clearModelRegistry,
+  getModel,
+  getRegisteredModels,
+  hasModel,
   registerModel,
   registerModels,
-  getModel,
-  hasModel,
-  getRegisteredModels,
-  clearModelRegistry,
 } from "./registry";
 
 // Generic CRUD handler
@@ -26,7 +26,11 @@ export { handleCrud, parseCrudRequest } from "./crud";
 export type { CrudRequest, CrudResponse } from "./crud";
 
 // Migrations
-export { runMigrations, rollbackMigrations, coreMigrations } from "./migrations";
+export {
+  coreMigrations,
+  rollbackMigrations,
+  runMigrations,
+} from "./migrations";
 export type { Migration } from "./migrations";
 
 // Automated migrations (NEW!)
@@ -42,8 +46,8 @@ export type { AutoInitConfig, RuntimeMigrationConfig } from "./migrations";
 export { AbstractBaseModel, BaseModel } from "./base";
 export type {
   IModelConstructorParams,
-  ModelFieldType,
   ModelFieldDescriptor,
+  ModelFieldType,
   ModelFields,
   PaginationResult,
   RelationshipConfig,
@@ -55,31 +59,34 @@ export type {
  * These exports are safe for Next.js Edge runtime.
  */
 export {
-  User,
-  usersTable,
   Account,
-  accountsTable,
-  Tag,
-  tagsTable,
   // Auth.js SQL models (Edge-safe)
   Authenticator,
-  authenticatorsTable,
+  ScheduledTask,
   Session,
-  sessionsTable,
+  Tag,
+  User,
   VerificationToken,
+  accountsTable,
+  authenticatorsTable,
+  scheduledTasksTable,
+  sessionsTable,
+  tagsTable,
+  usersTable,
   verificationTokensTable,
 } from "./models";
 export type {
-  UserType,
-  NewUserType,
   AccountType,
-  NewAccountType,
-  TagType,
-  NewTagType,
   AuthenticatorType,
+  NewAccountType,
   NewAuthenticatorType,
-  SessionType,
   NewSessionType,
-  VerificationTokenType,
+  NewTagType,
+  NewUserType,
   NewVerificationTokenType,
+  SessionType,
+  TagType,
+  UserType,
+  VerificationTokenType,
 } from "./models";
+
