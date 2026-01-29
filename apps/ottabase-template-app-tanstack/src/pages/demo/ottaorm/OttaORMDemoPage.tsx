@@ -130,7 +130,14 @@ export function OttaORMDemoPage() {
           <p className="mb-3 text-sm text-muted-foreground">
             Database not initialized. Click below to set up tables.
           </p>
-          <Button onClick={() => initDb.mutate({})} disabled={initDb.isPending}>
+          <Button
+            onClick={() => {
+              const searchParams = new URLSearchParams(window.location.search);
+              const secret = searchParams.get("secret");
+              initDb.mutate(secret ? { secret } : {});
+            }}
+            disabled={initDb.isPending}
+          >
             {initDb.isPending ? "Initializing..." : "Initialize Database"}
           </Button>
         </div>

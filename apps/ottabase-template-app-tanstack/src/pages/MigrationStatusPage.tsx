@@ -34,7 +34,12 @@ export function MigrationStatusPage() {
 
   // Auto-run on mount
   useEffect(() => {
-    initDb.mutate({});
+    // Get secret from URL query params
+    const searchParams = new URLSearchParams(window.location.search);
+    const secret = searchParams.get("secret");
+
+    // Pass secret in the body (supported by checkMigrationAuth)
+    initDb.mutate(secret ? { secret } : {});
   }, []);
 
   useEffect(() => {
@@ -357,7 +362,17 @@ export function MigrationStatusPage() {
           </Card>
 
           <div className="flex justify-end">
-            <Button onClick={() => initDb.mutate({})}>Run Again</Button>
+            <Button
+              onClick={() => {
+                const searchParams = new URLSearchParams(
+                  window.location.search,
+                );
+                const secret = searchParams.get("secret");
+                initDb.mutate(secret ? { secret } : {});
+              }}
+            >
+              Run Again
+            </Button>
           </div>
         </div>
       )}
