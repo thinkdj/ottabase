@@ -195,6 +195,27 @@ export default {
         Vary: "Origin",
       };
 
+      // Register database connection and models for ALL /api/ottaorm/* routes
+      // This ensures models are available before any route handler is invoked
+      if (url.pathname.startsWith("/api/ottaorm/")) {
+        if (env.OBCF_D1) {
+          registerConnection("default", createD1Driver(env.OBCF_D1));
+          registerModels([
+            Shortlink,
+            Todo,
+            User,
+            Post,
+            PostTag,
+            PostTagLink,
+            Tag,
+            ReferralTracking,
+            PostCategory,
+            PostSeries,
+            PostVersion,
+          ]);
+        }
+      }
+
       if (url.pathname.startsWith("/api/") && request.method === "OPTIONS") {
         return new Response(null, {
           status: 204,
@@ -450,22 +471,7 @@ export default {
           });
         }
 
-        // Initialize database connection and register models
-        registerConnection("default", createD1Driver(env.OBCF_D1));
-        registerModels([
-          Shortlink,
-          Todo,
-          User,
-          Post,
-          PostTag,
-          PostTagLink,
-          Tag,
-          ReferralTracking,
-          PostCategory,
-          PostSeries,
-          PostVersion,
-        ]);
-
+        // Connection and models are already registered at the top of fetch()
         // Parse the request into a CrudRequest
         const crudRequest = await parseCrudRequest(
           request,
@@ -2173,59 +2179,6 @@ export default {
         });
 
         return jsonResponse(result);
-      }
-
-      // ============================================================
-      // Generic CRUD handler for all registered models
-      // Handles: /api/ottaorm/{model} and /api/ottaorm/{model}/{id}
-      // ============================================================
-      if (
-        url.pathname.startsWith("/api/ottaorm/") &&
-        !url.pathname.startsWith("/api/ottaorm/init")
-      ) {
-        if (!env.OBCF_D1)
-          return errorResponse("D1 database not configured", 500, {
-            code: "CONFIG_ERROR",
-          });
-        registerConnection("default", createD1Driver(env.OBCF_D1));
-
-        // Register all models for dynamic lookup
-        registerModels([
-          User,
-          Post,
-          PostTag,
-          PostTagLink,
-          Tag,
-          Todo,
-          Shortlink,
-          ReferralTracking,
-          PostCategory,
-          PostSeries,
-          PostVersion,
-        ]);
-
-        // Parse the request into a CrudRequest
-        const crudRequest = await parseCrudRequest(
-          request,
-          url,
-          "/api/ottaorm",
-        );
-        if (!crudRequest) {
-          return errorResponse("Invalid request path", 400);
-        }
-
-        // Handle the CRUD operation
-        const result = await handleCrud(crudRequest);
-        if (!result.success) {
-          return errorResponse(result.error!, result.status, {
-            code: result.code,
-            details: result.details,
-            hint: result.hint,
-            messages: result.messages,
-            fieldErrors: result.fieldErrors,
-          });
-        }
-        return jsonResponse(result.data, { status: result.status });
       }
 
       // ============================================================
