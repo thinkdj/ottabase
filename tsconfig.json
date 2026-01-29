@@ -39,9 +39,6 @@
       "@ottabase/db": [
         "./packages/db/src"
       ],
-      "@ottabase/ottaorm": [
-        "./packages/ottaorm/src"
-      ],
       "@ottabase/ui-code-highlight": [
         "./packages/ui-code-highlight/src"
       ],
