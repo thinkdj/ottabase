@@ -2,7 +2,7 @@
  * OttaSelect Demo Page
  * Demonstrates @ottabase/ottaselect component
  */
-import { OttaSelect, type ItemRendererProps, type OttaSelectItem } from '@ottabase/ottaselect';
+import { OttaSelect, type ItemRendererProps, type OttaSelectItem, createModelFetcher } from '@ottabase/ottaselect';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -168,6 +168,11 @@ export function OttaSelectDemoPage() {
         { id: 'br', name: 'Brazil', flag: '🇧🇷', code: 'BR' },
     ]);
 
+    // OttaORM integration states
+    const [selectedPost, setSelectedPost] = useState<OttaSelectItem | null>(null);
+    const [selectedPosts, setSelectedPosts] = useState<OttaSelectItem[] | null>(null);
+    const [selectedAuthor, setSelectedAuthor] = useState<OttaSelectItem | null>(null);
+
     // Custom Renderers
     const CountryRenderer = ({ item }: ItemRendererProps) => (
         <div className="flex items-center gap-2 flex-1">
@@ -193,6 +198,28 @@ export function OttaSelectDemoPage() {
                 <span className="text-xs text-muted-foreground truncate">{item.email}</span>
             </div>
             <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">{item.role}</span>
+        </div>
+    );
+
+    const PostRenderer = ({ item }: ItemRendererProps) => (
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
+            <span className="truncate font-medium">{item.name}</span>
+            {item.excerpt && (
+                <span className="text-xs text-muted-foreground truncate line-clamp-1">{item.excerpt}</span>
+            )}
+            {item.status && (
+                <span
+                    className={`text-xs px-1.5 py-0.5 rounded w-fit ${
+                        item.status === 'published'
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                            : item.status === 'draft'
+                              ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
+                              : 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300'
+                    }`}
+                >
+                    {item.status}
+                </span>
+            )}
         </div>
     );
 
@@ -438,6 +465,150 @@ export function OttaSelectDemoPage() {
                 </CardContent>
             </Card>
 
+            {/* OttaORM Integration */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>🔗 OttaORM Integration</CardTitle>
+                    <CardDescription>
+                        First-party support for OttaORM models with automatic API fetching, debounced search, and field
+                        mapping. Use <code className="bg-muted px-1 rounded">createModelFetcher</code> to connect any
+                        OttaORM model to OttaSelect.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg text-sm space-y-2">
+                        <div>
+                            <strong>✨ What's New:</strong> OttaSelect now has built-in support for OttaORM models!
+                        </div>
+                        <div>
+                            Simply pass <code className="bg-muted px-1 rounded">createModelFetcher()</code> to{' '}
+                            <code className="bg-muted px-1 rounded">fetchCollection</code> and it handles:
+                        </div>
+                        <ul className="ml-4 space-y-1">
+                            <li>• API endpoint construction</li>
+                            <li>• Debounced search across multiple fields</li>
+                            <li>• Field mapping (labelField, valueField)</li>
+                            <li>• Filtering with where conditions</li>
+                            <li>• Sorting and pagination</li>
+                        </ul>
+                    </div>
+
+                    {/* Single Post Select */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Select a Post (single):</label>
+                        <OttaSelect
+                            mode="single"
+                            value={selectedPost}
+                            onChange={(value) => setSelectedPost(value as OttaSelectItem | null)}
+                            fetchCollection={createModelFetcher({
+                                entity: 'posts',
+                                labelField: 'title',
+                                searchFields: ['title', 'excerpt'],
+                                orderBy: 'createdAt',
+                                orderDirection: 'desc',
+                            })}
+                            placeholder="Search for posts..."
+                            renderItem={PostRenderer}
+                            renderValue={(item) => <span className="truncate">{item.name}</span>}
+                        />
+                        {selectedPost && (
+                            <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto">
+                                {JSON.stringify(selectedPost, null, 2)}
+                            </pre>
+                        )}
+                    </div>
+
+                    {/* Multi Post Select with Filter */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Select Published Posts (multiple):</label>
+                        <OttaSelect
+                            mode="multiple"
+                            value={selectedPosts}
+                            onChange={(value) => setSelectedPosts(value as OttaSelectItem[] | null)}
+                            fetchCollection={createModelFetcher({
+                                entity: 'posts',
+                                labelField: 'title',
+                                searchFields: ['title', 'excerpt'],
+                                where: { status: 'published' },
+                                orderBy: 'publishedAt',
+                                orderDirection: 'desc',
+                            })}
+                            placeholder="Search published posts..."
+                            renderItem={PostRenderer}
+                        />
+                        {selectedPosts && selectedPosts.length > 0 && (
+                            <div className="space-y-2">
+                                <div className="text-sm text-muted-foreground">
+                                    Selected {selectedPosts.length} post(s)
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {selectedPosts.map((post, index) => (
+                                        <span
+                                            key={post.id || `post-${index}`}
+                                            className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-md text-sm"
+                                        >
+                                            {post.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* User Select (Author) */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Select Post Author:</label>
+                        <OttaSelect
+                            mode="single"
+                            value={selectedAuthor}
+                            onChange={(value) => setSelectedAuthor(value as OttaSelectItem | null)}
+                            fetchCollection={createModelFetcher({
+                                entity: 'users',
+                                labelField: 'name',
+                                searchFields: ['name', 'email'],
+                                orderBy: 'name',
+                            })}
+                            placeholder="Search for users..."
+                            renderValue={(item) => <span className="truncate">{item.name}</span>}
+                        />
+                        {selectedAuthor && (
+                            <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto">
+                                {JSON.stringify(selectedAuthor, null, 2)}
+                            </pre>
+                        )}
+                    </div>
+
+                    {/* Code Example */}
+                    <div className="space-y-2">
+                        <div className="text-sm font-medium">Usage Example:</div>
+                        <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs">
+                            {`import { OttaSelect, createModelFetcher } from "@ottabase/ottaselect";
+
+function PostSelector() {
+  const [post, setPost] = useState(null);
+
+  return (
+    <OttaSelect
+      mode="single"
+      value={post}
+      onChange={setPost}
+      fetchCollection={createModelFetcher({
+        entity: 'posts',
+        labelField: 'title',
+        searchFields: ['title', 'excerpt'],
+        where: { status: 'published' },
+        orderBy: 'publishedAt',
+        orderDirection: 'desc',
+      })}
+      placeholder="Search posts..."
+    />
+  );
+}`}
+                        </pre>
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Features */}
             <Card>
                 <CardHeader>
@@ -446,6 +617,14 @@ export function OttaSelectDemoPage() {
                 </CardHeader>
                 <CardContent>
                     <ul className="space-y-2 text-sm">
+                        <li className="flex items-start gap-2">
+                            <span className="text-green-500">✓</span>
+                            <span>
+                                <strong>OttaORM Integration:</strong> First-party support for OttaORM models with{' '}
+                                <code className="bg-muted px-1 rounded">createModelFetcher</code> - automatic API
+                                fetching, search, and field mapping
+                            </span>
+                        </li>
                         <li className="flex items-start gap-2">
                             <span className="text-green-500">✓</span>
                             <span>
