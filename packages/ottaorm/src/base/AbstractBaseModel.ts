@@ -5,6 +5,9 @@
 // Extracted from BaseModel to support multi-database patterns
 // ============================================================
 
+import { z } from "zod";
+import type { ZodError, ZodTypeAny } from "zod";
+
 export type ModelFieldType = 'string' | 'number' | 'integer' | 'float' | 'date' | 'datetime' | 'boolean' | 'id' | 'json' | 'array';
 
 /**
@@ -81,6 +84,8 @@ export interface ModelFieldDescriptor {
     rules?: string;
     /** Custom error messages keyed by rule name */
     messages?: Record<string, string>;
+    /** Optional Zod schema for field validation */
+    schema?: ZodTypeAny;
   };
 }
 
@@ -96,6 +101,34 @@ export interface PaginationResult<T> {
   totalPages: number;
   hasNextPage: boolean;
   hasPrevPage: boolean;
+}
+
+export class ModelValidationError extends Error {
+  public readonly fieldErrors: Record<string, string[]>;
+  public readonly messages: string[];
+
+  constructor(error: ZodError) {
+    super("Validation failed");
+    this.name = "ModelValidationError";
+    this.messages = error.errors.map((issue) => issue.message);
+
+    const flattened = error.flatten();
+    const fieldErrors = Object.entries(flattened.fieldErrors).reduce(
+      (acc, [key, messages]) => {
+        if (messages && messages.length > 0) {
+          acc[key] = messages;
+        }
+        return acc;
+      },
+      {} as Record<string, string[]>,
+    );
+
+    if (flattened.formErrors.length > 0) {
+      fieldErrors._form = flattened.formErrors;
+    }
+
+    this.fieldErrors = fieldErrors;
+  }
 }
 
 /**
@@ -198,11 +231,59 @@ export abstract class AbstractBaseModel {
   protected static validationRules: any = {};
 
   /**
+   * Zod validation schema (optional)
+   */
+  protected static validationSchema?: ZodTypeAny;
+
+  /**
    * Get field metadata for this model
    * Used by @ottabase/forms for auto-generating CRUD forms
    */
   static getFields(): ModelFields {
     return this.fields;
+  }
+
+  /**
+   * Get model validation schema (if defined)
+   */
+  static getValidationSchema(): ZodTypeAny | null {
+    if (this.validationSchema) {
+      return this.validationSchema;
+    }
+
+    const shape: Record<string, ZodTypeAny> = {};
+    for (const [key, field] of Object.entries(this.fields)) {
+      if (field.validation?.schema) {
+        shape[key] = field.validation.schema;
+      }
+    }
+
+    if (Object.keys(shape).length === 0) {
+      return null;
+    }
+
+    return z.object(shape).passthrough();
+  }
+
+  /**
+   * Validate data using model or field schemas
+   */
+  static async validateData(
+    data: Record<string, any>,
+    options?: { mode?: "create" | "update" },
+  ): Promise<void> {
+    const schema = this.getValidationSchema();
+    if (!schema) return;
+
+    const validationSchema =
+      options?.mode === "update" && schema instanceof z.ZodObject
+        ? schema.partial()
+        : schema;
+
+    const result = await validationSchema.safeParseAsync(data);
+    if (!result.success) {
+      throw new ModelValidationError(result.error);
+    }
   }
 
   /**
@@ -215,6 +296,7 @@ export abstract class AbstractBaseModel {
       fields: this.fields,
       defaults: this.defaults,
       validationRules: this.validationRules,
+      validationSchema: this.getValidationSchema(),
       // UI/Forms metadata
       displayName: this.displayName,
       displayNamePlural: this.displayNamePlural,
