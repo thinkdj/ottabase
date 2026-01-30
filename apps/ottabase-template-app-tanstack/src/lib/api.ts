@@ -5,16 +5,16 @@
  * - Type-safe error handling
  */
 
-import { createApiClient, type ApiError } from "@ottabase/api";
-import { toast } from "sonner";
+import { createApiClient, type ApiError } from '@ottabase/api';
+import { toast } from 'sonner';
 
 /**
  * Get auth token from storage/context.
  * TODO: Implement when auth is added.
  */
 function getAuthToken(): string | null {
-  // Future: return localStorage.getItem("authToken") or session token
-  return null;
+    // Future: return localStorage.getItem("authToken") or session token
+    return null;
 }
 
 /**
@@ -22,42 +22,41 @@ function getAuthToken(): string | null {
  * Shows toast notifications for errors.
  */
 function handleApiError(error: ApiError): void {
-  // Skip toast for certain error types that are handled locally
-  if (error.code === "HANDLED") {
-    return;
-  }
+    // Skip toast for certain error types that are handled locally
+    if (error.code === 'HANDLED') {
+        return;
+    }
 
-  // Show different toast styles based on error type
-  if (error.isUnauthorized()) {
-    toast.error("Session expired", {
-      description: "Please log in again",
-    });
-    // TODO: Redirect to login
-    return;
-  }
+    // Show different toast styles based on error type
+    if (error.isUnauthorized()) {
+        toast.error('Session expired', {
+            description: 'Please log in again',
+        });
+        // TODO: Redirect to login
+        return;
+    }
 
-  if (error.isRateLimited()) {
-    toast.error("Too many requests", {
-      description: error.hint || "Please wait a moment and try again",
-    });
-    return;
-  }
+    if (error.isRateLimited()) {
+        toast.error('Too many requests', {
+            description: error.hint || 'Please wait a moment and try again',
+        });
+        return;
+    }
 
-  if (error.isServerError()) {
+    if (error.isServerError()) {
+        toast.error(error.message, {
+            description:
+                error.messages.length > 1
+                    ? error.messages.join(' • ')
+                    : error.details || error.hint || 'Something went wrong',
+        });
+        return;
+    }
+
+    // Default error toast
     toast.error(error.message, {
-      description: error.messages.length > 1
-        ? error.messages.join(" • ")
-        : error.details || error.hint || "Something went wrong",
+        description: error.messages.length > 1 ? error.messages.join(' • ') : error.details || error.hint,
     });
-    return;
-  }
-
-  // Default error toast
-  toast.error(error.message, {
-    description: error.messages.length > 1
-      ? error.messages.join(" • ")
-      : error.details || error.hint,
-  });
 }
 
 /**
@@ -94,31 +93,19 @@ function handleApiError(error: ApiError): void {
  * ```
  */
 export const api = createApiClient({
-  baseUrl: "",
-  getAuthToken,
-  onError: handleApiError,
-  onUnauthorized: (error) => {
-    // TODO: Clear auth state and redirect to login
-    console.log("Unauthorized:", error.message);
-  },
-  defaultHeaders: {
-    Accept: "application/json",
-  },
-  timeout: 30000,
+    baseUrl: '',
+    getAuthToken,
+    onError: handleApiError,
+    onUnauthorized: (error) => {
+        // TODO: Clear auth state and redirect to login
+        console.log('Unauthorized:', error.message);
+    },
+    defaultHeaders: {
+        Accept: 'application/json',
+    },
+    timeout: 30000,
 });
 
 // Re-export types for convenience
-export {
-  ApiError,
-  getErrorMessage,
-  getErrorMessages,
-  isApiError,
-} from "@ottabase/api";
-export type {
-  ApiClientConfig,
-  ApiErrorResponse,
-  ApiFunction,
-  ApiRequestOptions,
-  HttpMethod,
-} from "@ottabase/api";
-
+export { ApiError, getErrorMessage, getErrorMessages, isApiError } from '@ottabase/api';
+export type { ApiClientConfig, ApiErrorResponse, ApiFunction, ApiRequestOptions, HttpMethod } from '@ottabase/api';

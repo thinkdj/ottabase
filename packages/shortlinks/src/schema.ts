@@ -1,3 +1,3 @@
 // Schema re-export (source of truth in Shortlink model)
-export { shortlinksTable } from "./Shortlink";
-export type { ShortlinkRecord, NewShortlinkRecord } from "./Shortlink";
+export { shortlinksTable } from './ottaorm-models/Shortlink';
+export type { ShortlinkRecord, NewShortlinkRecord } from './ottaorm-models/Shortlink';

@@ -7,12 +7,13 @@ Dynamic CI/CD system for deploying apps to Cloudflare Workers with automatic dis
 ### Add a New Deployable App
 
 1. Create `cloudflare-config.json` in your app:
-   ```json
-   {
-     "deployable": true,
-     "appType": "tanstack"
-   }
-   ```
+
+    ```json
+    {
+        "deployable": true,
+        "appType": "tanstack"
+    }
+    ```
 
 2. Push to `main` - auto-deployed!
 
@@ -23,34 +24,37 @@ Already configured. Just push to `main`.
 ## Configuration
 
 ### Minimal TanStack (default)
+
 ```json
 {
-  "deployable": true,
-  "appType": "tanstack"
+    "deployable": true,
+    "appType": "tanstack"
 }
 ```
 
 ### Minimal Next.js
+
 ```json
 {
-  "deployable": true,
-  "appType": "nextjs"
+    "deployable": true,
+    "appType": "nextjs"
 }
 ```
 
 ### Full Configuration
+
 ```json
 {
-  "$schema": "../../schemas/cloudflare-config.schema.json",
-  "deployable": true,
-  "appType": "nextjs",
-  "workerName": "my-app",
-  "buildCommand": "build",
-  "workerBuildCommand": "build:worker",
-  "outputDirectory": ".worker-next",
-  "verifyPaths": [".worker-next", ".worker-next/assets"],
-  "wranglerConfig": "wrangler.jsonc",
-  "requiresSecrets": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
+    "$schema": "../../schemas/cloudflare-config.schema.json",
+    "deployable": true,
+    "appType": "nextjs",
+    "workerName": "my-app",
+    "buildCommand": "build",
+    "workerBuildCommand": "build:worker",
+    "outputDirectory": ".worker-next",
+    "verifyPaths": [".worker-next", ".worker-next/assets"],
+    "wranglerConfig": "wrangler.jsonc",
+    "requiresSecrets": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
 }
 ```
 
@@ -68,6 +72,7 @@ Already configured. Just push to `main`.
 ## Build Flow
 
 ### TanStack (Default)
+
 ```bash
 # Step 1: Vite build
 vite build
@@ -78,6 +83,7 @@ wrangler deploy --env production
 ```
 
 ### Next.js
+
 ```bash
 # Step 1: Next.js build
 next build
@@ -103,12 +109,14 @@ wrangler deploy --env production
 ## How It Works
 
 ### Workflow
+
 1. **Discover** - Auto-detect apps with `cloudflare-config.json`
 2. **Build** - Build packages → Build app → Build Worker
 3. **Deploy** - Deploy to Cloudflare Workers (NOT Pages)
 4. **Verify** - Health check
 
 ### Discovery Script
+
 `node .github/scripts/discover-deployable-apps.mjs`
 
 Scans `apps/` for deployable apps and outputs GitHub Actions matrix.
@@ -116,11 +124,13 @@ Scans `apps/` for deployable apps and outputs GitHub Actions matrix.
 ## Error Handling
 
 All errors include:
+
 - What went wrong
 - Why it happened
 - How to fix it
 
 Example:
+
 ```
 ❌ ERROR: Missing required GitHub secrets
 
@@ -146,14 +156,17 @@ pnpm preview        # Test locally
 ## Troubleshooting
 
 **App not discovered?**
+
 - Check `deployable: true` in `cloudflare-config.json`
 - Verify build scripts exist in `package.json`
 
 **Build fails?**
+
 - Check GitHub Actions logs
 - Test locally: `pnpm --filter=@ottabase/my-app run build`
 
 **Deployment fails?**
+
 - Verify GitHub secrets are set
 - Check `wrangler.jsonc` is valid
 

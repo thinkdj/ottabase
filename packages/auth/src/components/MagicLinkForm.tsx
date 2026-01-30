@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { Button, Input, Label, Alert, AlertDescription, Spinner } from "@ottabase/ui-shadcn";
-import { Mail, CheckCircle2 } from "lucide-react";
+import React, { useState } from 'react';
+import { Button, Input, Label, Alert, AlertDescription, Spinner } from '@ottabase/ui-shadcn';
+import { Mail, CheckCircle2 } from 'lucide-react';
 
 export interface MagicLinkFormProps {
     onSubmit: (email: string) => Promise<void>;
@@ -18,12 +18,12 @@ export function MagicLinkForm({
     isLoading = false,
     error,
     success = false,
-    emailLabel = "Email",
-    submitButtonText = "Send magic link",
-    successMessage = "Check your email for a login link!",
-    className = "",
+    emailLabel = 'Email',
+    submitButtonText = 'Send magic link',
+    successMessage = 'Check your email for a login link!',
+    className = '',
 }: MagicLinkFormProps) {
-    const [email, setEmail] = useState("");
+    const [email, setEmail] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,12 +35,10 @@ export function MagicLinkForm({
             <div className={`space-y-4 ${className}`}>
                 <Alert className="border-green-500">
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <AlertDescription className="text-green-700">
-                        {successMessage}
-                    </AlertDescription>
+                    <AlertDescription className="text-green-700">{successMessage}</AlertDescription>
                 </Alert>
                 <p className="text-sm text-muted-foreground text-center">
-                    Didn't receive it?{" "}
+                    Didn't receive it?{' '}
                     <Button
                         type="button"
                         variant="link"
@@ -79,9 +77,7 @@ export function MagicLinkForm({
                         className="pl-10"
                     />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                    We'll send you a login link
-                </p>
+                <p className="text-xs text-muted-foreground">We'll send you a login link</p>
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>

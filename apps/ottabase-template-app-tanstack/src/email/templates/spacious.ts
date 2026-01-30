@@ -1,3 +1,2 @@
 // Deprecated: use minimalist template instead.
-export { minimalistTemplate as spaciousTemplate } from "./minimalist";
-
+export { minimalistTemplate as spaciousTemplate } from './minimalist';

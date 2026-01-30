@@ -2,7 +2,8 @@
 
 ## Overview
 
-A complete, modular shortlink management system built on Cloudflare infrastructure. This system allows you to create, manage, and track short URLs that can be deployed across multiple applications in the monorepo.
+A complete, modular shortlink management system built on Cloudflare infrastructure. This system allows you to create,
+manage, and track short URLs that can be deployed across multiple applications in the monorepo.
 
 ## Architecture
 
@@ -11,11 +12,13 @@ A complete, modular shortlink management system built on Cloudflare infrastructu
 Located in `packages/shortlinks/`, this package provides the core schema and types that can be shared across all apps.
 
 **Exports:**
+
 - `shortlinksTable` - Drizzle ORM schema for D1
 - TypeScript types: `Shortlink`, `NewShortlink`, `ShortlinkType`
 - Request/Response interfaces for API operations
 
 **Database Schema:**
+
 ```typescript
 {
   id: UUID (primary key)
@@ -38,6 +41,7 @@ Located in `apps/ottabase-template-app-tanstack/`, this provides a working refer
 **Components:**
 
 #### Backend (Cloudflare Worker)
+
 - **GET /api/shortlinks** - List all shortlinks (supports filtering by appName and type)
 - **POST /api/shortlinks** - Create new shortlink
 - **PATCH /api/shortlinks/:id** - Update shortlink
@@ -45,7 +49,9 @@ Located in `apps/ottabase-template-app-tanstack/`, this provides a working refer
 - **GET /:shortCode** - Redirect handler (with click tracking)
 
 #### ORM Model (`ottabase/models/Shortlink.ts`)
+
 Fat model with business logic:
+
 - `findByCode(shortCode)` - Find by short code
 - `active()` - Get non-expired links
 - `byApp(appName)` - Filter by app
@@ -55,23 +61,25 @@ Fat model with business logic:
 - `getShortUrl(baseUrl)` - Generate full short URL
 
 #### Frontend UI (`src/pages/shortlinks/`)
+
 - **ShortlinksPage.tsx** - Main management interface with:
-  - Statistics dashboard (total links, clicks, active links)
-  - Table view with sortable columns
-  - Inline editing and deletion
-  - Copy-to-clipboard functionality
-  - Status badges (expired/active)
+    - Statistics dashboard (total links, clicks, active links)
+    - Table view with sortable columns
+    - Inline editing and deletion
+    - Copy-to-clipboard functionality
+    - Status badges (expired/active)
 
 - **ShortlinkForm.tsx** - Create/Edit form with:
-  - URL validation
-  - Custom short code input with random generator
-  - Type selector
-  - App name configuration
-  - Optional expiry date picker
+    - URL validation
+    - Custom short code input with random generator
+    - Type selector
+    - App name configuration
+    - Optional expiry date picker
 
 ## Features
 
 ### Core Functionality
+
 - ✅ Create custom shortlinks with memorable codes
 - ✅ Automatic URL validation
 - ✅ Click tracking and analytics
@@ -80,6 +88,7 @@ Fat model with business logic:
 - ✅ Type categorization (redirect, tracking, internal, external)
 
 ### UI/UX
+
 - ✅ Clean, minimal interface (inspired by modern tools)
 - ✅ shadcn/ui components with Tailwind CSS
 - ✅ Responsive design
@@ -90,6 +99,7 @@ Fat model with business logic:
 - ✅ Status indicators
 
 ### Technical
+
 - ✅ Cloudflare D1 (SQLite) backend
 - ✅ Drizzle ORM for type safety
 - ✅ TanStack Router integration
@@ -106,9 +116,9 @@ In any app in the monorepo:
 
 ```json
 {
-  "dependencies": {
-    "@ottabase/shortlinks": "workspace:*"
-  }
+    "dependencies": {
+        "@ottabase/shortlinks": "workspace:*"
+    }
 }
 ```
 
@@ -116,14 +126,14 @@ In any app in the monorepo:
 
 ```typescript
 // ottabase/db/schema.ts
-export { shortlinksTable } from "@ottabase/shortlinks";
+export { shortlinksTable } from '@ottabase/shortlinks';
 ```
 
 ### 3. Register ORM Model
 
 ```typescript
-import { Shortlink } from "@ottabase/shortlinks";
-import { registerModels } from "@ottabase/ottaorm";
+import { Shortlink } from '@ottabase/shortlinks';
+import { registerModels } from '@ottabase/ottaorm';
 
 registerModels([Shortlink]);
 ```
@@ -132,7 +142,7 @@ registerModels([Shortlink]);
 
 ```typescript
 // cloudflare-worker.ts
-import { Shortlink } from "@ottabase/shortlinks";
+import { Shortlink } from '@ottabase/shortlinks';
 
 // In fetch handler:
 // 1. Add CRUD endpoints for /api/shortlinks
@@ -145,11 +155,9 @@ import { Shortlink } from "@ottabase/shortlinks";
 ```typescript
 // router.tsx
 const shortlinksRoute = new Route({
-  getParentRoute: () => rootRoute,
-  path: "/shortlinks",
-  component: lazyRouteComponent(() =>
-    import("@/pages/shortlinks/ShortlinksPage")
-  ),
+    getParentRoute: () => rootRoute,
+    path: '/shortlinks',
+    component: lazyRouteComponent(() => import('@/pages/shortlinks/ShortlinksPage')),
 });
 ```
 
@@ -161,6 +169,7 @@ pnpm db:push
 ```
 
 Or use the OttaORM auto-init endpoint:
+
 ```
 POST /api/ottaorm/init
 ```
@@ -168,6 +177,7 @@ POST /api/ottaorm/init
 ## API Examples
 
 ### Create Shortlink
+
 ```bash
 POST /api/shortlinks
 Content-Type: application/json
@@ -182,6 +192,7 @@ Content-Type: application/json
 ```
 
 ### Update Shortlink
+
 ```bash
 PATCH /api/shortlinks/{id}
 Content-Type: application/json
@@ -193,6 +204,7 @@ Content-Type: application/json
 ```
 
 ### List Shortlinks
+
 ```bash
 GET /api/shortlinks
 GET /api/shortlinks?appName=myapp
@@ -200,6 +212,7 @@ GET /api/shortlinks?type=redirect
 ```
 
 ### Use Shortlink
+
 ```bash
 GET /gh
 # Automatically redirects to full URL and tracks click
@@ -212,23 +225,23 @@ GET /gh
 Deploy to a subdomain like `go.yourdomain.com`:
 
 1. Configure Cloudflare DNS:
-   ```
-   CNAME go workers.dev
-   ```
+
+    ```
+    CNAME go workers.dev
+    ```
 
 2. Update wrangler.jsonc:
-   ```jsonc
-   {
-     "routes": [
-       { "pattern": "go.yourdomain.com/*", "custom_domain": true }
-     ]
-   }
-   ```
+
+    ```jsonc
+    {
+        "routes": [{ "pattern": "go.yourdomain.com/*", "custom_domain": true }],
+    }
+    ```
 
 3. Deploy:
-   ```bash
-   pnpm deploy
-   ```
+    ```bash
+    pnpm deploy
+    ```
 
 Now your shortlinks work at `go.yourdomain.com/gh`
 
@@ -239,51 +252,54 @@ If you want shortlinks on your main domain, ensure the redirect handler runs bef
 ## Extensibility
 
 ### Multi-App Support
+
 The `appName` field enables multiple apps to share the same shortlink database:
 
 ```typescript
 // App A
 await Shortlink.create({
-  shortCode: "github",
-  fullUrl: "https://github.com/org/repo-a",
-  appName: "app-a"
+    shortCode: 'github',
+    fullUrl: 'https://github.com/org/repo-a',
+    appName: 'app-a',
 });
 
 // App B
 await Shortlink.create({
-  shortCode: "github",  // Same code, different app
-  fullUrl: "https://github.com/org/repo-b",
-  appName: "app-b"
+    shortCode: 'github', // Same code, different app
+    fullUrl: 'https://github.com/org/repo-b',
+    appName: 'app-b',
 });
 
 // Filter by app
-const appALinks = await Shortlink.byApp("app-a");
+const appALinks = await Shortlink.byApp('app-a');
 ```
 
 ### Custom Types
+
 Define your own link types:
 
 ```typescript
 const CustomTypes = {
-  ...ShortlinkTypes,
-  CAMPAIGN: "campaign",
-  AFFILIATE: "affiliate",
-  QR_CODE: "qr-code",
+    ...ShortlinkTypes,
+    CAMPAIGN: 'campaign',
+    AFFILIATE: 'affiliate',
+    QR_CODE: 'qr-code',
 } as const;
 ```
 
 ### Analytics Enhancement
+
 Extend the model to track more metrics:
 
 ```typescript
 export class ShortlinkWithAnalytics extends Shortlink {
-  async getClicksByDay() {
-    // Query D1 for daily click stats
-  }
+    async getClicksByDay() {
+        // Query D1 for daily click stats
+    }
 
-  async getClicksByCountry() {
-    // Use Cloudflare request data
-  }
+    async getClicksByCountry() {
+        // Use Cloudflare request data
+    }
 }
 ```
 
@@ -308,12 +324,12 @@ To migrate existing shortlinks:
 ```typescript
 const links = await fetchExistingLinks();
 for (const link of links) {
-  await Shortlink.create({
-    fullUrl: link.destination,
-    shortCode: link.slug,
-    type: "redirect",
-    appName: "migrated"
-  });
+    await Shortlink.create({
+        fullUrl: link.destination,
+        shortCode: link.slug,
+        type: 'redirect',
+        appName: 'migrated',
+    });
 }
 ```
 

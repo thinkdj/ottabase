@@ -1,15 +1,15 @@
-import type { ProviderEnv } from "../providers";
-import type { SocialProvider } from "./SocialLoginButtons";
+import type { ProviderEnv } from '../providers';
+import type { SocialProvider } from './SocialLoginButtons';
 
 /**
  * Provider display configuration
  */
 const PROVIDER_CONFIG: Record<string, { name: string; order: number }> = {
-    google: { name: "Google", order: 1 },
-    github: { name: "GitHub", order: 2 },
-    discord: { name: "Discord", order: 3 },
-    "azure-ad": { name: "Microsoft", order: 4 },
-    auth0: { name: "Auth0", order: 5 },
+    google: { name: 'Google', order: 1 },
+    github: { name: 'GitHub', order: 2 },
+    discord: { name: 'Discord', order: 3 },
+    'azure-ad': { name: 'Microsoft', order: 4 },
+    auth0: { name: 'Auth0', order: 5 },
 };
 
 /**
@@ -32,7 +32,7 @@ export function getConfiguredSocialProviders(env: ProviderEnv): SocialProvider[]
     // Google
     if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
         providers.push({
-            id: "google",
+            id: 'google',
             name: PROVIDER_CONFIG.google.name,
         });
     }
@@ -40,7 +40,7 @@ export function getConfiguredSocialProviders(env: ProviderEnv): SocialProvider[]
     // GitHub
     if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
         providers.push({
-            id: "github",
+            id: 'github',
             name: PROVIDER_CONFIG.github.name,
         });
     }
@@ -48,27 +48,23 @@ export function getConfiguredSocialProviders(env: ProviderEnv): SocialProvider[]
     // Discord
     if (env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET) {
         providers.push({
-            id: "discord",
+            id: 'discord',
             name: PROVIDER_CONFIG.discord.name,
         });
     }
 
     // Azure AD
-    if (
-        env.AZURE_AD_CLIENT_ID &&
-        env.AZURE_AD_CLIENT_SECRET &&
-        env.AZURE_AD_TENANT_ID
-    ) {
+    if (env.AZURE_AD_CLIENT_ID && env.AZURE_AD_CLIENT_SECRET && env.AZURE_AD_TENANT_ID) {
         providers.push({
-            id: "azure-ad",
-            name: PROVIDER_CONFIG["azure-ad"].name,
+            id: 'azure-ad',
+            name: PROVIDER_CONFIG['azure-ad'].name,
         });
     }
 
     // Auth0
     if (env.AUTH0_CLIENT_ID && env.AUTH0_CLIENT_SECRET && env.AUTH0_ISSUER) {
         providers.push({
-            id: "auth0",
+            id: 'auth0',
             name: PROVIDER_CONFIG.auth0.name,
         });
     }

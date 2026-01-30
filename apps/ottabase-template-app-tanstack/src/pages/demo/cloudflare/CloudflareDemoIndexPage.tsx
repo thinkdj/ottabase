@@ -1,59 +1,52 @@
-import { Link } from "@tanstack/react-router";
-import {
-    Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@ottabase/ui-shadcn";
+import { Link } from '@tanstack/react-router';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 
 export function CloudflareDemoIndexPage() {
     const demos = [
         {
-            name: "D1 Database",
-            description: "SQLite database with CRUD operations",
-            href: "/demo/cloudflare/d1",
+            name: 'D1 Database',
+            description: 'SQLite database with CRUD operations',
+            href: '/demo/cloudflare/d1',
         },
         {
-            name: "KV Storage",
-            description: "Key-value storage with TTL support",
-            href: "/demo/cloudflare/kv",
+            name: 'KV Storage',
+            description: 'Key-value storage with TTL support',
+            href: '/demo/cloudflare/kv',
         },
         {
-            name: "R2 Storage",
-            description: "Object storage for file uploads",
-            href: "/demo/cloudflare/r2",
+            name: 'R2 Storage',
+            description: 'Object storage for file uploads',
+            href: '/demo/cloudflare/r2',
         },
         {
-            name: "File Upload Package",
-            description: "Drag-and-drop file uploader with progress tracking",
-            href: "/demo/cloudflare/file-upload",
+            name: 'File Upload Package',
+            description: 'Drag-and-drop file uploader with progress tracking',
+            href: '/demo/cloudflare/file-upload',
         },
         {
-            name: "Images",
-            description: "Image upload and transformation (docs)",
-            href: "/demo/cloudflare/images",
+            name: 'Images',
+            description: 'Image upload and transformation (docs)',
+            href: '/demo/cloudflare/images',
         },
         {
-            name: "Hyperdrive",
-            description: "Database connection pooling and acceleration (docs)",
-            href: "/demo/cloudflare/hyperdrive",
+            name: 'Hyperdrive',
+            description: 'Database connection pooling and acceleration (docs)',
+            href: '/demo/cloudflare/hyperdrive',
         },
         {
-            name: "Queues",
-            description: "Message queue processing",
-            href: "/demo/cloudflare/queues",
+            name: 'Queues',
+            description: 'Message queue processing',
+            href: '/demo/cloudflare/queues',
         },
         {
-            name: "Rate Limiting",
-            description: "Request throttling and protection",
-            href: "/demo/cloudflare/rate-limiting",
+            name: 'Rate Limiting',
+            description: 'Request throttling and protection',
+            href: '/demo/cloudflare/rate-limiting',
         },
         {
-            name: "Realtime Pub/Sub",
-            description: "WebSocket-based real-time messaging with offline support",
-            href: "/demo/cloudflare/realtime",
+            name: 'Realtime Pub/Sub',
+            description: 'WebSocket-based real-time messaging with offline support',
+            href: '/demo/cloudflare/realtime',
         },
     ];
 

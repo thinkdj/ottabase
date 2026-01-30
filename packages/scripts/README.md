@@ -6,7 +6,8 @@ Utility scripts for Ottabase monorepo, including Prisma schema management.
 
 ### Modular Prisma Schema Management
 
-The `@ottabase/scripts` package provides a powerful system for managing Prisma schemas in a modular way. Instead of maintaining a single monolithic schema file, you can:
+The `@ottabase/scripts` package provides a powerful system for managing Prisma schemas in a modular way. Instead of
+maintaining a single monolithic schema file, you can:
 
 1. **Select specific core schemas** - Choose only the models you need (e.g., User, Post)
 2. **Configure database provider** - Easily switch between PostgreSQL, MySQL, SQLite, etc.
@@ -18,9 +19,9 @@ This package is already included in the Ottabase monorepo. For apps within the m
 
 ```json
 {
-  "devDependencies": {
-    "@ottabase/scripts": "workspace:*"
-  }
+    "devDependencies": {
+        "@ottabase/scripts": "workspace:*"
+    }
 }
 ```
 
@@ -31,20 +32,20 @@ This package is already included in the Ottabase monorepo. For apps within the m
 Create `ottabase/prisma/prisma.config.js` in your app:
 
 ```javascript
-const { definePrismaConfig } = require("@ottabase/db/prisma");
+const { definePrismaConfig } = require('@ottabase/db/prisma');
 
 module.exports = definePrismaConfig({
-  // Select which core schemas to include
-  coreSchemas: ["user", "post"],
+    // Select which core schemas to include
+    coreSchemas: ['user', 'post'],
 
-  // Configure database provider
-  provider: "postgresql",
+    // Configure database provider
+    provider: 'postgresql',
 
-  // Path to app-specific schema
-  appSchemaPath: "ottabase/prisma/app.schema.prisma",
+    // Path to app-specific schema
+    appSchemaPath: 'ottabase/prisma/app.schema.prisma',
 
-  // Output path for generated schema
-  outputSchemaPath: "prisma/schema.prisma",
+    // Output path for generated schema
+    outputSchemaPath: 'prisma/schema.prisma',
 });
 ```
 
@@ -52,9 +53,9 @@ module.exports = definePrismaConfig({
 
 ```json
 {
-  "scripts": {
-    "db:generate": "db-prisma-schema-concatenate"
-  }
+    "scripts": {
+        "db:generate": "db-prisma-schema-concatenate"
+    }
 }
 ```
 
@@ -86,7 +87,7 @@ Array of core schema names to include from `@ottabase/db/prisma/schemas/`.
 **Example:**
 
 ```javascript
-coreSchemas: ["user", "post"]
+coreSchemas: ['user', 'post'];
 ```
 
 ### `provider` (string)
@@ -105,7 +106,7 @@ Database provider for the generated schema.
 **Example:**
 
 ```javascript
-provider: "mysql"
+provider: 'mysql';
 ```
 
 ### `appSchemaPath` (string)
@@ -117,7 +118,7 @@ Path to your app-specific schema file, relative to the app root.
 **Example:**
 
 ```javascript
-appSchemaPath: "ottabase/prisma/app.schema.prisma"
+appSchemaPath: 'ottabase/prisma/app.schema.prisma';
 ```
 
 ### `outputSchemaPath` (string)
@@ -129,7 +130,7 @@ Path where the concatenated schema will be written, relative to the app root.
 **Example:**
 
 ```javascript
-outputSchemaPath: "prisma/schema.prisma"
+outputSchemaPath: 'prisma/schema.prisma';
 ```
 
 ## Examples
@@ -137,35 +138,35 @@ outputSchemaPath: "prisma/schema.prisma"
 ### Minimal Configuration (User only)
 
 ```javascript
-const { definePrismaConfig } = require("@ottabase/db/prisma");
+const { definePrismaConfig } = require('@ottabase/db/prisma');
 
 module.exports = definePrismaConfig({
-  coreSchemas: ["user"],
-  provider: "postgresql",
+    coreSchemas: ['user'],
+    provider: 'postgresql',
 });
 ```
 
 ### Full Configuration (All schemas, MySQL)
 
 ```javascript
-const { definePrismaConfig } = require("@ottabase/db/prisma");
+const { definePrismaConfig } = require('@ottabase/db/prisma');
 
 module.exports = definePrismaConfig({
-  coreSchemas: ["user", "post"],
-  provider: "mysql",
-  appSchemaPath: "ottabase/prisma/app.schema.prisma",
-  outputSchemaPath: "prisma/schema.prisma",
+    coreSchemas: ['user', 'post'],
+    provider: 'mysql',
+    appSchemaPath: 'ottabase/prisma/app.schema.prisma',
+    outputSchemaPath: 'prisma/schema.prisma',
 });
 ```
 
 ### SQLite for Development
 
 ```javascript
-const { definePrismaConfig } = require("@ottabase/db/prisma");
+const { definePrismaConfig } = require('@ottabase/db/prisma');
 
 module.exports = definePrismaConfig({
-  coreSchemas: ["user"],
-  provider: "sqlite",
+    coreSchemas: ['user'],
+    provider: 'sqlite',
 });
 ```
 
@@ -173,9 +174,9 @@ module.exports = definePrismaConfig({
 
 ```javascript
 module.exports = definePrismaConfig({
-  coreSchemas: [],
-  provider: "postgresql",
-  appSchemaPath: "ottabase/prisma/app.schema.prisma",
+    coreSchemas: [],
+    provider: 'postgresql',
+    appSchemaPath: 'ottabase/prisma/app.schema.prisma',
 });
 ```
 
@@ -237,15 +238,16 @@ To add new core schemas to `@ottabase/db`:
 For TypeScript configuration files, create `prisma.config.ts`:
 
 ```typescript
-import { definePrismaConfig } from "@ottabase/db/prisma";
+import { definePrismaConfig } from '@ottabase/db/prisma';
 
 export default definePrismaConfig({
-  coreSchemas: ["user", "post"],
-  provider: "postgresql",
+    coreSchemas: ['user', 'post'],
+    provider: 'postgresql',
 });
 ```
 
-**Note:** The script will automatically look for both `.js` and `.ts` files. However, `.js` files are recommended for better compatibility with Node.js `require()`.
+**Note:** The script will automatically look for both `.js` and `.ts` files. However, `.js` files are recommended for
+better compatibility with Node.js `require()`.
 
 ## Troubleshooting
 

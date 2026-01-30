@@ -2,9 +2,12 @@
 
 ## Overview
 
-The referral system for Ottabase is a complete, framework-agnostic solution that tracks inbound referral links, stores the first referrer for a visitor, tracks referral clicks, and attributes new signups to referrers. It provides stats, tracking logs, and user-managed referral usernames.
+The referral system for Ottabase is a complete, framework-agnostic solution that tracks inbound referral links, stores
+the first referrer for a visitor, tracks referral clicks, and attributes new signups to referrers. It provides stats,
+tracking logs, and user-managed referral usernames.
 
 **Key Features:**
+
 - ✅ First-touch attribution (first valid referral code wins)
 - ✅ 90-day expiry window for stored referral codes
 - ✅ Click tracking with metadata (IP, user agent, UTM params, referrer)
@@ -86,6 +89,7 @@ Added to `packages/ottaorm/src/models/User.ts`:
 ```
 
 **New Methods:**
+
 - `findByReferralUsername(username: string)` - Find user by referral username
 - `referrer()` - Get the user who referred this user
 - `referrals()` - Get users referred by this user
@@ -111,6 +115,7 @@ Defined in `packages/referrals/src/schema.ts`:
 ```
 
 **Indexes:**
+
 - userId
 - referredUserId
 - referralCode
@@ -145,6 +150,7 @@ Response: 200
 ```
 
 **Behavior:**
+
 - Validates referral code exists
 - Extracts IP, user agent from headers
 - Creates tracking record with status 'pending'
@@ -205,6 +211,7 @@ Response: 200
 ```
 
 **Validation:**
+
 - 3-20 characters
 - Letters, numbers, underscores only
 - Must be unique
@@ -253,6 +260,7 @@ Response: 200
 ```
 
 **Filters:**
+
 - `status` - pending | completed | invalid
 - `page` - Page number (default: 1)
 - `perPage` - Items per page (default: 20)
@@ -274,25 +282,28 @@ features: {
 ### Configuration Options
 
 #### `enabled` (default: `true`)
+
 - **Type:** `boolean`
 - **Description:** Master switch for the entire referral system
 - **When disabled:**
-  - ReferralTracker component won't run
-  - No referral codes stored in localStorage
-  - No click tracking
-  - Conversions still work if referralCode is manually passed to server
+    - ReferralTracker component won't run
+    - No referral codes stored in localStorage
+    - No click tracking
+    - Conversions still work if referralCode is manually passed to server
 
 #### `trackClicks` (default: `true`)
+
 - **Type:** `boolean`
 - **Description:** Controls whether referral clicks are tracked in the database
 - **When disabled:**
-  - Referral codes still stored in localStorage (for attribution)
-  - No `/api/referrals/track` API calls made
-  - No `ReferralTracking` records created with status `pending`
-  - Conversions still tracked when users sign up
-  - **Use case:** Reduce database writes, only care about final conversions
+    - Referral codes still stored in localStorage (for attribution)
+    - No `/api/referrals/track` API calls made
+    - No `ReferralTracking` records created with status `pending`
+    - Conversions still tracked when users sign up
+    - **Use case:** Reduce database writes, only care about final conversions
 
 #### `expiryDays` (default: `90`)
+
 - **Type:** `number`
 - **Description:** Number of days a stored referral code remains valid
 - **Behavior:** Expired codes are automatically cleared from localStorage
@@ -301,6 +312,7 @@ features: {
 ### Example Configurations
 
 **Minimal tracking (conversions only):**
+
 ```typescript
 referrals: {
   enabled: true,
@@ -310,6 +322,7 @@ referrals: {
 ```
 
 **Extended attribution window:**
+
 ```typescript
 referrals: {
   enabled: true,
@@ -319,6 +332,7 @@ referrals: {
 ```
 
 **Disabled:**
+
 ```typescript
 referrals: {
   enabled: false,
@@ -335,19 +349,20 @@ Place `<ReferralTracker />` in your root layout to enable automatic referral tra
 
 ```tsx
 // src/router.tsx
-import { ReferralTracker } from "@/components/ReferralTracker";
+import { ReferralTracker } from '@/components/ReferralTracker';
 
 function RootLayout() {
-  return (
-    <div>
-      <ReferralTracker />
-      {/* ... rest of layout */}
-    </div>
-  );
+    return (
+        <div>
+            <ReferralTracker />
+            {/* ... rest of layout */}
+        </div>
+    );
 }
 ```
 
 **Behavior:**
+
 1. Checks if referral system is enabled in config
 2. Checks URL for `?ref=` parameter
 3. Validates and stores referral code in localStorage (if not already stored)
@@ -358,6 +373,7 @@ function RootLayout() {
 ### Referral Dashboard
 
 The dashboard is a protected page that shows:
+
 - Referral stats (total, completed, pending)
 - Username management
 - Referral link with copy button
@@ -366,9 +382,9 @@ The dashboard is a protected page that shows:
 
 ```tsx
 // Usage
-import { ReferralDashboard } from "@/components/ReferralDashboard";
+import { ReferralDashboard } from '@/components/ReferralDashboard';
 
-<ReferralDashboard userId={user.id} />
+<ReferralDashboard userId={user.id} />;
 ```
 
 ### Utility Functions
@@ -405,25 +421,26 @@ const { expiresAt, daysRemaining, isExpired } = getReferralExpiryInfo();
 Use during user creation to handle referral attribution:
 
 ```typescript
-import { processReferralAttribution } from "@/ottabase/helpers/referral-attribution";
-import { getStoredReferralCode } from "@/lib/referrals";
+import { processReferralAttribution } from '@/ottabase/helpers/referral-attribution';
+import { getStoredReferralCode } from '@/lib/referrals';
 
 // In Auth.js callback or registration endpoint
 // Get referral code from client (passed during registration)
 const referralCode = getStoredReferralCode(); // Or from registration form data
 
 const result = await processReferralAttribution({
-  newUserId: user.id,
-  referralCode: referralCode,
+    newUserId: user.id,
+    referralCode: referralCode,
 });
 
 if (result.attributed) {
-  console.log(`User referred by ${result.referrerId}`);
-  console.log(`Updated ${result.trackingRecordsUpdated} tracking records`);
+    console.log(`User referred by ${result.referrerId}`);
+    console.log(`Updated ${result.trackingRecordsUpdated} tracking records`);
 }
 ```
 
 **What it does:**
+
 1. Validates referralCode is provided
 2. Looks up referrer by referralUsername
 3. Sets new user's `referredById` field
@@ -437,15 +454,15 @@ if (result.attributed) {
 ```typescript
 // Get tracking records for a user
 const records = await ReferralTracking.forUser(userId, {
-  status: "completed",
-  limit: 10,
+    status: 'completed',
+    limit: 10,
 });
 
 // Get stats
 const stats = await ReferralTracking.getStats(userId);
 
 // Find pending records by code
-const pending = await ReferralTracking.findPendingByCode("johndoe");
+const pending = await ReferralTracking.findPendingByCode('johndoe');
 
 // Recent conversions
 const recent = await ReferralTracking.recentConversions(10);
@@ -475,13 +492,13 @@ For production Auth.js integration, you have two options:
 const referralCode = getStoredReferralCode();
 
 // Send to server
-await fetch("/api/auth/register", {
-  method: "POST",
-  body: JSON.stringify({
-    email,
-    password,
-    referralCode, // Pass from localStorage
-  }),
+await fetch('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({
+        email,
+        password,
+        referralCode, // Pass from localStorage
+    }),
 });
 ```
 
@@ -510,24 +527,25 @@ callbacks: {
 Referral usernames must follow these rules (enforced in `@ottabase/referrals/validation`):
 
 - **Length:** 3-20 characters
-- **Characters:** Letters, numbers, underscores only (a-z, A-Z, 0-9, _)
+- **Characters:** Letters, numbers, underscores only (a-z, A-Z, 0-9, \_)
 - **Uniqueness:** Must be unique across all users
 - **No special chars:** No spaces, hyphens, or special characters
 
 Example validation:
 
 ```typescript
-import { validateReferralUsername } from "@ottabase/referrals";
+import { validateReferralUsername } from '@ottabase/referrals';
 
-const result = validateReferralUsername("john_doe123");
+const result = validateReferralUsername('john_doe123');
 if (!result.valid) {
-  console.error(result.error);
+    console.error(result.error);
 }
 ```
 
 ## Local Storage
 
-The system uses browser localStorage as the **only temporary storage** for referral codes (no KV, no external dependencies):
+The system uses browser localStorage as the **only temporary storage** for referral codes (no KV, no external
+dependencies):
 
 - `ottabase_referralCode` - Stored referral code
 - `ottabase_referralTimestamp` - Timestamp when code was stored
@@ -535,6 +553,7 @@ The system uses browser localStorage as the **only temporary storage** for refer
 **Expiry:** Configurable via `referrals.expiryDays` in app config (default: 90 days)
 
 **Why localStorage?**
+
 - Simple, no backend dependencies for temporary storage
 - Persists across sessions until conversion or expiry
 - Client-side first-touch attribution
@@ -545,11 +564,13 @@ The system uses browser localStorage as the **only temporary storage** for refer
 
 ### First-Touch Attribution
 
-Once a referral code is stored, subsequent referral links are ignored (for 90 days). This ensures fair attribution to the first referrer who brought the visitor.
+Once a referral code is stored, subsequent referral links are ignored (for 90 days). This ensures fair attribution to
+the first referrer who brought the visitor.
 
 ### Expiry Enforcement
 
 Stored referral codes automatically expire after 90 days. Expired codes are:
+
 - Cleared from localStorage
 - Not used for attribution
 - Not returned by `getStoredReferralCode()`
@@ -557,6 +578,7 @@ Stored referral codes automatically expire after 90 days. Expired codes are:
 ### Invalid Codes
 
 If a user visits with an invalid referral code:
+
 - API returns 404 error
 - No tracking record is created
 - Code is not stored in localStorage
@@ -564,6 +586,7 @@ If a user visits with an invalid referral code:
 ### Username Changes
 
 When a user changes their referral username:
+
 - Old referral links stop working
 - Pending referrals with old code may not convert
 - A warning is shown in the UI
@@ -572,6 +595,7 @@ When a user changes their referral username:
 ## Testing Checklist
 
 **Basic Flow:**
+
 - [ ] Visit site with `?ref=validcode` - code should be stored
 - [ ] Visit again with `?ref=differentcode` - first code should remain
 - [ ] Check localStorage for stored code
@@ -586,6 +610,7 @@ When a user changes their referral username:
 - [ ] Test with expired code (mock timestamp) - should be cleared
 
 **Configuration Testing:**
+
 - [ ] Set `enabled: false` - ReferralTracker should not run
 - [ ] Set `trackClicks: false` - Code stored but no API call made
 - [ ] Set `expiryDays: 30` - Code expires after 30 days
@@ -605,43 +630,49 @@ When a user changes their referral username:
 ## Deployment Steps
 
 1. **Run migrations:**
-   ```bash
-   pnpm db:push
-   ```
+
+    ```bash
+    pnpm db:push
+    ```
 
 2. **Verify tables created:**
-   - `users` table has `referral_username` and `referred_by_id` columns
-   - `referral_tracking` table exists with all columns
+    - `users` table has `referral_username` and `referred_by_id` columns
+    - `referral_tracking` table exists with all columns
 
 3. **Test locally:**
-   ```bash
-   pnpm dev
-   ```
+
+    ```bash
+    pnpm dev
+    ```
 
 4. **Deploy to Cloudflare:**
-   ```bash
-   pnpm deploy
-   ```
+
+    ```bash
+    pnpm deploy
+    ```
 
 5. **Test in production:**
-   - Visit `/referrals` while logged in
-   - Set your referral username
-   - Share your referral link
-   - Register a test account via referral link
+    - Visit `/referrals` while logged in
+    - Set your referral username
+    - Share your referral link
+    - Register a test account via referral link
 
 ## Troubleshooting
 
 **Referral code not being stored:**
+
 - Check browser localStorage is enabled
 - Verify ReferralTracker component is mounted
 - Check browser console for errors
 
 **Tracking API returns 404:**
+
 - Verify referral username exists in database
 - Check user has set their referral username
 - Verify API routes are deployed
 
 **Attribution not working:**
+
 - Check `processReferralAttribution()` is called during signup
 - Verify referralCode is passed from client to server
 - Check database for pending tracking records
@@ -649,6 +680,7 @@ When a user changes their referral username:
 - Check browser localStorage for stored referral code
 
 **Username validation failing:**
+
 - Must be 3-20 characters
 - Only letters, numbers, underscores
 - Check for uniqueness conflicts

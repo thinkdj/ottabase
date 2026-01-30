@@ -3,4 +3,4 @@
  */
 
 // Re-export getInitials from string utilities for backward compatibility
-export { getInitials } from "./string";
+export { getInitials } from './string';

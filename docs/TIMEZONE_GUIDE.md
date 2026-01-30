@@ -4,7 +4,8 @@ Complete guide for working with timezones in Ottabase applications using `@ottab
 
 ## Overview
 
-The timezone utilities package provides a production-ready solution for standardizing timezone handling across your SaaS applications. It follows industry best practices:
+The timezone utilities package provides a production-ready solution for standardizing timezone handling across your SaaS
+applications. It follows industry best practices:
 
 - **Server/Database**: Always store in UTC
 - **Client/Display**: Convert to user's timezone
@@ -23,12 +24,12 @@ pnpm add @ottabase/utils
 
 ```typescript
 import {
-  toUTC,
-  fromUTC,
-  formatInUserTimezone,
-  getUserTimezone,
-  setTimezoneConfig,
-  nowUTC,
+    toUTC,
+    fromUTC,
+    formatInUserTimezone,
+    getUserTimezone,
+    setTimezoneConfig,
+    nowUTC,
 } from '@ottabase/utils/timezone';
 
 // 1. Configure on app initialization
@@ -36,8 +37,8 @@ setTimezoneConfig({ userTimezone: getUserTimezone() });
 
 // 2. Creating records - always use UTC
 const newPost = {
-  title: 'My Post',
-  createdAt: nowUTC(),
+    title: 'My Post',
+    createdAt: nowUTC(),
 };
 
 // 3. Storing user input - convert to UTC
@@ -54,18 +55,18 @@ const displayTime = formatInUserTimezone(dbDate, 'PPpp', user.timezone);
 ```typescript
 // ✅ CORRECT: Store in UTC
 const post = await db.post.create({
-  data: {
-    title: 'New Post',
-    createdAt: nowUTC(), // Current time in UTC
-    publishedAt: toUTC(userInputDate, user.timezone), // Convert user input to UTC
-  },
+    data: {
+        title: 'New Post',
+        createdAt: nowUTC(), // Current time in UTC
+        publishedAt: toUTC(userInputDate, user.timezone), // Convert user input to UTC
+    },
 });
 
 // ❌ INCORRECT: Never store user's local time
 const post = await db.post.create({
-  data: {
-    createdAt: new Date(), // Dangerous! Could be in any timezone
-  },
+    data: {
+        createdAt: new Date(), // Dangerous! Could be in any timezone
+    },
 });
 ```
 
@@ -105,13 +106,13 @@ const scheduledDate = new Date(userInput); // Ambiguous timezone
 import { nowUTC, getUserTimezone } from '@ottabase/utils/timezone';
 
 async function registerUser(data: RegisterInput) {
-  return db.user.create({
-    data: {
-      email: data.email,
-      timezone: getUserTimezone(), // Store user's detected timezone
-      createdAt: nowUTC(), // Store registration time in UTC
-    },
-  });
+    return db.user.create({
+        data: {
+            email: data.email,
+            timezone: getUserTimezone(), // Store user's detected timezone
+            createdAt: nowUTC(), // Store registration time in UTC
+        },
+    });
 }
 ```
 
@@ -122,34 +123,30 @@ import { toUTC, formatInUserTimezone } from '@ottabase/utils/timezone';
 
 // Creating scheduled content
 async function schedulePost(userId: string, data: ScheduleInput) {
-  const user = await db.user.findUnique({ where: { id: userId } });
+    const user = await db.user.findUnique({ where: { id: userId } });
 
-  return db.post.create({
-    data: {
-      userId,
-      title: data.title,
-      scheduledAt: toUTC(data.scheduledAt, user.timezone), // Convert to UTC
-      createdAt: nowUTC(),
-    },
-  });
+    return db.post.create({
+        data: {
+            userId,
+            title: data.title,
+            scheduledAt: toUTC(data.scheduledAt, user.timezone), // Convert to UTC
+            createdAt: nowUTC(),
+        },
+    });
 }
 
 // Displaying scheduled content
 async function getScheduledPosts(userId: string) {
-  const user = await db.user.findUnique({ where: { id: userId } });
-  const posts = await db.post.findMany({
-    where: { userId, scheduledAt: { gte: nowUTC() } },
-  });
+    const user = await db.user.findUnique({ where: { id: userId } });
+    const posts = await db.post.findMany({
+        where: { userId, scheduledAt: { gte: nowUTC() } },
+    });
 
-  return posts.map((post) => ({
-    ...post,
-    // Display in user's timezone
-    scheduledAtDisplay: formatInUserTimezone(
-      post.scheduledAt,
-      'PPpp',
-      user.timezone
-    ),
-  }));
+    return posts.map((post) => ({
+        ...post,
+        // Display in user's timezone
+        scheduledAtDisplay: formatInUserTimezone(post.scheduledAt, 'PPpp', user.timezone),
+    }));
 }
 ```
 
@@ -188,23 +185,19 @@ import { formatInUserTimezone } from '@ottabase/utils/timezone';
 
 // API route returning formatted dates
 export async function GET(request: Request) {
-  const userId = getUserIdFromRequest(request);
-  const user = await db.user.findUnique({ where: { id: userId } });
-  const posts = await db.post.findMany({ where: { userId } });
+    const userId = getUserIdFromRequest(request);
+    const user = await db.user.findUnique({ where: { id: userId } });
+    const posts = await db.post.findMany({ where: { userId } });
 
-  // Format dates for user's timezone
-  const formattedPosts = posts.map((post) => ({
-    id: post.id,
-    title: post.title,
-    createdAt: post.createdAt.toISOString(), // Keep raw UTC
-    createdAtFormatted: formatInUserTimezone(
-      post.createdAt,
-      'PPpp',
-      user.timezone
-    ),
-  }));
+    // Format dates for user's timezone
+    const formattedPosts = posts.map((post) => ({
+        id: post.id,
+        title: post.title,
+        createdAt: post.createdAt.toISOString(), // Keep raw UTC
+        createdAtFormatted: formatInUserTimezone(post.createdAt, 'PPpp', user.timezone),
+    }));
 
-  return Response.json(formattedPosts);
+    return Response.json(formattedPosts);
 }
 ```
 
@@ -237,8 +230,8 @@ Set global timezone configuration.
 
 ```typescript
 setTimezoneConfig({
-  defaultTimezone: 'UTC',
-  userTimezone: 'America/New_York',
+    defaultTimezone: 'UTC',
+    userTimezone: 'America/New_York',
 });
 ```
 
@@ -313,46 +306,48 @@ See [date-fns format tokens](https://date-fns.org/v2.30.0/docs/format) for compl
 
 ### Preset Format Functions
 
-Ready-to-use format presets for common display patterns. These are convenience wrappers that eliminate the need to remember format strings.
+Ready-to-use format presets for common display patterns. These are convenience wrappers that eliminate the need to
+remember format strings.
 
 #### Available Presets
 
 ```typescript
 import {
-  formatShortDateTime,
-  formatDayMonthDateTime,
-  formatLongDateTime,
-  formatShortDate,
-  formatSlashDate,
-  formatISODateTime,
-  formatTime12Hour,
-  formatTime24Hour,
-  formatFullDate,
-  formatCompactDateTime,
-  formatDateAtTime,
+    formatShortDateTime,
+    formatDayMonthDateTime,
+    formatLongDateTime,
+    formatShortDate,
+    formatSlashDate,
+    formatISODateTime,
+    formatTime12Hour,
+    formatTime24Hour,
+    formatFullDate,
+    formatCompactDateTime,
+    formatDateAtTime,
 } from '@ottabase/utils/timezone';
 
 const dbDate = new Date('2024-01-15T19:30:00Z');
 
 // Date and Time formats
-formatShortDateTime(dbDate);      // "Jan 15, 2024 2:30 PM"
-formatDayMonthDateTime(dbDate);   // "15-JAN-2024 2:30 PM"
-formatLongDateTime(dbDate);       // "January 15, 2024 2:30 PM"
-formatISODateTime(dbDate);        // "2024-01-15 2:30 PM"
-formatCompactDateTime(dbDate);    // "Mon, Jan 15, 2024 2:30 PM"
-formatDateAtTime(dbDate);         // "Jan 15 at 2:30 PM"
+formatShortDateTime(dbDate); // "Jan 15, 2024 2:30 PM"
+formatDayMonthDateTime(dbDate); // "15-JAN-2024 2:30 PM"
+formatLongDateTime(dbDate); // "January 15, 2024 2:30 PM"
+formatISODateTime(dbDate); // "2024-01-15 2:30 PM"
+formatCompactDateTime(dbDate); // "Mon, Jan 15, 2024 2:30 PM"
+formatDateAtTime(dbDate); // "Jan 15 at 2:30 PM"
 
 // Date only formats
-formatShortDate(dbDate);          // "Jan 15, 2024"
-formatSlashDate(dbDate);          // "15/Jan/2024"
-formatFullDate(dbDate);           // "Monday, January 15, 2024"
+formatShortDate(dbDate); // "Jan 15, 2024"
+formatSlashDate(dbDate); // "15/Jan/2024"
+formatFullDate(dbDate); // "Monday, January 15, 2024"
 
 // Time only formats
-formatTime12Hour(dbDate);         // "2:30 PM"
-formatTime24Hour(dbDate);         // "14:30"
+formatTime12Hour(dbDate); // "2:30 PM"
+formatTime24Hour(dbDate); // "14:30"
 ```
 
 **When to use preset formats:**
+
 - ✅ Use presets for consistency across your app
 - ✅ Use presets to avoid remembering format strings
 - ✅ Use presets for common display patterns
@@ -443,33 +438,28 @@ model Post {
 ### Unit Test Example
 
 ```typescript
-import {
-  toUTC,
-  fromUTC,
-  formatInUserTimezone,
-  isValidTimezone,
-} from '@ottabase/utils/timezone';
+import { toUTC, fromUTC, formatInUserTimezone, isValidTimezone } from '@ottabase/utils/timezone';
 
 describe('Timezone Utilities', () => {
-  test('converts user input to UTC', () => {
-    const userInput = '2024-01-15T14:30:00';
-    const utcDate = toUTC(userInput, 'America/New_York');
+    test('converts user input to UTC', () => {
+        const userInput = '2024-01-15T14:30:00';
+        const utcDate = toUTC(userInput, 'America/New_York');
 
-    expect(utcDate?.toISOString()).toBe('2024-01-15T19:30:00.000Z');
-  });
+        expect(utcDate?.toISOString()).toBe('2024-01-15T19:30:00.000Z');
+    });
 
-  test('formats UTC date in user timezone', () => {
-    const utcDate = new Date('2024-01-15T19:30:00Z');
-    const formatted = formatInUserTimezone(utcDate, 'PPpp', 'America/New_York');
+    test('formats UTC date in user timezone', () => {
+        const utcDate = new Date('2024-01-15T19:30:00Z');
+        const formatted = formatInUserTimezone(utcDate, 'PPpp', 'America/New_York');
 
-    expect(formatted).toContain('2:30:00 PM');
-    expect(formatted).toContain('Jan 15, 2024');
-  });
+        expect(formatted).toContain('2:30:00 PM');
+        expect(formatted).toContain('Jan 15, 2024');
+    });
 
-  test('validates timezone strings', () => {
-    expect(isValidTimezone('America/New_York')).toBe(true);
-    expect(isValidTimezone('Invalid/Timezone')).toBe(false);
-  });
+    test('validates timezone strings', () => {
+        expect(isValidTimezone('America/New_York')).toBe(true);
+        expect(isValidTimezone('Invalid/Timezone')).toBe(false);
+    });
 });
 ```
 
@@ -478,61 +468,71 @@ describe('Timezone Utilities', () => {
 ### ✅ Do
 
 1. **Always store in UTC**
-   ```typescript
-   createdAt: nowUTC()
-   ```
+
+    ```typescript
+    createdAt: nowUTC();
+    ```
 
 2. **Convert user input to UTC before storing**
-   ```typescript
-   scheduledAt: toUTC(userInput, user.timezone)
-   ```
+
+    ```typescript
+    scheduledAt: toUTC(userInput, user.timezone);
+    ```
 
 3. **Format dates in user's timezone for display**
-   ```typescript
-   formatInUserTimezone(dbDate, 'PPpp', user.timezone)
-   ```
+
+    ```typescript
+    formatInUserTimezone(dbDate, 'PPpp', user.timezone);
+    ```
 
 4. **Store user's timezone preference**
-   ```typescript
-   user.timezone = getUserTimezone()
-   ```
+
+    ```typescript
+    user.timezone = getUserTimezone();
+    ```
 
 5. **Validate timezone input**
-   ```typescript
-   if (isValidTimezone(input)) { /* ... */ }
-   ```
+    ```typescript
+    if (isValidTimezone(input)) {
+        /* ... */
+    }
+    ```
 
 ### ❌ Don't
 
 1. **Never store dates in user's local timezone**
-   ```typescript
-   // ❌ BAD
-   createdAt: new Date()
-   ```
+
+    ```typescript
+    // ❌ BAD
+    createdAt: new Date();
+    ```
 
 2. **Never display UTC dates directly to users**
-   ```typescript
-   // ❌ BAD
-   <p>{post.createdAt.toISOString()}</p>
-   ```
+
+    ```typescript
+    // ❌ BAD
+    <p>{post.createdAt.toISOString()}</p>
+    ```
 
 3. **Never parse dates without timezone context**
-   ```typescript
-   // ❌ BAD
-   const date = new Date(userInput)
-   ```
+
+    ```typescript
+    // ❌ BAD
+    const date = new Date(userInput);
+    ```
 
 4. **Never hardcode timezone offsets**
-   ```typescript
-   // ❌ BAD
-   date.setHours(date.getHours() - 5) // EST offset
-   ```
+
+    ```typescript
+    // ❌ BAD
+    date.setHours(date.getHours() - 5); // EST offset
+    ```
 
 5. **Never assume server and client are in same timezone**
-   ```typescript
-   // ❌ BAD
-   const now = new Date() // Could be server or client timezone
-   ```
+    ```typescript
+    // ❌ BAD
+    const now = new Date(); // Could be server or client timezone
+    ```
 
 ## Troubleshooting
 
@@ -621,6 +621,7 @@ const formatted = formatInUserTimezone(utcDate, 'PPpp', 'America/New_York');
 ## Support
 
 For issues or questions:
+
 1. Check the [Demo Page](/demo/timezone) for working examples
 2. Review this guide and the package README
 3. Open an issue on GitHub with minimal reproduction

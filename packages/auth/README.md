@@ -26,8 +26,8 @@ pnpm add @auth/core drizzle-orm
 ```typescript
 // db.config.ts
 export default defineAppDbConfig({
-  appId: "your-app",
-  features: ["auth"], // Adds auth tables to migrations
+    appId: 'your-app',
+    features: ['auth'], // Adds auth tables to migrations
 });
 ```
 
@@ -42,11 +42,11 @@ Auth tables are in core OttaORM migrations (001, 002, 006, 007, 008).
 ### 3. Configure Auth
 
 ```typescript
-import { createOttabaseAuthConfig, createGoogleProvider } from "@ottabase/auth";
+import { createOttabaseAuthConfig, createGoogleProvider } from '@ottabase/auth';
 
 export const authConfig = createOttabaseAuthConfig({
-  d1: env.DB,
-  providers: [createGoogleProvider(env)],
+    d1: env.DB,
+    providers: [createGoogleProvider(env)],
 });
 ```
 
@@ -55,14 +55,11 @@ export const authConfig = createOttabaseAuthConfig({
 ### Basic Configuration
 
 ```typescript
-import { createOttabaseAuthConfig } from "@ottabase/auth";
+import { createOttabaseAuthConfig } from '@ottabase/auth';
 
 const config = createOttabaseAuthConfig({
-  d1: env.DB,
-  providers: [
-    createGoogleProvider(env),
-    createGitHubProvider(env),
-  ],
+    d1: env.DB,
+    providers: [createGoogleProvider(env), createGitHubProvider(env)],
 });
 ```
 
@@ -97,12 +94,12 @@ const config = createOttabaseAuthConfig({
 ### Auto-Configure Providers
 
 ```typescript
-import { autoConfigureProviders } from "@ottabase/auth";
+import { autoConfigureProviders } from '@ottabase/auth';
 
 // Automatically enables providers based on env vars
 const config = createOttabaseAuthConfig({
-  d1: env.DB,
-  providers: autoConfigureProviders(env),
+    d1: env.DB,
+    providers: autoConfigureProviders(env),
 });
 ```
 
@@ -112,46 +109,48 @@ const config = createOttabaseAuthConfig({
 
 ```typescript
 // app/auth.ts
-import NextAuth from "next-auth";
-import { createOttabaseAuthConfig, createGoogleProvider } from "@ottabase/auth";
+import NextAuth from 'next-auth';
+import { createOttabaseAuthConfig, createGoogleProvider } from '@ottabase/auth';
 
 export const { handlers, auth, signIn, signOut } = NextAuth((request) => {
-  const env = request?.env || process.env;
-  
-  return createOttabaseAuthConfig({
-    d1: env.OBCF_D1,
-    providers: [createGoogleProvider(env)],
-  });
+    const env = request?.env || process.env;
+
+    return createOttabaseAuthConfig({
+        d1: env.OBCF_D1,
+        providers: [createGoogleProvider(env)],
+    });
 });
 ```
 
 ```typescript
 // middleware.ts
-export { auth as middleware } from "@/app/auth";
+export { auth as middleware } from '@/app/auth';
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+    matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
 ```
 
 ### Cloudflare Workers
 
 ```typescript
-import { Auth } from "@auth/core";
-import { createOttabaseAuthConfig } from "@ottabase/auth";
+import { Auth } from '@auth/core';
+import { createOttabaseAuthConfig } from '@ottabase/auth';
 
 export default {
-  async fetch(request: Request, env: Env) {
-    const config = createOttabaseAuthConfig({
-      d1: env.DB,
-      providers: [/* ... */],
-    });
-    
-    const auth = Auth(request, config);
-    const session = await auth.getSession();
-    
-    return new Response(JSON.stringify(session));
-  }
+    async fetch(request: Request, env: Env) {
+        const config = createOttabaseAuthConfig({
+            d1: env.DB,
+            providers: [
+                /* ... */
+            ],
+        });
+
+        const auth = Auth(request, config);
+        const session = await auth.getSession();
+
+        return new Response(JSON.stringify(session));
+    },
 };
 ```
 
@@ -159,14 +158,16 @@ export default {
 
 ```typescript
 // src/hooks.server.ts
-import { SvelteKitAuth } from "@auth/sveltekit";
-import { createOttabaseAuthConfig } from "@ottabase/auth";
+import { SvelteKitAuth } from '@auth/sveltekit';
+import { createOttabaseAuthConfig } from '@ottabase/auth';
 
 export const handle = SvelteKitAuth(async ({ platform }) => {
-  return createOttabaseAuthConfig({
-    d1: platform.env.DB,
-    providers: [/* ... */],
-  });
+    return createOttabaseAuthConfig({
+        d1: platform.env.DB,
+        providers: [
+            /* ... */
+        ],
+    });
 });
 ```
 
@@ -191,19 +192,19 @@ export function LoginPage() {
         { id: "github", name: "GitHub" },
       ]}
       onSocialLogin={(providerId) => signIn(providerId)}
-      
+
       // Credentials login
       showCredentials
       onCredentialsLogin={async ({ email, password }) => {
         await signIn("credentials", { email, password });
       }}
-      
+
       // Magic link
       showMagicLink
       onMagicLinkSend={async (email) => {
         await signIn("email", { email });
       }}
-      
+
       // Customization
       title="Welcome back"
       description="Sign in to continue"
@@ -232,7 +233,7 @@ export function LoginPage() {
       socialProviders={config.socialProviders}
       showCredentials={config.showCredentials}
       showMagicLink={config.showMagicLink}
-      
+
       // Handlers
       onSocialLogin={(id) => signIn(id)}
       onCredentialsLogin={async ({ email, password }) => {
@@ -241,7 +242,7 @@ export function LoginPage() {
       onMagicLinkSend={async (email) => {
         await signIn("email", { email });
       }}
-      
+
       title="Welcome back"
     />
   );
@@ -249,15 +250,13 @@ export function LoginPage() {
 ```
 
 **Helper functions:**
+
 - `getLoginConfig(env)` - Returns complete configuration
 - `getConfiguredSocialProviders(env)` - Returns only configured OAuth providers
 - `isEmailProviderConfigured(env)` - Checks if Resend or SMTP is configured
 
 ```typescript
-import { 
-  getConfiguredSocialProviders, 
-  isEmailProviderConfigured 
-} from "@ottabase/auth/components";
+import { getConfiguredSocialProviders, isEmailProviderConfigured } from '@ottabase/auth/components';
 
 // Get only social providers that have credentials
 const socialProviders = getConfiguredSocialProviders(process.env);
@@ -337,12 +336,12 @@ Components use Tailwind CSS and follow shadcn/ui design patterns. They automatic
 
 ```typescript
 import {
-  createGoogleProvider,
-  createGitHubProvider,
-  createDiscordProvider,
-  createAzureAdProvider,
-  createAuth0Provider,
-} from "@ottabase/auth";
+    createGoogleProvider,
+    createGitHubProvider,
+    createDiscordProvider,
+    createAzureAdProvider,
+    createAuth0Provider,
+} from '@ottabase/auth';
 
 createGoogleProvider(env); // Requires GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 createGitHubProvider(env); // Requires GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
@@ -355,60 +354,56 @@ createAuth0Provider(env); // Requires AUTH0_* vars
 
 ```typescript
 createGoogleProvider(env, {
-  scopes: ["https://www.googleapis.com/auth/calendar.readonly"],
+    scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
 });
 
 createGitHubProvider(env, {
-  scopes: ["repo", "read:org"],
+    scopes: ['repo', 'read:org'],
 });
 ```
 
 ### Credentials Provider (Username/Password)
 
 ```typescript
-import { createCredentialsProvider } from "@ottabase/auth";
-import bcrypt from "bcryptjs";
+import { createCredentialsProvider } from '@ottabase/auth';
+import bcrypt from 'bcryptjs';
 
 const credentialsProvider = createCredentialsProvider(async (credentials) => {
-  // Validate credentials against your database
-  const user = await db.user.findUnique({
-    where: { email: credentials.email }
-  });
+    // Validate credentials against your database
+    const user = await db.user.findUnique({
+        where: { email: credentials.email },
+    });
 
-  if (!user || !await bcrypt.compare(credentials.password, user.passwordHash)) {
-    return null; // Invalid credentials
-  }
+    if (!user || !(await bcrypt.compare(credentials.password, user.passwordHash))) {
+        return null; // Invalid credentials
+    }
 
-  // Return user object (without password!)
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-  };
+    // Return user object (without password!)
+    return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+    };
 });
 ```
 
 #### Custom Credentials Fields
 
 ```typescript
-import { createCustomCredentialsProvider } from "@ottabase/auth";
+import { createCustomCredentialsProvider } from '@ottabase/auth';
 
 const provider = createCustomCredentialsProvider({
-  credentials: {
-    username: { label: "Username", type: "text" },
-    password: { label: "Password", type: "password" },
-    domain: { label: "Domain", type: "text" },
-  },
-  authorize: async (credentials) => {
-    // Your custom validation logic
-    const user = await validateUser(
-      credentials.username,
-      credentials.password,
-      credentials.domain
-    );
-    
-    return user ? { id: user.id, name: user.name } : null;
-  },
+    credentials: {
+        username: { label: 'Username', type: 'text' },
+        password: { label: 'Password', type: 'password' },
+        domain: { label: 'Domain', type: 'text' },
+    },
+    authorize: async (credentials) => {
+        // Your custom validation logic
+        const user = await validateUser(credentials.username, credentials.password, credentials.domain);
+
+        return user ? { id: user.id, name: user.name } : null;
+    },
 });
 ```
 
@@ -417,10 +412,10 @@ const provider = createCustomCredentialsProvider({
 #### Using Resend
 
 ```typescript
-import { createResendProvider } from "@ottabase/auth";
+import { createResendProvider } from '@ottabase/auth';
 
 const emailProvider = createResendProvider(env, {
-  from: "noreply@yourdomain.com",
+    from: 'noreply@yourdomain.com',
 });
 // Requires: EMAIL_RESEND_API_KEY env var
 ```
@@ -428,7 +423,7 @@ const emailProvider = createResendProvider(env, {
 #### Using Nodemailer (SMTP)
 
 ```typescript
-import { createNodemailerProvider } from "@ottabase/auth";
+import { createNodemailerProvider } from '@ottabase/auth';
 
 // Option 1: Using env vars
 const emailProvider = createNodemailerProvider(env);
@@ -436,15 +431,15 @@ const emailProvider = createNodemailerProvider(env);
 
 // Option 2: Custom SMTP config
 const emailProvider = createNodemailerProvider(env, {
-  server: {
-    host: "smtp.gmail.com",
-    port: 587,
-    auth: {
-      user: "your.email@gmail.com",
-      pass: "your-app-password",
+    server: {
+        host: 'smtp.gmail.com',
+        port: 587,
+        auth: {
+            user: 'your.email@gmail.com',
+            pass: 'your-app-password',
+        },
     },
-  },
-  from: "noreply@yourdomain.com",
+    from: 'noreply@yourdomain.com',
 });
 ```
 
@@ -452,18 +447,18 @@ const emailProvider = createNodemailerProvider(env, {
 
 ```typescript
 import {
-  isAuthenticated,
-  requireAuth,
-  getUserId,
-  getUserEmail,
-  hasVerifiedEmail,
-  serializeSession,
-} from "@ottabase/auth";
+    isAuthenticated,
+    requireAuth,
+    getUserId,
+    getUserEmail,
+    hasVerifiedEmail,
+    serializeSession,
+} from '@ottabase/auth';
 
 // Check if authenticated
 const session = await getSession();
 if (isAuthenticated(session)) {
-  console.log(session.user.id);
+    console.log(session.user.id);
 }
 
 // Require auth (throws if not authenticated)
@@ -482,17 +477,17 @@ const data = serializeSession(session);
 
 ```typescript
 interface OttabaseAuthConfigOptions {
-  d1: D1Database;
-  providers: Provider[];
-  
-  // Optional
-  sessionStrategy?: "jwt" | "database"; // Default: "jwt"
-  sessionMaxAge?: number; // Default: 30 days
-  useCachedAdapter?: boolean; // Default: true
-  log?: boolean | ("query" | "info" | "warn" | "error")[];
-  customUserFields?: string[];
-  onError?: (error: Error, operation: string) => void;
-  authConfig?: Partial<AuthConfig>; // Additional Auth.js options
+    d1: D1Database;
+    providers: Provider[];
+
+    // Optional
+    sessionStrategy?: 'jwt' | 'database'; // Default: "jwt"
+    sessionMaxAge?: number; // Default: 30 days
+    useCachedAdapter?: boolean; // Default: true
+    log?: boolean | ('query' | 'info' | 'warn' | 'error')[];
+    customUserFields?: string[];
+    onError?: (error: Error, operation: string) => void;
+    authConfig?: Partial<AuthConfig>; // Additional Auth.js options
 }
 ```
 
@@ -501,32 +496,32 @@ interface OttabaseAuthConfigOptions {
 ### Using the Unified Adapter
 
 ```typescript
-import { createD1AuthAdapter } from "@ottabase/auth";
+import { createD1AuthAdapter } from '@ottabase/auth';
 
 const adapter = createD1AuthAdapter(env.DB, {
-  log: ["query", "error"],
-  customUserFields: ["role", "tier"],
-  onError: (error, operation) => {
-    console.error(`Error in ${operation}:`, error);
-  },
+    log: ['query', 'error'],
+    customUserFields: ['role', 'tier'],
+    onError: (error, operation) => {
+        console.error(`Error in ${operation}:`, error);
+    },
 });
 ```
 
 ### Using the Drizzle Adapter Directly
 
 ```typescript
-import { createDrizzleD1AuthAdapter } from "@ottabase/auth";
+import { createDrizzleD1AuthAdapter } from '@ottabase/auth';
 
 const adapter = createDrizzleD1AuthAdapter(env.DB, {
-  log: true,
-  customUserFields: ["organizationId"],
+    log: true,
+    customUserFields: ['organizationId'],
 });
 ```
 
 ### Cached Adapter (Recommended for Production)
 
 ```typescript
-import { createD1AuthAdapterCached } from "@ottabase/auth";
+import { createD1AuthAdapterCached } from '@ottabase/auth';
 
 const adapter = createD1AuthAdapterCached(env.DB);
 ```
@@ -571,13 +566,13 @@ EMAIL_FROM=noreply@yourdomain.com
 
 Auth tables are managed by OttaORM migrations:
 
-| Table | Migration | Purpose |
-|-------|-----------|---------|
-| `User` | 001 | User accounts |
-| `Account` | 002 | OAuth provider accounts |
-| `Session` | 006 | Session storage (database strategy) |
-| `VerificationToken` | 007 | Email verification tokens |
-| `Authenticator` | 008 | WebAuthn/Passkey credentials |
+| Table               | Migration | Purpose                             |
+| ------------------- | --------- | ----------------------------------- |
+| `User`              | 001       | User accounts                       |
+| `Account`           | 002       | OAuth provider accounts             |
+| `Session`           | 006       | Session storage (database strategy) |
+| `VerificationToken` | 007       | Email verification tokens           |
+| `Authenticator`     | 008       | WebAuthn/Passkey credentials        |
 
 ### Extending the User Model
 
@@ -606,46 +601,40 @@ const config = createOttabaseAuthConfig({
 
 ```typescript
 // Adapters
-export { createD1AuthAdapter, createD1AuthAdapterCached } from "@ottabase/auth";
-export { createDrizzleD1AuthAdapter, createDrizzleD1AuthAdapterCached } from "@ottabase/auth";
+export { createD1AuthAdapter, createD1AuthAdapterCached } from '@ottabase/auth';
+export { createDrizzleD1AuthAdapter, createDrizzleD1AuthAdapterCached } from '@ottabase/auth';
 
 // Config
-export { createOttabaseAuthConfig, createOttabaseAuthConfigDev } from "@ottabase/auth";
+export { createOttabaseAuthConfig, createOttabaseAuthConfigDev } from '@ottabase/auth';
 
 // Providers - OAuth
 export {
-  createGoogleProvider,
-  createGitHubProvider,
-  createDiscordProvider,
-  createAzureAdProvider,
-  createAuth0Provider,
-  autoConfigureProviders,
-} from "@ottabase/auth";
+    createGoogleProvider,
+    createGitHubProvider,
+    createDiscordProvider,
+    createAzureAdProvider,
+    createAuth0Provider,
+    autoConfigureProviders,
+} from '@ottabase/auth';
 
 // Providers - Credentials
-export {
-  createCredentialsProvider,
-  createCustomCredentialsProvider,
-} from "@ottabase/auth";
+export { createCredentialsProvider, createCustomCredentialsProvider } from '@ottabase/auth';
 
 // Providers - Email (Magic Link)
-export {
-  createResendProvider,
-  createNodemailerProvider,
-} from "@ottabase/auth";
+export { createResendProvider, createNodemailerProvider } from '@ottabase/auth';
 
 // Session Utilities
 export {
-  isAuthenticated,
-  requireAuth,
-  getUserId,
-  getUserEmail,
-  hasVerifiedEmail,
-  serializeSession,
-} from "@ottabase/auth";
+    isAuthenticated,
+    requireAuth,
+    getUserId,
+    getUserEmail,
+    hasVerifiedEmail,
+    serializeSession,
+} from '@ottabase/auth';
 
 // Feature
-export { authFeature, registerAuthFeature } from "@ottabase/auth";
+export { authFeature, registerAuthFeature } from '@ottabase/auth';
 ```
 
 ## Advanced Usage
@@ -682,12 +671,10 @@ const config = createOttabaseAuthConfig({
 ### Development Configuration
 
 ```typescript
-import { createOttabaseAuthConfigDev } from "@ottabase/auth";
+import { createOttabaseAuthConfigDev } from '@ottabase/auth';
 
 // Simplified config for development
-const config = createOttabaseAuthConfigDev(env.DB, [
-  createGoogleProvider(env),
-]);
+const config = createOttabaseAuthConfigDev(env.DB, [createGoogleProvider(env)]);
 // Includes: JWT sessions, no caching, error/warn logging
 ```
 
@@ -702,6 +689,7 @@ const config = createOttabaseAuthConfigDev(env.DB, [
 ```
 
 **Benefits:**
+
 - Framework-agnostic (works anywhere)
 - Tree-shakeable (optimal bundle size)
 - Type-safe (full TypeScript support)
@@ -717,7 +705,7 @@ Make sure environment variables are set:
 ```typescript
 // Check if provider credentials are available (without logging secrets)
 if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
-  console.error("Missing Google OAuth environment variables");
+    console.error('Missing Google OAuth environment variables');
 }
 ```
 

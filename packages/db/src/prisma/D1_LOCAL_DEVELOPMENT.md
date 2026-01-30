@@ -4,7 +4,8 @@ This guide covers everything you need to know about working with Cloudflare D1 i
 
 ## Overview
 
-Ottabase's D1 integration works seamlessly in local development **without requiring a Cloudflare account**. All D1 operations use local SQLite databases managed by Wrangler.
+Ottabase's D1 integration works seamlessly in local development **without requiring a Cloudflare account**. All D1
+operations use local SQLite databases managed by Wrangler.
 
 ## Table of Contents
 
@@ -52,6 +53,7 @@ pnpm db:migrate --name=init --apply=local
 ```
 
 This will:
+
 - Generate a Prisma migration
 - Apply it to your local D1 database
 
@@ -66,14 +68,14 @@ import type { PrismaClient } from '@prisma/client';
 export const runtime = 'edge';
 
 export async function GET() {
-  const { env } = await getCloudflareContext();
-  const prisma = createPrismaD1Client<PrismaClient>(env.OBCF_D1);
+    const { env } = await getCloudflareContext();
+    const prisma = createPrismaD1Client<PrismaClient>(env.OBCF_D1);
 
-  const todos = await prisma.todo.findMany({
-    orderBy: { createdAt: 'desc' }
-  });
+    const todos = await prisma.todo.findMany({
+        orderBy: { createdAt: 'desc' },
+    });
 
-  return Response.json({ todos });
+    return Response.json({ todos });
 }
 ```
 
@@ -107,12 +109,12 @@ Your `wrangler.jsonc` configures the D1 binding:
 
 ### Local vs Remote
 
-| Feature | Local (`--local`) | Remote (production) |
-|---------|------------------|---------------------|
-| **Storage** | `.wrangler/state/v3/d1/` | Cloudflare's global D1 |
-| **Requires CF Account** | No | Yes |
-| **Replication** | Single SQLite file | Global read replicas |
-| **Persistence** | File on disk | Cloudflare infrastructure |
+| Feature                 | Local (`--local`)        | Remote (production)       |
+| ----------------------- | ------------------------ | ------------------------- |
+| **Storage**             | `.wrangler/state/v3/d1/` | Cloudflare's global D1    |
+| **Requires CF Account** | No                       | Yes                       |
+| **Replication**         | Single SQLite file       | Global read replicas      |
+| **Persistence**         | File on disk             | Cloudflare infrastructure |
 
 ## Schema Management
 
@@ -142,10 +144,10 @@ Schema generation runs automatically:
 
 ```json
 {
-  "scripts": {
-    "predev": "pnpm db:generate",    // Before dev server
-    "prebuild": "pnpm db:generate"   // Before production build
-  }
+    "scripts": {
+        "predev": "pnpm db:generate", // Before dev server
+        "prebuild": "pnpm db:generate" // Before production build
+    }
 }
 ```
 
@@ -192,22 +194,22 @@ const prisma = createPrismaD1Client<PrismaClient>(env.OBCF_D1);
 
 // Create
 const user = await prisma.user.create({
-  data: { email: 'test@example.com', name: 'Test User' }
+    data: { email: 'test@example.com', name: 'Test User' },
 });
 
 // Read
 const users = await prisma.user.findMany({
-  where: { email: { contains: '@example.com' }}
+    where: { email: { contains: '@example.com' } },
 });
 
 // Update
 await prisma.user.update({
-  where: { id: user.id },
-  data: { name: 'Updated Name' }
+    where: { id: user.id },
+    data: { name: 'Updated Name' },
 });
 
 // Delete
-await prisma.user.delete({ where: { id: user.id }});
+await prisma.user.delete({ where: { id: user.id } });
 ```
 
 ### Using Raw D1 Client (For Custom SQL)
@@ -280,9 +282,9 @@ Create a seed script:
 import { createPrismaD1Client } from '@ottabase/cf/d1-prisma';
 
 async function seed() {
-  // In local dev, you'll need to provide a D1 binding
-  // This is easier to run via a Worker endpoint
-  console.log('Use POST /api/db/seed endpoint instead');
+    // In local dev, you'll need to provide a D1 binding
+    // This is easier to run via a Worker endpoint
+    console.log('Use POST /api/db/seed endpoint instead');
 }
 ```
 
@@ -291,17 +293,17 @@ Better approach - seed via API route:
 ```typescript
 // app/api/db/seed/route.ts
 export async function POST() {
-  const { env } = await getCloudflareContext();
-  const prisma = createPrismaD1Client(env.OBCF_D1);
+    const { env } = await getCloudflareContext();
+    const prisma = createPrismaD1Client(env.OBCF_D1);
 
-  await prisma.user.createMany({
-    data: [
-      { email: 'alice@example.com', name: 'Alice' },
-      { email: 'bob@example.com', name: 'Bob' }
-    ]
-  });
+    await prisma.user.createMany({
+        data: [
+            { email: 'alice@example.com', name: 'Alice' },
+            { email: 'bob@example.com', name: 'Bob' },
+        ],
+    });
 
-  return Response.json({ success: true });
+    return Response.json({ success: true });
 }
 ```
 
@@ -322,6 +324,7 @@ wrangler d1 execute DB --remote --file=local-backup.sql
 **Cause**: Database hasn't been migrated yet.
 
 **Solution**:
+
 ```bash
 pnpm db:migrate --name=init --apply=local
 ```
@@ -331,6 +334,7 @@ pnpm db:migrate --name=init --apply=local
 **Cause**: Prisma CLI needs `DATABASE_URL` for migration generation.
 
 **Solution**: Create `.env` file:
+
 ```bash
 # .env
 DATABASE_URL="file:./prisma/dev.db"
@@ -341,6 +345,7 @@ DATABASE_URL="file:./prisma/dev.db"
 **Cause**: Prisma Client wasn't generated after schema changes.
 
 **Solution**:
+
 ```bash
 pnpm db:generate
 ```
@@ -350,6 +355,7 @@ pnpm db:generate
 **Cause**: Stale Prisma Client.
 
 **Solution**:
+
 ```bash
 # Regenerate schema and Prisma Client
 pnpm db:generate
@@ -363,6 +369,7 @@ pnpm dev
 **Cause**: Prisma Client was generated for a different platform.
 
 **Solution**:
+
 ```bash
 cd packages/db
 pnpm prisma generate
@@ -373,6 +380,7 @@ pnpm prisma generate
 **Cause**: SQLite file corruption or migration conflicts.
 
 **Solution**:
+
 ```bash
 # Nuclear option: reset everything
 rm -rf .wrangler/state/
@@ -385,11 +393,13 @@ pnpm db:migrate --name=init --apply=local
 ### 1. Always Use Migrations
 
 ❌ **Don't** use raw `CREATE TABLE` in code:
+
 ```typescript
 await db.execute('CREATE TABLE IF NOT EXISTS users (...)');
 ```
 
 ✅ **Do** use Prisma migrations:
+
 ```bash
 pnpm db:migrate --name=create_users
 ```
@@ -428,8 +438,8 @@ pnpm db:migrate --apply=remote  # with wrangler production env
 ```typescript
 // This won't provide ACID guarantees!
 await prisma.$transaction([
-  prisma.user.create({ data: { email: 'test@example.com' }}),
-  prisma.post.create({ data: { title: 'Test' }})
+    prisma.user.create({ data: { email: 'test@example.com' } }),
+    prisma.post.create({ data: { title: 'Test' } }),
 ]);
 ```
 
@@ -438,12 +448,14 @@ Instead, design for idempotency or use application-level compensating transactio
 ### 5. Use Type-Safe Queries
 
 ✅ **Prisma (type-safe)**:
+
 ```typescript
-const user = await prisma.user.findUnique({ where: { id: 1 }});
+const user = await prisma.user.findUnique({ where: { id: 1 } });
 // TypeScript knows user.email exists
 ```
 
 ❌ **Raw SQL (not type-safe)**:
+
 ```typescript
 const result = await db.query('SELECT * FROM users WHERE id = ?', [1]);
 // TypeScript doesn't know result structure
@@ -460,6 +472,7 @@ const result = await db.query('SELECT * FROM users WHERE id = ?', [1]);
 ## Support
 
 For issues or questions:
+
 - GitHub Issues: [ottabase/issues](https://github.com/yourusername/ottabase/issues)
 - Discord: [Ottabase Community](#)
 - Docs: [docs.ottabase.dev](#)

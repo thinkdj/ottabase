@@ -3,11 +3,11 @@
 @tailwind utilities;
 
 :root {
-  /* --color-brand-500: #0ea5a5;
+    /* --color-brand-500: #0ea5a5;
     --space-1: 4px; */
 }
 
 /* small reusable classes */
 .btn-tw {
-  @apply inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium;
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium;
 }

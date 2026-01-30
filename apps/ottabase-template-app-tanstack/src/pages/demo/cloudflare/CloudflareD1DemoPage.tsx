@@ -1,14 +1,7 @@
-import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import {
-    Button,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    Input,
-} from "@ottabase/ui-shadcn";
-import { api, isApiError } from "@/lib/api";
+import { useEffect, useState } from 'react';
+import { Link } from '@tanstack/react-router';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import { api, isApiError } from '@/lib/api';
 
 interface Todo {
     id: string;
@@ -25,7 +18,7 @@ interface TodoResponse {
 
 export function CloudflareD1DemoPage() {
     const [todos, setTodos] = useState<Todo[]>([]);
-    const [newTodo, setNewTodo] = useState("");
+    const [newTodo, setNewTodo] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [dbReady, setDbReady] = useState(false);
@@ -38,11 +31,11 @@ export function CloudflareD1DemoPage() {
     const initializeDb = async () => {
         try {
             setLoading(true);
-            await api("/api/cloudflare/d1/init", { method: "POST" });
+            await api('/api/cloudflare/d1/init', { method: 'POST' });
             setDbReady(true);
             await loadTodos();
         } catch (err) {
-            setError(isApiError(err) ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -51,13 +44,13 @@ export function CloudflareD1DemoPage() {
     const loadTodos = async () => {
         try {
             setLoading(true);
-            const data = await api<{ todos: TodoResponse[] }>("/api/cloudflare/d1/todos");
+            const data = await api<{ todos: TodoResponse[] }>('/api/cloudflare/d1/todos');
             // Extract the actual todo data from the nested response
             const extractedTodos = data.todos.map((item) => item.data);
             setTodos(extractedTodos);
             setError(null);
         } catch (err) {
-            setError(isApiError(err) ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -69,15 +62,15 @@ export function CloudflareD1DemoPage() {
 
         try {
             setLoading(true);
-            await api("/api/cloudflare/d1/todos", {
-                method: "POST",
+            await api('/api/cloudflare/d1/todos', {
+                method: 'POST',
                 body: { title: newTodo },
             });
-            setNewTodo("");
+            setNewTodo('');
             await loadTodos();
             setError(null);
         } catch (err) {
-            setError(isApiError(err) ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -87,13 +80,13 @@ export function CloudflareD1DemoPage() {
         try {
             setLoading(true);
             await api(`/api/cloudflare/d1/todos/${id}`, {
-                method: "PATCH",
+                method: 'PATCH',
                 body: { completed: !completed },
             });
             await loadTodos();
             setError(null);
         } catch (err) {
-            setError(isApiError(err) ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -102,11 +95,11 @@ export function CloudflareD1DemoPage() {
     const deleteTodo = async (id: string) => {
         try {
             setLoading(true);
-            await api(`/api/cloudflare/d1/todos/${id}`, { method: "DELETE" });
+            await api(`/api/cloudflare/d1/todos/${id}`, { method: 'DELETE' });
             await loadTodos();
             setError(null);
         } catch (err) {
-            setError(isApiError(err) ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -120,9 +113,7 @@ export function CloudflareD1DemoPage() {
 
             <div>
                 <h1 className="mb-2 text-3xl font-semibold">D1 Database Demo</h1>
-                <p className="text-muted-foreground">
-                    Full CRUD operations with Cloudflare D1 SQLite database
-                </p>
+                <p className="text-muted-foreground">Full CRUD operations with Cloudflare D1 SQLite database</p>
             </div>
 
             {error ? (
@@ -162,29 +153,23 @@ export function CloudflareD1DemoPage() {
                     <div className="space-y-2">
                         {todos.length === 0 ? (
                             <div className="rounded-lg border bg-muted/50 p-8 text-center">
-                                <p className="text-sm text-muted-foreground">
-                                    No todos yet. Add one above!
-                                </p>
+                                <p className="text-sm text-muted-foreground">No todos yet. Add one above!</p>
                             </div>
                         ) : (
                             todos.map((todo) => (
-                                <div
-                                    key={todo.id}
-                                    className="flex items-center gap-3 rounded-lg border p-4"
-                                >
+                                <div key={todo.id} className="flex items-center gap-3 rounded-lg border p-4">
                                     <input
                                         type="checkbox"
                                         checked={todo.completed}
                                         onChange={() => toggleTodo(todo.id, todo.completed)}
                                         disabled={loading}
-                                        aria-label={`Mark todo ${todo.title} as ${todo.completed ? "incomplete" : "complete"}`}
+                                        aria-label={`Mark todo ${todo.title} as ${todo.completed ? 'incomplete' : 'complete'}`}
                                         className="h-4 w-4 cursor-pointer"
                                     />
                                     <span
-                                        className={`flex-1 text-sm ${todo.completed
-                                            ? "text-muted-foreground line-through"
-                                            : "text-foreground"
-                                            }`}
+                                        className={`flex-1 text-sm ${
+                                            todo.completed ? 'text-muted-foreground line-through' : 'text-foreground'
+                                        }`}
                                     >
                                         {todo.title}
                                     </span>

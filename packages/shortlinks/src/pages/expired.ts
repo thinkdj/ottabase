@@ -1,8 +1,8 @@
-import { getShortlinkPageCss } from "./styles";
+import { getShortlinkPageCss } from './styles';
 
 export function renderExpiredShortlinkPage(): Response {
-  const css = getShortlinkPageCss();
-  const html = `<!doctype html>
+    const css = getShortlinkPageCss();
+    const html = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -48,11 +48,11 @@ export function renderExpiredShortlinkPage(): Response {
   </body>
 </html>`;
 
-  return new Response(html, {
-    status: 410,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
+    return new Response(html, {
+        status: 410,
+        headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-store',
+        },
+    });
 }

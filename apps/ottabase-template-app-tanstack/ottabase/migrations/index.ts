@@ -16,8 +16,8 @@
 // See ./README.md for detailed documentation
 // ============================================================
 
-import type { Migration } from "@ottabase/ottaorm";
-import { getEnabledPackageMigrations } from "../config.migrations";
+import type { Migration } from '@ottabase/ottaorm';
+import { getEnabledPackageMigrations } from '../config.migrations';
 
 // ============================================================
 // 1. CORE MIGRATIONS
@@ -26,9 +26,9 @@ import { getEnabledPackageMigrations } from "../config.migrations";
 // These handle auth tables, user management, posts, etc.
 // Tables are auto-created from Models - no migrations needed!
 const coreMigrations: Migration[] = [
-  // Core tables (users, sessions, accounts, etc.) are auto-created
-  // from their Model definitions in @ottabase/ottaorm
-  // No manual migrations needed unless you need custom indexes, triggers, etc.
+    // Core tables (users, sessions, accounts, etc.) are auto-created
+    // from their Model definitions in @ottabase/ottaorm
+    // No manual migrations needed unless you need custom indexes, triggers, etc.
 ];
 
 // ============================================================
@@ -56,7 +56,7 @@ const coreMigrations: Migration[] = [
 //   },
 // }
 const appSpecificMigrations: Migration[] = [
-  // Add your custom app-specific migrations here
+    // Add your custom app-specific migrations here
 ];
 
 // ============================================================
@@ -71,14 +71,10 @@ const packageMigrations = getEnabledPackageMigrations();
 // ============================================================
 // All migrations are combined in the order:
 // 1. Core migrations
-// 2. App-specific migrations  
+// 2. App-specific migrations
 // 3. Package migrations
 //
 // This ensures proper dependency order:
 // - Core tables exist before app tables
 // - App tables exist before package-specific data migrations
-export const appMigrations: Migration[] = [
-  ...coreMigrations,
-  ...appSpecificMigrations,
-  ...packageMigrations,
-];
+export const appMigrations: Migration[] = [...coreMigrations, ...appSpecificMigrations, ...packageMigrations];

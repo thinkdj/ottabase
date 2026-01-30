@@ -18,7 +18,8 @@ pnpm add @ottabase/ottaeditor
 
 ## Default Plugins
 
-15 EditorJS plugins included: Header, Paragraph, List, Checklist, Code, Quote, Table, Warning, Delimiter, Link, Embed, Raw HTML, Marker, Underline, Inline Code.
+15 EditorJS plugins included: Header, Paragraph, List, Checklist, Code, Quote, Table, Warning, Delimiter, Link, Embed,
+Raw HTML, Marker, Underline, Inline Code.
 
 ## Quick Start
 
@@ -28,21 +29,21 @@ pnpm add @ottabase/ottaeditor
 import { useOttaEditor } from '@ottabase/ottaeditor';
 
 const { editorRef, save, hasUnsavedChanges } = useOttaEditor({
-  defaultPlugins: 'all',
-  placeholder: 'Start writing...',
+    defaultPlugins: 'all',
+    placeholder: 'Start writing...',
 });
 
 // Use hasUnsavedChanges to control save button state
 <button onClick={save} disabled={!hasUnsavedChanges}>
-  Save
-</button>
+    Save
+</button>;
 ```
 
 ### Select Specific Plugins
 
 ```tsx
 const { editorRef } = useOttaEditor({
-  defaultPlugins: ['header', 'paragraph', 'list', 'code'],
+    defaultPlugins: ['header', 'paragraph', 'list', 'code'],
 });
 ```
 
@@ -52,10 +53,8 @@ const { editorRef } = useOttaEditor({
 import MyCustomPlugin from './MyCustomPlugin';
 
 const { editorRef } = useOttaEditor({
-  defaultPlugins: 'all',
-  additionalPlugins: [
-    { name: 'custom', tool: MyCustomPlugin },
-  ],
+    defaultPlugins: 'all',
+    additionalPlugins: [{ name: 'custom', tool: MyCustomPlugin }],
 });
 ```
 
@@ -65,10 +64,7 @@ const { editorRef } = useOttaEditor({
 import { DEFAULT_PLUGIN_NAMES } from '@ottabase/ottaeditor';
 
 const { editorRef } = useOttaEditor({
-  defaultPlugins: [
-    DEFAULT_PLUGIN_NAMES.HEADER,
-    DEFAULT_PLUGIN_NAMES.PARAGRAPH,
-  ],
+    defaultPlugins: [DEFAULT_PLUGIN_NAMES.HEADER, DEFAULT_PLUGIN_NAMES.PARAGRAPH],
 });
 ```
 
@@ -76,7 +72,8 @@ const { editorRef } = useOttaEditor({
 
 Use these names with `defaultPlugins`:
 
-`'header'`, `'paragraph'`, `'list'`, `'checklist'`, `'code'`, `'quote'`, `'table'`, `'warning'`, `'delimiter'`, `'linkTool'`, `'embed'`, `'raw'`, `'Marker'`, `'underline'`, `'inlineCode'`
+`'header'`, `'paragraph'`, `'list'`, `'checklist'`, `'code'`, `'quote'`, `'table'`, `'warning'`, `'delimiter'`,
+`'linkTool'`, `'embed'`, `'raw'`, `'Marker'`, `'underline'`, `'inlineCode'`
 
 ## API
 
@@ -100,25 +97,21 @@ Use these names with `defaultPlugins`:
 
 ```typescript
 {
-  editorRef: React.RefObject<HTMLDivElement>;
-  editor: OttaEditor | null;
-  save: () => Promise<OutputData | null>;
-  clear: () => Promise<void>;
-  render: (data: OutputData) => Promise<void>;
-  toggleReadOnly: (state?: boolean) => Promise<void>;
-  isReady: boolean;
-  hasUnsavedChanges: boolean;  // True when content changes, false after save
+    editorRef: React.RefObject<HTMLDivElement>;
+    editor: OttaEditor | null;
+    save: () => Promise<OutputData | null>;
+    clear: () => Promise<void>;
+    render: (data: OutputData) => Promise<void>;
+    toggleReadOnly: (state?: boolean) => Promise<void>;
+    isReady: boolean;
+    hasUnsavedChanges: boolean; // True when content changes, false after save
 }
 ```
 
 ## Types
 
 ```typescript
-import type {
-  DefaultPluginName,
-  OttaEditorPlugin,
-  OutputData,
-} from '@ottabase/ottaeditor';
+import type { DefaultPluginName, OttaEditorPlugin, OutputData } from '@ottabase/ottaeditor';
 ```
 
 ## License

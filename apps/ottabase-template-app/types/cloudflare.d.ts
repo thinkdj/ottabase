@@ -4,13 +4,13 @@
  */
 
 import type {
-  D1Database,
-  DurableObjectNamespace,
-  KVNamespace,
-  Queue,
-  R2Bucket,
-  RateLimiter,
-} from "@cloudflare/workers-types";
+    D1Database,
+    DurableObjectNamespace,
+    KVNamespace,
+    Queue,
+    R2Bucket,
+    RateLimiter,
+} from '@cloudflare/workers-types';
 
 /**
  * Cloudflare environment bindings with OBCF_* naming convention
@@ -22,37 +22,37 @@ import type {
  * At runtime on Cloudflare, these will be available.
  */
 export interface CloudflareEnv {
-  // D1 Database (OBCF = Ottabase Cloudflare)
-  OBCF_D1?: D1Database;
+    // D1 Database (OBCF = Ottabase Cloudflare)
+    OBCF_D1?: D1Database;
 
-  // KV Namespace
-  OBCF_KV?: KVNamespace;
+    // KV Namespace
+    OBCF_KV?: KVNamespace;
 
-  // R2 Bucket
-  OBCF_R2?: R2Bucket;
+    // R2 Bucket
+    OBCF_R2?: R2Bucket;
 
-  // Queue
-  OBCF_QUEUE?: Queue;
+    // Queue
+    OBCF_QUEUE?: Queue;
 
-  // Hyperdrive (uncomment when configured)
-  // OBCF_HYPERDRIVE?: Hyperdrive;
+    // Hyperdrive (uncomment when configured)
+    // OBCF_HYPERDRIVE?: Hyperdrive;
 
-  // Rate Limiter
-  OBCF_RATE_LIMITER?: RateLimiter;
+    // Rate Limiter
+    OBCF_RATE_LIMITER?: RateLimiter;
 
-  // Durable Objects
-  OBCF_REALTIME?: DurableObjectNamespace;
+    // Durable Objects
+    OBCF_REALTIME?: DurableObjectNamespace;
 
-  // Environment Variables
-  ENVIRONMENT?: string;
-  NODE_ENV?: string;
+    // Environment Variables
+    ENVIRONMENT?: string;
+    NODE_ENV?: string;
 
-  // Secrets (set via wrangler secret put)
-  CF_ACCOUNT_ID?: string;
-  CF_API_TOKEN?: string;
+    // Secrets (set via wrangler secret put)
+    CF_ACCOUNT_ID?: string;
+    CF_API_TOKEN?: string;
 
-  // Assets binding (OBCF = Ottabase Cloudflare)
-  OBCF_ASSETS?: Fetcher;
+    // Assets binding (OBCF = Ottabase Cloudflare)
+    OBCF_ASSETS?: Fetcher;
 }
 
 /**
@@ -69,10 +69,9 @@ export interface CloudflareEnv {
  * ```
  */
 declare global {
-  namespace NodeJS {
-    interface ProcessEnv extends CloudflareEnv {}
-  }
+    namespace NodeJS {
+        interface ProcessEnv extends CloudflareEnv {}
+    }
 }
 
 export {};
-

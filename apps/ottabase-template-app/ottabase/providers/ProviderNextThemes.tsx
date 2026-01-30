@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { ReactNode } from "react";
-import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { ReactNode } from 'react';
+import { ThemeProvider as NextThemesProvider } from 'next-themes';
 
 interface NextThemesWrapperProps {
-  children: ReactNode;
-  storagePrefix?: string;
+    children: ReactNode;
+    storagePrefix?: string;
 }
 
 /**
@@ -19,17 +19,17 @@ interface NextThemesWrapperProps {
  * - `enableSystem` is false because we are managing the theme explicitly.
  */
 const ProviderNextThemes = ({ children }: NextThemesWrapperProps) => {
-  return (
-    <NextThemesProvider
-      attribute="class"
-      storageKey="ottabase-theme" // Must match Jotai atom's storage key
-      defaultTheme="light"
-      enableSystem={false}
-      disableTransitionOnChange={false}
-    >
-      {children}
-    </NextThemesProvider>
-  );
+    return (
+        <NextThemesProvider
+            attribute="class"
+            storageKey="ottabase-theme" // Must match Jotai atom's storage key
+            defaultTheme="light"
+            enableSystem={false}
+            disableTransitionOnChange={false}
+        >
+            {children}
+        </NextThemesProvider>
+    );
 };
 
 export default ProviderNextThemes;

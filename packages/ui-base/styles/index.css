@@ -1,6 +1,6 @@
 /* Ottabase UI Core: aggregated styles entry */
 /* This file re-exports all CSS assets to allow: import from the package styles entry */
 
-@import "./reset.css";
-@import "./ottabase.css";
-@import "./animations.css";
+@import './reset.css';
+@import './ottabase.css';
+@import './animations.css';

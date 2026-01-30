@@ -33,26 +33,29 @@ curl -X POST http://localhost:3000/api/ottaorm/init
 **Zero-config!** Just define Models and call `/api/ottaorm/init`:
 
 #### 1. Define Model
+
 ```typescript
 // ottabase/models/Todo.ts
-export const todosTable = sqliteTable("todos", {
-  id: text("id").primaryKey(),
-  title: text("title").notNull(),
+export const todosTable = sqliteTable('todos', {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
 });
 
 export class Todo extends BaseModel {
-  static entity = "todos";
-  static table = todosTable;
+    static entity = 'todos';
+    static table = todosTable;
 }
 ```
 
 #### 2. Export in Schema
+
 ```typescript
 // ottabase/db/schema.ts
-export { todosTable } from "../models/Todo";
+export { todosTable } from '../models/Todo';
 ```
 
 #### 3. Initialize
+
 ```bash
 curl -X POST http://localhost:3000/api/ottaorm/init
 # ✅ Table created automatically!
@@ -62,14 +65,14 @@ See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start Next.js dev server (HMR) |
-| `pnpm build` | Build Next.js app for production |
-| `pnpm preview` | Build + test with Cloudflare `workerd` runtime |
-| `pnpm deploy` | Build + deploy to Cloudflare Workers |
-| `pnpm type-check` | TypeScript type checking |
-| `pnpm cf-typegen` | Generate Cloudflare types from wrangler.jsonc |
+| Command           | Description                                    |
+| ----------------- | ---------------------------------------------- |
+| `pnpm dev`        | Start Next.js dev server (HMR)                 |
+| `pnpm build`      | Build Next.js app for production               |
+| `pnpm preview`    | Build + test with Cloudflare `workerd` runtime |
+| `pnpm deploy`     | Build + deploy to Cloudflare Workers           |
+| `pnpm type-check` | TypeScript type checking                       |
+| `pnpm cf-typegen` | Generate Cloudflare types from wrangler.jsonc  |
 
 ## Project Structure
 
@@ -95,6 +98,7 @@ apps/ottabase-template-app/
 ## Cloudflare Features
 
 Demo pages at `/demo/cloudflare`:
+
 - **D1 Database** - Auto-migrations + CRUD operations
 - **KV Storage** - Key-value with TTL
 - **R2 Storage** - Object storage for files
@@ -113,11 +117,11 @@ import { createD1Client } from '@ottabase/cf/d1';
 export const runtime = 'edge';
 
 export async function GET() {
-  const { env } = await getCloudflareContext();
-  const db = createD1Client({ database: env.OBCF_D1 });
+    const { env } = await getCloudflareContext();
+    const db = createD1Client({ database: env.OBCF_D1 });
 
-  const result = await db.query('SELECT * FROM users');
-  return Response.json(result.data);
+    const result = await db.query('SELECT * FROM users');
+    return Response.json(result.data);
 }
 ```
 
@@ -143,11 +147,11 @@ import { setDriver } from '@ottabase/ottaorm';
 import { Todo } from './ottabase/models/Todo';
 
 export async function GET() {
-  const { env } = await getCloudflareContext();
-  setDriver(createD1Driver(env.OBCF_D1));
+    const { env } = await getCloudflareContext();
+    setDriver(createD1Driver(env.OBCF_D1));
 
-  const todos = await Todo.all();
-  return Response.json({ todos });
+    const todos = await Todo.all();
+    return Response.json({ todos });
 }
 ```
 
@@ -187,15 +191,19 @@ pnpm wrangler queues create ottabase-queue
 
 ```jsonc
 {
-  "d1_databases": [{
-    "binding": "OBCF_D1",
-    "database_id": "YOUR_DATABASE_ID"  // From wrangler d1 create
-  }],
-  "kv_namespaces": [{
-    "binding": "OBCF_KV",
-    "id": "YOUR_KV_ID"  // From wrangler kv:namespace create
-  }]
-  // ... etc
+    "d1_databases": [
+        {
+            "binding": "OBCF_D1",
+            "database_id": "YOUR_DATABASE_ID", // From wrangler d1 create
+        },
+    ],
+    "kv_namespaces": [
+        {
+            "binding": "OBCF_KV",
+            "id": "YOUR_KV_ID", // From wrangler kv:namespace create
+        },
+    ],
+    // ... etc
 }
 ```
 

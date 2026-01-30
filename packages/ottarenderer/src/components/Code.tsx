@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { RenderFn } from "editorjs-blocks-react-renderer";
+import { RenderFn } from 'editorjs-blocks-react-renderer';
 import { createStarryNight, common } from '@wooorm/starry-night';
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
@@ -32,7 +32,7 @@ const Code: RenderFn<{ code: string; language?: string }> = ({ data }) => {
 
                 console.log('Code highlighting:', {
                     original: language,
-                    normalized: normalizedLang
+                    normalized: normalizedLang,
                 });
 
                 // Get scope for the language
@@ -75,161 +75,155 @@ const Code: RenderFn<{ code: string; language?: string }> = ({ data }) => {
             <div className="relative rounded-lg border border-border bg-muted/50 overflow-hidden">
                 {language && (
                     <div className="px-4 py-2 bg-muted border-b border-border">
-                        <span className="text-xs font-mono text-muted-foreground uppercase">
-                            {language}
-                        </span>
+                        <span className="text-xs font-mono text-muted-foreground uppercase">{language}</span>
                     </div>
                 )}
                 <pre className="p-4 overflow-x-auto">
                     {isLoading ? (
-                        <code className="text-sm font-mono text-foreground">
-                            {code}
-                        </code>
+                        <code className="text-sm font-mono text-foreground">{code}</code>
                     ) : (
-                        <code className="text-sm font-mono">
-                            {highlighted}
-                        </code>
+                        <code className="text-sm font-mono">{highlighted}</code>
                     )}
                 </pre>
             </div>
         </div>
     );
-}
+};
 
 export default Code;
 
 // Language mapping
 const languageMap: Record<string, string> = {
     // javascript
-    'js': 'javascript',
-    'jsx': 'javascript',
+    js: 'javascript',
+    jsx: 'javascript',
 
     // typescript
-    'ts': 'typescript',
-    'tsx': 'typescript',
+    ts: 'typescript',
+    tsx: 'typescript',
 
     // html
-    'html': 'html',
-    'htm': 'html',
+    html: 'html',
+    htm: 'html',
 
     // xml
-    'xml': 'xml',
-    'svg': 'xml',
+    xml: 'xml',
+    svg: 'xml',
 
     // css
-    'css': 'css',
+    css: 'css',
 
     // scss
-    'scss': 'scss',
+    scss: 'scss',
 
     // sass
-    'sass': 'sass',
+    sass: 'sass',
 
     // less
-    'less': 'less',
+    less: 'less',
 
     // json
-    'json': 'json',
-    'json5': 'json',
-    'jsonc': 'json',
+    json: 'json',
+    json5: 'json',
+    jsonc: 'json',
 
     // yaml
-    'yaml': 'yaml',
-    'yml': 'yaml',
+    yaml: 'yaml',
+    yml: 'yaml',
 
     // toml
-    'toml': 'toml',
+    toml: 'toml',
 
     // csv
-    'csv': 'csv',
+    csv: 'csv',
 
     // python
-    'py': 'python',
-    'python': 'python',
+    py: 'python',
+    python: 'python',
 
     // ruby
-    'rb': 'ruby',
-    'ruby': 'ruby',
+    rb: 'ruby',
+    ruby: 'ruby',
 
     // java
-    'java': 'java',
+    java: 'java',
 
     // c
-    'c': 'c',
+    c: 'c',
 
     // cpp
-    'cpp': 'cpp',
+    cpp: 'cpp',
     'c++': 'cpp',
 
     // csharp
-    'cs': 'csharp',
-    'csharp': 'csharp',
+    cs: 'csharp',
+    csharp: 'csharp',
 
     // go
-    'go': 'go',
-    'golang': 'go',
+    go: 'go',
+    golang: 'go',
 
     // rust
-    'rs': 'rust',
-    'rust': 'rust',
+    rs: 'rust',
+    rust: 'rust',
 
     // php
-    'php': 'php',
+    php: 'php',
 
     // swift
-    'swift': 'swift',
+    swift: 'swift',
 
     // kotlin
-    'kotlin': 'kotlin',
-    'kt': 'kotlin',
+    kotlin: 'kotlin',
+    kt: 'kotlin',
 
     // shell
-    'sh': 'shell',
-    'bash': 'shell',
-    'zsh': 'shell',
-    'fish': 'shell',
+    sh: 'shell',
+    bash: 'shell',
+    zsh: 'shell',
+    fish: 'shell',
     // powershell
-    'powershell': 'powershell',
-    'ps1': 'powershell',
+    powershell: 'powershell',
+    ps1: 'powershell',
 
     // markdown
-    'md': 'markdown',
-    'markdown': 'markdown',
-    'mdx': 'markdown',
+    md: 'markdown',
+    markdown: 'markdown',
+    mdx: 'markdown',
 
     // latex
-    'tex': 'latex',
-    'latex': 'latex',
+    tex: 'latex',
+    latex: 'latex',
 
     // sql
-    'd1': 'sql',
-    'sql': 'sql',
-    'mysql': 'sql',
-    'postgresql': 'sql',
+    d1: 'sql',
+    sql: 'sql',
+    mysql: 'sql',
+    postgresql: 'sql',
 
     // graphql
-    'graphql': 'graphql',
-    'gql': 'graphql',
+    graphql: 'graphql',
+    gql: 'graphql',
 
     // dockerfile
-    'dockerfile': 'dockerfile',
-    'docker': 'dockerfile',
+    dockerfile: 'dockerfile',
+    docker: 'dockerfile',
 
     // makefile
-    'makefile': 'makefile',
-    'make': 'makefile',
+    makefile: 'makefile',
+    make: 'makefile',
 
     // nginx
-    'nginx': 'nginx',
+    nginx: 'nginx',
 
     // apache
-    'apache': 'apache',
+    apache: 'apache',
 
     // diff
-    'diff': 'diff',
-    'patch': 'diff',
+    diff: 'diff',
+    patch: 'diff',
 
     // regex
-    'regex': 'regex',
-    'regexp': 'regex',
+    regex: 'regex',
+    regexp: 'regex',
 };

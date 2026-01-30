@@ -3,208 +3,204 @@ import type { UploadFile, UploadConfig, UploadResponse } from '../types';
 import { validateFiles } from '../validation';
 
 export interface UseFileUploadOptions extends UploadConfig {
-  onUploadComplete?: (files: UploadFile[]) => void;
-  onUploadError?: (error: Error) => void;
-  onUploadProgress?: (progress: number, file: UploadFile) => void;
+    onUploadComplete?: (files: UploadFile[]) => void;
+    onUploadError?: (error: Error) => void;
+    onUploadProgress?: (progress: number, file: UploadFile) => void;
 }
 
 export function useFileUpload(options: UseFileUploadOptions = {}) {
-  const [files, setFiles] = useState<UploadFile[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
+    const [files, setFiles] = useState<UploadFile[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
 
-  const {
-    maxFiles = 1,
-    maxFileSize,
-    acceptedFileTypes,
-    uploadEndpoint = '/api/upload',
-    autoUpload = false,
-    provider = 'r2',
-    onUploadComplete,
-    onUploadError,
-    onUploadProgress,
-  } = options;
-
-  /**
-   * Add files to upload queue
-   */
-  const addFiles = useCallback(
-    (newFiles: File[]) => {
-      // Validate files
-      const validation = validateFiles(newFiles, {
-        maxFiles: maxFiles - files.length,
+    const {
+        maxFiles = 1,
         maxFileSize,
         acceptedFileTypes,
-      });
+        uploadEndpoint = '/api/upload',
+        autoUpload = false,
+        provider = 'r2',
+        onUploadComplete,
+        onUploadError,
+        onUploadProgress,
+    } = options;
 
-      if (!validation.valid) {
-        const error = new Error(validation.errors.join(', '));
-        onUploadError?.(error);
-        return;
-      }
+    /**
+     * Add files to upload queue
+     */
+    const addFiles = useCallback(
+        (newFiles: File[]) => {
+            // Validate files
+            const validation = validateFiles(newFiles, {
+                maxFiles: maxFiles - files.length,
+                maxFileSize,
+                acceptedFileTypes,
+            });
 
-      // Create upload file objects
-      const uploadFiles: UploadFile[] = newFiles.map((file) => ({
-        id: crypto.randomUUID(),
-        file,
-        status: 'pending',
-        progress: 0,
-      }));
-
-      setFiles((prev) => [...prev, ...uploadFiles]);
-
-      // Auto-upload if enabled
-      if (autoUpload) {
-        uploadFiles.forEach((uploadFile) => {
-          uploadFile.status = 'uploading';
-          uploadSingleFile(uploadFile);
-        });
-      }
-    },
-    [files.length, maxFiles, maxFileSize, acceptedFileTypes, autoUpload, onUploadError]
-  );
-
-  /**
-   * Upload a single file
-   */
-  const uploadSingleFile = async (uploadFile: UploadFile) => {
-    try {
-      // Update status
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.id === uploadFile.id ? { ...f, status: 'uploading', progress: 0 } : f
-        )
-      );
-
-      // Create form data
-      const formData = new FormData();
-      formData.append('file', uploadFile.file);
-      formData.append('provider', provider);
-
-      // Upload with progress tracking
-      const xhr = new XMLHttpRequest();
-
-      // Progress handler
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const progress = Math.round((e.loaded / e.total) * 100);
-          setFiles((prev) =>
-            prev.map((f) => (f.id === uploadFile.id ? { ...f, progress } : f))
-          );
-          onUploadProgress?.(progress, uploadFile);
-        }
-      });
-
-      // Response handler
-      return new Promise<UploadResponse>((resolve, reject) => {
-        xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            const response = JSON.parse(xhr.responseText) as UploadResponse;
-
-            if (response.success) {
-              setFiles((prev) =>
-                prev.map((f) =>
-                  f.id === uploadFile.id
-                    ? { ...f, status: 'success', progress: 100, url: response.url, key: response.key }
-                    : f
-                )
-              );
-              resolve(response);
-            } else {
-              throw new Error(response.error || 'Upload failed');
+            if (!validation.valid) {
+                const error = new Error(validation.errors.join(', '));
+                onUploadError?.(error);
+                return;
             }
-          } else {
-            throw new Error(`Upload failed with status ${xhr.status}`);
-          }
-        });
 
-        xhr.addEventListener('error', () => {
-          const error = new Error('Network error during upload');
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.id === uploadFile.id
-                ? { ...f, status: 'error', error: error.message }
-                : f
-            )
-          );
-          onUploadError?.(error);
-          reject(error);
-        });
+            // Create upload file objects
+            const uploadFiles: UploadFile[] = newFiles.map((file) => ({
+                id: crypto.randomUUID(),
+                file,
+                status: 'pending',
+                progress: 0,
+            }));
 
-        xhr.open('POST', uploadEndpoint);
-        xhr.send(formData);
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.id === uploadFile.id ? { ...f, status: 'error', error: errorMessage } : f
-        )
-      );
-      onUploadError?.(error instanceof Error ? error : new Error(errorMessage));
-      throw error;
-    }
-  };
+            setFiles((prev) => [...prev, ...uploadFiles]);
 
-  /**
-   * Upload all pending files
-   */
-  const uploadAll = useCallback(async () => {
-    setIsUploading(true);
+            // Auto-upload if enabled
+            if (autoUpload) {
+                uploadFiles.forEach((uploadFile) => {
+                    uploadFile.status = 'uploading';
+                    uploadSingleFile(uploadFile);
+                });
+            }
+        },
+        [files.length, maxFiles, maxFileSize, acceptedFileTypes, autoUpload, onUploadError],
+    );
 
-    try {
-      const pendingFiles = files.filter((f) => f.status === 'pending');
+    /**
+     * Upload a single file
+     */
+    const uploadSingleFile = async (uploadFile: UploadFile) => {
+        try {
+            // Update status
+            setFiles((prev) =>
+                prev.map((f) => (f.id === uploadFile.id ? { ...f, status: 'uploading', progress: 0 } : f)),
+            );
 
-      if (pendingFiles.length === 0) {
-        return;
-      }
+            // Create form data
+            const formData = new FormData();
+            formData.append('file', uploadFile.file);
+            formData.append('provider', provider);
 
-      // Upload all files
-      await Promise.all(pendingFiles.map((file) => uploadSingleFile(file)));
+            // Upload with progress tracking
+            const xhr = new XMLHttpRequest();
 
-      // Call completion callback
-      const uploadedFiles = files.filter((f) => f.status === 'success');
-      onUploadComplete?.(uploadedFiles);
-    } catch (error) {
-      onUploadError?.(error instanceof Error ? error : new Error('Upload failed'));
-    } finally {
-      setIsUploading(false);
-    }
-  }, [files, onUploadComplete, onUploadError]);
+            // Progress handler
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const progress = Math.round((e.loaded / e.total) * 100);
+                    setFiles((prev) => prev.map((f) => (f.id === uploadFile.id ? { ...f, progress } : f)));
+                    onUploadProgress?.(progress, uploadFile);
+                }
+            });
 
-  /**
-   * Remove a file from the upload queue
-   */
-  const removeFile = useCallback((fileId: string) => {
-    setFiles((prev) => prev.filter((f) => f.id !== fileId));
-  }, []);
+            // Response handler
+            return new Promise<UploadResponse>((resolve, reject) => {
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        const response = JSON.parse(xhr.responseText) as UploadResponse;
 
-  /**
-   * Clear all files
-   */
-  const clearFiles = useCallback(() => {
-    setFiles([]);
-  }, []);
+                        if (response.success) {
+                            setFiles((prev) =>
+                                prev.map((f) =>
+                                    f.id === uploadFile.id
+                                        ? {
+                                              ...f,
+                                              status: 'success',
+                                              progress: 100,
+                                              url: response.url,
+                                              key: response.key,
+                                          }
+                                        : f,
+                                ),
+                            );
+                            resolve(response);
+                        } else {
+                            throw new Error(response.error || 'Upload failed');
+                        }
+                    } else {
+                        throw new Error(`Upload failed with status ${xhr.status}`);
+                    }
+                });
 
-  /**
-   * Retry failed upload
-   */
-  const retryUpload = useCallback(
-    async (fileId: string) => {
-      const file = files.find((f) => f.id === fileId);
-      if (file && file.status === 'error') {
-        await uploadSingleFile(file);
-      }
-    },
-    [files]
-  );
+                xhr.addEventListener('error', () => {
+                    const error = new Error('Network error during upload');
+                    setFiles((prev) =>
+                        prev.map((f) => (f.id === uploadFile.id ? { ...f, status: 'error', error: error.message } : f)),
+                    );
+                    onUploadError?.(error);
+                    reject(error);
+                });
 
-  return {
-    files,
-    isUploading,
-    addFiles,
-    uploadAll,
-    removeFile,
-    clearFiles,
-    retryUpload,
-  };
+                xhr.open('POST', uploadEndpoint);
+                xhr.send(formData);
+            });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+            setFiles((prev) =>
+                prev.map((f) => (f.id === uploadFile.id ? { ...f, status: 'error', error: errorMessage } : f)),
+            );
+            onUploadError?.(error instanceof Error ? error : new Error(errorMessage));
+            throw error;
+        }
+    };
+
+    /**
+     * Upload all pending files
+     */
+    const uploadAll = useCallback(async () => {
+        setIsUploading(true);
+
+        try {
+            const pendingFiles = files.filter((f) => f.status === 'pending');
+
+            if (pendingFiles.length === 0) {
+                return;
+            }
+
+            // Upload all files
+            await Promise.all(pendingFiles.map((file) => uploadSingleFile(file)));
+
+            // Call completion callback
+            const uploadedFiles = files.filter((f) => f.status === 'success');
+            onUploadComplete?.(uploadedFiles);
+        } catch (error) {
+            onUploadError?.(error instanceof Error ? error : new Error('Upload failed'));
+        } finally {
+            setIsUploading(false);
+        }
+    }, [files, onUploadComplete, onUploadError]);
+
+    /**
+     * Remove a file from the upload queue
+     */
+    const removeFile = useCallback((fileId: string) => {
+        setFiles((prev) => prev.filter((f) => f.id !== fileId));
+    }, []);
+
+    /**
+     * Clear all files
+     */
+    const clearFiles = useCallback(() => {
+        setFiles([]);
+    }, []);
+
+    /**
+     * Retry failed upload
+     */
+    const retryUpload = useCallback(
+        async (fileId: string) => {
+            const file = files.find((f) => f.id === fileId);
+            if (file && file.status === 'error') {
+                await uploadSingleFile(file);
+            }
+        },
+        [files],
+    );
+
+    return {
+        files,
+        isUploading,
+        addFiles,
+        uploadAll,
+        removeFile,
+        clearFiles,
+        retryUpload,
+    };
 }

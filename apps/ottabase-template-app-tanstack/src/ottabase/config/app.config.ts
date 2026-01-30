@@ -1,69 +1,64 @@
-import {
-    createAppConfig,
-    createThemeColors,
-    DEFAULT_THEME_COLORS,
-} from "@ottabase/config";
+import { createAppConfig, createThemeColors, DEFAULT_THEME_COLORS } from '@ottabase/config';
 
 export const appConfig = createAppConfig({
-  appName: "Ottabase Template App (TanStack)",
-  appId: "ottabase-template-app",
-  defaults: {
-    meta: {
-      author: "@thinkdj",
-      description:
-        "A minimal TanStack + Cloudflare Workers template app in the Ottabase monorepo",
-      keywords:
-        "Ottabase, TanStack Router, TanStack Query, Vite, Tailwind, Shadcn, Cloudflare Workers, TypeScript, React",
-      companyName: "Ottabase",
+    appName: 'Ottabase Template App (TanStack)',
+    appId: 'ottabase-template-app',
+    defaults: {
+        meta: {
+            author: '@thinkdj',
+            description: 'A minimal TanStack + Cloudflare Workers template app in the Ottabase monorepo',
+            keywords:
+                'Ottabase, TanStack Router, TanStack Query, Vite, Tailwind, Shadcn, Cloudflare Workers, TypeScript, React',
+            companyName: 'Ottabase',
+        },
+        uiFramework: 'mantine',
+        ui: {
+            preventFOUC: false,
+            preventFOUCInsideIframe: false,
+            debounceMs: 500,
+            layout: {
+                minWidth: 320,
+                maxWidth: 1280,
+            },
+            enforceGoogleFonts: true,
+        },
+        theme: {
+            colorDefault: 'tremorBlue',
+            colors: createThemeColors({
+                ...DEFAULT_THEME_COLORS,
+            }),
+        },
+        storage: {
+            prefix: 'ottabase',
+        },
+        api: {
+            serverErrorHttpCode: 500,
+        },
+        features: {
+            spotlight: {
+                enabled: true,
+                shortcuts: ['/'],
+            },
+            referrals: {
+                enabled: true,
+                trackClicks: true, // Set to false to disable click tracking (only track conversions)
+                expiryDays: 90, // How long stored referral codes are valid
+            },
+            crudHub: {
+                apiBaseUrl: '/api/crudhub',
+                urlBase: 'crudhub',
+                urlBaseListing: 'browse',
+            },
+            pagination: {
+                defaultPageSize: 10,
+                maxPageSize: 100,
+                sizeOptions: [5, 10, 20, 50, 100],
+            },
+        },
+        model: {
+            defaultRelKey: 'defaults',
+        },
     },
-    uiFramework: "mantine",
-    ui: {
-      preventFOUC: false,
-      preventFOUCInsideIframe: false,
-      debounceMs: 500,
-      layout: {
-        minWidth: 320,
-        maxWidth: 1280,
-      },
-      enforceGoogleFonts: true,
-    },
-    theme: {
-      colorDefault: "tremorBlue",
-      colors: createThemeColors({
-        ...DEFAULT_THEME_COLORS,
-      }),
-    },
-    storage: {
-      prefix: "ottabase",
-    },
-    api: {
-      serverErrorHttpCode: 500,
-    },
-		features: {
-			spotlight: {
-				enabled: true,
-				shortcuts: ["/"],
-			},
-      referrals: {
-        enabled: true,
-        trackClicks: true, // Set to false to disable click tracking (only track conversions)
-        expiryDays: 90, // How long stored referral codes are valid
-      },
-      crudHub: {
-        apiBaseUrl: "/api/crudhub",
-        urlBase: "crudhub",
-        urlBaseListing: "browse",
-      },
-      pagination: {
-        defaultPageSize: 10,
-        maxPageSize: 100,
-        sizeOptions: [5, 10, 20, 50, 100],
-      },
-    },
-    model: {
-      defaultRelKey: "defaults",
-    },
-  },
 });
 
 // Export specific config parts for convenience (matching main template app structure)
@@ -78,8 +73,7 @@ export const UI_DEBOUNCE_MS = appConfig.ui.debounceMs;
 // CrudHub
 export const CRUDHUB_API_BASE_URL = appConfig.features.crudHub.apiBaseUrl;
 export const CRUDHUB_URL_BASE = appConfig.features.crudHub.urlBase;
-export const CRUDHUB_URL_BASE_LISTING =
-  appConfig.features.crudHub.urlBaseListing;
+export const CRUDHUB_URL_BASE_LISTING = appConfig.features.crudHub.urlBaseListing;
 
 // Model
 export const MODEL_DEFAULT_REL_KEY = appConfig.model.defaultRelKey;

@@ -1,27 +1,27 @@
 {
-  "name": "@ottabase/shortlinks",
-  "version": "0.0.1",
-  "description": "Reusable shortlink management system for Cloudflare infrastructure",
-  "type": "module",
-  "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+    "name": "@ottabase/shortlinks",
+    "version": "0.0.1",
+    "description": "Reusable shortlink management system for Cloudflare infrastructure",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        }
+    },
+    "scripts": {
+        "clean": "rm -rf .turbo node_modules",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "peerDependencies": {
+        "drizzle-orm": "catalog:"
+    },
+    "dependencies": {
+        "@ottabase/ottaorm": "workspace:*"
+    },
+    "devDependencies": {
+        "drizzle-orm": "catalog:",
+        "typescript": "catalog:"
     }
-  },
-  "scripts": {
-    "clean": "rm -rf .turbo node_modules",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "peerDependencies": {
-    "drizzle-orm": "catalog:"
-  },
-  "dependencies": {
-    "@ottabase/ottaorm": "workspace:*"
-  },
-  "devDependencies": {
-    "drizzle-orm": "catalog:",
-    "typescript": "catalog:"
-  }
 }

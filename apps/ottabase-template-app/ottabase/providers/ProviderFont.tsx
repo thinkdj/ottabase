@@ -1,63 +1,60 @@
 'use client';
 
-import React, { ReactNode } from "react";
+import React, { ReactNode } from 'react';
 
 type FontFamily = {
-  style: { fontFamily: string };
-  className: string;
+    style: { fontFamily: string };
+    className: string;
 };
 
 export const primaryFontFamily: FontFamily = {
-  style: {
-    fontFamily: 'var(--font-body), ui-sans-serif, system-ui, sans-serif',
-  },
-  className: "font-family-primary",
+    style: {
+        fontFamily: 'var(--font-body), ui-sans-serif, system-ui, sans-serif',
+    },
+    className: 'font-family-primary',
 };
 
 export const headingFontFamily: FontFamily = {
-  style: {
-    fontFamily: 'var(--font-heading), ui-sans-serif, system-ui, sans-serif',
-  },
-  className: "font-family-heading",
+    style: {
+        fontFamily: 'var(--font-heading), ui-sans-serif, system-ui, sans-serif',
+    },
+    className: 'font-family-heading',
 };
 
 export const monospaceFontFamily: FontFamily = {
-  style: {
-    fontFamily:
-      '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-  },
-  className: "font-family-monospace",
+    style: {
+        fontFamily:
+            '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+    },
+    className: 'font-family-monospace',
 };
 
 export const handwritingFontFamily: FontFamily = {
-  style: {
-    fontFamily: 'var(--font-handwriting), cursive',
-  },
-  className: "font-family-handwriting",
+    style: {
+        fontFamily: 'var(--font-handwriting), cursive',
+    },
+    className: 'font-family-handwriting',
 };
 
 interface ProviderFontProps {
-  children: ReactNode;
-  enforceGoogleFonts?: boolean;
+    children: ReactNode;
+    enforceGoogleFonts?: boolean;
 }
 
-const ProviderFont = ({
-  children,
-  enforceGoogleFonts = true,
-}: ProviderFontProps) => {
-  const cssAppend = enforceGoogleFonts ? " !important" : "";
+const ProviderFont = ({ children, enforceGoogleFonts = true }: ProviderFontProps) => {
+    const cssAppend = enforceGoogleFonts ? ' !important' : '';
 
-  React.useEffect(() => {
-    const styleId = "ottabase-font-styles";
-    let styleElement = document.getElementById(styleId) as HTMLStyleElement;
+    React.useEffect(() => {
+        const styleId = 'ottabase-font-styles';
+        let styleElement = document.getElementById(styleId) as HTMLStyleElement;
 
-    if (!styleElement) {
-      styleElement = document.createElement("style");
-      styleElement.id = styleId;
-      document.head.appendChild(styleElement);
-    }
+        if (!styleElement) {
+            styleElement = document.createElement('style');
+            styleElement.id = styleId;
+            document.head.appendChild(styleElement);
+        }
 
-    styleElement.textContent = `
+        styleElement.textContent = `
       h1, h2, h3, h4, h5, h6, .font-family-heading {
         font-family: ${headingFontFamily.style.fontFamily}${cssAppend};
       }
@@ -72,15 +69,15 @@ const ProviderFont = ({
       }
     `;
 
-    return () => {
-      const element = document.getElementById(styleId);
-      if (element) {
-        element.remove();
-      }
-    };
-  }, [enforceGoogleFonts, cssAppend]);
+        return () => {
+            const element = document.getElementById(styleId);
+            if (element) {
+                element.remove();
+            }
+        };
+    }, [enforceGoogleFonts, cssAppend]);
 
-  return <div className={primaryFontFamily.className}>{children}</div>;
+    return <div className={primaryFontFamily.className}>{children}</div>;
 };
 
 export default ProviderFont;

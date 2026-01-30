@@ -5,13 +5,13 @@
 // `cloudflare-worker.ts` even when `.worker-next` isn't present (e.g. in CI
 // before the build step, or in fresh checkouts).
 
-declare module "./.worker-next/index.mjs" {
-  import type { ExportedHandler } from "@cloudflare/workers-types";
+declare module './.worker-next/index.mjs' {
+    import type { ExportedHandler } from '@cloudflare/workers-types';
 
-  const worker: ExportedHandler;
-  export default worker;
+    const worker: ExportedHandler;
+    export default worker;
 
-  // OpenNext commonly re-exports a named handler; keep this loose to avoid
-  // coupling to OpenNext internal types.
-  export const handler: unknown;
+    // OpenNext commonly re-exports a named handler; keep this loose to avoid
+    // coupling to OpenNext internal types.
+    export const handler: unknown;
 }

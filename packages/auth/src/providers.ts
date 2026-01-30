@@ -11,68 +11,67 @@
 //
 // ============================================================
 
-import Auth0 from "@auth/core/providers/auth0";
-import AzureAd from "@auth/core/providers/azure-ad";
-import Credentials from "@auth/core/providers/credentials";
-import Discord from "@auth/core/providers/discord";
-import GitHub from "@auth/core/providers/github";
-import Google from "@auth/core/providers/google";
-import Nodemailer from "@auth/core/providers/nodemailer";
-import Resend from "@auth/core/providers/resend";
-import type { TemplateContent, TemplateVariables } from "@ottabase/email";
-import { sendTemplatedEmail } from "@ottabase/email/mailer";
-import { createResendMailer } from "@ottabase/email/providers/resend";
-
+import Auth0 from '@auth/core/providers/auth0';
+import AzureAd from '@auth/core/providers/azure-ad';
+import Credentials from '@auth/core/providers/credentials';
+import Discord from '@auth/core/providers/discord';
+import GitHub from '@auth/core/providers/github';
+import Google from '@auth/core/providers/google';
+import Nodemailer from '@auth/core/providers/nodemailer';
+import Resend from '@auth/core/providers/resend';
+import type { TemplateContent, TemplateVariables } from '@ottabase/email';
+import { sendTemplatedEmail } from '@ottabase/email/mailer';
+import { createResendMailer } from '@ottabase/email/providers/resend';
 
 /**
  * Environment variables for provider credentials
  * These should be set in your .env file or Cloudflare Workers environment
  */
 export interface ProviderEnv {
-  // Google OAuth
-  GOOGLE_CLIENT_ID?: string;
-  GOOGLE_CLIENT_SECRET?: string;
+    // Google OAuth
+    GOOGLE_CLIENT_ID?: string;
+    GOOGLE_CLIENT_SECRET?: string;
 
-  // GitHub OAuth
-  GITHUB_CLIENT_ID?: string;
-  GITHUB_CLIENT_SECRET?: string;
+    // GitHub OAuth
+    GITHUB_CLIENT_ID?: string;
+    GITHUB_CLIENT_SECRET?: string;
 
-  // Discord OAuth
-  DISCORD_CLIENT_ID?: string;
-  DISCORD_CLIENT_SECRET?: string;
+    // Discord OAuth
+    DISCORD_CLIENT_ID?: string;
+    DISCORD_CLIENT_SECRET?: string;
 
-  // Microsoft/Azure OAuth
-  AZURE_AD_CLIENT_ID?: string;
-  AZURE_AD_CLIENT_SECRET?: string;
-  AZURE_AD_TENANT_ID?: string;
+    // Microsoft/Azure OAuth
+    AZURE_AD_CLIENT_ID?: string;
+    AZURE_AD_CLIENT_SECRET?: string;
+    AZURE_AD_TENANT_ID?: string;
 
-  // Auth0
-  AUTH0_CLIENT_ID?: string;
-  AUTH0_CLIENT_SECRET?: string;
-  AUTH0_ISSUER?: string;
+    // Auth0
+    AUTH0_CLIENT_ID?: string;
+    AUTH0_CLIENT_SECRET?: string;
+    AUTH0_ISSUER?: string;
 
-  // Email (Magic Link) - Resend
-  EMAIL_RESEND_API_KEY?: string;
+    // Email (Magic Link) - Resend
+    EMAIL_RESEND_API_KEY?: string;
 
-  // Email (Magic Link) - Nodemailer/SMTP
-  EMAIL_SERVER?: string; // smtp://user:pass@smtp.example.com:587
-  EMAIL_FROM?: string;
+    // Email (Magic Link) - Nodemailer/SMTP
+    EMAIL_SERVER?: string; // smtp://user:pass@smtp.example.com:587
+    EMAIL_FROM?: string;
 }
 
 /**
  * Options for configuring OAuth providers
  */
 export interface ProviderOptions {
-  /**
-   * Additional scopes to request
-   */
-  scopes?: string[];
+    /**
+     * Additional scopes to request
+     */
+    scopes?: string[];
 
-  /**
-   * Allow users with unverified emails to sign in
-   * @default false
-   */
-  allowDangerousEmailAccountLinking?: boolean;
+    /**
+     * Allow users with unverified emails to sign in
+     * @default false
+     */
+    allowDangerousEmailAccountLinking?: boolean;
 }
 
 /**
@@ -103,22 +102,19 @@ export interface ProviderOptions {
  * });
  * ```
  */
-export function createGoogleProvider(
-  env: ProviderEnv,
-  options: ProviderOptions = {},
-) {
-  const { scopes = [], allowDangerousEmailAccountLinking = false } = options;
+export function createGoogleProvider(env: ProviderEnv, options: ProviderOptions = {}) {
+    const { scopes = [], allowDangerousEmailAccountLinking = false } = options;
 
-  return Google({
-    clientId: env.GOOGLE_CLIENT_ID,
-    clientSecret: env.GOOGLE_CLIENT_SECRET,
-    authorization: {
-      params: {
-        scope: ["openid", "email", "profile", ...scopes].join(" "),
-      },
-    },
-    allowDangerousEmailAccountLinking,
-  });
+    return Google({
+        clientId: env.GOOGLE_CLIENT_ID,
+        clientSecret: env.GOOGLE_CLIENT_SECRET,
+        authorization: {
+            params: {
+                scope: ['openid', 'email', 'profile', ...scopes].join(' '),
+            },
+        },
+        allowDangerousEmailAccountLinking,
+    });
 }
 
 /**
@@ -149,22 +145,19 @@ export function createGoogleProvider(
  * });
  * ```
  */
-export function createGitHubProvider(
-  env: ProviderEnv,
-  options: ProviderOptions = {},
-) {
-  const { scopes = [], allowDangerousEmailAccountLinking = false } = options;
+export function createGitHubProvider(env: ProviderEnv, options: ProviderOptions = {}) {
+    const { scopes = [], allowDangerousEmailAccountLinking = false } = options;
 
-  return GitHub({
-    clientId: env.GITHUB_CLIENT_ID,
-    clientSecret: env.GITHUB_CLIENT_SECRET,
-    authorization: {
-      params: {
-        scope: ["read:user", "user:email", ...scopes].join(" "),
-      },
-    },
-    allowDangerousEmailAccountLinking,
-  });
+    return GitHub({
+        clientId: env.GITHUB_CLIENT_ID,
+        clientSecret: env.GITHUB_CLIENT_SECRET,
+        authorization: {
+            params: {
+                scope: ['read:user', 'user:email', ...scopes].join(' '),
+            },
+        },
+        allowDangerousEmailAccountLinking,
+    });
 }
 
 /**
@@ -187,22 +180,19 @@ export function createGitHubProvider(
  * ];
  * ```
  */
-export function createDiscordProvider(
-  env: ProviderEnv,
-  options: ProviderOptions = {},
-) {
-  const { scopes = [], allowDangerousEmailAccountLinking = false } = options;
+export function createDiscordProvider(env: ProviderEnv, options: ProviderOptions = {}) {
+    const { scopes = [], allowDangerousEmailAccountLinking = false } = options;
 
-  return Discord({
-    clientId: env.DISCORD_CLIENT_ID,
-    clientSecret: env.DISCORD_CLIENT_SECRET,
-    authorization: {
-      params: {
-        scope: ["identify", "email", ...scopes].join(" "),
-      },
-    },
-    allowDangerousEmailAccountLinking,
-  });
+    return Discord({
+        clientId: env.DISCORD_CLIENT_ID,
+        clientSecret: env.DISCORD_CLIENT_SECRET,
+        authorization: {
+            params: {
+                scope: ['identify', 'email', ...scopes].join(' '),
+            },
+        },
+        allowDangerousEmailAccountLinking,
+    });
 }
 
 /**
@@ -226,23 +216,20 @@ export function createDiscordProvider(
  * ];
  * ```
  */
-export function createAzureAdProvider(
-  env: ProviderEnv,
-  options: ProviderOptions = {},
-) {
-  const { scopes = [], allowDangerousEmailAccountLinking = false } = options;
+export function createAzureAdProvider(env: ProviderEnv, options: ProviderOptions = {}) {
+    const { scopes = [], allowDangerousEmailAccountLinking = false } = options;
 
-  return AzureAd({
-    clientId: env.AZURE_AD_CLIENT_ID,
-    clientSecret: env.AZURE_AD_CLIENT_SECRET,
-    tenantId: env.AZURE_AD_TENANT_ID,
-    authorization: {
-      params: {
-        scope: ["openid", "profile", "email", ...scopes].join(" "),
-      },
-    },
-    allowDangerousEmailAccountLinking,
-  });
+    return AzureAd({
+        clientId: env.AZURE_AD_CLIENT_ID,
+        clientSecret: env.AZURE_AD_CLIENT_SECRET,
+        tenantId: env.AZURE_AD_TENANT_ID,
+        authorization: {
+            params: {
+                scope: ['openid', 'profile', 'email', ...scopes].join(' '),
+            },
+        },
+        allowDangerousEmailAccountLinking,
+    });
 }
 
 /**
@@ -266,18 +253,15 @@ export function createAzureAdProvider(
  * ];
  * ```
  */
-export function createAuth0Provider(
-  env: ProviderEnv,
-  options: ProviderOptions = {},
-) {
-  const { allowDangerousEmailAccountLinking = false } = options;
+export function createAuth0Provider(env: ProviderEnv, options: ProviderOptions = {}) {
+    const { allowDangerousEmailAccountLinking = false } = options;
 
-  return Auth0({
-    clientId: env.AUTH0_CLIENT_ID,
-    clientSecret: env.AUTH0_CLIENT_SECRET,
-    issuer: env.AUTH0_ISSUER,
-    allowDangerousEmailAccountLinking,
-  });
+    return Auth0({
+        clientId: env.AUTH0_CLIENT_ID,
+        clientSecret: env.AUTH0_CLIENT_SECRET,
+        issuer: env.AUTH0_ISSUER,
+        allowDangerousEmailAccountLinking,
+    });
 }
 
 /**
@@ -298,38 +282,34 @@ export function createAuth0Provider(
  * ```
  */
 export function autoConfigureProviders(env: ProviderEnv) {
-  const providers: any[] = [];
+    const providers: any[] = [];
 
-  // Google
-  if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
-    providers.push(createGoogleProvider(env));
-  }
+    // Google
+    if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
+        providers.push(createGoogleProvider(env));
+    }
 
-  // GitHub
-  if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
-    providers.push(createGitHubProvider(env));
-  }
+    // GitHub
+    if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
+        providers.push(createGitHubProvider(env));
+    }
 
-  // Discord
-  if (env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET) {
-    providers.push(createDiscordProvider(env));
-  }
+    // Discord
+    if (env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET) {
+        providers.push(createDiscordProvider(env));
+    }
 
-  // Azure AD
-  if (
-    env.AZURE_AD_CLIENT_ID &&
-    env.AZURE_AD_CLIENT_SECRET &&
-    env.AZURE_AD_TENANT_ID
-  ) {
-    providers.push(createAzureAdProvider(env));
-  }
+    // Azure AD
+    if (env.AZURE_AD_CLIENT_ID && env.AZURE_AD_CLIENT_SECRET && env.AZURE_AD_TENANT_ID) {
+        providers.push(createAzureAdProvider(env));
+    }
 
-  // Auth0
-  if (env.AUTH0_CLIENT_ID && env.AUTH0_CLIENT_SECRET && env.AUTH0_ISSUER) {
-    providers.push(createAuth0Provider(env));
-  }
+    // Auth0
+    if (env.AUTH0_CLIENT_ID && env.AUTH0_CLIENT_SECRET && env.AUTH0_ISSUER) {
+        providers.push(createAuth0Provider(env));
+    }
 
-  return providers;
+    return providers;
 }
 
 /**
@@ -355,16 +335,14 @@ export function autoConfigureProviders(env: ProviderEnv) {
  * });
  * ```
  */
-export function createCredentialsProvider(
-  authorize: (credentials: Record<string, any>) => Promise<any>,
-) {
-  return Credentials({
-    credentials: {
-      email: { label: "Email", type: "email" },
-      password: { label: "Password", type: "password" },
-    },
-    authorize,
-  });
+export function createCredentialsProvider(authorize: (credentials: Record<string, any>) => Promise<any>) {
+    return Credentials({
+        credentials: {
+            email: { label: 'Email', type: 'email' },
+            password: { label: 'Password', type: 'password' },
+        },
+        authorize,
+    });
 }
 
 /**
@@ -390,10 +368,10 @@ export function createCredentialsProvider(
  * ```
  */
 export function createCustomCredentialsProvider(config: {
-  credentials: Record<string, { label: string; type: string }>;
-  authorize: (credentials: Record<string, any>) => Promise<any>;
+    credentials: Record<string, { label: string; type: string }>;
+    authorize: (credentials: Record<string, any>) => Promise<any>;
 }) {
-  return Credentials(config);
+    return Credentials(config);
 }
 
 /**
@@ -416,56 +394,56 @@ export function createCustomCredentialsProvider(config: {
  * ```
  */
 export function createResendProvider(
-  env: ProviderEnv,
-  options?: {
-    from?: string;
-    template?: string;
-    subject?: string;
-    appName?: string;
-    content?: TemplateContent;
-    variables?: TemplateVariables;
-  },
-) {
-  const from = options?.from || env.EMAIL_FROM || "noreply@example.com";
-  const mailer = createResendMailer({ apiKey: env.EMAIL_RESEND_API_KEY || "" });
-
-  return Resend({
-    apiKey: env.EMAIL_RESEND_API_KEY,
-    from,
-    async sendVerificationRequest({ identifier, url, expires }) {
-      const appName = options?.appName || "Ottabase";
-      const expiresAt = expires ? expires.toISOString() : "";
-      const subject = options?.subject || `Sign in to ${appName}`;
-
-      const content: TemplateContent = options?.content || {
-        header: `Sign in to ${appName}`,
-        body:
-          "<p>Hello,</p>" +
-          "<p>Click the link below to sign in:</p>" +
-          '<p><a href="{{url}}">Sign in</a></p>',
-        footer: "<p>This link expires at {{expiresAt}}.</p>",
-      };
-
-      const result = await sendTemplatedEmail(mailer, {
-        from,
-        to: identifier,
-        template: options?.template || "default",
-        subject,
-        variables: {
-          url,
-          email: identifier,
-          appName,
-          expiresAt,
-          ...options?.variables,
-        },
-        content,
-      });
-
-      if (!result.success) {
-        throw new Error(result.error || "Failed to send login email");
-      }
+    env: ProviderEnv,
+    options?: {
+        from?: string;
+        template?: string;
+        subject?: string;
+        appName?: string;
+        content?: TemplateContent;
+        variables?: TemplateVariables;
     },
-  });
+) {
+    const from = options?.from || env.EMAIL_FROM || 'noreply@example.com';
+    const mailer = createResendMailer({ apiKey: env.EMAIL_RESEND_API_KEY || '' });
+
+    return Resend({
+        apiKey: env.EMAIL_RESEND_API_KEY,
+        from,
+        async sendVerificationRequest({ identifier, url, expires }) {
+            const appName = options?.appName || 'Ottabase';
+            const expiresAt = expires ? expires.toISOString() : '';
+            const subject = options?.subject || `Sign in to ${appName}`;
+
+            const content: TemplateContent = options?.content || {
+                header: `Sign in to ${appName}`,
+                body:
+                    '<p>Hello,</p>' +
+                    '<p>Click the link below to sign in:</p>' +
+                    '<p><a href="{{url}}">Sign in</a></p>',
+                footer: '<p>This link expires at {{expiresAt}}.</p>',
+            };
+
+            const result = await sendTemplatedEmail(mailer, {
+                from,
+                to: identifier,
+                template: options?.template || 'default',
+                subject,
+                variables: {
+                    url,
+                    email: identifier,
+                    appName,
+                    expiresAt,
+                    ...options?.variables,
+                },
+                content,
+            });
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to send login email');
+            }
+        },
+    });
 }
 
 /**
@@ -503,18 +481,20 @@ export function createResendProvider(
  * ```
  */
 export function createNodemailerProvider(
-  env: ProviderEnv,
-  options?: {
-    server?: string | {
-      host: string;
-      port: number;
-      auth: { user: string; pass: string };
-    };
-    from?: string;
-  },
+    env: ProviderEnv,
+    options?: {
+        server?:
+            | string
+            | {
+                  host: string;
+                  port: number;
+                  auth: { user: string; pass: string };
+              };
+        from?: string;
+    },
 ) {
-  return Nodemailer({
-    server: options?.server || env.EMAIL_SERVER,
-    from: options?.from || env.EMAIL_FROM,
-  });
+    return Nodemailer({
+        server: options?.server || env.EMAIL_SERVER,
+        from: options?.from || env.EMAIL_FROM,
+    });
 }

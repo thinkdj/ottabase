@@ -14,23 +14,16 @@ pnpm add @ottabase/state jotai
 
 ```typescript
 // src/ottabase/state/appState.ts
-import { createAppState } from "@ottabase/state";
+import { createAppState } from '@ottabase/state';
 
 const { appStateAtom, atoms, createAtom } = createAppState({
-  appName: "My App",
-  initialState: {
-    theme: "dark",
-  },
+    appName: 'My App',
+    initialState: {
+        theme: 'dark',
+    },
 });
 
-export const {
-  themeAtom,
-  userAtom,
-  isAuthenticatedAtom,
-  sidebarOpenAtom,
-  sidebarCollapsedAtom,
-  isLoadingAtom,
-} = atoms;
+export const { themeAtom, userAtom, isAuthenticatedAtom, sidebarOpenAtom, sidebarCollapsedAtom, isLoadingAtom } = atoms;
 
 export { appStateAtom, createAtom };
 ```
@@ -39,59 +32,57 @@ export { appStateAtom, createAtom };
 
 ```tsx
 // src/providers/Providers.tsx
-import { ProviderState } from "@ottabase/state";
+import { ProviderState } from '@ottabase/state';
 
 export function Providers({ children }) {
-  return <ProviderState>{children}</ProviderState>;
+    return <ProviderState>{children}</ProviderState>;
 }
 ```
 
 ### 3. Use in Components
 
 ```tsx
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { themeAtom, userAtom, sidebarOpenAtom } from "@/ottabase/state/appState";
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { themeAtom, userAtom, sidebarOpenAtom } from '@/ottabase/state/appState';
 
 function Header() {
-  const theme = useAtomValue(themeAtom);
-  const [sidebarOpen, setSidebarOpen] = useAtom(sidebarOpenAtom);
-  const setUser = useSetAtom(userAtom);
+    const theme = useAtomValue(themeAtom);
+    const [sidebarOpen, setSidebarOpen] = useAtom(sidebarOpenAtom);
+    const setUser = useSetAtom(userAtom);
 
-  return (
-    <header>
-      <button onClick={() => setSidebarOpen(!sidebarOpen)}>
-        Toggle Sidebar
-      </button>
-      <span>Theme: {theme}</span>
-    </header>
-  );
+    return (
+        <header>
+            <button onClick={() => setSidebarOpen(!sidebarOpen)}>Toggle Sidebar</button>
+            <span>Theme: {theme}</span>
+        </header>
+    );
 }
 ```
 
 ## State Properties
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `appName` | `string` | required | Application name |
-| `theme` | `"light" \| "dark"` | `"light"` | Current theme |
-| `user` | `BaseUser \| null` | `null` | Current user object |
-| `isAuthenticated` | `boolean` | `false` | Auth status |
-| `sidebarOpen` | `boolean` | `true` | Sidebar visibility |
-| `sidebarCollapsed` | `boolean` | `false` | Sidebar collapsed state |
-| `isLoading` | `boolean` | `false` | Global loading state |
+| Property           | Type                | Default   | Description             |
+| ------------------ | ------------------- | --------- | ----------------------- |
+| `appName`          | `string`            | required  | Application name        |
+| `theme`            | `"light" \| "dark"` | `"light"` | Current theme           |
+| `user`             | `BaseUser \| null`  | `null`    | Current user object     |
+| `isAuthenticated`  | `boolean`           | `false`   | Auth status             |
+| `sidebarOpen`      | `boolean`           | `true`    | Sidebar visibility      |
+| `sidebarCollapsed` | `boolean`           | `false`   | Sidebar collapsed state |
+| `isLoading`        | `boolean`           | `false`   | Global loading state    |
 
 ## Custom User Type
 
 ```typescript
-import { createAppState, BaseUser } from "@ottabase/state";
+import { createAppState, BaseUser } from '@ottabase/state';
 
 interface AppUser extends BaseUser {
-  role: "admin" | "user";
-  preferences: { notifications: boolean };
+    role: 'admin' | 'user';
+    preferences: { notifications: boolean };
 }
 
 const { atoms, appStateAtom } = createAppState<AppUser>({
-  appName: "My App",
+    appName: 'My App',
 });
 
 // userAtom is now typed as AppUser | null
@@ -102,14 +93,14 @@ const { atoms, appStateAtom } = createAppState<AppUser>({
 Create focused atoms for additional properties:
 
 ```typescript
-const { createAtom, appStateAtom } = createAppState({ appName: "My App" });
+const { createAtom, appStateAtom } = createAppState({ appName: 'My App' });
 
 // For properties in AppState
-const myAtom = createAtom("theme");
+const myAtom = createAtom('theme');
 
 // For custom state, use Jotai directly
-import { atom } from "jotai";
-const customAtom = atom("custom value");
+import { atom } from 'jotai';
+const customAtom = atom('custom value');
 ```
 
 ## API
@@ -120,12 +111,13 @@ Creates the app state with atoms.
 
 ```typescript
 interface AppStateConfig<TUser> {
-  appName: string;
-  initialState?: Partial<AppState<TUser>>;
+    appName: string;
+    initialState?: Partial<AppState<TUser>>;
 }
 ```
 
 **Returns:**
+
 - `appStateAtom` - Main atom with entire state
 - `createAtom(key)` - Creates focused atom for a property
 - `atoms` - Pre-created atoms for common properties

@@ -6,7 +6,8 @@ Shared UI components for Ottabase applications.
 
 ### DarkModeToggle
 
-A versatile component that provides both toggle switch and button interfaces for switching between light and dark themes. It integrates with both Mantine's color scheme and next-themes for Tailwind CSS.
+A versatile component that provides both toggle switch and button interfaces for switching between light and dark
+themes. It integrates with both Mantine's color scheme and next-themes for Tailwind CSS.
 
 #### Props
 
@@ -39,7 +40,8 @@ This component requires:
 
 ### Logo
 
-A flexible logo component that can display app name, logo image, optional dark mode toggle, and can be wrapped with a link. Uses the @ottabase/config package for default values.
+A flexible logo component that can display app name, logo image, optional dark mode toggle, and can be wrapped with a
+link. Uses the @ottabase/config package for default values.
 
 #### Props
 

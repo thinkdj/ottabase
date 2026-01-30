@@ -19,7 +19,8 @@ This guide covers setup and usage of all Cloudflare Worker bindings:
 
 ### 1. Install Dependencies
 
-The `@ottabase/cf` package and required dependencies are already configured in `apps/ottabase-template-app/package.json`.
+The `@ottabase/cf` package and required dependencies are already configured in
+`apps/ottabase-template-app/package.json`.
 
 ```bash
 pnpm install
@@ -120,7 +121,8 @@ Update `wrangler.jsonc` with the returned Hyperdrive ID:
 }]
 ```
 
-**Note**: Works with any PostgreSQL or MySQL database including AWS RDS, Google Cloud SQL, Neon, Supabase, PlanetScale, and others.
+**Note**: Works with any PostgreSQL or MySQL database including AWS RDS, Google Cloud SQL, Neon, Supabase, PlanetScale,
+and others.
 
 ### 3. Set Secrets (Optional)
 
@@ -176,28 +178,22 @@ import { createD1Client } from '@ottabase/cf/d1';
 export const runtime = 'edge';
 
 export async function GET() {
-  const { env } = await getCloudflareContext();
-  const db = createD1Client({ database: env.OBCF_D1 });
+    const { env } = await getCloudflareContext();
+    const db = createD1Client({ database: env.OBCF_D1 });
 
-  // Query
-  const result = await db.query<User>(
-    'SELECT * FROM users WHERE id = ?',
-    [userId]
-  );
+    // Query
+    const result = await db.query<User>('SELECT * FROM users WHERE id = ?', [userId]);
 
-  // Execute
-  await db.execute(
-    'INSERT INTO users (name, email) VALUES (?, ?)',
-    ['John', 'john@example.com']
-  );
+    // Execute
+    await db.execute('INSERT INTO users (name, email) VALUES (?, ?)', ['John', 'john@example.com']);
 
-  // Batch
-  await db.batch([
-    { sql: 'INSERT INTO users (name) VALUES (?)', params: ['Alice'] },
-    { sql: 'INSERT INTO users (name) VALUES (?)', params: ['Bob'] }
-  ]);
+    // Batch
+    await db.batch([
+        { sql: 'INSERT INTO users (name) VALUES (?)', params: ['Alice'] },
+        { sql: 'INSERT INTO users (name) VALUES (?)', params: ['Bob'] },
+    ]);
 
-  return Response.json(result.data);
+    return Response.json(result.data);
 }
 ```
 
@@ -210,21 +206,21 @@ import { createKVClient } from '@ottabase/cf/kv';
 export const runtime = 'edge';
 
 export async function GET() {
-  const { env } = await getCloudflareContext();
-  const kv = createKVClient({ namespace: env.OBCF_KV });
+    const { env } = await getCloudflareContext();
+    const kv = createKVClient({ namespace: env.OBCF_KV });
 
-  // Set with TTL
-  await kv.putJSON('session:abc', sessionData, {
-    expirationTtl: 3600 // 1 hour
-  });
+    // Set with TTL
+    await kv.putJSON('session:abc', sessionData, {
+        expirationTtl: 3600, // 1 hour
+    });
 
-  // Get
-  const result = await kv.getJSON<Session>('session:abc');
+    // Get
+    const result = await kv.getJSON<Session>('session:abc');
 
-  // Delete
-  await kv.delete('session:abc');
+    // Delete
+    await kv.delete('session:abc');
 
-  return Response.json(result.data);
+    return Response.json(result.data);
 }
 ```
 
@@ -237,26 +233,26 @@ import { createR2Client } from '@ottabase/cf/r2';
 export const runtime = 'edge';
 
 export async function POST(request: Request) {
-  const { env } = await getCloudflareContext();
-  const r2 = createR2Client({ bucket: env.OBCF_R2 });
+    const { env } = await getCloudflareContext();
+    const r2 = createR2Client({ bucket: env.OBCF_R2 });
 
-  const formData = await request.formData();
-  const file = formData.get('file') as File;
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
 
-  // Upload
-  await r2.put(`uploads/${file.name}`, await file.arrayBuffer(), {
-    httpMetadata: {
-      contentType: file.type
+    // Upload
+    await r2.put(`uploads/${file.name}`, await file.arrayBuffer(), {
+        httpMetadata: {
+            contentType: file.type,
+        },
+    });
+
+    // Download
+    const result = await r2.get(`uploads/${file.name}`);
+    if (result.success && result.data) {
+        const content = await result.data.arrayBuffer();
     }
-  });
 
-  // Download
-  const result = await r2.get(`uploads/${file.name}`);
-  if (result.success && result.data) {
-    const content = await result.data.arrayBuffer();
-  }
-
-  return Response.json({ success: true });
+    return Response.json({ success: true });
 }
 ```
 
@@ -266,13 +262,13 @@ export async function POST(request: Request) {
 import { createImagesClient } from '@ottabase/cf/images';
 
 const images = createImagesClient({
-  accountId: env.CF_ACCOUNT_ID,
-  apiToken: env.CF_API_TOKEN
+    accountId: env.CF_ACCOUNT_ID,
+    apiToken: env.CF_API_TOKEN,
 });
 
 // Upload
 const result = await images.upload(imageFile, {
-  metadata: { alt: 'Product photo' }
+    metadata: { alt: 'Product photo' },
 });
 
 // Get delivery URL
@@ -281,7 +277,8 @@ const url = images.getDeliveryUrl(result.data.id, 'public');
 
 ### Hyperdrive
 
-Hyperdrive accelerates access to your existing PostgreSQL and MySQL databases by maintaining connection pools and caching queries at the edge.
+Hyperdrive accelerates access to your existing PostgreSQL and MySQL databases by maintaining connection pools and
+caching queries at the edge.
 
 #### Setup
 
@@ -310,19 +307,19 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 export const runtime = 'edge';
 
 export async function GET() {
-  const { env } = await getCloudflareContext();
+    const { env } = await getCloudflareContext();
 
-  const hyperdrive = createHyperdriveClient({
-    hyperdrive: env.HYPERDRIVE
-  });
+    const hyperdrive = createHyperdriveClient({
+        hyperdrive: env.HYPERDRIVE,
+    });
 
-  const prisma = new PrismaClient({
-    datasourceUrl: hyperdrive.getConnectionString()
-  });
+    const prisma = new PrismaClient({
+        datasourceUrl: hyperdrive.getConnectionString(),
+    });
 
-  const users = await prisma.user.findMany();
+    const users = await prisma.user.findMany();
 
-  return Response.json({ users });
+    return Response.json({ users });
 }
 ```
 
@@ -336,21 +333,21 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 export const runtime = 'edge';
 
 export async function GET() {
-  const { env } = await getCloudflareContext();
+    const { env } = await getCloudflareContext();
 
-  const hyperdrive = createHyperdriveClient({
-    hyperdrive: env.HYPERDRIVE
-  });
+    const hyperdrive = createHyperdriveClient({
+        hyperdrive: env.HYPERDRIVE,
+    });
 
-  const client = new Client({
-    connectionString: hyperdrive.getConnectionString()
-  });
+    const client = new Client({
+        connectionString: hyperdrive.getConnectionString(),
+    });
 
-  await client.connect();
-  const result = await client.query('SELECT * FROM users LIMIT 10');
-  await client.end();
+    await client.connect();
+    const result = await client.query('SELECT * FROM users LIMIT 10');
+    await client.end();
 
-  return Response.json({ users: result.rows });
+    return Response.json({ users: result.rows });
 }
 ```
 
@@ -365,18 +362,18 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 export const runtime = 'edge';
 
 export async function GET() {
-  const { env } = await getCloudflareContext();
+    const { env } = await getCloudflareContext();
 
-  const hyperdrive = createHyperdriveClient({
-    hyperdrive: env.HYPERDRIVE
-  });
+    const hyperdrive = createHyperdriveClient({
+        hyperdrive: env.HYPERDRIVE,
+    });
 
-  const client = postgres(hyperdrive.getConnectionString());
-  const db = drizzle(client);
+    const client = postgres(hyperdrive.getConnectionString());
+    const db = drizzle(client);
 
-  const users = await db.select().from(usersTable);
+    const users = await db.select().from(usersTable);
 
-  return Response.json({ users });
+    return Response.json({ users });
 }
 ```
 
@@ -392,7 +389,8 @@ export async function GET() {
 - Hyperdrive is **not available in local development** (`wrangler dev`)
 - Use `wrangler dev --remote` to test with real Hyperdrive configuration
 - Best for read-heavy workloads with frequently-accessed data
-- Compatible with PostgreSQL and MySQL databases (including managed services like AWS RDS, Google Cloud SQL, Neon, Supabase, PlanetScale)
+- Compatible with PostgreSQL and MySQL databases (including managed services like AWS RDS, Google Cloud SQL, Neon,
+  Supabase, PlanetScale)
 
 ### Queues
 
@@ -403,17 +401,17 @@ import { createQueuesClient } from '@ottabase/cf/queues';
 export const runtime = 'edge';
 
 export async function POST(request: Request) {
-  const { env } = await getCloudflareContext();
-  const queue = createQueuesClient({ queue: env.OBCF_QUEUE });
+    const { env } = await getCloudflareContext();
+    const queue = createQueuesClient({ queue: env.OBCF_QUEUE });
 
-  // Send message
-  await queue.send({
-    userId: 123,
-    action: 'send-email',
-    data: { to: 'user@example.com' }
-  });
+    // Send message
+    await queue.send({
+        userId: 123,
+        action: 'send-email',
+        data: { to: 'user@example.com' },
+    });
 
-  return Response.json({ success: true });
+    return Response.json({ success: true });
 }
 ```
 
@@ -426,26 +424,26 @@ import { createRateLimitingClient } from '@ottabase/cf/rate-limiting';
 export const runtime = 'edge';
 
 export async function GET(request: Request) {
-  const { env } = await getCloudflareContext();
-  const limiter = createRateLimitingClient({
-    rateLimiter: env.RATE_LIMITER
-  });
-
-  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
-  const result = await limiter.limit({ key: `ip:${ip}` });
-
-  if (!result.data.success) {
-    return new Response('Too many requests', {
-      status: 429,
-      headers: {
-        'X-RateLimit-Limit': result.data.limit.toString(),
-        'X-RateLimit-Remaining': '0',
-        'X-RateLimit-Reset': result.data.resetAfter.toString()
-      }
+    const { env } = await getCloudflareContext();
+    const limiter = createRateLimitingClient({
+        rateLimiter: env.RATE_LIMITER,
     });
-  }
 
-  return Response.json({ success: true });
+    const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+    const result = await limiter.limit({ key: `ip:${ip}` });
+
+    if (!result.data.success) {
+        return new Response('Too many requests', {
+            status: 429,
+            headers: {
+                'X-RateLimit-Limit': result.data.limit.toString(),
+                'X-RateLimit-Remaining': '0',
+                'X-RateLimit-Reset': result.data.resetAfter.toString(),
+            },
+        });
+    }
+
+    return Response.json({ success: true });
 }
 ```
 
@@ -459,8 +457,8 @@ Access bindings in Server Components:
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export default async function Page() {
-  const { env } = await getCloudflareContext();
-  // Use env.OBCF_D1, env.OBCF_KV, env.OBCF_R2, etc.
+    const { env } = await getCloudflareContext();
+    // Use env.OBCF_D1, env.OBCF_KV, env.OBCF_R2, etc.
 }
 ```
 
@@ -480,8 +478,8 @@ Access bindings in middleware:
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export async function middleware(request: NextRequest) {
-  const { env } = await getCloudflareContext();
-  // Use bindings for rate limiting, authentication, etc.
+    const { env } = await getCloudflareContext();
+    // Use bindings for rate limiting, authentication, etc.
 }
 ```
 
@@ -495,9 +493,9 @@ All wrapper methods return `Result<T, Error>` type:
 const result = await db.query('SELECT * FROM users');
 
 if (result.success) {
-  console.log(result.data); // T
+    console.log(result.data); // T
 } else {
-  console.error(result.error); // Error
+    console.error(result.error); // Error
 }
 ```
 
@@ -508,12 +506,12 @@ Define your environment types:
 ```typescript
 // types/cloudflare.d.ts
 export interface CloudflareEnv {
-  OBCF_D1: D1Database;
-  OBCF_KV: KVNamespace;
-  OBCF_R2: R2Bucket;
-  OBCF_QUEUE: Queue;
-  OBCF_RATE_LIMITER: RateLimiter;
-  // ... other bindings
+    OBCF_D1: D1Database;
+    OBCF_KV: KVNamespace;
+    OBCF_R2: R2Bucket;
+    OBCF_QUEUE: Queue;
+    OBCF_RATE_LIMITER: RateLimiter;
+    // ... other bindings
 }
 ```
 

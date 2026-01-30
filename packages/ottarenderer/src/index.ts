@@ -21,4 +21,3 @@ export type { QuoteData } from './components/Quote';
 
 // Export configuration and utilities
 export { blockClass, customRenderers, defaultEJSRConfigs, shouldRenderContentBlocks } from './EditorJsRenderer';
-

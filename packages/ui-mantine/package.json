@@ -1,64 +1,64 @@
 {
-  "name": "@ottabase/ui-mantine",
-  "version": "1.0.0",
-  "description": "Mantine UI components and providers for Ottabase applications",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "sideEffects": false,
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/ui-mantine",
+    "version": "1.0.0",
+    "description": "Mantine UI components and providers for Ottabase applications",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./provider": {
+            "types": "./dist/provider.d.ts",
+            "import": "./dist/provider.mjs",
+            "require": "./dist/provider.js"
+        }
     },
-    "./provider": {
-      "types": "./dist/provider.d.ts",
-      "import": "./dist/provider.mjs",
-      "require": "./dist/provider.js"
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts src/provider.ts src/themeConfig.ts --format cjs,esm --dts --clean --treeshake",
+        "dev": "tsup src/index.ts src/provider.ts src/themeConfig.ts --format cjs,esm --dts --watch --treeshake",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "react",
+        "ui",
+        "components",
+        "providers",
+        "mantine"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {},
+    "peerDependencies": {
+        "react": ">=18.0.0",
+        "react-dom": ">=18.0.0",
+        "@mantine/carousel": "^8.3.1",
+        "@mantine/core": "^8.3.1",
+        "@mantine/hooks": "^8.3.1",
+        "@mantine/modals": "^8.3.1",
+        "@mantine/notifications": "^8.3.1"
+    },
+    "devDependencies": {
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "@types/node": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "typescript": "catalog:",
+        "tsup": "catalog:",
+        "rimraf": "catalog:",
+        "eslint": "catalog:"
     }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsup src/index.ts src/provider.ts src/themeConfig.ts --format cjs,esm --dts --clean --treeshake",
-    "dev": "tsup src/index.ts src/provider.ts src/themeConfig.ts --format cjs,esm --dts --watch --treeshake",
-    "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts,.tsx",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "keywords": [
-    "react",
-    "ui",
-    "components",
-    "providers",
-    "mantine"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {},
-  "peerDependencies": {
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0",
-    "@mantine/carousel": "^8.3.1",
-    "@mantine/core": "^8.3.1",
-    "@mantine/hooks": "^8.3.1",
-    "@mantine/modals": "^8.3.1",
-    "@mantine/notifications": "^8.3.1"
-  },
-  "devDependencies": {
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "@types/node": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "typescript": "catalog:",
-    "tsup": "catalog:",
-    "rimraf": "catalog:",
-    "eslint": "catalog:"
-  }
 }

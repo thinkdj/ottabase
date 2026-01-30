@@ -21,7 +21,7 @@ const AdvancedImageRenderer: React.FC<AdvancedImageRendererProps> = ({
     alt,
     className = '',
     onImageClick,
-    isEditor = false
+    isEditor = false,
 }) => {
     // Base classes for the container
     let containerClasses = [
@@ -39,21 +39,17 @@ const AdvancedImageRenderer: React.FC<AdvancedImageRendererProps> = ({
 
     // Add conditional classes
     if (withBorder) {
-        containerClasses.push(
-            isEditor ? 'advanced-image-container--with-border' : 'advanced-image-block--with-border'
-        );
+        containerClasses.push(isEditor ? 'advanced-image-container--with-border' : 'advanced-image-block--with-border');
     }
 
     if (withBackground) {
         containerClasses.push(
-            isEditor ? 'advanced-image-container--with-background' : 'advanced-image-block--with-background'
+            isEditor ? 'advanced-image-container--with-background' : 'advanced-image-block--with-background',
         );
     }
 
     if (stretched) {
-        containerClasses.push(
-            isEditor ? 'advanced-image-container--stretched' : 'advanced-image-block--stretched'
-        );
+        containerClasses.push(isEditor ? 'advanced-image-container--stretched' : 'advanced-image-block--stretched');
     }
 
     // Image classes
@@ -73,11 +69,13 @@ const AdvancedImageRenderer: React.FC<AdvancedImageRendererProps> = ({
                 style={{ borderRadius: 'inherit' }}
             />
             {caption && (
-                <figcaption className={
-                    isEditor
-                        ? 'advanced-image-caption mt-2 text-sm italic text-center text-gray-600 dark:text-gray-400'
-                        : 'mt-2 text-sm italic text-center text-gray-600 dark:text-gray-400'
-                }>
+                <figcaption
+                    className={
+                        isEditor
+                            ? 'advanced-image-caption mt-2 text-sm italic text-center text-gray-600 dark:text-gray-400'
+                            : 'mt-2 text-sm italic text-center text-gray-600 dark:text-gray-400'
+                    }
+                >
                     {caption}
                 </figcaption>
             )}

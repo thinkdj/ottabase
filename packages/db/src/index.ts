@@ -26,4 +26,4 @@
 // Shared types only - no ORM-specific implementations
 
 // MongoDB exports
-export type { MongoDriver, MongoDriverConfig } from "./mongodb";
+export type { MongoDriver, MongoDriverConfig } from './mongodb';

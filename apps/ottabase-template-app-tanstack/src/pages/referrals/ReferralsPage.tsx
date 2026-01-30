@@ -4,20 +4,16 @@
  * Protected page that shows the referral dashboard for the authenticated user.
  */
 
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { ReferralDashboard } from "@/components/ReferralDashboard";
-import { useSession } from "@/lib/auth";
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { ReferralDashboard } from '@/components/ReferralDashboard';
+import { useSession } from '@/lib/auth';
 
 export function ReferralsPage() {
-  const { user } = useSession();
+    const { user } = useSession();
 
-  return (
-    <ProtectedRoute>
-      {user?.id ? (
-        <ReferralDashboard userId={user.id} />
-      ) : (
-        <div className="p-4">Loading user data...</div>
-      )}
-    </ProtectedRoute>
-  );
+    return (
+        <ProtectedRoute>
+            {user?.id ? <ReferralDashboard userId={user.id} /> : <div className="p-4">Loading user data...</div>}
+        </ProtectedRoute>
+    );
 }

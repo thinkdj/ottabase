@@ -1,6 +1,3 @@
-export { ReferralTracking, referralTrackingTable } from "./ReferralTracking";
-export type {
-  ReferralTrackingInsert,
-  ReferralTrackingRecord,
-} from "./ReferralTracking";
-export * from "./validation";
+export { ReferralTracking, referralTrackingTable } from './ottaorm-models/ReferralTracking';
+export type { ReferralTrackingInsert, ReferralTrackingRecord } from './ottaorm-models/ReferralTracking';
+export * from './validation';

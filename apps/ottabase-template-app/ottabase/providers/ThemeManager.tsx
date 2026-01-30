@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useThemeManager } from "@/ottabase/hooks/useThemeManager";
+import { useThemeManager } from '@/ottabase/hooks/useThemeManager';
 
 /**
  * Null component that exists only to activate the `useThemeManager` hook
@@ -8,6 +8,6 @@ import { useThemeManager } from "@/ottabase/hooks/useThemeManager";
  * in sync with the `next-themes` state.
  */
 export function ThemeManager() {
-  useThemeManager();
-  return null;
+    useThemeManager();
+    return null;
 }

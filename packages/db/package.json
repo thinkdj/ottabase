@@ -1,81 +1,81 @@
 {
-  "name": "@ottabase/db",
-  "version": "1.0.0",
-  "description": "Shared database layer for Ottabase applications - Prisma schema configuration, Drizzle driver support, and ORM setup",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/db",
+    "version": "1.0.0",
+    "description": "Shared database layer for Ottabase applications - Prisma schema configuration, Drizzle driver support, and ORM setup",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./config": {
+            "types": "./dist/config.d.ts",
+            "import": "./dist/config.mjs",
+            "require": "./dist/config.js"
+        },
+        "./registry": {
+            "types": "./dist/registry.d.ts",
+            "import": "./dist/registry.mjs",
+            "require": "./dist/registry.js"
+        },
+        "./drizzle": {
+            "types": "./dist/drizzle/drizzle.d.ts",
+            "import": "./dist/drizzle/drizzle.mjs",
+            "require": "./dist/drizzle/drizzle.js"
+        },
+        "./drizzle-d1": {
+            "types": "./dist/drizzle/drizzle-d1.d.ts",
+            "import": "./dist/drizzle/drizzle-d1.mjs",
+            "require": "./dist/drizzle/drizzle-d1.js"
+        },
+        "./mongodb": {
+            "types": "./dist/mongodb/index.d.ts",
+            "import": "./dist/mongodb/index.mjs",
+            "require": "./dist/mongodb/index.js"
+        }
     },
-    "./config": {
-      "types": "./dist/config.d.ts",
-      "import": "./dist/config.mjs",
-      "require": "./dist/config.js"
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts src/config.ts src/registry.ts src/drizzle/drizzle.ts src/drizzle/drizzle-d1.ts src/mongodb/index.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/config.ts src/registry.ts src/drizzle/drizzle.ts src/drizzle/drizzle-d1.ts src/mongodb/index.ts --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
     },
-    "./registry": {
-      "types": "./dist/registry.d.ts",
-      "import": "./dist/registry.mjs",
-      "require": "./dist/registry.js"
+    "peerDependencies": {
+        "@prisma/client": ">=5.0.0",
+        "drizzle-orm": ">=0.30.0",
+        "mongodb": ">=6.0.0"
     },
-    "./drizzle": {
-      "types": "./dist/drizzle/drizzle.d.ts",
-      "import": "./dist/drizzle/drizzle.mjs",
-      "require": "./dist/drizzle/drizzle.js"
+    "peerDependenciesMeta": {
+        "@prisma/client": {
+            "optional": true
+        },
+        "drizzle-orm": {
+            "optional": true
+        },
+        "mongodb": {
+            "optional": true
+        }
     },
-    "./drizzle-d1": {
-      "types": "./dist/drizzle/drizzle-d1.d.ts",
-      "import": "./dist/drizzle/drizzle-d1.mjs",
-      "require": "./dist/drizzle/drizzle-d1.js"
-    },
-    "./mongodb": {
-      "types": "./dist/mongodb/index.d.ts",
-      "import": "./dist/mongodb/index.mjs",
-      "require": "./dist/mongodb/index.js"
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "@prisma/client": "catalog:",
+        "@types/node": "catalog:",
+        "drizzle-orm": "catalog:",
+        "eslint": "catalog:",
+        "mongodb": "catalog:",
+        "prisma": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:"
     }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsup src/index.ts src/config.ts src/registry.ts src/drizzle/drizzle.ts src/drizzle/drizzle-d1.ts src/mongodb/index.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/config.ts src/registry.ts src/drizzle/drizzle.ts src/drizzle/drizzle-d1.ts src/mongodb/index.ts --format cjs,esm --dts --watch",
-    "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "peerDependencies": {
-    "@prisma/client": ">=5.0.0",
-    "drizzle-orm": ">=0.30.0",
-    "mongodb": ">=6.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@prisma/client": {
-      "optional": true
-    },
-    "drizzle-orm": {
-      "optional": true
-    },
-    "mongodb": {
-      "optional": true
-    }
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "catalog:",
-    "@prisma/client": "catalog:",
-    "@types/node": "catalog:",
-    "drizzle-orm": "catalog:",
-    "eslint": "catalog:",
-    "mongodb": "catalog:",
-    "prisma": "catalog:",
-    "rimraf": "catalog:",
-    "tsup": "catalog:",
-    "typescript": "catalog:"
-  }
 }

@@ -1,1 +1,1 @@
-export { default as BlogPagination } from "./components/BlogPagination";
+export { default as BlogPagination } from './components/BlogPagination';

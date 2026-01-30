@@ -60,7 +60,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    box-shadow:
+        0 1px 3px 0 rgba(0, 0, 0, 0.1),
+        0 1px 2px 0 rgba(0, 0, 0, 0.06);
     border: 1px solid #e2e8f0;
     transition: transform 0.2s ease;
 }
@@ -549,7 +551,6 @@
 .dark .advanced-image-container--stretched {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
-
 
 /* Focus styles for accessibility */
 .advanced-image-browse-btn:focus,

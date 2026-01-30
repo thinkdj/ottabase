@@ -1,87 +1,87 @@
 {
-  "name": "@ottabase/ui-components",
-  "version": "1.0.0",
-  "description": "Shared UI components for Ottabase applications",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "sideEffects": false,
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/ui-components",
+    "version": "1.0.0",
+    "description": "Shared UI components for Ottabase applications",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./blog-pagination": {
+            "types": "./dist/blog-pagination.d.ts",
+            "import": "./dist/blog-pagination.mjs",
+            "require": "./dist/blog-pagination.js"
+        },
+        "./dark-mode-toggle": {
+            "types": "./dist/dark-mode-toggle.d.ts",
+            "import": "./dist/dark-mode-toggle.mjs",
+            "require": "./dist/dark-mode-toggle.js"
+        },
+        "./history-go-back-button": {
+            "types": "./dist/history-go-back-button.d.ts",
+            "import": "./dist/history-go-back-button.mjs",
+            "require": "./dist/history-go-back-button.js"
+        },
+        "./logo": {
+            "types": "./dist/logo.d.ts",
+            "import": "./dist/logo.mjs",
+            "require": "./dist/logo.js"
+        },
+        "./message-box": {
+            "types": "./dist/message-box.d.ts",
+            "import": "./dist/message-box.mjs",
+            "require": "./dist/message-box.js"
+        }
     },
-    "./blog-pagination": {
-      "types": "./dist/blog-pagination.d.ts",
-      "import": "./dist/blog-pagination.mjs",
-      "require": "./dist/blog-pagination.js"
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts src/blog-pagination.ts src/dark-mode-toggle.ts src/history-go-back-button.ts src/logo.ts src/message-box.ts --format cjs,esm --dts --clean --treeshake",
+        "dev": "tsup src/index.ts src/blog-pagination.ts src/dark-mode-toggle.ts src/history-go-back-button.ts src/logo.ts src/message-box.ts --format cjs,esm --dts --watch --treeshake",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
     },
-    "./dark-mode-toggle": {
-      "types": "./dist/dark-mode-toggle.d.ts",
-      "import": "./dist/dark-mode-toggle.mjs",
-      "require": "./dist/dark-mode-toggle.js"
+    "keywords": [
+        "react",
+        "ui",
+        "components",
+        "mantine",
+        "next-themes",
+        "tabler-icons"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@ottabase/config": "workspace:*",
+        "@tabler/icons-react": "catalog:",
+        "next-themes": "catalog:"
     },
-    "./history-go-back-button": {
-      "types": "./dist/history-go-back-button.d.ts",
-      "import": "./dist/history-go-back-button.mjs",
-      "require": "./dist/history-go-back-button.js"
+    "peerDependencies": {
+        "@mantine/core": "^8.3.1",
+        "@tabler/icons-react": "^3.35.0",
+        "next-themes": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:"
     },
-    "./logo": {
-      "types": "./dist/logo.d.ts",
-      "import": "./dist/logo.mjs",
-      "require": "./dist/logo.js"
-    },
-    "./message-box": {
-      "types": "./dist/message-box.d.ts",
-      "import": "./dist/message-box.mjs",
-      "require": "./dist/message-box.js"
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "eslint": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:"
     }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsup src/index.ts src/blog-pagination.ts src/dark-mode-toggle.ts src/history-go-back-button.ts src/logo.ts src/message-box.ts --format cjs,esm --dts --clean --treeshake",
-    "dev": "tsup src/index.ts src/blog-pagination.ts src/dark-mode-toggle.ts src/history-go-back-button.ts src/logo.ts src/message-box.ts --format cjs,esm --dts --watch --treeshake",
-    "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts,.tsx",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "keywords": [
-    "react",
-    "ui",
-    "components",
-    "mantine",
-    "next-themes",
-    "tabler-icons"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@ottabase/config": "workspace:*",
-    "@tabler/icons-react": "catalog:",
-    "next-themes": "catalog:"
-  },
-  "peerDependencies": {
-    "@mantine/core": "^8.3.1",
-    "@tabler/icons-react": "^3.35.0",
-    "next-themes": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:"
-  },
-  "devDependencies": {
-    "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "eslint": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "rimraf": "catalog:",
-    "tsup": "catalog:",
-    "typescript": "catalog:"
-  }
 }

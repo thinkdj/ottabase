@@ -5,1365 +5,1235 @@
  * hero image upload, SEO settings, and all post fields.
  */
 import {
-  CONTENT_TYPES,
-  POST_STATUSES,
-  generateSlug,
-  type ContentType,
-  type HeroImage,
-  type PostStatus,
-  type SeoMeta,
-} from "@ottabase/ottablog";
+    CONTENT_TYPES,
+    POST_STATUSES,
+    generateSlug,
+    type ContentType,
+    type HeroImage,
+    type PostStatus,
+    type SeoMeta,
+} from '@ottabase/ottablog';
 import {
-  AdvancedImageTool,
-  useOttaEditor,
-  type BlockToolConstructable,
-  type OutputData,
-  type ToolSettings,
-} from "@ottabase/ottaeditor";
-import { createModelHooks } from "@ottabase/ottaorm/client";
+    AdvancedImageTool,
+    useOttaEditor,
+    type BlockToolConstructable,
+    type OutputData,
+    type ToolSettings,
+} from '@ottabase/ottaeditor';
+import { createModelHooks } from '@ottabase/ottaorm/client';
+import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import {
-  Blocks,
-  customRenderers,
-  defaultEJSRConfigs,
-} from "@ottabase/ottarenderer";
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    Input,
+    Label,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+    Textarea,
+} from '@ottabase/ui-shadcn';
+import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import {
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  Label,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  Textarea,
-} from "@ottabase/ui-shadcn";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import {
-  ArrowLeft,
-  Calendar,
-  FileText,
-  History,
-  Image as ImageIcon,
-  Layers,
-  Loader2,
-  Save,
-  Search,
-  Send,
-  Settings,
-  StickyNote,
-  Trash2,
-  User,
-  X,
-} from "lucide-react";
-import { useEffect, useState } from "react";
+    ArrowLeft,
+    Calendar,
+    FileText,
+    History,
+    Image as ImageIcon,
+    Layers,
+    Loader2,
+    Save,
+    Search,
+    Send,
+    Settings,
+    StickyNote,
+    Trash2,
+    User,
+    X,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface BlogPost {
-  id: string;
-  title: string;
-  slug: string;
-  excerpt: string | null;
-  content: OutputData | null;
-  contentType: ContentType;
-  status: PostStatus;
-  categoryId: string | null;
-  seriesId: string | null;
-  seriesOrder: number | null;
-  heroImage: HeroImage | null;
-  seoMeta: SeoMeta | null;
-  privateNotes: OutputData | null;
-  footnotes: OutputData | null;
-  authorId: string | null;
-  authorName: string | null;
-  authorEmail: string | null;
-  isFeatured: boolean;
-  allowComments: boolean;
-  publishedAt: string | null;
-  maxVersionsToKeep: number | null;
-  wordCount: number | null;
-  appId: string | null;
+    id: string;
+    title: string;
+    slug: string;
+    excerpt: string | null;
+    content: OutputData | null;
+    contentType: ContentType;
+    status: PostStatus;
+    categoryId: string | null;
+    seriesId: string | null;
+    seriesOrder: number | null;
+    heroImage: HeroImage | null;
+    seoMeta: SeoMeta | null;
+    privateNotes: OutputData | null;
+    footnotes: OutputData | null;
+    authorId: string | null;
+    authorName: string | null;
+    authorEmail: string | null;
+    isFeatured: boolean;
+    allowComments: boolean;
+    publishedAt: string | null;
+    maxVersionsToKeep: number | null;
+    wordCount: number | null;
+    appId: string | null;
 }
 
 interface BlogSeries {
-  id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  isComplete: boolean;
+    id: string;
+    title: string;
+    slug: string;
+    description: string | null;
+    isComplete: boolean;
 }
 
 interface BlogPostVersion {
-  id: string;
-  postId: string;
-  versionNumber: number;
-  title: string;
-  content: OutputData | null;
-  excerpt: string | null;
-  privateNotes: OutputData | null;
-  footnotes: OutputData | null;
-  changedBy?: string | null;
-  changeNote?: string | null;
-  createdAt: string;
-  wordCount: number | null;
+    id: string;
+    postId: string;
+    versionNumber: number;
+    title: string;
+    content: OutputData | null;
+    excerpt: string | null;
+    privateNotes: OutputData | null;
+    footnotes: OutputData | null;
+    changedBy?: string | null;
+    changeNote?: string | null;
+    createdAt: string;
+    wordCount: number | null;
 }
 
-const blogPostHooks = createModelHooks<BlogPost>({ entityName: "posts" });
-const blogSeriesHooks = createModelHooks<BlogSeries>({ entityName: "series" });
-const blogPostVersionHooks = createModelHooks<BlogPostVersion>({ entityName: "post_versions" });
+const blogPostHooks = createModelHooks<BlogPost>({ entityName: 'posts' });
+const blogSeriesHooks = createModelHooks<BlogSeries>({ entityName: 'series' });
+const blogPostVersionHooks = createModelHooks<BlogPostVersion>({ entityName: 'post_versions' });
 
 // Editor configuration with image upload
 const getEditorConfig = (placeholder: string) => ({
-  defaultPlugins: "all" as const,
-  placeholder,
-  minHeight: 200,
-  additionalPlugins: [
-    {
-      name: "image",
-      tool: AdvancedImageTool as unknown as BlockToolConstructable,
-      config: {
-        provider: "r2",
-        uploadEndpoint: "/api/upload",
-      } as ToolSettings,
-    },
-  ],
+    defaultPlugins: 'all' as const,
+    placeholder,
+    minHeight: 200,
+    additionalPlugins: [
+        {
+            name: 'image',
+            tool: AdvancedImageTool as unknown as BlockToolConstructable,
+            config: {
+                provider: 'r2',
+                uploadEndpoint: '/api/upload',
+            } as ToolSettings,
+        },
+    ],
 });
 
 // Wrapper component that handles data loading
 export function AdminBlogEditorPage() {
-  const params = useParams({ strict: false });
-  const postId = (params as { postId?: string }).postId;
-  const isEditMode = Boolean(postId);
+    const params = useParams({ strict: false });
+    const postId = (params as { postId?: string }).postId;
+    const isEditMode = Boolean(postId);
 
-  // Fetch data in the wrapper
-  const { data: existingPost, isLoading: isLoadingPost } =
-    blogPostHooks.useDetail(postId || "");
+    // Fetch data in the wrapper
+    const { data: existingPost, isLoading: isLoadingPost } = blogPostHooks.useDetail(postId || '');
 
-  // Show loading state until data is ready (for edit mode)
-  if (isEditMode && (isLoadingPost || !existingPost)) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+    // Show loading state until data is ready (for edit mode)
+    if (isEditMode && (isLoadingPost || !existingPost)) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
 
-  // Render the form only when data is ready
-  return (
-    <BlogEditorForm
-      postId={postId}
-      isEditMode={isEditMode}
-      initialData={existingPost ?? undefined}
-    />
-  );
+    // Render the form only when data is ready
+    return <BlogEditorForm postId={postId} isEditMode={isEditMode} initialData={existingPost ?? undefined} />;
 }
 
 // Inner component that uses the editor hook - only mounted when data is ready
 interface BlogEditorFormProps {
-  postId?: string;
-  isEditMode: boolean;
-  initialData?: BlogPost;
+    postId?: string;
+    isEditMode: boolean;
+    initialData?: BlogPost;
 }
 
-function BlogEditorForm({
-  postId,
-  isEditMode,
-  initialData,
-}: BlogEditorFormProps) {
-  const navigate = useNavigate();
+function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps) {
+    const navigate = useNavigate();
 
-  // Form state - initialized from props
-  const [title, setTitle] = useState(initialData?.title || "");
-  const [slug, setSlug] = useState(initialData?.slug || "");
-  const [excerpt, setExcerpt] = useState(initialData?.excerpt || "");
-  const [contentType, setContentType] = useState<ContentType>(
-    initialData?.contentType || "blog",
-  );
-  const [status, setStatus] = useState<PostStatus>(
-    initialData?.status || "draft",
-  );
-  const [authorName, setAuthorName] = useState(initialData?.authorName || "");
-  const [isFeatured, setIsFeatured] = useState(
-    initialData?.isFeatured || false,
-  );
-  const [allowComments, setAllowComments] = useState(
-    initialData?.allowComments ?? true,
-  );
-  const [publishedAt, setPublishedAt] = useState(
-    initialData?.publishedAt
-      ? new Date(initialData.publishedAt).toISOString().slice(0, 16)
-      : "",
-  );
+    // Form state - initialized from props
+    const [title, setTitle] = useState(initialData?.title || '');
+    const [slug, setSlug] = useState(initialData?.slug || '');
+    const [excerpt, setExcerpt] = useState(initialData?.excerpt || '');
+    const [contentType, setContentType] = useState<ContentType>(initialData?.contentType || 'blog');
+    const [status, setStatus] = useState<PostStatus>(initialData?.status || 'draft');
+    const [authorName, setAuthorName] = useState(initialData?.authorName || '');
+    const [isFeatured, setIsFeatured] = useState(initialData?.isFeatured || false);
+    const [allowComments, setAllowComments] = useState(initialData?.allowComments ?? true);
+    const [publishedAt, setPublishedAt] = useState(
+        initialData?.publishedAt ? new Date(initialData.publishedAt).toISOString().slice(0, 16) : '',
+    );
 
-  // Hero image state
-  const [heroImage, setHeroImage] = useState<HeroImage | null>(
-    initialData?.heroImage || null,
-  );
-  const [isUploadingHero, setIsUploadingHero] = useState(false);
+    // Hero image state
+    const [heroImage, setHeroImage] = useState<HeroImage | null>(initialData?.heroImage || null);
+    const [isUploadingHero, setIsUploadingHero] = useState(false);
 
-  // SEO state - initialized from props
-  const [seoTitle, setSeoTitle] = useState(initialData?.seoMeta?.title || "");
-  const [seoDescription, setSeoDescription] = useState(
-    initialData?.seoMeta?.description || "",
-  );
-  const [seoKeywords, setSeoKeywords] = useState(
-    initialData?.seoMeta?.keywords?.join(", ") || "",
-  );
-  const [seoNoIndex, setSeoNoIndex] = useState(
-    initialData?.seoMeta?.noIndex || false,
-  );
+    // SEO state - initialized from props
+    const [seoTitle, setSeoTitle] = useState(initialData?.seoMeta?.title || '');
+    const [seoDescription, setSeoDescription] = useState(initialData?.seoMeta?.description || '');
+    const [seoKeywords, setSeoKeywords] = useState(initialData?.seoMeta?.keywords?.join(', ') || '');
+    const [seoNoIndex, setSeoNoIndex] = useState(initialData?.seoMeta?.noIndex || false);
 
-  // Series state
-  const [seriesId, setSeriesId] = useState<string | null>(
-    initialData?.seriesId || null,
-  );
-  const [seriesOrder, setSeriesOrder] = useState<number | null>(
-    initialData?.seriesOrder || null,
-  );
+    // Series state
+    const [seriesId, setSeriesId] = useState<string | null>(initialData?.seriesId || null);
+    const [seriesOrder, setSeriesOrder] = useState<number | null>(initialData?.seriesOrder || null);
 
-  // Version history settings
-  const [maxVersionsToKeep, setMaxVersionsToKeep] = useState<number | null>(
-    initialData?.maxVersionsToKeep || null,
-  );
+    // Version history settings
+    const [maxVersionsToKeep, setMaxVersionsToKeep] = useState<number | null>(initialData?.maxVersionsToKeep || null);
 
-  // Fetch series list for dropdown
-  const { data: seriesListData } = blogSeriesHooks.useList();
-  const seriesList = seriesListData?.data || [];
+    // Fetch series list for dropdown
+    const { data: seriesListData } = blogSeriesHooks.useList();
+    const seriesList = seriesListData?.data || [];
 
-  // Fetch version history for this post (edit mode only)
-  const { data: versionsData, refetch: refetchVersions } = blogPostVersionHooks.useList({
-    where: postId ? { postId } : undefined,
-    orderBy: "versionNumber",
-    orderDirection: "desc",
-    limit: 20,
-  });
-  const versions = isEditMode ? (versionsData || []) : [];
-  const versionHistory = versions.length > 0 ? versions.slice(1) : [];
-
-  // API hooks
-  const createPost = blogPostHooks.useCreate();
-  const updatePost = blogPostHooks.useUpdate();
-  const createVersion = blogPostVersionHooks.useCreate();
-  const deleteVersion = blogPostVersionHooks.useDelete();
-
-  const isSaving = createPost.isPending || updatePost.isPending;
-
-  // Active tab
-  const [activeTab, setActiveTab] = useState("content");
-  const [previewVersion, setPreviewVersion] = useState<BlogPostVersion | null>(null);
-  const [slugStatus, setSlugStatus] = useState<
-    "idle" | "checking" | "available" | "taken"
-  >("idle");
-  const [slugError, setSlugError] = useState<string | null>(null);
-
-  // Content editors - initialData is guaranteed to be available in edit mode
-  const mainEditor = useOttaEditor({
-    ...getEditorConfig("Start writing your post..."),
-    data: initialData?.content ?? undefined,
-  });
-
-  const notesEditor = useOttaEditor({
-    ...getEditorConfig("Private notes (not shown publicly)..."),
-    data: initialData?.privateNotes ?? undefined,
-  });
-
-  const footnotesEditor = useOttaEditor({
-    ...getEditorConfig("Add footnotes and references..."),
-    data: initialData?.footnotes ?? undefined,
-  });
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+    // Fetch version history for this post (edit mode only)
+    const { data: versionsData, refetch: refetchVersions } = blogPostVersionHooks.useList({
+        where: postId ? { postId } : undefined,
+        orderBy: 'versionNumber',
+        orderDirection: 'desc',
+        limit: 20,
     });
-  };
+    const versions = isEditMode ? versionsData || [] : [];
+    const versionHistory = versions.length > 0 ? versions.slice(1) : [];
 
-  const applyVersionToEditor = async (version: BlogPostVersion) => {
-    if (!version) return;
+    // API hooks
+    const createPost = blogPostHooks.useCreate();
+    const updatePost = blogPostHooks.useUpdate();
+    const createVersion = blogPostVersionHooks.useCreate();
+    const deleteVersion = blogPostVersionHooks.useDelete();
 
-    handleTitleChange(version.title || "");
-    setExcerpt(version.excerpt || "");
+    const isSaving = createPost.isPending || updatePost.isPending;
 
-    if (version.content) {
-      await mainEditor.render(version.content);
-    } else {
-      await mainEditor.clear();
-    }
+    // Active tab
+    const [activeTab, setActiveTab] = useState('content');
+    const [previewVersion, setPreviewVersion] = useState<BlogPostVersion | null>(null);
+    const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+    const [slugError, setSlugError] = useState<string | null>(null);
 
-    if (version.privateNotes) {
-      await notesEditor.render(version.privateNotes);
-    } else {
-      await notesEditor.clear();
-    }
+    // Content editors - initialData is guaranteed to be available in edit mode
+    const mainEditor = useOttaEditor({
+        ...getEditorConfig('Start writing your post...'),
+        data: initialData?.content ?? undefined,
+    });
 
-    if (version.footnotes) {
-      await footnotesEditor.render(version.footnotes);
-    } else {
-      await footnotesEditor.clear();
-    }
+    const notesEditor = useOttaEditor({
+        ...getEditorConfig('Private notes (not shown publicly)...'),
+        data: initialData?.privateNotes ?? undefined,
+    });
 
-    setActiveTab("content");
-  };
+    const footnotesEditor = useOttaEditor({
+        ...getEditorConfig('Add footnotes and references...'),
+        data: initialData?.footnotes ?? undefined,
+    });
 
-  const previewPost = previewVersion
-    ? {
-        title: previewVersion.title,
-        excerpt: previewVersion.excerpt,
-        content: previewVersion.content,
-        footnotes: previewVersion.footnotes,
-        publishedAt,
-        authorName,
-        heroImage,
-        contentType,
-        isFeatured,
-      }
-    : null;
-
-  const hasPreviewContent =
-    previewPost?.content?.blocks && previewPost.content.blocks.length > 0;
-  const hasPreviewFootnotes =
-    previewPost?.footnotes?.blocks && previewPost.footnotes.blocks.length > 0;
-
-  useEffect(() => {
-    const baseSlug = (slug || generateSlug(title)).trim();
-    if (!baseSlug) {
-      setSlugStatus("idle");
-      setSlugError(null);
-      return;
-    }
-
-    const isSlugValid = /^[A-Za-z0-9_-]+$/.test(baseSlug);
-    if (!isSlugValid) {
-      setSlugStatus("idle");
-      setSlugError(
-        "Slug can only contain letters, numbers, hyphens, and underscores.",
-      );
-      return;
-    }
-
-    setSlugError(null);
-
-    let cancelled = false;
-    setSlugStatus("checking");
-
-    const timer = setTimeout(async () => {
-      try {
-        const params = new URLSearchParams();
-        params.set("uniqueField", "slug");
-        params.set("uniqueValue", baseSlug);
-        if (postId) {
-          params.set("uniqueIgnoreId", postId);
-        }
-        if (initialData?.appId) {
-          params.set("where", JSON.stringify({ appId: initialData.appId }));
-        }
-
-        const response = await fetch(
-          `/api/ottaorm/posts/unique?${params.toString()}`,
-        );
-        if (!response.ok) {
-          if (!cancelled) setSlugStatus("idle");
-          return;
-        }
-
-        const result = (await response.json()) as { unique?: boolean };
-        if (!cancelled) {
-          setSlugStatus(result.unique ? "available" : "taken");
-        }
-      } catch {
-        if (!cancelled) setSlugStatus("idle");
-      }
-    }, 350);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [slug, title, postId, initialData?.appId]);
-
-  // Auto-generate slug from title
-  const handleTitleChange = (newTitle: string) => {
-    setTitle(newTitle);
-    if (!isEditMode || !slug) {
-      setSlug(generateSlug(newTitle));
-    }
-  };
-
-  // Handle hero image upload
-  const handleHeroImageUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploadingHero(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error("Upload failed");
-
-      const data = (await response.json()) as {
-        url?: string;
-        cfImageId?: string;
-      };
-      if (data.url) {
-        setHeroImage({
-          url: data.url,
-          alt: heroImage?.alt || file.name,
-          cfImageId: data.cfImageId,
+    const formatDate = (date: string) => {
+        return new Date(date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
         });
-      }
-    } catch (error) {
-      console.error("Hero image upload failed:", error);
-      alert("Failed to upload image. Please try again.");
-    } finally {
-      setIsUploadingHero(false);
-    }
-  };
+    };
 
-  // Update hero image URL
-  const handleHeroUrlChange = (url: string) => {
-    setHeroImage(url ? { url, alt: heroImage?.alt || "" } : null);
-  };
+    const applyVersionToEditor = async (version: BlogPostVersion) => {
+        if (!version) return;
 
-  // Update hero image alt
-  const handleHeroAltChange = (alt: string) => {
-    if (heroImage) {
-      setHeroImage({ ...heroImage, alt });
-    }
-  };
+        handleTitleChange(version.title || '');
+        setExcerpt(version.excerpt || '');
 
-  // Calculate word count from EditorJS content
-  const calculateWordCount = (data: OutputData | null): number => {
-    if (!data?.blocks) return 0;
-    let text = "";
-    for (const block of data.blocks) {
-      if (block.data?.text) text += " " + block.data.text;
-      if (block.data?.items) {
-        for (const item of block.data.items as string[]) {
-          text += " " + item;
+        if (version.content) {
+            await mainEditor.render(version.content);
+        } else {
+            await mainEditor.clear();
         }
-      }
-    }
-    return text.trim().split(/\s+/).filter(Boolean).length;
-  };
 
-  // Get next version number
-  const getNextVersionNumber = (): number => {
-    if (versions.length === 0) return 1;
-    const maxVersion = Math.max(...versions.map((v) => v.versionNumber));
-    return maxVersion + 1;
-  };
+        if (version.privateNotes) {
+            await notesEditor.render(version.privateNotes);
+        } else {
+            await notesEditor.clear();
+        }
 
-  // Prune old versions if maxVersionsToKeep is set
-  const pruneOldVersions = async (
-    versionList: BlogPostVersion[],
-    keepCount: number,
-  ) => {
-    if (keepCount < 1 || versionList.length <= keepCount) return;
+        if (version.footnotes) {
+            await footnotesEditor.render(version.footnotes);
+        } else {
+            await footnotesEditor.clear();
+        }
 
-    const versionsToDelete = versionList.slice(keepCount);
-    for (const version of versionsToDelete) {
-      try {
-        await deleteVersion.mutateAsync(version.id);
-      } catch (error) {
-        console.error("Failed to delete old version:", error);
-      }
-    }
-  };
+        setActiveTab('content');
+    };
 
+    const previewPost = previewVersion
+        ? {
+              title: previewVersion.title,
+              excerpt: previewVersion.excerpt,
+              content: previewVersion.content,
+              footnotes: previewVersion.footnotes,
+              publishedAt,
+              authorName,
+              heroImage,
+              contentType,
+              isFeatured,
+          }
+        : null;
 
-  // Save post
-  const handleSave = async (publishNow = false) => {
-    if (!title.trim()) {
-      alert("Title is required");
-      return;
-    }
+    const hasPreviewContent = previewPost?.content?.blocks && previewPost.content.blocks.length > 0;
+    const hasPreviewFootnotes = previewPost?.footnotes?.blocks && previewPost.footnotes.blocks.length > 0;
 
-    const baseSlug = (slug || generateSlug(title)).trim();
-    if (!/^[A-Za-z0-9_-]+$/.test(baseSlug)) {
-      alert(
-        "Slug can only contain letters, numbers, hyphens, and underscores.",
-      );
-      return;
-    }
+    useEffect(() => {
+        const baseSlug = (slug || generateSlug(title)).trim();
+        if (!baseSlug) {
+            setSlugStatus('idle');
+            setSlugError(null);
+            return;
+        }
 
-    if (slugStatus === "taken") {
-      alert("Slug already in use. Please choose a different slug.");
-      return;
-    }
+        const isSlugValid = /^[A-Za-z0-9_-]+$/.test(baseSlug);
+        if (!isSlugValid) {
+            setSlugStatus('idle');
+            setSlugError('Slug can only contain letters, numbers, hyphens, and underscores.');
+            return;
+        }
 
-    try {
-      // Get editor content
-      const content = await mainEditor.save();
-      const privateNotes = await notesEditor.save();
-      const footnotes = await footnotesEditor.save();
+        setSlugError(null);
 
-      // Calculate word count
-      const wordCount = calculateWordCount(content);
+        let cancelled = false;
+        setSlugStatus('checking');
 
-      // Build SEO meta
-      const seoMeta: SeoMeta = {
-        title: seoTitle || undefined,
-        description: seoDescription || undefined,
-        keywords: seoKeywords
-          ? seoKeywords
-              .split(",")
-              .map((k) => k.trim())
-              .filter(Boolean)
-          : undefined,
-        noIndex: seoNoIndex,
-        ogType: "article",
-        twitterCard: "summary_large_image",
-      };
+        const timer = setTimeout(async () => {
+            try {
+                const params = new URLSearchParams();
+                params.set('uniqueField', 'slug');
+                params.set('uniqueValue', baseSlug);
+                if (postId) {
+                    params.set('uniqueIgnoreId', postId);
+                }
+                if (initialData?.appId) {
+                    params.set('where', JSON.stringify({ appId: initialData.appId }));
+                }
 
-      if (baseSlug !== slug) {
-        setSlug(baseSlug);
-      }
+                const response = await fetch(`/api/ottaorm/posts/unique?${params.toString()}`);
+                if (!response.ok) {
+                    if (!cancelled) setSlugStatus('idle');
+                    return;
+                }
 
-      const postData: Partial<BlogPost> = {
-        title,
-        slug: baseSlug,
-        excerpt: excerpt || undefined,
-        content: content || undefined,
-        contentType,
-        status: publishNow ? "published" : status,
-        heroImage: heroImage || undefined,
-        seoMeta,
-        privateNotes: privateNotes || undefined,
-        footnotes: footnotes || undefined,
-        authorName: authorName || undefined,
-        isFeatured,
-        allowComments,
-        publishedAt:
-          publishNow && !publishedAt
-            ? new Date().toISOString()
-            : publishedAt || undefined,
-        seriesId: seriesId || undefined,
-        seriesOrder: seriesOrder || undefined,
-        maxVersionsToKeep: maxVersionsToKeep || undefined,
-        wordCount,
-      };
+                const result = (await response.json()) as { unique?: boolean };
+                if (!cancelled) {
+                    setSlugStatus(result.unique ? 'available' : 'taken');
+                }
+            } catch {
+                if (!cancelled) setSlugStatus('idle');
+            }
+        }, 350);
 
-      // Create version snapshot before saving (edit mode only)
-      if (isEditMode && postId && initialData) {
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [slug, title, postId, initialData?.appId]);
+
+    // Auto-generate slug from title
+    const handleTitleChange = (newTitle: string) => {
+        setTitle(newTitle);
+        if (!isEditMode || !slug) {
+            setSlug(generateSlug(newTitle));
+        }
+    };
+
+    // Handle hero image upload
+    const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploadingHero(true);
         try {
-          await createVersion.mutateAsync({
-            postId,
-            versionNumber: getNextVersionNumber(),
-            title: initialData.title,
-            content: initialData.content,
-            excerpt: initialData.excerpt,
-            privateNotes: initialData.privateNotes,
-            footnotes: initialData.footnotes,
-            wordCount: initialData.wordCount,
-          });
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) throw new Error('Upload failed');
+
+            const data = (await response.json()) as {
+                url?: string;
+                cfImageId?: string;
+            };
+            if (data.url) {
+                setHeroImage({
+                    url: data.url,
+                    alt: heroImage?.alt || file.name,
+                    cfImageId: data.cfImageId,
+                });
+            }
         } catch (error) {
-          console.error("Failed to create version:", error);
-          // Continue with save even if version creation fails
+            console.error('Hero image upload failed:', error);
+            alert('Failed to upload image. Please try again.');
+        } finally {
+            setIsUploadingHero(false);
         }
-      }
+    };
 
-      if (isEditMode && postId) {
-        await updatePost.mutateAsync({ id: postId, data: postData });
+    // Update hero image URL
+    const handleHeroUrlChange = (url: string) => {
+        setHeroImage(url ? { url, alt: heroImage?.alt || '' } : null);
+    };
 
-        // Prune old versions if setting is enabled
-        if (maxVersionsToKeep && maxVersionsToKeep > 0) {
-          const refreshed = await refetchVersions();
-          const latestVersions =
-            ((refreshed.data || []) as BlogPostVersion[]) ?? [];
-          await pruneOldVersions(latestVersions, maxVersionsToKeep);
+    // Update hero image alt
+    const handleHeroAltChange = (alt: string) => {
+        if (heroImage) {
+            setHeroImage({ ...heroImage, alt });
         }
-      } else {
-        await createPost.mutateAsync(postData);
-      }
+    };
 
-      navigate({ to: "/admin/blog" });
-    } catch (error) {
-      console.error("Failed to save post:", error);
-      alert("Failed to save post. Please try again.");
-    }
-  };
+    // Calculate word count from EditorJS content
+    const calculateWordCount = (data: OutputData | null): number => {
+        if (!data?.blocks) return 0;
+        let text = '';
+        for (const block of data.blocks) {
+            if (block.data?.text) text += ' ' + block.data.text;
+            if (block.data?.items) {
+                for (const item of block.data.items as string[]) {
+                    text += ' ' + item;
+                }
+            }
+        }
+        return text.trim().split(/\s+/).filter(Boolean).length;
+    };
 
-  return (
-    <div className="space-y-6 pb-16">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/admin/blog">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              {isEditMode ? "Edit Post" : "New Post"}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {isEditMode ? "Update your blog post" : "Create a new blog post"}
-            </p>
-          </div>
-        </div>
+    // Get next version number
+    const getNextVersionNumber = (): number => {
+        if (versions.length === 0) return 1;
+        const maxVersion = Math.max(...versions.map((v) => v.versionNumber));
+        return maxVersion + 1;
+    };
 
-        <div className="flex items-center gap-2">
-          <Badge variant={status === "published" ? "default" : "secondary"}>
-            {POST_STATUSES[status].label}
-          </Badge>
-          <Button
-            variant="outline"
-            onClick={() => handleSave(false)}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            Save
-          </Button>
-          <Button onClick={() => handleSave(true)} disabled={isSaving}>
-            {isSaving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="mr-2 h-4 w-4" />
-            )}
-            Publish
-          </Button>
-        </div>
-      </div>
+    // Prune old versions if maxVersionsToKeep is set
+    const pruneOldVersions = async (versionList: BlogPostVersion[], keepCount: number) => {
+        if (keepCount < 1 || versionList.length <= keepCount) return;
 
-      {/* Main Form */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Title & Slug */}
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  placeholder="Enter post title..."
-                  className="text-lg font-semibold"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="slug">Slug</Label>
-                <Input
-                  id="slug"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  placeholder="url-friendly-slug"
-                  aria-invalid={slugStatus === "taken" || !!slugError}
-                  className={
-                    slugStatus === "taken" || slugError
-                      ? "border-destructive focus-visible:ring-destructive"
-                      : undefined
-                  }
-                />
-                {slugError && (
-                  <p className="text-xs text-destructive">{slugError}</p>
-                )}
-                {slugStatus === "checking" && (
-                  <p className="text-xs text-muted-foreground">
-                    Checking slug...
-                  </p>
-                )}
-                {slugStatus === "taken" && (
-                  <p className="text-xs text-destructive">
-                    Slug already in use.
-                  </p>
-                )}
-                {slugStatus === "available" && (
-                  <p className="text-xs text-muted-foreground">
-                    Slug is available.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+        const versionsToDelete = versionList.slice(keepCount);
+        for (const version of versionsToDelete) {
+            try {
+                await deleteVersion.mutateAsync(version.id);
+            } catch (error) {
+                console.error('Failed to delete old version:', error);
+            }
+        }
+    };
 
-          {/* Content Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="content" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Content
-              </TabsTrigger>
-              <TabsTrigger value="notes" className="flex items-center gap-2">
-                <StickyNote className="h-4 w-4" />
-                Notes
-              </TabsTrigger>
-              <TabsTrigger
-                value="footnotes"
-                className="flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                Footnotes
-              </TabsTrigger>
-              <TabsTrigger value="seo" className="flex items-center gap-2">
-                <Search className="h-4 w-4" />
-                SEO
-              </TabsTrigger>
-            </TabsList>
+    // Save post
+    const handleSave = async (publishNow = false) => {
+        if (!title.trim()) {
+            alert('Title is required');
+            return;
+        }
 
-            <TabsContent
-              value="content"
-              className="mt-4 data-[state=inactive]:hidden"
-              forceMount
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Main Content</CardTitle>
-                  <CardDescription>
-                    Write your post content using the rich text editor
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div
-                    ref={mainEditor.editorRef}
-                    className="min-h-[400px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
+        const baseSlug = (slug || generateSlug(title)).trim();
+        if (!/^[A-Za-z0-9_-]+$/.test(baseSlug)) {
+            alert('Slug can only contain letters, numbers, hyphens, and underscores.');
+            return;
+        }
 
-            <TabsContent
-              value="notes"
-              className="mt-4 data-[state=inactive]:hidden"
-              forceMount
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Private Notes</CardTitle>
-                  <CardDescription>
-                    Personal notes for the author (not shown publicly)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div
-                    ref={notesEditor.editorRef}
-                    className="min-h-[300px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4 bg-yellow-50/50 dark:bg-yellow-900/10"
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
+        if (slugStatus === 'taken') {
+            alert('Slug already in use. Please choose a different slug.');
+            return;
+        }
 
-            <TabsContent
-              value="footnotes"
-              className="mt-4 data-[state=inactive]:hidden"
-              forceMount
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Footnotes & References</CardTitle>
-                  <CardDescription>
-                    Add footnotes, citations, and references (shown at the end
-                    of the post)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div
-                    ref={footnotesEditor.editorRef}
-                    className="min-h-[200px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
+        try {
+            // Get editor content
+            const content = await mainEditor.save();
+            const privateNotes = await notesEditor.save();
+            const footnotes = await footnotesEditor.save();
 
-            <TabsContent
-              value="seo"
-              className="mt-4 data-[state=inactive]:hidden"
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>SEO Settings</CardTitle>
-                  <CardDescription>
-                    Optimize your post for search engines
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="seoTitle">SEO Title</Label>
-                    <Input
-                      id="seoTitle"
-                      value={seoTitle}
-                      onChange={(e) => setSeoTitle(e.target.value)}
-                      placeholder={title || "Defaults to post title"}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {seoTitle.length}/60 characters
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="seoDescription">Meta Description</Label>
-                    <Textarea
-                      id="seoDescription"
-                      value={seoDescription}
-                      onChange={(e) => setSeoDescription(e.target.value)}
-                      placeholder="Brief description for search results..."
-                      rows={3}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {seoDescription.length}/160 characters
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="seoKeywords">Keywords</Label>
-                    <Input
-                      id="seoKeywords"
-                      value={seoKeywords}
-                      onChange={(e) => setSeoKeywords(e.target.value)}
-                      placeholder="keyword1, keyword2, keyword3"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="seoNoIndex"
-                      aria-label="Hide from search engines"
-                      checked={seoNoIndex}
-                      onChange={(e) => setSeoNoIndex(e.target.checked)}
-                      className="rounded"
-                    />
-                    <Label htmlFor="seoNoIndex">
-                      Hide from search engines (noindex)
-                    </Label>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+            // Calculate word count
+            const wordCount = calculateWordCount(content);
 
-          {/* Excerpt */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Excerpt</CardTitle>
-              <CardDescription>
-                Short summary shown in listings (auto-generated if empty)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={excerpt}
-                onChange={(e) => setExcerpt(e.target.value)}
-                placeholder="Brief summary of the post..."
-                rows={3}
-              />
-            </CardContent>
-          </Card>
-        </div>
+            // Build SEO meta
+            const seoMeta: SeoMeta = {
+                title: seoTitle || undefined,
+                description: seoDescription || undefined,
+                keywords: seoKeywords
+                    ? seoKeywords
+                          .split(',')
+                          .map((k) => k.trim())
+                          .filter(Boolean)
+                    : undefined,
+                noIndex: seoNoIndex,
+                ogType: 'article',
+                twitterCard: 'summary_large_image',
+            };
 
-        {/* Right Column - Settings */}
-        <div className="space-y-6">
-          {/* Hero Image */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ImageIcon className="h-4 w-4" />
-                Hero Image
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {heroImage?.url ? (
-                <div className="relative">
-                  <img
-                    src={heroImage.url}
-                    alt={heroImage.alt || "Hero image"}
-                    className="w-full rounded-lg object-cover aspect-video"
-                  />
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2"
-                    onClick={() => setHeroImage(null)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                  <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    No hero image set
-                  </p>
-                </div>
-              )}
+            if (baseSlug !== slug) {
+                setSlug(baseSlug);
+            }
 
-              <div className="space-y-2">
-                <Label>Upload Image</Label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleHeroImageUpload}
-                  disabled={isUploadingHero}
-                />
-                {isUploadingHero && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Uploading...
-                  </p>
-                )}
-              </div>
+            const postData: Partial<BlogPost> = {
+                title,
+                slug: baseSlug,
+                excerpt: excerpt || undefined,
+                content: content || undefined,
+                contentType,
+                status: publishNow ? 'published' : status,
+                heroImage: heroImage || undefined,
+                seoMeta,
+                privateNotes: privateNotes || undefined,
+                footnotes: footnotes || undefined,
+                authorName: authorName || undefined,
+                isFeatured,
+                allowComments,
+                publishedAt: publishNow && !publishedAt ? new Date().toISOString() : publishedAt || undefined,
+                seriesId: seriesId || undefined,
+                seriesOrder: seriesOrder || undefined,
+                maxVersionsToKeep: maxVersionsToKeep || undefined,
+                wordCount,
+            };
 
-              <div className="space-y-2">
-                <Label>Or paste URL</Label>
-                <Input
-                  value={heroImage?.url || ""}
-                  onChange={(e) => handleHeroUrlChange(e.target.value)}
-                  placeholder="https://..."
-                />
-              </div>
+            // Create version snapshot before saving (edit mode only)
+            if (isEditMode && postId && initialData) {
+                try {
+                    await createVersion.mutateAsync({
+                        postId,
+                        versionNumber: getNextVersionNumber(),
+                        title: initialData.title,
+                        content: initialData.content,
+                        excerpt: initialData.excerpt,
+                        privateNotes: initialData.privateNotes,
+                        footnotes: initialData.footnotes,
+                        wordCount: initialData.wordCount,
+                    });
+                } catch (error) {
+                    console.error('Failed to create version:', error);
+                    // Continue with save even if version creation fails
+                }
+            }
 
-              <div className="space-y-2">
-                <Label>Alt Text</Label>
-                <Input
-                  value={heroImage?.alt || ""}
-                  onChange={(e) => handleHeroAltChange(e.target.value)}
-                  placeholder="Describe the image..."
-                />
-              </div>
-            </CardContent>
-          </Card>
+            if (isEditMode && postId) {
+                await updatePost.mutateAsync({ id: postId, data: postData });
 
-          {/* Post Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="contentType">Content Type</Label>
-                <select
-                  id="contentType"
-                  aria-label="Content type"
-                  value={contentType}
-                  onChange={(e) =>
-                    setContentType(e.target.value as ContentType)
-                  }
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  {Object.entries(CONTENT_TYPES).map(([value, { label }]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                // Prune old versions if setting is enabled
+                if (maxVersionsToKeep && maxVersionsToKeep > 0) {
+                    const refreshed = await refetchVersions();
+                    const latestVersions = ((refreshed.data || []) as BlogPostVersion[]) ?? [];
+                    await pruneOldVersions(latestVersions, maxVersionsToKeep);
+                }
+            } else {
+                await createPost.mutateAsync(postData);
+            }
 
-              <div className="space-y-2">
-                <Label htmlFor="postStatus">Status</Label>
-                <select
-                  id="postStatus"
-                  aria-label="Post status"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as PostStatus)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  {Object.entries(POST_STATUSES).map(([value, { label }]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            navigate({ to: '/admin/blog' });
+        } catch (error) {
+            console.error('Failed to save post:', error);
+            alert('Failed to save post. Please try again.');
+        }
+    };
 
-              <div className="space-y-2">
-                <Label>Author Name</Label>
-                <Input
-                  value={authorName}
-                  onChange={(e) => setAuthorName(e.target.value)}
-                  placeholder="Author name..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Publish Date</Label>
-                <Input
-                  type="datetime-local"
-                  value={publishedAt}
-                  onChange={(e) => setPublishedAt(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="isFeatured"
-                    aria-label="Featured post"
-                    checked={isFeatured}
-                    onChange={(e) => setIsFeatured(e.target.checked)}
-                    className="rounded"
-                  />
-                  <Label htmlFor="isFeatured">Featured Post</Label>
+    return (
+        <div className="space-y-6 pb-16">
+            {/* Header */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" asChild>
+                        <Link to="/admin/blog">
+                            <ArrowLeft className="h-4 w-4" />
+                        </Link>
+                    </Button>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">{isEditMode ? 'Edit Post' : 'New Post'}</h1>
+                        <p className="text-sm text-muted-foreground">
+                            {isEditMode ? 'Update your blog post' : 'Create a new blog post'}
+                        </p>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="allowComments"
-                    aria-label="Allow comments"
-                    checked={allowComments}
-                    onChange={(e) => setAllowComments(e.target.checked)}
-                    className="rounded"
-                  />
-                  <Label htmlFor="allowComments">Allow Comments</Label>
+                    <Badge variant={status === 'published' ? 'default' : 'secondary'}>
+                        {POST_STATUSES[status].label}
+                    </Badge>
+                    <Button variant="outline" onClick={() => handleSave(false)} disabled={isSaving}>
+                        {isSaving ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Save className="mr-2 h-4 w-4" />
+                        )}
+                        Save
+                    </Button>
+                    <Button onClick={() => handleSave(true)} disabled={isSaving}>
+                        {isSaving ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Send className="mr-2 h-4 w-4" />
+                        )}
+                        Publish
+                    </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Series */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Layers className="h-4 w-4" />
-                Series
-              </CardTitle>
-              <CardDescription>
-                Group this post with related content
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="seriesSelect">Series</Label>
-                <select
-                  id="seriesSelect"
-                  aria-label="Series"
-                  value={seriesId || ""}
-                  onChange={(e) => setSeriesId(e.target.value || null)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">No series</option>
-                  {seriesList.map((series) => (
-                    <option key={series.id} value={series.id}>
-                      {series.title}
-                      {series.isComplete ? " ✓" : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {seriesId && (
-                <div className="space-y-2">
-                  <Label>Order in Series</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={seriesOrder || ""}
-                    onChange={(e) =>
-                      setSeriesOrder(
-                        e.target.value ? parseInt(e.target.value, 10) : null,
-                      )
-                    }
-                    placeholder="1, 2, 3..."
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Position within the series (e.g., Part 1, Part 2)
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Version History */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="h-4 w-4" />
-                Version History
-              </CardTitle>
-              <CardDescription>
-                Track changes and restore previous versions
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="maxVersionsToKeep">
-                  Keep Previous Versions
-                </Label>
-                <select
-                  id="maxVersionsToKeep"
-                  aria-label="Keep previous versions"
-                  value={maxVersionsToKeep || ""}
-                  onChange={(e) =>
-                    setMaxVersionsToKeep(
-                      e.target.value ? parseInt(e.target.value, 10) : null,
-                    )
-                  }
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Keep all versions</option>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                    <option key={n} value={n}>
-                      Keep last {n} version{n > 1 ? "s" : ""}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  Older versions will be automatically deleted on save
-                </p>
-              </div>
-
-              {isEditMode && versionHistory.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Recent Versions ({versionHistory.length})</Label>
-                  <div className="max-h-[200px] overflow-y-auto rounded-md border divide-y">
-                    {versionHistory.map((version) => (
-                      <div
-                        key={version.id}
-                        className="flex items-center justify-between p-2 text-sm hover:bg-muted/50"
-                      >
-                        <div>
-                          <span className="font-medium">
-                            v{version.versionNumber}
-                          </span>
-                          <span className="text-muted-foreground ml-2">
-                            {new Date(version.createdAt).toLocaleDateString()}
-                          </span>
-                          {version.wordCount && (
-                            <span className="text-muted-foreground ml-2">
-                              {version.wordCount} words
-                            </span>
-                          )}
-                          {version.changeNote && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {version.changeNote}
+            {/* Main Form */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left Column - Main Content */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Title & Slug */}
+                    <Card>
+                        <CardContent className="pt-6 space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="title">Title</Label>
+                                <Input
+                                    id="title"
+                                    value={title}
+                                    onChange={(e) => handleTitleChange(e.target.value)}
+                                    placeholder="Enter post title..."
+                                    className="text-lg font-semibold"
+                                />
                             </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="h-6 px-2"
-                            onClick={() => setPreviewVersion(version)}
-                          >
-                            Preview
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-6 px-2"
-                            onClick={async () => {
-                              if (
-                                window.confirm(
-                                  `Load version ${version.versionNumber} into the editor?`,
-                                )
-                              ) {
-                                await applyVersionToEditor(version);
-                              }
-                            }}
-                          >
-                            Load
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-destructive hover:text-destructive"
-                            onClick={async () => {
-                              if (
-                                window.confirm(
-                                  `Delete version ${version.versionNumber}?`,
-                                )
-                              ) {
-                                await deleteVersion.mutateAsync(version.id);
-                                refetchVersions();
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="slug">Slug</Label>
+                                <Input
+                                    id="slug"
+                                    value={slug}
+                                    onChange={(e) => setSlug(e.target.value)}
+                                    placeholder="url-friendly-slug"
+                                    aria-invalid={slugStatus === 'taken' || !!slugError}
+                                    className={
+                                        slugStatus === 'taken' || slugError
+                                            ? 'border-destructive focus-visible:ring-destructive'
+                                            : undefined
+                                    }
+                                />
+                                {slugError && <p className="text-xs text-destructive">{slugError}</p>}
+                                {slugStatus === 'checking' && (
+                                    <p className="text-xs text-muted-foreground">Checking slug...</p>
+                                )}
+                                {slugStatus === 'taken' && (
+                                    <p className="text-xs text-destructive">Slug already in use.</p>
+                                )}
+                                {slugStatus === 'available' && (
+                                    <p className="text-xs text-muted-foreground">Slug is available.</p>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Content Tabs */}
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
+                        <TabsList className="grid w-full grid-cols-4">
+                            <TabsTrigger value="content" className="flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                Content
+                            </TabsTrigger>
+                            <TabsTrigger value="notes" className="flex items-center gap-2">
+                                <StickyNote className="h-4 w-4" />
+                                Notes
+                            </TabsTrigger>
+                            <TabsTrigger value="footnotes" className="flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                Footnotes
+                            </TabsTrigger>
+                            <TabsTrigger value="seo" className="flex items-center gap-2">
+                                <Search className="h-4 w-4" />
+                                SEO
+                            </TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="content" className="mt-4 data-[state=inactive]:hidden" forceMount>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Main Content</CardTitle>
+                                    <CardDescription>
+                                        Write your post content using the rich text editor
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div
+                                        ref={mainEditor.editorRef}
+                                        className="min-h-[400px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
+                                    />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="notes" className="mt-4 data-[state=inactive]:hidden" forceMount>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Private Notes</CardTitle>
+                                    <CardDescription>
+                                        Personal notes for the author (not shown publicly)
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div
+                                        ref={notesEditor.editorRef}
+                                        className="min-h-[300px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4 bg-yellow-50/50 dark:bg-yellow-900/10"
+                                    />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="footnotes" className="mt-4 data-[state=inactive]:hidden" forceMount>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Footnotes & References</CardTitle>
+                                    <CardDescription>
+                                        Add footnotes, citations, and references (shown at the end of the post)
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div
+                                        ref={footnotesEditor.editorRef}
+                                        className="min-h-[200px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
+                                    />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="seo" className="mt-4 data-[state=inactive]:hidden">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>SEO Settings</CardTitle>
+                                    <CardDescription>Optimize your post for search engines</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="seoTitle">SEO Title</Label>
+                                        <Input
+                                            id="seoTitle"
+                                            value={seoTitle}
+                                            onChange={(e) => setSeoTitle(e.target.value)}
+                                            placeholder={title || 'Defaults to post title'}
+                                        />
+                                        <p className="text-xs text-muted-foreground">{seoTitle.length}/60 characters</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="seoDescription">Meta Description</Label>
+                                        <Textarea
+                                            id="seoDescription"
+                                            value={seoDescription}
+                                            onChange={(e) => setSeoDescription(e.target.value)}
+                                            placeholder="Brief description for search results..."
+                                            rows={3}
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            {seoDescription.length}/160 characters
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="seoKeywords">Keywords</Label>
+                                        <Input
+                                            id="seoKeywords"
+                                            value={seoKeywords}
+                                            onChange={(e) => setSeoKeywords(e.target.value)}
+                                            placeholder="keyword1, keyword2, keyword3"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="seoNoIndex"
+                                            aria-label="Hide from search engines"
+                                            checked={seoNoIndex}
+                                            onChange={(e) => setSeoNoIndex(e.target.checked)}
+                                            className="rounded"
+                                        />
+                                        <Label htmlFor="seoNoIndex">Hide from search engines (noindex)</Label>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
+
+                    {/* Excerpt */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Excerpt</CardTitle>
+                            <CardDescription>Short summary shown in listings (auto-generated if empty)</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Textarea
+                                value={excerpt}
+                                onChange={(e) => setExcerpt(e.target.value)}
+                                placeholder="Brief summary of the post..."
+                                rows={3}
+                            />
+                        </CardContent>
+                    </Card>
                 </div>
-              )}
 
-              {isEditMode && versions.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No version history yet. Versions are created when you save
-                  changes.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+                {/* Right Column - Settings */}
+                <div className="space-y-6">
+                    {/* Hero Image */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <ImageIcon className="h-4 w-4" />
+                                Hero Image
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {heroImage?.url ? (
+                                <div className="relative">
+                                    <img
+                                        src={heroImage.url}
+                                        alt={heroImage.alt || 'Hero image'}
+                                        className="w-full rounded-lg object-cover aspect-video"
+                                    />
+                                    <Button
+                                        variant="destructive"
+                                        size="icon"
+                                        className="absolute top-2 right-2"
+                                        onClick={() => setHeroImage(null)}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                                    <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                                    <p className="mt-2 text-sm text-muted-foreground">No hero image set</p>
+                                </div>
+                            )}
 
-          {/* Danger Zone */}
-          {isEditMode && (
-            <Card className="border-destructive/50">
-              <CardHeader>
-                <CardTitle className="text-destructive">Danger Zone</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  onClick={async () => {
-                    if (
-                      window.confirm(
-                        "Are you sure you want to delete this post?",
-                      )
-                    ) {
-                      // Attempt to delete the post before navigating away
-                      try {
-                        const pathSegments = window.location.pathname
-                          .split("/")
-                          .filter(Boolean);
-                        const postId = pathSegments[pathSegments.length - 1];
+                            <div className="space-y-2">
+                                <Label>Upload Image</Label>
+                                <Input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleHeroImageUpload}
+                                    disabled={isUploadingHero}
+                                />
+                                {isUploadingHero && (
+                                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Uploading...
+                                    </p>
+                                )}
+                            </div>
 
-                        if (postId) {
-                          await fetch(
-                            `/api/admin/blog/${encodeURIComponent(postId)}`,
-                            { method: "DELETE" },
-                          );
-                        }
-                      } catch (error) {
-                        // Log the error but still navigate away to avoid trapping the user
-                        console.error("Failed to delete post:", error);
-                      }
-                      navigate({ to: "/admin/blog" });
-                    }
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Post
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+                            <div className="space-y-2">
+                                <Label>Or paste URL</Label>
+                                <Input
+                                    value={heroImage?.url || ''}
+                                    onChange={(e) => handleHeroUrlChange(e.target.value)}
+                                    placeholder="https://..."
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Alt Text</Label>
+                                <Input
+                                    value={heroImage?.alt || ''}
+                                    onChange={(e) => handleHeroAltChange(e.target.value)}
+                                    placeholder="Describe the image..."
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Post Settings */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Settings className="h-4 w-4" />
+                                Settings
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="contentType">Content Type</Label>
+                                <select
+                                    id="contentType"
+                                    aria-label="Content type"
+                                    value={contentType}
+                                    onChange={(e) => setContentType(e.target.value as ContentType)}
+                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                >
+                                    {Object.entries(CONTENT_TYPES).map(([value, { label }]) => (
+                                        <option key={value} value={value}>
+                                            {label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="postStatus">Status</Label>
+                                <select
+                                    id="postStatus"
+                                    aria-label="Post status"
+                                    value={status}
+                                    onChange={(e) => setStatus(e.target.value as PostStatus)}
+                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                >
+                                    {Object.entries(POST_STATUSES).map(([value, { label }]) => (
+                                        <option key={value} value={value}>
+                                            {label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Author Name</Label>
+                                <Input
+                                    value={authorName}
+                                    onChange={(e) => setAuthorName(e.target.value)}
+                                    placeholder="Author name..."
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Publish Date</Label>
+                                <Input
+                                    type="datetime-local"
+                                    value={publishedAt}
+                                    onChange={(e) => setPublishedAt(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="space-y-3 pt-2">
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="isFeatured"
+                                        aria-label="Featured post"
+                                        checked={isFeatured}
+                                        onChange={(e) => setIsFeatured(e.target.checked)}
+                                        className="rounded"
+                                    />
+                                    <Label htmlFor="isFeatured">Featured Post</Label>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="allowComments"
+                                        aria-label="Allow comments"
+                                        checked={allowComments}
+                                        onChange={(e) => setAllowComments(e.target.checked)}
+                                        className="rounded"
+                                    />
+                                    <Label htmlFor="allowComments">Allow Comments</Label>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Series */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Layers className="h-4 w-4" />
+                                Series
+                            </CardTitle>
+                            <CardDescription>Group this post with related content</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="seriesSelect">Series</Label>
+                                <select
+                                    id="seriesSelect"
+                                    aria-label="Series"
+                                    value={seriesId || ''}
+                                    onChange={(e) => setSeriesId(e.target.value || null)}
+                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                >
+                                    <option value="">No series</option>
+                                    {seriesList.map((series) => (
+                                        <option key={series.id} value={series.id}>
+                                            {series.title}
+                                            {series.isComplete ? ' ✓' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {seriesId && (
+                                <div className="space-y-2">
+                                    <Label>Order in Series</Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        value={seriesOrder || ''}
+                                        onChange={(e) =>
+                                            setSeriesOrder(e.target.value ? parseInt(e.target.value, 10) : null)
+                                        }
+                                        placeholder="1, 2, 3..."
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Position within the series (e.g., Part 1, Part 2)
+                                    </p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Version History */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <History className="h-4 w-4" />
+                                Version History
+                            </CardTitle>
+                            <CardDescription>Track changes and restore previous versions</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="maxVersionsToKeep">Keep Previous Versions</Label>
+                                <select
+                                    id="maxVersionsToKeep"
+                                    aria-label="Keep previous versions"
+                                    value={maxVersionsToKeep || ''}
+                                    onChange={(e) =>
+                                        setMaxVersionsToKeep(e.target.value ? parseInt(e.target.value, 10) : null)
+                                    }
+                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                >
+                                    <option value="">Keep all versions</option>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                                        <option key={n} value={n}>
+                                            Keep last {n} version{n > 1 ? 's' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-muted-foreground">
+                                    Older versions will be automatically deleted on save
+                                </p>
+                            </div>
+
+                            {isEditMode && versionHistory.length > 0 && (
+                                <div className="space-y-2">
+                                    <Label>Recent Versions ({versionHistory.length})</Label>
+                                    <div className="max-h-[200px] overflow-y-auto rounded-md border divide-y">
+                                        {versionHistory.map((version) => (
+                                            <div
+                                                key={version.id}
+                                                className="flex items-center justify-between p-2 text-sm hover:bg-muted/50"
+                                            >
+                                                <div>
+                                                    <span className="font-medium">v{version.versionNumber}</span>
+                                                    <span className="text-muted-foreground ml-2">
+                                                        {new Date(version.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                    {version.wordCount && (
+                                                        <span className="text-muted-foreground ml-2">
+                                                            {version.wordCount} words
+                                                        </span>
+                                                    )}
+                                                    {version.changeNote && (
+                                                        <div className="text-xs text-muted-foreground mt-1">
+                                                            {version.changeNote}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        className="h-6 px-2"
+                                                        onClick={() => setPreviewVersion(version)}
+                                                    >
+                                                        Preview
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-6 px-2"
+                                                        onClick={async () => {
+                                                            if (
+                                                                window.confirm(
+                                                                    `Load version ${version.versionNumber} into the editor?`,
+                                                                )
+                                                            ) {
+                                                                await applyVersionToEditor(version);
+                                                            }
+                                                        }}
+                                                    >
+                                                        Load
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 px-2 text-destructive hover:text-destructive"
+                                                        onClick={async () => {
+                                                            if (
+                                                                window.confirm(
+                                                                    `Delete version ${version.versionNumber}?`,
+                                                                )
+                                                            ) {
+                                                                await deleteVersion.mutateAsync(version.id);
+                                                                refetchVersions();
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {isEditMode && versions.length === 0 && (
+                                <p className="text-sm text-muted-foreground">
+                                    No version history yet. Versions are created when you save changes.
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Danger Zone */}
+                    {isEditMode && (
+                        <Card className="border-destructive/50">
+                            <CardHeader>
+                                <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <Button
+                                    variant="destructive"
+                                    className="w-full"
+                                    onClick={async () => {
+                                        if (window.confirm('Are you sure you want to delete this post?')) {
+                                            // Attempt to delete the post before navigating away
+                                            try {
+                                                const pathSegments = window.location.pathname
+                                                    .split('/')
+                                                    .filter(Boolean);
+                                                const postId = pathSegments[pathSegments.length - 1];
+
+                                                if (postId) {
+                                                    await fetch(`/api/admin/blog/${encodeURIComponent(postId)}`, {
+                                                        method: 'DELETE',
+                                                    });
+                                                }
+                                            } catch (error) {
+                                                // Log the error but still navigate away to avoid trapping the user
+                                                console.error('Failed to delete post:', error);
+                                            }
+                                            navigate({ to: '/admin/blog' });
+                                        }
+                                    }}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Post
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
+            </div>
+
+            <Dialog
+                open={!!previewVersion}
+                onOpenChange={(open) => {
+                    if (!open) setPreviewVersion(null);
+                }}
+            >
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Preview - Version {previewVersion?.versionNumber}</DialogTitle>
+                        <DialogDescription>This is a read-only preview of the selected version.</DialogDescription>
+                    </DialogHeader>
+
+                    {previewPost && (
+                        <article className="max-w-3xl mx-auto">
+                            {/* Hero Image */}
+                            {previewPost.heroImage?.url && (
+                                <figure className="mb-8">
+                                    <img
+                                        src={previewPost.heroImage.url}
+                                        alt={previewPost.heroImage.alt || previewPost.title}
+                                        className="w-full rounded-lg object-cover aspect-video"
+                                    />
+                                    {previewPost.heroImage.caption && (
+                                        <figcaption className="mt-2 text-center text-sm text-muted-foreground">
+                                            {previewPost.heroImage.caption}
+                                        </figcaption>
+                                    )}
+                                </figure>
+                            )}
+
+                            {/* Content Type Badge */}
+                            {previewPost.contentType !== 'blog' && (
+                                <span className="inline-block mb-4 px-3 py-1 bg-secondary text-secondary-foreground text-sm rounded-full capitalize">
+                                    {previewPost.contentType}
+                                </span>
+                            )}
+
+                            {/* Title */}
+                            <h1 className="text-4xl font-bold mb-4 leading-tight">{previewPost.title}</h1>
+
+                            {/* Metadata */}
+                            <div className="flex flex-wrap items-center gap-4 mb-8 text-sm text-muted-foreground">
+                                {previewPost.authorName && (
+                                    <div className="flex items-center gap-2">
+                                        <User className="h-4 w-4" />
+                                        <span className="font-medium text-foreground">{previewPost.authorName}</span>
+                                    </div>
+                                )}
+                                {previewPost.publishedAt && (
+                                    <div className="flex items-center gap-1">
+                                        <Calendar className="h-4 w-4" />
+                                        <time dateTime={previewPost.publishedAt}>
+                                            {formatDate(previewPost.publishedAt)}
+                                        </time>
+                                    </div>
+                                )}
+                                {previewPost.isFeatured && (
+                                    <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-medium">
+                                        Featured
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Excerpt */}
+                            {previewPost.excerpt && (
+                                <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
+                                    {previewPost.excerpt}
+                                </p>
+                            )}
+
+                            {/* Main Content */}
+                            {hasPreviewContent && (
+                                <div className="prose prose-slate dark:prose-invert max-w-none mb-12">
+                                    <Blocks
+                                        data={previewPost.content!}
+                                        renderers={customRenderers}
+                                        config={defaultEJSRConfigs}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Footnotes */}
+                            {hasPreviewFootnotes && (
+                                <aside className="border-t pt-8 mt-12">
+                                    <h2 className="text-xl font-semibold mb-4">Footnotes</h2>
+                                    <div className="prose prose-sm prose-slate dark:prose-invert max-w-none text-muted-foreground">
+                                        <Blocks
+                                            data={previewPost.footnotes!}
+                                            renderers={customRenderers}
+                                            config={defaultEJSRConfigs}
+                                        />
+                                    </div>
+                                </aside>
+                            )}
+                        </article>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
-      </div>
-
-      <Dialog
-        open={!!previewVersion}
-        onOpenChange={(open) => {
-          if (!open) setPreviewVersion(null);
-        }}
-      >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              Preview - Version {previewVersion?.versionNumber}
-            </DialogTitle>
-            <DialogDescription>
-              This is a read-only preview of the selected version.
-            </DialogDescription>
-          </DialogHeader>
-
-          {previewPost && (
-            <article className="max-w-3xl mx-auto">
-              {/* Hero Image */}
-              {previewPost.heroImage?.url && (
-                <figure className="mb-8">
-                  <img
-                    src={previewPost.heroImage.url}
-                    alt={previewPost.heroImage.alt || previewPost.title}
-                    className="w-full rounded-lg object-cover aspect-video"
-                  />
-                  {previewPost.heroImage.caption && (
-                    <figcaption className="mt-2 text-center text-sm text-muted-foreground">
-                      {previewPost.heroImage.caption}
-                    </figcaption>
-                  )}
-                </figure>
-              )}
-
-              {/* Content Type Badge */}
-              {previewPost.contentType !== "blog" && (
-                <span className="inline-block mb-4 px-3 py-1 bg-secondary text-secondary-foreground text-sm rounded-full capitalize">
-                  {previewPost.contentType}
-                </span>
-              )}
-
-              {/* Title */}
-              <h1 className="text-4xl font-bold mb-4 leading-tight">
-                {previewPost.title}
-              </h1>
-
-              {/* Metadata */}
-              <div className="flex flex-wrap items-center gap-4 mb-8 text-sm text-muted-foreground">
-                {previewPost.authorName && (
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    <span className="font-medium text-foreground">
-                      {previewPost.authorName}
-                    </span>
-                  </div>
-                )}
-                {previewPost.publishedAt && (
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    <time dateTime={previewPost.publishedAt}>
-                      {formatDate(previewPost.publishedAt)}
-                    </time>
-                  </div>
-                )}
-                {previewPost.isFeatured && (
-                  <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-medium">
-                    Featured
-                  </span>
-                )}
-              </div>
-
-              {/* Excerpt */}
-              {previewPost.excerpt && (
-                <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-                  {previewPost.excerpt}
-                </p>
-              )}
-
-              {/* Main Content */}
-              {hasPreviewContent && (
-                <div className="prose prose-slate dark:prose-invert max-w-none mb-12">
-                  <Blocks
-                    data={previewPost.content!}
-                    renderers={customRenderers}
-                    config={defaultEJSRConfigs}
-                  />
-                </div>
-              )}
-
-              {/* Footnotes */}
-              {hasPreviewFootnotes && (
-                <aside className="border-t pt-8 mt-12">
-                  <h2 className="text-xl font-semibold mb-4">Footnotes</h2>
-                  <div className="prose prose-sm prose-slate dark:prose-invert max-w-none text-muted-foreground">
-                    <Blocks
-                      data={previewPost.footnotes!}
-                      renderers={customRenderers}
-                      config={defaultEJSRConfigs}
-                    />
-                  </div>
-                </aside>
-              )}
-            </article>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
+    );
 }

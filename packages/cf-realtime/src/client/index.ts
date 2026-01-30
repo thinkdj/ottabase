@@ -3,5 +3,5 @@
  * Use these in your browser or Node.js applications
  */
 
-export { RealtimeClient } from "./RealtimeClient";
-export * from "../types";
+export { RealtimeClient } from './RealtimeClient';
+export * from '../types';

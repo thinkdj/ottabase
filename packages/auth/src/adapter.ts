@@ -7,18 +7,18 @@
 //
 // ============================================================
 
-import type { Adapter } from "@auth/core/adapters";
-import type { D1Database } from "@cloudflare/workers-types";
+import type { Adapter } from '@auth/core/adapters';
+import type { D1Database } from '@cloudflare/workers-types';
 import {
-  createDrizzleD1AuthAdapter as createDrizzleAdapter,
-  createDrizzleD1AuthAdapterCached as createDrizzleAdapterCached,
-  type DrizzleD1AuthAdapterOptions,
-} from "./adapters/drizzle-adapter";
+    createDrizzleD1AuthAdapter as createDrizzleAdapter,
+    createDrizzleD1AuthAdapterCached as createDrizzleAdapterCached,
+    type DrizzleD1AuthAdapterOptions,
+} from './adapters/drizzle-adapter';
 
 /**
  * Options for creating a D1 Auth.js adapter
  */
-export interface D1AuthAdapterOptions extends DrizzleD1AuthAdapterOptions { }
+export interface D1AuthAdapterOptions extends DrizzleD1AuthAdapterOptions {}
 
 /**
  * Create an Auth.js adapter for Cloudflare D1
@@ -58,11 +58,8 @@ export interface D1AuthAdapterOptions extends DrizzleD1AuthAdapterOptions { }
  * });
  * ```
  */
-export function createD1AuthAdapter(
-  d1: D1Database,
-  options: D1AuthAdapterOptions = {},
-): Adapter {
-  return createDrizzleAdapter(d1, options);
+export function createD1AuthAdapter(d1: D1Database, options: D1AuthAdapterOptions = {}): Adapter {
+    return createDrizzleAdapter(d1, options);
 }
 
 /**
@@ -87,11 +84,8 @@ export function createD1AuthAdapter(
  * });
  * ```
  */
-export function createD1AuthAdapterCached(
-  d1: D1Database,
-  options: D1AuthAdapterOptions = {},
-): Adapter {
-  return createDrizzleAdapterCached(d1, options);
+export function createD1AuthAdapterCached(d1: D1Database, options: D1AuthAdapterOptions = {}): Adapter {
+    return createDrizzleAdapterCached(d1, options);
 }
 
 // ============================================================
@@ -99,8 +93,7 @@ export function createD1AuthAdapterCached(
 // ============================================================
 
 export {
-  createDrizzleD1AuthAdapter,
-  createDrizzleD1AuthAdapterCached,
-  type DrizzleD1AuthAdapterOptions
-} from "./adapters/drizzle-adapter";
-
+    createDrizzleD1AuthAdapter,
+    createDrizzleD1AuthAdapterCached,
+    type DrizzleD1AuthAdapterOptions,
+} from './adapters/drizzle-adapter';

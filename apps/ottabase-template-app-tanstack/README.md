@@ -37,47 +37,51 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 **Zero-config!** Just define Models and call `/api/ottaorm/init`:
 
 #### 1. Define Model
+
 ```typescript
 // ottabase/models/Todo.ts
-export const todosTable = sqliteTable("todos", {
-  id: text("id").primaryKey(),
-  title: text("title").notNull(),
+export const todosTable = sqliteTable('todos', {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
 });
 
 export class Todo extends BaseModel {
-  static entity = "todos";
-  static table = todosTable;
+    static entity = 'todos';
+    static table = todosTable;
 }
 ```
 
 #### 2. Export in Schema
+
 ```typescript
 // ottabase/db/schema.ts
-export { todosTable } from "../models/Todo";
-export { shortlinksTable } from "@ottabase/shortlinks";
+export { todosTable } from '../models/Todo';
+export { shortlinksTable } from '@ottabase/shortlinks';
 ```
 
 #### 3. Initialize
+
 ```bash
 curl -X POST http://localhost:3004/api/ottaorm/init
 # ✅ Table created automatically!
 ```
 
-Package models live in their packages (e.g. `@ottabase/shortlinks`, `@ottabase/ottablog`) and are registered directly via `registerModels()`.
+Package models live in their packages (e.g. `@ottabase/shortlinks`, `@ottabase/ottablog`) and are registered directly
+via `registerModels()`.
 
 See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details.
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Vite dev server (fast local DX) |
-| `pnpm dev:worker` | Wrangler dev with Cloudflare bindings |
-| `pnpm build` | Build for production |
-| `pnpm preview` | Build + run on `workerd` via Wrangler (Cloudflare-like) |
-| `pnpm deploy` | Build + deploy Worker + assets to Cloudflare |
-| `pnpm type-check` | TypeScript type checking |
-| `pnpm cf-typegen` | Generate Cloudflare types from wrangler.jsonc |
+| Command           | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `pnpm dev`        | Vite dev server (fast local DX)                         |
+| `pnpm dev:worker` | Wrangler dev with Cloudflare bindings                   |
+| `pnpm build`      | Build for production                                    |
+| `pnpm preview`    | Build + run on `workerd` via Wrangler (Cloudflare-like) |
+| `pnpm deploy`     | Build + deploy Worker + assets to Cloudflare            |
+| `pnpm type-check` | TypeScript type checking                                |
+| `pnpm cf-typegen` | Generate Cloudflare types from wrangler.jsonc           |
 
 ## Directory Structure
 
@@ -108,6 +112,7 @@ apps/ottabase-template-app-tanstack/
 ## Routes
 
 ### Pages
+
 - `/` - Home page
 - `/demo` - Demo gallery index
 - `/demo/mantine` - Mantine UI components demo
@@ -124,6 +129,7 @@ apps/ottabase-template-app-tanstack/
 - `/demo/cloudflare/realtime` - Durable Objects realtime demo
 
 ### API Endpoints
+
 - `/api/health` - Worker health check
 - `/api/cloudflare/*` - Cloudflare service demos
 - `/api/ottaorm/*` - OttaORM CRUD endpoints
@@ -135,19 +141,19 @@ apps/ottabase-template-app-tanstack/
 ```typescript
 // cloudflare-worker.ts
 export default {
-  async fetch(request: Request, env: CloudflareEnv) {
-    const db = createD1Client({ database: env.OBCF_D1 });
-    const kv = createKVClient({ namespace: env.OBCF_KV });
+    async fetch(request: Request, env: CloudflareEnv) {
+        const db = createD1Client({ database: env.OBCF_D1 });
+        const kv = createKVClient({ namespace: env.OBCF_KV });
 
-    // Use D1
-    const users = await db.query('SELECT * FROM users');
+        // Use D1
+        const users = await db.query('SELECT * FROM users');
 
-    // Use KV
-    await kv.put('key', 'value', { expirationTtl: 60 });
+        // Use KV
+        await kv.put('key', 'value', { expirationTtl: 60 });
 
-    return Response.json({ users });
-  }
-}
+        return Response.json({ users });
+    },
+};
 ```
 
 ### With OttaORM
@@ -197,6 +203,7 @@ pnpm wrangler queues create ottabase-queue
 #### 2. Update wrangler.jsonc
 
 Update the IDs in `wrangler.jsonc` with your actual:
+
 - D1 database ID
 - KV namespace ID
 - R2 bucket name
@@ -216,6 +223,7 @@ curl -X POST https://your-app.workers.dev/api/ottaorm/init \
 ## Deleting Demo Content
 
 In production apps, you can safely delete:
+
 - `src/pages/demo/` - All demo pages
 - Related routes in `src/router.tsx`
 - Demo API handlers in `cloudflare-worker.ts`

@@ -1,11 +1,5 @@
-import { Link } from "@tanstack/react-router";
-import {
-    Button,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from "@ottabase/ui-shadcn";
+import { Link } from '@tanstack/react-router';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 
 export function CloudflareImagesDemoPage() {
     return (
@@ -16,9 +10,7 @@ export function CloudflareImagesDemoPage() {
 
             <div>
                 <h1 className="mb-2 text-3xl font-semibold">Images Demo</h1>
-                <p className="text-muted-foreground">
-                    Image upload, transformation, and optimization
-                </p>
+                <p className="text-muted-foreground">Image upload, transformation, and optimization</p>
             </div>
 
             <Card>
@@ -27,8 +19,8 @@ export function CloudflareImagesDemoPage() {
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-muted-foreground">
                     <p>
-                        Cloudflare Images is a cloud-only service. It requires API
-                        authentication and uploads go directly to Cloudflare&apos;s CDN.
+                        Cloudflare Images is a cloud-only service. It requires API authentication and uploads go
+                        directly to Cloudflare&apos;s CDN.
                     </p>
                     <p className="font-medium text-foreground">Setup steps:</p>
                     <ol className="list-decimal space-y-1 pl-5">
@@ -42,7 +34,7 @@ export function CloudflareImagesDemoPage() {
                         <div>CLOUDFLARE_IMAGES_TOKEN=&lt;your-api-token&gt;</div>
                     </div>
                     <p className="mt-2 text-xs">
-                        See the{" "}
+                        See the{' '}
                         <a
                             href="https://developers.cloudflare.com/images/"
                             target="_blank"
@@ -50,7 +42,7 @@ export function CloudflareImagesDemoPage() {
                             className="text-primary underline underline-offset-2"
                         >
                             Cloudflare Images documentation
-                        </a>{" "}
+                        </a>{' '}
                         for more details.
                     </p>
                 </CardContent>

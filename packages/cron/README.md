@@ -3,10 +3,12 @@
 Minimal cron handler for Cloudflare Workers scheduled events.
 
 Two modes:
+
 1. **Static Handler** - Code-defined cron jobs (simple, no DB)
 2. **DB Scheduler** - Laravel-style scheduler with tasks in database
 
-> **Note:** All schedules are evaluated in **UTC timezone**. Cloudflare Workers run in UTC, so cron expressions like `0 9 * * *` will trigger at 9:00 AM UTC.
+> **Note:** All schedules are evaluated in **UTC timezone**. Cloudflare Workers run in UTC, so cron expressions like
+> `0 9 * * *` will trigger at 9:00 AM UTC.
 
 ## Installation
 
@@ -19,25 +21,25 @@ pnpm add @ottabase/cron
 For simple scheduled tasks defined in code:
 
 ```typescript
-import { createCronHandler } from "@ottabase/cron";
+import { createCronHandler } from '@ottabase/cron';
 
 const cron = createCronHandler<Env>()
-  .on("0 0 * * *", async ({ env }) => {
-    // Daily at midnight
-    await cleanupSessions(env.DB);
-  })
-  .on("0 * * * *", async ({ env }) => {
-    // Every hour
-    await sendHourlyDigest(env);
-  })
-  .on("*/5 * * * *", async ({ env }) => {
-    // Every 5 minutes - heavy work? Use queue
-    const { dispatch } = await import("@ottabase/queue");
-    await dispatch(env.QUEUE, "heavy-task", {});
-  });
+    .on('0 0 * * *', async ({ env }) => {
+        // Daily at midnight
+        await cleanupSessions(env.DB);
+    })
+    .on('0 * * * *', async ({ env }) => {
+        // Every hour
+        await sendHourlyDigest(env);
+    })
+    .on('*/5 * * * *', async ({ env }) => {
+        // Every 5 minutes - heavy work? Use queue
+        const { dispatch } = await import('@ottabase/queue');
+        await dispatch(env.QUEUE, 'heavy-task', {});
+    });
 
 export default {
-  scheduled: cron.handler,
+    scheduled: cron.handler,
 };
 ```
 
@@ -45,9 +47,9 @@ export default {
 
 ```typescript
 const cron = createCronHandler<Env>({
-  onBeforeJob: async (ctx) => console.log(`Starting: ${ctx.cron}`),
-  onAfterJob: async (ctx) => console.log(`Completed: ${ctx.cron}`),
-  onError: async (err, ctx) => console.error(`Failed: ${err.message}`),
+    onBeforeJob: async (ctx) => console.log(`Starting: ${ctx.cron}`),
+    onAfterJob: async (ctx) => console.log(`Completed: ${ctx.cron}`),
+    onError: async (err, ctx) => console.error(`Failed: ${err.message}`),
 });
 ```
 
@@ -94,57 +96,58 @@ CREATE TABLE scheduled_tasks (
 ### 1. Setup the Scheduler
 
 ```typescript
-import { createScheduler, createTaskRepository } from "@ottabase/cron";
-import { ScheduledTask } from "@ottabase/ottaorm/models";
-import { createD1Driver } from "@ottabase/db/drizzle-d1";
+import { createScheduler, createTaskRepository } from '@ottabase/cron';
+import { ScheduledTask } from '@ottabase/ottaorm/models';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
 
 const scheduler = createScheduler<Env>()
-  .handler("cleanup:sessions", async ({ env }) => {
-    await env.DB.execute("DELETE FROM sessions WHERE expires < ?", [Date.now()]);
-  })
-  .handler("send:digest", async ({ env, payload }) => {
-    await sendDigestEmail(payload.userId);
-  })
-  .handler("sync:external", async ({ env }) => {
-    await syncExternalData(env);
-  });
+    .handler('cleanup:sessions', async ({ env }) => {
+        await env.DB.execute('DELETE FROM sessions WHERE expires < ?', [Date.now()]);
+    })
+    .handler('send:digest', async ({ env, payload }) => {
+        await sendDigestEmail(payload.userId);
+    })
+    .handler('sync:external', async ({ env }) => {
+        await syncExternalData(env);
+    });
 
 export default {
-  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    // Run tick every minute to check for due tasks
-    if (event.cron === "* * * * *") {
-      const driver = createD1Driver(env.OBCF_D1);
-      const repository = createTaskRepository(ScheduledTask, driver);
-      await scheduler.tick(env, ctx, repository);
-    }
-  },
+    async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+        // Run tick every minute to check for due tasks
+        if (event.cron === '* * * * *') {
+            const driver = createD1Driver(env.OBCF_D1);
+            const repository = createTaskRepository(ScheduledTask, driver);
+            await scheduler.tick(env, ctx, repository);
+        }
+    },
 };
 ```
 
-The `createTaskRepository` requires a database driver for atomic locking - this ensures only one worker executes a task even when multiple workers are triggered simultaneously.
+The `createTaskRepository` requires a database driver for atomic locking - this ensures only one worker executes a task
+even when multiple workers are triggered simultaneously.
 
 ### 2. Add Tasks to Database
 
 ```typescript
-import { ScheduledTask } from "@ottabase/ottaorm/models";
+import { ScheduledTask } from '@ottabase/ottaorm/models';
 
 // Create a scheduled task
 await ScheduledTask.create({
-  name: "daily-cleanup",
-  description: "Clean up expired sessions",
-  schedule: "0 0 * * *",  // Daily at midnight
-  taskType: "handler",
-  task: "cleanup:sessions",
-  isActive: true,
+    name: 'daily-cleanup',
+    description: 'Clean up expired sessions',
+    schedule: '0 0 * * *', // Daily at midnight
+    taskType: 'handler',
+    task: 'cleanup:sessions',
+    isActive: true,
 });
 
 // Create with payload
 await ScheduledTask.create({
-  name: "user-digest",
-  schedule: "0 9 * * *",  // Daily at 9am
-  taskType: "handler",
-  task: "send:digest",
-  payload: JSON.stringify({ userId: "user-123" }),
+    name: 'user-digest',
+    schedule: '0 9 * * *', // Daily at 9am
+    taskType: 'handler',
+    task: 'send:digest',
+    payload: JSON.stringify({ userId: 'user-123' }),
 });
 ```
 
@@ -160,32 +163,33 @@ crons = ["* * * * *"]  # Every minute tick
 Handlers can dispatch jobs to `@ottabase/queue` for heavy/retriable work:
 
 ```typescript
-import { createScheduler } from "@ottabase/cron";
-import { dispatch } from "@ottabase/queue";
+import { createScheduler } from '@ottabase/cron';
+import { dispatch } from '@ottabase/queue';
 
 const scheduler = createScheduler<Env>()
-  // Light work: run directly
-  .handler("cleanup:sessions", async ({ env }) => {
-    await env.DB.execute("DELETE FROM sessions WHERE expires < ?", [Date.now()]);
-  })
-  // Heavy work: push to queue for async processing with retries
-  .handler("process:reports", async ({ env, payload }) => {
-    // Dispatch to queue - will be processed by queue consumer with retries
-    await dispatch(env.QUEUE, "generate-report", {
-      reportId: payload.reportId,
-      userId: payload.userId,
+    // Light work: run directly
+    .handler('cleanup:sessions', async ({ env }) => {
+        await env.DB.execute('DELETE FROM sessions WHERE expires < ?', [Date.now()]);
+    })
+    // Heavy work: push to queue for async processing with retries
+    .handler('process:reports', async ({ env, payload }) => {
+        // Dispatch to queue - will be processed by queue consumer with retries
+        await dispatch(env.QUEUE, 'generate-report', {
+            reportId: payload.reportId,
+            userId: payload.userId,
+        });
+    })
+    // Batch work: fan out to multiple queue jobs
+    .handler('daily:notifications', async ({ env }) => {
+        const users = await getActiveUsers(env.DB);
+        for (const user of users) {
+            await dispatch(env.QUEUE, 'send-notification', { userId: user.id });
+        }
     });
-  })
-  // Batch work: fan out to multiple queue jobs
-  .handler("daily:notifications", async ({ env }) => {
-    const users = await getActiveUsers(env.DB);
-    for (const user of users) {
-      await dispatch(env.QUEUE, "send-notification", { userId: user.id });
-    }
-  });
 ```
 
 This pattern keeps cron handlers fast (just dispatch) while leveraging queue for:
+
 - Automatic retries on failure
 - Parallel processing
 - Rate limiting
@@ -194,23 +198,23 @@ This pattern keeps cron handlers fast (just dispatch) while leveraging queue for
 ## Cron Parser Utilities
 
 ```typescript
-import { parseCron, matchesCron, getNextRun, CronPresets } from "@ottabase/cron";
+import { parseCron, matchesCron, getNextRun, CronPresets } from '@ottabase/cron';
 
 // Parse expression
-const parsed = parseCron("0 9 * * 1-5");
+const parsed = parseCron('0 9 * * 1-5');
 // { minutes: [0], hours: [9], days: [1-31], months: [1-12], weekdays: [1,2,3,4,5] }
 
 // Check if date matches
-matchesCron("0 9 * * *", new Date()); // true/false
+matchesCron('0 9 * * *', new Date()); // true/false
 
 // Get next occurrence
-const next = getNextRun("0 0 * * *"); // Next midnight
+const next = getNextRun('0 0 * * *'); // Next midnight
 
 // Use presets
-CronPresets.DAILY;         // "0 0 * * *"
-CronPresets.HOURLY;        // "0 * * * *"
+CronPresets.DAILY; // "0 0 * * *"
+CronPresets.HOURLY; // "0 * * * *"
 CronPresets.EVERY_5_MINUTES; // "*/5 * * * *"
-CronPresets.WEEKDAYS_9AM;  // "0 9 * * 1-5"
+CronPresets.WEEKDAYS_9AM; // "0 9 * * 1-5"
 ```
 
 ## ScheduledTask Model
@@ -218,39 +222,39 @@ CronPresets.WEEKDAYS_9AM;  // "0 9 * * 1-5"
 The `@ottabase/ottaorm` package includes a `ScheduledTask` model:
 
 ```typescript
-import { ScheduledTask } from "@ottabase/ottaorm/models";
+import { ScheduledTask } from '@ottabase/ottaorm/models';
 
 // Query helpers
 const active = await ScheduledTask.active();
 const due = await ScheduledTask.due();
-const task = await ScheduledTask.findByName("daily-cleanup");
+const task = await ScheduledTask.findByName('daily-cleanup');
 
 // Instance methods
-await task.toggle();          // Toggle active status
+await task.toggle(); // Toggle active status
 await task.markRunning();
 await task.markCompleted(nextRunAt);
-await task.markFailed("Error message", nextRunAt);
+await task.markFailed('Error message', nextRunAt);
 ```
 
 ### Schema
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | text | Primary key (UUID) |
-| name | text | Task name |
-| description | text | Optional description |
-| schedule | text | Cron expression |
-| taskType | text | "handler", "command", or "url" |
-| task | text | Handler name to execute |
-| payload | text | JSON payload |
-| isActive | boolean | Whether task is active |
-| timezone | text | Reserved for future use (currently ignored, all schedules run in UTC) |
-| lastRunAt | timestamp | Last execution time |
-| nextRunAt | timestamp | Next scheduled run |
-| lastStatus | text | "success", "failed", "running" |
-| lastError | text | Last error message |
-| runCount | integer | Total runs |
-| failCount | integer | Failed runs |
+| Column      | Type      | Description                                                           |
+| ----------- | --------- | --------------------------------------------------------------------- |
+| id          | text      | Primary key (UUID)                                                    |
+| name        | text      | Task name                                                             |
+| description | text      | Optional description                                                  |
+| schedule    | text      | Cron expression                                                       |
+| taskType    | text      | "handler", "command", or "url"                                        |
+| task        | text      | Handler name to execute                                               |
+| payload     | text      | JSON payload                                                          |
+| isActive    | boolean   | Whether task is active                                                |
+| timezone    | text      | Reserved for future use (currently ignored, all schedules run in UTC) |
+| lastRunAt   | timestamp | Last execution time                                                   |
+| nextRunAt   | timestamp | Next scheduled run                                                    |
+| lastStatus  | text      | "success", "failed", "running"                                        |
+| lastError   | text      | Last error message                                                    |
+| runCount    | integer   | Total runs                                                            |
+| failCount   | integer   | Failed runs                                                           |
 
 ## API Reference
 
@@ -266,11 +270,11 @@ Create a DB-driven scheduler.
 
 ```typescript
 interface CronContext<E> {
-  env: E;              // Worker environment
-  event: ScheduledEvent;
-  ctx: ExecutionContext;
-  cron: string;        // Cron expression
-  scheduledTime: Date;
+    env: E; // Worker environment
+    event: ScheduledEvent;
+    ctx: ExecutionContext;
+    cron: string; // Cron expression
+    scheduledTime: Date;
 }
 ```
 
@@ -278,11 +282,11 @@ interface CronContext<E> {
 
 ```typescript
 interface SchedulerContext<E, P> {
-  env: E;
-  taskId: string;
-  taskName: string;
-  schedule: string;
-  payload: P | null;
+    env: E;
+    taskId: string;
+    taskName: string;
+    schedule: string;
+    payload: P | null;
 }
 ```
 

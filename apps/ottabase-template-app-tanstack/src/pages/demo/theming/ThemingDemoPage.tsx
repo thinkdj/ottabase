@@ -1,6 +1,20 @@
-import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Input, Label, Tabs, TabsContent, TabsList, TabsTrigger } from "@ottabase/ui-shadcn";
-import { useTheme } from "@/ottabase/providers/ThemeContext";
-import { useTheme as useNextTheme } from "next-themes";
+import {
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+    Input,
+    Label,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from '@ottabase/ui-shadcn';
+import { useTheme } from '@/ottabase/providers/ThemeContext';
+import { useTheme as useNextTheme } from 'next-themes';
 
 export function ThemingDemoPage() {
     const { theme, setTheme, config } = useTheme();
@@ -26,7 +40,7 @@ export function ThemingDemoPage() {
                         {['default', 'neo', 'crisp', 'funky'].map((t) => (
                             <Button
                                 key={t}
-                                variant={theme === t ? "default" : "outline"}
+                                variant={theme === t ? 'default' : 'outline'}
                                 className="w-full justify-start capitalize"
                                 onClick={() => setTheme(t)}
                             >
@@ -44,14 +58,14 @@ export function ThemingDemoPage() {
                     </CardHeader>
                     <CardContent className="grid gap-2">
                         <Button
-                            variant={mode === 'light' ? "default" : "outline"}
+                            variant={mode === 'light' ? 'default' : 'outline'}
                             onClick={() => setMode('light')}
                             className="w-full justify-start"
                         >
                             Light Mode
                         </Button>
                         <Button
-                            variant={mode === 'dark' ? "default" : "outline"}
+                            variant={mode === 'dark' ? 'default' : 'outline'}
                             onClick={() => setMode('dark')}
                             className="w-full justify-start"
                         >
@@ -63,23 +77,27 @@ export function ThemingDemoPage() {
                 <Card className="col-span-2">
                     <CardHeader>
                         <CardTitle>Typography Check</CardTitle>
-                        <CardDescription>
-                            View current theme typography and spacing configuration.
-                        </CardDescription>
+                        <CardDescription>View current theme typography and spacing configuration.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Heading:</span>
-                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">{config.typography.heading.fontFamily}</span>
+                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
+                                    {config.typography.heading.fontFamily}
+                                </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Body:</span>
-                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">{config.typography.body.fontFamily}</span>
+                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
+                                    {config.typography.body.fontFamily}
+                                </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Cursive:</span>
-                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">{config.typography.handwriting.fontFamily}</span>
+                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
+                                    {config.typography.handwriting.fontFamily}
+                                </span>
                             </div>
                         </div>
                         <div className="flex flex-col gap-1 pt-4 border-t">
@@ -89,7 +107,9 @@ export function ThemingDemoPage() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Spacing:</span>
-                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">{config.spacing?.section || 'N/A'} (Sec) / {config.spacing?.card || 'N/A'} (Card)</span>
+                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
+                                    {config.spacing?.section || 'N/A'} (Sec) / {config.spacing?.card || 'N/A'} (Card)
+                                </span>
                             </div>
                         </div>
                     </CardContent>
@@ -99,7 +119,8 @@ export function ThemingDemoPage() {
                             <h2 className="font-heading text-3xl font-semibold first:mt-0">Heading 2</h2>
                             <h3 className="font-heading text-2xl font-semibold">Heading 3</h3>
                             <p className="leading-7 [&:not(:first-child)]:mt-6">
-                                The quick brown fox jumps over the lazy dog. This paragraph demonstrates the body font readability and line height settings derived from the base design system.
+                                The quick brown fox jumps over the lazy dog. This paragraph demonstrates the body font
+                                readability and line height settings derived from the base design system.
                             </p>
                             <div className="mt-8 p-6 bg-muted/50 rounded-lg text-center">
                                 <p className="font-handwriting text-3xl text-primary">

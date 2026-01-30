@@ -1,13 +1,6 @@
-import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import {
-    Button,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    Input,
-} from "@ottabase/ui-shadcn";
+import { useEffect, useState } from 'react';
+import { Link } from '@tanstack/react-router';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
 
 interface R2Object {
     key: string;
@@ -19,7 +12,7 @@ interface R2Object {
 
 export function CloudflareR2DemoPage() {
     const [file, setFile] = useState<File | null>(null);
-    const [key, setKey] = useState("");
+    const [key, setKey] = useState('');
     const [objects, setObjects] = useState<R2Object[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -30,17 +23,17 @@ export function CloudflareR2DemoPage() {
             setLoading(true);
             setError(null);
 
-            const response = await fetch("/api/cloudflare/r2?list=true");
+            const response = await fetch('/api/cloudflare/r2?list=true');
 
             if (!response.ok) {
                 const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to list objects");
+                throw new Error(data.error || 'Failed to list objects');
             }
 
             const data = (await response.json()) as { objects?: R2Object[] };
             setObjects(data.objects || []);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -60,31 +53,29 @@ export function CloudflareR2DemoPage() {
             setSuccess(null);
 
             const formData = new FormData();
-            formData.append("file", file);
-            formData.append("key", key);
+            formData.append('file', file);
+            formData.append('key', key);
 
-            const response = await fetch("/api/cloudflare/r2", {
-                method: "POST",
+            const response = await fetch('/api/cloudflare/r2', {
+                method: 'POST',
                 body: formData,
             });
 
             if (!response.ok) {
                 const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to upload file");
+                throw new Error(data.error || 'Failed to upload file');
             }
 
-            setSuccess("File uploaded successfully!");
+            setSuccess('File uploaded successfully!');
             setFile(null);
-            setKey("");
+            setKey('');
 
-            const fileInput = document.getElementById(
-                "r2-file-input",
-            ) as HTMLInputElement | null;
-            if (fileInput) fileInput.value = "";
+            const fileInput = document.getElementById('r2-file-input') as HTMLInputElement | null;
+            if (fileInput) fileInput.value = '';
 
             await loadObjects();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -98,20 +89,19 @@ export function CloudflareR2DemoPage() {
             setError(null);
             setSuccess(null);
 
-            const response = await fetch(
-                `/api/cloudflare/r2?key=${encodeURIComponent(objectKey)}`,
-                { method: "DELETE" },
-            );
+            const response = await fetch(`/api/cloudflare/r2?key=${encodeURIComponent(objectKey)}`, {
+                method: 'DELETE',
+            });
 
             if (!response.ok) {
                 const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to delete file");
+                throw new Error(data.error || 'Failed to delete file');
             }
 
-            setSuccess("File deleted successfully!");
+            setSuccess('File deleted successfully!');
             await loadObjects();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -122,18 +112,16 @@ export function CloudflareR2DemoPage() {
             setLoading(true);
             setError(null);
 
-            const response = await fetch(
-                `/api/cloudflare/r2?key=${encodeURIComponent(objectKey)}`,
-            );
+            const response = await fetch(`/api/cloudflare/r2?key=${encodeURIComponent(objectKey)}`);
 
             if (!response.ok) {
                 const data = (await response.json()) as { error?: string };
-                throw new Error(data.error || "Failed to download file");
+                throw new Error(data.error || 'Failed to download file');
             }
 
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
+            const a = document.createElement('a');
             a.href = url;
             a.download = objectKey;
             document.body.appendChild(a);
@@ -141,18 +129,18 @@ export function CloudflareR2DemoPage() {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
+            setError(err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
     };
 
     const formatBytes = (bytes: number) => {
-        if (bytes === 0) return "0 Bytes";
+        if (bytes === 0) return '0 Bytes';
         const k = 1024;
-        const sizes = ["Bytes", "KB", "MB", "GB"];
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
     };
 
     return (
@@ -163,9 +151,7 @@ export function CloudflareR2DemoPage() {
 
             <div>
                 <h1 className="mb-2 text-3xl font-semibold">R2 Storage Demo</h1>
-                <p className="text-muted-foreground">
-                    Object storage for file uploads and downloads
-                </p>
+                <p className="text-muted-foreground">Object storage for file uploads and downloads</p>
             </div>
 
             {error ? (
@@ -203,9 +189,7 @@ export function CloudflareR2DemoPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">
-                                Object Key (filename in bucket)
-                            </label>
+                            <label className="text-sm font-medium">Object Key (filename in bucket)</label>
                             <Input
                                 value={key}
                                 onChange={(e) => setKey(e.target.value)}
@@ -215,7 +199,7 @@ export function CloudflareR2DemoPage() {
                         </div>
 
                         <Button type="submit" disabled={loading || !file || !key} className="w-full">
-                            {loading ? "Uploading..." : "Upload File"}
+                            {loading ? 'Uploading...' : 'Upload File'}
                         </Button>
                     </form>
                 </CardContent>

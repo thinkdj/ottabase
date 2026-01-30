@@ -2,7 +2,8 @@
 
 ## Overview
 
-The `@ottabase/state` package provides a **centralized theme management system** using Jotai atoms with automatic localStorage persistence. This is the **single source of truth** for all theme state across the entire application.
+The `@ottabase/state` package provides a **centralized theme management system** using Jotai atoms with automatic
+localStorage persistence. This is the **single source of truth** for all theme state across the entire application.
 
 ## Key Concept
 
@@ -27,10 +28,7 @@ The theme atom uses `atomWithStorage` from `jotai/utils`:
 
 ```typescript
 // packages/state/src/createAppState.ts
-const themeStorageAtom = atomWithStorage<"light" | "dark">(
-  "ottabase-theme",
-  initialState.theme ?? "light"
-);
+const themeStorageAtom = atomWithStorage<'light' | 'dark'>('ottabase-theme', initialState.theme ?? 'light');
 ```
 
 **Key Features:**
@@ -59,11 +57,13 @@ function MyComponent() {
 
 ## Syncing UI Frameworks
 
-UI frameworks (like Tailwind via `next-themes`, and Mantine) are synchronized with the global `themeAtom` via a centralized hook and controlled provider components.
+UI frameworks (like Tailwind via `next-themes`, and Mantine) are synchronized with the global `themeAtom` via a
+centralized hook and controlled provider components.
 
 ### The `useThemeManager` Hook
 
-The primary mechanism for theme changes is the `useThemeManager` hook (located in the application, e.g., `apps/ottabase-template-app/ottabase/hooks/useThemeManager.ts`). This hook is responsible for:
+The primary mechanism for theme changes is the `useThemeManager` hook (located in the application, e.g.,
+`apps/ottabase-template-app/ottabase/hooks/useThemeManager.ts`). This hook is responsible for:
 
 1. Reading the global `themeAtom`.
 2. Providing a `toggleTheme` function.
@@ -74,43 +74,40 @@ All UI components that change the theme (e.g., a dark mode button) **must** use 
 ```typescript
 // Example from useThemeManager.ts
 export function useThemeManager() {
-  const [globalTheme, setGlobalTheme] = useAtom(themeAtom);
-  const { setTheme: setNextTheme } = useTheme(); // from next-themes
+    const [globalTheme, setGlobalTheme] = useAtom(themeAtom);
+    const { setTheme: setNextTheme } = useTheme(); // from next-themes
 
-  useEffect(() => {
-    // Syncs Jotai state to next-themes
-    if (globalTheme && globalTheme !== resolvedTheme) {
-      setNextTheme(globalTheme);
-    }
-  }, [globalTheme, setNextTheme, resolvedTheme]);
+    useEffect(() => {
+        // Syncs Jotai state to next-themes
+        if (globalTheme && globalTheme !== resolvedTheme) {
+            setNextTheme(globalTheme);
+        }
+    }, [globalTheme, setNextTheme, resolvedTheme]);
 
-  const toggleTheme = () => {
-    const newTheme = globalTheme === 'light' ? 'dark' : 'light';
-    setGlobalTheme(newTheme); // Update the atom, which triggers the effect
-  };
+    const toggleTheme = () => {
+        const newTheme = globalTheme === 'light' ? 'dark' : 'light';
+        setGlobalTheme(newTheme); // Update the atom, which triggers the effect
+    };
 
-  return { theme: globalTheme, toggleTheme };
+    return { theme: globalTheme, toggleTheme };
 }
 ```
 
 ### Mantine Integration
 
-The Mantine provider (`@ottabase/ui-mantine`) is configured as a **controlled component**. It accepts the current theme via a prop (`colorScheme`) and does not manage the state itself.
+The Mantine provider (`@ottabase/ui-mantine`) is configured as a **controlled component**. It accepts the current theme
+via a prop (`colorScheme`) and does not manage the state itself.
 
 ```tsx
 // Example usage in an app layout
-import { useAtomValue } from "jotai";
-import { themeAtom } from "@/ottabase/state/appGlobalState";
-import { ProviderUIMantine } from "@ottabase/ui-mantine";
+import { useAtomValue } from 'jotai';
+import { themeAtom } from '@/ottabase/state/appGlobalState';
+import { ProviderUIMantine } from '@ottabase/ui-mantine';
 
 export default function MantineLayout({ children }) {
-  const globalTheme = useAtomValue(themeAtom);
+    const globalTheme = useAtomValue(themeAtom);
 
-  return (
-    <ProviderUIMantine colorScheme={globalTheme}>
-      {children}
-    </ProviderUIMantine>
-  );
+    return <ProviderUIMantine colorScheme={globalTheme}>{children}</ProviderUIMantine>;
 }
 ```
 
@@ -148,27 +145,27 @@ export default function MantineLayout({ children }) {
 
 1. Create a sync component:
 
-   ```typescript
-   function NewFrameworkSync() {
-     const [globalTheme] = useAtom(themeAtom);
-     const { setTheme } = useNewFramework();
+    ```typescript
+    function NewFrameworkSync() {
+        const [globalTheme] = useAtom(themeAtom);
+        const { setTheme } = useNewFramework();
 
-     useEffect(() => {
-       setTheme(globalTheme);
-     }, [globalTheme]);
+        useEffect(() => {
+            setTheme(globalTheme);
+        }, [globalTheme]);
 
-     return null;
-   }
-   ```
+        return null;
+    }
+    ```
 
 2. Add to your provider tree:
 
-   ```tsx
-   <NewFrameworkProvider>
-     <NewFrameworkSync />
-     {children}
-   </NewFrameworkProvider>
-   ```
+    ```tsx
+    <NewFrameworkProvider>
+        <NewFrameworkSync />
+        {children}
+    </NewFrameworkProvider>
+    ```
 
 3. Done! Framework now syncs with global state.
 
@@ -187,30 +184,30 @@ If you have existing theme code:
 ### themeAtom
 
 ```typescript
-import { themeAtom } from "@/ottabase/state/appGlobalState";
+import { themeAtom } from '@/ottabase/state/appGlobalState';
 
 // Read theme
 const [theme] = useAtom(themeAtom);
 
 // Write theme
 const [theme, setTheme] = useAtom(themeAtom);
-setTheme("dark");
+setTheme('dark');
 
 // Write only
 const setTheme = useSetAtom(themeAtom);
-setTheme("light");
+setTheme('light');
 ```
 
 ### Type
 
 ```typescript
-type Theme = "light" | "dark";
+type Theme = 'light' | 'dark';
 ```
 
 ### localStorage Key
 
 ```typescript
-"ottabase-theme" // Fixed key, don't change
+'ottabase-theme'; // Fixed key, don't change
 ```
 
 ## Architecture Decision
@@ -282,17 +279,17 @@ export function ThemedCard() {
 ### Programmatic Theme Change
 
 ```typescript
-import { useSetAtom } from "jotai";
-import { themeAtom } from "@/ottabase/state/appGlobalState";
+import { useSetAtom } from 'jotai';
+import { themeAtom } from '@/ottabase/state/appGlobalState';
 
 export function useAutoTheme() {
-  const setTheme = useSetAtom(themeAtom);
+    const setTheme = useSetAtom(themeAtom);
 
-  useEffect(() => {
-    const hour = new Date().getHours();
-    const isDayTime = hour >= 6 && hour < 18;
-    setTheme(isDayTime ? "light" : "dark");
-  }, [setTheme]);
+    useEffect(() => {
+        const hour = new Date().getHours();
+        const isDayTime = hour >= 6 && hour < 18;
+        setTheme(isDayTime ? 'light' : 'dark');
+    }, [setTheme]);
 }
 ```
 
@@ -324,7 +321,8 @@ To verify the system works:
 
 ### Infinite loop
 
-- The `useThemeManager` hook is designed to prevent infinite loops by having a one-way data flow for updates: Component -> Jotai Atom -> `useEffect` -> `next-themes`.
+- The `useThemeManager` hook is designed to prevent infinite loops by having a one-way data flow for updates: Component
+  -> Jotai Atom -> `useEffect` -> `next-themes`.
 - Direct updates to `localStorage` or multiple, conflicting state managers should be avoided.
 
 ## Files

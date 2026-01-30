@@ -5,163 +5,194 @@
 // Extracted from BaseModel to support multi-database patterns
 // ============================================================
 
-import { z } from "zod";
-import type { ZodError, ZodTypeAny } from "zod";
+import { z } from 'zod';
+import type { ZodError, ZodTypeAny } from 'zod';
 
-export type ModelFieldType = 'string' | 'number' | 'integer' | 'float' | 'date' | 'datetime' | 'boolean' | 'id' | 'json' | 'array';
+export type ModelFieldType =
+    | 'string'
+    | 'number'
+    | 'integer'
+    | 'float'
+    | 'date'
+    | 'datetime'
+    | 'boolean'
+    | 'id'
+    | 'json'
+    | 'array';
+
 export type UniqueValidationScope =
-  | Record<string, unknown>
-  | ((data: Record<string, any>) => Record<string, unknown> | undefined);
+    | Record<string, unknown>
+    | ((data: Record<string, any>) => Record<string, unknown> | undefined);
+
 export type UniqueValidationConfig =
-  | boolean
-  | {
-    scope?: UniqueValidationScope;
-    message?: string;
-  };
+    | boolean
+    | {
+          scope?: UniqueValidationScope;
+          message?: string;
+      };
+
+/**
+ * Package type for model categorization
+ */
+export type PackageType = 'core' | 'app' | 'package';
 
 /**
  * Relationship configuration for select/multiselect fields
  */
 export interface RelationshipConfig {
-  /** Related model entity name (e.g., "users") */
-  entity: string;
-  /** API endpoint to fetch options (defaults to /api/ottaorm/{entity}) */
-  endpoint?: string;
-  /** Field to use as display label (defaults to "name") */
-  labelField?: string;
-  /** Field to use as value (defaults to "id") */
-  valueField?: string;
-  /** Additional fields to include in search */
-  searchFields?: string[];
-  /** Pre-filter options */
-  where?: Record<string, unknown>;
+    /** Related model entity name (e.g., "users") */
+    entity: string;
+    /** API endpoint to fetch options (defaults to /api/ottaorm/{entity}) */
+    endpoint?: string;
+    /** Field to use as display label (defaults to "name") */
+    labelField?: string;
+    /** Field to use as value (defaults to "id") */
+    valueField?: string;
+    /** Additional fields to include in search */
+    searchFields?: string[];
+    /** Pre-filter options */
+    where?: Record<string, unknown>;
 }
 
 export interface ModelFieldDescriptor {
-  type: ModelFieldType;
-  primaryKey?: boolean;
-  unique?: boolean;
-  editable?: boolean;
-  searchable?: boolean;
-  sortable?: boolean;
-  filterable?: boolean;
-  uiConfig?: {
-    label?: string;
-    description?: string;
-    placeholder?: string;
-    hint?: string;
-    defaultValue?: any;
-  };
-  formConfig?: {
-    fieldType?: 'input' | 'textarea' | 'select' | 'multiselect' | 'date' | 'datetime' | 'json' | 'boolean' | 'number' | 'email' | 'password' | 'url' | 'tel' | 'time' | 'file' | 'image' | 'hidden' | 'readonly';
-    visible?: boolean;
-    order?: number;
-    /** Relationship config for select/multiselect */
-    relationship?: RelationshipConfig;
-    /** Static options for select (if not using relationship) */
-    options?: Array<{ id: string; name: string; [key: string]: any }>;
-    /** Placeholder text override */
-    placeholder?: string;
-    /** Help text below field */
-    helpText?: string;
-    /** Accepted file types (for file/image) */
-    accept?: string;
-    /** Max file size in bytes */
-    maxSize?: number;
-    /** Number of rows (for textarea) */
-    rows?: number;
-    /** Min value (for number) or min length (for password) */
-    min?: number;
-    /** Max value (for number) */
-    max?: number;
-    /** Step value (for number) */
-    step?: number;
-    /** Show password strength hints (for password fields) */
-    showPasswordHints?: boolean;
-    /** Custom upload endpoint for file/image fields */
-    uploadEndpoint?: string;
-  };
-  tableConfig?: {
-    visible?: boolean;
-    order?: number;
-    colWidth?: string | number;
-    /** Custom format for display */
-    format?: 'date' | 'datetime' | 'currency' | 'percentage' | 'boolean' | 'image' | 'link';
-  };
-  validation?: {
-    /** Validation rules as pipe-separated string (e.g., "required|email|min:8") */
-    rules?: string;
-    /** Custom error messages keyed by rule name */
-    messages?: Record<string, string>;
-    /** Optional Zod schema for field validation */
-    schema?: ZodTypeAny;
-    /** Enable database uniqueness validation */
-    isUniqueInDb?: UniqueValidationConfig;
-  };
+    type: ModelFieldType;
+    primaryKey?: boolean;
+    unique?: boolean;
+    editable?: boolean;
+    searchable?: boolean;
+    sortable?: boolean;
+    filterable?: boolean;
+    uiConfig?: {
+        label?: string;
+        description?: string;
+        placeholder?: string;
+        hint?: string;
+        defaultValue?: any;
+    };
+    formConfig?: {
+        fieldType?:
+            | 'input'
+            | 'textarea'
+            | 'select'
+            | 'multiselect'
+            | 'date'
+            | 'datetime'
+            | 'json'
+            | 'boolean'
+            | 'number'
+            | 'email'
+            | 'password'
+            | 'url'
+            | 'tel'
+            | 'time'
+            | 'file'
+            | 'image'
+            | 'hidden'
+            | 'readonly';
+        visible?: boolean;
+        order?: number;
+        /** Relationship config for select/multiselect */
+        relationship?: RelationshipConfig;
+        /** Static options for select (if not using relationship) */
+        options?: Array<{ id: string; name: string; [key: string]: any }>;
+        /** Placeholder text override */
+        placeholder?: string;
+        /** Help text below field */
+        helpText?: string;
+        /** Accepted file types (for file/image) */
+        accept?: string;
+        /** Max file size in bytes */
+        maxSize?: number;
+        /** Number of rows (for textarea) */
+        rows?: number;
+        /** Min value (for number) or min length (for password) */
+        min?: number;
+        /** Max value (for number) */
+        max?: number;
+        /** Step value (for number) */
+        step?: number;
+        /** Show password strength hints (for password fields) */
+        showPasswordHints?: boolean;
+        /** Custom upload endpoint for file/image fields */
+        uploadEndpoint?: string;
+    };
+    tableConfig?: {
+        visible?: boolean;
+        order?: number;
+        colWidth?: string | number;
+        /** Custom format for display */
+        format?: 'date' | 'datetime' | 'currency' | 'percentage' | 'boolean' | 'image' | 'link';
+    };
+    validation?: {
+        /** Validation rules as pipe-separated string (e.g., "required|email|min:8") */
+        rules?: string;
+        /** Custom error messages keyed by rule name */
+        messages?: Record<string, string>;
+        /** Optional Zod schema for field validation */
+        schema?: ZodTypeAny;
+        /** Enable database uniqueness validation */
+        isUniqueInDb?: UniqueValidationConfig;
+    };
 }
 
 export type ModelFields = {
-  [key: string]: ModelFieldDescriptor;
+    [key: string]: ModelFieldDescriptor;
 };
 
 export interface PaginationResult<T> {
-  data: T[];
-  total: number;
-  page: number;
-  perPage: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
+    data: T[];
+    total: number;
+    page: number;
+    perPage: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
 }
 
 export class ModelValidationError extends Error {
-  public readonly fieldErrors: Record<string, string[]>;
-  public readonly messages: string[];
+    public readonly fieldErrors: Record<string, string[]>;
+    public readonly messages: string[];
 
-  constructor(
-    error:
-      | ZodError
-      | {
-        fieldErrors: Record<string, string[]>;
-        messages?: string[];
-        message?: string;
-      },
-  ) {
-    const message =
-      error instanceof z.ZodError
-        ? "Validation failed"
-        : error.message || "Validation failed";
-    super(message);
-    this.name = "ModelValidationError";
+    constructor(
+        error:
+            | ZodError
+            | {
+                  fieldErrors: Record<string, string[]>;
+                  messages?: string[];
+                  message?: string;
+              },
+    ) {
+        const message =
+            error instanceof z.ZodError ? 'Validation failed' : error.message || 'Validation failed';
+        super(message);
+        this.name = 'ModelValidationError';
 
-    if (error instanceof z.ZodError) {
-      this.messages = error.errors.map((issue) => issue.message);
+        if (error instanceof z.ZodError) {
+            this.messages = error.errors.map((issue) => issue.message);
 
-      const flattened = error.flatten();
-      const fieldErrors = Object.entries(flattened.fieldErrors).reduce(
-        (acc, [key, messages]) => {
-          if (messages && messages.length > 0) {
-            acc[key] = messages;
-          }
-          return acc;
-        },
-        {} as Record<string, string[]>,
-      );
+            const flattened = error.flatten();
+            const fieldErrors = Object.entries(flattened.fieldErrors).reduce(
+                (acc, [key, messages]) => {
+                    if (messages && messages.length > 0) {
+                        acc[key] = messages;
+                    }
+                    return acc;
+                },
+                {} as Record<string, string[]>,
+            );
 
-      if (flattened.formErrors.length > 0) {
-        fieldErrors._form = flattened.formErrors;
-      }
+            if (flattened.formErrors.length > 0) {
+                fieldErrors._form = flattened.formErrors;
+            }
 
-      this.fieldErrors = fieldErrors;
-      return;
+            this.fieldErrors = fieldErrors;
+            return;
+        }
+
+        const fallbackMessages = error.messages ?? Object.values(error.fieldErrors).flat();
+        this.messages = fallbackMessages.length > 0 ? fallbackMessages : [this.message];
+        this.fieldErrors = error.fieldErrors;
     }
-
-    const fallbackMessages =
-      error.messages ?? Object.values(error.fieldErrors).flat();
-    this.messages =
-      fallbackMessages.length > 0 ? fallbackMessages : [this.message];
-    this.fieldErrors = error.fieldErrors;
-  }
 }
 
 /**
@@ -178,415 +209,426 @@ export class ModelValidationError extends Error {
  * @abstract
  */
 export abstract class AbstractBaseModel {
+    // ============================================================
+    // STATIC PROPERTIES - Model Metadata
+    // ============================================================
 
-  // ============================================================
-  // STATIC PROPERTIES - Model Metadata
-  // ============================================================
+    /**
+     * Entity name (table/collection name)
+     */
+    static entity: string;
 
-  /**
-   * Entity name (table/collection name)
-   */
-  static entity: string;
+    /**
+     * Primary key field name
+     * @default "id"
+     */
+    static primaryKey: string = 'id';
 
-  /**
-   * Primary key field name
-   * @default "id"
-   */
-  static primaryKey: string = "id";
+    /**
+     * Database connection name
+     * @default "default"
+     */
+    static connection: string = 'default';
 
-  /**
-   * Database connection name
-   * @default "default"
-   */
-  static connection: string = "default";
+    /**
+     * Package name (for metadata/registry)
+     * @example "@ottabase/ottaorm", "app", "@ottabase/shortlinks"
+     * If not set, defaults to "unknown"
+     */
+    static packageName?: string;
 
-  // ============================================================
-  // STATIC PROPERTIES - UI/Forms Metadata
-  // ============================================================
+    /**
+     * Package type (for categorization in UI)
+     * @example "core", "app", "package"
+     * If not set, defaults to "core"
+     */
+    static packageType?: PackageType;
 
-  /**
-   * Display name (singular) for UI
-   * @example "User", "Blog Post"
-   * If not set, derived from entity name
-   */
-  static displayName?: string;
+    // ============================================================
+    // STATIC PROPERTIES - UI/Forms Metadata
+    // ============================================================
 
-  /**
-   * Display name (plural) for UI
-   * @example "Users", "Blog Posts"
-   * If not set, derived from entity name
-   */
-  static displayNamePlural?: string;
+    /**
+     * Display name (singular) for UI
+     * @example "User", "Blog Post"
+     * If not set, derived from entity name
+     */
+    static displayName?: string;
 
-  /**
-   * Default sort field for list views
-   * @example "createdAt"
-   */
-  static defaultSort?: string;
+    /**
+     * Display name (plural) for UI
+     * @example "Users", "Blog Posts"
+     * If not set, derived from entity name
+     */
+    static displayNamePlural?: string;
 
-  /**
-   * Default sort direction for list views
-   * @default "asc"
-   */
-  static defaultSortDirection?: "asc" | "desc";
+    /**
+     * Default sort field for list views
+     * @example "createdAt"
+     */
+    static defaultSort?: string;
 
-  /**
-   * Type casting rules for attributes
-   * @example
-   * ```typescript
-   * static casts = {
-   *   createdAt: 'date',
-   *   published: 'boolean',
-   *   metadata: 'json'
-   * }
-   * ```
-   */
-  protected static casts: { [key: string]: ModelFieldType } = {};
+    /**
+     * Default sort direction for list views
+     * @default "asc"
+     */
+    static defaultSortDirection?: 'asc' | 'desc';
 
-  /**
-   * Relationship definitions (for future use)
-   */
-  protected static connect: string[] = [];
+    /**
+     * Type casting rules for attributes
+     * @example
+     * ```typescript
+     * static casts = {
+     *   createdAt: 'date',
+     *   published: 'boolean',
+     *   metadata: 'json'
+     * }
+     * ```
+     */
+    protected static casts: { [key: string]: ModelFieldType } = {};
 
-  /**
-   * Default eager loading relationships (for future use)
-   */
-  protected static with: string[] = [];
+    /**
+     * Relationship definitions (for future use)
+     */
+    protected static connect: string[] = [];
 
-  /**
-   * Complete field metadata for UI generation, forms, tables, etc.
-   */
-  protected static fields: ModelFields = {};
+    /**
+     * Default eager loading relationships (for future use)
+     */
+    protected static with: string[] = [];
 
-  /**
-   * Validation rules
-   */
-  protected static validationRules: any = {};
+    /**
+     * Complete field metadata for UI generation, forms, tables, etc.
+     */
+    protected static fields: ModelFields = {};
 
-  /**
-   * Zod validation schema (optional)
-   */
-  protected static validationSchema?: ZodTypeAny;
+    /**
+     * Zod validation schema (optional)
+     */
+    protected static validationSchema?: ZodTypeAny;
 
-  /**
-   * Get field metadata for this model
-   * Used by @ottabase/forms for auto-generating CRUD forms
-   */
-  static getFields(): ModelFields {
-    return this.fields;
-  }
+    /**
+     * Validation rules
+     */
+    protected static validationRules: any = {};
 
-  /**
-   * Get model validation schema (if defined)
-   */
-  static getValidationSchema(): ZodTypeAny | null {
-    if (this.validationSchema) {
-      return this.validationSchema;
+    /**
+     * Get field metadata for this model
+     * Used by @ottabase/forms for auto-generating CRUD forms
+     */
+    static getFields(): ModelFields {
+        return this.fields;
     }
 
-    const shape: Record<string, ZodTypeAny> = {};
-    for (const [key, field] of Object.entries(this.fields)) {
-      if (field.validation?.schema) {
-        shape[key] = field.validation.schema;
-      }
+    /**
+     * Get model validation schema (if defined)
+     */
+    static getValidationSchema(): ZodTypeAny | null {
+        if (this.validationSchema) {
+            return this.validationSchema;
+        }
+
+        const shape: Record<string, ZodTypeAny> = {};
+        for (const [key, field] of Object.entries(this.fields)) {
+            if (field.validation?.schema) {
+                shape[key] = field.validation.schema;
+            }
+        }
+
+        if (Object.keys(shape).length === 0) {
+            return null;
+        }
+
+        return z.object(shape).passthrough();
     }
 
-    if (Object.keys(shape).length === 0) {
-      return null;
+    /**
+     * Validate data using model or field schemas
+     */
+    static async validateData(
+        data: Record<string, any>,
+        options?: { mode?: 'create' | 'update'; ignoreId?: string | number },
+    ): Promise<void> {
+        const schema = this.getValidationSchema();
+        if (schema) {
+            const validationSchema =
+                options?.mode === 'update' && schema instanceof z.ZodObject ? schema.partial() : schema;
+
+            const result = await validationSchema.safeParseAsync(data);
+            if (!result.success) {
+                throw new ModelValidationError(result.error);
+            }
+        }
+
+        await this.validateUniqueFields(data, options);
     }
 
-    return z.object(shape).passthrough();
-  }
+    private static async validateUniqueFields(
+        data: Record<string, any>,
+        options?: { ignoreId?: string | number },
+    ): Promise<void> {
+        const uniqueChecker = (this as any).isUnique;
+        if (typeof uniqueChecker !== 'function') return;
 
-  /**
-   * Validate data using model or field schemas
-   */
-  static async validateData(
-    data: Record<string, any>,
-    options?: { mode?: "create" | "update"; ignoreId?: string | number },
-  ): Promise<void> {
-    const schema = this.getValidationSchema();
-    if (schema) {
-      const validationSchema =
-        options?.mode === "update" && schema instanceof z.ZodObject
-          ? schema.partial()
-          : schema;
+        const fieldErrors: Record<string, string[]> = {};
 
-      const result = await validationSchema.safeParseAsync(data);
-      if (!result.success) {
-        throw new ModelValidationError(result.error);
-      }
+        for (const [key, field] of Object.entries(this.fields)) {
+            const uniqueConfig = field.validation?.isUniqueInDb;
+            if (!uniqueConfig) continue;
+
+            const value = data[key];
+            if (value === undefined || value === null) continue;
+
+            let scope: Record<string, unknown> | undefined;
+            let message: string | undefined;
+
+            if (typeof uniqueConfig === 'object') {
+                const scopeValue = uniqueConfig.scope;
+                scope = typeof scopeValue === 'function' ? scopeValue(data) : scopeValue;
+                message = uniqueConfig.message;
+            }
+
+            const label = field.uiConfig?.label || key;
+            const fallbackMessage = field.validation?.messages?.unique || `${label} must be unique`;
+
+            const isUnique = await uniqueChecker.call(this, key, value, {
+                where: scope,
+                ignoreId: options?.ignoreId,
+            });
+
+            if (!isUnique) {
+                fieldErrors[key] = [message || fallbackMessage];
+            }
+        }
+
+        if (Object.keys(fieldErrors).length > 0) {
+            throw new ModelValidationError({
+                fieldErrors,
+                messages: Object.values(fieldErrors).flat(),
+            });
+        }
     }
 
-    await this.validateUniqueFields(data, options);
-  }
-
-  private static async validateUniqueFields(
-    data: Record<string, any>,
-    options?: { ignoreId?: string | number },
-  ): Promise<void> {
-    const uniqueChecker = (this as any).isUnique;
-    if (typeof uniqueChecker !== "function") return;
-
-    const fieldErrors: Record<string, string[]> = {};
-
-    for (const [key, field] of Object.entries(this.fields)) {
-      const uniqueConfig = field.validation?.isUniqueInDb;
-      if (!uniqueConfig) continue;
-
-      const value = data[key];
-      if (value === undefined || value === null) continue;
-
-      let scope: Record<string, unknown> | undefined;
-      let message: string | undefined;
-
-      if (typeof uniqueConfig === "object") {
-        const scopeValue = uniqueConfig.scope;
-        scope =
-          typeof scopeValue === "function" ? scopeValue(data) : scopeValue;
-        message = uniqueConfig.message;
-      }
-
-      const label = field.uiConfig?.label || key;
-      const fallbackMessage =
-        field.validation?.messages?.unique || `${label} must be unique`;
-
-      const isUnique = await uniqueChecker.call(this, key, value, {
-        where: scope,
-        ignoreId: options?.ignoreId,
-      });
-
-      if (!isUnique) {
-        fieldErrors[key] = [message || fallbackMessage];
-      }
+    /**
+     * Get model configuration for forms package
+     */
+    static getModelConfig() {
+        return {
+            entity: this.entity,
+            primaryKey: this.primaryKey,
+            fields: this.fields,
+            defaults: this.defaults,
+            validationRules: this.validationRules,
+            validationSchema: this.getValidationSchema(),
+            // UI/Forms metadata
+            displayName: this.displayName,
+            displayNamePlural: this.displayNamePlural,
+            defaultSort: this.defaultSort,
+            defaultSortDirection: this.defaultSortDirection,
+        };
     }
 
-    if (Object.keys(fieldErrors).length > 0) {
-      throw new ModelValidationError({
-        fieldErrors,
-        messages: Object.values(fieldErrors).flat(),
-      });
-    }
-  }
+    /**
+     * Default values for new records
+     * @example
+     * ```typescript
+     * static defaults = {
+     *   status: 'active',
+     *   createdAt: () => new Date()
+     * }
+     * ```
+     */
+    protected static defaults: { [key: string]: any } = {};
 
-  /**
-   * Get model configuration for forms package
-   */
-  static getModelConfig() {
-    return {
-      entity: this.entity,
-      primaryKey: this.primaryKey,
-      fields: this.fields,
-      defaults: this.defaults,
-      validationRules: this.validationRules,
-      validationSchema: this.getValidationSchema(),
-      // UI/Forms metadata
-      displayName: this.displayName,
-      displayNamePlural: this.displayNamePlural,
-      defaultSort: this.defaultSort,
-      defaultSortDirection: this.defaultSortDirection,
-    };
-  }
+    // ============================================================
+    // INSTANCE PROPERTIES
+    // ============================================================
 
-  /**
-   * Default values for new records
-   * @example
-   * ```typescript
-   * static defaults = {
-   *   status: 'active',
-   *   createdAt: () => new Date()
-   * }
-   * ```
-   */
-  protected static defaults: { [key: string]: any } = {};
+    /**
+     * Model attributes (actual data)
+     */
+    protected attributes: { [key: string]: any } = {};
 
-  // ============================================================
-  // INSTANCE PROPERTIES
-  // ============================================================
+    /**
+     * Accessor fields to append to JSON output
+     */
+    protected appends: string[] = [];
 
-  /**
-   * Model attributes (actual data)
-   */
-  protected attributes: { [key: string]: any } = {};
+    /**
+     * Fields to hide from JSON output
+     */
+    protected hidden: string[] = [];
 
-  /**
-   * Accessor fields to append to JSON output
-   */
-  protected appends: string[] = [];
+    // ============================================================
+    // INSTANCE METHODS - Data Manipulation
+    // ============================================================
 
-  /**
-   * Fields to hide from JSON output
-   */
-  protected hidden: string[] = [];
-
-  // ============================================================
-  // INSTANCE METHODS - Data Manipulation
-  // ============================================================
-
-  /**
-   * Fill model with data and apply type casting
-   *
-   * @param data - Data to fill the model with
-   */
-  fill(data: { [key: string]: any }): void {
-    for (const key in data) {
-      this.attributes[key] = this.castAttributeValue(key, data[key]);
-    }
-  }
-
-  /**
-   * Get attribute value
-   *
-   * @param key - Attribute key
-   * @returns Attribute value
-   */
-  get(key: string): any {
-    return this.attributes[key];
-  }
-
-  /**
-   * Set attribute value with type casting
-   *
-   * @param key - Attribute key
-   * @param value - Value to set
-   */
-  set(key: string, value: any): void {
-    this.attributes[key] = this.castAttributeValue(key, value);
-  }
-
-  /**
-   * Cast attribute value based on casts configuration
-   *
-   * @param key - Attribute key
-   * @param value - Value to cast
-   * @returns Cast value
-   */
-  protected castAttributeValue(key: string, value: any): any {
-    const casts = (this.constructor as typeof AbstractBaseModel).casts;
-    const castType = casts[key];
-
-    if (!castType || value === null || value === undefined) {
-      return value;
+    /**
+     * Fill model with data and apply type casting
+     *
+     * @param data - Data to fill the model with
+     */
+    fill(data: { [key: string]: any }): void {
+        for (const key in data) {
+            this.attributes[key] = this.castAttributeValue(key, data[key]);
+        }
     }
 
-    // Skip if already correct type
-    if (typeof value === castType ||
-        (castType === 'number' && typeof value === 'number') ||
-        (castType === 'integer' && Number.isInteger(value)) ||
-        (castType === 'float' && typeof value === 'number' && !Number.isInteger(value))) {
-      return value;
+    /**
+     * Get attribute value
+     *
+     * @param key - Attribute key
+     * @returns Attribute value
+     */
+    get(key: string): any {
+        return this.attributes[key];
     }
 
-    try {
-      switch (castType) {
-        case 'number':
-        case 'integer':
-          return parseInt(value);
-        case 'float':
-          return parseFloat(value);
-        case 'string':
-          return String(value);
-        case 'boolean':
-          if (typeof value === 'string') {
-            return value.toLowerCase() === 'true' || value === '1';
-          }
-          return Boolean(value);
-        case 'date':
-        case 'datetime':
-          const date = new Date(value);
-          if (isNaN(date.getTime())) {
-            throw new Error(`Invalid date value for ${key}`);
-          }
-          return date;
-        case 'json':
-          return typeof value === 'string' ? JSON.parse(value) : value;
-        case 'array':
-          if (Array.isArray(value)) return value;
-          if (typeof value === 'string') return value.split(/\s*,\s*/);
-          return [value];
-        default:
-          return value;
-      }
-    } catch (e) {
-      throw new Error(`Failed to cast ${key} with value: ${value} to type: ${castType}`);
-    }
-  }
-
-  /**
-   * Make hidden fields visible for this instance
-   *
-   * @param fields - Field or array of fields to make visible
-   * @returns This instance for chaining
-   */
-  makeVisible(fields: string | string[]): this {
-    const fieldsToMakeVisible = Array.isArray(fields) ? fields : [fields];
-    this.hidden = this.hidden.filter(attr => !fieldsToMakeVisible.includes(attr));
-    return this;
-  }
-
-  /**
-   * Convert to JSON, applying hidden fields and accessors
-   *
-   * @returns JSON representation of the model
-   */
-  toJson(): Record<string, any> {
-    const visibleAttributes: { [key: string]: any } = {};
-
-    // Copy non-hidden attributes
-    for (const key in this.attributes) {
-      if (!this.hidden.includes(key)) {
-        visibleAttributes[key] = this.attributes[key];
-      }
+    /**
+     * Set attribute value with type casting
+     *
+     * @param key - Attribute key
+     * @param value - Value to set
+     */
+    set(key: string, value: any): void {
+        this.attributes[key] = this.castAttributeValue(key, value);
     }
 
-    // Apply accessors (appends)
-    for (const appendKey of this.appends) {
-      const accessorMethod = `get${appendKey.charAt(0).toUpperCase()}${appendKey.slice(1)}`;
-      if (typeof (this as any)[accessorMethod] === 'function') {
-        visibleAttributes[appendKey] = (this as any)[accessorMethod]();
-      }
+    /**
+     * Cast attribute value based on casts configuration
+     *
+     * @param key - Attribute key
+     * @param value - Value to cast
+     * @returns Cast value
+     */
+    protected castAttributeValue(key: string, value: any): any {
+        const casts = (this.constructor as typeof AbstractBaseModel).casts;
+        const castType = casts[key];
+
+        if (!castType || value === null || value === undefined) {
+            return value;
+        }
+
+        // Skip if already correct type
+        if (
+            typeof value === castType ||
+            (castType === 'number' && typeof value === 'number') ||
+            (castType === 'integer' && Number.isInteger(value)) ||
+            (castType === 'float' && typeof value === 'number' && !Number.isInteger(value))
+        ) {
+            return value;
+        }
+
+        try {
+            switch (castType) {
+                case 'number':
+                case 'integer':
+                    return parseInt(value);
+                case 'float':
+                    return parseFloat(value);
+                case 'string':
+                    return String(value);
+                case 'boolean':
+                    if (typeof value === 'string') {
+                        return value.toLowerCase() === 'true' || value === '1';
+                    }
+                    return Boolean(value);
+                case 'date':
+                case 'datetime':
+                    const date = new Date(value);
+                    if (isNaN(date.getTime())) {
+                        throw new Error(`Invalid date value for ${key}`);
+                    }
+                    return date;
+                case 'json':
+                    return typeof value === 'string' ? JSON.parse(value) : value;
+                case 'array':
+                    if (Array.isArray(value)) return value;
+                    if (typeof value === 'string') return value.split(/\s*,\s*/);
+                    return [value];
+                default:
+                    return value;
+            }
+        } catch (e) {
+            throw new Error(`Failed to cast ${key} with value: ${value} to type: ${castType}`);
+        }
     }
 
-    return visibleAttributes;
-  }
+    /**
+     * Make hidden fields visible for this instance
+     *
+     * @param fields - Field or array of fields to make visible
+     * @returns This instance for chaining
+     */
+    makeVisible(fields: string | string[]): this {
+        const fieldsToMakeVisible = Array.isArray(fields) ? fields : [fields];
+        this.hidden = this.hidden.filter((attr) => !fieldsToMakeVisible.includes(attr));
+        return this;
+    }
 
-  /**
-   * Get model name (entity)
-   *
-   * @returns Model entity name
-   */
-  getModelName(): string {
-    return (this.constructor as typeof AbstractBaseModel).entity;
-  }
+    /**
+     * Convert to JSON, applying hidden fields and accessors
+     *
+     * @returns JSON representation of the model
+     */
+    toJson(): Record<string, any> {
+        const visibleAttributes: { [key: string]: any } = {};
 
-  // ============================================================
-  // ABSTRACT METHODS - Must be implemented by subclasses
-  // ============================================================
+        // Copy non-hidden attributes
+        for (const key in this.attributes) {
+            if (!this.hidden.includes(key)) {
+                visibleAttributes[key] = this.attributes[key];
+            }
+        }
 
-  /**
-   * Save instance (create or update)
-   * Implementation depends on database type (SQL vs NoSQL)
-   *
-   * @param driver - Optional driver override
-   * @returns This instance with updated data
-   */
-  abstract save(driver?: any): Promise<this>;
+        // Apply accessors (appends)
+        for (const appendKey of this.appends) {
+            const accessorMethod = `get${appendKey.charAt(0).toUpperCase()}${appendKey.slice(1)}`;
+            if (typeof (this as any)[accessorMethod] === 'function') {
+                visibleAttributes[appendKey] = (this as any)[accessorMethod]();
+            }
+        }
 
-  /**
-   * Delete instance from database
-   * Implementation depends on database type (SQL vs NoSQL)
-   *
-   * @param driver - Optional driver override
-   * @returns True if deleted successfully
-   */
-  abstract destroy(driver?: any): Promise<boolean>;
+        return visibleAttributes;
+    }
 
-  /**
-   * Reload instance from database
-   * Implementation depends on database type (SQL vs NoSQL)
-   *
-   * @param driver - Optional driver override
-   * @returns This instance with fresh data
-   */
-  abstract refresh(driver?: any): Promise<this>;
+    /**
+     * Get model name (entity)
+     *
+     * @returns Model entity name
+     */
+    getModelName(): string {
+        return (this.constructor as typeof AbstractBaseModel).entity;
+    }
+
+    // ============================================================
+    // ABSTRACT METHODS - Must be implemented by subclasses
+    // ============================================================
+
+    /**
+     * Save instance (create or update)
+     * Implementation depends on database type (SQL vs NoSQL)
+     *
+     * @param driver - Optional driver override
+     * @returns This instance with updated data
+     */
+    abstract save(driver?: any): Promise<this>;
+
+    /**
+     * Delete instance from database
+     * Implementation depends on database type (SQL vs NoSQL)
+     *
+     * @param driver - Optional driver override
+     * @returns True if deleted successfully
+     */
+    abstract destroy(driver?: any): Promise<boolean>;
+
+    /**
+     * Reload instance from database
+     * Implementation depends on database type (SQL vs NoSQL)
+     *
+     * @param driver - Optional driver override
+     * @returns This instance with fresh data
+     */
+    abstract refresh(driver?: any): Promise<this>;
 }

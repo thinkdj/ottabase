@@ -1,6 +1,7 @@
 # @ottabase/cf-realtime
 
-A **Pusher alternative** for real-time pub/sub using **Cloudflare Actors** (Durable Objects). Build scalable, real-time applications with WebSocket support, offline message queuing, and TypeScript-first API.
+A **Pusher alternative** for real-time pub/sub using **Cloudflare Actors** (Durable Objects). Build scalable, real-time
+applications with WebSocket support, offline message queuing, and TypeScript-first API.
 
 ## Features
 
@@ -27,48 +28,48 @@ Create a Cloudflare Worker with the RealtimeActor:
 
 ```typescript
 // worker.ts
-import { RealtimeActor, RealtimeBroadcaster } from "@ottabase/cf-realtime/server";
-import { handler } from "@cloudflare/actors";
+import { RealtimeActor, RealtimeBroadcaster } from '@ottabase/cf-realtime/server';
+import { handler } from '@cloudflare/actors';
 
 export { RealtimeActor };
 export default handler(RealtimeActor);
 
 // Environment bindings
 export interface Env {
-  REALTIME: DurableObjectNamespace;
+    REALTIME: DurableObjectNamespace;
 }
 
 // Example: Handle requests
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
+    async fetch(request: Request, env: Env): Promise<Response> {
+        const url = new URL(request.url);
 
-    // WebSocket upgrade - connect to the Actor
-    if (url.pathname === "/realtime" && request.headers.get("Upgrade") === "websocket") {
-      const id = env.OBCF_REALTIME.idFromName("global");
-      const stub = env.OBCF_REALTIME.get(id);
-      return stub.fetch(request);
-    }
+        // WebSocket upgrade - connect to the Actor
+        if (url.pathname === '/realtime' && request.headers.get('Upgrade') === 'websocket') {
+            const id = env.OBCF_REALTIME.idFromName('global');
+            const stub = env.OBCF_REALTIME.get(id);
+            return stub.fetch(request);
+        }
 
-    // REST API endpoint to broadcast messages
-    if (url.pathname === "/api/broadcast" && request.method === "POST") {
-      const broadcaster = new RealtimeBroadcaster(env.OBCF_REALTIME);
-      const body = await request.json();
+        // REST API endpoint to broadcast messages
+        if (url.pathname === '/api/broadcast' && request.method === 'POST') {
+            const broadcaster = new RealtimeBroadcaster(env.OBCF_REALTIME);
+            const body = await request.json();
 
-      const result = await broadcaster.broadcast({
-        channels: body.channels,
-        event: body.event,
-        data: body.data,
-        persistForOffline: body.persistForOffline || false,
-      });
+            const result = await broadcaster.broadcast({
+                channels: body.channels,
+                event: body.event,
+                data: body.data,
+                persistForOffline: body.persistForOffline || false,
+            });
 
-      return new Response(JSON.stringify(result), {
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+            return new Response(JSON.stringify(result), {
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
 
-    return new Response("Not Found", { status: 404 });
-  },
+        return new Response('Not Found', { status: 404 });
+    },
 };
 ```
 
@@ -92,50 +93,50 @@ new_classes = ["RealtimeActor"]
 ### 3. Client Usage (Browser/Node.js)
 
 ```typescript
-import { RealtimeClient } from "@ottabase/cf-realtime";
+import { RealtimeClient } from '@ottabase/cf-realtime';
 
 // Create client
 const client = new RealtimeClient({
-  url: "wss://your-worker.workers.dev/realtime",
-  clientId: "user-123", // Optional, auto-generated if not provided
-  autoReconnect: true,
-  debug: true,
+    url: 'wss://your-worker.workers.dev/realtime',
+    clientId: 'user-123', // Optional, auto-generated if not provided
+    autoReconnect: true,
+    debug: true,
 });
 
 // Connect
 await client.connect();
 
 // Subscribe to channels
-const unsubscribe = client.subscribe("org-1201", (event, data, metadata) => {
-  console.log(`Received ${event}:`, data, metadata);
+const unsubscribe = client.subscribe('org-1201', (event, data, metadata) => {
+    console.log(`Received ${event}:`, data, metadata);
 
-  if (event === "user-joined") {
-    console.log(`User ${data.userId} joined!`);
-  }
+    if (event === 'user-joined') {
+        console.log(`User ${data.userId} joined!`);
+    }
 });
 
 // Subscribe to multiple channels
-client.subscribe("user-22", (event, data) => {
-  console.log("User-specific message:", data);
+client.subscribe('user-22', (event, data) => {
+    console.log('User-specific message:', data);
 });
 
-client.subscribe("system", (event, data, metadata) => {
-  // Handle system updates
-  if (metadata?.offline) {
-    // This message was queued while we were offline
-    console.log("Received offline message:", data);
-  }
+client.subscribe('system', (event, data, metadata) => {
+    // Handle system updates
+    if (metadata?.offline) {
+        // This message was queued while we were offline
+        console.log('Received offline message:', data);
+    }
 });
 
 // Listen to connection state
 client.onStateChange((state) => {
-  console.log("Connection state:", state);
-  // states: connecting, connected, disconnected, reconnecting, failed
+    console.log('Connection state:', state);
+    // states: connecting, connected, disconnected, reconnecting, failed
 });
 
 // Handle errors
 client.onError((error) => {
-  console.error("Realtime error:", error);
+    console.error('Realtime error:', error);
 });
 
 // Unsubscribe
@@ -153,32 +154,27 @@ client.disconnect();
 Send messages to channels from your backend:
 
 ```typescript
-import { RealtimeBroadcaster } from "@ottabase/cf-realtime/server";
+import { RealtimeBroadcaster } from '@ottabase/cf-realtime/server';
 
 // In your Cloudflare Worker
 const broadcaster = new RealtimeBroadcaster(env.OBCF_REALTIME);
 
 // Broadcast to specific channels
 await broadcaster.broadcast({
-  channels: ["org-1201", "org-users-all"],
-  event: "notification",
-  data: {
-    title: "New Feature Released!",
-    message: "Check out our new dashboard",
-  },
-  persistForOffline: true, // Queue for offline users
-  metadata: {
-    priority: "high",
-  },
+    channels: ['org-1201', 'org-users-all'],
+    event: 'notification',
+    data: {
+        title: 'New Feature Released!',
+        message: 'Check out our new dashboard',
+    },
+    persistForOffline: true, // Queue for offline users
+    metadata: {
+        priority: 'high',
+    },
 });
 
 // Send to a single channel (shorthand)
-await broadcaster.send(
-  "user-22",
-  "message",
-  { text: "Hello!" },
-  { persistForOffline: true }
-);
+await broadcaster.send('user-22', 'message', { text: 'Hello!' }, { persistForOffline: true });
 
 // Get stats
 const stats = await broadcaster.getStats();
@@ -203,23 +199,23 @@ Use channels to organize your real-time data:
 
 ```typescript
 // Organization-level
-client.subscribe("org-1201", handler);
+client.subscribe('org-1201', handler);
 
 // User-specific
-client.subscribe("user-22", handler);
+client.subscribe('user-22', handler);
 
 // Group/Team
-client.subscribe("group-50", handler);
+client.subscribe('group-50', handler);
 
 // All users in an org
-client.subscribe("org-users-all", handler);
+client.subscribe('org-users-all', handler);
 
 // System-wide broadcasts
-client.subscribe("system", handler);
+client.subscribe('system', handler);
 
 // Custom patterns
-client.subscribe("notifications:user:123", handler);
-client.subscribe("chat:room:456", handler);
+client.subscribe('notifications:user:123', handler);
+client.subscribe('chat:room:456', handler);
 ```
 
 ## Offline Message Queuing
@@ -229,29 +225,29 @@ Messages can be queued for offline clients and delivered when they reconnect:
 ```typescript
 // Server-side: Send message with offline persistence
 await broadcaster.send(
-  "user-22",
-  "system-update",
-  {
-    action: "update-profile",
-    data: { theme: "dark" },
-  },
-  {
-    persistForOffline: true,
-    metadata: { ttl: 86400 } // 24 hours
-  }
+    'user-22',
+    'system-update',
+    {
+        action: 'update-profile',
+        data: { theme: 'dark' },
+    },
+    {
+        persistForOffline: true,
+        metadata: { ttl: 86400 }, // 24 hours
+    },
 );
 
 // Client-side: Handle offline messages
-client.subscribe("system-update", (event, data, metadata) => {
-  if (metadata?.offline) {
-    // This message was queued while we were offline
-    console.log("Processing queued action:", data.action);
+client.subscribe('system-update', (event, data, metadata) => {
+    if (metadata?.offline) {
+        // This message was queued while we were offline
+        console.log('Processing queued action:', data.action);
 
-    // Perform the action
-    if (data.action === "update-profile") {
-      updateUserProfile(data.data);
+        // Perform the action
+        if (data.action === 'update-profile') {
+            updateUserProfile(data.data);
+        }
     }
-  }
 });
 ```
 
@@ -298,13 +294,13 @@ health(): Promise<{ status: string; connections: number }>
 
 ```typescript
 interface ClientConfig {
-  url: string;                    // WebSocket URL
-  clientId?: string;              // Client identifier (auto-generated if not provided)
-  autoReconnect?: boolean;        // Auto-reconnect on disconnect (default: true)
-  reconnectInterval?: number;     // Initial reconnect delay in ms (default: 3000)
-  maxReconnectAttempts?: number;  // Max reconnect attempts (default: 10)
-  pingInterval?: number;          // Ping interval in ms (default: 30000)
-  debug?: boolean;                // Enable debug logging (default: false)
+    url: string; // WebSocket URL
+    clientId?: string; // Client identifier (auto-generated if not provided)
+    autoReconnect?: boolean; // Auto-reconnect on disconnect (default: true)
+    reconnectInterval?: number; // Initial reconnect delay in ms (default: 3000)
+    maxReconnectAttempts?: number; // Max reconnect attempts (default: 10)
+    pingInterval?: number; // Ping interval in ms (default: 30000)
+    debug?: boolean; // Enable debug logging (default: false)
 }
 ```
 
@@ -312,10 +308,10 @@ interface ClientConfig {
 
 ```typescript
 interface ServerConfig {
-  maxConnectionsPerChannel?: number;  // Max connections per channel (default: 1000)
-  offlineMessageTTL?: number;         // Default TTL for offline messages in seconds (default: 86400)
-  maxOfflineMessages?: number;        // Max messages to queue per client (default: 100)
-  enablePersistence?: boolean;        // Enable offline message persistence (default: true)
+    maxConnectionsPerChannel?: number; // Max connections per channel (default: 1000)
+    offlineMessageTTL?: number; // Default TTL for offline messages in seconds (default: 86400)
+    maxOfflineMessages?: number; // Max messages to queue per client (default: 100)
+    enablePersistence?: boolean; // Enable offline message persistence (default: true)
 }
 ```
 
@@ -326,32 +322,28 @@ interface ServerConfig {
 ```typescript
 // Client
 const client = new RealtimeClient({
-  url: "wss://your-worker.workers.dev/realtime",
-  clientId: currentUserId,
+    url: 'wss://your-worker.workers.dev/realtime',
+    clientId: currentUserId,
 });
 
 await client.connect();
 
 client.subscribe(`chat:room:${roomId}`, (event, data) => {
-  if (event === "message") {
-    displayMessage(data);
-  }
+    if (event === 'message') {
+        displayMessage(data);
+    }
 
-  if (event === "user-typing") {
-    showTypingIndicator(data.userId);
-  }
+    if (event === 'user-typing') {
+        showTypingIndicator(data.userId);
+    }
 });
 
 // Server - Broadcasting new message
-await broadcaster.send(
-  `chat:room:${roomId}`,
-  "message",
-  {
+await broadcaster.send(`chat:room:${roomId}`, 'message', {
     userId: senderId,
     text: messageText,
     timestamp: Date.now(),
-  }
-);
+});
 ```
 
 ### Live Notifications
@@ -359,25 +351,25 @@ await broadcaster.send(
 ```typescript
 // Subscribe to user-specific notifications
 client.subscribe(`notifications:user:${userId}`, (event, data, metadata) => {
-  showNotification(data.title, data.message);
+    showNotification(data.title, data.message);
 
-  // Handle offline notifications
-  if (metadata?.offline) {
-    // Was queued while offline - mark as read
-    markAsRead(data.id);
-  }
+    // Handle offline notifications
+    if (metadata?.offline) {
+        // Was queued while offline - mark as read
+        markAsRead(data.id);
+    }
 });
 
 // Server - Send notification
 await broadcaster.send(
-  `notifications:user:${userId}`,
-  "notification",
-  {
-    id: notificationId,
-    title: "New Comment",
-    message: "Someone commented on your post",
-  },
-  { persistForOffline: true }
+    `notifications:user:${userId}`,
+    'notification',
+    {
+        id: notificationId,
+        title: 'New Comment',
+        message: 'Someone commented on your post',
+    },
+    { persistForOffline: true },
 );
 ```
 
@@ -386,58 +378,59 @@ await broadcaster.send(
 ```typescript
 // Subscribe to document changes
 client.subscribe(`document:${docId}`, (event, data) => {
-  if (event === "update") {
-    applyOperationalTransform(data.operations);
-  }
+    if (event === 'update') {
+        applyOperationalTransform(data.operations);
+    }
 
-  if (event === "cursor-move") {
-    updateRemoteCursor(data.userId, data.position);
-  }
+    if (event === 'cursor-move') {
+        updateRemoteCursor(data.userId, data.position);
+    }
 });
 
 // Server - Broadcast document changes
-await broadcaster.send(
-  `document:${docId}`,
-  "update",
-  {
-    operations: [/* OT operations */],
+await broadcaster.send(`document:${docId}`, 'update', {
+    operations: [
+        /* OT operations */
+    ],
     userId: editorId,
     version: docVersion,
-  }
-);
+});
 ```
 
 ## Deployment
 
 1. **Install Wrangler CLI**:
-   ```bash
-   pnpm add -g wrangler
-   ```
+
+    ```bash
+    pnpm add -g wrangler
+    ```
 
 2. **Login to Cloudflare**:
-   ```bash
-   wrangler login
-   ```
+
+    ```bash
+    wrangler login
+    ```
 
 3. **Deploy**:
-   ```bash
-   wrangler deploy
-   ```
+    ```bash
+    wrangler deploy
+    ```
 
 ## Migration from Pusher
 
 cf-realtime provides a Pusher-like API, making migration straightforward:
 
-| Pusher | cf-realtime |
-|--------|-------------|
-| `pusher.subscribe(channel, callback)` | `client.subscribe(channel, callback)` |
-| `pusher.unsubscribe(channel)` | `client.unsubscribe(channel)` |
-| `pusher.trigger(channel, event, data)` | `broadcaster.send(channel, event, data)` |
-| `pusher.connection.bind('state_change')` | `client.onStateChange(handler)` |
+| Pusher                                   | cf-realtime                              |
+| ---------------------------------------- | ---------------------------------------- |
+| `pusher.subscribe(channel, callback)`    | `client.subscribe(channel, callback)`    |
+| `pusher.unsubscribe(channel)`            | `client.unsubscribe(channel)`            |
+| `pusher.trigger(channel, event, data)`   | `broadcaster.send(channel, event, data)` |
+| `pusher.connection.bind('state_change')` | `client.onStateChange(handler)`          |
 
 ## Performance
 
-- **WebSocket Hibernation**: Cloudflare Durable Objects support WebSocket hibernation, reducing costs for idle connections
+- **WebSocket Hibernation**: Cloudflare Durable Objects support WebSocket hibernation, reducing costs for idle
+  connections
 - **Global Distribution**: Durable Objects are automatically distributed globally
 - **Auto-scaling**: Scales automatically with your traffic
 - **Low Latency**: Messages delivered in milliseconds
@@ -445,6 +438,7 @@ cf-realtime provides a Pusher-like API, making migration straightforward:
 ## Pricing
 
 Based on Cloudflare Durable Objects pricing:
+
 - **Requests**: $0.15 per million requests
 - **Duration**: $12.50 per million GB-seconds
 - **WebSocket Messages**: Included in request pricing

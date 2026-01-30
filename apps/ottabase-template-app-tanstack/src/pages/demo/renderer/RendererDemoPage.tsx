@@ -1,124 +1,137 @@
-import { Blocks, customRenderers, defaultEJSRConfigs, HtmlRenderer } from "@ottabase/ottarenderer";
-import "@ottabase/ottarenderer/styles";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Tabs, TabsContent, TabsList, TabsTrigger } from "@ottabase/ui-shadcn";
+import { Blocks, customRenderers, defaultEJSRConfigs, HtmlRenderer } from '@ottabase/ottarenderer';
+import '@ottabase/ottarenderer/styles';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from '@ottabase/ui-shadcn';
 
 // Sample EditorJS data with rich content
 const sampleEditorJSData = {
     time: 1672531200000,
     blocks: [
         {
-            id: "header1",
-            type: "header",
+            id: 'header1',
+            type: 'header',
             data: {
-                text: "Welcome to OttaRenderer",
-                level: 1
-            }
+                text: 'Welcome to OttaRenderer',
+                level: 1,
+            },
         },
         {
-            id: "para1",
-            type: "paragraph",
+            id: 'para1',
+            type: 'paragraph',
             data: {
-                text: "This is a comprehensive demonstration of the <code class=\"inline-code\">@ottabase/ottarenderer</code> package. It showcases various EditorJS block types with <mark class=\"cdx-marker\">highlighted text</mark> and <b>bold formatting</b>."
-            }
+                text: 'This is a comprehensive demonstration of the <code class="inline-code">@ottabase/ottarenderer</code> package. It showcases various EditorJS block types with <mark class="cdx-marker">highlighted text</mark> and <b>bold formatting</b>.',
+            },
         },
         {
-            id: "advimg1",
-            type: "advancedImage",
+            id: 'advimg1',
+            type: 'advancedImage',
             data: {
-                url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
-                caption: "A beautiful mountain landscape at sunset",
-                alt: "Mountain landscape",
+                url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80',
+                caption: 'A beautiful mountain landscape at sunset',
+                alt: 'Mountain landscape',
                 withBorder: true,
                 stretched: false,
-                aspectRatio: "16:9"
-            }
+                aspectRatio: '16:9',
+            },
         },
         {
-            id: "header2",
-            type: "header",
+            id: 'header2',
+            type: 'header',
             data: {
-                text: "Key Features",
-                level: 2
-            }
+                text: 'Key Features',
+                level: 2,
+            },
         },
         {
-            id: "list1",
-            type: "list",
+            id: 'list1',
+            type: 'list',
             data: {
-                style: "unordered",
+                style: 'unordered',
                 items: [
-                    { content: "EditorJS block rendering with custom styles", items: [] },
-                    { content: "Advanced image support with borders, backgrounds, and aspect ratios", items: [] },
-                    { content: "Interactive checklists and nested lists", items: [] },
-                    { content: "Code blocks with syntax highlighting", items: [] },
-                    { content: "Tables with headers and responsive design", items: [] },
-                    { content: "Quotes, warnings, and more", items: [] }
-                ]
-            }
+                    { content: 'EditorJS block rendering with custom styles', items: [] },
+                    {
+                        content: 'Advanced image support with borders, backgrounds, and aspect ratios',
+                        items: [],
+                    },
+                    { content: 'Interactive checklists and nested lists', items: [] },
+                    { content: 'Code blocks with syntax highlighting', items: [] },
+                    { content: 'Tables with headers and responsive design', items: [] },
+                    { content: 'Quotes, warnings, and more', items: [] },
+                ],
+            },
         },
         {
-            id: "advimg2",
-            type: "advancedImage",
+            id: 'advimg2',
+            type: 'advancedImage',
             data: {
-                url: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&q=80",
-                caption: "Modern workspace with laptop and coffee",
-                alt: "Workspace",
+                url: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&q=80',
+                caption: 'Modern workspace with laptop and coffee',
+                alt: 'Workspace',
                 withBackground: true,
                 featuredImage: true,
-                stretched: true
-            }
+                stretched: true,
+            },
         },
         {
-            id: "header3",
-            type: "header",
+            id: 'header3',
+            type: 'header',
             data: {
-                text: "Interactive Elements",
-                level: 2
-            }
+                text: 'Interactive Elements',
+                level: 2,
+            },
         },
         {
-            id: "checklist1",
-            type: "checklist",
+            id: 'checklist1',
+            type: 'checklist',
             data: {
                 items: [
-                    { text: "Create ottarenderer package ✨", checked: true },
-                    { text: "Port EditorJS renderer with all block types", checked: true },
-                    { text: "Add HTML renderer for basic content", checked: true },
-                    { text: "Remove Mantine dependencies", checked: true },
-                    { text: "Use shadcn design tokens", checked: true },
-                    { text: "Create comprehensive demo", checked: true },
-                    { text: "Test dark mode compatibility", checked: false },
-                    { text: "Deploy to production", checked: false }
-                ]
-            }
+                    { text: 'Create ottarenderer package ✨', checked: true },
+                    { text: 'Port EditorJS renderer with all block types', checked: true },
+                    { text: 'Add HTML renderer for basic content', checked: true },
+                    { text: 'Remove Mantine dependencies', checked: true },
+                    { text: 'Use shadcn design tokens', checked: true },
+                    { text: 'Create comprehensive demo', checked: true },
+                    { text: 'Test dark mode compatibility', checked: false },
+                    { text: 'Deploy to production', checked: false },
+                ],
+            },
         },
         {
-            id: "quote1",
-            type: "quote",
+            id: 'quote1',
+            type: 'quote',
             data: {
-                text: "Good design is as little design as possible. Less, but better – because it concentrates on the essential aspects.",
-                caption: "Dieter Rams - Ten Principles of Good Design",
-                alignment: "left"
-            }
+                text: 'Good design is as little design as possible. Less, but better – because it concentrates on the essential aspects.',
+                caption: 'Dieter Rams - Ten Principles of Good Design',
+                alignment: 'left',
+            },
         },
         {
-            id: "header4",
-            type: "header",
+            id: 'header4',
+            type: 'header',
             data: {
-                text: "Code Example",
-                level: 2
-            }
+                text: 'Code Example',
+                level: 2,
+            },
         },
         {
-            id: "para2",
-            type: "paragraph",
+            id: 'para2',
+            type: 'paragraph',
             data: {
-                text: "Here's how to use the renderer in your React application:"
-            }
+                text: "Here's how to use the renderer in your React application:",
+            },
         },
         {
-            id: "code1",
-            type: "code",
+            id: 'code1',
+            type: 'code',
             data: {
                 code: `import { 
   Blocks,
@@ -145,115 +158,116 @@ function MyContent({ editorData }) {
 function MyHtmlContent({ htmlString }) {
   return <HtmlRenderer content={htmlString} />;
 }`,
-                language: "tsx"
-            }
+                language: 'tsx',
+            },
         },
         {
-            id: "warning1",
-            type: "warning",
+            id: 'warning1',
+            type: 'warning',
             data: {
-                title: "Important Note",
-                message: "This package uses shadcn design tokens for theming. Make sure your application has the necessary CSS variables defined for proper styling and dark mode support."
-            }
+                title: 'Important Note',
+                message:
+                    'This package uses shadcn design tokens for theming. Make sure your application has the necessary CSS variables defined for proper styling and dark mode support.',
+            },
         },
         {
-            id: "header5",
-            type: "header",
+            id: 'header5',
+            type: 'header',
             data: {
-                text: "Feature Comparison",
-                level: 2
-            }
+                text: 'Feature Comparison',
+                level: 2,
+            },
         },
         {
-            id: "table1",
-            type: "table",
+            id: 'table1',
+            type: 'table',
             data: {
                 withHeadings: true,
                 content: [
-                    ["Feature", "EditorJS", "HTML", "Markdown"],
-                    ["Block Rendering", "✓", "✓", "✗"],
-                    ["Custom Styles", "✓", "✓", "Limited"],
-                    ["Dark Mode", "✓", "✓", "✓"],
-                    ["TypeScript", "✓", "✓", "✓"],
-                    ["Interactive Elements", "✓", "Limited", "✗"],
-                    ["Image Optimization", "✓", "✗", "✗"]
-                ]
-            }
+                    ['Feature', 'EditorJS', 'HTML', 'Markdown'],
+                    ['Block Rendering', '✓', '✓', '✗'],
+                    ['Custom Styles', '✓', '✓', 'Limited'],
+                    ['Dark Mode', '✓', '✓', '✓'],
+                    ['TypeScript', '✓', '✓', '✓'],
+                    ['Interactive Elements', '✓', 'Limited', '✗'],
+                    ['Image Optimization', '✓', '✗', '✗'],
+                ],
+            },
         },
         {
-            id: "advimg3",
-            type: "advancedImage",
+            id: 'advimg3',
+            type: 'advancedImage',
             data: {
-                url: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1000&q=80",
-                caption: "Clean code is simple and direct",
-                alt: "Code on screen",
+                url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1000&q=80',
+                caption: 'Clean code is simple and direct',
+                alt: 'Code on screen',
                 withBorder: true,
-                aspectRatio: "4:3"
-            }
+                aspectRatio: '4:3',
+            },
         },
         {
-            id: "header6",
-            type: "header",
+            id: 'header6',
+            type: 'header',
             data: {
-                text: "Nested Lists",
-                level: 2
-            }
+                text: 'Nested Lists',
+                level: 2,
+            },
         },
         {
-            id: "list2",
-            type: "list",
+            id: 'list2',
+            type: 'list',
             data: {
-                style: "ordered",
+                style: 'ordered',
                 items: [
                     {
-                        content: "Getting Started",
+                        content: 'Getting Started',
                         items: [
-                            { content: "Install the package", items: [] },
-                            { content: "Import components", items: [] },
-                            { content: "Configure renderers", items: [] }
-                        ]
+                            { content: 'Install the package', items: [] },
+                            { content: 'Import components', items: [] },
+                            { content: 'Configure renderers', items: [] },
+                        ],
                     },
                     {
-                        content: "Advanced Usage",
+                        content: 'Advanced Usage',
                         items: [
-                            { content: "Custom block renderers", items: [] },
-                            { content: "Styling customization", items: [] },
-                            { content: "Block injection", items: [] }
-                        ]
+                            { content: 'Custom block renderers', items: [] },
+                            { content: 'Styling customization', items: [] },
+                            { content: 'Block injection', items: [] },
+                        ],
                     },
                     {
-                        content: "Deployment",
+                        content: 'Deployment',
                         items: [
-                            { content: "Build the package", items: [] },
-                            { content: "Test in production", items: [] }
-                        ]
-                    }
-                ]
-            }
+                            { content: 'Build the package', items: [] },
+                            { content: 'Test in production', items: [] },
+                        ],
+                    },
+                ],
+            },
         },
         {
-            id: "quote2",
-            type: "quote",
+            id: 'quote2',
+            type: 'quote',
             data: {
-                text: "First, solve the problem. Then, write the code.",
-                caption: "John Johnson",
-                alignment: "center"
-            }
+                text: 'First, solve the problem. Then, write the code.',
+                caption: 'John Johnson',
+                alignment: 'center',
+            },
         },
         {
-            id: "delimiter1",
-            type: "delimiter",
-            data: {}
+            id: 'delimiter1',
+            type: 'delimiter',
+            data: {},
         },
         {
-            id: "para3",
-            type: "paragraph",
+            id: 'para3',
+            type: 'paragraph',
             data: {
-                text: "The <code class=\"inline-code\">@ottabase/ottarenderer</code> package is lightweight, flexible, and designed to work seamlessly with modern React applications. It uses <mark class=\"cdx-marker\">shadcn design tokens</mark> for consistent theming and supports both light and dark modes out of the box."
-            }
-        }
+                text: 'The <code class="inline-code">@ottabase/ottarenderer</code> package is lightweight, flexible, and designed to work seamlessly with modern React applications. It uses <mark class="cdx-marker">shadcn design tokens</mark> for consistent theming and supports both light and dark modes out of the box.',
+            },
+        },
     ],
-    version: "2.28.0"
+    version: '2.28.0',
 };
 
 // Sample HTML content
@@ -303,7 +317,8 @@ export function RendererDemoPage() {
                         <CardHeader>
                             <CardTitle>EditorJS Content</CardTitle>
                             <CardDescription>
-                                Rich content rendering with advanced images, interactive checklists, code blocks, tables, and more.
+                                Rich content rendering with advanced images, interactive checklists, code blocks,
+                                tables, and more.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

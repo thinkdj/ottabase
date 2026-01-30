@@ -1,4 +1,4 @@
-import type { EmailTemplate } from "./types";
+import type { EmailTemplate } from './types';
 
 export const DEFAULT_EMAIL_LAYOUT = `<!doctype html>
 <html>
@@ -30,24 +30,24 @@ export const DEFAULT_EMAIL_LAYOUT = `<!doctype html>
 const templateRegistry = new Map<string, EmailTemplate>();
 
 export function registerEmailTemplate(template: EmailTemplate) {
-  templateRegistry.set(template.name, template);
-  return template;
+    templateRegistry.set(template.name, template);
+    return template;
 }
 
 export function getEmailTemplate(name: string) {
-  return templateRegistry.get(name);
+    return templateRegistry.get(name);
 }
 
 export function listEmailTemplates() {
-  return Array.from(templateRegistry.keys());
+    return Array.from(templateRegistry.keys());
 }
 
 export const defaultTemplate = registerEmailTemplate({
-  name: "default",
-  subject: "{{subject}}",
-  layout: DEFAULT_EMAIL_LAYOUT,
-  header: "{{header}}",
-  body: "{{{body}}}",
-  footer: "{{footer}}",
-  text: "{{header}}\n\n{{body}}\n\n{{footer}}",
+    name: 'default',
+    subject: '{{subject}}',
+    layout: DEFAULT_EMAIL_LAYOUT,
+    header: '{{header}}',
+    body: '{{{body}}}',
+    footer: '{{footer}}',
+    text: '{{header}}\n\n{{body}}\n\n{{footer}}',
 });

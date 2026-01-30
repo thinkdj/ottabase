@@ -1,18 +1,12 @@
 {
-  "extends": "../tsconfig.json",
-  "compilerOptions": {
-    "types": ["node"],
-    "jsx": "react-jsx",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
-  },
-  "include": [
-    "./**/*",
-    "../apps/**/*.ts",
-    "../apps/**/*.tsx",
-    "../packages/**/*.ts",
-    "../packages/**/*.tsx"
-  ]
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "types": ["node"],
+        "jsx": "react-jsx",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true
+    },
+    "include": ["./**/*", "../apps/**/*.ts", "../apps/**/*.tsx", "../packages/**/*.ts", "../packages/**/*.tsx"]
 }

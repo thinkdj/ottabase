@@ -25,17 +25,17 @@ import { createAppConfig } from '@ottabase/config';
 
 // Create config with defaults (single-app mode)
 const config = createAppConfig({
-  appName: 'My Awesome App',
-  appId: 'my-awesome-app',
+    appName: 'My Awesome App',
+    appId: 'my-awesome-app',
 });
 
 // For multi-app database sharing, enable the feature flag
 const multiAppConfig = createAppConfig({
-  appName: 'My Awesome App',
-  appId: 'my-awesome-app',
-  defaults: {
-    features: { scopeByAppId: true }
-  }
+    appName: 'My Awesome App',
+    appId: 'my-awesome-app',
+    defaults: {
+        features: { scopeByAppId: true },
+    },
 });
 // IMP NOTE: Use the same `appId` for multi-app database sharing of Core Models
 
@@ -49,18 +49,18 @@ console.log(config.appId); // "my-awesome-app"
 import { createAppConfig } from '@ottabase/config';
 
 const config = createAppConfig({
-  appName: 'My App',
-  defaults: {
-    meta: {
-      author: 'Custom Author',
-      description: 'Custom description',
+    appName: 'My App',
+    defaults: {
+        meta: {
+            author: 'Custom Author',
+            description: 'Custom description',
+        },
+        uiFramework: 'shadcn',
+        features: {
+            darkMode: false,
+            analytics: true,
+        },
     },
-    uiFramework: 'shadcn',
-    features: {
-      darkMode: false,
-      analytics: true,
-    },
-  },
 });
 ```
 
@@ -118,7 +118,7 @@ import type { AppConfig, AppMeta, SupportedUIFramework } from '@ottabase/config'
 
 // Use the types in your app
 function useAppConfig(): AppConfig {
-  return createAppConfig({ appName: 'My App' });
+    return createAppConfig({ appName: 'My App' });
 }
 
 // Type-safe UI framework
@@ -129,30 +129,30 @@ const framework: SupportedUIFramework = 'mantine';
 
 ```typescript
 interface AppConfig {
-  meta: {
-    appName: string;
-    logoUrl: string;
-    title: string;
-    author: string;
-    description: string;
-    keywords: string;
-    robots: string;
-    copyrightText: string;
-    companyName: string;
-  };
-  uiFramework: 'mantine' | 'shadcn' | 'chakra' | 'mui';
-  features: {
-    darkMode: boolean;
-    analytics: boolean;
-    notifications: boolean;
-  };
-  api: {
-    baseUrl: string;
-    timeout: number;
-  };
-  storage: {
-    prefix: string;
-  };
+    meta: {
+        appName: string;
+        logoUrl: string;
+        title: string;
+        author: string;
+        description: string;
+        keywords: string;
+        robots: string;
+        copyrightText: string;
+        companyName: string;
+    };
+    uiFramework: 'mantine' | 'shadcn' | 'chakra' | 'mui';
+    features: {
+        darkMode: boolean;
+        analytics: boolean;
+        notifications: boolean;
+    };
+    api: {
+        baseUrl: string;
+        timeout: number;
+    };
+    storage: {
+        prefix: string;
+    };
 }
 ```
 
@@ -192,15 +192,19 @@ import { createAppConfig } from '@ottabase/config';
 import { useMemo } from 'react';
 
 export function useAppConfig() {
-  return useMemo(() => createAppConfig({
-    appName: 'My App',
-    defaults: {
-      features: {
-        darkMode: true,
-        analytics: false,
-        notifications: true,
-      },
-    },
-  }), []);
+    return useMemo(
+        () =>
+            createAppConfig({
+                appName: 'My App',
+                defaults: {
+                    features: {
+                        darkMode: true,
+                        analytics: false,
+                        notifications: true,
+                    },
+                },
+            }),
+        [],
+    );
 }
 ```

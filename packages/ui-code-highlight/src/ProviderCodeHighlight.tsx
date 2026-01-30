@@ -1,88 +1,83 @@
-"use client";
+'use client';
 
-import "@mantine/code-highlight/styles.css";
+import '@mantine/code-highlight/styles.css';
 /* IMPORTANT: Load both the light and dark themes here, switching is done via CSS overrides below */
-import "highlight.js/styles/atom-one-dark.min.css";
-import "highlight.js/styles/atom-one-light.min.css";
+import 'highlight.js/styles/atom-one-dark.min.css';
+import 'highlight.js/styles/atom-one-light.min.css';
 
-import React, { ReactNode, useEffect } from "react";
-import {
-  CodeHighlightAdapterProvider,
-  createHighlightJsAdapter,
-} from "@mantine/code-highlight";
-import hljs from "highlight.js/lib/core";
-import { useMantineColorScheme } from "@mantine/core";
+import React, { ReactNode, useEffect } from 'react';
+import { CodeHighlightAdapterProvider, createHighlightJsAdapter } from '@mantine/code-highlight';
+import hljs from 'highlight.js/lib/core';
+import { useMantineColorScheme } from '@mantine/core';
 
 // Import common languages
-import javascript from "highlight.js/lib/languages/javascript";
-import typescript from "highlight.js/lib/languages/typescript";
-import xml from "highlight.js/lib/languages/xml"; // for HTML
-import css from "highlight.js/lib/languages/css";
-import scss from "highlight.js/lib/languages/scss";
-import json from "highlight.js/lib/languages/json";
-import bash from "highlight.js/lib/languages/bash";
-import sql from "highlight.js/lib/languages/sql";
-import python from "highlight.js/lib/languages/python";
-import markdown from "highlight.js/lib/languages/markdown";
-import plaintext from "highlight.js/lib/languages/plaintext";
+import javascript from 'highlight.js/lib/languages/javascript';
+import typescript from 'highlight.js/lib/languages/typescript';
+import xml from 'highlight.js/lib/languages/xml'; // for HTML
+import css from 'highlight.js/lib/languages/css';
+import scss from 'highlight.js/lib/languages/scss';
+import json from 'highlight.js/lib/languages/json';
+import bash from 'highlight.js/lib/languages/bash';
+import sql from 'highlight.js/lib/languages/sql';
+import python from 'highlight.js/lib/languages/python';
+import markdown from 'highlight.js/lib/languages/markdown';
+import plaintext from 'highlight.js/lib/languages/plaintext';
 
 // Register languages
-hljs.registerLanguage("javascript", javascript);
-hljs.registerLanguage("js", javascript);
-hljs.registerLanguage("typescript", typescript);
-hljs.registerLanguage("ts", typescript);
-hljs.registerLanguage("tsx", typescript);
-hljs.registerLanguage("jsx", typescript);
-hljs.registerLanguage("html", xml);
-hljs.registerLanguage("xml", xml);
-hljs.registerLanguage("css", css);
-hljs.registerLanguage("scss", scss);
-hljs.registerLanguage("json", json);
-hljs.registerLanguage("bash", bash);
-hljs.registerLanguage("shell", bash);
-hljs.registerLanguage("sql", sql);
-hljs.registerLanguage("python", python);
-hljs.registerLanguage("py", python);
-hljs.registerLanguage("markdown", markdown);
-hljs.registerLanguage("md", markdown);
-hljs.registerLanguage("plaintext", plaintext);
-hljs.registerLanguage("text", plaintext);
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('js', javascript);
+hljs.registerLanguage('typescript', typescript);
+hljs.registerLanguage('ts', typescript);
+hljs.registerLanguage('tsx', typescript);
+hljs.registerLanguage('jsx', typescript);
+hljs.registerLanguage('html', xml);
+hljs.registerLanguage('xml', xml);
+hljs.registerLanguage('css', css);
+hljs.registerLanguage('scss', scss);
+hljs.registerLanguage('json', json);
+hljs.registerLanguage('bash', bash);
+hljs.registerLanguage('shell', bash);
+hljs.registerLanguage('sql', sql);
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('py', python);
+hljs.registerLanguage('markdown', markdown);
+hljs.registerLanguage('md', markdown);
+hljs.registerLanguage('plaintext', plaintext);
+hljs.registerLanguage('text', plaintext);
 
 // Create the adapter with the original function
 const highlightJsAdapter = createHighlightJsAdapter(hljs);
 
 interface ProviderCodeHighlightProps {
-  children: ReactNode;
+    children: ReactNode;
 }
 
 const ProviderCodeHighlight = ({ children }: ProviderCodeHighlightProps) => {
-  // Safely get color scheme, fallback to 'light' if Mantine context is not available
-  let colorScheme = "light";
-  try {
-    const mantineColorScheme = useMantineColorScheme();
-    colorScheme = mantineColorScheme.colorScheme;
-  } catch (error) {
-    // Fallback to detecting from document class or default to light
-    if (typeof document !== "undefined") {
-      colorScheme = document.documentElement.classList.contains("dark")
-        ? "dark"
-        : "light";
-    }
-  }
-
-  useEffect(() => {
-    // Add CSS to control which theme is active
-    const styleId = "hljs-theme-controller";
-    let style = document.getElementById(styleId) as HTMLStyleElement;
-
-    if (!style) {
-      style = document.createElement("style");
-      style.id = styleId;
-      document.head.appendChild(style);
+    // Safely get color scheme, fallback to 'light' if Mantine context is not available
+    let colorScheme = 'light';
+    try {
+        const mantineColorScheme = useMantineColorScheme();
+        colorScheme = mantineColorScheme.colorScheme;
+    } catch (error) {
+        // Fallback to detecting from document class or default to light
+        if (typeof document !== 'undefined') {
+            colorScheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        }
     }
 
-    // CSS to control theme visibility based on color scheme
-    const controllerCSS = `
+    useEffect(() => {
+        // Add CSS to control which theme is active
+        const styleId = 'hljs-theme-controller';
+        let style = document.getElementById(styleId) as HTMLStyleElement;
+
+        if (!style) {
+            style = document.createElement('style');
+            style.id = styleId;
+            document.head.appendChild(style);
+        }
+
+        // CSS to control theme visibility based on color scheme
+        const controllerCSS = `
 			/* Base styles - hide both themes by default */
 			.hljs {
 				background: transparent !important;
@@ -139,19 +134,11 @@ const ProviderCodeHighlight = ({ children }: ProviderCodeHighlightProps) => {
 			}
 		`;
 
-    style.textContent = controllerCSS;
-    console.log(
-      `Applied highlight.js theme: ${
-        colorScheme === "dark" ? "github-dark" : "github"
-      }`,
-    );
-  }, [colorScheme]);
+        style.textContent = controllerCSS;
+        console.log(`Applied highlight.js theme: ${colorScheme === 'dark' ? 'github-dark' : 'github'}`);
+    }, [colorScheme]);
 
-  return (
-    <CodeHighlightAdapterProvider adapter={highlightJsAdapter}>
-      {children}
-    </CodeHighlightAdapterProvider>
-  );
+    return <CodeHighlightAdapterProvider adapter={highlightJsAdapter}>{children}</CodeHighlightAdapterProvider>;
 };
 
 export default ProviderCodeHighlight;

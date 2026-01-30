@@ -8,111 +8,111 @@ name: Build and Cache Packages
 # 4. Called from other workflows
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'packages/**'
-      - 'pnpm-lock.yaml'
-      - 'package.json'
-      - 'turbo.json'
-  workflow_dispatch: # Allow manual triggers
-  workflow_call: # Allow being called from other workflows
-    outputs:
-      cache-key:
-        description: "The cache key for the built packages"
-        value: ${{ jobs.build-packages.outputs.cache-key }}
-      packages-changed:
-        description: "Whether packages have changed and were rebuilt"
-        value: ${{ jobs.build-packages.outputs.packages-changed }}
+    push:
+        branches:
+            - main
+        paths:
+            - "packages/**"
+            - "pnpm-lock.yaml"
+            - "package.json"
+            - "turbo.json"
+    workflow_dispatch: # Allow manual triggers
+    workflow_call: # Allow being called from other workflows
+        outputs:
+            cache-key:
+                description: "The cache key for the built packages"
+                value: ${{ jobs.build-packages.outputs.cache-key }}
+            packages-changed:
+                description: "Whether packages have changed and were rebuilt"
+                value: ${{ jobs.build-packages.outputs.packages-changed }}
 
 jobs:
-  build-packages:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    name: Build all packages
-    outputs:
-      cache-key: ${{ steps.cache-info.outputs.cache-key }}
-      packages-changed: ${{ steps.check-cache.outputs.cache-hit != 'true' }}
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    build-packages:
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        name: Build all packages
+        outputs:
+            cache-key: ${{ steps.cache-info.outputs.cache-key }}
+            packages-changed: ${{ steps.check-cache.outputs.cache-hit != 'true' }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10.15.1
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "pnpm"
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v3
+              with:
+                  version: 10.15.1
 
-      # Generate a cache key based on package source code
-      - name: Generate cache key
-        id: cache-info
-        run: |
-          # Create a hash of all package source files
-          # This ensures cache is invalidated only when package code changes
-          PACKAGE_HASH=$(find packages -type f \
-            -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.json" \
-            | sort | xargs cat | sha256sum | cut -d' ' -f1)
-          
-          LOCK_HASH=$(sha256sum pnpm-lock.yaml | cut -d' ' -f1)
-          
-          # Combine both hashes for the cache key
-          CACHE_KEY="packages-build-${LOCK_HASH}-${PACKAGE_HASH}"
-          
-          echo "cache-key=${CACHE_KEY}" >> $GITHUB_OUTPUT
-          echo "📦 Cache key: ${CACHE_KEY}"
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "24"
+                  cache: "pnpm"
 
-      # Try to restore from cache first
-      - name: Restore packages cache
-        id: check-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            packages/*/dist
-            packages/*/build
-            packages/*/.turbo
-            .turbo
-          key: ${{ steps.cache-info.outputs.cache-key }}
-          restore-keys: |
-            packages-build-${{ hashFiles('pnpm-lock.yaml') }}-
+            # Generate a cache key based on package source code
+            - name: Generate cache key
+              id: cache-info
+              run: |
+                  # Create a hash of all package source files
+                  # This ensures cache is invalidated only when package code changes
+                  PACKAGE_HASH=$(find packages -type f \
+                    -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.json" \
+                    | sort | xargs cat | sha256sum | cut -d' ' -f1)
 
-      # Only install and build if cache miss
-      - name: Install dependencies
-        if: steps.check-cache.outputs.cache-hit != 'true'
-        run: pnpm install --frozen-lockfile --ignore-scripts=false
+                  LOCK_HASH=$(sha256sum pnpm-lock.yaml | cut -d' ' -f1)
 
-      - name: Build all packages
-        if: steps.check-cache.outputs.cache-hit != 'true'
-        run: |
-          echo "🔨 Building all packages..."
-          pnpm run build:pkg
-        env:
-          NODE_ENV: production
+                  # Combine both hashes for the cache key
+                  CACHE_KEY="packages-build-${LOCK_HASH}-${PACKAGE_HASH}"
 
-      # Save to cache if we built
-      - name: Save packages cache
-        if: steps.check-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            packages/*/dist
-            packages/*/build
-            packages/*/.turbo
-            .turbo
-          key: ${{ steps.cache-info.outputs.cache-key }}
+                  echo "cache-key=${CACHE_KEY}" >> $GITHUB_OUTPUT
+                  echo "📦 Cache key: ${CACHE_KEY}"
 
-      # Report status
-      - name: Build summary
-        run: |
-          if [ "${{ steps.check-cache.outputs.cache-hit }}" == "true" ]; then
-            echo "✅ Packages restored from cache (no rebuild needed)"
-          else
-            echo "✅ Packages built successfully and cached"
-          fi
-          echo "📦 Cache key: ${{ steps.cache-info.outputs.cache-key }}"
+            # Try to restore from cache first
+            - name: Restore packages cache
+              id: check-cache
+              uses: actions/cache/restore@v4
+              with:
+                  path: |
+                      packages/*/dist
+                      packages/*/build
+                      packages/*/.turbo
+                      .turbo
+                  key: ${{ steps.cache-info.outputs.cache-key }}
+                  restore-keys: |
+                      packages-build-${{ hashFiles('pnpm-lock.yaml') }}-
+
+            # Only install and build if cache miss
+            - name: Install dependencies
+              if: steps.check-cache.outputs.cache-hit != 'true'
+              run: pnpm install --frozen-lockfile --ignore-scripts=false
+
+            - name: Build all packages
+              if: steps.check-cache.outputs.cache-hit != 'true'
+              run: |
+                  echo "🔨 Building all packages..."
+                  pnpm run build:pkg
+              env:
+                  NODE_ENV: production
+
+            # Save to cache if we built
+            - name: Save packages cache
+              if: steps.check-cache.outputs.cache-hit != 'true'
+              uses: actions/cache/save@v4
+              with:
+                  path: |
+                      packages/*/dist
+                      packages/*/build
+                      packages/*/.turbo
+                      .turbo
+                  key: ${{ steps.cache-info.outputs.cache-key }}
+
+            # Report status
+            - name: Build summary
+              run: |
+                  if [ "${{ steps.check-cache.outputs.cache-hit }}" == "true" ]; then
+                    echo "✅ Packages restored from cache (no rebuild needed)"
+                  else
+                    echo "✅ Packages built successfully and cached"
+                  fi
+                  echo "📦 Cache key: ${{ steps.cache-info.outputs.cache-key }}"

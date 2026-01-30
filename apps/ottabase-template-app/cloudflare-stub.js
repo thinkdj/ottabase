@@ -18,7 +18,7 @@ export const env = {};
 
 // Default export
 export default {
-  WorkerEntrypoint,
-  DurableObject,
-  env,
+    WorkerEntrypoint,
+    DurableObject,
+    env,
 };

@@ -1,27 +1,25 @@
 {
-  "tabWidth": 2,
-  "useTabs": false,
-  "singleQuote": false,
-  "jsxSingleQuote": false,
-  "trailingComma": "all",
-  "semi": true,
-  "printWidth": 80,
-  "endOfLine": "lf",
-  "insertFinalNewline": true,
-  "bracketSpacing": true,
-  "bracketSameLine": false,
-  "arrowParens": "always",
-  "quoteProps": "as-needed",
-  "proseWrap": "preserve",
-  "embeddedLanguageFormatting": "auto",
-  "htmlWhitespaceSensitivity": "css",
-  "overrides": [
-    {
-      "files": ["*.md", "*.mdx"],
-      "options": {
-        "proseWrap": "preserve",
-        "embeddedLanguageFormatting": "off"
-      }
-    }
-  ]
+    "arrowParens": "always",
+    "bracketSameLine": false,
+    "bracketSpacing": true,
+    "embeddedLanguageFormatting": "auto",
+    "endOfLine": "lf",
+    "htmlWhitespaceSensitivity": "css",
+    "jsxSingleQuote": false,
+    "printWidth": 120,
+    "proseWrap": "always",
+    "quoteProps": "as-needed",
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 4,
+    "trailingComma": "all",
+    "useTabs": false,
+    "overrides": [
+        {
+            "files": ["*.json", "*.yaml", "*.yml"],
+            "options": {
+                "singleQuote": false
+            }
+        }
+    ]
 }

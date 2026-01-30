@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Button, Input, Label, Alert, AlertDescription, Spinner } from "@ottabase/ui-shadcn";
+import React, { useState } from 'react';
+import { Button, Input, Label, Alert, AlertDescription, Spinner } from '@ottabase/ui-shadcn';
 
 export interface CredentialsFormProps {
     onSubmit: (credentials: { email: string; password: string }) => Promise<void>;
@@ -17,15 +17,15 @@ export function CredentialsForm({
     onSubmit,
     isLoading = false,
     error,
-    emailLabel = "Email",
-    passwordLabel = "Password",
-    submitButtonText = "Sign in",
+    emailLabel = 'Email',
+    passwordLabel = 'Password',
+    submitButtonText = 'Sign in',
     showForgotPassword = false,
     onForgotPassword,
-    className = "",
+    className = '',
 }: CredentialsFormProps) {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

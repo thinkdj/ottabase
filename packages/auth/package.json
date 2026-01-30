@@ -1,120 +1,120 @@
 {
-  "name": "@ottabase/auth",
-  "version": "1.0.0",
-  "description": "Authentication package for Ottabase with Auth.js (NextAuth.js) support",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/auth",
+    "version": "1.0.0",
+    "description": "Authentication package for Ottabase with Auth.js (NextAuth.js) support",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./adapter": {
+            "types": "./dist/adapter.d.ts",
+            "import": "./dist/adapter.mjs",
+            "require": "./dist/adapter.js"
+        },
+        "./config": {
+            "types": "./dist/config.d.ts",
+            "import": "./dist/config.mjs",
+            "require": "./dist/config.js"
+        },
+        "./providers": {
+            "types": "./dist/providers.d.ts",
+            "import": "./dist/providers.mjs",
+            "require": "./dist/providers.js"
+        },
+        "./session": {
+            "types": "./dist/session.d.ts",
+            "import": "./dist/session.mjs",
+            "require": "./dist/session.js"
+        },
+        "./adapters/drizzle": {
+            "types": "./dist/adapters/drizzle-adapter.d.ts",
+            "import": "./dist/adapters/drizzle-adapter.mjs",
+            "require": "./dist/adapters/drizzle-adapter.js"
+        },
+        "./components": {
+            "types": "./dist/components/index.d.ts",
+            "import": "./dist/components/index.mjs",
+            "require": "./dist/components/index.js"
+        },
+        "./backend": {
+            "types": "./dist/backend-handler.d.ts",
+            "import": "./dist/backend-handler.mjs",
+            "require": "./dist/backend-handler.js"
+        },
+        "./client": {
+            "types": "./dist/client-api.d.ts",
+            "import": "./dist/client-api.mjs",
+            "require": "./dist/client-api.js"
+        },
+        "./react": {
+            "types": "./dist/react-hooks.d.ts",
+            "import": "./dist/react-hooks.mjs",
+            "require": "./dist/react-hooks.js"
+        }
     },
-    "./adapter": {
-      "types": "./dist/adapter.d.ts",
-      "import": "./dist/adapter.mjs",
-      "require": "./dist/adapter.js"
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
     },
-    "./config": {
-      "types": "./dist/config.d.ts",
-      "import": "./dist/config.mjs",
-      "require": "./dist/config.js"
+    "keywords": [
+        "auth",
+        "authjs",
+        "nextauth",
+        "drizzle",
+        "cloudflare-d1"
+    ],
+    "author": "",
+    "license": "MIT",
+    "peerDependencies": {
+        "@auth/core": ">=0.34.0",
+        "@ottabase/cf": "workspace:*",
+        "@ottabase/db": "workspace:*",
+        "drizzle-orm": ">=0.30.0",
+        "jotai": ">=2.0.0",
+        "react": ">=18.0.0",
+        "react-dom": ">=18.0.0"
     },
-    "./providers": {
-      "types": "./dist/providers.d.ts",
-      "import": "./dist/providers.mjs",
-      "require": "./dist/providers.js"
+    "peerDependenciesMeta": {
+        "@auth/core": {
+            "optional": true
+        },
+        "drizzle-orm": {
+            "optional": true
+        }
     },
-    "./session": {
-      "types": "./dist/session.d.ts",
-      "import": "./dist/session.mjs",
-      "require": "./dist/session.js"
+    "dependencies": {
+        "@ottabase/cf": "workspace:*",
+        "@ottabase/email": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
+        "lucide-react": "catalog:"
     },
-    "./adapters/drizzle": {
-      "types": "./dist/adapters/drizzle-adapter.d.ts",
-      "import": "./dist/adapters/drizzle-adapter.mjs",
-      "require": "./dist/adapters/drizzle-adapter.js"
-    },
-    "./components": {
-      "types": "./dist/components/index.d.ts",
-      "import": "./dist/components/index.mjs",
-      "require": "./dist/components/index.js"
-    },
-    "./backend": {
-      "types": "./dist/backend-handler.d.ts",
-      "import": "./dist/backend-handler.mjs",
-      "require": "./dist/backend-handler.js"
-    },
-    "./client": {
-      "types": "./dist/client-api.d.ts",
-      "import": "./dist/client-api.mjs",
-      "require": "./dist/client-api.js"
-    },
-    "./react": {
-      "types": "./dist/react-hooks.d.ts",
-      "import": "./dist/react-hooks.mjs",
-      "require": "./dist/react-hooks.js"
+    "devDependencies": {
+        "@auth/core": "catalog:",
+        "@cloudflare/workers-types": "catalog:",
+        "@ottabase/db": "workspace:*",
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "jotai": "catalog:",
+        "typescript": "catalog:",
+        "tsup": "catalog:",
+        "rimraf": "catalog:",
+        "eslint": "catalog:"
     }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "keywords": [
-    "auth",
-    "authjs",
-    "nextauth",
-    "drizzle",
-    "cloudflare-d1"
-  ],
-  "author": "",
-  "license": "MIT",
-  "peerDependencies": {
-    "@auth/core": ">=0.34.0",
-    "@ottabase/cf": "workspace:*",
-    "@ottabase/db": "workspace:*",
-    "drizzle-orm": ">=0.30.0",
-    "jotai": ">=2.0.0",
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@auth/core": {
-      "optional": true
-    },
-    "drizzle-orm": {
-      "optional": true
-    }
-  },
-  "dependencies": {
-    "@ottabase/cf": "workspace:*",
-    "@ottabase/email": "workspace:*",
-    "@ottabase/ui-shadcn": "workspace:*",
-    "lucide-react": "catalog:"
-  },
-  "devDependencies": {
-    "@auth/core": "catalog:",
-    "@cloudflare/workers-types": "catalog:",
-    "@ottabase/db": "workspace:*",
-    "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "jotai": "catalog:",
-    "typescript": "catalog:",
-    "tsup": "catalog:",
-    "rimraf": "catalog:",
-    "eslint": "catalog:"
-  }
 }
