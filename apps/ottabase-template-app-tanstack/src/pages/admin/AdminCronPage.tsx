@@ -579,3 +579,4 @@ export function AdminCronPage() {
             </AlertDialog>
         </div>
     );
+}
