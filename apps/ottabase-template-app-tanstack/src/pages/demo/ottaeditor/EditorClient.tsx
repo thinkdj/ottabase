@@ -7,6 +7,13 @@ import {
     type UseOttaEditorOptions,
 } from "@ottabase/ottaeditor";
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Badge,
     Button,
     Card,
@@ -76,6 +83,7 @@ interface DemoEditorProps {
 
 function DemoEditor({ title, description, config, sampleData, id }: DemoEditorProps) {
     const [savedData, setSavedData] = useState<OutputData | null>(null);
+    const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
     const editor = useOttaEditor({
         ...config,
@@ -86,7 +94,7 @@ function DemoEditor({ title, description, config, sampleData, id }: DemoEditorPr
         const data = await editor.save();
         if (data) {
             setSavedData(data);
-            alert("Editor saved successfully!");
+            setShowSuccessDialog(true);
         }
     };
 
@@ -129,6 +137,23 @@ function DemoEditor({ title, description, config, sampleData, id }: DemoEditorPr
                     </details>
                 ) : null}
             </CardContent>
+
+            {/* Success Dialog */}
+            <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Editor Saved</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Editor saved successfully! Your content has been saved.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setShowSuccessDialog(false)}>
+                            OK
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     );
 }

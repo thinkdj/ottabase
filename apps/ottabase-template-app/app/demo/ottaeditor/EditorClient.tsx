@@ -7,6 +7,13 @@ import {
   type BlockToolConstructable,
 } from "@ottabase/ottaeditor";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -215,6 +222,8 @@ const sampleDataMinimal: OutputData = {
 export function EditorClient() {
   const [savedData1, setSavedData1] = useState<OutputData | null>(null);
   const [savedData2, setSavedData2] = useState<OutputData | null>(null);
+  const [showSuccessDialog1, setShowSuccessDialog1] = useState(false);
+  const [showSuccessDialog2, setShowSuccessDialog2] = useState(false);
 
   // Editor 1: All default plugins
   const editor1 = useOttaEditor({
@@ -247,7 +256,7 @@ export function EditorClient() {
     if (data) {
       setSavedData1(data);
       console.log("Editor 1 saved:", data);
-      alert("Editor 1 saved successfully!");
+      setShowSuccessDialog1(true);
     }
   };
 
@@ -256,7 +265,7 @@ export function EditorClient() {
     if (data) {
       setSavedData2(data);
       console.log("Editor 2 saved:", data);
-      alert("Editor 2 saved successfully!");
+      setShowSuccessDialog2(true);
     }
   };
 
@@ -523,6 +532,40 @@ const editor2 = useOttaEditor({
           </ul>
         </CardContent>
       </Card>
+
+      {/* Success Dialog 1 */}
+      <AlertDialog open={showSuccessDialog1} onOpenChange={setShowSuccessDialog1}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Editor 1 Saved</AlertDialogTitle>
+            <AlertDialogDescription>
+              Editor 1 saved successfully! Your content has been saved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowSuccessDialog1(false)}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Success Dialog 2 */}
+      <AlertDialog open={showSuccessDialog2} onOpenChange={setShowSuccessDialog2}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Editor 2 Saved</AlertDialogTitle>
+            <AlertDialogDescription>
+              Editor 2 saved successfully! Your content has been saved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowSuccessDialog2(false)}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

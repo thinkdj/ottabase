@@ -2,6 +2,14 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Card,
   CardContent,
@@ -89,6 +97,11 @@ export function AdminCronPage() {
     isActive: true,
   });
   const [payloadError, setPayloadError] = useState<string | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    taskId: string;
+    taskName: string;
+  } | null>(null);
   const queryClient = useQueryClient();
 
   // Validate payload is valid JSON (or empty)
@@ -176,9 +189,17 @@ export function AdminCronPage() {
   };
 
   const handleDeleteTask = (taskId: string, taskName: string) => {
-    if (confirm(`Delete scheduled task "${taskName}"?`)) {
-      deleteMutation.mutate(taskId);
-    }
+    setDeleteDialog({
+      open: true,
+      taskId,
+      taskName,
+    });
+  };
+
+  const handleConfirmDeleteTask = () => {
+    if (!deleteDialog) return;
+    setDeleteDialog(null);
+    deleteMutation.mutate(deleteDialog.taskId);
   };
 
   const stats = overview?.stats;
@@ -572,6 +593,28 @@ export function AdminCronPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Task Confirmation Dialog */}
+      <AlertDialog open={deleteDialog?.open ?? false} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Scheduled Task?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the scheduled task "{deleteDialog?.taskName}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteTask}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

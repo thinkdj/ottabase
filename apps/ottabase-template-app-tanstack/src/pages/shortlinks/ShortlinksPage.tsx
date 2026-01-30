@@ -2,6 +2,14 @@ import { api, isApiError } from "@/lib/api";
 import type { PaginatedResponse, Pagination } from "@/lib/api-types";
 import type { ShortlinkRecord } from "@ottabase/shortlinks";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -57,6 +65,9 @@ export function ShortlinksPage() {
   const [perPage, setPerPage] = useState(15);
   const [pagination, setPagination] = useState<Pagination | null>(null);
 
+  // Delete confirmation state
+  const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
+
   const fetchShortlinks = useCallback(
     async (page: number = 1, itemsPerPage: number = 15) => {
       try {
@@ -93,8 +104,15 @@ export function ShortlinksPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this shortlink?")) return;
+  const handleDelete = (id: string) => {
+    setDeleteDialog(id);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteDialog) return;
+
+    const id = deleteDialog;
+    setDeleteDialog(null);
 
     try {
       await api(`/api/ottaorm/shortlinks/${id}`, { method: "DELETE" });
@@ -578,6 +596,27 @@ export function ShortlinksPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Shortlink?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this shortlink? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

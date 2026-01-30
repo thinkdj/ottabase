@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Button,
     Card,
     CardContent,
@@ -24,6 +32,7 @@ export function CloudflareR2DemoPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
 
     const loadObjects = async () => {
         try {
@@ -90,8 +99,15 @@ export function CloudflareR2DemoPage() {
         }
     };
 
-    const handleDelete = async (objectKey: string) => {
-        if (!confirm(`Delete ${objectKey}?`)) return;
+    const handleDelete = (objectKey: string) => {
+        setDeleteDialog(objectKey);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteDialog) return;
+
+        const objectKey = deleteDialog;
+        setDeleteDialog(null);
 
         try {
             setLoading(true);
@@ -272,6 +288,28 @@ export function CloudflareR2DemoPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete File?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete "{deleteDialog}"? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleConfirmDelete}
+                            disabled={loading}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {loading ? "Deleting..." : "Delete"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

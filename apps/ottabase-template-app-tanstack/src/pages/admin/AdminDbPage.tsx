@@ -61,6 +61,11 @@ export function AdminDbPage() {
 
   const queryClient = useQueryClient();
   const [isDropTableDialogOpen, setIsDropTableDialogOpen] = useState(false);
+  const [deleteRowDialog, setDeleteRowDialog] = useState<{
+    open: boolean;
+    pkField: string;
+    id: string | number;
+  } | null>(null);
 
   // Load tables list
   const { data: tablesData, isLoading: tablesLoading } = useQuery({
@@ -190,11 +195,20 @@ export function AdminDbPage() {
       return;
     }
 
-    if (
-      confirm(`Are you sure you want to delete this row? (${pkField}: ${id})`)
-    ) {
-      deleteRowMutation.mutate({ id, pkField });
-    }
+    setDeleteRowDialog({
+      open: true,
+      pkField,
+      id,
+    });
+  };
+
+  const handleConfirmDeleteRow = () => {
+    if (!deleteRowDialog) return;
+    setDeleteRowDialog(null);
+    deleteRowMutation.mutate({
+      id: deleteRowDialog.id,
+      pkField: deleteRowDialog.pkField,
+    });
   };
 
   // Get model metadata for a table name
@@ -562,6 +576,28 @@ export function AdminDbPage() {
               {deleteTableMutation.status === "pending"
                 ? "Dropping..."
                 : "Drop Table"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Row Confirmation Dialog */}
+      <AlertDialog open={deleteRowDialog?.open ?? false} onOpenChange={(open) => !open && setDeleteRowDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Row?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this row? ({deleteRowDialog?.pkField}: {deleteRowDialog?.id})
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteRowMutation.status === "pending"}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteRow}
+              disabled={deleteRowMutation.status === "pending"}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteRowMutation.status === "pending" ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

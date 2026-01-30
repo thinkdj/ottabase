@@ -7,6 +7,14 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { createModelHooks } from "@ottabase/ottaorm/client";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -52,6 +60,16 @@ export function AdminBlogListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<PostStatus | "all">("all");
   const [contentTypeFilter, setContentTypeFilter] = useState<ContentType | "all">("all");
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
+    open: boolean;
+    postId: string;
+    title: string;
+  } | null>(null);
+  const [alertDialog, setAlertDialog] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+  }>({ open: false, title: "", message: "" });
 
   const {
     data: posts = [],
@@ -74,14 +92,29 @@ export function AdminBlogListPage() {
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  const handleDelete = async (id: string, title: string) => {
-    if (window.confirm(`Are you sure you want to delete "${title}"?`)) {
-      try {
-        await deletePost.mutateAsync(id);
-      } catch (err) {
-        console.error("Failed to delete blog post:", err);
-        window.alert(`Failed to delete "${title}". Please try again.`);
-      }
+  const handleDelete = (id: string, title: string) => {
+    setDeleteConfirmDialog({
+      open: true,
+      postId: id,
+      title: title,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmDialog) return;
+
+    const { postId, title } = deleteConfirmDialog;
+    setDeleteConfirmDialog(null);
+
+    try {
+      await deletePost.mutateAsync(postId);
+    } catch (err) {
+      console.error("Failed to delete blog post:", err);
+      setAlertDialog({
+        open: true,
+        title: "Error",
+        message: `Failed to delete "${title}". Please try again.`,
+      });
     }
   };
 
@@ -311,6 +344,43 @@ export function AdminBlogListPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmDialog?.open ?? false} onOpenChange={(open) => !open && setDeleteConfirmDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Post?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteConfirmDialog?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePost.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deletePost.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletePost.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Alert Dialog */}
+      <AlertDialog open={alertDialog.open} onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{alertDialog.title}</AlertDialogTitle>
+            <AlertDialogDescription>{alertDialog.message}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setAlertDialog({ ...alertDialog, open: false })}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
