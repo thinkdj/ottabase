@@ -1,0 +1,50 @@
+{
+    "name": "@ottabase/logger",
+    "version": "0.0.1",
+    "description": "Extensible logger for Ottabase with support for multiple transports and formatters",
+    "author": "Ottabase",
+    "license": "MIT",
+    "type": "module",
+    "sideEffects": false,
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./transports": {
+            "types": "./dist/transports.d.ts",
+            "import": "./dist/transports.mjs",
+            "require": "./dist/transports.js"
+        },
+        "./formatters": {
+            "types": "./dist/formatters.d.ts",
+            "import": "./dist/formatters.mjs",
+            "require": "./dist/formatters.js"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts src/transports.ts src/formatters.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/transports.ts src/formatters.ts --format cjs,esm --dts --watch",
+        "lint": "eslint .",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage",
+        "clean": "rimraf dist"
+    },
+    "devDependencies": {
+        "@ottabase/config": "workspace:*",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}
