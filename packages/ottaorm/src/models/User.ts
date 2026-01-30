@@ -2,6 +2,7 @@
 // @ottabase/ottaorm - User Model
 // ============================================================
 
+import { z } from "zod";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import {
   BaseModel,
@@ -100,6 +101,13 @@ export class User extends BaseModel {
       tableConfig: {
         visible: true,
       },
+      validation: {
+        rules: "required",
+        messages: {
+          required: "Name is required",
+        },
+        schema: z.string().trim().min(1, "Name is required"),
+      },
     },
     email: {
       type: 'string',
@@ -123,8 +131,14 @@ export class User extends BaseModel {
           required: "Email is required",
           email: "Must be a valid email",
           unique: "Email already exists",
-        }
-      }
+        },
+        schema: z
+          .string()
+          .trim()
+          .email("Must be a valid email")
+          .min(1, "Email is required"),
+        isUniqueInDb: true,
+      },
     },
     image: {
       type: 'string',
@@ -154,6 +168,16 @@ export class User extends BaseModel {
       },
       tableConfig: {
         visible: true,
+      },
+      validation: {
+        schema: z
+          .string()
+          .trim()
+          .min(3, "Referral username must be at least 3 characters")
+          .max(20, "Referral username must be at most 20 characters")
+          .regex(/^[a-zA-Z0-9_]+$/, "Referral username can only contain letters, numbers, and underscores")
+          .optional(),
+        isUniqueInDb: true,
       },
     },
     referredById: {

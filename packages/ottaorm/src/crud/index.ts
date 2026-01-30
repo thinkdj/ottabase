@@ -4,6 +4,7 @@
 // Single handler for all model CRUD operations
 // ============================================================
 
+import { ModelValidationError } from "../base/AbstractBaseModel";
 import { getModel, hasModel } from "../registry";
 
 export interface CrudRequest {
@@ -228,6 +229,17 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
       status: 400,
     };
   } catch (error) {
+    if (error instanceof ModelValidationError) {
+      return {
+        success: false,
+        error: error.message,
+        code: "VALIDATION_ERROR",
+        messages: error.messages,
+        fieldErrors: error.fieldErrors,
+        status: 422,
+      };
+    }
+
     const message = error instanceof Error ? error.message : "Unknown error";
     const isD1Error =
       message.includes("D1_ERROR") || message.includes("SQLITE_ERROR");

@@ -2,6 +2,7 @@
 // @ottabase/ottaorm - Tag Model
 // ============================================================
 
+import { z } from "zod";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import {
   BaseModel,
@@ -111,8 +112,9 @@ export class Tag extends BaseModel {
         rules: "required",
         messages: {
           required: "Name is required",
-        }
-      }
+        },
+        schema: z.string().trim().min(1, "Name is required"),
+      },
     },
     slug: {
       type: 'string',
@@ -137,8 +139,14 @@ export class Tag extends BaseModel {
         messages: {
           required: "Slug is required",
           unique: "This slug already exists",
-        }
-      }
+        },
+        schema: z
+          .string()
+          .trim()
+          .min(1, "Slug is required")
+          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase with hyphens"),
+        isUniqueInDb: true,
+      },
     },
     createdAt: {
       type: 'date',

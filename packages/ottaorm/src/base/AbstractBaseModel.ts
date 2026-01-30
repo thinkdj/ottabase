@@ -9,6 +9,15 @@ import { z } from "zod";
 import type { ZodError, ZodTypeAny } from "zod";
 
 export type ModelFieldType = 'string' | 'number' | 'integer' | 'float' | 'date' | 'datetime' | 'boolean' | 'id' | 'json' | 'array';
+export type UniqueValidationScope =
+  | Record<string, unknown>
+  | ((data: Record<string, any>) => Record<string, unknown> | undefined);
+export type UniqueValidationConfig =
+  | boolean
+  | {
+    scope?: UniqueValidationScope;
+    message?: string;
+  };
 
 /**
  * Relationship configuration for select/multiselect fields
@@ -86,6 +95,8 @@ export interface ModelFieldDescriptor {
     messages?: Record<string, string>;
     /** Optional Zod schema for field validation */
     schema?: ZodTypeAny;
+    /** Enable database uniqueness validation */
+    isUniqueInDb?: UniqueValidationConfig;
   };
 }
 
@@ -107,27 +118,49 @@ export class ModelValidationError extends Error {
   public readonly fieldErrors: Record<string, string[]>;
   public readonly messages: string[];
 
-  constructor(error: ZodError) {
-    super("Validation failed");
-    this.name = "ModelValidationError";
-    this.messages = error.errors.map((issue) => issue.message);
-
-    const flattened = error.flatten();
-    const fieldErrors = Object.entries(flattened.fieldErrors).reduce(
-      (acc, [key, messages]) => {
-        if (messages && messages.length > 0) {
-          acc[key] = messages;
-        }
-        return acc;
+  constructor(
+    error:
+      | ZodError
+      | {
+        fieldErrors: Record<string, string[]>;
+        messages?: string[];
+        message?: string;
       },
-      {} as Record<string, string[]>,
-    );
+  ) {
+    const message =
+      error instanceof z.ZodError
+        ? "Validation failed"
+        : error.message || "Validation failed";
+    super(message);
+    this.name = "ModelValidationError";
 
-    if (flattened.formErrors.length > 0) {
-      fieldErrors._form = flattened.formErrors;
+    if (error instanceof z.ZodError) {
+      this.messages = error.errors.map((issue) => issue.message);
+
+      const flattened = error.flatten();
+      const fieldErrors = Object.entries(flattened.fieldErrors).reduce(
+        (acc, [key, messages]) => {
+          if (messages && messages.length > 0) {
+            acc[key] = messages;
+          }
+          return acc;
+        },
+        {} as Record<string, string[]>,
+      );
+
+      if (flattened.formErrors.length > 0) {
+        fieldErrors._form = flattened.formErrors;
+      }
+
+      this.fieldErrors = fieldErrors;
+      return;
     }
 
-    this.fieldErrors = fieldErrors;
+    const fallbackMessages =
+      error.messages ?? Object.values(error.fieldErrors).flat();
+    this.messages =
+      fallbackMessages.length > 0 ? fallbackMessages : [this.message];
+    this.fieldErrors = error.fieldErrors;
   }
 }
 
@@ -270,19 +303,69 @@ export abstract class AbstractBaseModel {
    */
   static async validateData(
     data: Record<string, any>,
-    options?: { mode?: "create" | "update" },
+    options?: { mode?: "create" | "update"; ignoreId?: string | number },
   ): Promise<void> {
     const schema = this.getValidationSchema();
-    if (!schema) return;
+    if (schema) {
+      const validationSchema =
+        options?.mode === "update" && schema instanceof z.ZodObject
+          ? schema.partial()
+          : schema;
 
-    const validationSchema =
-      options?.mode === "update" && schema instanceof z.ZodObject
-        ? schema.partial()
-        : schema;
+      const result = await validationSchema.safeParseAsync(data);
+      if (!result.success) {
+        throw new ModelValidationError(result.error);
+      }
+    }
 
-    const result = await validationSchema.safeParseAsync(data);
-    if (!result.success) {
-      throw new ModelValidationError(result.error);
+    await this.validateUniqueFields(data, options);
+  }
+
+  private static async validateUniqueFields(
+    data: Record<string, any>,
+    options?: { ignoreId?: string | number },
+  ): Promise<void> {
+    const uniqueChecker = (this as any).isUnique;
+    if (typeof uniqueChecker !== "function") return;
+
+    const fieldErrors: Record<string, string[]> = {};
+
+    for (const [key, field] of Object.entries(this.fields)) {
+      const uniqueConfig = field.validation?.isUniqueInDb;
+      if (!uniqueConfig) continue;
+
+      const value = data[key];
+      if (value === undefined || value === null) continue;
+
+      let scope: Record<string, unknown> | undefined;
+      let message: string | undefined;
+
+      if (typeof uniqueConfig === "object") {
+        const scopeValue = uniqueConfig.scope;
+        scope =
+          typeof scopeValue === "function" ? scopeValue(data) : scopeValue;
+        message = uniqueConfig.message;
+      }
+
+      const label = field.uiConfig?.label || key;
+      const fallbackMessage =
+        field.validation?.messages?.unique || `${label} must be unique`;
+
+      const isUnique = await uniqueChecker.call(this, key, value, {
+        where: scope,
+        ignoreId: options?.ignoreId,
+      });
+
+      if (!isUnique) {
+        fieldErrors[key] = [message || fallbackMessage];
+      }
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      throw new ModelValidationError({
+        fieldErrors,
+        messages: Object.values(fieldErrors).flat(),
+      });
     }
   }
 

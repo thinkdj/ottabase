@@ -347,6 +347,7 @@ export class BaseModel extends AbstractBaseModel {
 
     // Merge with defaults and prepare for database
     const createData = this.prepareForDatabase({ ...this.defaults, ...data });
+    await this.validateData(createData, { mode: "create" });
 
     // Cloudflare Workers (workerd) disallows random generation in module/global scope,
     // so model schemas avoid crypto.randomUUID() defaults. Generate ids at runtime.
@@ -394,6 +395,7 @@ export class BaseModel extends AbstractBaseModel {
 
     // Prepare data for database (convert string dates, etc.)
     const updateData = this.prepareForDatabase(data);
+    await this.validateData(updateData, { mode: "update", ignoreId: id });
 
     const result = await db
       .update(table)
