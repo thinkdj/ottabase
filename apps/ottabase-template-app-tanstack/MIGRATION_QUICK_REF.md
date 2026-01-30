@@ -28,30 +28,33 @@ curl -X POST https://your-app.workers.dev/api/ottaorm/init \
 ### 3. Add a New App Table
 
 **Step 1:** Create the model (`ottabase/models/Example.ts`)
-```typescript
-import { BaseModel } from "@ottabase/ottaorm";
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
-export const examplesTable = sqliteTable("examples", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+```typescript
+import { BaseModel } from '@ottabase/ottaorm';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+
+export const examplesTable = sqliteTable('examples', {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    description: text('description'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
 export class Example extends BaseModel {
-  static table = examplesTable;
-  static tableName = "examples";
+    static table = examplesTable;
+    static tableName = 'examples';
 }
 ```
 
 **Step 2:** Export from schema (`ottabase/db/schema.ts`)
+
 ```typescript
-export { examplesTable } from "../models/Example";
+export { examplesTable } from '../models/Example';
 ```
 
 **Step 3:** Run migrations
+
 ```bash
 curl -X POST http://127.0.0.1:3004/api/ottaorm/init
 ```
@@ -61,20 +64,22 @@ Done! ✅
 ### 4. Add a Column to Existing Table
 
 **Step 1:** Update the model
+
 ```typescript
-export const todosTable = sqliteTable("todos", {
-  id: text("id").primaryKey(),
-  title: text("title").notNull(),
-  completed: integer("completed", { mode: "boolean" }).notNull().default(false),
-  userId: text("user_id"),
-  // NEW COLUMN:
-  priority: text("priority").default("medium"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+export const todosTable = sqliteTable('todos', {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
+    userId: text('user_id'),
+    // NEW COLUMN:
+    priority: text('priority').default('medium'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 ```
 
 **Step 2:** Run migrations
+
 ```bash
 curl -X POST http://127.0.0.1:3004/api/ottaorm/init
 ```
@@ -84,28 +89,31 @@ The column will be automatically added! ✅
 ### 5. Enable a Package
 
 **Step 1:** Edit `ottabase/config.migrations.ts`
+
 ```typescript
-import { shortlinksTable } from "@ottabase/shortlinks";
-import { myNewPackageTable } from "@ottabase/my-new-package/schema";
+import { shortlinksTable } from '@ottabase/shortlinks';
+import { myNewPackageTable } from '@ottabase/my-new-package/schema';
 
 const PACKAGE_REGISTRY = {
-  shortlinks: {
-    tables: { shortlinksTable },
-    migrations: [],
-  },
-  myNewPackage: {  // ADD THIS
-    tables: { myNewPackageTable },
-    migrations: [],
-  },
+    shortlinks: {
+        tables: { shortlinksTable },
+        migrations: [],
+    },
+    myNewPackage: {
+        // ADD THIS
+        tables: { myNewPackageTable },
+        migrations: [],
+    },
 } as const;
 
 export const migrationConfig = {
-  shortlinks: true,
-  myNewPackage: true,  // ENABLE IT
+    shortlinks: true,
+    myNewPackage: true, // ENABLE IT
 };
 ```
 
 **Step 2:** Run migrations
+
 ```bash
 curl -X POST http://127.0.0.1:3004/api/ottaorm/init
 ```
@@ -115,19 +123,20 @@ Package tables created! ✅
 ### 6. Add Custom Migration (Data Seeding)
 
 **Edit `ottabase/migrations/index.ts`:**
+
 ```typescript
 const appSpecificMigrations: Migration[] = [
-  {
-    name: "0001_seed_demo_todos",
-    up: async (db) => {
-      await db.executeRaw(`
+    {
+        name: '0001_seed_demo_todos',
+        up: async (db) => {
+            await db.executeRaw(`
         INSERT OR IGNORE INTO todos (id, title, completed, created_at, updated_at)
         VALUES 
           ('todo-1', 'First demo todo', 0, strftime('%s', 'now') * 1000, strftime('%s', 'now') * 1000),
           ('todo-2', 'Second demo todo', 1, strftime('%s', 'now') * 1000, strftime('%s', 'now') * 1000)
       `);
+        },
     },
-  },
 ];
 ```
 
@@ -137,15 +146,15 @@ Run migrations - data will be seeded once! ✅
 
 ```typescript
 const appSpecificMigrations: Migration[] = [
-  {
-    name: "0002_create_user_email_index",
-    up: async (db) => {
-      await db.executeRaw(`
+    {
+        name: '0002_create_user_email_index',
+        up: async (db) => {
+            await db.executeRaw(`
         CREATE INDEX IF NOT EXISTS idx_users_email 
         ON users(email)
       `);
+        },
     },
-  },
 ];
 ```
 
@@ -154,6 +163,7 @@ const appSpecificMigrations: Migration[] = [
 Visit: `http://127.0.0.1:3004/migration-status`
 
 You'll see:
+
 - ✅ All tables detected
 - 🆕 Tables created
 - ⏭️ Tables skipped (already exist)
@@ -177,9 +187,10 @@ open https://your-app.workers.dev/migration-status
 ### 10. Disable a Package
 
 **Edit `ottabase/config.migrations.ts`:**
+
 ```typescript
 export const migrationConfig = {
-  shortlinks: false,  // Disable it
+    shortlinks: false, // Disable it
 };
 ```
 
@@ -189,18 +200,19 @@ Note: This won't drop the tables, just stops managing them.
 
 ### Where to Make Changes
 
-| Task | File | Line/Section |
-|------|------|--------------|
-| Add app table | `ottabase/models/YourModel.ts` | Create new file |
-| Export table | `ottabase/db/schema.ts` | Add export |
-| Enable package | `ottabase/config.migrations.ts` | `migrationConfig` |
-| Add package | `ottabase/config.migrations.ts` | `PACKAGE_REGISTRY` |
-| Custom migration | `ottabase/migrations/index.ts` | `appSpecificMigrations` |
-| Check all schemas | `ottabase/db/schemas-helper.ts` | `getAllSchemas()` |
+| Task              | File                            | Line/Section            |
+| ----------------- | ------------------------------- | ----------------------- |
+| Add app table     | `ottabase/models/YourModel.ts`  | Create new file         |
+| Export table      | `ottabase/db/schema.ts`         | Add export              |
+| Enable package    | `ottabase/config.migrations.ts` | `migrationConfig`       |
+| Add package       | `ottabase/config.migrations.ts` | `PACKAGE_REGISTRY`      |
+| Custom migration  | `ottabase/migrations/index.ts`  | `appSpecificMigrations` |
+| Check all schemas | `ottabase/db/schemas-helper.ts` | `getAllSchemas()`       |
 
 ## 🔍 Troubleshooting Quick Fixes
 
 ### Table not appearing?
+
 ```bash
 # Check it's exported:
 grep "YourTable" ottabase/db/schema.ts
@@ -210,6 +222,7 @@ curl -X POST http://127.0.0.1:3004/api/ottaorm/init
 ```
 
 ### Package not working?
+
 ```typescript
 // In config.migrations.ts, verify:
 1. Package imported correctly
@@ -218,6 +231,7 @@ curl -X POST http://127.0.0.1:3004/api/ottaorm/init
 ```
 
 ### Migration running multiple times?
+
 ```typescript
 // Ensure unique name:
 {
@@ -227,6 +241,7 @@ curl -X POST http://127.0.0.1:3004/api/ottaorm/init
 ```
 
 ### Need to see what's in the database?
+
 ```bash
 # Use wrangler d1:
 wrangler d1 execute OBCF_D1 --local --command "SELECT * FROM _ottabase_migrations"
@@ -253,6 +268,7 @@ pnpm db:studio
 ## 🆘 Getting Help
 
 If something's not working:
+
 1. Check `/migration-status` for error details
 2. Look at browser console / wrangler logs
 3. Verify file changes are saved

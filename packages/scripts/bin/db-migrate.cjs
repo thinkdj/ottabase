@@ -4,7 +4,7 @@
 // ============================================================
 
 // Register ts-node for TypeScript support
-require("ts-node/register/transpile-only");
+require('ts-node/register/transpile-only');
 
 // Run the CLI
-require("../src/cli/db-migrate.ts");
+require('../src/cli/db-migrate.ts');

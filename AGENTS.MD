@@ -37,37 +37,36 @@ pnpm dev          # Vite + Wrangler dev
 - Custom methods
 
 ```typescript
-import { BaseModel } from "@ottabase/ottaorm";
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { BaseModel } from '@ottabase/ottaorm';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
-export const todosTable = sqliteTable("todos", {
-  id: text("id").primaryKey(),
-  title: text("title").notNull(),
-  completed: integer("completed", { mode: "boolean" }).default(false),
-  userId: text("user_id"),
+export const todosTable = sqliteTable('todos', {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    completed: integer('completed', { mode: 'boolean' }).default(false),
+    userId: text('user_id'),
 });
 
 export class Todo extends BaseModel {
-  static entity = "todos";
-  static table = todosTable;
-  static primaryKey = "id";
-  
-  static casts = {
-    completed: "boolean" as const,
-  };
+    static entity = 'todos';
+    static table = todosTable;
+    static primaryKey = 'id';
 
-  async user() {
-    const { User } = await import("@ottabase/ottaorm");
-    return this.belongsTo(User, "userId");
-  }
+    static casts = {
+        completed: 'boolean' as const,
+    };
 
-  async toggle() {
-    this.set("completed", !this.get("completed"));
-    return this.save();
-  }
+    async user() {
+        const { User } = await import('@ottabase/ottaorm');
+        return this.belongsTo(User, 'userId');
+    }
+
+    async toggle() {
+        this.set('completed', !this.get('completed'));
+        return this.save();
+    }
 }
 ```
-
 
 ### Schema Collection (3 Sources)
 
@@ -94,9 +93,9 @@ export function getAllSchemas() {
 Register models for dynamic lookup by entity name:
 
 ```typescript
-import { registerModels, User, Post, Tag } from "@ottabase/ottaorm";
-import { Todo } from "./models/Todo";
-import { Shortlink } from "./models/Shortlink";
+import { registerModels, User, Post, Tag } from '@ottabase/ottaorm';
+import { Todo } from './models/Todo';
+import { Shortlink } from './models/Shortlink';
 
 // Register all models for /api/ottaorm/{entity} CRUD
 registerModels([User, Post, Tag, Todo, Shortlink]);
@@ -113,6 +112,7 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 ```
 
 **Capabilities:**
+
 - ✅ Create new tables
 - ✅ Add columns to existing tables
 - ⚠️ New NOT NULL columns need DEFAULT values
@@ -124,17 +124,17 @@ TanStack Query hooks generated from models:
 
 ```typescript
 // ottabase/hooks/useTodo.ts
-import { createModelHooks } from "@ottabase/ottaorm/client";
+import { createModelHooks } from '@ottabase/ottaorm/client';
 
 export const {
-  useList: useTodos,
-  useDetail: useTodo,
-  useFind: useTodoBySlug, // Find by field/value (e.g., slug, email)
-  useCreate: useCreateTodo,
-  useUpdate: useUpdateTodo,
-  useDelete: useDeleteTodo,
-  useInfiniteList: useTodosInfinite,
-} = createModelHooks<TodoType>({ entity: "todos" });
+    useList: useTodos,
+    useDetail: useTodo,
+    useFind: useTodoBySlug, // Find by field/value (e.g., slug, email)
+    useCreate: useCreateTodo,
+    useUpdate: useUpdateTodo,
+    useDelete: useDeleteTodo,
+    useInfiniteList: useTodosInfinite,
+} = createModelHooks<TodoType>({ entity: 'todos' });
 
 // Usage:
 // const { data: todo } = useTodoBySlug("slug", "my-todo-slug");
@@ -147,13 +147,7 @@ export const {
 Fat model ORM. Core models: User, Post, Tag, Account, Session.
 
 ```typescript
-import { 
-  BaseModel, 
-  setDriver,
-  autoInit,
-  collectTableSchemas,
-  User, Post, Tag
-} from "@ottabase/ottaorm";
+import { BaseModel, setDriver, autoInit, collectTableSchemas, User, Post, Tag } from '@ottabase/ottaorm';
 ```
 
 ### @ottabase/db
@@ -161,7 +155,7 @@ import {
 D1 database driver.
 
 ```typescript
-import { createD1Driver } from "@ottabase/db/drizzle-d1";
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
 
 const driver = createD1Driver(env.OBCF_D1);
 setDriver(driver);
@@ -172,10 +166,10 @@ setDriver(driver);
 Cloudflare service wrappers.
 
 ```typescript
-import { createD1Client } from "@ottabase/cf/d1";
-import { createKVClient } from "@ottabase/cf/kv";
-import { createR2Client } from "@ottabase/cf/r2";
-import { createRateLimitingClient } from "@ottabase/cf/rate-limiting";
+import { createD1Client } from '@ottabase/cf/d1';
+import { createKVClient } from '@ottabase/cf/kv';
+import { createR2Client } from '@ottabase/cf/r2';
+import { createRateLimitingClient } from '@ottabase/cf/rate-limiting';
 ```
 
 ### @ottabase/auth
@@ -183,11 +177,11 @@ import { createRateLimitingClient } from "@ottabase/cf/rate-limiting";
 Auth.js v5 with D1.
 
 ```typescript
-import { createOttabaseAuthConfig, createGoogleProvider } from "@ottabase/auth";
+import { createOttabaseAuthConfig, createGoogleProvider } from '@ottabase/auth';
 
 const config = createOttabaseAuthConfig({
-  d1: env.OBCF_D1,
-  providers: [createGoogleProvider(env)],
+    d1: env.OBCF_D1,
+    providers: [createGoogleProvider(env)],
 });
 ```
 
@@ -196,7 +190,7 @@ const config = createOttabaseAuthConfig({
 Global state (Jotai).
 
 ```typescript
-import { createDefaultAppState } from "@ottabase/state";
+import { createDefaultAppState } from '@ottabase/state';
 
 const { appStateAtom, atoms } = createDefaultAppState();
 export const { themeAtom, userAtom, scaleAtom } = atoms;
@@ -207,9 +201,9 @@ export const { themeAtom, userAtom, scaleAtom } = atoms;
 Utilities with tree-shakeable imports.
 
 ```typescript
-import { toUTC, formatInUserTimezone } from "@ottabase/utils/timezone";
-import { makeSlug, isValidUrl } from "@ottabase/utils/url";
-import { changeCase, isEmail } from "@ottabase/utils/string";
+import { toUTC, formatInUserTimezone } from '@ottabase/utils/timezone';
+import { makeSlug, isValidUrl } from '@ottabase/utils/url';
+import { changeCase, isEmail } from '@ottabase/utils/string';
 ```
 
 ### @ottabase/ottaupload
@@ -218,10 +212,10 @@ File uploads to R2 or Cloudflare Images.
 
 ```typescript
 // Client
-import { FileUploader, useFileUpload } from "@ottabase/ottaupload/client";
+import { FileUploader, useFileUpload } from '@ottabase/ottaupload/client';
 
 // Server
-import { uploadFileToR2 } from "@ottabase/ottaupload/server";
+import { uploadFileToR2 } from '@ottabase/ottaupload/server';
 ```
 
 ### @ottabase/queue
@@ -229,21 +223,22 @@ import { uploadFileToR2 } from "@ottabase/ottaupload/server";
 Laravel-style job queue for Cloudflare Queues.
 
 ```typescript
-import { dispatch, createRegistry, createQueueHandler } from "@ottabase/queue";
+import { dispatch, createRegistry, createQueueHandler } from '@ottabase/queue';
 
 // Dispatch jobs
-await dispatch(env.MY_QUEUE, "send-email", { to: "user@example.com" });
+await dispatch(env.MY_QUEUE, 'send-email', { to: 'user@example.com' });
 
 // With deduplication, chaining, priority
-await dispatcher.dispatch("sync-user", payload, {
-  uniqueKey: "user-123",     // Deduplication
-  priority: "high",          // Priority queues
-  then: [{ type: "notify" }] // Job chaining
+await dispatcher.dispatch('sync-user', payload, {
+    uniqueKey: 'user-123', // Deduplication
+    priority: 'high', // Priority queues
+    then: [{ type: 'notify' }], // Job chaining
 });
 
 // Process jobs
-const registry = createRegistry<Env>()
-  .register("send-email", async (job, ctx) => { /* handler */ });
+const registry = createRegistry<Env>().register('send-email', async (job, ctx) => {
+    /* handler */
+});
 
 export default { queue: createQueueHandler(registry) };
 ```
@@ -254,12 +249,12 @@ WebSocket pub/sub (Pusher alternative).
 
 ```typescript
 // Client
-import { RealtimeClient } from "@ottabase/cf-realtime";
-client.subscribe("channel", (event, data) => {});
+import { RealtimeClient } from '@ottabase/cf-realtime';
+client.subscribe('channel', (event, data) => {});
 
 // Server
-import { RealtimeBroadcaster } from "@ottabase/cf-realtime/server";
-await broadcaster.send("channel", "event", { data });
+import { RealtimeBroadcaster } from '@ottabase/cf-realtime/server';
+await broadcaster.send('channel', 'event', { data });
 ```
 
 ## Adding a New Package with Model
@@ -270,11 +265,11 @@ When a package provides its own database table:
 
 ```typescript
 // packages/mypackage/src/schema.ts
-import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
-export const myTable = sqliteTable("mytable", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
+export const myTable = sqliteTable('mytable', {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
 });
 ```
 
@@ -282,15 +277,15 @@ export const myTable = sqliteTable("mytable", {
 
 ```typescript
 // apps/my-app/ottabase/models/MyModel.ts
-import { BaseModel } from "@ottabase/ottaorm";
-import { myTable } from "@ottabase/mypackage/schema";
+import { BaseModel } from '@ottabase/ottaorm';
+import { myTable } from '@ottabase/mypackage/schema';
 
 export class MyModel extends BaseModel {
-  static entity = "mytable";
-  static table = myTable;
-  static primaryKey = "id";
-  
-  // App-specific logic here
+    static entity = 'mytable';
+    static table = myTable;
+    static primaryKey = 'id';
+
+    // App-specific logic here
 }
 ```
 
@@ -298,21 +293,16 @@ export class MyModel extends BaseModel {
 
 ```typescript
 // ottabase/db/schema.ts
-export { myTable } from "@ottabase/mypackage/schema";
+export { myTable } from '@ottabase/mypackage/schema';
 ```
 
 ### 4. App: Create hooks
 
 ```typescript
 // ottabase/hooks/useMyModel.ts
-import { createModelHooks } from "@ottabase/ottaorm/client";
+import { createModelHooks } from '@ottabase/ottaorm/client';
 
-export const {
-  useList,
-  useCreate,
-  useUpdate,
-  useDelete,
-} = createModelHooks({ entity: "mytable" });
+export const { useList, useCreate, useUpdate, useDelete } = createModelHooks({ entity: 'mytable' });
 ```
 
 ### 5. Run migrations
@@ -334,6 +324,7 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 ### When to Use Catalog (pnpm-workspace.yaml)
 
 Add to catalog when:
+
 - ✅ Used by 2+ packages/apps (react, typescript, drizzle-orm)
 - ✅ Core framework libraries (mantine, tanstack, jotai)
 - ✅ Shared tooling (tsup, vitest, eslint)
@@ -341,9 +332,9 @@ Add to catalog when:
 ```yaml
 # pnpm-workspace.yaml
 catalog:
-  react: ^19.1.0
-  typescript: ~5.8.4
-  drizzle-orm: ^0.44.2
+    react: ^19.1.0
+    typescript: ~5.8.4
+    drizzle-orm: ^0.44.2
 ```
 
 Then reference in package.json:
@@ -355,6 +346,7 @@ Then reference in package.json:
 ### When to Use Local (package.json only)
 
 Add locally when:
+
 - ✅ Package-specific utility (e.g., `editorjs` only in `ottaeditor`)
 - ✅ App-specific tool not needed elsewhere
 - ✅ Experimental/testing before promoting to catalog
@@ -381,10 +373,10 @@ Shared packages declare framework deps as peers to avoid duplication:
 
 ```json
 {
-  "peerDependencies": {
-    "react": "catalog:",
-    "drizzle-orm": "catalog:"
-  }
+    "peerDependencies": {
+        "react": "catalog:",
+        "drizzle-orm": "catalog:"
+    }
 }
 ```
 
@@ -404,14 +396,14 @@ pnpm install
 
 ## File Locations
 
-| Purpose | Location |
-|---------|----------|
-| Models | `apps/*/ottabase/models/` |
-| Schema | `apps/*/ottabase/db/schema.ts` |
+| Purpose      | Location                                          |
+| ------------ | ------------------------------------------------- |
+| Models       | `apps/*/ottabase/models/`                         |
+| Schema       | `apps/*/ottabase/db/schema.ts`                    |
 | Client hooks | `apps/*/ottabase/hooks/` or `src/ottabase/hooks/` |
-| Migrations | `apps/*/ottabase/migrations/` |
-| API routes | `apps/*/cloudflare-worker.ts` |
-| Pages | `apps/*/src/pages/` |
+| Migrations   | `apps/*/ottabase/migrations/`                     |
+| API routes   | `apps/*/cloudflare-worker.ts`                     |
+| Pages        | `apps/*/src/pages/`                               |
 
 ## Anti-Patterns
 
@@ -421,7 +413,7 @@ pnpm install
 ❌ Package-specific lock files  
 ❌ Implicit dependencies  
 ❌ Missing type definitions  
-❌ Models without `static entity` and `static table`  
+❌ Models without `static entity` and `static table`
 
 ## Commands Reference
 

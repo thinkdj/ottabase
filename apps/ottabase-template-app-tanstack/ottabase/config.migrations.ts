@@ -10,42 +10,42 @@
 // 3. Enable it in `migrationConfig`
 // ============================================================
 
-import type { Migration } from "@ottabase/ottaorm";
+import type { Migration } from '@ottabase/ottaorm';
 import {
-  categoriesTable,
-  postTagLinksTable,
-  postTagsTable,
-  postVersionsTable,
-  postsTable,
-  seriesTable,
-} from "@ottabase/ottablog";
-import { referralTrackingTable } from "@ottabase/referrals";
-import { shortlinksTable } from "@ottabase/shortlinks";
+    categoriesTable,
+    postTagLinksTable,
+    postTagsTable,
+    postVersionsTable,
+    postsTable,
+    seriesTable,
+} from '@ottabase/ottablog';
+import { referralTrackingTable } from '@ottabase/referrals';
+import { shortlinksTable } from '@ottabase/shortlinks';
 
 /**
  * 1. REGISTRY
  * Map package names to their table definitions and optional migrations.
  */
 const PACKAGE_REGISTRY = {
-  ottablog: {
-    tables: {
-      seriesTable,
-      categoriesTable,
-      postsTable,
-      postTagsTable,
-      postTagLinksTable,
-      postVersionsTable,
+    ottablog: {
+        tables: {
+            seriesTable,
+            categoriesTable,
+            postsTable,
+            postTagsTable,
+            postTagLinksTable,
+            postVersionsTable,
+        },
+        migrations: [] as Migration[],
     },
-    migrations: [] as Migration[],
-  },
-  shortlinks: {
-    tables: { shortlinksTable },
-    migrations: [] as Migration[], // Add package-specific migrations here if any
-  },
-  referrals: {
-    tables: { referralTrackingTable },
-    migrations: [] as Migration[],
-  },
+    shortlinks: {
+        tables: { shortlinksTable },
+        migrations: [] as Migration[], // Add package-specific migrations here if any
+    },
+    referrals: {
+        tables: { referralTrackingTable },
+        migrations: [] as Migration[],
+    },
 } as const;
 
 /**
@@ -56,9 +56,9 @@ const PACKAGE_REGISTRY = {
 export type MigrationPackageName = keyof typeof PACKAGE_REGISTRY;
 
 export const migrationConfig: Record<MigrationPackageName, boolean> = {
-  ottablog: true,
-  shortlinks: true,
-  referrals: true,
+    ottablog: true,
+    shortlinks: true,
+    referrals: true,
 };
 
 // ============================================================
@@ -70,15 +70,15 @@ export const migrationConfig: Record<MigrationPackageName, boolean> = {
  * Used by `schema.ts` (Drizzle Kit) and `config.migrations.ts` (Runtime).
  */
 export function getEnabledPackageTables() {
-  const tables: Record<string, any> = {};
+    const tables: Record<string, any> = {};
 
-  for (const [pkgName, config] of Object.entries(PACKAGE_REGISTRY)) {
-    if (migrationConfig[pkgName as MigrationPackageName]) {
-      Object.assign(tables, config.tables);
+    for (const [pkgName, config] of Object.entries(PACKAGE_REGISTRY)) {
+        if (migrationConfig[pkgName as MigrationPackageName]) {
+            Object.assign(tables, config.tables);
+        }
     }
-  }
 
-  return tables;
+    return tables;
 }
 
 /**
@@ -86,13 +86,13 @@ export function getEnabledPackageTables() {
  * Used by migration runner to execute package-specific migrations.
  */
 export function getEnabledPackageMigrations(): Migration[] {
-  const migrations: Migration[] = [];
+    const migrations: Migration[] = [];
 
-  for (const [pkgName, config] of Object.entries(PACKAGE_REGISTRY)) {
-    if (migrationConfig[pkgName as MigrationPackageName]) {
-      migrations.push(...config.migrations);
+    for (const [pkgName, config] of Object.entries(PACKAGE_REGISTRY)) {
+        if (migrationConfig[pkgName as MigrationPackageName]) {
+            migrations.push(...config.migrations);
+        }
     }
-  }
 
-  return migrations;
+    return migrations;
 }

@@ -1,53 +1,53 @@
 {
-  "name": "@ottabase/scripts",
-  "version": "1.0.0",
-  "description": "Utility scripts for Ottabase monorepo - schema generation, migrations, and CLI tools",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/scripts",
+    "version": "1.0.0",
+    "description": "Utility scripts for Ottabase monorepo - schema generation, migrations, and CLI tools",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./schema": null,
+        "./migrations": null
     },
-    "./schema": null,
-    "./migrations": null
-  },
-  "bin": {
-    "cloudflare-setup": "bin/cloudflare-setup.cjs",
-    "cloudflare-validate": "bin/cloudflare-validate.cjs"
-  },
-  "files": [
-    "dist",
-    "bin",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts --format cjs,esm --dts --watch",
-    "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "keywords": [
-    "scripts",
-    "cloudflare-d1",
-    "monorepo"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@ottabase/db": "workspace:*"
-  },
-  "devDependencies": {
-    "@types/node": "catalog:",
-    "typescript": "catalog:",
-    "tsup": "catalog:",
-    "ts-node": "catalog:",
-    "rimraf": "catalog:",
-    "eslint": "catalog:"
-  }
+    "bin": {
+        "cloudflare-setup": "bin/cloudflare-setup.cjs",
+        "cloudflare-validate": "bin/cloudflare-validate.cjs"
+    },
+    "files": [
+        "dist",
+        "bin",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "scripts",
+        "cloudflare-d1",
+        "monorepo"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@ottabase/db": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "tsup": "catalog:",
+        "ts-node": "catalog:",
+        "rimraf": "catalog:",
+        "eslint": "catalog:"
+    }
 }

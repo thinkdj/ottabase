@@ -6,42 +6,42 @@
 // This provides an abstraction layer over Drizzle
 // ============================================================
 
-import type { SQL } from "drizzle-orm";
+import type { SQL } from 'drizzle-orm';
 
 /**
  * Database driver interface
  * Provides a unified interface for database operations
  */
 export interface DbDriver {
-  /**
-   * Execute a Drizzle SQL query
-   */
-  execute<T = unknown>(query: SQL): Promise<T[]>;
+    /**
+     * Execute a Drizzle SQL query
+     */
+    execute<T = unknown>(query: SQL): Promise<T[]>;
 
-  /**
-   * Execute raw SQL string (for migrations and DDL)
-   */
-  executeRaw(sql: string, params?: unknown[]): Promise<any>;
+    /**
+     * Execute raw SQL string (for migrations and DDL)
+     */
+    executeRaw(sql: string, params?: unknown[]): Promise<any>;
 
-  /**
-   * Get the underlying Drizzle database instance
-   */
-  getDb(): any;
+    /**
+     * Get the underlying Drizzle database instance
+     */
+    getDb(): any;
 
-  /**
-   * Close the database connection (if applicable)
-   */
-  close?(): Promise<void>;
+    /**
+     * Close the database connection (if applicable)
+     */
+    close?(): Promise<void>;
 }
 
 /**
  * Configuration for creating a database driver
  */
 export interface DbDriverConfig {
-  /**
-   * Enable query logging
-   */
-  log?: boolean | ("query" | "info" | "warn" | "error")[];
+    /**
+     * Enable query logging
+     */
+    log?: boolean | ('query' | 'info' | 'warn' | 'error')[];
 }
 
 /**
@@ -49,49 +49,49 @@ export interface DbDriverConfig {
  * Can be extended for specific database implementations
  */
 export abstract class BaseDbDriver implements DbDriver {
-  protected db: any;
-  protected config: DbDriverConfig;
+    protected db: any;
+    protected config: DbDriverConfig;
 
-  constructor(db: any, config: DbDriverConfig = {}) {
-    this.db = db;
-    this.config = config;
-  }
-
-  abstract execute<T = unknown>(query: SQL): Promise<T[]>;
-
-  abstract executeRaw(sql: string, params?: unknown[]): Promise<any>;
-
-  getDb(): any {
-    return this.db;
-  }
-
-  async close(): Promise<void> {
-    // Override in subclasses if needed
-  }
-
-  /**
-   * Log a query if logging is enabled
-   */
-  protected log(message: string, level: "query" | "info" | "warn" | "error" = "info"): void {
-    const { log } = this.config;
-
-    if (log === true || (Array.isArray(log) && log.includes(level))) {
-      console.log(`[${level.toUpperCase()}] ${message}`);
+    constructor(db: any, config: DbDriverConfig = {}) {
+        this.db = db;
+        this.config = config;
     }
-  }
+
+    abstract execute<T = unknown>(query: SQL): Promise<T[]>;
+
+    abstract executeRaw(sql: string, params?: unknown[]): Promise<any>;
+
+    getDb(): any {
+        return this.db;
+    }
+
+    async close(): Promise<void> {
+        // Override in subclasses if needed
+    }
+
+    /**
+     * Log a query if logging is enabled
+     */
+    protected log(message: string, level: 'query' | 'info' | 'warn' | 'error' = 'info'): void {
+        const { log } = this.config;
+
+        if (log === true || (Array.isArray(log) && log.includes(level))) {
+            console.log(`[${level.toUpperCase()}] ${message}`);
+        }
+    }
 }
 
 /**
  * Result from a raw SQL query
  */
 export interface DbRawResult<T = unknown> {
-  results: T[];
-  success: boolean;
-  meta?: {
-    changes?: number;
-    duration?: number;
-    last_row_id?: number;
-  };
+    results: T[];
+    success: boolean;
+    meta?: {
+        changes?: number;
+        duration?: number;
+        last_row_id?: number;
+    };
 }
 
 /**
@@ -111,33 +111,29 @@ export interface DbRawResult<T = unknown> {
  * console.log(result.results);
  * ```
  */
-export async function raw<T = unknown>(
-  driver: DbDriver,
-  sql: string,
-  params?: unknown[],
-): Promise<DbRawResult<T>> {
-  const result = await driver.executeRaw(sql, params);
+export async function raw<T = unknown>(driver: DbDriver, sql: string, params?: unknown[]): Promise<DbRawResult<T>> {
+    const result = await driver.executeRaw(sql, params);
 
-  // Normalize D1 response format
-  if (result && typeof result === "object" && "results" in result) {
+    // Normalize D1 response format
+    if (result && typeof result === 'object' && 'results' in result) {
+        return {
+            results: result.results as T[],
+            success: result.success ?? true,
+            meta: result.meta,
+        };
+    }
+
+    // Handle array response
+    if (Array.isArray(result)) {
+        return {
+            results: result as T[],
+            success: true,
+        };
+    }
+
     return {
-      results: result.results as T[],
-      success: result.success ?? true,
-      meta: result.meta,
+        results: [],
+        success: true,
+        meta: result,
     };
-  }
-
-  // Handle array response
-  if (Array.isArray(result)) {
-    return {
-      results: result as T[],
-      success: true,
-    };
-  }
-
-  return {
-    results: [],
-    success: true,
-    meta: result,
-  };
 }

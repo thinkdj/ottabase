@@ -1,14 +1,14 @@
 {
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "jsx": "react-jsx",
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "skipLibCheck": true,
-    "lib": ["dom", "dom.iterable", "ES2020"]
-  },
-  "include": ["src/**/*"],
-  "exclude": ["dist", "node_modules", "**/*.test.*", "**/*.spec.*", "**/*.stories.*"]
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "outDir": "dist",
+        "jsx": "react-jsx",
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "skipLibCheck": true,
+        "lib": ["dom", "dom.iterable", "ES2020"]
+    },
+    "include": ["src/**/*"],
+    "exclude": ["dist", "node_modules", "**/*.test.*", "**/*.spec.*", "**/*.stories.*"]
 }

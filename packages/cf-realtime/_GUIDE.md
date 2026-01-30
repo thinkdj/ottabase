@@ -31,17 +31,17 @@ Create `tsconfig.json`:
 
 ```json
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "lib": ["ES2022"],
-    "moduleResolution": "bundler",
-    "types": ["@cloudflare/workers-types"],
-    "strict": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true
-  },
-  "include": ["src/**/*"]
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ESNext",
+        "lib": ["ES2022"],
+        "moduleResolution": "bundler",
+        "types": ["@cloudflare/workers-types"],
+        "strict": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true
+    },
+    "include": ["src/**/*"]
 }
 ```
 
@@ -50,8 +50,8 @@ Create `tsconfig.json`:
 Create `src/worker.ts`:
 
 ```typescript
-import { RealtimeActor, RealtimeBroadcaster } from "@ottabase/cf-realtime/server";
-import { handler } from "@cloudflare/actors";
+import { RealtimeActor, RealtimeBroadcaster } from '@ottabase/cf-realtime/server';
+import { handler } from '@cloudflare/actors';
 
 // Export Actor
 export { RealtimeActor };
@@ -60,40 +60,40 @@ export { RealtimeActor };
 export default handler(RealtimeActor);
 
 export interface Env {
-  REALTIME: DurableObjectNamespace;
+    REALTIME: DurableObjectNamespace;
 }
 
 // Main worker
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
+    async fetch(request: Request, env: Env): Promise<Response> {
+        const url = new URL(request.url);
 
-    // WebSocket connection
-    if (url.pathname === "/realtime" && request.headers.get("Upgrade") === "websocket") {
-      const id = env.OBCF_REALTIME.idFromName("global");
-      const stub = env.OBCF_REALTIME.get(id);
-      return stub.fetch(request);
-    }
+        // WebSocket connection
+        if (url.pathname === '/realtime' && request.headers.get('Upgrade') === 'websocket') {
+            const id = env.OBCF_REALTIME.idFromName('global');
+            const stub = env.OBCF_REALTIME.get(id);
+            return stub.fetch(request);
+        }
 
-    // Broadcast API
-    if (url.pathname === "/api/broadcast" && request.method === "POST") {
-      const broadcaster = new RealtimeBroadcaster(env.OBCF_REALTIME);
-      const body = await request.json();
+        // Broadcast API
+        if (url.pathname === '/api/broadcast' && request.method === 'POST') {
+            const broadcaster = new RealtimeBroadcaster(env.OBCF_REALTIME);
+            const body = await request.json();
 
-      const result = await broadcaster.broadcast({
-        channels: body.channels,
-        event: body.event,
-        data: body.data,
-        persistForOffline: body.persistForOffline,
-      });
+            const result = await broadcaster.broadcast({
+                channels: body.channels,
+                event: body.event,
+                data: body.data,
+                persistForOffline: body.persistForOffline,
+            });
 
-      return new Response(JSON.stringify(result), {
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+            return new Response(JSON.stringify(result), {
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
 
-    return new Response("Not Found", { status: 404 });
-  },
+        return new Response('Not Found', { status: 404 });
+    },
 };
 ```
 
@@ -138,18 +138,18 @@ pnpm add @ottabase/cf-realtime
 Use in your app:
 
 ```typescript
-import { RealtimeClient } from "@ottabase/cf-realtime";
+import { RealtimeClient } from '@ottabase/cf-realtime';
 
 const client = new RealtimeClient({
-  url: "wss://my-realtime-worker.your-subdomain.workers.dev/realtime",
-  debug: true,
+    url: 'wss://my-realtime-worker.your-subdomain.workers.dev/realtime',
+    debug: true,
 });
 
 await client.connect();
 
 // Subscribe to channels
-client.subscribe("org-1201", (event, data) => {
-  console.log("Received:", event, data);
+client.subscribe('org-1201', (event, data) => {
+    console.log('Received:', event, data);
 });
 ```
 
@@ -159,15 +159,15 @@ In your backend API (Node.js, Next.js API routes, etc.):
 
 ```typescript
 // Send a broadcast to all subscribers
-await fetch("https://my-realtime-worker.your-subdomain.workers.dev/api/broadcast", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    channels: ["org-1201"],
-    event: "notification",
-    data: { message: "Hello!" },
-    persistForOffline: true,
-  }),
+await fetch('https://my-realtime-worker.your-subdomain.workers.dev/api/broadcast', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        channels: ['org-1201'],
+        event: 'notification',
+        data: { message: 'Hello!' },
+        persistForOffline: true,
+    }),
 });
 ```
 
@@ -177,23 +177,23 @@ You can extend the worker to add authentication, custom routing, etc.:
 
 ```typescript
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
+    async fetch(request: Request, env: Env): Promise<Response> {
+        const url = new URL(request.url);
 
-    // Add authentication
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response("Unauthorized", { status: 401 });
-    }
+        // Add authentication
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader) {
+            return new Response('Unauthorized', { status: 401 });
+        }
 
-    // Validate token
-    const isValid = await validateToken(authHeader);
-    if (!isValid) {
-      return new Response("Forbidden", { status: 403 });
-    }
+        // Validate token
+        const isValid = await validateToken(authHeader);
+        if (!isValid) {
+            return new Response('Forbidden', { status: 403 });
+        }
 
-    // Continue with normal routing...
-  },
+        // Continue with normal routing...
+    },
 };
 ```
 
@@ -211,8 +211,8 @@ Connect your client:
 
 ```typescript
 const client = new RealtimeClient({
-  url: "ws://localhost:8787/realtime",
-  debug: true,
+    url: 'ws://localhost:8787/realtime',
+    debug: true,
 });
 ```
 
@@ -225,6 +225,7 @@ wrangler tail
 ```
 
 View metrics in Cloudflare Dashboard:
+
 - Workers & Pages → Your Worker → Metrics
 
 ## Cost Estimation
@@ -235,6 +236,7 @@ Based on Cloudflare pricing:
 - **Paid Plan**: $5/month + usage
 
 Example costs for 1M messages/day:
+
 - Requests: ~$0.15
 - Duration: ~$1-5 (depending on connection time)
 - **Total**: ~$6-10/month
@@ -254,6 +256,7 @@ new_classes = ["RealtimeActor"]
 ### WebSocket upgrade fails
 
 Check that you're using the correct protocol:
+
 - Production: `wss://` (secure WebSocket)
 - Local dev: `ws://` (non-secure)
 

@@ -1,6 +1,7 @@
 ﻿# @ottabase/utils
 
-A set of utility functions for file operations, string manipulation, URL handling, environment detection, currency formatting, email parsing, JSON handling, git operations, and more.
+A set of utility functions for file operations, string manipulation, URL handling, environment detection, currency
+formatting, email parsing, JSON handling, git operations, and more.
 
 ## Installation
 
@@ -13,7 +14,24 @@ pnpm add @ottabase/utils
 ### Import All Utilities
 
 ```typescript
-import { fileExists, readFile, isEmail, changeCase, makeSlug, isValidUrl, isDev, isStaging, isCI, parseCurrencyValue, parseNameAndEmail, parseJsonFromString, getLastCommitMessage, getCurrentBranch, isBrowser, isMobileBrowser } from '@ottabase/utils';
+import {
+    fileExists,
+    readFile,
+    isEmail,
+    changeCase,
+    makeSlug,
+    isValidUrl,
+    isDev,
+    isStaging,
+    isCI,
+    parseCurrencyValue,
+    parseNameAndEmail,
+    parseJsonFromString,
+    getLastCommitMessage,
+    getCurrentBranch,
+    isBrowser,
+    isMobileBrowser,
+} from '@ottabase/utils';
 ```
 
 ### Tree-Shakeable Imports (Recommended)
@@ -25,7 +43,16 @@ Import only what you need for optimal bundle size:
 import { fileExists, readFile, writeFile, mkdirSync, copyDirectoryContents } from '@ottabase/utils/file';
 
 // String utilities
-import { isEmail, changeCase, getInitials, isEmptyStr, humanizeString, ucFirst, replaceStringTokens, generateUUID } from '@ottabase/utils/string';
+import {
+    isEmail,
+    changeCase,
+    getInitials,
+    isEmptyStr,
+    humanizeString,
+    ucFirst,
+    replaceStringTokens,
+    generateUUID,
+} from '@ottabase/utils/string';
 
 // URL utilities
 import { makeSlug, getSegment, getDomainName, joinPaths, isValidUrl } from '@ottabase/utils/url';
@@ -55,7 +82,17 @@ import { getInitials } from '@ottabase/utils/user';
 import { getLastCommitMessage, getCurrentBranch, getLatestCommitHash, isGitRepository } from '@ottabase/utils/git';
 
 // Timezone utilities
-import { toUTC, fromUTC, formatInUserTimezone, getUserTimezone, setTimezoneConfig, nowUTC, parseInTimezone, getCommonTimezones, isValidTimezone } from '@ottabase/utils/timezone';
+import {
+    toUTC,
+    fromUTC,
+    formatInUserTimezone,
+    getUserTimezone,
+    setTimezoneConfig,
+    nowUTC,
+    parseInTimezone,
+    getCommonTimezones,
+    isValidTimezone,
+} from '@ottabase/utils/timezone';
 ```
 
 ## Available Utilities
@@ -64,7 +101,8 @@ import { toUTC, fromUTC, formatInUserTimezone, getUserTimezone, setTimezoneConfi
 
 - **`fileExists(filePath: PathLike): boolean`** - Check if file/directory exists
 - **`readFile(filePath: PathLike, encoding?: string): string | null`** - Read file content safely
-- **`writeFile(filePath: PathLike, content: string | Uint8Array, encoding?: string): void`** - Write file content with error handling
+- **`writeFile(filePath: PathLike, content: string | Uint8Array, encoding?: string): void`** - Write file content with
+  error handling
 - **`mkdirSync(dirPath: PathLike, options?: MakeDirectoryOptions): void`** - Create directories recursively
 - **`copyDirectoryContents(src: PathLike, dest: PathLike): void`** - Copy all contents of a directory recursively
 - **`removeFileExtension(filePath: string): string`** - Remove file extension from path
@@ -76,7 +114,8 @@ import { toUTC, fromUTC, formatInUserTimezone, getUserTimezone, setTimezoneConfi
 - **`changeCase(str: string, caseType: CaseType): string`** - Convert strings to various case formats
 - **`getInitials(name: string | null | undefined, defaultInitials?: string): string`** - Extract initials from names
 - **`isEmptyStr(str: string | null | undefined): boolean`** - Check if string is empty or whitespace
-- **`humanizeString(input: string, capitalizeFirstLetter?: boolean, capitalizeAllWords?: boolean): string`** - Convert to human-readable format
+- **`humanizeString(input: string, capitalizeFirstLetter?: boolean, capitalizeAllWords?: boolean): string`** - Convert
+  to human-readable format
 - **`ucFirst(str: string): string`** - Uppercase the first letter
 - **`replaceStringTokens(str: string, replacements: object, identifier?: string): string`** - Replace tokens in strings
 - **`generateUUID(length: number, alphanumeric?: boolean): string`** - Generate unique alphanumeric ID
@@ -84,7 +123,8 @@ import { toUTC, fromUTC, formatInUserTimezone, getUserTimezone, setTimezoneConfi
 ### URL Utilities (`@ottabase/utils/url`)
 
 - **`makeSlug(str: string, replaceSpaceWith?: string): string`** - Convert string to URL-friendly slug
-- **`getSegment(slug: string | null, separator?: string, segmentNumber?: number): string | null`** - Get specific segment from path
+- **`getSegment(slug: string | null, separator?: string, segmentNumber?: number): string | null`** - Get specific
+  segment from path
 - **`getDomainName(url: string, removeWww?: boolean): string | null`** - Extract domain name from URL
 - **`joinPaths(...paths: string[]): string`** - Join multiple path segments
 - **`getBaseUrl(): string`** - Get base URL from window location
@@ -100,7 +140,8 @@ import { toUTC, fromUTC, formatInUserTimezone, getUserTimezone, setTimezoneConfi
 - **`isStaging: boolean`** - Check if running in staging environment
 - **`isRunningOnServer: boolean`** - Check if running on server (Node.js)
 - **`isRunningOnClient: boolean`** - Check if running on client (browser)
-- **`getEnvironment(): Environment`** - Get current environment with type safety ('development' | 'production' | 'test' | 'staging')
+- **`getEnvironment(): Environment`** - Get current environment with type safety ('development' | 'production' | 'test'
+  | 'staging')
 - **`getEnvVar(key: string, defaultValue?: string): string`** - Safe environment variable access
 - **`isCI(): boolean`** - Check if running in CI/CD environment
 
@@ -116,7 +157,8 @@ import { toUTC, fromUTC, formatInUserTimezone, getUserTimezone, setTimezoneConfi
 ### Currency Utilities (`@ottabase/utils/currency`)
 
 - **`parseCurrencyValue(input: string | number): number | null`** - Parse currency string to numeric value
-- **`formatCurrencyValue(value: number, currencyCode: string, decimalPlaces?: number): string`** - Format number as currency
+- **`formatCurrencyValue(value: number, currencyCode: string, decimalPlaces?: number): string`** - Format number as
+  currency
 - **`getCurrencySymbol(currencyCode: string): string`** - Get currency symbol for code
 - **`getCurrencyInfo(currencyCode: string): CurrencyInfo | null`** - Get currency information
 - **`getSupportedCurrencies(): CurrencyInfo[]`** - Get all supported currencies
@@ -143,7 +185,8 @@ import { toUTC, fromUTC, formatInUserTimezone, getUserTimezone, setTimezoneConfi
 
 ### User Utilities (`@ottabase/utils/user`)
 
-- **`getInitials(name: string | null | undefined, defaultInitials?: string): string`** - Extract initials from name (re-exported from string utilities)
+- **`getInitials(name: string | null | undefined, defaultInitials?: string): string`** - Extract initials from name
+  (re-exported from string utilities)
 
 ### Git Utilities (`@ottabase/utils/git`)
 
@@ -161,6 +204,7 @@ import { toUTC, fromUTC, formatInUserTimezone, getUserTimezone, setTimezoneConfi
 **Production-ready timezone standardization for SaaS applications**
 
 Core principles:
+
 - **Server/DB**: Always store in UTC
 - **Client**: Convert to user's timezone for display
 - **Lightweight**: Uses date-fns-tz (~2KB gzipped)
@@ -181,8 +225,10 @@ Core principles:
 #### User Display (From Database)
 
 - **`fromUTC(date: DateInput, timezone?: Timezone): Date | null`** - Convert UTC date to user's timezone
-- **`formatInUserTimezone(date: DateInput, format?: string, timezone?: Timezone): string | null`** - Format UTC date in user's timezone (with custom format string)
-- **`formatWithTimezone(date: DateInput, format?: string, timezone?: Timezone): string | null`** - Format with timezone abbreviation
+- **`formatInUserTimezone(date: DateInput, format?: string, timezone?: Timezone): string | null`** - Format UTC date in
+  user's timezone (with custom format string)
+- **`formatWithTimezone(date: DateInput, format?: string, timezone?: Timezone): string | null`** - Format with timezone
+  abbreviation
 
 #### Preset Format Functions (Convenience Wrappers)
 
@@ -235,8 +281,8 @@ The `changeCase` function supports these case formats:
 import { fileExists, readFile, copyDirectoryContents } from '@ottabase/utils/file';
 
 if (fileExists('./config.json')) {
-  const config = readFile('./config.json');
-  console.log(config);
+    const config = readFile('./config.json');
+    console.log(config);
 }
 
 // Copy directory contents
@@ -303,7 +349,14 @@ console.log(getLatestCommitHash()); // "a1b2c3d"
 console.log(isGitRepository()); // true
 
 // Timezone utilities
-import { toUTC, fromUTC, formatInUserTimezone, setTimezoneConfig, nowUTC, getCommonTimezones } from '@ottabase/utils/timezone';
+import {
+    toUTC,
+    fromUTC,
+    formatInUserTimezone,
+    setTimezoneConfig,
+    nowUTC,
+    getCommonTimezones,
+} from '@ottabase/utils/timezone';
 
 // Configure user's timezone (e.g., from user profile)
 setTimezoneConfig({ userTimezone: 'America/New_York' });
@@ -326,8 +379,8 @@ console.log(formatDateAtTime(dbDate)); // "Jan 15 at 2:30 PM"
 
 // CREATE NEW RECORDS: Always use UTC
 const newRecord = {
-  title: 'New Post',
-  createdAt: nowUTC(), // Current time in UTC
+    title: 'New Post',
+    createdAt: nowUTC(), // Current time in UTC
 };
 
 // TIMEZONE SELECTOR: Get list of common timezones
@@ -342,49 +395,45 @@ import { toUTC, fromUTC, formatInUserTimezone, setTimezoneConfig } from '@ottaba
 
 // 1. User Registration: Store user's preferred timezone
 async function registerUser(email: string, timezone: string) {
-  return db.user.create({
-    data: {
-      email,
-      timezone, // Store user's timezone preference
-      createdAt: nowUTC(), // Always UTC in database
-    }
-  });
+    return db.user.create({
+        data: {
+            email,
+            timezone, // Store user's timezone preference
+            createdAt: nowUTC(), // Always UTC in database
+        },
+    });
 }
 
 // 2. Creating Content: Convert user's time to UTC
 async function createPost(userId: string, scheduledTime: string) {
-  const user = await db.user.findUnique({ where: { id: userId } });
-  
-  return db.post.create({
-    data: {
-      userId,
-      // Convert scheduled time from user's timezone to UTC
-      scheduledAt: toUTC(scheduledTime, user.timezone),
-      createdAt: nowUTC(),
-    }
-  });
+    const user = await db.user.findUnique({ where: { id: userId } });
+
+    return db.post.create({
+        data: {
+            userId,
+            // Convert scheduled time from user's timezone to UTC
+            scheduledAt: toUTC(scheduledTime, user.timezone),
+            createdAt: nowUTC(),
+        },
+    });
 }
 
 // 3. Displaying Content: Convert UTC to user's timezone
 async function getUserPosts(userId: string) {
-  const user = await db.user.findUnique({ where: { id: userId } });
-  const posts = await db.post.findMany({ where: { userId } });
-  
-  return posts.map(post => ({
-    ...post,
-    // Display in user's timezone
-    scheduledAtFormatted: formatInUserTimezone(
-      post.scheduledAt, 
-      'PPpp', 
-      user.timezone
-    ),
-  }));
+    const user = await db.user.findUnique({ where: { id: userId } });
+    const posts = await db.post.findMany({ where: { userId } });
+
+    return posts.map((post) => ({
+        ...post,
+        // Display in user's timezone
+        scheduledAtFormatted: formatInUserTimezone(post.scheduledAt, 'PPpp', user.timezone),
+    }));
 }
 
 // 4. Client-side: Auto-detect and use user's timezone
 // In your app initialization
 if (typeof window !== 'undefined') {
-  setTimezoneConfig({ userTimezone: getUserTimezone() });
+    setTimezoneConfig({ userTimezone: getUserTimezone() });
 }
 ```
 

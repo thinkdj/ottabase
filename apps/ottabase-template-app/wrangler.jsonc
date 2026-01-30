@@ -1,228 +1,228 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  // Wrangler configuration for Next.js app with Cloudflare bindings
-  // Supports dev (local with HMR), preview (workerd), and prod (real CF resources)
+    "$schema": "node_modules/wrangler/config-schema.json",
+    // Wrangler configuration for Next.js app with Cloudflare bindings
+    // Supports dev (local with HMR), preview (workerd), and prod (real CF resources)
 
-  "name": "ottabase-template-app",
-  "compatibility_date": "2024-12-30",
-  // Main worker configuration
-  // OpenNext for Cloudflare creates .open-next/worker.js as the entry point
-  "main": ".open-next/worker.js",
-  // For next.js apps
-  "compatibility_flags": [
-    // Enable Node.js API
-    // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#nodejs-compatibility-flag
-    "nodejs_compat",
-    // Allow to fetch URLs in your app
-    // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public
-    "global_fetch_strictly_public",
-  ],
+    "name": "ottabase-template-app",
+    "compatibility_date": "2024-12-30",
+    // Main worker configuration
+    // OpenNext for Cloudflare creates .open-next/worker.js as the entry point
+    "main": ".open-next/worker.js",
+    // For next.js apps
+    "compatibility_flags": [
+        // Enable Node.js API
+        // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#nodejs-compatibility-flag
+        "nodejs_compat",
+        // Allow to fetch URLs in your app
+        // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public
+        "global_fetch_strictly_public",
+    ],
 
-  // OpenNext already creates the worker & assets structure
-  "no_bundle": true,
+    // OpenNext already creates the worker & assets structure
+    "no_bundle": true,
 
-  // Observability - logging configuration
-  "observability": {
-    "enabled": true
-  },
+    // Observability - logging configuration
+    "observability": {
+        "enabled": true,
+    },
 
-  // Asset and Image bindings
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "OBCF_ASSETS",
-  },
-  "images": {
-    "binding": "IMAGES",
-  },
-
-  // D1 Database bindings
-  // Local dev: Uses local SQLite file (.wrangler/state/v3/d1)
-  // Preview/Prod: Uses real Cloudflare D1 database
-  "d1_databases": [
-    {
-      "binding": "OBCF_D1",
-      "database_name": "ottabase-db",
-      "database_id": "YOUR_D1_DATABASE_ID", // Replace with: wrangler d1 create ottabase-db
-      // For preview/prod, create with: wrangler d1 create ottabase-db
-      // Then update database_id with the returned ID
-      "preview_database_id": "preview" // Uses preview DB for `wrangler dev --remote`
-    }
-  ],
-
-  // KV Namespace bindings
-  // Local dev: Uses local KV storage (.wrangler/state/v3/kv)
-  // Preview/Prod: Uses real Cloudflare KV namespace
-  "kv_namespaces": [
-    {
-      "binding": "OBCF_KV",
-      "id": "YOUR_KV_NAMESPACE_ID", // Replace with: wrangler kv:namespace create OBCF_KV
-      "preview_id": "YOUR_KV_PREVIEW_ID" // Replace with: wrangler kv:namespace create OBCF_KV --preview
-    }
-  ],
-
-  // R2 Bucket bindings
-  // Local dev: Uses local R2 storage (.wrangler/state/v3/r2)
-  // Preview/Prod: Uses real Cloudflare R2 bucket
-  "r2_buckets": [
-    {
-      "binding": "OBCF_R2",
-      "bucket_name": "ottabase-bucket", // Create with: wrangler r2 bucket create ottabase-bucket
-      "preview_bucket_name": "ottabase-bucket-preview" // Create with: wrangler r2 bucket create ottabase-bucket-preview
-    }
-  ],
-
-  // Hyperdrive bindings for database connection pooling
-  // Preview/Prod only - not available in local dev
-  // Uncomment and configure when ready to use
-  // "hyperdrive": [
-  //   {
-  //     "binding": "OBCF_HYPERDRIVE",
-  //     "id": "YOUR_HYPERDRIVE_ID" // Create with: wrangler hyperdrive create <name> --connection-string="postgres://..."
-  //   }
-  // ],
-
-  // Queue bindings for async message processing
-  // Local dev: Uses local queue storage
-  // Preview/Prod: Uses real Cloudflare Queue
-  "queues": {
-    "producers": [
-      {
-        "binding": "OBCF_QUEUE",
-        "queue": "ottabase-queue" // Create with: wrangler queues create ottabase-queue
-      }
-    ]
-    // Uncomment to add consumer configuration
-    // "consumers": [
-    //   {
-    //     "queue": "ottabase-queue",
-    //     "max_batch_size": 10,
-    //     "max_batch_timeout": 30
-    //   }
-    // ]
-  },
-
-  // Rate Limiting bindings
-  // Note: Rate limiting works differently in local dev vs production
-  // Local dev: Uses simulated rate limiting with local state
-  // Preview/Prod: Uses real Cloudflare Rate Limiting
-  "unsafe": {
-    "bindings": [
-      {
-        "name": "OBCF_RATE_LIMITER",
-        "type": "ratelimit",
-        "namespace_id": "1001", // For local dev, can use any INT value
-        "simple": {
-          "limit": 10,       // 10 requests
-          "period": 60       // per 60 seconds
-        }
-      }
-    ]
-  },
-
-  // Environment variables
-  // These are available in all environments (dev/preview/prod)
-  "vars": {
-    "ENVIRONMENT": "development",
-    "NODE_ENV": "production"
-  },
-
-  // Secrets (set via wrangler secret put)
-  // Example: wrangler secret put CF_ACCOUNT_ID
-  // Example: wrangler secret put CF_API_TOKEN
-  // Note: Secrets override env vars with the same name
-  // Access via env.SECRET_NAME in your code
-
-  // Local development settings
-  "dev": {
-    "port": 8788,
-    "local_protocol": "http"
-  },
-
-  // Limits configuration
-  "limits": {
-    "cpu_ms": 50000 // 50 seconds CPU time limit
-  },
-
-  // Durable Objects temporarily disabled (not being used in code yet)
-  // Uncomment when ready to use Durable Objects
-  // "durable_objects": {
-  //   "bindings": [
-  //     {
-  //       "name": "OBCF_REALTIME",
-  //       "class_name": "RealtimeActor",
-  //       "script_name": "ottabase-template-app"
-  //     }
-  //   ]
-  // },
-
-  // Migrations for Durable Objects (temporarily disabled)
-  // NOTE: `migrations` is a top-level-only Wrangler key (cannot live under `env.*`).
-  // "migrations": [
-  //   {
-  //     "tag": "v1",
-  //     "new_classes": ["RealtimeActor"]
-  //   }
-  // ],
-
-  // Environment-specific overrides
-  "env": {
-    "production": {
-      "vars": {
-        "ENVIRONMENT": "production",
-        "NODE_ENV": "production"
-      },
-      "unsafe": {
-        "bindings": [
-          {
-            "name": "OBCF_RATE_LIMITER",
-            "type": "ratelimit",
-            "namespace_id": "1001", // INT ID for production rate limiter
-            "simple": {
-              "limit": 10,
-              "period": 60
-            }
-          }
-        ]
-      },
-      // Asset and Image bindings for Production
-      "assets": {
-        "binding": "OBCF_ASSETS",
+    // Asset and Image bindings
+    "assets": {
         "directory": ".open-next/assets",
-      },
-      "images": {
+        "binding": "OBCF_ASSETS",
+    },
+    "images": {
         "binding": "IMAGES",
-      },
-      // Production D1 Database - set via CI/CD substitution or manually
-      "d1_databases": [
+    },
+
+    // D1 Database bindings
+    // Local dev: Uses local SQLite file (.wrangler/state/v3/d1)
+    // Preview/Prod: Uses real Cloudflare D1 database
+    "d1_databases": [
         {
-          "binding": "OBCF_D1",
-          "database_name": "ottabase-db",
-          "database_id": "PRODUCTION_D1_DATABASE_ID"
-        }
-      ],
-      // Production KV Namespace - set via CI/CD substitution or manually
-      "kv_namespaces": [
+            "binding": "OBCF_D1",
+            "database_name": "ottabase-db",
+            "database_id": "YOUR_D1_DATABASE_ID", // Replace with: wrangler d1 create ottabase-db
+            // For preview/prod, create with: wrangler d1 create ottabase-db
+            // Then update database_id with the returned ID
+            "preview_database_id": "preview", // Uses preview DB for `wrangler dev --remote`
+        },
+    ],
+
+    // KV Namespace bindings
+    // Local dev: Uses local KV storage (.wrangler/state/v3/kv)
+    // Preview/Prod: Uses real Cloudflare KV namespace
+    "kv_namespaces": [
         {
-          "binding": "OBCF_KV",
-          "id": "PRODUCTION_KV_NAMESPACE_ID"
-        }
-      ],
-      // Production R2 Bucket
-      "r2_buckets": [
+            "binding": "OBCF_KV",
+            "id": "YOUR_KV_NAMESPACE_ID", // Replace with: wrangler kv:namespace create OBCF_KV
+            "preview_id": "YOUR_KV_PREVIEW_ID", // Replace with: wrangler kv:namespace create OBCF_KV --preview
+        },
+    ],
+
+    // R2 Bucket bindings
+    // Local dev: Uses local R2 storage (.wrangler/state/v3/r2)
+    // Preview/Prod: Uses real Cloudflare R2 bucket
+    "r2_buckets": [
         {
-          "binding": "OBCF_R2",
-          "bucket_name": "ottabase-bucket"
-        }
-      ],
-      // Production Queue
-      "queues": {
+            "binding": "OBCF_R2",
+            "bucket_name": "ottabase-bucket", // Create with: wrangler r2 bucket create ottabase-bucket
+            "preview_bucket_name": "ottabase-bucket-preview", // Create with: wrangler r2 bucket create ottabase-bucket-preview
+        },
+    ],
+
+    // Hyperdrive bindings for database connection pooling
+    // Preview/Prod only - not available in local dev
+    // Uncomment and configure when ready to use
+    // "hyperdrive": [
+    //   {
+    //     "binding": "OBCF_HYPERDRIVE",
+    //     "id": "YOUR_HYPERDRIVE_ID" // Create with: wrangler hyperdrive create <name> --connection-string="postgres://..."
+    //   }
+    // ],
+
+    // Queue bindings for async message processing
+    // Local dev: Uses local queue storage
+    // Preview/Prod: Uses real Cloudflare Queue
+    "queues": {
         "producers": [
-          {
-            "binding": "OBCF_QUEUE",
-            "queue": "ottabase-queue"
-          }
-        ]
-      }
-    }
-  }
+            {
+                "binding": "OBCF_QUEUE",
+                "queue": "ottabase-queue", // Create with: wrangler queues create ottabase-queue
+            },
+        ],
+        // Uncomment to add consumer configuration
+        // "consumers": [
+        //   {
+        //     "queue": "ottabase-queue",
+        //     "max_batch_size": 10,
+        //     "max_batch_timeout": 30
+        //   }
+        // ]
+    },
+
+    // Rate Limiting bindings
+    // Note: Rate limiting works differently in local dev vs production
+    // Local dev: Uses simulated rate limiting with local state
+    // Preview/Prod: Uses real Cloudflare Rate Limiting
+    "unsafe": {
+        "bindings": [
+            {
+                "name": "OBCF_RATE_LIMITER",
+                "type": "ratelimit",
+                "namespace_id": "1001", // For local dev, can use any INT value
+                "simple": {
+                    "limit": 10, // 10 requests
+                    "period": 60, // per 60 seconds
+                },
+            },
+        ],
+    },
+
+    // Environment variables
+    // These are available in all environments (dev/preview/prod)
+    "vars": {
+        "ENVIRONMENT": "development",
+        "NODE_ENV": "production",
+    },
+
+    // Secrets (set via wrangler secret put)
+    // Example: wrangler secret put CF_ACCOUNT_ID
+    // Example: wrangler secret put CF_API_TOKEN
+    // Note: Secrets override env vars with the same name
+    // Access via env.SECRET_NAME in your code
+
+    // Local development settings
+    "dev": {
+        "port": 8788,
+        "local_protocol": "http",
+    },
+
+    // Limits configuration
+    "limits": {
+        "cpu_ms": 50000, // 50 seconds CPU time limit
+    },
+
+    // Durable Objects temporarily disabled (not being used in code yet)
+    // Uncomment when ready to use Durable Objects
+    // "durable_objects": {
+    //   "bindings": [
+    //     {
+    //       "name": "OBCF_REALTIME",
+    //       "class_name": "RealtimeActor",
+    //       "script_name": "ottabase-template-app"
+    //     }
+    //   ]
+    // },
+
+    // Migrations for Durable Objects (temporarily disabled)
+    // NOTE: `migrations` is a top-level-only Wrangler key (cannot live under `env.*`).
+    // "migrations": [
+    //   {
+    //     "tag": "v1",
+    //     "new_classes": ["RealtimeActor"]
+    //   }
+    // ],
+
+    // Environment-specific overrides
+    "env": {
+        "production": {
+            "vars": {
+                "ENVIRONMENT": "production",
+                "NODE_ENV": "production",
+            },
+            "unsafe": {
+                "bindings": [
+                    {
+                        "name": "OBCF_RATE_LIMITER",
+                        "type": "ratelimit",
+                        "namespace_id": "1001", // INT ID for production rate limiter
+                        "simple": {
+                            "limit": 10,
+                            "period": 60,
+                        },
+                    },
+                ],
+            },
+            // Asset and Image bindings for Production
+            "assets": {
+                "binding": "OBCF_ASSETS",
+                "directory": ".open-next/assets",
+            },
+            "images": {
+                "binding": "IMAGES",
+            },
+            // Production D1 Database - set via CI/CD substitution or manually
+            "d1_databases": [
+                {
+                    "binding": "OBCF_D1",
+                    "database_name": "ottabase-db",
+                    "database_id": "PRODUCTION_D1_DATABASE_ID",
+                },
+            ],
+            // Production KV Namespace - set via CI/CD substitution or manually
+            "kv_namespaces": [
+                {
+                    "binding": "OBCF_KV",
+                    "id": "PRODUCTION_KV_NAMESPACE_ID",
+                },
+            ],
+            // Production R2 Bucket
+            "r2_buckets": [
+                {
+                    "binding": "OBCF_R2",
+                    "bucket_name": "ottabase-bucket",
+                },
+            ],
+            // Production Queue
+            "queues": {
+                "producers": [
+                    {
+                        "binding": "OBCF_QUEUE",
+                        "queue": "ottabase-queue",
+                    },
+                ],
+            },
+        },
+    },
 }

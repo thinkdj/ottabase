@@ -1,73 +1,73 @@
 {
-  "name": "@ottabase/ottaeditor",
-  "version": "0.1.0",
-  "description": "A flexible EditorJS wrapper with easy plugin management for Ottabase applications",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/ottaeditor",
+    "version": "0.1.0",
+    "description": "A flexible EditorJS wrapper with easy plugin management for Ottabase applications",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "editor",
+        "editorjs",
+        "wysiwyg",
+        "rich-text",
+        "react",
+        "typescript",
+        "ottabase"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@editorjs/editorjs": "^2.30.7",
+        "@editorjs/checklist": "^1.6.0",
+        "@editorjs/code": "^2.9.3",
+        "@editorjs/delimiter": "^1.4.2",
+        "@editorjs/embed": "^2.7.6",
+        "@editorjs/header": "^2.8.8",
+        "@editorjs/inline-code": "^1.5.1",
+        "@editorjs/link": "^2.6.2",
+        "@editorjs/marker": "^1.4.0",
+        "@editorjs/nested-list": "^1.4.3",
+        "@editorjs/paragraph": "^2.11.6",
+        "@editorjs/quote": "^2.7.4",
+        "@editorjs/raw": "^2.5.0",
+        "@editorjs/table": "^2.4.1",
+        "@editorjs/underline": "^1.1.0",
+        "@editorjs/warning": "^1.4.0",
+        "@ottabase/ottaupload": "workspace:*"
+    },
+    "peerDependencies": {
+        "react": ">=18.0.0",
+        "react-dom": ">=18.0.0"
+    },
+    "devDependencies": {
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "@types/node": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "typescript": "catalog:",
+        "tsup": "catalog:",
+        "rimraf": "catalog:",
+        "eslint": "catalog:"
     }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
-    "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts,.tsx",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "keywords": [
-    "editor",
-    "editorjs",
-    "wysiwyg",
-    "rich-text",
-    "react",
-    "typescript",
-    "ottabase"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@editorjs/editorjs": "^2.30.7",
-    "@editorjs/checklist": "^1.6.0",
-    "@editorjs/code": "^2.9.3",
-    "@editorjs/delimiter": "^1.4.2",
-    "@editorjs/embed": "^2.7.6",
-    "@editorjs/header": "^2.8.8",
-    "@editorjs/inline-code": "^1.5.1",
-    "@editorjs/link": "^2.6.2",
-    "@editorjs/marker": "^1.4.0",
-    "@editorjs/nested-list": "^1.4.3",
-    "@editorjs/paragraph": "^2.11.6",
-    "@editorjs/quote": "^2.7.4",
-    "@editorjs/raw": "^2.5.0",
-    "@editorjs/table": "^2.4.1",
-    "@editorjs/underline": "^1.1.0",
-    "@editorjs/warning": "^1.4.0",
-    "@ottabase/ottaupload": "workspace:*"
-  },
-  "peerDependencies": {
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
-  },
-  "devDependencies": {
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "@types/node": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "typescript": "catalog:",
-    "tsup": "catalog:",
-    "rimraf": "catalog:",
-    "eslint": "catalog:"
-  }
 }

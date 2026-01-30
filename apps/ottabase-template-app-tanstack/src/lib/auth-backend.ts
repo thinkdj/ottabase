@@ -12,11 +12,7 @@
 //
 // ============================================================
 
-export {
-  handleAuthRequest,
-  type AuthEnv,
-  type CreateAuthConfigOptions,
-} from "@ottabase/auth/backend";
+export { handleAuthRequest, type AuthEnv, type CreateAuthConfigOptions } from '@ottabase/auth/backend';
 
 // Example: Custom authorization logic (uncomment to use)
 /*

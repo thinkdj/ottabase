@@ -1,6 +1,6 @@
 export function getShortlinkPageCss(options?: { maxWidth?: number }) {
-  const maxWidth = options?.maxWidth ?? 420;
-  return `:root {
+    const maxWidth = options?.maxWidth ?? 420;
+    return `:root {
   color-scheme: light dark;
   --bg: #f3f4f6;
   --text: #111827;

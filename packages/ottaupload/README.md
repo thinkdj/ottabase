@@ -1,6 +1,7 @@
 # @ottabase/ottaupload
 
-A file upload package with drag-and-drop UI, progress tracking, and multi-provider support for Cloudflare R2 and Cloudflare Images.
+A file upload package with drag-and-drop UI, progress tracking, and multi-provider support for Cloudflare R2 and
+Cloudflare Images.
 
 ## Features
 
@@ -28,28 +29,23 @@ pnpm add @ottabase/ottaupload
 import { FileUploader } from '@ottabase/ottaupload/client';
 
 function App() {
-  return (
-    <FileUploader
-      uploadEndpoint="/api/upload"
-      maxFiles={5}
-      maxFileSize={10 * 1024 * 1024} // 10MB
-      acceptedFileTypes={['image/*', 'application/pdf']}
-      autoUpload={true}
-      onUploadComplete={(files) => console.log('Done!', files)}
-    />
-  );
+    return (
+        <FileUploader
+            uploadEndpoint="/api/upload"
+            maxFiles={5}
+            maxFileSize={10 * 1024 * 1024} // 10MB
+            acceptedFileTypes={['image/*', 'application/pdf']}
+            autoUpload={true}
+            onUploadComplete={(files) => console.log('Done!', files)}
+        />
+    );
 }
 ```
 
 ### Button Variant
 
 ```tsx
-<FileUploader
-  variant="button"
-  maxFiles={1}
-  acceptedFileTypes={['image/*']}
-  uploadEndpoint="/api/upload"
-/>
+<FileUploader variant="button" maxFiles={1} acceptedFileTypes={['image/*']} uploadEndpoint="/api/upload" />
 ```
 
 ### Vanilla JavaScript
@@ -58,10 +54,10 @@ function App() {
 import { uploadFile } from '@ottabase/ottaupload/utils';
 
 const result = await uploadFile(file, {
-  endpoint: '/api/upload',
-  maxFileSize: 10 * 1024 * 1024,
-  onProgress: (progress) => console.log(`${progress}%`),
-  onSuccess: (response) => console.log(response.url),
+    endpoint: '/api/upload',
+    maxFileSize: 10 * 1024 * 1024,
+    onProgress: (progress) => console.log(`${progress}%`),
+    onSuccess: (response) => console.log(response.url),
 });
 ```
 
@@ -69,20 +65,20 @@ const result = await uploadFile(file, {
 
 ### FileUploader Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `variant` | `'dropzone' \| 'button'` | `'dropzone'` | UI style |
-| `maxFiles` | `number` | `1` | Max file count |
-| `maxFileSize` | `number` | `undefined` | Max size in bytes |
-| `acceptedFileTypes` | `string[]` | `undefined` | MIME types (e.g., `['image/*']`) |
-| `provider` | `'r2' \| 'cloudflare-images'` | `'r2'` | Upload provider |
-| `uploadEndpoint` | `string` | `'/api/upload'` | API endpoint |
-| `autoUpload` | `boolean` | `false` | Auto-upload on select |
-| `disabled` | `boolean` | `false` | Disable uploader |
-| `onUpload` | `(files: File[]) => void` | - | Custom upload handler |
-| `onUploadComplete` | `(files: UploadFile[]) => void` | - | Success callback |
-| `onUploadError` | `(error: Error) => void` | - | Error callback |
-| `onUploadProgress` | `(progress: number, file: UploadFile) => void` | - | Progress callback |
+| Prop                | Type                                           | Default         | Description                      |
+| ------------------- | ---------------------------------------------- | --------------- | -------------------------------- |
+| `variant`           | `'dropzone' \| 'button'`                       | `'dropzone'`    | UI style                         |
+| `maxFiles`          | `number`                                       | `1`             | Max file count                   |
+| `maxFileSize`       | `number`                                       | `undefined`     | Max size in bytes                |
+| `acceptedFileTypes` | `string[]`                                     | `undefined`     | MIME types (e.g., `['image/*']`) |
+| `provider`          | `'r2' \| 'cloudflare-images'`                  | `'r2'`          | Upload provider                  |
+| `uploadEndpoint`    | `string`                                       | `'/api/upload'` | API endpoint                     |
+| `autoUpload`        | `boolean`                                      | `false`         | Auto-upload on select            |
+| `disabled`          | `boolean`                                      | `false`         | Disable uploader                 |
+| `onUpload`          | `(files: File[]) => void`                      | -               | Custom upload handler            |
+| `onUploadComplete`  | `(files: UploadFile[]) => void`                | -               | Success callback                 |
+| `onUploadError`     | `(error: Error) => void`                       | -               | Error callback                   |
+| `onUploadProgress`  | `(progress: number, file: UploadFile) => void` | -               | Progress callback                |
 
 ## Providers
 
@@ -91,18 +87,20 @@ const result = await uploadFile(file, {
 For all file types. Requires `OBCF_R2` binding.
 
 **Client:**
+
 ```tsx
 <FileUploader uploadEndpoint="/api/upload" maxFiles={5} />
 ```
 
 **Server:**
+
 ```typescript
 import { uploadFileToR2 } from '@ottabase/ottaupload/server';
 import { createR2Client } from '@ottabase/cf/r2';
 
 const r2Client = createR2Client({ bucket: env.OBCF_R2 });
 const result = await uploadFileToR2(file, r2Client, {
-  maxFileSize: 50 * 1024 * 1024, // 50MB
+    maxFileSize: 50 * 1024 * 1024, // 50MB
 });
 ```
 
@@ -111,30 +109,33 @@ const result = await uploadFileToR2(file, r2Client, {
 For optimized image delivery with automatic variants.
 
 **Environment:**
+
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
 
 **Client:**
+
 ```tsx
-<FileUploader
-  provider="cloudflare-images"
-  acceptedFileTypes={['image/*']}
-  uploadEndpoint="/api/upload"
-/>
+<FileUploader provider="cloudflare-images" acceptedFileTypes={['image/*']} uploadEndpoint="/api/upload" />
 ```
 
 **Server:**
+
 ```typescript
 import { uploadFileToCloudflareImages } from '@ottabase/ottaupload/server';
 
-const result = await uploadFileToCloudflareImages(file, {
-  accountId: env.CLOUDFLARE_ACCOUNT_ID,
-  apiToken: env.CLOUDFLARE_API_TOKEN,
-  requireSignedURLs: false,
-  metadata: { userId: 'user-123' }
-}, {
-  maxFileSize: 10 * 1024 * 1024,
-});
+const result = await uploadFileToCloudflareImages(
+    file,
+    {
+        accountId: env.CLOUDFLARE_ACCOUNT_ID,
+        apiToken: env.CLOUDFLARE_API_TOKEN,
+        requireSignedURLs: false,
+        metadata: { userId: 'user-123' },
+    },
+    {
+        maxFileSize: 10 * 1024 * 1024,
+    },
+);
 ```
 
 ## Server Setup
@@ -146,23 +147,23 @@ const result = await uploadFileToCloudflareImages(file, {
 import { uploadFileToR2, uploadFileToCloudflareImages } from '@ottabase/ottaupload/server';
 import { createR2Client } from '@ottabase/cf/r2';
 
-if (url.pathname === "/api/upload" && request.method === "POST") {
-  const formData = await request.formData();
-  const file = formData.get("file") as File;
-  const provider = formData.get("provider") || "r2";
+if (url.pathname === '/api/upload' && request.method === 'POST') {
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+    const provider = formData.get('provider') || 'r2';
 
-  if (provider === "cloudflare-images") {
-    const result = await uploadFileToCloudflareImages(file, {
-      accountId: env.CLOUDFLARE_ACCOUNT_ID,
-      apiToken: env.CLOUDFLARE_API_TOKEN,
-    });
+    if (provider === 'cloudflare-images') {
+        const result = await uploadFileToCloudflareImages(file, {
+            accountId: env.CLOUDFLARE_ACCOUNT_ID,
+            apiToken: env.CLOUDFLARE_API_TOKEN,
+        });
+        return Response.json(result);
+    }
+
+    // R2 (default)
+    const r2Client = createR2Client({ bucket: env.OBCF_R2 });
+    const result = await uploadFileToR2(file, r2Client);
     return Response.json(result);
-  }
-
-  // R2 (default)
-  const r2Client = createR2Client({ bucket: env.OBCF_R2 });
-  const result = await uploadFileToR2(file, r2Client);
-  return Response.json(result);
 }
 ```
 
@@ -192,20 +193,12 @@ const { files } = await listFilesFromR2(r2Client, { prefix: 'uploads/' });
 ```tsx
 import { useFileUpload } from '@ottabase/ottaupload/client';
 
-const {
-  files,
-  isUploading,
-  addFiles,
-  uploadAll,
-  removeFile,
-  clearFiles,
-  retryUpload
-} = useFileUpload({
-  maxFiles: 5,
-  maxFileSize: 10 * 1024 * 1024,
-  uploadEndpoint: '/api/upload',
-  autoUpload: true,
-  onUploadComplete: (files) => console.log('Done!'),
+const { files, isUploading, addFiles, uploadAll, removeFile, clearFiles, retryUpload } = useFileUpload({
+    maxFiles: 5,
+    maxFileSize: 10 * 1024 * 1024,
+    uploadEndpoint: '/api/upload',
+    autoUpload: true,
+    onUploadComplete: (files) => console.log('Done!'),
 });
 ```
 
@@ -214,16 +207,10 @@ const {
 ```tsx
 import { useDragAndDrop } from '@ottabase/ottaupload/client';
 
-const {
-  isDragging,
-  handleDragEnter,
-  handleDragLeave,
-  handleDragOver,
-  handleDrop
-} = useDragAndDrop({
-  onDrop: (files) => console.log(files),
-  accept: ['image/*'],
-  multiple: true,
+const { isDragging, handleDragEnter, handleDragLeave, handleDragOver, handleDrop } = useDragAndDrop({
+    onDrop: (files) => console.log(files),
+    accept: ['image/*'],
+    multiple: true,
 });
 ```
 
@@ -236,18 +223,18 @@ import { uploadFile, uploadFiles } from '@ottabase/ottaupload/utils';
 
 // Single file
 const result = await uploadFile(file, {
-  endpoint: '/api/upload',
-  provider: 'r2',
-  maxFileSize: 10 * 1024 * 1024,
-  acceptedFileTypes: ['image/*'],
-  onProgress: (progress) => console.log(`${progress}%`),
-  onSuccess: (response) => console.log(response.url),
-  onError: (error) => console.error(error),
+    endpoint: '/api/upload',
+    provider: 'r2',
+    maxFileSize: 10 * 1024 * 1024,
+    acceptedFileTypes: ['image/*'],
+    onProgress: (progress) => console.log(`${progress}%`),
+    onSuccess: (response) => console.log(response.url),
+    onError: (error) => console.error(error),
 });
 
 // Multiple files
 const results = await uploadFiles([file1, file2], {
-  endpoint: '/api/upload',
+    endpoint: '/api/upload',
 });
 ```
 
@@ -257,12 +244,12 @@ const results = await uploadFiles([file1, file2], {
 
 ```typescript
 import {
-  validateFileSize,
-  validateFileType,
-  validateFiles,
-  formatFileSize,
-  generateFileKey,
-  FILE_TYPES
+    validateFileSize,
+    validateFileType,
+    validateFiles,
+    formatFileSize,
+    generateFileKey,
+    FILE_TYPES,
 } from '@ottabase/ottaupload/validation';
 
 // File size
@@ -273,9 +260,9 @@ validateFileType(file, ['image/*', FILE_TYPES.PDF]); // true/false
 
 // Multiple files
 const { valid, errors } = validateFiles(files, {
-  maxFiles: 5,
-  maxFileSize: 10 * 1024 * 1024,
-  acceptedFileTypes: ['image/*']
+    maxFiles: 5,
+    maxFileSize: 10 * 1024 * 1024,
+    acceptedFileTypes: ['image/*'],
 });
 
 // Utilities
@@ -289,26 +276,22 @@ generateFileKey(file, 'uploads'); // "uploads/my-file-1234567890-abc123.jpg"
 ```typescript
 import { FILE_TYPES } from '@ottabase/ottaupload/validation';
 
-FILE_TYPES.IMAGE_ALL    // 'image/*'
-FILE_TYPES.IMAGE_JPEG   // 'image/jpeg'
-FILE_TYPES.PDF          // 'application/pdf'
-FILE_TYPES.VIDEO_ALL    // 'video/*'
-FILE_TYPES.ZIP          // 'application/zip'
+FILE_TYPES.IMAGE_ALL; // 'image/*'
+FILE_TYPES.IMAGE_JPEG; // 'image/jpeg'
+FILE_TYPES.PDF; // 'application/pdf'
+FILE_TYPES.VIDEO_ALL; // 'video/*'
+FILE_TYPES.ZIP; // 'application/zip'
 ```
 
 ### Zod Schemas
 
 ```typescript
-import {
-  uploadConfigSchema,
-  fileMetadataSchema,
-  uploadResponseSchema
-} from '@ottabase/ottaupload/validation';
+import { uploadConfigSchema, fileMetadataSchema, uploadResponseSchema } from '@ottabase/ottaupload/validation';
 
 const config = uploadConfigSchema.parse({
-  maxFiles: 5,
-  maxFileSize: 10485760,
-  autoUpload: true,
+    maxFiles: 5,
+    maxFileSize: 10485760,
+    autoUpload: true,
 });
 ```
 
@@ -316,14 +299,14 @@ const config = uploadConfigSchema.parse({
 
 ```typescript
 import type {
-  UploadFile,
-  UploadConfig,
-  UploadResponse,
-  UploadProvider,
-  UploadStatus,
-  FileMetadata,
-  CloudflareImagesConfig,
-  CloudflareImagesResponse
+    UploadFile,
+    UploadConfig,
+    UploadResponse,
+    UploadProvider,
+    UploadStatus,
+    FileMetadata,
+    CloudflareImagesConfig,
+    CloudflareImagesResponse,
 } from '@ottabase/ottaupload/types';
 ```
 
@@ -333,12 +316,12 @@ import type {
 
 ```tsx
 <FileUploader
-  onUpload={async (files) => {
-    for (const file of files) {
-      const result = await customUpload(file);
-      console.log(result);
-    }
-  }}
+    onUpload={async (files) => {
+        for (const file of files) {
+            const result = await customUpload(file);
+            console.log(result);
+        }
+    }}
 />
 ```
 
@@ -356,14 +339,14 @@ const { files, addFiles, uploadAll } = useFileUpload({ autoUpload: false });
 ```tsx
 const { files, retryUpload } = useFileUpload();
 
-{files.map(file => (
-  <div key={file.id}>
-    {file.file.name} - {file.progress}%
-    {file.status === 'error' && (
-      <button onClick={() => retryUpload(file.id)}>Retry</button>
-    )}
-  </div>
-))}
+{
+    files.map((file) => (
+        <div key={file.id}>
+            {file.file.name} - {file.progress}%
+            {file.status === 'error' && <button onClick={() => retryUpload(file.id)}>Retry</button>}
+        </div>
+    ));
+}
 ```
 
 ## Package Structure
@@ -379,13 +362,13 @@ const { files, retryUpload } = useFileUpload();
 
 ## Provider Comparison
 
-| Feature | Cloudflare R2 | Cloudflare Images |
-|---------|---------------|-------------------|
-| **File Types** | All types | Images only |
-| **Optimization** | None | Automatic image optimization |
-| **Variants** | No | Multiple size variants |
-| **CDN** | Manual setup | Built-in global CDN |
-| **Use Case** | General file storage | Optimized image delivery |
+| Feature          | Cloudflare R2        | Cloudflare Images            |
+| ---------------- | -------------------- | ---------------------------- |
+| **File Types**   | All types            | Images only                  |
+| **Optimization** | None                 | Automatic image optimization |
+| **Variants**     | No                   | Multiple size variants       |
+| **CDN**          | Manual setup         | Built-in global CDN          |
+| **Use Case**     | General file storage | Optimized image delivery     |
 
 ## License
 

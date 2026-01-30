@@ -1,91 +1,91 @@
 {
-  "name": "@ottabase/email",
-  "version": "0.1.0",
-  "description": "Email templating + mailer utilities for Ottabase (edge-friendly).",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "sideEffects": [
-    "dist/**/*.mjs",
-    "dist/**/*.js"
-  ],
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/email",
+    "version": "0.1.0",
+    "description": "Email templating + mailer utilities for Ottabase (edge-friendly).",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": [
+        "dist/**/*.mjs",
+        "dist/**/*.js"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./templates": {
+            "types": "./dist/templates.d.ts",
+            "import": "./dist/templates.mjs",
+            "require": "./dist/templates.js"
+        },
+        "./render": {
+            "types": "./dist/render.d.ts",
+            "import": "./dist/render.mjs",
+            "require": "./dist/render.js"
+        },
+        "./mailer": {
+            "types": "./dist/mailer.d.ts",
+            "import": "./dist/mailer.mjs",
+            "require": "./dist/mailer.js"
+        },
+        "./providers/resend": {
+            "types": "./dist/providers/resend.d.ts",
+            "import": "./dist/providers/resend.mjs",
+            "require": "./dist/providers/resend.js"
+        },
+        "./providers/cloudflare": {
+            "types": "./dist/providers/cloudflare.d.ts",
+            "import": "./dist/providers/cloudflare.mjs",
+            "require": "./dist/providers/cloudflare.js"
+        },
+        "./providers/nodemailer": {
+            "types": "./dist/providers/nodemailer.d.ts",
+            "import": "./dist/providers/nodemailer.mjs",
+            "require": "./dist/providers/nodemailer.js"
+        },
+        "./providers/ses": {
+            "types": "./dist/providers/ses.d.ts",
+            "import": "./dist/providers/ses.mjs",
+            "require": "./dist/providers/ses.js"
+        }
     },
-    "./templates": {
-      "types": "./dist/templates.d.ts",
-      "import": "./dist/templates.mjs",
-      "require": "./dist/templates.js"
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
     },
-    "./render": {
-      "types": "./dist/render.d.ts",
-      "import": "./dist/render.mjs",
-      "require": "./dist/render.js"
+    "keywords": [
+        "email",
+        "mailer",
+        "templates",
+        "handlebars",
+        "cloudflare",
+        "edge",
+        "ottabase"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "handlebars": "catalog:",
+        "nodemailer": "catalog:"
     },
-    "./mailer": {
-      "types": "./dist/mailer.d.ts",
-      "import": "./dist/mailer.mjs",
-      "require": "./dist/mailer.js"
-    },
-    "./providers/resend": {
-      "types": "./dist/providers/resend.d.ts",
-      "import": "./dist/providers/resend.mjs",
-      "require": "./dist/providers/resend.js"
-    },
-    "./providers/cloudflare": {
-      "types": "./dist/providers/cloudflare.d.ts",
-      "import": "./dist/providers/cloudflare.mjs",
-      "require": "./dist/providers/cloudflare.js"
-    },
-    "./providers/nodemailer": {
-      "types": "./dist/providers/nodemailer.d.ts",
-      "import": "./dist/providers/nodemailer.mjs",
-      "require": "./dist/providers/nodemailer.js"
-    },
-    "./providers/ses": {
-      "types": "./dist/providers/ses.d.ts",
-      "import": "./dist/providers/ses.mjs",
-      "require": "./dist/providers/ses.js"
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "@types/nodemailer": "catalog:",
+        "eslint": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
     }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "keywords": [
-    "email",
-    "mailer",
-    "templates",
-    "handlebars",
-    "cloudflare",
-    "edge",
-    "ottabase"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "handlebars": "catalog:",
-    "nodemailer": "catalog:"
-  },
-  "devDependencies": {
-    "@types/node": "catalog:",
-    "@types/nodemailer": "catalog:",
-    "eslint": "catalog:",
-    "rimraf": "catalog:",
-    "tsup": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
-  }
 }

@@ -1,90 +1,90 @@
 {
-  "name": "@ottabase/ottaorm",
-  "version": "1.0.0",
-  "description": "Drizzle-based ORM for Ottabase applications with D1 support - class-based models with relationships, validations, and metadata",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/ottaorm",
+    "version": "1.0.0",
+    "description": "Drizzle-based ORM for Ottabase applications with D1 support - class-based models with relationships, validations, and metadata",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./models": {
+            "types": "./dist/models/index.d.ts",
+            "import": "./dist/models/index.mjs",
+            "require": "./dist/models/index.js"
+        },
+        "./base": {
+            "types": "./dist/base/index.d.ts",
+            "import": "./dist/base/index.mjs",
+            "require": "./dist/base/index.js"
+        },
+        "./client": {
+            "types": "./dist/client/index.d.ts",
+            "import": "./dist/client/index.mjs",
+            "require": "./dist/client/index.js"
+        }
     },
-    "./models": {
-      "types": "./dist/models/index.d.ts",
-      "import": "./dist/models/index.mjs",
-      "require": "./dist/models/index.js"
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts src/models/index.ts src/base/index.ts src/client/index.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/models/index.ts src/base/index.ts src/client/index.ts --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
     },
-    "./base": {
-      "types": "./dist/base/index.d.ts",
-      "import": "./dist/base/index.mjs",
-      "require": "./dist/base/index.js"
+    "keywords": [
+        "drizzle",
+        "orm",
+        "database",
+        "d1",
+        "cloudflare",
+        "models",
+        "relationships",
+        "tanstack-query",
+        "react"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@ottabase/db": "workspace:*"
     },
-    "./client": {
-      "types": "./dist/client/index.d.ts",
-      "import": "./dist/client/index.mjs",
-      "require": "./dist/client/index.js"
+    "peerDependencies": {
+        "@cloudflare/workers-types": ">=4.0.0",
+        "@tanstack/react-query": ">=5.0.0",
+        "drizzle-orm": ">=0.30.0",
+        "mongodb": ">=6.0.0",
+        "react": ">=18.0.0"
+    },
+    "peerDependenciesMeta": {
+        "mongodb": {
+            "optional": true
+        },
+        "@tanstack/react-query": {
+            "optional": true
+        },
+        "react": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "@tanstack/react-query": "catalog:",
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "drizzle-orm": "catalog:",
+        "eslint": "catalog:",
+        "mongodb": "catalog:",
+        "react": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:"
     }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsup src/index.ts src/models/index.ts src/base/index.ts src/client/index.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/models/index.ts src/base/index.ts src/client/index.ts --format cjs,esm --dts --watch",
-    "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts,.tsx",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "keywords": [
-    "drizzle",
-    "orm",
-    "database",
-    "d1",
-    "cloudflare",
-    "models",
-    "relationships",
-    "tanstack-query",
-    "react"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@ottabase/db": "workspace:*"
-  },
-  "peerDependencies": {
-    "@cloudflare/workers-types": ">=4.0.0",
-    "@tanstack/react-query": ">=5.0.0",
-    "drizzle-orm": ">=0.30.0",
-    "mongodb": ">=6.0.0",
-    "react": ">=18.0.0"
-  },
-  "peerDependenciesMeta": {
-    "mongodb": {
-      "optional": true
-    },
-    "@tanstack/react-query": {
-      "optional": true
-    },
-    "react": {
-      "optional": true
-    }
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "catalog:",
-    "@tanstack/react-query": "catalog:",
-    "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "drizzle-orm": "catalog:",
-    "eslint": "catalog:",
-    "mongodb": "catalog:",
-    "react": "catalog:",
-    "rimraf": "catalog:",
-    "tsup": "catalog:",
-    "typescript": "catalog:"
-  }
 }

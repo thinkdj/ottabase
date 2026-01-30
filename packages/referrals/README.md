@@ -1,6 +1,7 @@
 # @ottabase/referrals
 
-Referral system package for Ottabase. Provides schema, validation, and types for implementing a complete referral tracking system.
+Referral system package for Ottabase. Provides schema, validation, and types for implementing a complete referral
+tracking system.
 
 ## Features
 
@@ -16,23 +17,23 @@ Referral system package for Ottabase. Provides schema, validation, and types for
 ### Schema
 
 ```typescript
-import { referralTrackingTable } from "@ottabase/referrals";
+import { referralTrackingTable } from '@ottabase/referrals';
 ```
 
 ### Model
 
 ```typescript
-import { ReferralTracking } from "@ottabase/referrals";
+import { ReferralTracking } from '@ottabase/referrals';
 ```
 
 ### Validation
 
 ```typescript
-import { validateReferralUsername } from "@ottabase/referrals";
+import { validateReferralUsername } from '@ottabase/referrals';
 
-const result = validateReferralUsername("myusername");
+const result = validateReferralUsername('myusername');
 if (!result.valid) {
-  console.error(result.error);
+    console.error(result.error);
 }
 ```
 
@@ -60,7 +61,5 @@ This package should be integrated with:
 2. Signup flow (attribute new users to referrers)
 3. Frontend (tracking component, dashboard)
 4. API routes (tracking, stats, username management)
-
-
 
 See the TanStack app implementation for a complete example.

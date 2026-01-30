@@ -1,11 +1,5 @@
-import { Link } from "@tanstack/react-router";
-import {
-    Button,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from "@ottabase/ui-shadcn";
+import { Link } from '@tanstack/react-router';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 
 export function CloudflareHyperdriveDemoPage() {
     return (
@@ -27,8 +21,8 @@ export function CloudflareHyperdriveDemoPage() {
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-muted-foreground">
                     <p>
-                        Hyperdrive requires deployment to Cloudflare Workers. For local
-                        testing, connect directly to your database or use remote dev.
+                        Hyperdrive requires deployment to Cloudflare Workers. For local testing, connect directly to
+                        your database or use remote dev.
                     </p>
                 </CardContent>
             </Card>

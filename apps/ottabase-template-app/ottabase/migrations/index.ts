@@ -17,7 +17,7 @@
 // See ./custom/README.md for examples
 // ============================================================
 
-import type { Migration } from "@ottabase/ottaorm";
+import type { Migration } from '@ottabase/ottaorm';
 
 /**
  * Custom migrations
@@ -38,12 +38,12 @@ import type { Migration } from "@ottabase/ottaorm";
  * }
  */
 export const appMigrations: Migration[] = [
-  // Add your custom migrations here
-  // Example:
-  // {
-  //   name: "0000_seed_initial_data",
-  //   up: async (db) => {
-  //     await db.execute(`INSERT INTO ...`);
-  //   },
-  // },
+    // Add your custom migrations here
+    // Example:
+    // {
+    //   name: "0000_seed_initial_data",
+    //   up: async (db) => {
+    //     await db.execute(`INSERT INTO ...`);
+    //   },
+    // },
 ];

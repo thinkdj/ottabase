@@ -18,11 +18,10 @@ export type { IModelConstructorParams } from './BaseModel';
 
 // Shared types
 export type {
-  ModelFieldType,
-  ModelFieldDescriptor,
-  ModelFields,
-  PackageType,
-  PaginationResult,
-  RelationshipConfig,
+    ModelFieldType,
+    ModelFieldDescriptor,
+    ModelFields,
+    PackageType,
+    PaginationResult,
+    RelationshipConfig,
 } from './AbstractBaseModel';
-

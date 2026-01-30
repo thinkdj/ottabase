@@ -1,6 +1,6 @@
 /* Import: Tailwind */
-@import "@ottabase/ui-tailwind/styles/tailwind.base.css";
+@import '@ottabase/ui-tailwind/styles/tailwind.base.css';
 /* Import: ShadCN */
-@import "@ottabase/ui-shadcn/styles.css";
+@import '@ottabase/ui-shadcn/styles.css';
 
 /* App-specific styles */

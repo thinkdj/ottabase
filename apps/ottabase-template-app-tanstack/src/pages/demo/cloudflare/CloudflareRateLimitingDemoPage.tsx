@@ -1,15 +1,7 @@
-import { useState } from "react";
-import { Link } from "@tanstack/react-router";
-import {
-    Button,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    Input,
-    Progress,
-} from "@ottabase/ui-shadcn";
-import { api, isApiError } from "@/lib/api";
+import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Progress } from '@ottabase/ui-shadcn';
+import { api, isApiError } from '@/lib/api';
 
 interface RateLimitResult {
     success: boolean;
@@ -21,7 +13,7 @@ interface RateLimitResult {
 }
 
 export function CloudflareRateLimitingDemoPage() {
-    const [key, setKey] = useState("demo-user-1");
+    const [key, setKey] = useState('demo-user-1');
     const [result, setResult] = useState<RateLimitResult | null>(null);
     const [requestCount, setRequestCount] = useState(0);
     const [loading, setLoading] = useState(false);
@@ -38,8 +30,8 @@ export function CloudflareRateLimitingDemoPage() {
                 limit: number;
                 remaining: number;
                 resetAfter: number;
-            }>("/api/cloudflare/rate-limiting", {
-                method: "POST",
+            }>('/api/cloudflare/rate-limiting', {
+                method: 'POST',
                 body: { key },
             });
 
@@ -64,7 +56,7 @@ export function CloudflareRateLimitingDemoPage() {
                 });
                 setRequestCount((prev) => prev + 1);
             } else {
-                setError(isApiError(err) ? err.message : "Unknown error");
+                setError(isApiError(err) ? err.message : 'Unknown error');
                 setResult(null);
             }
         } finally {
@@ -82,9 +74,7 @@ export function CloudflareRateLimitingDemoPage() {
         }
     };
 
-    const progressValue = result
-        ? Math.max(0, Math.min(100, (result.remaining / result.limit) * 100))
-        : 0;
+    const progressValue = result ? Math.max(0, Math.min(100, (result.remaining / result.limit) * 100)) : 0;
 
     return (
         <div className="mx-auto max-w-3xl space-y-6 px-4 py-12">
@@ -115,23 +105,19 @@ export function CloudflareRateLimitingDemoPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">
-                            Rate Limit Key (user ID, IP, etc.)
-                        </label>
+                        <label className="text-sm font-medium">Rate Limit Key (user ID, IP, etc.)</label>
                         <Input
                             value={key}
                             onChange={(e) => setKey(e.target.value)}
                             placeholder="user-123"
                             disabled={loading}
                         />
-                        <p className="text-xs text-muted-foreground">
-                            Different keys have separate rate limits
-                        </p>
+                        <p className="text-xs text-muted-foreground">Different keys have separate rate limits</p>
                     </div>
 
                     <div className="flex gap-2">
                         <Button onClick={handleTestLimit} disabled={loading || !key} className="flex-1">
-                            {loading ? "Testing..." : "Test Rate Limit"}
+                            {loading ? 'Testing...' : 'Test Rate Limit'}
                         </Button>
                         <Button
                             onClick={handleRapidTest}
@@ -147,11 +133,9 @@ export function CloudflareRateLimitingDemoPage() {
                         <div className="rounded-lg border bg-muted/50 p-4">
                             <div className="mb-3 flex items-center justify-between">
                                 <span className="text-sm font-medium">
-                                    {result.success ? "✓ Request Allowed" : "✗ Rate Limit Exceeded"}
+                                    {result.success ? '✓ Request Allowed' : '✗ Rate Limit Exceeded'}
                                 </span>
-                                <span className="text-xs text-muted-foreground">
-                                    Request #{requestCount}
-                                </span>
+                                <span className="text-xs text-muted-foreground">Request #{requestCount}</span>
                             </div>
 
                             <div className="space-y-2 text-sm">
@@ -178,7 +162,7 @@ export function CloudflareRateLimitingDemoPage() {
 
                             {!result.success ? (
                                 <p className="mt-3 text-sm text-destructive">
-                                    {result.error || "Too many requests. Please try again later."}
+                                    {result.error || 'Too many requests. Please try again later.'}
                                 </p>
                             ) : null}
                         </div>

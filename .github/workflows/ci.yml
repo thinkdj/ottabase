@@ -1,7 +1,7 @@
 name: CI - Build & Test
 
 on:
-    workflow_dispatch:  # Manual trigger only
+    workflow_dispatch: # Manual trigger only
     # Disabled automatic triggers - uncomment to enable:
     # pull_request:
     #     branches:

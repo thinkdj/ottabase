@@ -17,11 +17,11 @@ import React from 'react';
 import { HelloBox } from '@ottabase/hello-world';
 
 function App() {
-  return (
-    <div>
-      <HelloBox />
-    </div>
-  );
+    return (
+        <div>
+            <HelloBox />
+        </div>
+    );
 }
 
 export default App;

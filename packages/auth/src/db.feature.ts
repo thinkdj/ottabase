@@ -1,4 +1,4 @@
-import { defineFeatureSchema, registerFeature } from "@ottabase/db/registry";
+import { defineFeatureSchema, registerFeature } from '@ottabase/db/registry';
 
 /**
  * Auth feature schema definition for Drizzle
@@ -13,21 +13,20 @@ import { defineFeatureSchema, registerFeature } from "@ottabase/db/registry";
  * No separate schema files needed - migrations are managed by OttaORM.
  */
 export const authFeature = defineFeatureSchema({
-  featureId: "auth",
-  name: "Authentication",
-  description:
-    "Auth.js (NextAuth.js) compatible authentication models for Drizzle + D1",
-  packageName: "@ottabase/auth",
-  schemaPath: "", // Empty - using OttaORM migrations
-  dependencies: ["@ottabase/ottaorm"], // Requires OttaORM for migrations
-  version: "1.0.0",
+    featureId: 'auth',
+    name: 'Authentication',
+    description: 'Auth.js (NextAuth.js) compatible authentication models for Drizzle + D1',
+    packageName: '@ottabase/auth',
+    schemaPath: '', // Empty - using OttaORM migrations
+    dependencies: ['@ottabase/ottaorm'], // Requires OttaORM for migrations
+    version: '1.0.0',
 });
 
 /**
  * Register the auth feature with the global registry
  */
 export function registerAuthFeature(): void {
-  registerFeature(authFeature);
+    registerFeature(authFeature);
 }
 
 // Auto-register auth feature by default

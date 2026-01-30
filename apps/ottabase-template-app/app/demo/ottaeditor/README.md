@@ -5,9 +5,11 @@ This demo showcases the new typesafe plugin configuration system for `@ottabase/
 ## What's Demonstrated
 
 ### Editor 1: All Default Plugins
+
 Loads all 15 default plugins using `defaultPlugins: 'all'`
 
 ### Editor 2: Selective + Custom Plugin
+
 - Only loads `header` and `paragraph` from defaults
 - Adds a custom `CustomAlertPlugin` using `additionalPlugins`
 
@@ -26,6 +28,7 @@ Loads all 15 default plugins using `defaultPlugins: 'all'`
 ## Custom Plugin Example
 
 The `CustomAlertPlugin` demonstrates:
+
 - BlockTool interface implementation
 - Custom UI rendering with dropdowns and textareas
 - Data validation

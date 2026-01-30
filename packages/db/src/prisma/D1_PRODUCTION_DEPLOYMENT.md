@@ -4,7 +4,8 @@ Complete guide for deploying your Ottabase app with Cloudflare D1 and Prisma to 
 
 ## Overview
 
-Your setup correctly handles both development and production environments. This guide covers the production-specific steps.
+Your setup correctly handles both development and production environments. This guide covers the production-specific
+steps.
 
 ## Prerequisites
 
@@ -55,9 +56,9 @@ Your app uses [wrangler.jsonc](../apps/ottabase-template-app/wrangler.jsonc) wit
 
 ```json
 {
-  "scripts": {
-    "prebuild": "pnpm db:generate"
-  }
+    "scripts": {
+        "prebuild": "pnpm db:generate"
+    }
 }
 ```
 
@@ -144,6 +145,7 @@ wrangler d1 execute ottabase-db --remote --command="SELECT 1"
 ### Migration Commands
 
 **Local Testing**:
+
 ```bash
 cd apps/your-app
 
@@ -155,6 +157,7 @@ wrangler d1 execute DB --local --command="SELECT * FROM User LIMIT 1"
 ```
 
 **Production Apply**:
+
 ```bash
 # Find the latest migration
 ls -la prisma/migrations/
@@ -171,6 +174,7 @@ wrangler d1 execute ottabase-db --remote --command="SELECT * FROM User LIMIT 1"
 ### Migration Status Tracking
 
 **Check what's been applied**:
+
 ```bash
 # Local
 wrangler d1 migrations list DB --local
@@ -180,6 +184,7 @@ wrangler d1 migrations list ottabase-db --remote
 ```
 
 **Create migration tracking table** (optional but recommended):
+
 ```sql
 CREATE TABLE IF NOT EXISTS _prisma_migrations (
   id TEXT PRIMARY KEY,
@@ -275,50 +280,50 @@ For breaking changes (requires downtime):
 name: Deploy to Production
 
 on:
-  push:
-    branches: [main]
+    push:
+        branches: [main]
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
+            - uses: pnpm/action-setup@v2
+              with:
+                  version: 8
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'pnpm'
 
-      - name: Install dependencies
-        run: pnpm install
+            - name: Install dependencies
+              run: pnpm install
 
-      - name: Build app
-        run: |
-          cd apps/ottabase-template-app
-          pnpm build
-          pnpm build:worker
+            - name: Build app
+              run: |
+                  cd apps/ottabase-template-app
+                  pnpm build
+                  pnpm build:worker
 
-      - name: Deploy to Cloudflare
-        run: |
-          cd apps/ottabase-template-app
-          pnpm wrangler deploy --env production
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+            - name: Deploy to Cloudflare
+              run: |
+                  cd apps/ottabase-template-app
+                  pnpm wrangler deploy --env production
+              env:
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
-      - name: Apply migrations
-        run: |
-          cd apps/ottabase-template-app
-          # Find latest migration
-          MIGRATION=$(ls -t prisma/migrations/ | head -1)
-          pnpm wrangler d1 execute ottabase-db \
-            --remote \
-            --file=prisma/migrations/$MIGRATION/migration.sql
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+            - name: Apply migrations
+              run: |
+                  cd apps/ottabase-template-app
+                  # Find latest migration
+                  MIGRATION=$(ls -t prisma/migrations/ | head -1)
+                  pnpm wrangler d1 execute ottabase-db \
+                    --remote \
+                    --file=prisma/migrations/$MIGRATION/migration.sql
+              env:
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 ```
 
 ### Environment Variables for CI/CD
@@ -332,6 +337,7 @@ PROD_D1_DATABASE_ID=a1b2c3d4-e5f6-7890-abcd-ef1234567890
 ```
 
 **Get API Token**: https://dash.cloudflare.com/profile/api-tokens
+
 - Template: "Edit Cloudflare Workers"
 - Permissions: Workers, D1, Pages
 
@@ -344,6 +350,7 @@ PROD_D1_DATABASE_ID=a1b2c3d4-e5f6-7890-abcd-ef1234567890
 **Cause**: Prisma Client not regenerated.
 
 **Solution**:
+
 ```bash
 # Verify prebuild hook exists
 grep "prebuild" apps/your-app/package.json
@@ -362,6 +369,7 @@ pnpm deploy
 **Cause**: Code deployed before migration, or migration not applied.
 
 **Solution**:
+
 ```bash
 # Check migration status
 wrangler d1 migrations list ottabase-db --remote
@@ -380,6 +388,7 @@ wrangler d1 execute ottabase-db --remote --file=prisma/migrations/.../migration.
 **Cause**: Database not created or wrong name/ID in wrangler.jsonc.
 
 **Solution**:
+
 ```bash
 # List databases
 wrangler d1 list
@@ -395,6 +404,7 @@ grep -A 5 "d1_databases" apps/your-app/wrangler.jsonc
 **Cause**: Prisma Client not bundled or wrong binary target.
 
 **Solution**:
+
 ```bash
 # Regenerate with correct binary targets
 cd apps/your-app
@@ -412,6 +422,7 @@ grep -A 5 "generator client" prisma/schema.prisma
 **Cause**: D1 doesn't support transactions (by design).
 
 **Solution**: This is expected behavior. Design your app to:
+
 - Use idempotent operations
 - Implement application-level compensating transactions
 - Accept eventual consistency
@@ -483,6 +494,7 @@ curl -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/d1/databa
 ```
 
 Deploy to preview:
+
 ```bash
 wrangler deploy --env preview
 ```
@@ -492,6 +504,7 @@ wrangler deploy --env preview
 ### Scenario: Add `emailVerified` column to User model
 
 **1. Update Schema**:
+
 ```prisma
 // apps/your-app/ottabase/prisma/app.schema.prisma
 model User {
@@ -503,6 +516,7 @@ model User {
 ```
 
 **2. Generate & Test Locally**:
+
 ```bash
 pnpm db:generate
 pnpm db:migrate --name=add_email_verified --apply=local
@@ -511,6 +525,7 @@ pnpm dev
 ```
 
 **3. Commit & Push**:
+
 ```bash
 git add prisma/migrations/
 git commit -m "feat: add emailVerified field to User"
@@ -518,6 +533,7 @@ git push origin main
 ```
 
 **4. Apply to Production**:
+
 ```bash
 # CI/CD auto-deploys, or manually:
 wrangler d1 execute ottabase-db \
@@ -528,6 +544,7 @@ wrangler deploy --env production
 ```
 
 **5. Verify**:
+
 ```bash
 # Check schema
 wrangler d1 execute ottabase-db --remote --command="PRAGMA table_info(User)"
@@ -546,6 +563,7 @@ curl https://your-app.pages.dev/api/users
 ## Support
 
 For production deployment issues:
+
 - GitHub Issues: [ottabase/issues](https://github.com/yourusername/ottabase/issues)
 - Cloudflare Community: https://community.cloudflare.com/
 - Cloudflare Support: https://support.cloudflare.com/

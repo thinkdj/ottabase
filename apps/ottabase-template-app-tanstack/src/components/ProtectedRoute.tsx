@@ -1,17 +1,14 @@
-import { ReactNode, useEffect } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { useSession } from "@/lib/auth";
-import { Spinner } from "@ottabase/ui-shadcn";
+import { ReactNode, useEffect } from 'react';
+import { useNavigate } from '@tanstack/react-router';
+import { useSession } from '@/lib/auth';
+import { Spinner } from '@ottabase/ui-shadcn';
 
 interface ProtectedRouteProps {
     children: ReactNode;
     redirectTo?: string;
 }
 
-export function ProtectedRoute({
-    children,
-    redirectTo = "/login",
-}: ProtectedRouteProps) {
+export function ProtectedRoute({ children, redirectTo = '/login' }: ProtectedRouteProps) {
     const navigate = useNavigate();
     const { isAuthenticated, isLoading } = useSession();
 

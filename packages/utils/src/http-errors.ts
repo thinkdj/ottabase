@@ -38,10 +38,10 @@ export class ServiceError extends Error {
             hint?: string;
             messages?: string[];
             fieldErrors?: Record<string, string[]>;
-        } = {}
+        } = {},
     ) {
         super(message);
-        this.name = "ServiceError";
+        this.name = 'ServiceError';
         this.status = status;
         this.code = options.code;
         this.details = options.details;
@@ -60,7 +60,7 @@ export class ServiceError extends Error {
     toApiResponse(): ApiErrorResponse {
         return {
             error: this.message,
-            code: this.code || (this.status >= 500 ? "INTERNAL_SERVER_ERROR" : "BAD_REQUEST"),
+            code: this.code || (this.status >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST'),
             details: this.details,
             hint: this.hint,
             messages: this.messages || [this.message],
@@ -75,11 +75,11 @@ export class ServiceError extends Error {
 export function errorResponse(
     message: string,
     status: number = 500,
-    options: Partial<ApiErrorResponse> = {}
+    options: Partial<ApiErrorResponse> = {},
 ): Response {
     const body: ApiErrorResponse = {
         error: message,
-        code: options.code || (status >= 500 ? "INTERNAL_SERVER_ERROR" : "BAD_REQUEST"),
+        code: options.code || (status >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST'),
         messages: options.messages || [message],
         details: options.details,
         hint: options.hint,
@@ -89,7 +89,7 @@ export function errorResponse(
     return new Response(JSON.stringify(body), {
         status,
         headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
         },
     });
 }

@@ -2,39 +2,39 @@
  * App Global State
  * Central state management for ottabase-template-app-tanstack
  */
-import { createAppState, type BaseUser, type SidebarState } from "@ottabase/state";
+import { createAppState, type BaseUser, type SidebarState } from '@ottabase/state';
 
 // Extend BaseUser if needed
 export interface AppUser extends BaseUser {
-  role?: string;
+    role?: string;
 }
 
 // Create app state with appName
 const { appStateAtom, atoms, createAtom } = createAppState<AppUser>({
-  appName: "Ottabase",
-  initialState: {
-    theme: "light",
-    themeInfo: {
-      name: "default",
+    appName: 'Ottabase',
+    initialState: {
+        theme: 'light',
+        themeInfo: {
+            name: 'default',
+        },
+        sidebarState: {
+            isOpen: true,
+            isCollapsed: false,
+            width: 250,
+        },
     },
-    sidebarState: {
-      isOpen: true,
-      isCollapsed: false,
-      width: 250,
-    },
-  },
 });
 
 // Export individual atoms for component use
 export const {
-  themeAtom,
-  themeInfoAtom,
-  userAtom,
-  isAuthenticatedAtom,
-  sidebarStateAtom,
-  scaleAtom,
-  zoomAtom,
-  isLoadingAtom,
+    themeAtom,
+    themeInfoAtom,
+    userAtom,
+    isAuthenticatedAtom,
+    sidebarStateAtom,
+    scaleAtom,
+    zoomAtom,
+    isLoadingAtom,
 } = atoms;
 
 // Export main atom and factory

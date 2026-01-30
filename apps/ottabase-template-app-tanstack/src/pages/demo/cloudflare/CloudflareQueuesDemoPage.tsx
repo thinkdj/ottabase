@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import {
     Button,
     Card,
@@ -9,8 +9,8 @@ import {
     CardTitle,
     Input,
     Textarea,
-} from "@ottabase/ui-shadcn";
-import { api, isApiError } from "@/lib/api";
+} from '@ottabase/ui-shadcn';
+import { api, isApiError } from '@/lib/api';
 
 interface QueueMessage {
     key: string;
@@ -18,20 +18,20 @@ interface QueueMessage {
     action?: string;
     data?: unknown;
     sentAt: string;
-    type: "single" | "batch";
+    type: 'single' | 'batch';
 }
 
 // Available job types from the registry
 const JOB_TYPES = [
-    { value: "send-email", label: "Send Email", description: "Dispatch an email job" },
-    { value: "process-order", label: "Process Order", description: "Process an order" },
-    { value: "generate-report", label: "Generate Report", description: "Generate a report" },
-    { value: "sync-data", label: "Sync Data", description: "Synchronize data" },
-    { value: "batch-task", label: "Batch Task", description: "Generic batch task" },
+    { value: 'send-email', label: 'Send Email', description: 'Dispatch an email job' },
+    { value: 'process-order', label: 'Process Order', description: 'Process an order' },
+    { value: 'generate-report', label: 'Generate Report', description: 'Generate a report' },
+    { value: 'sync-data', label: 'Sync Data', description: 'Synchronize data' },
+    { value: 'batch-task', label: 'Batch Task', description: 'Generic batch task' },
 ] as const;
 
 export function CloudflareQueuesDemoPage() {
-    const [jobType, setJobType] = useState<string>("send-email");
+    const [jobType, setJobType] = useState<string>('send-email');
     const [payload, setPayload] = useState('{\n  "to": "user@example.com",\n  "subject": "Welcome!"\n}');
     const [delay, setDelay] = useState<number>(0);
     const [batchCount, setBatchCount] = useState(3);
@@ -42,7 +42,7 @@ export function CloudflareQueuesDemoPage() {
 
     const loadMessages = async () => {
         try {
-            const data = await api<{ messages?: QueueMessage[] }>("/api/cloudflare/queues");
+            const data = await api<{ messages?: QueueMessage[] }>('/api/cloudflare/queues');
             setMessages(data.messages || []);
         } catch {
             // ignore - toast handles errors
@@ -58,11 +58,11 @@ export function CloudflareQueuesDemoPage() {
     // Update payload template when job type changes
     useEffect(() => {
         const templates: Record<string, string> = {
-            "send-email": '{\n  "to": "user@example.com",\n  "subject": "Welcome!",\n  "template": "welcome"\n}',
-            "process-order": '{\n  "orderId": "ORD-12345",\n  "userId": "user-123"\n}',
-            "generate-report": '{\n  "reportType": "monthly-sales",\n  "params": { "month": 1, "year": 2024 }\n}',
-            "sync-data": '{\n  "source": "crm",\n  "target": "analytics",\n  "entityType": "orders"\n}',
-            "batch-task": '{\n  "taskNumber": 1,\n  "data": { "key": "value" }\n}',
+            'send-email': '{\n  "to": "user@example.com",\n  "subject": "Welcome!",\n  "template": "welcome"\n}',
+            'process-order': '{\n  "orderId": "ORD-12345",\n  "userId": "user-123"\n}',
+            'generate-report': '{\n  "reportType": "monthly-sales",\n  "params": { "month": 1, "year": 2024 }\n}',
+            'sync-data': '{\n  "source": "crm",\n  "target": "analytics",\n  "entityType": "orders"\n}',
+            'batch-task': '{\n  "taskNumber": 1,\n  "data": { "key": "value" }\n}',
         };
         setPayload(templates[jobType] || '{}');
     }, [jobType]);
@@ -79,12 +79,12 @@ export function CloudflareQueuesDemoPage() {
             try {
                 parsedPayload = JSON.parse(payload);
             } catch {
-                setError("Invalid JSON payload");
+                setError('Invalid JSON payload');
                 return;
             }
 
-            await api("/api/cloudflare/queues", {
-                method: "POST",
+            await api('/api/cloudflare/queues', {
+                method: 'POST',
                 body: {
                     type: jobType,
                     payload: parsedPayload,
@@ -92,10 +92,10 @@ export function CloudflareQueuesDemoPage() {
                 },
             });
 
-            setSuccess(`Job dispatched: ${jobType}${delay > 0 ? ` (delay: ${delay}s)` : ""}`);
+            setSuccess(`Job dispatched: ${jobType}${delay > 0 ? ` (delay: ${delay}s)` : ''}`);
             await loadMessages();
         } catch (err) {
-            setError(isApiError(err) ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -109,19 +109,19 @@ export function CloudflareQueuesDemoPage() {
 
             const batch = Array.from({ length: batchCount }, (_, i) => ({
                 userId: `user-${i + 1}`,
-                action: "batch-task",
+                action: 'batch-task',
                 data: { taskNumber: i + 1 },
             }));
 
-            await api("/api/cloudflare/queues", {
-                method: "POST",
+            await api('/api/cloudflare/queues', {
+                method: 'POST',
                 body: { batch },
             });
 
             setSuccess(`Dispatched ${batchCount} jobs to queue!`);
             await loadMessages();
         } catch (err) {
-            setError(isApiError(err) ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -135,9 +135,7 @@ export function CloudflareQueuesDemoPage() {
 
             <div>
                 <h1 className="mb-2 text-3xl font-semibold">Queue Demo</h1>
-                <p className="text-muted-foreground">
-                    Async job dispatching with @ottabase/queue
-                </p>
+                <p className="text-muted-foreground">Async job dispatching with @ottabase/queue</p>
             </div>
 
             <Card className="border-dashed">
@@ -155,7 +153,7 @@ export function CloudflareQueuesDemoPage() {
                         <strong>3. Retry:</strong> Failed jobs are automatically retried (up to 3 times by default)
                     </p>
                     <pre className="mt-3 overflow-x-auto rounded bg-muted p-3 text-xs">
-{`// Dispatch a job from anywhere
+                        {`// Dispatch a job from anywhere
 import { dispatch } from "@ottabase/queue";
 
 await dispatch(env.OBCF_QUEUE, "send-email", {
@@ -228,9 +226,7 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                                     disabled={loading}
                                     placeholder="0 = immediate"
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    Max delay: 43200 seconds (12 hours)
-                                </p>
+                                <p className="text-xs text-muted-foreground">Max delay: 43200 seconds (12 hours)</p>
                             </div>
 
                             <Button type="submit" disabled={loading} className="w-full">
@@ -261,7 +257,7 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                         <div className="rounded-lg bg-muted p-4">
                             <p className="mb-2 text-xs font-medium text-muted-foreground">Preview:</p>
                             <pre className="overflow-x-auto text-xs">
-{`{
+                                {`{
   type: "batch-task",
   payload: {
     userId: "user-1",
@@ -289,10 +285,7 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                 <CardContent>
                     <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
                         {JOB_TYPES.map((type) => (
-                            <div
-                                key={type.value}
-                                className="rounded-lg border p-3"
-                            >
+                            <div key={type.value} className="rounded-lg border p-3">
                                 <p className="font-mono text-sm">{type.value}</p>
                                 <p className="text-xs text-muted-foreground">{type.description}</p>
                             </div>
@@ -324,7 +317,7 @@ await dispatch(env.OBCF_QUEUE, "send-email", {
                                         <div className="min-w-0 flex-1">
                                             <div className="mb-1 flex items-center gap-2">
                                                 <span className="font-mono text-sm font-medium">
-                                                    {msg.action || "unknown"}
+                                                    {msg.action || 'unknown'}
                                                 </span>
                                                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                                                     {msg.type}

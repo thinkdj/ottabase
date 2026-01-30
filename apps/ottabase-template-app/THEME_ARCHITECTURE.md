@@ -40,20 +40,17 @@ The theme state is created with localStorage persistence:
 
 ```typescript
 // Create a persisted theme atom with localStorage (SINGLE SOURCE OF TRUTH)
-const themeStorageAtom = atomWithStorage<"light" | "dark">(
-  "ottabase-theme",
-  initialState.theme ?? "light"
-);
+const themeStorageAtom = atomWithStorage<'light' | 'dark'>('ottabase-theme', initialState.theme ?? 'light');
 
 // Special handling for theme to use localStorage-backed atom
-if (key === "theme") {
-  return atom(
-    (get) => get(themeStorageAtom),
-    (_get, set, update) => {
-      set(themeStorageAtom, update as "light" | "dark");
-      set(appGlobalStateAtom, (prev) => ({ ...prev, [key]: update }));
-    },
-  );
+if (key === 'theme') {
+    return atom(
+        (get) => get(themeStorageAtom),
+        (_get, set, update) => {
+            set(themeStorageAtom, update as 'light' | 'dark');
+            set(appGlobalStateAtom, (prev) => ({ ...prev, [key]: update }));
+        },
+    );
 }
 ```
 
@@ -68,26 +65,27 @@ if (key === "theme") {
 
 **Location**: `apps/ottabase-template-app/ottabase/hooks/useThemeManager.ts`
 
-The `useThemeManager` hook is now the single point of interaction for theme changes. It coordinates updates between the global Jotai state and the `next-themes` provider.
+The `useThemeManager` hook is now the single point of interaction for theme changes. It coordinates updates between the
+global Jotai state and the `next-themes` provider.
 
 ```typescript
 export function useThemeManager() {
-  const [globalTheme, setGlobalTheme] = useAtom(themeAtom);
-  const { setTheme: setNextTheme, resolvedTheme } = useTheme();
+    const [globalTheme, setGlobalTheme] = useAtom(themeAtom);
+    const { setTheme: setNextTheme, resolvedTheme } = useTheme();
 
-  // Effect to keep next-themes in sync with the global state (Jotai -> next-themes)
-  useEffect(() => {
-    if (globalTheme && resolvedTheme !== globalTheme) {
-      setNextTheme(globalTheme);
-    }
-  }, [globalTheme, resolvedTheme, setNextTheme]);
+    // Effect to keep next-themes in sync with the global state (Jotai -> next-themes)
+    useEffect(() => {
+        if (globalTheme && resolvedTheme !== globalTheme) {
+            setNextTheme(globalTheme);
+        }
+    }, [globalTheme, resolvedTheme, setNextTheme]);
 
-  const toggleTheme = () => {
-    const newTheme = globalTheme === "light" ? "dark" : "light";
-    setGlobalTheme(newTheme); // This triggers the useEffect above
-  };
+    const toggleTheme = () => {
+        const newTheme = globalTheme === 'light' ? 'dark' : 'light';
+        setGlobalTheme(newTheme); // This triggers the useEffect above
+    };
 
-  return { theme: globalTheme, toggleTheme, setTheme: setGlobalTheme };
+    return { theme: globalTheme, toggleTheme, setTheme: setGlobalTheme };
 }
 ```
 
@@ -95,7 +93,8 @@ export function useThemeManager() {
 
 **Location**: `packages/ui-mantine/provider/ProviderUI.tsx` & `apps/ottabase-template-app/app/demo/mantine/layout.tsx`
 
-The `ProviderUIMantine` component is now a **controlled component**. It receives the color scheme directly as a prop. The `MantineThemeSync` component has been removed.
+The `ProviderUIMantine` component is now a **controlled component**. It receives the color scheme directly as a prop.
+The `MantineThemeSync` component has been removed.
 
 **Provider Implementation (`ProviderUIMantine.tsx`):**
 
@@ -117,15 +116,9 @@ const ProviderUIMantine = ({ colorScheme, ... }) => {
 ```tsx
 // app/demo/mantine/layout.tsx
 export default function MantineLayout({ children }) {
-  const globalTheme = useAtomValue(themeAtom);
+    const globalTheme = useAtomValue(themeAtom);
 
-  return (
-    <ProviderUIMantine
-      colorScheme={globalTheme}
-    >
-      {children}
-    </ProviderUIMantine>
-  );
+    return <ProviderUIMantine colorScheme={globalTheme}>{children}</ProviderUIMantine>;
 }
 ```
 
@@ -195,15 +188,15 @@ function ThemeButton() {
 ### Using with createAppGlobalStateAtom
 
 ```typescript
-import { useSetAtom } from "jotai";
-import { createAppGlobalStateAtom } from "@/ottabase/state/appGlobalState";
+import { useSetAtom } from 'jotai';
+import { createAppGlobalStateAtom } from '@/ottabase/state/appGlobalState';
 
 function ThemeToggle() {
-  const setTheme = useSetAtom(createAppGlobalStateAtom("theme"));
+    const setTheme = useSetAtom(createAppGlobalStateAtom('theme'));
 
-  useEffect(() => {
-    setTheme("dark");
-  }, [setTheme]);
+    useEffect(() => {
+        setTheme('dark');
+    }, [setTheme]);
 }
 ```
 
@@ -246,27 +239,27 @@ To add support for another UI framework:
 
 1. **Create a sync component**:
 
-   ```typescript
-   function NewFrameworkSync() {
-     const [globalTheme] = useAtom(themeAtom);
-     const { setTheme } = useNewFramework();
+    ```typescript
+    function NewFrameworkSync() {
+        const [globalTheme] = useAtom(themeAtom);
+        const { setTheme } = useNewFramework();
 
-     useEffect(() => {
-       setTheme(globalTheme);
-     }, [globalTheme, setTheme]);
+        useEffect(() => {
+            setTheme(globalTheme);
+        }, [globalTheme, setTheme]);
 
-     return null;
-   }
-   ```
+        return null;
+    }
+    ```
 
 2. **Add to provider tree**:
 
-   ```tsx
-   <NewFrameworkProvider>
-     <NewFrameworkSync />
-     {children}
-   </NewFrameworkProvider>
-   ```
+    ```tsx
+    <NewFrameworkProvider>
+        <NewFrameworkSync />
+        {children}
+    </NewFrameworkProvider>
+    ```
 
 3. **Done!** Your framework now stays in sync with global state.
 

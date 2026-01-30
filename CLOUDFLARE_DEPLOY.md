@@ -27,6 +27,7 @@ pnpm cloudflare:validate
 ```
 
 **What this creates:**
+
 - D1 Database: `ottabase-db`
 - KV Namespace: `OBCF_KV` (+ preview)
 - R2 Buckets: `ottabase-bucket` (+ preview)
@@ -69,14 +70,15 @@ Go to: GitHub repository → **Settings** → **Secrets and variables** → **Ac
 
 Add these **4 required secrets:**
 
-| Secret Name | Description | Where to Get |
-|------------|-------------|--------------|
-| `CLOUDFLARE_API_TOKEN` | API token for deployments | Step 2 above |
-| `CLOUDFLARE_ACCOUNT_ID` | Your account ID | `wrangler whoami` |
-| `D1_DATABASE_ID` | Production D1 database ID | `wrangler d1 list` |
-| `KV_NAMESPACE_ID` | Production KV namespace ID | `wrangler kv:namespace list` |
+| Secret Name             | Description                | Where to Get                 |
+| ----------------------- | -------------------------- | ---------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | API token for deployments  | Step 2 above                 |
+| `CLOUDFLARE_ACCOUNT_ID` | Your account ID            | `wrangler whoami`            |
+| `D1_DATABASE_ID`        | Production D1 database ID  | `wrangler d1 list`           |
+| `KV_NAMESPACE_ID`       | Production KV namespace ID | `wrangler kv:namespace list` |
 
 **Optional:**
+
 - `D1_DATABASE_NAME` (defaults to `ottabase-db`)
 
 ---
@@ -85,7 +87,8 @@ Add these **4 required secrets:**
 
 If using a database, ensure you have your migrations ready.
 
-**Note:** CI/CD automatically applies migrations to production. See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for details.
+**Note:** CI/CD automatically applies migrations to production. See
+[CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for details.
 
 ---
 
@@ -94,11 +97,13 @@ If using a database, ensure you have your migrations ready.
 ### Trigger Deployment
 
 **Option A - Push to main:**
+
 ```bash
 git push origin main
 ```
 
 **Option B - Manual trigger:**
+
 1. Go to GitHub → **Actions** tab
 2. Select **"Deploy to Cloudflare Workers"**
 3. Click **"Run workflow"**
@@ -106,6 +111,7 @@ git push origin main
 ### Monitor Deployment
 
 Watch in GitHub Actions:
+
 - ✓ Build packages
 - ✓ Build application & worker bundle
 - ✓ Apply database migrations
@@ -138,22 +144,28 @@ wrangler tail ottabase-template-app
 ## Troubleshooting
 
 ### "Resource not found" errors
+
 ```bash
 pnpm cloudflare:setup
 pnpm cloudflare:validate
 ```
+
 Then update GitHub secrets with new IDs.
 
 ### "Unauthorized" or "Invalid API token"
+
 Regenerate API token with correct permissions (Step 2).
 
 ### "Migration failed" errors
+
 ```bash
 wrangler d1 execute ottabase-db --remote --command="SELECT name FROM sqlite_master WHERE type='table'"
 ```
+
 CI pipeline gracefully handles already-applied migrations.
 
 ### Build fails
+
 ```bash
 pnpm clean
 rm -rf node_modules
@@ -192,9 +204,9 @@ wrangler queues list
 Defined in `.github/workflows/deploy.yml` - triggers on push to `main`:
 
 1. Build packages & app
-3. Build Cloudflare Worker bundle
-4. Apply database migrations
-5. Deploy to Cloudflare Workers
+2. Build Cloudflare Worker bundle
+3. Apply database migrations
+4. Deploy to Cloudflare Workers
 
 ### Important Files
 
@@ -204,14 +216,14 @@ Defined in `.github/workflows/deploy.yml` - triggers on push to `main`:
 
 ### Cloudflare Bindings
 
-| Binding | Type |
-|---------|------|
-| `OBCF_D1` | D1 Database |
-| `OBCF_KV` | KV Namespace |
-| `OBCF_R2` | R2 Bucket |
-| `OBCF_QUEUE` | Queue |
-| `OBCF_REALTIME` | Durable Object |
-| `OBCF_RATE_LIMITER` | Rate Limiter |
+| Binding             | Type           |
+| ------------------- | -------------- |
+| `OBCF_D1`           | D1 Database    |
+| `OBCF_KV`           | KV Namespace   |
+| `OBCF_R2`           | R2 Bucket      |
+| `OBCF_QUEUE`        | Queue          |
+| `OBCF_REALTIME`     | Durable Object |
+| `OBCF_RATE_LIMITER` | Rate Limiter   |
 
 See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for usage details.
 
@@ -234,6 +246,7 @@ See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for u
 
 ## Additional Resources
 
-- **[CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md)** - Technical reference for bindings, environment variables, and code usage
+- **[CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md)** - Technical reference for bindings,
+  environment variables, and code usage
 - **[Wrangler CLI Reference](https://developers.cloudflare.com/workers/wrangler/commands/)** - Official documentation
 - **[Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)** - Platform documentation

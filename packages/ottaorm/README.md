@@ -24,37 +24,43 @@ pnpm add @ottabase/ottaorm @ottabase/db drizzle-orm
 ### 1. Define Your Model
 
 ```typescript
-import { BaseModel } from "@ottabase/ottaorm";
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { BaseModel } from '@ottabase/ottaorm';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
-export const todosTable = sqliteTable("todos", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  title: text("title").notNull(),
-  completed: integer("completed", { mode: "boolean" }).default(false).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
+export const todosTable = sqliteTable('todos', {
+    id: text('id')
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    title: text('title').notNull(),
+    completed: integer('completed', { mode: 'boolean' }).default(false).notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+        .$defaultFn(() => new Date())
+        .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+        .$defaultFn(() => new Date())
+        .notNull(),
 });
 
 export class Todo extends BaseModel {
-  static entity = "todos";
-  static table = todosTable;
-  static primaryKey = "id";
+    static entity = 'todos';
+    static table = todosTable;
+    static primaryKey = 'id';
 
-  static casts = {
-    completed: 'boolean' as const,
-    createdAt: 'date' as const,
-    updatedAt: 'date' as const,
-  };
+    static casts = {
+        completed: 'boolean' as const,
+        createdAt: 'date' as const,
+        updatedAt: 'date' as const,
+    };
 
-  // Custom methods
-  static async incomplete() {
-    return this.where({ completed: false });
-  }
+    // Custom methods
+    static async incomplete() {
+        return this.where({ completed: false });
+    }
 
-  async toggle() {
-    this.set('completed', !this.get('completed'));
-    return this.save();
-  }
+    async toggle() {
+        this.set('completed', !this.get('completed'));
+        return this.save();
+    }
 }
 ```
 
@@ -62,23 +68,23 @@ export class Todo extends BaseModel {
 
 ```typescript
 // ottabase/db/schema.ts
-export { usersTable, postsTable } from "@ottabase/ottaorm";  // Core tables
-export { todosTable } from "../models/Todo";                  // Your tables
-export { shortlinksTable } from "@ottabase/shortlinks";       // Package tables
+export { usersTable, postsTable } from '@ottabase/ottaorm'; // Core tables
+export { todosTable } from '../models/Todo'; // Your tables
+export { shortlinksTable } from '@ottabase/shortlinks'; // Package tables
 ```
 
 ### 3. Initialize Database
 
 ```typescript
 // app/api/ottaorm/init/route.ts
-import { autoInit, collectTableSchemas } from "@ottabase/ottaorm";
-import { createD1Driver } from "@ottabase/db/drizzle-d1";
-import * as schema from "../../../../ottabase/db/schema";
+import { autoInit, collectTableSchemas } from '@ottabase/ottaorm';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import * as schema from '../../../../ottabase/db/schema';
 
 const driver = createD1Driver(env.OBCF_D1);
 const result = await autoInit({
-  driver,
-  schema: collectTableSchemas(schema),
+    driver,
+    schema: collectTableSchemas(schema),
 });
 // ✅ All tables created automatically!
 ```
@@ -86,14 +92,14 @@ const result = await autoInit({
 ### 4. Use Models
 
 ```typescript
-import { Todo } from "./models/Todo";
-import { setDriver } from "@ottabase/ottaorm";
+import { Todo } from './models/Todo';
+import { setDriver } from '@ottabase/ottaorm';
 
 // Set driver once (in middleware or route)
 setDriver(createD1Driver(env.OBCF_D1));
 
 // Use models anywhere
-const todo = await Todo.create({ title: "Buy groceries" });
+const todo = await Todo.create({ title: 'Buy groceries' });
 await todo.toggle();
 const all = await Todo.all();
 ```
@@ -110,15 +116,15 @@ Add D1 binding to your `wrangler.jsonc`:
 
 ```jsonc
 {
-  "name": "your-app",
-  "compatibility_date": "2024-01-01",
-  "d1_databases": [
-    {
-      "binding": "OBCF_D1",              // Accessible as env.OBCF_D1
-      "database_name": "your-app-db",
-      "database_id": "local"             // Use "local" for dev
-    }
-  ]
+    "name": "your-app",
+    "compatibility_date": "2024-01-01",
+    "d1_databases": [
+        {
+            "binding": "OBCF_D1", // Accessible as env.OBCF_D1
+            "database_name": "your-app-db",
+            "database_id": "local", // Use "local" for dev
+        },
+    ],
 }
 ```
 
@@ -162,13 +168,13 @@ Replace `database_id` with your production ID:
 
 ```jsonc
 {
-  "d1_databases": [
-    {
-      "binding": "OBCF_D1",
-      "database_name": "your-app-db",
-      "database_id": "abc123-def456-ghi789"  // ← Your production ID
-    }
-  ]
+    "d1_databases": [
+        {
+            "binding": "OBCF_D1",
+            "database_name": "your-app-db",
+            "database_id": "abc123-def456-ghi789", // ← Your production ID
+        },
+    ],
 }
 ```
 
@@ -190,16 +196,16 @@ No environment variables needed! D1 binding is configured via `wrangler.jsonc` a
 #### Next.js on Cloudflare (using @opennextjs/cloudflare)
 
 ```typescript
-import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { setDriver } from "@ottabase/ottaorm";
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { setDriver } from '@ottabase/ottaorm';
 
 export async function GET() {
-  const { env } = getCloudflareContext();
-  const driver = createD1Driver(env.OBCF_D1);
-  setDriver(driver);
+    const { env } = getCloudflareContext();
+    const driver = createD1Driver(env.OBCF_D1);
+    setDriver(driver);
 
-  const users = await User.all();
-  return Response.json(users);
+    const users = await User.all();
+    return Response.json(users);
 }
 ```
 
@@ -207,14 +213,14 @@ export async function GET() {
 
 ```typescript
 export default {
-  async fetch(request: Request, env: Env) {
-    const driver = createD1Driver(env.OBCF_D1);
-    setDriver(driver);
+    async fetch(request: Request, env: Env) {
+        const driver = createD1Driver(env.OBCF_D1);
+        setDriver(driver);
 
-    const users = await User.all();
-    return Response.json(users);
-  }
-}
+        const users = await User.all();
+        return Response.json(users);
+    },
+};
 ```
 
 ## Fat Model Pattern
@@ -222,73 +228,79 @@ export default {
 Everything in one class - schema, validation, relationships, custom methods:
 
 ```typescript
-import { BaseModel } from "@ottabase/ottaorm";
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { BaseModel } from '@ottabase/ottaorm';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 // 1. Define table schema
-export const todosTable = sqliteTable("todos", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  title: text("title").notNull(),
-  completed: integer("completed", { mode: "boolean" }).default(false).notNull(),
-  userId: text("user_id"),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
+export const todosTable = sqliteTable('todos', {
+    id: text('id')
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    title: text('title').notNull(),
+    completed: integer('completed', { mode: 'boolean' }).default(false).notNull(),
+    userId: text('user_id'),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+        .$defaultFn(() => new Date())
+        .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+        .$defaultFn(() => new Date())
+        .notNull(),
 });
 
 // 2. Define model class
 export class Todo extends BaseModel {
-  static entity = "todos";
-  static table = todosTable;
-  static primaryKey = "id";
+    static entity = 'todos';
+    static table = todosTable;
+    static primaryKey = 'id';
 
-  // Type casting
-  static casts = {
-    completed: 'boolean' as const,
-    createdAt: 'date' as const,
-    updatedAt: 'date' as const,
-  };
+    // Type casting
+    static casts = {
+        completed: 'boolean' as const,
+        createdAt: 'date' as const,
+        updatedAt: 'date' as const,
+    };
 
-  // Default values
-  protected static defaults = {
-    completed: false,
-  };
+    // Default values
+    protected static defaults = {
+        completed: false,
+    };
 
-  // Field metadata (for UI generation)
-  protected static fields = {
-    title: {
-      type: 'string',
-      editable: true,
-      searchable: true,
-      sortable: true,
-      uiConfig: {
-        label: 'Title',
-        placeholder: 'What needs to be done?',
-      },
-      validation: {
-        rules: "required",
-        messages: {
-          required: "Title is required",
-        }
-      }
-    },
-    // ... more fields
-  };
+    // Field metadata (for UI generation)
+    protected static fields = {
+        title: {
+            type: 'string',
+            editable: true,
+            searchable: true,
+            sortable: true,
+            uiConfig: {
+                label: 'Title',
+                placeholder: 'What needs to be done?',
+            },
+            validation: {
+                rules: 'required',
+                messages: {
+                    required: 'Title is required',
+                },
+            },
+        },
+        // ... more fields
+    };
 
-  // Relationships
-  async user(select?: string[]) {
-    const { User } = await import("@ottabase/ottaorm");
-    return this.belongsTo(User, 'userId', { select });
-  }
+    // Relationships
+    async user(select?: string[]) {
+        const { User } = await import('@ottabase/ottaorm');
+        return this.belongsTo(User, 'userId', { select });
+    }
 
-  // Custom methods
-  static async incomplete() {
-    return this.where({ completed: false });
-  }
+    // Custom methods
+    static async incomplete() {
+        return this.where({ completed: false });
+    }
 
-  async toggle() {
-    this.set('completed', !this.get('completed'));
-    return this.save();
-  }
+    async toggle() {
+        this.set('completed', !this.get('completed'));
+        return this.save();
+    }
 }
 ```
 
@@ -299,25 +311,22 @@ export class Todo extends BaseModel {
 ```typescript
 // Create single record
 const todo = await Todo.create({
-  title: "Buy groceries",
-  userId: "user-123"
+    title: 'Buy groceries',
+    userId: 'user-123',
 });
 
 // Create multiple records
-const todos = await Todo.createMany([
-  { title: "Task 1" },
-  { title: "Task 2" }
-]);
+const todos = await Todo.createMany([{ title: 'Task 1' }, { title: 'Task 2' }]);
 ```
 
 ### Reading Records
 
 ```typescript
 // Find by primary key
-const todo = await Todo.find("todo-id");
+const todo = await Todo.find('todo-id');
 
 // Find or throw error
-const todo = await Todo.findOrFail("todo-id");
+const todo = await Todo.findOrFail('todo-id');
 
 // First record matching conditions
 const todo = await Todo.first({ completed: false });
@@ -329,17 +338,20 @@ const todos = await Todo.all();
 const todos = await Todo.where({ completed: true });
 
 // With ordering
-const todos = await Todo.where({ userId: "user-123" }, {
-  orderBy: 'createdAt',
-  orderDirection: 'desc'
-});
+const todos = await Todo.where(
+    { userId: 'user-123' },
+    {
+        orderBy: 'createdAt',
+        orderDirection: 'desc',
+    },
+);
 
 // Pagination
 const result = await Todo.paginate({
-  page: 1,
-  perPage: 10,
-  orderBy: 'createdAt',
-  orderDirection: 'desc'
+    page: 1,
+    perPage: 10,
+    orderBy: 'createdAt',
+    orderDirection: 'desc',
 });
 // result = { data: Todo[], meta: { total, page, perPage, totalPages } }
 ```
@@ -348,27 +360,27 @@ const result = await Todo.paginate({
 
 ```typescript
 // Update via instance
-const todo = await Todo.find("todo-id");
-todo.set('title', "Updated title");
+const todo = await Todo.find('todo-id');
+todo.set('title', 'Updated title');
 await todo.save();
 
 // Update multiple fields
-todo.fill({ title: "New title", completed: true });
+todo.fill({ title: 'New title', completed: true });
 await todo.save();
 
 // Static update
-await Todo.update("todo-id", { completed: true });
+await Todo.update('todo-id', { completed: true });
 ```
 
 ### Deleting Records
 
 ```typescript
 // Delete instance
-const todo = await Todo.find("todo-id");
+const todo = await Todo.find('todo-id');
 await todo.delete();
 
 // Static delete
-await Todo.destroy("todo-id");
+await Todo.destroy('todo-id');
 ```
 
 ## Relationships
@@ -377,14 +389,14 @@ await Todo.destroy("todo-id");
 
 ```typescript
 export class Post extends BaseModel {
-  async author(select?: string[]) {
-    const { User } = await import("./User");
-    return this.belongsTo(User, 'authorId', { select });
-  }
+    async author(select?: string[]) {
+        const { User } = await import('./User');
+        return this.belongsTo(User, 'authorId', { select });
+    }
 }
 
 // Usage
-const post = await Post.find("post-id");
+const post = await Post.find('post-id');
 const author = await post.author(['id', 'name', 'email']);
 ```
 
@@ -392,24 +404,19 @@ const author = await post.author(['id', 'name', 'email']);
 
 ```typescript
 export class User extends BaseModel {
-  async posts(options?: {
-    select?: string[];
-    orderBy?: string;
-    orderDirection?: 'asc' | 'desc';
-    limit?: number;
-  }) {
-    const { Post } = await import("./Post");
-    return this.hasMany(Post, 'authorId', options);
-  }
+    async posts(options?: { select?: string[]; orderBy?: string; orderDirection?: 'asc' | 'desc'; limit?: number }) {
+        const { Post } = await import('./Post');
+        return this.hasMany(Post, 'authorId', options);
+    }
 }
 
 // Usage
-const user = await User.find("user-id");
+const user = await User.find('user-id');
 const posts = await user.posts({
-  select: ['id', 'title', 'createdAt'],
-  orderBy: 'createdAt',
-  orderDirection: 'desc',
-  limit: 10
+    select: ['id', 'title', 'createdAt'],
+    orderBy: 'createdAt',
+    orderDirection: 'desc',
+    limit: 10,
 });
 ```
 
@@ -417,14 +424,14 @@ const posts = await user.posts({
 
 ```typescript
 export class User extends BaseModel {
-  async profile() {
-    const { Profile } = await import("./Profile");
-    return this.hasOne(Profile, 'userId');
-  }
+    async profile() {
+        const { Profile } = await import('./Profile');
+        return this.hasOne(Profile, 'userId');
+    }
 }
 
 // Usage
-const user = await User.find("user-id");
+const user = await User.find('user-id');
 const profile = await user.profile();
 ```
 
@@ -432,25 +439,21 @@ const profile = await user.profile();
 
 ```typescript
 export class Post extends BaseModel {
-  async tags(options?: {
-    select?: string[];
-    orderBy?: string;
-    withPivot?: string[];
-  }) {
-    const { Tag } = await import("./Tag");
-    return this.belongsToMany(Tag, postTagsTable, {
-      foreignKey: 'postId',
-      otherKey: 'tagId',
-      ...options
-    });
-  }
+    async tags(options?: { select?: string[]; orderBy?: string; withPivot?: string[] }) {
+        const { Tag } = await import('./Tag');
+        return this.belongsToMany(Tag, postTagsTable, {
+            foreignKey: 'postId',
+            otherKey: 'tagId',
+            ...options,
+        });
+    }
 }
 
 // Usage
-const post = await Post.find("post-id");
+const post = await Post.find('post-id');
 const tags = await post.tags({
-  select: ['id', 'name', 'slug'],
-  withPivot: ['createdAt']
+    select: ['id', 'name', 'slug'],
+    withPivot: ['createdAt'],
 });
 ```
 
@@ -468,6 +471,7 @@ curl -X POST https://your-app.com/api/ottaorm/init \
 ```
 
 **What happens automatically:**
+
 - ✅ Creates tables that don't exist
 - ✅ Adds new columns to existing tables
 - ✅ Runs custom migrations (seeds, indexes)
@@ -476,10 +480,10 @@ curl -X POST https://your-app.com/api/ottaorm/init \
 ### Adding a New Field
 
 ```typescript
-export const todosTable = sqliteTable("todos", {
-  id: text("id").primaryKey(),
-  title: text("title").notNull(),
-  priority: integer("priority").default(0).notNull(), // NEW!
+export const todosTable = sqliteTable('todos', {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    priority: integer('priority').default(0).notNull(), // NEW!
 });
 
 // Call /api/ottaorm/init → Column added automatically ✅
@@ -490,15 +494,15 @@ export const todosTable = sqliteTable("todos", {
 ```typescript
 // ottabase/migrations/index.ts
 export const appMigrations: Migration[] = [
-  {
-    name: "0000_seed_admin",
-    up: async (db) => {
-      await db.execute(`
+    {
+        name: '0000_seed_admin',
+        up: async (db) => {
+            await db.execute(`
         INSERT OR IGNORE INTO users (id, name, email, created_at, updated_at)
         VALUES ('admin-001', 'Admin', 'admin@example.com', ...)
       `);
+        },
     },
-  },
 ];
 ```
 
@@ -513,15 +517,17 @@ SQLite's `ALTER TABLE` has restrictions. The automated system **cannot**:
 - ⚠️ **Add NOT NULL columns** - Must have `DEFAULT` value
 
 **Example:**
+
 ```typescript
 // ✅ GOOD - Has default value
-status: text("status").default("active").notNull()
+status: text('status').default('active').notNull();
 
 // ❌ BAD - No default, will fail if table has data
-status: text("status").notNull()
+status: text('status').notNull();
 ```
 
-For complex schema changes, use custom migrations. See [Migration READMEs](../../apps/ottabase-template-app/ottabase/migrations/README.md) for examples.
+For complex schema changes, use custom migrations. See
+[Migration READMEs](../../apps/ottabase-template-app/ottabase/migrations/README.md) for examples.
 
 ## Type Casting
 
@@ -529,18 +535,18 @@ Automatic type conversion:
 
 ```typescript
 export class Todo extends BaseModel {
-  static casts = {
-    completed: 'boolean' as const,      // INTEGER -> boolean
-    createdAt: 'date' as const,         // INTEGER -> Date
-    updatedAt: 'date' as const,
-    metadata: 'json' as const,          // TEXT -> object
-    tags: 'array' as const,             // TEXT -> array
-  };
+    static casts = {
+        completed: 'boolean' as const, // INTEGER -> boolean
+        createdAt: 'date' as const, // INTEGER -> Date
+        updatedAt: 'date' as const,
+        metadata: 'json' as const, // TEXT -> object
+        tags: 'array' as const, // TEXT -> array
+    };
 }
 
-const todo = await Todo.find("todo-id");
+const todo = await Todo.find('todo-id');
 console.log(typeof todo.get('completed')); // "boolean"
-console.log(todo.get('createdAt'));        // Date object
+console.log(todo.get('createdAt')); // Date object
 ```
 
 ## Field Metadata
@@ -592,7 +598,8 @@ The package includes these core models (in `@ottabase/ottaorm`):
 - **VerificationToken** - Email verification tokens
 - **Authenticator** - WebAuthn/Passkey credentials
 
-**Note:** The Post model has been moved to `@ottabase/ottablog` as a comprehensive blog/content management model with enhanced features.
+**Note:** The Post model has been moved to `@ottabase/ottablog` as a comprehensive blog/content management model with
+enhanced features.
 
 ## Architecture
 
@@ -616,6 +623,7 @@ Your App
 ```
 
 **Core + Per-App Architecture:**
+
 - Core models exported from `@ottabase/ottaorm` (User, Account, Tag, etc.)
 - Blog/Content models exported from `@ottabase/ottablog` (Post, PostCategory, etc.)
 - Each app defines its own models in `ottabase/models/`
@@ -633,14 +641,14 @@ OttaORM provides a generic CRUD endpoint that works with all registered models:
 
 ### Supported Operations
 
-| Method   | URL                           | Description                    |
-| -------- | ----------------------------- | ------------------------------ |
-| `GET`    | `/api/ottaorm/posts`          | List all (paginated)          |
-| `GET`    | `/api/ottaorm/posts/123`      | Get single by ID               |
+| Method   | URL                                           | Description               |
+| -------- | --------------------------------------------- | ------------------------- |
+| `GET`    | `/api/ottaorm/posts`                          | List all (paginated)      |
+| `GET`    | `/api/ottaorm/posts/123`                      | Get single by ID          |
 | `GET`    | `/api/ottaorm/posts?field=slug&value=my-post` | Get single by field/value |
-| `POST`   | `/api/ottaorm/posts`          | Create new                     |
-| `PATCH`  | `/api/ottaorm/posts/123`      | Update existing                |
-| `DELETE` | `/api/ottaorm/posts/123`      | Delete                         |
+| `POST`   | `/api/ottaorm/posts`                          | Create new                |
+| `PATCH`  | `/api/ottaorm/posts/123`                      | Update existing           |
+| `DELETE` | `/api/ottaorm/posts/123`                      | Delete                    |
 
 ### Find by Field/Value
 
@@ -652,6 +660,7 @@ GET /api/ottaorm/posts?field=slug&value=my-post-slug
 ```
 
 **Response:** Returns the object directly (not wrapped):
+
 ```json
 {
   "id": "123",
@@ -666,28 +675,29 @@ GET /api/ottaorm/posts?field=slug&value=my-post-slug
 TanStack Query hooks for React components:
 
 ```typescript
-import { createModelHooks } from "@ottabase/ottaorm/client";
+import { createModelHooks } from '@ottabase/ottaorm/client';
 
-const blogPostHooks = createModelHooks<BlogPost>({ entityName: "posts" });
+const blogPostHooks = createModelHooks<BlogPost>({ entityName: 'posts' });
 
 // In your component
 function BlogDetailPage() {
-  const { data: post, isLoading } = blogPostHooks.useFind("slug", "my-post-slug");
-  
-  // Or by ID
-  const { data: postById } = blogPostHooks.useDetail("123");
-  
-  // List all
-  const { data: posts } = blogPostHooks.useList();
-  
-  // Mutations
-  const createPost = blogPostHooks.useCreate();
-  const updatePost = blogPostHooks.useUpdate();
-  const deletePost = blogPostHooks.useDelete();
+    const { data: post, isLoading } = blogPostHooks.useFind('slug', 'my-post-slug');
+
+    // Or by ID
+    const { data: postById } = blogPostHooks.useDetail('123');
+
+    // List all
+    const { data: posts } = blogPostHooks.useList();
+
+    // Mutations
+    const createPost = blogPostHooks.useCreate();
+    const updatePost = blogPostHooks.useUpdate();
+    const deletePost = blogPostHooks.useDelete();
 }
 ```
 
 **Available hooks:**
+
 - `useList()` - List all records (paginated)
 - `useDetail(id)` - Get by primary key
 - `useFind(field, value)` - Get by field/value
@@ -700,57 +710,57 @@ function BlogDetailPage() {
 
 ```typescript
 // app/api/ottaorm/init/route.ts
-import { NextResponse } from "next/server";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createD1Driver } from "@ottabase/db/drizzle-d1";
-import { autoInit, collectTableSchemas } from "@ottabase/ottaorm";
-import * as schema from "../../../../ottabase/db/schema";
-import { appMigrations } from "../../../../ottabase/migrations";
+import { NextResponse } from 'next/server';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { autoInit, collectTableSchemas } from '@ottabase/ottaorm';
+import * as schema from '../../../../ottabase/db/schema';
+import { appMigrations } from '../../../../ottabase/migrations';
 
-export const runtime = "edge";
+export const runtime = 'edge';
 
 export async function POST(request) {
-  const { env } = getCloudflareContext();
+    const { env } = getCloudflareContext();
 
-  const driver = createD1Driver(env.OBCF_D1);
-  const tables = collectTableSchemas(schema);
+    const driver = createD1Driver(env.OBCF_D1);
+    const tables = collectTableSchemas(schema);
 
-  const result = await autoInit({
-    driver,
-    schema: tables,
-    customMigrations: appMigrations,
-  });
+    const result = await autoInit({
+        driver,
+        schema: tables,
+        customMigrations: appMigrations,
+    });
 
-  return NextResponse.json(result);
+    return NextResponse.json(result);
 }
 ```
 
 ```typescript
 // app/api/ottaorm/todos/route.ts
-import { NextResponse } from "next/server";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createD1Driver } from "@ottabase/db/drizzle-d1";
-import { setDriver } from "@ottabase/ottaorm";
-import { Todo } from "../../../../ottabase/models/Todo";
+import { NextResponse } from 'next/server';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { setDriver } from '@ottabase/ottaorm';
+import { Todo } from '../../../../ottabase/models/Todo';
 
-export const runtime = "edge";
+export const runtime = 'edge';
 
 export async function GET() {
-  const { env } = getCloudflareContext();
-  setDriver(createD1Driver(env.OBCF_D1));
+    const { env } = getCloudflareContext();
+    setDriver(createD1Driver(env.OBCF_D1));
 
-  const todos = await Todo.all();
-  return NextResponse.json({ todos: todos.map(t => t.toJson()) });
+    const todos = await Todo.all();
+    return NextResponse.json({ todos: todos.map((t) => t.toJson()) });
 }
 
 export async function POST(request: Request) {
-  const { env } = getCloudflareContext();
-  setDriver(createD1Driver(env.OBCF_D1));
+    const { env } = getCloudflareContext();
+    setDriver(createD1Driver(env.OBCF_D1));
 
-  const body = await request.json();
-  const todo = await Todo.create(body);
+    const body = await request.json();
+    const todo = await Todo.create(body);
 
-  return NextResponse.json({ todo: todo.toJson() });
+    return NextResponse.json({ todo: todo.toJson() });
 }
 ```
 

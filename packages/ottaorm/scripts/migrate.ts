@@ -12,53 +12,58 @@
 // This script automates the entire migration workflow for OttaORM.
 // ============================================================
 
-import { generateAllMigrations, generateSchema, generateMigrations, bundleMigrations } from '../src/migrations/auto-generator';
+import {
+    generateAllMigrations,
+    generateSchema,
+    generateMigrations,
+    bundleMigrations,
+} from '../src/migrations/auto-generator';
 
 const command = process.argv[2] || 'all';
 
 const config = {
-  ottabasePath: './ottabase',
-  drizzleConfigPath: './drizzle.config.ts',
-  includeCoreModels: true,
-  modelsDir: 'models',
-  schemaOutput: 'db/schema.ts',
-  migrationsDir: 'migrations',
+    ottabasePath: './ottabase',
+    drizzleConfigPath: './drizzle.config.ts',
+    includeCoreModels: true,
+    modelsDir: 'models',
+    schemaOutput: 'db/schema.ts',
+    migrationsDir: 'migrations',
 };
 
 async function main() {
-  console.log('🔧 OttaORM Migration Tool\n');
+    console.log('🔧 OttaORM Migration Tool\n');
 
-  try {
-    switch (command) {
-      case 'all':
-        await generateAllMigrations(config);
-        break;
+    try {
+        switch (command) {
+            case 'all':
+                await generateAllMigrations(config);
+                break;
 
-      case 'schema':
-        await generateSchema(config);
-        break;
+            case 'schema':
+                await generateSchema(config);
+                break;
 
-      case 'generate':
-        await generateMigrations(config);
-        break;
+            case 'generate':
+                await generateMigrations(config);
+                break;
 
-      case 'bundle':
-        await bundleMigrations(config);
-        break;
+            case 'bundle':
+                await bundleMigrations(config);
+                break;
 
-      default:
-        console.error(`Unknown command: ${command}`);
-        console.log('\nAvailable commands:');
-        console.log('  all        - Run full workflow (default)');
-        console.log('  schema     - Generate schema only');
-        console.log('  generate   - Generate migrations only');
-        console.log('  bundle     - Bundle migrations only');
+            default:
+                console.error(`Unknown command: ${command}`);
+                console.log('\nAvailable commands:');
+                console.log('  all        - Run full workflow (default)');
+                console.log('  schema     - Generate schema only');
+                console.log('  generate   - Generate migrations only');
+                console.log('  bundle     - Bundle migrations only');
+                process.exit(1);
+        }
+    } catch (error: any) {
+        console.error('\n❌ Error:', error.message);
         process.exit(1);
     }
-  } catch (error: any) {
-    console.error('\n❌ Error:', error.message);
-    process.exit(1);
-  }
 }
 
 main();

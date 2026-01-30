@@ -1,163 +1,163 @@
 /* CTA Tool Styles */
 
 .cdx-cta__wrapper {
-	padding: 10px;
-	border-radius: 6px;
-	background: #f8fafc;
-	border: 1px solid #e2e8f0;
+    padding: 10px;
+    border-radius: 6px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
 }
 
 .dark .cdx-cta__wrapper {
-	background: #1e293b;
-	border-color: #334155;
+    background: #1e293b;
+    border-color: #334155;
 }
 
 .cdx-cta__form {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .cdx-cta__form > * {
-	margin: 0;
+    margin: 0;
 }
 
 /* Ensure checkbox group has same spacing as other rows */
-.cdx-cta__form > div:has(input[type="checkbox"]) {
-	margin: 0;
+.cdx-cta__form > div:has(input[type='checkbox']) {
+    margin: 0;
 }
 
 .cdx-cta__input-group {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .cdx-cta__label {
-	font-size: 12px;
-	font-weight: 500;
-	color: #374151;
-	margin-bottom: 2px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 2px;
 }
 
 .dark .cdx-cta__label {
-	color: #d1d5db;
+    color: #d1d5db;
 }
 
 .cdx-cta__input,
 .cdx-cta__select {
-	display: block;
-	width: 100%;
-	padding: 6px 10px;
-	border: 1px solid #d1d5db;
-	border-radius: 4px;
-	font-size: 13px;
-	font-family: inherit;
-	background: #ffffff;
-	color: #111827;
+    display: block;
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #ffffff;
+    color: #111827;
 }
 
 .dark .cdx-cta__input,
 .dark .cdx-cta__select {
-	border-color: #4b5563;
-	background: #1f2937;
-	color: #f9fafb;
+    border-color: #4b5563;
+    background: #1f2937;
+    color: #f9fafb;
 }
 
 .cdx-cta__input:focus,
 .cdx-cta__select:focus {
-	outline: none;
-	border-color: #3b82f6;
-	box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
 .cdx-cta__checkbox-group {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
 }
 
 .cdx-cta__checkbox {
-	width: 14px;
-	height: 14px;
-	cursor: pointer;
-	margin: 0;
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    margin: 0;
 }
 
 .cdx-cta__checkbox-label {
-	font-size: 12px;
-	color: #374151;
-	cursor: pointer;
-	margin: 0;
+    font-size: 12px;
+    color: #374151;
+    cursor: pointer;
+    margin: 0;
 }
 
 .dark .cdx-cta__checkbox-label {
-	color: #d1d5db;
+    color: #d1d5db;
 }
 
 .cdx-cta__preview {
-	margin-top: 6px;
-	padding-top: 8px;
-	border-top: 1px solid #e5e7eb;
-	text-align: center;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
 }
 
 .dark .cdx-cta__preview {
-	border-top-color: #4b5563;
+    border-top-color: #4b5563;
 }
 
 .cdx-cta__preview-button {
-	display: inline-block;
-	padding: 8px 16px;
-	border-radius: 6px;
-	font-size: 13px;
-	font-weight: 500;
-	text-decoration: none;
-	transition: all 0.2s ease;
-	cursor: pointer;
-	border: 2px solid transparent;
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
 }
 
 .cdx-cta__preview-button--primary {
-	background: #3b82f6;
-	color: #ffffff;
-	border-color: #3b82f6;
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: #3b82f6;
 }
 
 .cdx-cta__preview-button--primary:hover {
-	background: #2563eb;
-	border-color: #2563eb;
+    background: #2563eb;
+    border-color: #2563eb;
 }
 
 .cdx-cta__preview-button--secondary {
-	background: #6b7280;
-	color: #ffffff;
-	border-color: #6b7280;
+    background: #6b7280;
+    color: #ffffff;
+    border-color: #6b7280;
 }
 
 .cdx-cta__preview-button--secondary:hover {
-	background: #4b5563;
-	border-color: #4b5563;
+    background: #4b5563;
+    border-color: #4b5563;
 }
 
 .cdx-cta__preview-button--outline {
-	background: transparent;
-	color: #3b82f6;
-	border-color: #3b82f6;
+    background: transparent;
+    color: #3b82f6;
+    border-color: #3b82f6;
 }
 
 .cdx-cta__preview-button--outline:hover {
-	background: #3b82f6;
-	color: #ffffff;
+    background: #3b82f6;
+    color: #ffffff;
 }
 
 .dark .cdx-cta__preview-button--outline {
-	color: #60a5fa;
-	border-color: #60a5fa;
+    color: #60a5fa;
+    border-color: #60a5fa;
 }
 
 .dark .cdx-cta__preview-button--outline:hover {
-	background: #60a5fa;
-	color: #1e293b;
+    background: #60a5fa;
+    color: #1e293b;
 }

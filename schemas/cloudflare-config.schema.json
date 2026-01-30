@@ -1,91 +1,91 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Cloudflare Deployment Configuration",
-  "description": "Configuration for deploying apps to Cloudflare Workers",
-  "type": "object",
-  "properties": {
-    "deployable": {
-      "type": "boolean",
-      "description": "Whether this app should be deployed to Cloudflare",
-      "default": true
-    },
-    "appType": {
-      "type": "string",
-      "enum": ["tanstack", "nextjs", "react", "remix", "vite", "custom"],
-      "description": "Type of application framework",
-      "default": "tanstack"
-    },
-    "workerName": {
-      "type": "string",
-      "description": "Name of the Cloudflare Worker (defaults to package name)"
-    },
-    "buildCommand": {
-      "type": "string",
-      "description": "pnpm script to build the application",
-      "default": "build"
-    },
-    "workerBuildCommand": {
-      "type": ["string", "null"],
-      "description": "pnpm script to build the Cloudflare Worker bundle",
-      "default": null
-    },
-    "outputDirectory": {
-      "type": "string",
-      "description": "Directory containing worker build output",
-      "default": "dist"
-    },
-    "assetsDirectory": {
-      "type": ["string", "null"],
-      "description": "Directory containing static assets for the worker",
-      "default": null
-    },
-    "verifyPaths": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Paths to verify exist after build",
-      "default": ["dist", "cloudflare-worker.ts"]
-    },
-    "wranglerConfig": {
-      "type": "string",
-      "description": "Path to wrangler config file",
-      "default": "wrangler.jsonc"
-    },
-    "wranglerEnv": {
-      "type": "string",
-      "description": "Wrangler environment to deploy to",
-      "default": "production"
-    },
-    "healthCheckPath": {
-      "type": "string",
-      "description": "Path to check after deployment",
-      "default": "/"
-    },
-    "requiresSecrets": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "List of required GitHub secrets",
-      "default": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
-    },
-    "customBuildSteps": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "run": {
-            "type": "string"
-          }
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Cloudflare Deployment Configuration",
+    "description": "Configuration for deploying apps to Cloudflare Workers",
+    "type": "object",
+    "properties": {
+        "deployable": {
+            "type": "boolean",
+            "description": "Whether this app should be deployed to Cloudflare",
+            "default": true
         },
-        "required": ["name", "run"]
-      },
-      "description": "Additional custom build steps to run"
-    }
-  },
-  "required": ["deployable", "appType"]
+        "appType": {
+            "type": "string",
+            "enum": ["tanstack", "nextjs", "react", "remix", "vite", "custom"],
+            "description": "Type of application framework",
+            "default": "tanstack"
+        },
+        "workerName": {
+            "type": "string",
+            "description": "Name of the Cloudflare Worker (defaults to package name)"
+        },
+        "buildCommand": {
+            "type": "string",
+            "description": "pnpm script to build the application",
+            "default": "build"
+        },
+        "workerBuildCommand": {
+            "type": ["string", "null"],
+            "description": "pnpm script to build the Cloudflare Worker bundle",
+            "default": null
+        },
+        "outputDirectory": {
+            "type": "string",
+            "description": "Directory containing worker build output",
+            "default": "dist"
+        },
+        "assetsDirectory": {
+            "type": ["string", "null"],
+            "description": "Directory containing static assets for the worker",
+            "default": null
+        },
+        "verifyPaths": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Paths to verify exist after build",
+            "default": ["dist", "cloudflare-worker.ts"]
+        },
+        "wranglerConfig": {
+            "type": "string",
+            "description": "Path to wrangler config file",
+            "default": "wrangler.jsonc"
+        },
+        "wranglerEnv": {
+            "type": "string",
+            "description": "Wrangler environment to deploy to",
+            "default": "production"
+        },
+        "healthCheckPath": {
+            "type": "string",
+            "description": "Path to check after deployment",
+            "default": "/"
+        },
+        "requiresSecrets": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "List of required GitHub secrets",
+            "default": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
+        },
+        "customBuildSteps": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "run": {
+                        "type": "string"
+                    }
+                },
+                "required": ["name", "run"]
+            },
+            "description": "Additional custom build steps to run"
+        }
+    },
+    "required": ["deployable", "appType"]
 }

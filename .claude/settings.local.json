@@ -1,17 +1,20 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(cat:*)",
-      "Bash(pnpm install:*)",
-      "Bash(pnpm build)",
-      "Bash(find:*)",
-      "Bash(pnpm prisma:generate:*)",
-      "Bash(pnpm build:worker:*)",
-      "Bash(pnpm run build:*)",
-      "Bash(pnpm dev:worker:*)",
-      "Bash(pnpm type-check:*)"
-    ],
-    "deny": [],
-    "ask": []
-  }
+    "permissions": {
+        "allow": [
+            "Bash(cat:*)",
+            "Bash(pnpm install:*)",
+            "Bash(pnpm build)",
+            "Bash(find:*)",
+            "Bash(pnpm prisma:generate:*)",
+            "Bash(pnpm build:worker:*)",
+            "Bash(pnpm run build:*)",
+            "Bash(pnpm dev:worker:*)",
+            "Bash(pnpm type-check:*)",
+            "Bash(ls -la*)",
+            "Bash(ls:*)",
+            "Bash(grep:*)"
+        ],
+        "deny": [],
+        "ask": []
+    }
 }

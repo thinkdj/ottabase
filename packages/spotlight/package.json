@@ -1,65 +1,65 @@
 {
-	"name": "@ottabase/spotlight",
-	"version": "1.0.0",
-	"description": "Lightweight spotlight/command palette component with dark mode support",
-	"main": "dist/index.js",
-	"module": "dist/index.mjs",
-	"types": "dist/index.d.ts",
-	"sideEffects": false,
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.mjs",
-			"require": "./dist/index.js"
-		}
-	},
-	"files": [
-		"dist",
-		"README.md"
-	],
-	"scripts": {
-		"build": "tsup",
-		"dev": "tsup --watch",
-		"clean": "rimraf dist",
-		"lint": "eslint src --ext .ts,.tsx",
-		"type-check": "tsc --noEmit",
-		"test": "vitest --passWithNoTests",
-		"test:coverage": "vitest --coverage --passWithNoTests"
-	},
-	"keywords": [
-		"react",
-		"spotlight",
-		"command-palette",
-		"search",
-		"keyboard-shortcuts"
-	],
-	"author": "",
-	"license": "MIT",
-	"dependencies": {
-		"@ottabase/config": "workspace:*",
-		"@ottabase/ui-shadcn": "workspace:*",
-		"@tabler/icons-react": "catalog:"
-	},
-	"peerDependencies": {
-		"@radix-ui/react-dialog": "^1.1.4",
-		"@tabler/icons-react": "^3.35.0",
-		"react": "catalog:",
-		"react-dom": "catalog:"
-	},
-	"peerDependenciesMeta": {
-		"@ottabase/api": {
-			"optional": true
-		}
-	},
-	"devDependencies": {
-		"@types/node": "catalog:",
-		"@types/react": "catalog:",
-		"@types/react-dom": "catalog:",
-		"eslint": "catalog:",
-		"react": "catalog:",
-		"react-dom": "catalog:",
-		"rimraf": "catalog:",
-		"tsup": "catalog:",
-		"typescript": "catalog:"
-	}
+    "name": "@ottabase/spotlight",
+    "version": "1.0.0",
+    "description": "Lightweight spotlight/command palette component with dark mode support",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest --passWithNoTests",
+        "test:coverage": "vitest --coverage --passWithNoTests"
+    },
+    "keywords": [
+        "react",
+        "spotlight",
+        "command-palette",
+        "search",
+        "keyboard-shortcuts"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@ottabase/config": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
+        "@tabler/icons-react": "catalog:"
+    },
+    "peerDependencies": {
+        "@radix-ui/react-dialog": "^1.1.4",
+        "@tabler/icons-react": "^3.35.0",
+        "react": "catalog:",
+        "react-dom": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "@ottabase/api": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "eslint": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:"
+    }
 }

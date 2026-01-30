@@ -1,139 +1,139 @@
 {
-  "name": "@ottabase/utils",
-  "version": "0.1.0",
-  "description": "Set of common utility functions for file operations, string manipulation, currency formatting, email parsing, JSON handling, git operations, browser detection, timezone management, and more.",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "sideEffects": false,
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/utils",
+    "version": "0.1.0",
+    "description": "Set of common utility functions for file operations, string manipulation, currency formatting, email parsing, JSON handling, git operations, browser detection, timezone management, and more.",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./file": {
+            "types": "./dist/file.d.ts",
+            "import": "./dist/file.mjs",
+            "require": "./dist/file.js"
+        },
+        "./string": {
+            "types": "./dist/string.d.ts",
+            "import": "./dist/string.mjs",
+            "require": "./dist/string.js"
+        },
+        "./url": {
+            "types": "./dist/url.d.ts",
+            "import": "./dist/url.mjs",
+            "require": "./dist/url.js"
+        },
+        "./env": {
+            "types": "./dist/env.d.ts",
+            "import": "./dist/env.mjs",
+            "require": "./dist/env.js"
+        },
+        "./currency": {
+            "types": "./dist/currency.d.ts",
+            "import": "./dist/currency.mjs",
+            "require": "./dist/currency.js"
+        },
+        "./email": {
+            "types": "./dist/email.d.ts",
+            "import": "./dist/email.mjs",
+            "require": "./dist/email.js"
+        },
+        "./email-gmail": {
+            "types": "./dist/email-gmail.d.ts",
+            "import": "./dist/email-gmail.mjs",
+            "require": "./dist/email-gmail.js"
+        },
+        "./json": {
+            "types": "./dist/json.d.ts",
+            "import": "./dist/json.mjs",
+            "require": "./dist/json.js"
+        },
+        "./user": {
+            "types": "./dist/user.d.ts",
+            "import": "./dist/user.mjs",
+            "require": "./dist/user.js"
+        },
+        "./git": {
+            "types": "./dist/git.d.ts",
+            "import": "./dist/git.mjs",
+            "require": "./dist/git.js"
+        },
+        "./browser": {
+            "types": "./dist/browser.d.ts",
+            "import": "./dist/browser.mjs",
+            "require": "./dist/browser.js"
+        },
+        "./timezone": {
+            "types": "./dist/timezone.d.ts",
+            "import": "./dist/timezone.mjs",
+            "require": "./dist/timezone.js"
+        },
+        "./http-errors": {
+            "types": "./dist/http-errors.d.ts",
+            "import": "./dist/http-errors.mjs",
+            "require": "./dist/http-errors.js"
+        },
+        "./http-response": {
+            "types": "./dist/http-response.d.ts",
+            "import": "./dist/http-response.mjs",
+            "require": "./dist/http-response.js"
+        },
+        "./pagination": {
+            "types": "./dist/pagination.d.ts",
+            "import": "./dist/pagination.mjs",
+            "require": "./dist/pagination.js"
+        }
     },
-    "./file": {
-      "types": "./dist/file.d.ts",
-      "import": "./dist/file.mjs",
-      "require": "./dist/file.js"
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
     },
-    "./string": {
-      "types": "./dist/string.d.ts",
-      "import": "./dist/string.mjs",
-      "require": "./dist/string.js"
+    "keywords": [
+        "utilities",
+        "file",
+        "string",
+        "url",
+        "env",
+        "currency",
+        "email",
+        "json",
+        "user",
+        "git",
+        "browser",
+        "timezone",
+        "tree-shakeable",
+        "typescript",
+        "ottabase"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "date-fns": "catalog:",
+        "date-fns-tz": "catalog:"
     },
-    "./url": {
-      "types": "./dist/url.d.ts",
-      "import": "./dist/url.mjs",
-      "require": "./dist/url.js"
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "eslint": "catalog:",
+        "react": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:"
     },
-    "./env": {
-      "types": "./dist/env.d.ts",
-      "import": "./dist/env.mjs",
-      "require": "./dist/env.js"
-    },
-    "./currency": {
-      "types": "./dist/currency.d.ts",
-      "import": "./dist/currency.mjs",
-      "require": "./dist/currency.js"
-    },
-    "./email": {
-      "types": "./dist/email.d.ts",
-      "import": "./dist/email.mjs",
-      "require": "./dist/email.js"
-    },
-    "./email-gmail": {
-      "types": "./dist/email-gmail.d.ts",
-      "import": "./dist/email-gmail.mjs",
-      "require": "./dist/email-gmail.js"
-    },
-    "./json": {
-      "types": "./dist/json.d.ts",
-      "import": "./dist/json.mjs",
-      "require": "./dist/json.js"
-    },
-    "./user": {
-      "types": "./dist/user.d.ts",
-      "import": "./dist/user.mjs",
-      "require": "./dist/user.js"
-    },
-    "./git": {
-      "types": "./dist/git.d.ts",
-      "import": "./dist/git.mjs",
-      "require": "./dist/git.js"
-    },
-    "./browser": {
-      "types": "./dist/browser.d.ts",
-      "import": "./dist/browser.mjs",
-      "require": "./dist/browser.js"
-    },
-    "./timezone": {
-      "types": "./dist/timezone.d.ts",
-      "import": "./dist/timezone.mjs",
-      "require": "./dist/timezone.js"
-    },
-    "./http-errors": {
-      "types": "./dist/http-errors.d.ts",
-      "import": "./dist/http-errors.mjs",
-      "require": "./dist/http-errors.js"
-    },
-    "./http-response": {
-      "types": "./dist/http-response.d.ts",
-      "import": "./dist/http-response.mjs",
-      "require": "./dist/http-response.js"
-    },
-    "./pagination": {
-      "types": "./dist/pagination.d.ts",
-      "import": "./dist/pagination.mjs",
-      "require": "./dist/pagination.js"
+    "peerDependencies": {
+        "react": "catalog:"
     }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/user.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts --format cjs,esm --dts --watch",
-    "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "keywords": [
-    "utilities",
-    "file",
-    "string",
-    "url",
-    "env",
-    "currency",
-    "email",
-    "json",
-    "user",
-    "git",
-    "browser",
-    "timezone",
-    "tree-shakeable",
-    "typescript",
-    "ottabase"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "date-fns": "catalog:",
-    "date-fns-tz": "catalog:"
-  },
-  "devDependencies": {
-    "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "eslint": "catalog:",
-    "react": "catalog:",
-    "rimraf": "catalog:",
-    "tsup": "catalog:",
-    "typescript": "catalog:"
-  },
-  "peerDependencies": {
-    "react": "catalog:"
-  }
 }

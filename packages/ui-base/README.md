@@ -1,6 +1,7 @@
 # @ottabase/ui-base
 
-Base UI styles and utilities for Ottabase applications. This package contains framework-agnostic CSS reset, animations, and base styles.
+Base UI styles and utilities for Ottabase applications. This package contains framework-agnostic CSS reset, animations,
+and base styles.
 
 ## Features
 
@@ -25,15 +26,12 @@ pnpm add @ottabase/ui-base
 import { ProviderUIBase } from '@ottabase/ui-base';
 
 function App({ children }) {
-  return (
-    <ProviderUIBase>
-      {children}
-    </ProviderUIBase>
-  );
+    return <ProviderUIBase>{children}</ProviderUIBase>;
 }
 ```
 
 The ProviderUIBase component automatically imports all base styles:
+
 - CSS reset (reset.css)
 - Ottabase-specific utilities (ottabase.css)
 - Animation utilities (animations.css)

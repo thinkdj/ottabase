@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode } from 'react';
 
 type FontFamily = {
     style: { fontFamily: string };
@@ -9,14 +9,14 @@ export const primaryFontFamily: FontFamily = {
     style: {
         fontFamily: 'var(--font-body), ui-sans-serif, system-ui, sans-serif',
     },
-    className: "font-family-primary",
+    className: 'font-family-primary',
 };
 
 export const headingFontFamily: FontFamily = {
     style: {
         fontFamily: 'var(--font-heading), ui-sans-serif, system-ui, sans-serif',
     },
-    className: "font-family-heading",
+    className: 'font-family-heading',
 };
 
 export const monospaceFontFamily: FontFamily = {
@@ -24,14 +24,14 @@ export const monospaceFontFamily: FontFamily = {
         fontFamily:
             '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
     },
-    className: "font-family-monospace",
+    className: 'font-family-monospace',
 };
 
 export const handwritingFontFamily: FontFamily = {
     style: {
         fontFamily: 'var(--font-handwriting), cursive',
     },
-    className: "font-family-handwriting",
+    className: 'font-family-handwriting',
 };
 
 interface ProviderFontProps {
@@ -39,18 +39,15 @@ interface ProviderFontProps {
     enforceGoogleFonts?: boolean;
 }
 
-const ProviderFont = ({
-    children,
-    enforceGoogleFonts = true,
-}: ProviderFontProps) => {
-    const cssAppend = enforceGoogleFonts ? " !important" : "";
+const ProviderFont = ({ children, enforceGoogleFonts = true }: ProviderFontProps) => {
+    const cssAppend = enforceGoogleFonts ? ' !important' : '';
 
     React.useEffect(() => {
-        const styleId = "ottabase-font-styles";
+        const styleId = 'ottabase-font-styles';
         let styleElement = document.getElementById(styleId) as HTMLStyleElement;
 
         if (!styleElement) {
-            styleElement = document.createElement("style");
+            styleElement = document.createElement('style');
             styleElement.id = styleId;
             document.head.appendChild(styleElement);
         }

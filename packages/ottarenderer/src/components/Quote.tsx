@@ -1,12 +1,8 @@
-import { RenderFn } from "editorjs-blocks-react-renderer";
+import { RenderFn } from 'editorjs-blocks-react-renderer';
 
 // Simple quote icon SVG component
-const IconQuote = ({ className = "" }: { className?: string }) => (
-    <svg
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        className={className}
-    >
+const IconQuote = ({ className = '' }: { className?: string }) => (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
         <path d="M10 8H7a1 1 0 00-1 1v4a1 1 0 001 1h3a1 1 0 001-1V9a1 1 0 00-1-1zm0 0V5a3 3 0 00-3-3m10 6h-3a1 1 0 00-1 1v4a1 1 0 001 1h3a1 1 0 001-1V9a1 1 0 00-1-1zm0 0V5a3 3 0 00-3-3" />
     </svg>
 );
@@ -17,15 +13,16 @@ export interface QuoteData {
     alignment?: 'left' | 'center' | 'right';
 }
 
-const Quote: RenderFn<QuoteData> = ({ data, className = "" }) => {
+const Quote: RenderFn<QuoteData> = ({ data, className = '' }) => {
     const { text, caption, alignment = 'left' } = data || {};
 
     // Determine text alignment class based on alignment prop
-    const alignmentClass = {
-        left: 'text-left',
-        center: 'text-center',
-        right: 'text-right'
-    }[alignment] || 'text-left';
+    const alignmentClass =
+        {
+            left: 'text-left',
+            center: 'text-center',
+            right: 'text-right',
+        }[alignment] || 'text-left';
 
     return (
         <div className={`${className} ${alignmentClass}`}>

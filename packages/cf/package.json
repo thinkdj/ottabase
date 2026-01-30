@@ -1,72 +1,72 @@
 {
-  "name": "@ottabase/cf",
-  "version": "1.0.0",
-  "description": "Framework-agnostic Cloudflare bindings wrapper for D1, KV, R2, Images, Hyperdrive, Queues, Secret Store, and Rate Limiting",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/cf",
+    "version": "1.0.0",
+    "description": "Framework-agnostic Cloudflare bindings wrapper for D1, KV, R2, Images, Hyperdrive, Queues, Secret Store, and Rate Limiting",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./d1": {
+            "types": "./dist/d1.d.ts",
+            "import": "./dist/d1.mjs",
+            "require": "./dist/d1.js"
+        },
+        "./kv": {
+            "types": "./dist/kv.d.ts",
+            "import": "./dist/kv.mjs",
+            "require": "./dist/kv.js"
+        },
+        "./r2": {
+            "types": "./dist/r2.d.ts",
+            "import": "./dist/r2.mjs",
+            "require": "./dist/r2.js"
+        },
+        "./images": {
+            "types": "./dist/images.d.ts",
+            "import": "./dist/images.mjs",
+            "require": "./dist/images.js"
+        },
+        "./hyperdrive": {
+            "types": "./dist/hyperdrive.d.ts",
+            "import": "./dist/hyperdrive.mjs",
+            "require": "./dist/hyperdrive.js"
+        },
+        "./queues": {
+            "types": "./dist/queues.d.ts",
+            "import": "./dist/queues.mjs",
+            "require": "./dist/queues.js"
+        },
+        "./secrets": {
+            "types": "./dist/secrets.d.ts",
+            "import": "./dist/secrets.mjs",
+            "require": "./dist/secrets.js"
+        },
+        "./rate-limiting": {
+            "types": "./dist/rate-limiting.d.ts",
+            "import": "./dist/rate-limiting.mjs",
+            "require": "./dist/rate-limiting.js"
+        }
     },
-    "./d1": {
-      "types": "./dist/d1.d.ts",
-      "import": "./dist/d1.mjs",
-      "require": "./dist/d1.js"
+    "sideEffects": false,
+    "scripts": {
+        "build": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts --format cjs,esm --dts --watch",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
     },
-    "./kv": {
-      "types": "./dist/kv.d.ts",
-      "import": "./dist/kv.mjs",
-      "require": "./dist/kv.js"
+    "dependencies": {
+        "@ottabase/config": "workspace:*"
     },
-    "./r2": {
-      "types": "./dist/r2.d.ts",
-      "import": "./dist/r2.mjs",
-      "require": "./dist/r2.js"
-    },
-    "./images": {
-      "types": "./dist/images.d.ts",
-      "import": "./dist/images.mjs",
-      "require": "./dist/images.js"
-    },
-    "./hyperdrive": {
-      "types": "./dist/hyperdrive.d.ts",
-      "import": "./dist/hyperdrive.mjs",
-      "require": "./dist/hyperdrive.js"
-    },
-    "./queues": {
-      "types": "./dist/queues.d.ts",
-      "import": "./dist/queues.mjs",
-      "require": "./dist/queues.js"
-    },
-    "./secrets": {
-      "types": "./dist/secrets.d.ts",
-      "import": "./dist/secrets.mjs",
-      "require": "./dist/secrets.js"
-    },
-    "./rate-limiting": {
-      "types": "./dist/rate-limiting.d.ts",
-      "import": "./dist/rate-limiting.mjs",
-      "require": "./dist/rate-limiting.js"
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "tsup": "catalog:"
     }
-  },
-  "sideEffects": false,
-  "scripts": {
-    "build": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts --format cjs,esm --dts --watch",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "dependencies": {
-    "@ottabase/config": "workspace:*"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "catalog:",
-    "@types/node": "catalog:",
-    "typescript": "catalog:",
-    "tsup": "catalog:"
-  }
 }

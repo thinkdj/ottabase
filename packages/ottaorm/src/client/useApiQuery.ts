@@ -5,14 +5,14 @@
 // ============================================================
 
 import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  type UseQueryOptions,
-  type UseMutationOptions,
-  type QueryKey,
-} from "@tanstack/react-query";
-import { useApiClient } from "./QueryProvider";
+    useQuery,
+    useMutation,
+    useQueryClient,
+    type UseQueryOptions,
+    type UseMutationOptions,
+    type QueryKey,
+} from '@tanstack/react-query';
+import { useApiClient } from './QueryProvider';
 
 /**
  * Generic API query hook for custom endpoints
@@ -34,56 +34,51 @@ import { useApiClient } from "./QueryProvider";
  * ```
  */
 export function useApiQuery<TData, TTransformed = TData>(options: {
-  queryKey: QueryKey;
-  endpoint: string;
-  method?: "GET" | "POST";
-  body?: unknown;
-  transform?: (data: TData) => TTransformed;
-  fetchOptions?: RequestInit;
-  queryOptions?: Partial<UseQueryOptions<TTransformed, Error>>;
+    queryKey: QueryKey;
+    endpoint: string;
+    method?: 'GET' | 'POST';
+    body?: unknown;
+    transform?: (data: TData) => TTransformed;
+    fetchOptions?: RequestInit;
+    queryOptions?: Partial<UseQueryOptions<TTransformed, Error>>;
 }) {
-  const {
-    queryKey,
-    endpoint,
-    method = "GET",
-    body,
-    transform,
-    fetchOptions,
-    queryOptions,
-  } = options;
+    const { queryKey, endpoint, method = 'GET', body, transform, fetchOptions, queryOptions } = options;
 
-  const apiClient = useApiClient();
+    const apiClient = useApiClient();
 
-  return useQuery<TTransformed, Error>({
-    queryKey,
-    queryFn: async (): Promise<TTransformed> => {
-      // Use injected API client if available, otherwise fall back to raw fetch
-      if (apiClient) {
-        const data = await apiClient<TData>(endpoint, {
-          method,
-          body,
-        });
-        return (transform ? transform(data) : data) as TTransformed;
-      }
+    return useQuery<TTransformed, Error>({
+        queryKey,
+        queryFn: async (): Promise<TTransformed> => {
+            // Use injected API client if available, otherwise fall back to raw fetch
+            if (apiClient) {
+                const data = await apiClient<TData>(endpoint, {
+                    method,
+                    body,
+                });
+                return (transform ? transform(data) : data) as TTransformed;
+            }
 
-      // Fallback to raw fetch for backward compatibility
-      const response = await fetch(endpoint, {
-        method,
-        headers: body ? { "Content-Type": "application/json" } : undefined,
-        body: body ? JSON.stringify(body) : undefined,
-        ...fetchOptions,
-      });
+            // Fallback to raw fetch for backward compatibility
+            const response = await fetch(endpoint, {
+                method,
+                headers: body ? { 'Content-Type': 'application/json' } : undefined,
+                body: body ? JSON.stringify(body) : undefined,
+                ...fetchOptions,
+            });
 
-      if (!response.ok) {
-        const error = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
-        throw new Error(error.error || error.message || "Request failed");
-      }
+            if (!response.ok) {
+                const error = (await response.json().catch(() => ({}))) as {
+                    error?: string;
+                    message?: string;
+                };
+                throw new Error(error.error || error.message || 'Request failed');
+            }
 
-      const data = (await response.json()) as TData;
-      return (transform ? transform(data) : data) as TTransformed;
-    },
-    ...queryOptions,
-  });
+            const data = (await response.json()) as TData;
+            return (transform ? transform(data) : data) as TTransformed;
+        },
+        ...queryOptions,
+    });
 }
 
 /**
@@ -102,53 +97,51 @@ export function useApiQuery<TData, TTransformed = TData>(options: {
  * ```
  */
 export function useApiMutation<TData, TVariables = unknown>(options: {
-  endpoint: string | ((variables: TVariables) => string);
-  method?: "POST" | "PUT" | "PATCH" | "DELETE";
-  invalidateKeys?: QueryKey[];
-  mutationOptions?: Partial<UseMutationOptions<TData, Error, TVariables>>;
+    endpoint: string | ((variables: TVariables) => string);
+    method?: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+    invalidateKeys?: QueryKey[];
+    mutationOptions?: Partial<UseMutationOptions<TData, Error, TVariables>>;
 }) {
-  const {
-    endpoint,
-    method = "POST",
-    invalidateKeys = [],
-    mutationOptions,
-  } = options;
-  const queryClient = useQueryClient();
-  const apiClient = useApiClient();
+    const { endpoint, method = 'POST', invalidateKeys = [], mutationOptions } = options;
+    const queryClient = useQueryClient();
+    const apiClient = useApiClient();
 
-  return useMutation<TData, Error, TVariables>({
-    mutationFn: async (variables): Promise<TData> => {
-      const url = typeof endpoint === "function" ? endpoint(variables) : endpoint;
+    return useMutation<TData, Error, TVariables>({
+        mutationFn: async (variables): Promise<TData> => {
+            const url = typeof endpoint === 'function' ? endpoint(variables) : endpoint;
 
-      // Use injected API client if available
-      if (apiClient) {
-        return await apiClient<TData>(url, {
-          method,
-          body: method !== "DELETE" ? variables : undefined,
-        });
-      }
+            // Use injected API client if available
+            if (apiClient) {
+                return await apiClient<TData>(url, {
+                    method,
+                    body: method !== 'DELETE' ? variables : undefined,
+                });
+            }
 
-      // Fallback to raw fetch for backward compatibility
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: method !== "DELETE" ? JSON.stringify(variables) : undefined,
-      });
+            // Fallback to raw fetch for backward compatibility
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: method !== 'DELETE' ? JSON.stringify(variables) : undefined,
+            });
 
-      if (!response.ok) {
-        const error = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
-        throw new Error(error.error || error.message || "Request failed");
-      }
+            if (!response.ok) {
+                const error = (await response.json().catch(() => ({}))) as {
+                    error?: string;
+                    message?: string;
+                };
+                throw new Error(error.error || error.message || 'Request failed');
+            }
 
-      return response.json() as Promise<TData>;
-    },
-    onSuccess: () => {
-      for (const key of invalidateKeys) {
-        queryClient.invalidateQueries({ queryKey: key });
-      }
-    },
-    ...mutationOptions,
-  });
+            return response.json() as Promise<TData>;
+        },
+        onSuccess: () => {
+            for (const key of invalidateKeys) {
+                queryClient.invalidateQueries({ queryKey: key });
+            }
+        },
+        ...mutationOptions,
+    });
 }
 
 /**
@@ -166,10 +159,10 @@ export function useApiMutation<TData, TVariables = unknown>(options: {
  * ```
  */
 export function useBatchMutation<TData, TVariables extends unknown[]>(options: {
-  endpoint: string;
-  method?: "POST" | "DELETE";
-  invalidateKeys?: QueryKey[];
-  mutationOptions?: Partial<UseMutationOptions<TData, Error, TVariables>>;
+    endpoint: string;
+    method?: 'POST' | 'DELETE';
+    invalidateKeys?: QueryKey[];
+    mutationOptions?: Partial<UseMutationOptions<TData, Error, TVariables>>;
 }) {
-  return useApiMutation<TData, TVariables>(options);
+    return useApiMutation<TData, TVariables>(options);
 }

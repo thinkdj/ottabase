@@ -14,22 +14,24 @@ OttaORM now supports **fully automated migrations** - no CLI commands, no manual
 
 ```typescript
 // ottabase/models/Project.ts
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
-import { BaseModel } from "@ottabase/ottaorm";
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { BaseModel } from '@ottabase/ottaorm';
 
-export const projectsTable = sqliteTable("projects", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  name: text("name").notNull(),
-  description: text("description"),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .$defaultFn(() => new Date())
-    .notNull(),
+export const projectsTable = sqliteTable('projects', {
+    id: text('id')
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    name: text('name').notNull(),
+    description: text('description'),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+        .$defaultFn(() => new Date())
+        .notNull(),
 });
 
 export class Project extends BaseModel {
-  static entity = "projects";
-  static table = projectsTable;
-  static primaryKey = "id";
+    static entity = 'projects';
+    static table = projectsTable;
+    static primaryKey = 'id';
 }
 ```
 
@@ -37,9 +39,9 @@ export class Project extends BaseModel {
 
 ```typescript
 // ottabase/db/schema.ts
-export { usersTable, postsTable } from "@ottabase/ottaorm";  // Core
-export { todosTable } from "../models/Todo";                  // App
-export { projectsTable } from "../models/Project";            // NEW!
+export { usersTable, postsTable } from '@ottabase/ottaorm'; // Core
+export { todosTable } from '../models/Todo'; // App
+export { projectsTable } from '../models/Project'; // NEW!
 ```
 
 ### 3. Initialize Database
@@ -54,15 +56,16 @@ curl -X POST https://your-app.com/api/ottaorm/init \
 ```
 
 **Response:**
+
 ```json
 {
-  "success": true,
-  "message": "Successfully applied 1 change(s)",
-  "details": {
-    "tablesCreated": ["projects"],
-    "columnsAdded": [],
-    "customMigrationsRun": []
-  }
+    "success": true,
+    "message": "Successfully applied 1 change(s)",
+    "details": {
+        "tablesCreated": ["projects"],
+        "columnsAdded": [],
+        "customMigrationsRun": []
+    }
 }
 ```
 
@@ -71,11 +74,11 @@ curl -X POST https://your-app.com/api/ottaorm/init \
 Just add the field and re-run `/api/ottaorm/init`:
 
 ```typescript
-export const projectsTable = sqliteTable("projects", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  status: text("status").default("active").notNull(), // NEW FIELD!
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+export const projectsTable = sqliteTable('projects', {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    status: text('status').default('active').notNull(), // NEW FIELD!
+    createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
 ```
 
@@ -90,35 +93,35 @@ For seeds, indexes, views, or complex operations, add custom migrations:
 
 ```typescript
 // ottabase/migrations/index.ts
-import type { Migration } from "@ottabase/ottaorm";
+import type { Migration } from '@ottabase/ottaorm';
 
 export const appMigrations: Migration[] = [
-  {
-    name: "0000_seed_admin_user",
-    up: async (db) => {
-      await db.execute(`
+    {
+        name: '0000_seed_admin_user',
+        up: async (db) => {
+            await db.execute(`
         INSERT OR IGNORE INTO users (id, name, email, created_at, updated_at)
         VALUES ('admin-001', 'Admin', 'admin@example.com',
                 strftime('%s', 'now') * 1000, strftime('%s', 'now') * 1000)
       `);
+        },
     },
-  },
-  {
-    name: "0001_add_indexes",
-    up: async (db) => {
-      await db.execute(`
+    {
+        name: '0001_add_indexes',
+        up: async (db) => {
+            await db.execute(`
         CREATE INDEX IF NOT EXISTS idx_posts_author_published
         ON posts(author_id, published);
 
         CREATE INDEX IF NOT EXISTS idx_todos_user_completed
         ON todos(user_id, completed);
       `);
+        },
     },
-  },
-  {
-    name: "0002_create_user_stats_view",
-    up: async (db) => {
-      await db.execute(`
+    {
+        name: '0002_create_user_stats_view',
+        up: async (db) => {
+            await db.execute(`
         CREATE VIEW IF NOT EXISTS user_stats AS
         SELECT
           u.id,
@@ -130,8 +133,8 @@ export const appMigrations: Migration[] = [
         LEFT JOIN todos t ON t.user_id = u.id
         GROUP BY u.id
       `);
+        },
     },
-  },
 ];
 ```
 
@@ -155,20 +158,23 @@ SQLite's `ALTER TABLE` has restrictions. The automated system **cannot**:
 - ⚠️ **Add NOT NULL columns** - Must have `DEFAULT` value or use custom migration
 
 **Example: Adding NOT NULL column**
+
 ```typescript
 // ✅ GOOD - Has default value
-status: text("status").default("active").notNull()
+status: text('status').default('active').notNull();
 
 // ❌ BAD - No default, will fail if table has data
-status: text("status").notNull()
+status: text('status').notNull();
 ```
 
 ## Troubleshooting
 
 ### Migration fails with "NOT NULL constraint"
+
 **Problem**: Added NOT NULL column without DEFAULT to table with existing data.
 
 **Solution**: Add a DEFAULT value or use custom migration:
+
 ```typescript
 {
   name: "0003_add_status_column",
@@ -179,9 +185,11 @@ status: text("status").notNull()
 ```
 
 ### Need to rename/change column type
+
 **Problem**: Automated migrations can't change column types or rename columns.
 
 **Solution**: Create custom migration to recreate table:
+
 ```typescript
 {
   name: "0004_recreate_users_table",
@@ -206,17 +214,11 @@ The schema combines **core tables** (from `@ottabase/ottaorm`) + **app tables**:
 // ottabase/db/schema.ts
 
 // CORE TABLES (from @ottabase/ottaorm)
-export {
-  usersTable,
-  accountsTable,
-  sessionsTable,
-  postsTable,
-  tagsTable,
-} from "@ottabase/ottaorm";
+export { usersTable, accountsTable, sessionsTable, postsTable, tagsTable } from '@ottabase/ottaorm';
 
 // APP-SPECIFIC TABLES
-export { todosTable } from "../models/Todo";
-export { projectsTable } from "../models/Project";
+export { todosTable } from '../models/Todo';
+export { projectsTable } from '../models/Project';
 ```
 
 ## Alternative: Manual Push (Advanced)
@@ -232,6 +234,7 @@ pnpm db:studio
 ```
 
 This requires setting these environment variables:
+
 ```bash
 CLOUDFLARE_ACCOUNT_ID=your-account-id
 CLOUDFLARE_D1_DATABASE_ID=your-database-id

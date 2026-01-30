@@ -1,77 +1,77 @@
 {
-  "name": "@ottabase/ottaupload",
-  "version": "1.0.0",
-  "description": "File upload package with drag-and-drop, progress tracking, and Cloudflare R2 integration",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "sideEffects": false,
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/ottaupload",
+    "version": "1.0.0",
+    "description": "File upload package with drag-and-drop, progress tracking, and Cloudflare R2 integration",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./client": {
+            "types": "./dist/client/index.d.ts",
+            "import": "./dist/client/index.mjs",
+            "require": "./dist/client/index.js"
+        },
+        "./server": {
+            "types": "./dist/server/index.d.ts",
+            "import": "./dist/server/index.mjs",
+            "require": "./dist/server/index.js"
+        },
+        "./validation": {
+            "types": "./dist/validation/index.d.ts",
+            "import": "./dist/validation/index.mjs",
+            "require": "./dist/validation/index.js"
+        },
+        "./types": {
+            "types": "./dist/types/index.d.ts",
+            "import": "./dist/types/index.mjs",
+            "require": "./dist/types/index.js"
+        },
+        "./utils": {
+            "types": "./dist/utils/index.d.ts",
+            "import": "./dist/utils/index.mjs",
+            "require": "./dist/utils/index.js"
+        }
     },
-    "./client": {
-      "types": "./dist/client/index.d.ts",
-      "import": "./dist/client/index.mjs",
-      "require": "./dist/client/index.js"
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "clean": "rimraf dist",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
     },
-    "./server": {
-      "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.mjs",
-      "require": "./dist/server/index.js"
+    "keywords": [
+        "upload",
+        "file-upload",
+        "drag-and-drop",
+        "r2",
+        "cloudflare",
+        "react"
+    ],
+    "license": "MIT",
+    "dependencies": {
+        "@ottabase/cf": "workspace:*",
+        "@ottabase/db": "workspace:*",
+        "zod": "^3.24.1"
     },
-    "./validation": {
-      "types": "./dist/validation/index.d.ts",
-      "import": "./dist/validation/index.mjs",
-      "require": "./dist/validation/index.js"
+    "peerDependencies": {
+        "react": "catalog:",
+        "react-dom": "catalog:"
     },
-    "./types": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/types/index.mjs",
-      "require": "./dist/types/index.js"
-    },
-    "./utils": {
-      "types": "./dist/utils/index.d.ts",
-      "import": "./dist/utils/index.mjs",
-      "require": "./dist/utils/index.js"
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:"
     }
-  },
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "clean": "rimraf dist",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "keywords": [
-    "upload",
-    "file-upload",
-    "drag-and-drop",
-    "r2",
-    "cloudflare",
-    "react"
-  ],
-  "license": "MIT",
-  "dependencies": {
-    "@ottabase/cf": "workspace:*",
-    "@ottabase/db": "workspace:*",
-    "zod": "^3.24.1"
-  },
-  "peerDependencies": {
-    "react": "catalog:",
-    "react-dom": "catalog:"
-  },
-  "devDependencies": {
-    "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "rimraf": "catalog:",
-    "tsup": "catalog:",
-    "typescript": "catalog:"
-  }
 }

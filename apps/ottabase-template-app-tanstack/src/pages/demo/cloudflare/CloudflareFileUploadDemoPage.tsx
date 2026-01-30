@@ -1,19 +1,13 @@
-import { useState } from "react";
-import { Link } from "@tanstack/react-router";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@ottabase/ui-shadcn";
-import { FileUploader } from "@ottabase/ottaupload/client";
+import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { FileUploader } from '@ottabase/ottaupload/client';
 
 export function CloudflareFileUploadDemoPage() {
-    const [uploadMode, setUploadMode] = useState<"dropzone" | "button">("dropzone");
+    const [uploadMode, setUploadMode] = useState<'dropzone' | 'button'>('dropzone');
 
     const handleUpload = async (files: File[]) => {
-        console.log("Files to upload:", files);
+        console.log('Files to upload:', files);
     };
 
     return (
@@ -28,8 +22,8 @@ export function CloudflareFileUploadDemoPage() {
                 </Link>
                 <h1 className="text-4xl font-bold mb-2">File Upload Package</h1>
                 <p className="text-muted-foreground">
-                    Demonstration of the @ottabase/ottaupload package with drag-and-drop,
-                    progress tracking, and Cloudflare R2 integration.
+                    Demonstration of the @ottabase/ottaupload package with drag-and-drop, progress tracking, and
+                    Cloudflare R2 integration.
                 </p>
             </div>
 
@@ -37,9 +31,7 @@ export function CloudflareFileUploadDemoPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Features</CardTitle>
-                    <CardDescription>
-                        Key capabilities of the upload package
-                    </CardDescription>
+                    <CardDescription>Key capabilities of the upload package</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ul className="list-disc list-inside space-y-2 text-sm">
@@ -59,30 +51,28 @@ export function CloudflareFileUploadDemoPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Upload Mode</CardTitle>
-                    <CardDescription>
-                        Choose between dropzone or button upload variant
-                    </CardDescription>
+                    <CardDescription>Choose between dropzone or button upload variant</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex gap-2">
                         <button
                             type="button"
-                            onClick={() => setUploadMode("dropzone")}
+                            onClick={() => setUploadMode('dropzone')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                uploadMode === "dropzone"
-                                    ? "bg-blue-600 text-white"
-                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                uploadMode === 'dropzone'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                         >
                             Dropzone
                         </button>
                         <button
                             type="button"
-                            onClick={() => setUploadMode("button")}
+                            onClick={() => setUploadMode('button')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                uploadMode === "button"
-                                    ? "bg-blue-600 text-white"
-                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                uploadMode === 'button'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                         >
                             Button
@@ -95,9 +85,7 @@ export function CloudflareFileUploadDemoPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Single File Upload</CardTitle>
-                    <CardDescription>
-                        Upload a single file with automatic upload
-                    </CardDescription>
+                    <CardDescription>Upload a single file with automatic upload</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <FileUploader
@@ -114,9 +102,7 @@ export function CloudflareFileUploadDemoPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Multiple File Upload</CardTitle>
-                    <CardDescription>
-                        Upload up to 5 files with manual upload trigger
-                    </CardDescription>
+                    <CardDescription>Upload up to 5 files with manual upload trigger</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <FileUploader
@@ -133,16 +119,14 @@ export function CloudflareFileUploadDemoPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Image-Only Upload</CardTitle>
-                    <CardDescription>
-                        Upload images only with file type validation
-                    </CardDescription>
+                    <CardDescription>Upload images only with file type validation</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <FileUploader
                         variant={uploadMode}
                         maxFiles={3}
                         maxFileSize={5 * 1024 * 1024} // 5MB
-                        acceptedFileTypes={["image/*"]}
+                        acceptedFileTypes={['image/*']}
                         autoUpload={true}
                         uploadEndpoint="/api/upload"
                     />
@@ -153,16 +137,10 @@ export function CloudflareFileUploadDemoPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Custom Upload Handler</CardTitle>
-                    <CardDescription>
-                        Use a custom upload handler instead of automatic upload
-                    </CardDescription>
+                    <CardDescription>Use a custom upload handler instead of automatic upload</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <FileUploader
-                        variant={uploadMode}
-                        maxFiles={3}
-                        onUpload={handleUpload}
-                    />
+                    <FileUploader variant={uploadMode} maxFiles={3} onUpload={handleUpload} />
                     <p className="text-xs text-muted-foreground mt-2">
                         Check the browser console to see the uploaded files
                     </p>
@@ -173,9 +151,7 @@ export function CloudflareFileUploadDemoPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Usage Example</CardTitle>
-                    <CardDescription>
-                        How to use the FileUploader component in your code
-                    </CardDescription>
+                    <CardDescription>How to use the FileUploader component in your code</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
@@ -201,17 +177,13 @@ function MyComponent() {
             <Card>
                 <CardHeader>
                     <CardTitle>Package Details</CardTitle>
-                    <CardDescription>
-                        Information about the @ottabase/ottaupload package
-                    </CardDescription>
+                    <CardDescription>Information about the @ottabase/ottaupload package</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4 text-sm">
                         <div>
                             <h4 className="font-semibold mb-1">Package Name</h4>
-                            <code className="bg-gray-100 px-2 py-1 rounded">
-                                @ottabase/ottaupload
-                            </code>
+                            <code className="bg-gray-100 px-2 py-1 rounded">@ottabase/ottaupload</code>
                         </div>
                         <div>
                             <h4 className="font-semibold mb-1">Key Dependencies</h4>

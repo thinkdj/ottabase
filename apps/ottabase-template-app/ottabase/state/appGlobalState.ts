@@ -2,45 +2,37 @@
  * App Global State
  * Central state management for ottabase-template-app (Next.js)
  */
-import { createAppState, type BaseUser } from "@ottabase/state";
-import { atom } from "jotai";
+import { createAppState, type BaseUser } from '@ottabase/state';
+import { atom } from 'jotai';
 
 // Mantine theme preset type (specific to this app)
 export type MantineThemePreset =
-  | "mantine-slate"
-  | "mantine-graphite"
-  | "mantine-azure"
-  | "mantine-aurora"
-  | "mantine-artisan";
+    | 'mantine-slate'
+    | 'mantine-graphite'
+    | 'mantine-azure'
+    | 'mantine-aurora'
+    | 'mantine-artisan';
 
 // Mantine theme preset atom (separate from main app state)
-export const mantineThemePresetAtom =
-  atom<MantineThemePreset>("mantine-slate");
+export const mantineThemePresetAtom = atom<MantineThemePreset>('mantine-slate');
 
 // Extend BaseUser if needed
 export interface AppUser extends BaseUser {
-  role?: string;
+    role?: string;
 }
 
 // Create app state with appName
 const { appStateAtom, atoms, createAtom } = createAppState<AppUser>({
-  appName: "Ottabase",
-  initialState: {
-    theme: "light",
-    sidebarOpen: true,
-    sidebarCollapsed: false,
-  },
+    appName: 'Ottabase',
+    initialState: {
+        theme: 'light',
+        sidebarOpen: true,
+        sidebarCollapsed: false,
+    },
 });
 
 // Export individual atoms for component use
-export const {
-  themeAtom,
-  userAtom,
-  isAuthenticatedAtom,
-  sidebarOpenAtom,
-  sidebarCollapsedAtom,
-  isLoadingAtom,
-} = atoms;
+export const { themeAtom, userAtom, isAuthenticatedAtom, sidebarOpenAtom, sidebarCollapsedAtom, isLoadingAtom } = atoms;
 
 // Export main atom and factory
 export { appStateAtom, createAtom };

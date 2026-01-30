@@ -2,7 +2,8 @@
 
 ## ✅ Architecture - Reusable Monorepo Structure
 
-All core auth logic is now in the `@ottabase/auth` package, making it reusable across all apps in the monorepo. Apps only contain minimal glue code and app-specific overrides.
+All core auth logic is now in the `@ottabase/auth` package, making it reusable across all apps in the monorepo. Apps
+only contain minimal glue code and app-specific overrides.
 
 ## 📦 Package Structure
 
@@ -55,34 +56,34 @@ apps/ottabase-template-app-tanstack/
 
 ```typescript
 // cloudflare-worker.ts
-import { handleAuthRequest } from "@ottabase/auth/backend";
+import { handleAuthRequest } from '@ottabase/auth/backend';
 
-if (url.pathname.startsWith("/api/auth/")) {
-  return handleAuthRequest(request, env);
+if (url.pathname.startsWith('/api/auth/')) {
+    return handleAuthRequest(request, env);
 }
 ```
 
 **With custom authorization:**
 
 ```typescript
-import { handleAuthRequest } from "@ottabase/auth/backend";
-import { verifyPassword } from "@ottabase/auth/backend";
+import { handleAuthRequest } from '@ottabase/auth/backend';
+import { verifyPassword } from '@ottabase/auth/backend';
 
-if (url.pathname.startsWith("/api/auth/")) {
-  return handleAuthRequest(request, env, {
-    authorize: async ({ email, password }) => {
-      // Your custom database query
-      const user = await db.query.users.findFirst({
-        where: eq(users.email, email),
-      });
+if (url.pathname.startsWith('/api/auth/')) {
+    return handleAuthRequest(request, env, {
+        authorize: async ({ email, password }) => {
+            // Your custom database query
+            const user = await db.query.users.findFirst({
+                where: eq(users.email, email),
+            });
 
-      if (!user || !await verifyPassword(password, user.passwordHash)) {
-        return null;
-      }
+            if (!user || !(await verifyPassword(password, user.passwordHash))) {
+                return null;
+            }
 
-      return { id: user.id, email: user.email, name: user.name };
-    },
-  });
+            return { id: user.id, email: user.email, name: user.name };
+        },
+    });
 }
 ```
 
@@ -162,21 +163,23 @@ Apps can override behavior by passing options to `handleAuthRequest`:
 
 ```typescript
 handleAuthRequest(request, env, {
-  // Custom authorization
-  authorize: async (credentials) => { /* ... */ },
-
-  // Session duration
-  sessionMaxAge: 7 * 24 * 60 * 60, // 7 days
-
-  // Verbose logging
-  verbose: true,
-
-  // Additional Auth.js config
-  authConfig: {
-    pages: {
-      signIn: "/custom-login",
+    // Custom authorization
+    authorize: async (credentials) => {
+        /* ... */
     },
-  },
+
+    // Session duration
+    sessionMaxAge: 7 * 24 * 60 * 60, // 7 days
+
+    // Verbose logging
+    verbose: true,
+
+    // Additional Auth.js config
+    authConfig: {
+        pages: {
+            signIn: '/custom-login',
+        },
+    },
 });
 ```
 
@@ -185,42 +188,38 @@ handleAuthRequest(request, env, {
 ### ✅ Implemented
 
 1. **Backend Handler** (`@ottabase/auth/backend`)
-
-   - Plug-and-play Cloudflare Workers integration
-   - Auto-configuration from env vars
-   - Customizable authorization
-   - Production-ready error handling
+    - Plug-and-play Cloudflare Workers integration
+    - Auto-configuration from env vars
+    - Customizable authorization
+    - Production-ready error handling
 
 2. **Client API** (`@ottabase/auth/client`)
-
-   - Framework-agnostic (works with any frontend)
-   - Type-safe API calls
-   - Credentials, OAuth, Magic Link support
+    - Framework-agnostic (works with any frontend)
+    - Type-safe API calls
+    - Credentials, OAuth, Magic Link support
 
 3. **React Hooks** (`@ottabase/auth/react`)
-
-   - `useSession()` with auto-sync
-   - LocalStorage persistence
-   - Loading states
-   - Session refresh
+    - `useSession()` with auto-sync
+    - LocalStorage persistence
+    - Loading states
+    - Session refresh
 
 4. **UI Components** (`@ottabase/auth/components`)
-
-   - `LoginForm` - Unified login interface
-   - `SocialLoginButtons` - OAuth providers
-   - `CredentialsForm` - Email/password
-   - `MagicLinkForm` - Passwordless
-   - Auto-configuration helpers
+    - `LoginForm` - Unified login interface
+    - `SocialLoginButtons` - OAuth providers
+    - `CredentialsForm` - Email/password
+    - `MagicLinkForm` - Passwordless
+    - Auto-configuration helpers
 
 5. **Provider Support**
-   - ✅ Credentials (email/password)
-   - ✅ Google OAuth
-   - ✅ GitHub OAuth
-   - ✅ Discord OAuth
-   - ✅ Azure AD OAuth
-   - ✅ Auth0
-   - ✅ Magic Link (Resend)
-   - ✅ Magic Link (SMTP/Nodemailer)
+    - ✅ Credentials (email/password)
+    - ✅ Google OAuth
+    - ✅ GitHub OAuth
+    - ✅ Discord OAuth
+    - ✅ Azure AD OAuth
+    - ✅ Auth0
+    - ✅ Magic Link (Resend)
+    - ✅ Magic Link (SMTP/Nodemailer)
 
 ## 🏗️ Benefits of This Architecture
 
@@ -262,13 +261,13 @@ handleAuthRequest(request, env, {
 
 ```typescript
 // 1. Backend: One line import
-import { handleAuthRequest } from "@ottabase/auth/backend";
+import { handleAuthRequest } from '@ottabase/auth/backend';
 
 // 2. Frontend: Use hooks
-import { useSession } from "@ottabase/auth/react";
+import { useSession } from '@ottabase/auth/react';
 
 // 3. UI: Use components
-import { LoginForm } from "@ottabase/auth/components";
+import { LoginForm } from '@ottabase/auth/components';
 
 // Done! 🎉
 ```
@@ -277,36 +276,36 @@ import { LoginForm } from "@ottabase/auth/components";
 
 1. **Build the auth package:**
 
-   ```bash
-   cd packages/auth
-   pnpm build
-   ```
+    ```bash
+    cd packages/auth
+    pnpm build
+    ```
 
 2. **Install dependencies in app:**
 
-   ```bash
-   cd apps/ottabase-template-app-tanstack
-   pnpm install
-   ```
+    ```bash
+    cd apps/ottabase-template-app-tanstack
+    pnpm install
+    ```
 
 3. **Configure environment:**
-
-   - Copy `.env.example` to `.env.local`
-   - Set `AUTH_SECRET` (required)
-   - Add OAuth provider credentials (optional)
+    - Copy `.env.example` to `.env.local`
+    - Set `AUTH_SECRET` (required)
+    - Add OAuth provider credentials (optional)
 
 4. **Run the app:**
 
-   ```bash
-   pnpm dev
-   ```
+    ```bash
+    pnpm dev
+    ```
 
 5. **Test authentication:**
-   - Visit `/login`
-   - See auto-configured providers
-   - Check warnings for missing config
-   - (Development only) Use the built-in credentials login to verify the flow locally.
-     **Do not use the default credentials handler in production** — you must implement a real `authorize` callback backed by your user store before deploying.
+    - Visit `/login`
+    - See auto-configured providers
+    - Check warnings for missing config
+    - (Development only) Use the built-in credentials login to verify the flow locally. **Do not use the default
+      credentials handler in production** — you must implement a real `authorize` callback backed by your user store
+      before deploying.
 
 ## 🎯 Summary
 
@@ -327,4 +326,5 @@ import { LoginForm } from "@ottabase/auth/components";
 - ✅ Environment config
 - ✅ That's it!
 
-**Result:** Production-ready auth that works out-of-the-box, but can be customized for any app-specific requirements. Perfect for a reusable monorepo! 🚀
+**Result:** Production-ready auth that works out-of-the-box, but can be customized for any app-specific requirements.
+Perfect for a reusable monorepo! 🚀

@@ -1,18 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { ConnectionState, RealtimeClient } from "@ottabase/cf-realtime";
-import {
-    Button,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    Input,
-    Textarea,
-    toast,
-} from "@ottabase/ui-shadcn";
-import { api, ApiError, isApiError } from "@/lib/api";
-import { ApiErrorDisplay } from "@/components/ErrorBoundary";
+import { useEffect, useRef, useState } from 'react';
+import { Link } from '@tanstack/react-router';
+import { ConnectionState, RealtimeClient } from '@ottabase/cf-realtime';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea, toast } from '@ottabase/ui-shadcn';
+import { api, ApiError, isApiError } from '@/lib/api';
+import { ApiErrorDisplay } from '@/components/ErrorBoundary';
 
 interface Message {
     id: string;
@@ -31,18 +22,16 @@ interface Stats {
 
 export function CloudflareRealtimeDemoPage() {
     const [client, setClient] = useState<RealtimeClient | null>(null);
-    const [connectionState, setConnectionState] = useState<ConnectionState>(
-        ConnectionState.DISCONNECTED,
-    );
+    const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
     const [subscribedChannels, setSubscribedChannels] = useState<string[]>([]);
     const [messages, setMessages] = useState<Message[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [serviceError, setServiceError] = useState<ApiError | null>(null);
 
-    const [channelToSubscribe, setChannelToSubscribe] = useState("");
-    const [broadcastChannel, setBroadcastChannel] = useState("");
-    const [broadcastEvent, setBroadcastEvent] = useState("notification");
+    const [channelToSubscribe, setChannelToSubscribe] = useState('');
+    const [broadcastChannel, setBroadcastChannel] = useState('');
+    const [broadcastEvent, setBroadcastEvent] = useState('notification');
     const [broadcastData, setBroadcastData] = useState('{"message":"Hello!"}');
     const [persistOffline, setPersistOffline] = useState(false);
 
@@ -52,7 +41,7 @@ export function CloudflareRealtimeDemoPage() {
         try {
             setError(null);
 
-            const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/api/cloudflare/realtime/ws`;
 
             const realtimeClient = new RealtimeClient({
@@ -74,9 +63,9 @@ export function CloudflareRealtimeDemoPage() {
             setClient(realtimeClient);
             clientRef.current = realtimeClient;
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "Failed to connect";
+            const errorMessage = err instanceof Error ? err.message : 'Failed to connect';
             setError(errorMessage);
-            toast.error("Connection failed", { description: errorMessage });
+            toast.error('Connection failed', { description: errorMessage });
         }
     };
 
@@ -113,7 +102,7 @@ export function CloudflareRealtimeDemoPage() {
         });
 
         setSubscribedChannels((prev) => [...prev, channel]);
-        setChannelToSubscribe("");
+        setChannelToSubscribe('');
         setError(null);
     };
 
@@ -128,11 +117,11 @@ export function CloudflareRealtimeDemoPage() {
             setError(null);
 
             const channels = broadcastChannel
-                .split(",")
+                .split(',')
                 .map((c) => c.trim())
                 .filter(Boolean);
             if (channels.length === 0) {
-                setError("Please enter at least one channel");
+                setError('Please enter at least one channel');
                 return;
             }
 
@@ -143,8 +132,8 @@ export function CloudflareRealtimeDemoPage() {
                 data = broadcastData;
             }
 
-            await api("/api/cloudflare/realtime/broadcast", {
-                method: "POST",
+            await api('/api/cloudflare/realtime/broadcast', {
+                method: 'POST',
                 body: {
                     channels,
                     event: broadcastEvent,
@@ -157,14 +146,14 @@ export function CloudflareRealtimeDemoPage() {
         } catch (err) {
             // API errors are automatically shown via toast by the global handler
             // Just update local error state for inline display
-            const errorMessage = isApiError(err) ? err.message : "Failed to broadcast";
+            const errorMessage = isApiError(err) ? err.message : 'Failed to broadcast';
             setError(errorMessage);
         }
     };
 
     const fetchStats = async () => {
         try {
-            const data = await api<Stats>("/api/cloudflare/realtime/stats");
+            const data = await api<Stats>('/api/cloudflare/realtime/stats');
             setStats(data);
             setServiceError(null);
         } catch (err) {
@@ -196,9 +185,7 @@ export function CloudflareRealtimeDemoPage() {
 
             <div>
                 <h1 className="mb-2 text-3xl font-semibold">Realtime Pub/Sub Demo</h1>
-                <p className="text-muted-foreground">
-                    WebSocket-based real-time messaging with offline support
-                </p>
+                <p className="text-muted-foreground">WebSocket-based real-time messaging with offline support</p>
             </div>
 
             {serviceError ? (
@@ -206,8 +193,7 @@ export function CloudflareRealtimeDemoPage() {
             ) : (
                 <div className="rounded-lg border bg-muted/50 p-4">
                     <p className="text-sm text-muted-foreground">
-                        Durable Objects may require deployment to test (depending on your local
-                        Wrangler setup).
+                        Durable Objects may require deployment to test (depending on your local Wrangler setup).
                     </p>
                 </div>
             )}
@@ -227,25 +213,20 @@ export function CloudflareRealtimeDemoPage() {
                         <CardContent className="space-y-3">
                             <div className="rounded-lg border bg-muted/50 p-3">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium">
-                                        Status: {connectionState}
-                                    </span>
+                                    <span className="text-sm font-medium">Status: {connectionState}</span>
                                     <div
-                                        className={`h-2 w-2 rounded-full ${connectionState === ConnectionState.CONNECTED
-                                                ? "bg-primary"
-                                                : "bg-muted-foreground"
-                                            }`}
+                                        className={`h-2 w-2 rounded-full ${
+                                            connectionState === ConnectionState.CONNECTED
+                                                ? 'bg-primary'
+                                                : 'bg-muted-foreground'
+                                        }`}
                                     />
                                 </div>
                             </div>
 
                             {!client ? (
-                                <Button
-                                    onClick={handleConnect}
-                                    className="w-full"
-                                    disabled={!!serviceError}
-                                >
-                                    {serviceError ? "Service Unavailable" : "Connect"}
+                                <Button onClick={handleConnect} className="w-full" disabled={!!serviceError}>
+                                    {serviceError ? 'Service Unavailable' : 'Connect'}
                                 </Button>
                             ) : (
                                 <Button onClick={handleDisconnect} variant="destructive" className="w-full">
@@ -265,7 +246,7 @@ export function CloudflareRealtimeDemoPage() {
                                 onChange={(e) => setChannelToSubscribe(e.target.value)}
                                 placeholder="e.g., org-1201, user-22, system"
                                 disabled={!client}
-                                onKeyDown={(e) => e.key === "Enter" && handleSubscribe()}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSubscribe()}
                             />
 
                             <Button
@@ -339,9 +320,7 @@ export function CloudflareRealtimeDemoPage() {
                                     onChange={(e) => setPersistOffline(e.target.checked)}
                                     className="h-4 w-4 rounded border-input"
                                 />
-                                <span className="text-sm text-muted-foreground">
-                                    Persist for offline clients
-                                </span>
+                                <span className="text-sm text-muted-foreground">Persist for offline clients</span>
                             </label>
 
                             <Button
@@ -437,7 +416,7 @@ export function CloudflareRealtimeDemoPage() {
                                                         <span>{ch.channel}</span>
                                                         <span className="text-muted-foreground">
                                                             {ch.subscriberCount} subscriber
-                                                            {ch.subscriberCount !== 1 ? "s" : ""}
+                                                            {ch.subscriberCount !== 1 ? 's' : ''}
                                                         </span>
                                                     </div>
                                                 ))}

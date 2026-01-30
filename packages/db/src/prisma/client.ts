@@ -20,24 +20,24 @@
 // ============================================================
 
 // Type-safe conditional export for PrismaClient
-export type { PrismaClient } from "@prisma/client";
+export type { PrismaClient } from '@prisma/client';
 
 // Lazy import to avoid circular dependency during schema generation
 let PrismaClientClass: any;
 let prismaInstance: any;
 
 try {
-  // Only import if @prisma/client is available
-  const prismaModule = require("@prisma/client");
-  PrismaClientClass = prismaModule.PrismaClient;
+    // Only import if @prisma/client is available
+    const prismaModule = require('@prisma/client');
+    PrismaClientClass = prismaModule.PrismaClient;
 } catch {
-  // @prisma/client not generated yet - this is fine during schema generation
-  PrismaClientClass = null;
+    // @prisma/client not generated yet - this is fine during schema generation
+    PrismaClientClass = null;
 }
 
 declare global {
-  // eslint-disable-next-line no-var
-  var __ottabase_prisma__: any | undefined;
+    // eslint-disable-next-line no-var
+    var __ottabase_prisma__: any | undefined;
 }
 
 /**
@@ -46,15 +46,15 @@ declare global {
  * @deprecated For D1, use createPrismaD1Client from @ottabase/cf/d1-prisma
  */
 export const prisma = (() => {
-  if (!PrismaClientClass) {
-    return null;
-  }
-  if (globalThis.__ottabase_prisma__) {
-    return globalThis.__ottabase_prisma__;
-  }
-  prismaInstance = new PrismaClientClass();
-  if (process.env.NODE_ENV !== "production") {
-    globalThis.__ottabase_prisma__ = prismaInstance;
-  }
-  return prismaInstance;
+    if (!PrismaClientClass) {
+        return null;
+    }
+    if (globalThis.__ottabase_prisma__) {
+        return globalThis.__ottabase_prisma__;
+    }
+    prismaInstance = new PrismaClientClass();
+    if (process.env.NODE_ENV !== 'production') {
+        globalThis.__ottabase_prisma__ = prismaInstance;
+    }
+    return prismaInstance;
 })();

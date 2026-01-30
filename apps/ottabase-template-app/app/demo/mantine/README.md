@@ -4,7 +4,8 @@ This directory contains a complete demonstration of how to integrate **Mantine U
 
 ## Structure
 
-The Mantine demo is organized as a nested route under `/demo/mantine` with its own layout that adds the Mantine providers:
+The Mantine demo is organized as a nested route under `/demo/mantine` with its own layout that adds the Mantine
+providers:
 
 ```
 app/
@@ -25,12 +26,16 @@ app/
 ## Key Files
 
 ### [layout.tsx](layout.tsx)
+
 This layout wraps all `/demo/mantine/*` routes and adds the Mantine providers:
+
 - `ProviderUIMantine` - Mantine's theme provider with custom themes and colors
 - `ThemeProvider` - Custom theme context for switching between Mantine theme presets
 
 ### [page.tsx](page.tsx)
+
 The main demo page showcasing:
+
 - Mantine components (Button, Card, Text, Title, etc.)
 - Theme switching between different Mantine theme presets
 - Global state management with Jotai
@@ -39,7 +44,9 @@ The main demo page showcasing:
 - Font family demonstrations
 
 ### [components/ThemeSwitcher.tsx](components/ThemeSwitcher.tsx)
+
 A custom component that allows switching between different Mantine theme presets:
+
 - mantine-slate (minimal design)
 - mantine-graphite (high-contrast)
 - mantine-azure (enterprise design)
@@ -80,15 +87,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
 2. **Use Mantine components**: Import and use Mantine components anywhere in your app:
 
 ```tsx
-import { Button, Card, Text } from "@mantine/core";
+import { Button, Card, Text } from '@mantine/core';
 
 export default function MyPage() {
-  return (
-    <Card>
-      <Text>Hello from Mantine!</Text>
-      <Button>Click me</Button>
-    </Card>
-  );
+    return (
+        <Card>
+            <Text>Hello from Mantine!</Text>
+            <Button>Click me</Button>
+        </Card>
+    );
 }
 ```
 

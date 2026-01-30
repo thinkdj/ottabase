@@ -7,7 +7,8 @@ A reusable shortlink management system designed for Cloudflare infrastructure.
 - 🔗 URL shortening with custom identifiers
 - 🎯 Multi-app database sharing via opt-in `appId` column
 - ⏰ Optional expiry dates
-- 💡 Helpers for expired/interstitial redirects (`renderExpiredShortlinkPage`, `renderShortlinkInterstitialPage`, `buildRedirectResponse`)
+- 💡 Helpers for expired/interstitial redirects (`renderExpiredShortlinkPage`, `renderShortlinkInterstitialPage`,
+  `buildRedirectResponse`)
 - 📊 Click tracking and analytics
 - 🏗️ Built on Drizzle ORM for Cloudflare D1
 - 🔄 Reusable across monorepo apps
@@ -23,13 +24,13 @@ pnpm add @ottabase/shortlinks
 ### Import Model + Schema
 
 ```typescript
-import { Shortlink, shortlinksTable } from "@ottabase/shortlinks";
+import { Shortlink, shortlinksTable } from '@ottabase/shortlinks';
 ```
 
 ### Import Types
 
 ```typescript
-import type { ShortlinkRecord, CreateShortlinkRequest } from "@ottabase/shortlinks";
+import type { ShortlinkRecord, CreateShortlinkRequest } from '@ottabase/shortlinks';
 ```
 
 ## Database Schema
@@ -52,30 +53,26 @@ The package exports a `shortlinksTable` Drizzle schema with the following fields
 ## Example
 
 ```typescript
-import { drizzle } from "drizzle-orm/d1";
-import { shortlinksTable } from "@ottabase/shortlinks";
+import { drizzle } from 'drizzle-orm/d1';
+import { shortlinksTable } from '@ottabase/shortlinks';
 
 // Create a shortlink
 await db.insert(shortlinksTable).values({
-  fullUrl: "https://github.com/ottabase",
-  shortCode: "gh",
-  type: "redirect",
-  appId: "myapp",
-  interstitialEnabled: true,
+    fullUrl: 'https://github.com/ottabase',
+    shortCode: 'gh',
+    type: 'redirect',
+    appId: 'myapp',
+    interstitialEnabled: true,
 });
 
 // Query shortlinks
-const link = await db
-  .select()
-  .from(shortlinksTable)
-  .where(eq(shortlinksTable.shortCode, "gh"))
-  .get();
+const link = await db.select().from(shortlinksTable).where(eq(shortlinksTable.shortCode, 'gh')).get();
 ```
 
 For worker-side redirects, reuse the exported helpers instead of reconstructing the markup:
 
 ```ts
-import { buildRedirectResponse } from "@ottabase/shortlinks";
+import { buildRedirectResponse } from '@ottabase/shortlinks';
 
 const response = buildRedirectResponse(shortlink);
 ```

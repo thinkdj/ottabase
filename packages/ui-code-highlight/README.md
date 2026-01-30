@@ -14,10 +14,6 @@ pnpm add @ottabase/ui-code-highlight
 import { ProviderCodeHighlight } from '@ottabase/ui-code-highlight';
 
 function App() {
-  return (
-    <ProviderCodeHighlight>
-      {/* Your app */}
-    </ProviderCodeHighlight>
-  );
+    return <ProviderCodeHighlight>{/* Your app */}</ProviderCodeHighlight>;
 }
 ```

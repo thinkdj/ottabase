@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Link } from "@tanstack/react-router";
-import { RegisterForm, type RegisterFormData } from "@ottabase/auth/components";
-import { useSession } from "@/lib/auth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@ottabase/ui-shadcn";
-import { ArrowLeft } from "lucide-react";
-import { getStoredReferralCode, getReferralExpiryInfo } from "@/lib/referrals";
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from '@tanstack/react-router';
+import { RegisterForm, type RegisterFormData } from '@ottabase/auth/components';
+import { useSession } from '@/lib/auth';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@ottabase/ui-shadcn';
+import { ArrowLeft } from 'lucide-react';
+import { getStoredReferralCode, getReferralExpiryInfo } from '@/lib/referrals';
 
 export function RegisterPage() {
     const navigate = useNavigate();
@@ -31,7 +31,7 @@ export function RegisterPage() {
 
         try {
             // TODO: Implement actual registration when Auth.js is setup
-            console.log("Registering user:", data);
+            console.log('Registering user:', data);
 
             // Simulated API call
             await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -40,9 +40,9 @@ export function RegisterPage() {
             // This runs in development builds to mimic backend validation.
             // In production, real uniqueness checks must be performed on the server.
             if (import.meta.env?.DEV) {
-                const simulatedExistingEmails = ["existing@example.com"];
+                const simulatedExistingEmails = ['existing@example.com'];
                 if (simulatedExistingEmails.includes(data.email)) {
-                    throw new Error("An account with this email already exists");
+                    throw new Error('An account with this email already exists');
                 }
             }
 
@@ -61,8 +61,8 @@ export function RegisterPage() {
             if (referralCode) {
                 // In a real implementation, this would be handled server-side during user creation
                 // For demo purposes, we'll just log it
-                console.log("User registered with referral code:", referralCode);
-                console.log("TODO: Attribute user", userId, "to referrer with code:", referralCode);
+                console.log('User registered with referral code:', referralCode);
+                console.log('TODO: Attribute user', userId, 'to referrer with code:', referralCode);
 
                 // In production, the server would:
                 // 1. Look up the referrer by referralUsername
@@ -76,10 +76,10 @@ export function RegisterPage() {
 
             // Redirect to dashboard after a brief success message
             setTimeout(() => {
-                navigate({ to: "/dashboard" });
+                navigate({ to: '/dashboard' });
             }, 1500);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Registration failed");
+            setError(err instanceof Error ? err.message : 'Registration failed');
             setIsLoading(false);
         }
     };
@@ -98,12 +98,12 @@ export function RegisterPage() {
 
                 <div className="text-center space-y-2">
                     <h1 className="text-3xl font-bold">Create Account</h1>
-                    <p className="text-muted-foreground">
-                        Sign up to get started
-                    </p>
+                    <p className="text-muted-foreground">Sign up to get started</p>
                     {referralCode && (
                         <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-sm">
-                            <p className="font-medium">You were referred by: <strong>{referralCode}</strong></p>
+                            <p className="font-medium">
+                                You were referred by: <strong>{referralCode}</strong>
+                            </p>
                             {referralExpiry && (
                                 <p className="text-xs text-muted-foreground mt-1">
                                     Referral expires in {referralExpiry.daysRemaining} days
@@ -116,9 +116,7 @@ export function RegisterPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Registration</CardTitle>
-                        <CardDescription>
-                            Fill in your details to create a new account
-                        </CardDescription>
+                        <CardDescription>Fill in your details to create a new account</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <RegisterForm
@@ -131,7 +129,7 @@ export function RegisterPage() {
                             termsText="I agree to the Terms of Service and Privacy Policy"
                             onTermsClick={() => {
                                 // TODO: Open terms modal or navigate to terms page
-                                console.log("Show terms");
+                                console.log('Show terms');
                             }}
                         />
                     </CardContent>
@@ -140,7 +138,7 @@ export function RegisterPage() {
                 <Card>
                     <CardContent className="pt-6">
                         <p className="text-center text-sm">
-                            Already have an account?{" "}
+                            Already have an account?{' '}
                             <Link to="/login" className="font-medium text-primary hover:underline">
                                 Sign in
                             </Link>
@@ -157,16 +155,12 @@ export function RegisterPage() {
                     </CardHeader>
                     <CardContent className="text-xs space-y-2">
                         <p>
-                            <strong>Password requirements:</strong> 8+ chars with uppercase,
-                            lowercase, and number
+                            <strong>Password requirements:</strong> 8+ chars with uppercase, lowercase, and number
                         </p>
                         <p>
-                            <strong>Registration:</strong> Creates account and logs you in
-                            automatically
+                            <strong>Registration:</strong> Creates account and logs you in automatically
                         </p>
-                        <p className="text-muted-foreground">
-                            In production, you'd send a verification email
-                        </p>
+                        <p className="text-muted-foreground">In production, you'd send a verification email</p>
                     </CardContent>
                 </Card>
             </div>

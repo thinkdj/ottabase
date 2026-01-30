@@ -1,39 +1,39 @@
 {
-  "name": "@ottabase/cron",
-  "version": "1.0.0",
-  "description": "Minimal cron handler for Cloudflare Workers scheduled events",
-  "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/cron",
+    "version": "1.0.0",
+    "description": "Minimal cron handler for Cloudflare Workers scheduled events",
+    "type": "module",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        }
+    },
+    "sideEffects": false,
+    "scripts": {
+        "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "@types/node": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "peerDependencies": {
+        "@cloudflare/workers-types": "^4.0.0"
+    },
+    "peerDependenciesMeta": {
+        "@cloudflare/workers-types": {
+            "optional": true
+        }
     }
-  },
-  "sideEffects": false,
-  "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "catalog:",
-    "@types/node": "catalog:",
-    "tsup": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
-  },
-  "peerDependencies": {
-    "@cloudflare/workers-types": "^4.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@cloudflare/workers-types": {
-      "optional": true
-    }
-  }
 }

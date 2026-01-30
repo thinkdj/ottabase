@@ -25,39 +25,39 @@ packages/package-name/
 
 ```jsonc
 {
-  "name": "@ottabase/package-name",
-  "version": "1.0.0",
-  "main": "dist/index.js",
-  "module": "dist/index.esm.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
-      "require": "./dist/index.js"
+    "name": "@ottabase/package-name",
+    "version": "1.0.0",
+    "main": "dist/index.js",
+    "module": "dist/index.esm.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.esm.js",
+            "require": "./dist/index.js",
+        },
+        "./component-name": {
+            "types": "./dist/component-name.d.ts",
+            "import": "./dist/component-name.esm.js",
+            "require": "./dist/component-name.js",
+        },
     },
-    "./component-name": {
-      "types": "./dist/component-name.d.ts",
-      "import": "./dist/component-name.esm.js",
-      "require": "./dist/component-name.js"
-    }
-  },
-  "sideEffects": false, // Enable tree shaking when possible
-  "scripts": {
-    "build": "tsup src/index.ts src/component-name.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/component-name.ts --format cjs,esm --dts --watch"
-  },
-  "dependencies": {
-    "@ottabase/config": "workspace:*"
-  },
-  "peerDependencies": {
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
-  },
-  "devDependencies": {
-    "typescript": "catalog:",
-    "tsup": "catalog:"
-  }
+    "sideEffects": false, // Enable tree shaking when possible
+    "scripts": {
+        "build": "tsup src/index.ts src/component-name.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/component-name.ts --format cjs,esm --dts --watch",
+    },
+    "dependencies": {
+        "@ottabase/config": "workspace:*",
+    },
+    "peerDependencies": {
+        "react": ">=18.0.0",
+        "react-dom": ">=18.0.0",
+    },
+    "devDependencies": {
+        "typescript": "catalog:",
+        "tsup": "catalog:",
+    },
 }
 ```
 
@@ -65,14 +65,14 @@ packages/package-name/
 
 ```json
 {
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "jsx": "react-jsx",
-    "skipLibCheck": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["dist", "node_modules"]
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "outDir": "dist",
+        "jsx": "react-jsx",
+        "skipLibCheck": true
+    },
+    "include": ["src/**/*"],
+    "exclude": ["dist", "node_modules"]
 }
 ```
 
@@ -89,16 +89,16 @@ Add to package.json exports and build script:
 
 ```json
 {
-  "exports": {
-    "./component-name": {
-      "types": "./dist/component-name.d.ts",
-      "import": "./dist/component-name.esm.js",
-      "require": "./dist/component-name.js"
+    "exports": {
+        "./component-name": {
+            "types": "./dist/component-name.d.ts",
+            "import": "./dist/component-name.esm.js",
+            "require": "./dist/component-name.js"
+        }
+    },
+    "scripts": {
+        "build": "tsup src/index.ts src/component-name.ts --format cjs,esm --dts --clean"
     }
-  },
-  "scripts": {
-    "build": "tsup src/index.ts src/component-name.ts --format cjs,esm --dts --clean"
-  }
 }
 ```
 
@@ -119,10 +119,7 @@ Consumer apps must include package source in Tailwind config:
 ```javascript
 // tailwind.config.cjs
 module.exports = {
-  content: [
-    './app/**/*.{js,ts,jsx,tsx}',
-    '../../packages/package-name/src/**/*.{js,ts,jsx,tsx}'
-  ]
+    content: ['./app/**/*.{js,ts,jsx,tsx}', '../../packages/package-name/src/**/*.{js,ts,jsx,tsx}'],
 };
 ```
 
@@ -132,8 +129,8 @@ module.exports = {
 - **Catalog packages**: `"lucide-react": "catalog:"`
 - **Peer dependencies**: React/React DOM (avoid Next.js peer deps)
 
-Use `catalog:` for shared dependencies defined in pnpm-workspace.yaml (e.g., TypeScript, tsup). Use `workspace:*` for internal packages. Declare framework dependencies (e.g., React) as peerDependencies to avoid duplication
-
+Use `catalog:` for shared dependencies defined in pnpm-workspace.yaml (e.g., TypeScript, tsup). Use `workspace:*` for
+internal packages. Declare framework dependencies (e.g., React) as peerDependencies to avoid duplication
 
 ## Development Workflow
 

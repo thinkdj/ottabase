@@ -31,11 +31,10 @@ export function ThemeProvider({
 
     useEffect(() => {
         // Apply the active theme configuration whenever theme or mode changes
-        const mode = (resolvedTheme === 'dark' ? 'dark' : 'light');
+        const mode = resolvedTheme === 'dark' ? 'dark' : 'light';
         console.log(`[ProviderTheme] Updating theme: ${theme} | mode: ${mode} (resolved: ${resolvedTheme})`);
         applyTheme(theme, mode);
         setConfig(getTheme(theme));
-
     }, [theme, resolvedTheme]);
 
     const setTheme = (newTheme: string) => {
@@ -49,9 +48,5 @@ export function ThemeProvider({
         config,
     };
 
-    return (
-        <ThemeProviderContext.Provider value={value}>
-            {children}
-        </ThemeProviderContext.Provider>
-    );
+    return <ThemeProviderContext.Provider value={value}>{children}</ThemeProviderContext.Provider>;
 }

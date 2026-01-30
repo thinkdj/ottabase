@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { Provider } from "jotai";
+import { Provider } from 'jotai';
 
 type Props = {
-  children?: React.ReactNode;
+    children?: React.ReactNode;
 };
 export default function ProviderState({ children }: Props) {
-  return <Provider>{children}</Provider>;
+    return <Provider>{children}</Provider>;
 }

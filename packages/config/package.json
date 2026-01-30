@@ -1,43 +1,43 @@
 {
-  "name": "@ottabase/config",
-  "version": "1.0.0",
-  "description": "Shared configuration utilities for Ottabase applications",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/config",
+    "version": "1.0.0",
+    "description": "Shared configuration utilities for Ottabase applications",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "config",
+        "environment",
+        "configuration",
+        "monorepo"
+    ],
+    "author": "",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "tsup": "catalog:",
+        "rimraf": "catalog:",
+        "eslint": "catalog:"
     }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
-    "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts,.tsx",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "keywords": [
-    "config",
-    "environment",
-    "configuration",
-    "monorepo"
-  ],
-  "author": "",
-  "license": "MIT",
-  "devDependencies": {
-    "@types/node": "catalog:",
-    "typescript": "catalog:",
-    "tsup": "catalog:",
-    "rimraf": "catalog:",
-    "eslint": "catalog:"
-  }
 }

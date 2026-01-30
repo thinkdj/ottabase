@@ -36,34 +36,34 @@ pnpm dev          # Vite + Wrangler dev
 - Custom methods
 
 ```typescript
-import { BaseModel } from "@ottabase/ottaorm";
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { BaseModel } from '@ottabase/ottaorm';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
-export const todosTable = sqliteTable("todos", {
-  id: text("id").primaryKey(),
-  title: text("title").notNull(),
-  completed: integer("completed", { mode: "boolean" }).default(false),
-  userId: text("user_id"),
+export const todosTable = sqliteTable('todos', {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    completed: integer('completed', { mode: 'boolean' }).default(false),
+    userId: text('user_id'),
 });
 
 export class Todo extends BaseModel {
-  static entity = "todos";
-  static table = todosTable;
-  static primaryKey = "id";
-  
-  static casts = {
-    completed: "boolean" as const,
-  };
+    static entity = 'todos';
+    static table = todosTable;
+    static primaryKey = 'id';
 
-  async user() {
-    const { User } = await import("@ottabase/ottaorm");
-    return this.belongsTo(User, "userId");
-  }
+    static casts = {
+        completed: 'boolean' as const,
+    };
 
-  async toggle() {
-    this.set("completed", !this.get("completed"));
-    return this.save();
-  }
+    async user() {
+        const { User } = await import('@ottabase/ottaorm');
+        return this.belongsTo(User, 'userId');
+    }
+
+    async toggle() {
+        this.set('completed', !this.get('completed'));
+        return this.save();
+    }
 }
 ```
 
@@ -92,9 +92,9 @@ export function getAllSchemas() {
 Register models for dynamic lookup by entity name:
 
 ```typescript
-import { registerModels, User, Post, Tag } from "@ottabase/ottaorm";
-import { Todo } from "./models/Todo";
-import { Shortlink } from "./models/Shortlink";
+import { registerModels, User, Post, Tag } from '@ottabase/ottaorm';
+import { Todo } from './models/Todo';
+import { Shortlink } from './models/Shortlink';
 
 // Register all models for /api/ottaorm/{entity} CRUD
 registerModels([User, Post, Tag, Todo, Shortlink]);
@@ -111,6 +111,7 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 ```
 
 **Capabilities:**
+
 - ✅ Create new tables
 - ✅ Add columns to existing tables
 - ⚠️ New NOT NULL columns need DEFAULT values
@@ -120,35 +121,35 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 
 ```typescript
 // ottabase/hooks/useTodo.ts
-import { createModelHooks } from "@ottabase/ottaorm/client";
+import { createModelHooks } from '@ottabase/ottaorm/client';
 
 export const {
-  useList: useTodos,
-  useDetail: useTodo,
-  useCreate: useCreateTodo,
-  useUpdate: useUpdateTodo,
-  useDelete: useDeleteTodo,
-  useInfiniteList: useTodosInfinite,
-} = createModelHooks<TodoType>({ entity: "todos" });
+    useList: useTodos,
+    useDetail: useTodo,
+    useCreate: useCreateTodo,
+    useUpdate: useUpdateTodo,
+    useDelete: useDeleteTodo,
+    useInfiniteList: useTodosInfinite,
+} = createModelHooks<TodoType>({ entity: 'todos' });
 ```
 
 ## Key Packages
 
-| Package | Purpose |
-|---------|---------|
-| `@ottabase/ottaorm` | Fat models, CRUD, relationships, auto-migrations |
-| `@ottabase/db` | Drizzle D1 driver (`createD1Driver`) |
-| `@ottabase/cf` | D1, KV, R2, Queues, Rate Limiting wrappers |
-| `@ottabase/queue` | Job queue (dispatch, handlers, deduplication, chaining, priority) |
-| `@ottabase/auth` | Auth.js v5 with D1 adapter |
-| `@ottabase/ui-shadcn` | shadcn/ui components |
-| `@ottabase/ui-mantine` | Mantine provider, pre-built themes |
-| `@ottabase/state` | Jotai atoms (theme, user, sidebar) |
-| `@ottabase/utils` | timezone, string, file, url utilities |
-| `@ottabase/ottaupload` | File upload (R2, CF Images) |
-| `@ottabase/cf-realtime` | WebSocket pub/sub (Durable Objects) |
-| `@ottabase/shortlinks` | URL shortener schema |
-| `@ottabase/referrals` | Referral tracking |
+| Package                 | Purpose                                                           |
+| ----------------------- | ----------------------------------------------------------------- |
+| `@ottabase/ottaorm`     | Fat models, CRUD, relationships, auto-migrations                  |
+| `@ottabase/db`          | Drizzle D1 driver (`createD1Driver`)                              |
+| `@ottabase/cf`          | D1, KV, R2, Queues, Rate Limiting wrappers                        |
+| `@ottabase/queue`       | Job queue (dispatch, handlers, deduplication, chaining, priority) |
+| `@ottabase/auth`        | Auth.js v5 with D1 adapter                                        |
+| `@ottabase/ui-shadcn`   | shadcn/ui components                                              |
+| `@ottabase/ui-mantine`  | Mantine provider, pre-built themes                                |
+| `@ottabase/state`       | Jotai atoms (theme, user, sidebar)                                |
+| `@ottabase/utils`       | timezone, string, file, url utilities                             |
+| `@ottabase/ottaupload`  | File upload (R2, CF Images)                                       |
+| `@ottabase/cf-realtime` | WebSocket pub/sub (Durable Objects)                               |
+| `@ottabase/shortlinks`  | URL shortener schema                                              |
+| `@ottabase/referrals`   | Referral tracking                                                 |
 
 ## Adding New Dependencies
 
@@ -161,6 +162,7 @@ export const {
 ### When to Use Catalog (pnpm-workspace.yaml)
 
 Add to catalog when:
+
 - ✅ Used by 2+ packages/apps (react, typescript, drizzle-orm)
 - ✅ Core framework libraries (mantine, tanstack, jotai)
 - ✅ Shared tooling (tsup, vitest, eslint)
@@ -168,9 +170,9 @@ Add to catalog when:
 ```yaml
 # pnpm-workspace.yaml
 catalog:
-  react: ^19.1.0
-  typescript: ~5.8.4
-  drizzle-orm: ^0.44.2
+    react: ^19.1.0
+    typescript: ~5.8.4
+    drizzle-orm: ^0.44.2
 ```
 
 Then reference in package.json:
@@ -182,6 +184,7 @@ Then reference in package.json:
 ### When to Use Local (package.json only)
 
 Add locally when:
+
 - ✅ Package-specific utility (e.g., `editorjs` only in `ottaeditor`)
 - ✅ App-specific tool not needed elsewhere
 - ✅ Experimental/testing before promoting to catalog
@@ -208,10 +211,10 @@ Shared packages declare framework deps as peers to avoid duplication:
 
 ```json
 {
-  "peerDependencies": {
-    "react": "catalog:",
-    "drizzle-orm": "catalog:"
-  }
+    "peerDependencies": {
+        "react": "catalog:",
+        "drizzle-orm": "catalog:"
+    }
 }
 ```
 
@@ -223,11 +226,11 @@ When a package provides its own database table:
 
 ```typescript
 // packages/mypackage/src/schema.ts
-import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
-export const myTable = sqliteTable("mytable", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
+export const myTable = sqliteTable('mytable', {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
 });
 ```
 
@@ -235,15 +238,15 @@ export const myTable = sqliteTable("mytable", {
 
 ```typescript
 // apps/my-app/ottabase/models/MyModel.ts
-import { BaseModel } from "@ottabase/ottaorm";
-import { myTable } from "@ottabase/mypackage/schema";
+import { BaseModel } from '@ottabase/ottaorm';
+import { myTable } from '@ottabase/mypackage/schema';
 
 export class MyModel extends BaseModel {
-  static entity = "mytable";
-  static table = myTable;
-  static primaryKey = "id";
-  
-  // App-specific logic here
+    static entity = 'mytable';
+    static table = myTable;
+    static primaryKey = 'id';
+
+    // App-specific logic here
 }
 ```
 
@@ -251,21 +254,16 @@ export class MyModel extends BaseModel {
 
 ```typescript
 // ottabase/db/schema.ts
-export { myTable } from "@ottabase/mypackage/schema";
+export { myTable } from '@ottabase/mypackage/schema';
 ```
 
 ### 4. App: Create hooks
 
 ```typescript
 // ottabase/hooks/useMyModel.ts
-import { createModelHooks } from "@ottabase/ottaorm/client";
+import { createModelHooks } from '@ottabase/ottaorm/client';
 
-export const {
-  useList,
-  useCreate,
-  useUpdate,
-  useDelete,
-} = createModelHooks({ entity: "mytable" });
+export const { useList, useCreate, useUpdate, useDelete } = createModelHooks({ entity: 'mytable' });
 ```
 
 ### 5. Run migrations
@@ -276,14 +274,14 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 
 ## File Locations
 
-| Purpose | Location |
-|---------|----------|
-| Models | `apps/*/ottabase/models/` |
-| Schema | `apps/*/ottabase/db/schema.ts` |
+| Purpose      | Location                                          |
+| ------------ | ------------------------------------------------- |
+| Models       | `apps/*/ottabase/models/`                         |
+| Schema       | `apps/*/ottabase/db/schema.ts`                    |
 | Client hooks | `apps/*/ottabase/hooks/` or `src/ottabase/hooks/` |
-| Migrations | `apps/*/ottabase/migrations/` |
-| API routes | `apps/*/cloudflare-worker.ts` |
-| Pages | `apps/*/src/pages/` |
+| Migrations   | `apps/*/ottabase/migrations/`                     |
+| API routes   | `apps/*/cloudflare-worker.ts`                     |
+| Pages        | `apps/*/src/pages/`                               |
 
 ## TanStack App Structure
 
@@ -326,25 +324,26 @@ pnpm storybook
 
 ## Agent Workflow Checklist
 
-1. **Review documentation first** - Read this file and `AGENTS.MD` before making changes to confirm architecture and dependency rules.
+1. **Review documentation first** - Read this file and `AGENTS.MD` before making changes to confirm architecture and
+   dependency rules.
 2. **Install dependencies** with `pnpm install` if needed; never use npm or yarn.
 3. **Build packages first** with `pnpm build:pkg` when working with shared code.
 4. **For code changes**, run quality checks:
-   - `pnpm lint` - Lint all packages
-   - `pnpm type-check` - TypeScript validation
-   - `pnpm test` - Run tests (use `--filter` to scope: `pnpm test --filter=@ottabase/ottaorm`)
+    - `pnpm lint` - Lint all packages
+    - `pnpm type-check` - TypeScript validation
+    - `pnpm test` - Run tests (use `--filter` to scope: `pnpm test --filter=@ottabase/ottaorm`)
 5. **When adding dependencies**, follow the decision flow:
-   - Multiple packages/apps will use it → Add to `pnpm-workspace.yaml` catalog first, then reference as `"catalog:"`
-   - Single package/app only → Add directly to that package's `package.json`
-   - Internal packages → Use `"workspace:*"`
+    - Multiple packages/apps will use it → Add to `pnpm-workspace.yaml` catalog first, then reference as `"catalog:"`
+    - Single package/app only → Add directly to that package's `package.json`
+    - Internal packages → Use `"workspace:*"`
 6. **Validate shared changes** don't break `apps/ottabase-template-app-tanstack`:
-   - Build the app: `pnpm build --filter=ottabase-template-app-tanstack`
-   - Run dev: `pnpm dev` and test affected features
+    - Build the app: `pnpm build --filter=ottabase-template-app-tanstack`
+    - Run dev: `pnpm dev` and test affected features
 7. **For model changes**, ensure:
-   - Model has `static entity` and `static table`
-   - Table is exported in `ottabase/db/schema.ts`
-   - Model is registered with `registerModels()` if CRUD API needed
-   - Run `curl -X POST http://localhost:3004/api/ottaorm/init` to apply migrations
+    - Model has `static entity` and `static table`
+    - Table is exported in `ottabase/db/schema.ts`
+    - Model is registered with `registerModels()` if CRUD API needed
+    - Run `curl -X POST http://localhost:3004/api/ottaorm/init` to apply migrations
 
 ## Anti-Patterns
 
@@ -355,4 +354,4 @@ pnpm storybook
 ❌ Implicit dependencies  
 ❌ Missing type definitions  
 ❌ Models without `static entity` and `static table`  
-❌ Using npm or yarn instead of pnpm  
+❌ Using npm or yarn instead of pnpm

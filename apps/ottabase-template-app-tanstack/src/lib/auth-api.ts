@@ -8,16 +8,15 @@
 // ============================================================
 
 export {
-  getCsrfToken,
-  getSession,
-  isAuthenticated,
-  sendMagicLink,
-  signInWithCredentials,
-  signInWithProvider,
-  signOut,
-  type AuthClientOptions,
-  type AuthResponse,
-  type AuthSession,
-  type SignInCredentials,
-} from "@ottabase/auth/client";
-
+    getCsrfToken,
+    getSession,
+    isAuthenticated,
+    sendMagicLink,
+    signInWithCredentials,
+    signInWithProvider,
+    signOut,
+    type AuthClientOptions,
+    type AuthResponse,
+    type AuthSession,
+    type SignInCredentials,
+} from '@ottabase/auth/client';

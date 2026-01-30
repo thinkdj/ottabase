@@ -53,29 +53,21 @@ if (noOpen) {
 // Start frontend (Vite)
 log.info('Starting frontend (Vite)...');
 const frontendArgs = noOpen ? ['exec', 'vite'] : ['dev'];
-const frontend = spawn(
-    isWindows ? 'pnpm.cmd' : 'pnpm',
-    frontendArgs,
-    {
-        cwd: appDir,
-        stdio: 'pipe',
-        shell: true,
-        env: { ...process.env, PORT_FE, PORT_BE },
-    }
-);
+const frontend = spawn(isWindows ? 'pnpm.cmd' : 'pnpm', frontendArgs, {
+    cwd: appDir,
+    stdio: 'pipe',
+    shell: true,
+    env: { ...process.env, PORT_FE, PORT_BE },
+});
 
 // Start backend (Wrangler)
 log.info('Starting backend (Wrangler)...');
-const backend = spawn(
-    isWindows ? 'pnpm.cmd' : 'pnpm',
-    ['dev:worker', '--', '--port', PORT_BE],
-    {
-        cwd: appDir,
-        stdio: 'pipe',
-        shell: true,
-        env: { ...process.env, PORT_FE, PORT_BE },
-    }
-);
+const backend = spawn(isWindows ? 'pnpm.cmd' : 'pnpm', ['dev:worker', '--', '--port', PORT_BE], {
+    cwd: appDir,
+    stdio: 'pipe',
+    shell: true,
+    env: { ...process.env, PORT_FE, PORT_BE },
+});
 
 // Handle frontend output
 frontend.stdout.on('data', (data) => {

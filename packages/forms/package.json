@@ -1,49 +1,49 @@
 {
-  "name": "@ottabase/forms",
-  "version": "1.0.0",
-  "description": "Auto-generated CRUD forms from OttaORM model metadata",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/forms",
+    "version": "1.0.0",
+    "description": "Auto-generated CRUD forms from OttaORM model metadata",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "dependencies": {
+        "@ottabase/ottaselect": "workspace:*",
+        "clsx": "catalog:",
+        "lucide-react": "catalog:"
+    },
+    "peerDependencies": {
+        "@ottabase/ottaorm": "workspace:*",
+        "@tanstack/react-query": ">=5.0.0",
+        "react": ">=18.0.0",
+        "react-dom": ">=18.0.0"
+    },
+    "devDependencies": {
+        "@ottabase/ottaorm": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "eslint": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:"
     }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
-    "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts,.tsx",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "dependencies": {
-    "@ottabase/ottaselect": "workspace:*",
-    "clsx": "catalog:",
-    "lucide-react": "catalog:"
-  },
-  "peerDependencies": {
-    "@ottabase/ottaorm": "workspace:*",
-    "@tanstack/react-query": ">=5.0.0",
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
-  },
-  "devDependencies": {
-    "@ottabase/ottaorm": "workspace:*",
-    "@tanstack/react-query": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "eslint": "catalog:",
-    "rimraf": "catalog:",
-    "tsup": "catalog:",
-    "typescript": "catalog:"
-  }
 }

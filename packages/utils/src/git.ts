@@ -1,15 +1,15 @@
-"use server";
+'use server';
 
-import { execSync } from "node:child_process";
+import { execSync } from 'node:child_process';
 
 /**
  * Git commit information interface
  */
 export interface GitCommitInfo {
-  message: string;
-  hash: string;
-  author: string;
-  date: string;
+    message: string;
+    hash: string;
+    author: string;
+    date: string;
 }
 
 /**
@@ -18,13 +18,13 @@ export interface GitCommitInfo {
  * @example getLastCommitMessage() // "feat: add new feature @ Mon Jan 1 12:00:00 2024"
  */
 export function getLastCommitMessage(): string {
-  try {
-    return execSync('git log -1 --pretty=format:"%s @ %ad"', {
-      encoding: "utf8",
-    }).trim();
-  } catch (error) {
-    return "Git: N/A";
-  }
+    try {
+        return execSync('git log -1 --pretty=format:"%s @ %ad"', {
+            encoding: 'utf8',
+        }).trim();
+    } catch (error) {
+        return 'Git: N/A';
+    }
 }
 
 /**
@@ -32,12 +32,12 @@ export function getLastCommitMessage(): string {
  * @returns True if in a git repository, false otherwise
  */
 export function isGitRepository(): boolean {
-  try {
-    execSync("git rev-parse --git-dir", { stdio: "ignore" });
-    return true;
-  } catch (error) {
-    return false;
-  }
+    try {
+        execSync('git rev-parse --git-dir', { stdio: 'ignore' });
+        return true;
+    } catch (error) {
+        return false;
+    }
 }
 
 /**
@@ -45,13 +45,13 @@ export function isGitRepository(): boolean {
  * @returns Current branch name or 'unknown' if not in a git repository
  */
 export function getCurrentBranch(): string {
-  try {
-    return execSync("git rev-parse --abbrev-ref HEAD", {
-      encoding: "utf8",
-    }).trim();
-  } catch (error) {
-    return "unknown";
-  }
+    try {
+        return execSync('git rev-parse --abbrev-ref HEAD', {
+            encoding: 'utf8',
+        }).trim();
+    } catch (error) {
+        return 'unknown';
+    }
 }
 
 /**
@@ -60,12 +60,12 @@ export function getCurrentBranch(): string {
  * @returns Commit hash or 'unknown' if not in a git repository
  */
 export function getLatestCommitHash(short: boolean = true): string {
-  try {
-    const command = short ? "git rev-parse --short HEAD" : "git rev-parse HEAD";
-    return execSync(command, { encoding: "utf8" }).trim();
-  } catch (error) {
-    return "unknown";
-  }
+    try {
+        const command = short ? 'git rev-parse --short HEAD' : 'git rev-parse HEAD';
+        return execSync(command, { encoding: 'utf8' }).trim();
+    } catch (error) {
+        return 'unknown';
+    }
 }
 
 /**
@@ -73,29 +73,29 @@ export function getLatestCommitHash(short: boolean = true): string {
  * @returns GitCommitInfo object with commit details
  */
 export function getLatestCommitInfo(): GitCommitInfo {
-  try {
-    const message = execSync('git log -1 --pretty=format:"%s"', {
-      encoding: "utf8",
-    }).trim();
-    const hash = execSync("git rev-parse --short HEAD", {
-      encoding: "utf8",
-    }).trim();
-    const author = execSync('git log -1 --pretty=format:"%an"', {
-      encoding: "utf8",
-    }).trim();
-    const date = execSync('git log -1 --pretty=format:"%ad"', {
-      encoding: "utf8",
-    }).trim();
+    try {
+        const message = execSync('git log -1 --pretty=format:"%s"', {
+            encoding: 'utf8',
+        }).trim();
+        const hash = execSync('git rev-parse --short HEAD', {
+            encoding: 'utf8',
+        }).trim();
+        const author = execSync('git log -1 --pretty=format:"%an"', {
+            encoding: 'utf8',
+        }).trim();
+        const date = execSync('git log -1 --pretty=format:"%ad"', {
+            encoding: 'utf8',
+        }).trim();
 
-    return { message, hash, author, date };
-  } catch (error) {
-    return {
-      message: "N/A",
-      hash: "unknown",
-      author: "unknown",
-      date: "unknown",
-    };
-  }
+        return { message, hash, author, date };
+    } catch (error) {
+        return {
+            message: 'N/A',
+            hash: 'unknown',
+            author: 'unknown',
+            date: 'unknown',
+        };
+    }
 }
 
 /**
@@ -103,13 +103,13 @@ export function getLatestCommitInfo(): GitCommitInfo {
  * @returns Repository URL or null if not available
  */
 export function getRepositoryUrl(): string | null {
-  try {
-    return execSync("git config --get remote.origin.url", {
-      encoding: "utf8",
-    }).trim();
-  } catch (error) {
-    return null;
-  }
+    try {
+        return execSync('git config --get remote.origin.url', {
+            encoding: 'utf8',
+        }).trim();
+    } catch (error) {
+        return null;
+    }
 }
 
 /**
@@ -117,14 +117,14 @@ export function getRepositoryUrl(): string | null {
  * @returns True if there are uncommitted changes, false otherwise
  */
 export function hasUncommittedChanges(): boolean {
-  try {
-    const status = execSync("git status --porcelain", {
-      encoding: "utf8",
-    }).trim();
-    return status.length > 0;
-  } catch (error) {
-    return false;
-  }
+    try {
+        const status = execSync('git status --porcelain', {
+            encoding: 'utf8',
+        }).trim();
+        return status.length > 0;
+    } catch (error) {
+        return false;
+    }
 }
 
 /**
@@ -132,12 +132,12 @@ export function hasUncommittedChanges(): boolean {
  * @returns Number of commits or 0 if not in a git repository
  */
 export function getCommitCount(): number {
-  try {
-    const count = execSync("git rev-list --count HEAD", {
-      encoding: "utf8",
-    }).trim();
-    return parseInt(count, 10);
-  } catch (error) {
-    return 0;
-  }
+    try {
+        const count = execSync('git rev-list --count HEAD', {
+            encoding: 'utf8',
+        }).trim();
+        return parseInt(count, 10);
+    } catch (error) {
+        return 0;
+    }
 }

@@ -2,12 +2,12 @@
 // Shortlink Model (Fat Model)
 // ============================================================
 
-import { BaseModel, ModelFields, PackageType } from "@ottabase/ottaorm";
-import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { renderExpiredShortlinkPage } from "../pages/expired";
-import { renderShortlinkInterstitialPage } from "../pages/interstitial";
-import { ShortlinkTypes } from "../types";
+import { BaseModel, ModelFields, PackageType } from '@ottabase/ottaorm';
+import { sql } from 'drizzle-orm';
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { renderExpiredShortlinkPage } from '../pages/expired';
+import { renderShortlinkInterstitialPage } from '../pages/interstitial';
+import { ShortlinkTypes } from '../types';
 
 /**
  * Shortlinks table schema for URL shortening service
@@ -15,47 +15,47 @@ import { ShortlinkTypes } from "../types";
  * Supports multiple apps using the same database via appId field
  * Enables custom short codes and optional expiry dates
  */
-export const shortlinksTable = sqliteTable("shortlinks", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+export const shortlinksTable = sqliteTable('shortlinks', {
+    id: text('id')
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
 
-  // The full destination URL
-  fullUrl: text("full_url").notNull(),
+    // The full destination URL
+    fullUrl: text('full_url').notNull(),
 
-  // The short identifier (e.g., "gh" in go.example.com/gh)
-  shortCode: text("short_code").notNull().unique(),
+    // The short identifier (e.g., "gh" in go.example.com/gh)
+    shortCode: text('short_code').notNull().unique(),
 
-  // Type of link (e.g., "redirect", "tracking", "internal")
-  type: text("type").notNull().default("redirect"),
+    // Type of link (e.g., "redirect", "tracking", "internal")
+    type: text('type').notNull().default('redirect'),
 
-  // App identifier for multi-app database sharing (nullable, opt-in)
-  appId: text("app_id"),
+    // App identifier for multi-app database sharing (nullable, opt-in)
+    appId: text('app_id'),
 
-  // Optional expiry timestamp
-  expiryDate: integer("expiry_date", { mode: "timestamp" }),
+    // Optional expiry timestamp
+    expiryDate: integer('expiry_date', { mode: 'timestamp' }),
 
-  // Interstitial redirect settings
-  interstitialEnabled: integer("interstitial_enabled", {
-    mode: "boolean",
-  })
-    .notNull()
-    .default(false),
-  interstitialSeconds: integer("interstitial_seconds").default(10),
+    // Interstitial redirect settings
+    interstitialEnabled: integer('interstitial_enabled', {
+        mode: 'boolean',
+    })
+        .notNull()
+        .default(false),
+    interstitialSeconds: integer('interstitial_seconds').default(10),
 
-  // Analytics
-  clicks: integer("clicks").notNull().default(0),
-  lastClickedAt: integer("last_clicked_at", { mode: "timestamp" }),
+    // Analytics
+    clicks: integer('clicks').notNull().default(0),
+    lastClickedAt: integer('last_clicked_at', { mode: 'timestamp' }),
 
-  // Metadata
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`),
+    // Metadata
+    createdAt: integer('created_at', { mode: 'timestamp' })
+        .notNull()
+        .default(sql`(unixepoch())`),
 
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`)
-    .$onUpdate(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+        .notNull()
+        .default(sql`(unixepoch())`)
+        .$onUpdate(() => new Date()),
 });
 
 export type ShortlinkRecord = typeof shortlinksTable.$inferSelect;
@@ -65,313 +65,313 @@ export type NewShortlinkRecord = typeof shortlinksTable.$inferInsert;
  * Shortlink model - URL shortening service
  */
 export class Shortlink extends BaseModel {
-  static entity = "shortlinks";
-  static table = shortlinksTable;
-  static primaryKey = "id";
-  static packageName = "@ottabase/shortlinks";
-  static packageType: PackageType = "package";
+    static entity = 'shortlinks';
+    static table = shortlinksTable;
+    static primaryKey = 'id';
+    static packageName = '@ottabase/shortlinks';
+    static packageType: PackageType = 'package';
 
-  static casts = {
-    expiryDate: "date" as const,
-    createdAt: "date" as const,
-    updatedAt: "date" as const,
-    lastClickedAt: "date" as const,
-    clicks: "number" as const,
-    interstitialEnabled: "boolean" as const,
-    interstitialSeconds: "number" as const,
-  };
+    static casts = {
+        expiryDate: 'date' as const,
+        createdAt: 'date' as const,
+        updatedAt: 'date' as const,
+        lastClickedAt: 'date' as const,
+        clicks: 'number' as const,
+        interstitialEnabled: 'boolean' as const,
+        interstitialSeconds: 'number' as const,
+    };
 
-  protected static defaults = {
-    type: ShortlinkTypes.REDIRECT,
-    clicks: 0,
-    interstitialEnabled: false,
-    interstitialSeconds: 10,
-  };
+    protected static defaults = {
+        type: ShortlinkTypes.REDIRECT,
+        clicks: 0,
+        interstitialEnabled: false,
+        interstitialSeconds: 10,
+    };
 
-  protected static fields: ModelFields = {
-    id: {
-      type: "id",
-      primaryKey: true,
-      editable: false,
-      uiConfig: {
-        label: "ID",
-      },
-    },
-    fullUrl: {
-      type: "string",
-      editable: true,
-      searchable: true,
-      sortable: true,
-      uiConfig: {
-        label: "Full URL",
-        description: "The destination URL",
-        placeholder: "https://example.com/very/long/url",
-      },
-      formConfig: {
-        visible: true,
-        fieldType: "input",
-      },
-      tableConfig: {
-        visible: true,
-        colWidth: "auto",
-      },
-      validation: {
-        rules: "required|url",
-        messages: {
-          required: "URL is required",
-          url: "Must be a valid URL",
+    protected static fields: ModelFields = {
+        id: {
+            type: 'id',
+            primaryKey: true,
+            editable: false,
+            uiConfig: {
+                label: 'ID',
+            },
         },
-      },
-    },
-    shortCode: {
-      type: "string",
-      editable: true,
-      searchable: true,
-      sortable: true,
-      uiConfig: {
-        label: "Short Code",
-        description: "Unique identifier for the short URL",
-        placeholder: "gh",
-      },
-      formConfig: {
-        visible: true,
-        fieldType: "input",
-      },
-      tableConfig: {
-        visible: true,
-        colWidth: 150,
-      },
-      validation: {
-        rules: "required|alpha_dash|min:2|max:50",
-        messages: {
-          required: "Short code is required",
-          alpha_dash: "Only letters, numbers, dashes and underscores allowed",
-          min: "Minimum 2 characters",
-          max: "Maximum 50 characters",
+        fullUrl: {
+            type: 'string',
+            editable: true,
+            searchable: true,
+            sortable: true,
+            uiConfig: {
+                label: 'Full URL',
+                description: 'The destination URL',
+                placeholder: 'https://example.com/very/long/url',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'input',
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 'auto',
+            },
+            validation: {
+                rules: 'required|url',
+                messages: {
+                    required: 'URL is required',
+                    url: 'Must be a valid URL',
+                },
+            },
         },
-      },
-    },
-    type: {
-      type: "string",
-      editable: true,
-      filterable: true,
-      sortable: true,
-      uiConfig: {
-        label: "Type",
-        description: "Link type",
-        defaultValue: ShortlinkTypes.REDIRECT,
-      },
-      formConfig: {
-        visible: true,
-        fieldType: "select",
-        options: Object.values(ShortlinkTypes).map((type) => ({
-          label: type.charAt(0).toUpperCase() + type.slice(1),
-          value: type,
-        })),
-      },
-      tableConfig: {
-        visible: true,
-        colWidth: 120,
-      },
-    },
-    appId: {
-      type: "string",
-      editable: false,
-      filterable: true,
-      sortable: true,
-      uiConfig: {
-        label: "App ID",
-        description: "Auto-set when scopeByAppId is enabled",
-      },
-      formConfig: {
-        visible: false,
-      },
-      tableConfig: {
-        visible: true,
-        colWidth: 150,
-      },
-    },
-    expiryDate: {
-      type: "date",
-      editable: true,
-      sortable: true,
-      uiConfig: {
-        label: "Expiry Date",
-        description: "Optional expiration date",
-      },
-      formConfig: {
-        visible: true,
-        fieldType: "datetime",
-      },
-      tableConfig: {
-        visible: true,
-        colWidth: 150,
-      },
-    },
-    interstitialEnabled: {
-      type: "boolean",
-      editable: true,
-      sortable: true,
-      uiConfig: {
-        label: "Interstitial",
-        description: "Show countdown before redirect",
-      },
-      formConfig: {
-        visible: true,
-        fieldType: "boolean",
-      },
-      tableConfig: {
-        visible: true,
-        colWidth: 120,
-      },
-    },
-    interstitialSeconds: {
-      type: "number",
-      editable: true,
-      sortable: true,
-      uiConfig: {
-        label: "Interstitial Seconds",
-        description: "Seconds to wait before redirect",
-      },
-      formConfig: {
-        visible: true,
-        fieldType: "number",
-        min: 1,
-        max: 60,
-        step: 1,
-      },
-      tableConfig: {
-        visible: true,
-        colWidth: 160,
-      },
-    },
-    clicks: {
-      type: "number",
-      editable: false,
-      sortable: true,
-      uiConfig: {
-        label: "Clicks",
-        description: "Number of times this link has been clicked",
-      },
-      tableConfig: {
-        visible: true,
-        colWidth: 100,
-      },
-    },
-    lastClickedAt: {
-      type: "date",
-      editable: false,
-      sortable: true,
-      uiConfig: {
-        label: "Last Clicked",
-      },
-      tableConfig: {
-        visible: true,
-        colWidth: 150,
-      },
-    },
-    createdAt: {
-      type: "date",
-      editable: false,
-      sortable: true,
-      uiConfig: {
-        label: "Created",
-      },
-      tableConfig: {
-        visible: true,
-        colWidth: 150,
-      },
-    },
-    updatedAt: {
-      type: "date",
-      editable: false,
-      sortable: true,
-      uiConfig: {
-        label: "Updated",
-      },
-      tableConfig: {
-        visible: true,
-        colWidth: 150,
-      },
-    },
-  };
+        shortCode: {
+            type: 'string',
+            editable: true,
+            searchable: true,
+            sortable: true,
+            uiConfig: {
+                label: 'Short Code',
+                description: 'Unique identifier for the short URL',
+                placeholder: 'gh',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'input',
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 150,
+            },
+            validation: {
+                rules: 'required|alpha_dash|min:2|max:50',
+                messages: {
+                    required: 'Short code is required',
+                    alpha_dash: 'Only letters, numbers, dashes and underscores allowed',
+                    min: 'Minimum 2 characters',
+                    max: 'Maximum 50 characters',
+                },
+            },
+        },
+        type: {
+            type: 'string',
+            editable: true,
+            filterable: true,
+            sortable: true,
+            uiConfig: {
+                label: 'Type',
+                description: 'Link type',
+                defaultValue: ShortlinkTypes.REDIRECT,
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'select',
+                options: Object.values(ShortlinkTypes).map((type) => ({
+                    label: type.charAt(0).toUpperCase() + type.slice(1),
+                    value: type,
+                })),
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 120,
+            },
+        },
+        appId: {
+            type: 'string',
+            editable: false,
+            filterable: true,
+            sortable: true,
+            uiConfig: {
+                label: 'App ID',
+                description: 'Auto-set when scopeByAppId is enabled',
+            },
+            formConfig: {
+                visible: false,
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 150,
+            },
+        },
+        expiryDate: {
+            type: 'date',
+            editable: true,
+            sortable: true,
+            uiConfig: {
+                label: 'Expiry Date',
+                description: 'Optional expiration date',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'datetime',
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 150,
+            },
+        },
+        interstitialEnabled: {
+            type: 'boolean',
+            editable: true,
+            sortable: true,
+            uiConfig: {
+                label: 'Interstitial',
+                description: 'Show countdown before redirect',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'boolean',
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 120,
+            },
+        },
+        interstitialSeconds: {
+            type: 'number',
+            editable: true,
+            sortable: true,
+            uiConfig: {
+                label: 'Interstitial Seconds',
+                description: 'Seconds to wait before redirect',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'number',
+                min: 1,
+                max: 60,
+                step: 1,
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 160,
+            },
+        },
+        clicks: {
+            type: 'number',
+            editable: false,
+            sortable: true,
+            uiConfig: {
+                label: 'Clicks',
+                description: 'Number of times this link has been clicked',
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 100,
+            },
+        },
+        lastClickedAt: {
+            type: 'date',
+            editable: false,
+            sortable: true,
+            uiConfig: {
+                label: 'Last Clicked',
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 150,
+            },
+        },
+        createdAt: {
+            type: 'date',
+            editable: false,
+            sortable: true,
+            uiConfig: {
+                label: 'Created',
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 150,
+            },
+        },
+        updatedAt: {
+            type: 'date',
+            editable: false,
+            sortable: true,
+            uiConfig: {
+                label: 'Updated',
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 150,
+            },
+        },
+    };
 
-  // ============================================================
-  // QUERY HELPERS
-  // ============================================================
+    // ============================================================
+    // QUERY HELPERS
+    // ============================================================
 
-  /**
-   * Find a shortlink by short code
-   */
-  static async findByCode(code: string, options?: { appId?: string }) {
-    const query: Record<string, unknown> = { shortCode: code };
-    if (options?.appId) query.appId = options.appId;
+    /**
+     * Find a shortlink by short code
+     */
+    static async findByCode(code: string, options?: { appId?: string }) {
+        const query: Record<string, unknown> = { shortCode: code };
+        if (options?.appId) query.appId = options.appId;
 
-    const results = await this.where(query);
-    return results.length > 0 ? (results[0] as Shortlink) : null;
-  }
-
-  /**
-   * Get all shortlinks for a specific app
-   */
-  static async forApp(
-    appId: string,
-    options?: {
-      orderBy?: string;
-      orderDirection?: "asc" | "desc";
-    },
-  ) {
-    return this.where(
-      { appId },
-      {
-        orderBy: options?.orderBy || "createdAt",
-        orderDirection: options?.orderDirection || "desc",
-      },
-    );
-  }
-
-  // ============================================================
-  // INSTANCE METHODS
-  // ============================================================
-
-  /**
-   * Track a click (increment count + update lastClickedAt)
-   */
-  async trackClick() {
-    const currentClicks = this.get("clicks") || 0;
-    this.set("clicks", currentClicks + 1);
-    this.set("lastClickedAt", new Date());
-    return this.save();
-  }
-
-  /**
-   * Check if shortlink is expired
-   */
-  isExpired(): boolean {
-    const expiryDate = this.get("expiryDate") as Date | null;
-    if (!expiryDate) return false;
-    return expiryDate.getTime() < Date.now();
-  }
-
-  /**
-   * Build the redirect response that handles expiry and interstitial display.
-   */
-  static buildRedirectResponse(shortlink: Shortlink): Response {
-    if (shortlink.isExpired()) {
-      return renderExpiredShortlinkPage();
+        const results = await this.where(query);
+        return results.length > 0 ? (results[0] as Shortlink) : null;
     }
 
-    if (shortlink.get("interstitialEnabled")) {
-      return renderShortlinkInterstitialPage({
-        url: shortlink.get("fullUrl") as string,
-        seconds: (shortlink.get("interstitialSeconds") as number) || 10,
-      });
+    /**
+     * Get all shortlinks for a specific app
+     */
+    static async forApp(
+        appId: string,
+        options?: {
+            orderBy?: string;
+            orderDirection?: 'asc' | 'desc';
+        },
+    ) {
+        return this.where(
+            { appId },
+            {
+                orderBy: options?.orderBy || 'createdAt',
+                orderDirection: options?.orderDirection || 'desc',
+            },
+        );
     }
 
-    return Response.redirect(shortlink.get("fullUrl") as string, 302);
-  }
+    // ============================================================
+    // INSTANCE METHODS
+    // ============================================================
+
+    /**
+     * Track a click (increment count + update lastClickedAt)
+     */
+    async trackClick() {
+        const currentClicks = this.get('clicks') || 0;
+        this.set('clicks', currentClicks + 1);
+        this.set('lastClickedAt', new Date());
+        return this.save();
+    }
+
+    /**
+     * Check if shortlink is expired
+     */
+    isExpired(): boolean {
+        const expiryDate = this.get('expiryDate') as Date | null;
+        if (!expiryDate) return false;
+        return expiryDate.getTime() < Date.now();
+    }
+
+    /**
+     * Build the redirect response that handles expiry and interstitial display.
+     */
+    static buildRedirectResponse(shortlink: Shortlink): Response {
+        if (shortlink.isExpired()) {
+            return renderExpiredShortlinkPage();
+        }
+
+        if (shortlink.get('interstitialEnabled')) {
+            return renderShortlinkInterstitialPage({
+                url: shortlink.get('fullUrl') as string,
+                seconds: (shortlink.get('interstitialSeconds') as number) || 10,
+            });
+        }
+
+        return Response.redirect(shortlink.get('fullUrl') as string, 302);
+    }
 }
 
 export function buildRedirectResponse(shortlink: Shortlink): Response {
-  return Shortlink.buildRedirectResponse(shortlink);
+    return Shortlink.buildRedirectResponse(shortlink);
 }

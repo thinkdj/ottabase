@@ -20,41 +20,41 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 export interface MigrationGeneratorConfig {
-  /**
-   * Path to the ottabase directory (contains models/, db/, migrations/)
-   * Example: "./ottabase" or "./src/ottabase"
-   */
-  ottabasePath: string;
+    /**
+     * Path to the ottabase directory (contains models/, db/, migrations/)
+     * Example: "./ottabase" or "./src/ottabase"
+     */
+    ottabasePath: string;
 
-  /**
-   * Path to drizzle.config.ts file
-   * Default: "./drizzle.config.ts"
-   */
-  drizzleConfigPath?: string;
+    /**
+     * Path to drizzle.config.ts file
+     * Default: "./drizzle.config.ts"
+     */
+    drizzleConfigPath?: string;
 
-  /**
-   * Include core models from @ottabase/ottaorm
-   * Default: true
-   */
-  includeCoreModels?: boolean;
+    /**
+     * Include core models from @ottabase/ottaorm
+     * Default: true
+     */
+    includeCoreModels?: boolean;
 
-  /**
-   * Custom models directory (relative to ottabasePath)
-   * Default: "models"
-   */
-  modelsDir?: string;
+    /**
+     * Custom models directory (relative to ottabasePath)
+     * Default: "models"
+     */
+    modelsDir?: string;
 
-  /**
-   * Generated schema output path (relative to ottabasePath)
-   * Default: "db/schema.ts"
-   */
-  schemaOutput?: string;
+    /**
+     * Generated schema output path (relative to ottabasePath)
+     * Default: "db/schema.ts"
+     */
+    schemaOutput?: string;
 
-  /**
-   * Migrations output directory (relative to ottabasePath)
-   * Default: "migrations"
-   */
-  migrationsDir?: string;
+    /**
+     * Migrations output directory (relative to ottabasePath)
+     * Default: "migrations"
+     */
+    migrationsDir?: string;
 }
 
 /**
@@ -64,54 +64,50 @@ export interface MigrationGeneratorConfig {
  * that exports all table definitions.
  */
 export async function generateSchema(config: MigrationGeneratorConfig): Promise<void> {
-  const {
-    ottabasePath,
-    includeCoreModels = true,
-    modelsDir = 'models',
-    schemaOutput = 'db/schema.ts',
-  } = config;
+    const { ottabasePath, includeCoreModels = true, modelsDir = 'models', schemaOutput = 'db/schema.ts' } = config;
 
-  console.log('🔍 Scanning for Model definitions...');
+    console.log('🔍 Scanning for Model definitions...');
 
-  const modelsPath = path.join(ottabasePath, modelsDir);
-  const schemaPath = path.join(ottabasePath, schemaOutput);
+    const modelsPath = path.join(ottabasePath, modelsDir);
+    const schemaPath = path.join(ottabasePath, schemaOutput);
 
-  // Ensure directories exist
-  if (!fs.existsSync(modelsPath)) {
-    throw new Error(`Models directory not found: ${modelsPath}`);
-  }
-
-  const dbDir = path.dirname(schemaPath);
-  if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
-  }
-
-  // Scan for all Model files
-  const modelFiles = fs.readdirSync(modelsPath)
-    .filter(file => file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.endsWith('.spec.ts'));
-
-  console.log(`📦 Found ${modelFiles.length} model files`);
-
-  // Extract table exports from each model file
-  const tableExports: Array<{ name: string; from: string }> = [];
-
-  for (const file of modelFiles) {
-    const filePath = path.join(modelsPath, file);
-    const content = fs.readFileSync(filePath, 'utf-8');
-
-    // Match table exports: export const xxxTable = sqliteTable(...)
-    const tableMatches = content.matchAll(/export\s+const\s+(\w+Table)\s*=/g);
-
-    for (const match of tableMatches) {
-      const tableName = match[1];
-      const relativePath = `../models/${file.replace('.ts', '')}`;
-      tableExports.push({ name: tableName, from: relativePath });
-      console.log(`  ✓ ${tableName} from ${file}`);
+    // Ensure directories exist
+    if (!fs.existsSync(modelsPath)) {
+        throw new Error(`Models directory not found: ${modelsPath}`);
     }
-  }
 
-  // Generate schema.ts content
-  const schemaContent = `// ============================================================
+    const dbDir = path.dirname(schemaPath);
+    if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+    }
+
+    // Scan for all Model files
+    const modelFiles = fs
+        .readdirSync(modelsPath)
+        .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.endsWith('.spec.ts'));
+
+    console.log(`📦 Found ${modelFiles.length} model files`);
+
+    // Extract table exports from each model file
+    const tableExports: Array<{ name: string; from: string }> = [];
+
+    for (const file of modelFiles) {
+        const filePath = path.join(modelsPath, file);
+        const content = fs.readFileSync(filePath, 'utf-8');
+
+        // Match table exports: export const xxxTable = sqliteTable(...)
+        const tableMatches = content.matchAll(/export\s+const\s+(\w+Table)\s*=/g);
+
+        for (const match of tableMatches) {
+            const tableName = match[1];
+            const relativePath = `../models/${file.replace('.ts', '')}`;
+            tableExports.push({ name: tableName, from: relativePath });
+            console.log(`  ✓ ${tableName} from ${file}`);
+        }
+    }
+
+    // Generate schema.ts content
+    const schemaContent = `// ============================================================
 // Auto-generated Database Schema
 // ============================================================
 //
@@ -123,7 +119,9 @@ export async function generateSchema(config: MigrationGeneratorConfig): Promise<
 // Generated: ${new Date().toISOString()}
 // ============================================================
 
-${includeCoreModels ? `// ============================================================
+${
+    includeCoreModels
+        ? `// ============================================================
 // CORE TABLES (from @ottabase/ottaorm)
 // ============================================================
 export {
@@ -139,15 +137,21 @@ export {
   tagsTable,
 } from "@ottabase/ottaorm";
 
-` : ''}${tableExports.length > 0 ? `// ============================================================
+`
+        : ''
+}${
+        tableExports.length > 0
+            ? `// ============================================================
 // APP-SPECIFIC TABLES
 // ============================================================
 ${tableExports.map(({ name, from }) => `export { ${name} } from "${from}";`).join('\n')}
-` : ''}`;
+`
+            : ''
+    }`;
 
-  // Write schema file
-  fs.writeFileSync(schemaPath, schemaContent, 'utf-8');
-  console.log(`\n✅ Schema generated: ${schemaPath}`);
+    // Write schema file
+    fs.writeFileSync(schemaPath, schemaContent, 'utf-8');
+    console.log(`\n✅ Schema generated: ${schemaPath}`);
 }
 
 /**
@@ -157,38 +161,42 @@ ${tableExports.map(({ name, from }) => `export { ${name} } from "${from}";`).joi
  * based on the schema.ts file.
  */
 export async function generateMigrations(config: MigrationGeneratorConfig): Promise<void> {
-  const { drizzleConfigPath = './drizzle.config.ts' } = config;
+    const { drizzleConfigPath = './drizzle.config.ts' } = config;
 
-  console.log('\n🔨 Generating migrations with Drizzle Kit...');
+    console.log('\n🔨 Generating migrations with Drizzle Kit...');
 
-  try {
-    // Normalize path separators to forward slashes to prevent platform-specific issues
-    const normalizedPath = drizzleConfigPath.replace(/\\/g, '/');
-    
-    // Validate config path to prevent command injection and directory traversal
-    // Must be a relative path starting with ./ or a simple filename, no .. allowed anywhere
-    // Allow dots in filename for configs like drizzle.dev.config.ts
-    const isValidPath = (
-      /^\.\/(?:[\w.-]+\/)*[\w.-]+\.(ts|js)$/.test(normalizedPath) || // Relative path: ./some/path/file.ts
-      /^[\w.-]+\.(ts|js)$/.test(normalizedPath)                      // Simple path: drizzle.config.ts or drizzle.dev.config.ts
-    ) && !/\.\./.test(normalizedPath);                               // No .. anywhere in path
-    
-    if (!isValidPath) {
-      throw new Error('Invalid drizzle config path: must be a .ts or .js file with no directory traversal patterns');
+    try {
+        // Normalize path separators to forward slashes to prevent platform-specific issues
+        const normalizedPath = drizzleConfigPath.replace(/\\/g, '/');
+
+        // Validate config path to prevent command injection and directory traversal
+        // Must be a relative path starting with ./ or a simple filename, no .. allowed anywhere
+        // Allow dots in filename for configs like drizzle.dev.config.ts
+        const isValidPath =
+            (/^\.\/(?:[\w.-]+\/)*[\w.-]+\.(ts|js)$/.test(normalizedPath) || // Relative path: ./some/path/file.ts
+                /^[\w.-]+\.(ts|js)$/.test(normalizedPath)) && // Simple path: drizzle.config.ts or drizzle.dev.config.ts
+            !/\.\./.test(normalizedPath); // No .. anywhere in path
+
+        if (!isValidPath) {
+            throw new Error(
+                'Invalid drizzle config path: must be a .ts or .js file with no directory traversal patterns',
+            );
+        }
+
+        // Use single quotes to prevent shell expansion of special characters
+        // Proper shell escaping: close quote, add escaped quote, reopen quote: ' -> '\''
+        const { stdout, stderr } = await execAsync(
+            `pnpm drizzle-kit generate --config='${normalizedPath.replace(/'/g, "'\\''")}'`,
+        );
+
+        if (stdout) console.log(stdout);
+        if (stderr) console.error(stderr);
+
+        console.log('✅ Migrations generated successfully');
+    } catch (error: any) {
+        console.error('❌ Failed to generate migrations:', error.message);
+        throw error;
     }
-    
-    // Use single quotes to prevent shell expansion of special characters
-    // Proper shell escaping: close quote, add escaped quote, reopen quote: ' -> '\''
-    const { stdout, stderr } = await execAsync(`pnpm drizzle-kit generate --config='${normalizedPath.replace(/'/g, "'\\''")}'`);
-
-    if (stdout) console.log(stdout);
-    if (stderr) console.error(stderr);
-
-    console.log('✅ Migrations generated successfully');
-  } catch (error: any) {
-    console.error('❌ Failed to generate migrations:', error.message);
-    throw error;
-  }
 }
 
 /**
@@ -198,55 +206,54 @@ export async function generateMigrations(config: MigrationGeneratorConfig): Prom
  * in the correct order (custom migrations first, then generated).
  */
 export async function bundleMigrations(config: MigrationGeneratorConfig): Promise<void> {
-  const {
-    ottabasePath,
-    migrationsDir = 'migrations',
-  } = config;
+    const { ottabasePath, migrationsDir = 'migrations' } = config;
 
-  console.log('\n📦 Bundling migrations...');
+    console.log('\n📦 Bundling migrations...');
 
-  const migrationsPath = path.join(ottabasePath, migrationsDir);
-  const customMigrationsPath = path.join(migrationsPath, 'custom');
-  const generatedMigrationsPath = path.join(migrationsPath, 'generated');
+    const migrationsPath = path.join(ottabasePath, migrationsDir);
+    const customMigrationsPath = path.join(migrationsPath, 'custom');
+    const generatedMigrationsPath = path.join(migrationsPath, 'generated');
 
-  // Ensure directories exist
-  if (!fs.existsSync(migrationsPath)) {
-    fs.mkdirSync(migrationsPath, { recursive: true });
-  }
-  if (!fs.existsSync(customMigrationsPath)) {
-    fs.mkdirSync(customMigrationsPath, { recursive: true });
-  }
-  if (!fs.existsSync(generatedMigrationsPath)) {
-    fs.mkdirSync(generatedMigrationsPath, { recursive: true });
-  }
+    // Ensure directories exist
+    if (!fs.existsSync(migrationsPath)) {
+        fs.mkdirSync(migrationsPath, { recursive: true });
+    }
+    if (!fs.existsSync(customMigrationsPath)) {
+        fs.mkdirSync(customMigrationsPath, { recursive: true });
+    }
+    if (!fs.existsSync(generatedMigrationsPath)) {
+        fs.mkdirSync(generatedMigrationsPath, { recursive: true });
+    }
 
-  // Scan for custom SQL migrations (0000_myCustom.sql, etc.)
-  const customSqlFiles = fs.existsSync(customMigrationsPath)
-    ? fs.readdirSync(customMigrationsPath)
-        .filter(file => file.endsWith('.sql'))
-        .sort()
-    : [];
+    // Scan for custom SQL migrations (0000_myCustom.sql, etc.)
+    const customSqlFiles = fs.existsSync(customMigrationsPath)
+        ? fs
+              .readdirSync(customMigrationsPath)
+              .filter((file) => file.endsWith('.sql'))
+              .sort()
+        : [];
 
-  // Scan for generated migrations from drizzle/ directory
-  const drizzlePath = path.join(process.cwd(), 'drizzle');
-  const generatedSqlFiles = fs.existsSync(drizzlePath)
-    ? fs.readdirSync(drizzlePath)
-        .filter(file => file.endsWith('.sql'))
-        .sort()
-    : [];
+    // Scan for generated migrations from drizzle/ directory
+    const drizzlePath = path.join(process.cwd(), 'drizzle');
+    const generatedSqlFiles = fs.existsSync(drizzlePath)
+        ? fs
+              .readdirSync(drizzlePath)
+              .filter((file) => file.endsWith('.sql'))
+              .sort()
+        : [];
 
-  console.log(`  ✓ Found ${customSqlFiles.length} custom migrations`);
-  console.log(`  ✓ Found ${generatedSqlFiles.length} generated migrations`);
+    console.log(`  ✓ Found ${customSqlFiles.length} custom migrations`);
+    console.log(`  ✓ Found ${generatedSqlFiles.length} generated migrations`);
 
-  // Copy generated migrations to migrations/generated/
-  for (const file of generatedSqlFiles) {
-    const source = path.join(drizzlePath, file);
-    const dest = path.join(generatedMigrationsPath, file);
-    fs.copyFileSync(source, dest);
-  }
+    // Copy generated migrations to migrations/generated/
+    for (const file of generatedSqlFiles) {
+        const source = path.join(drizzlePath, file);
+        const dest = path.join(generatedMigrationsPath, file);
+        fs.copyFileSync(source, dest);
+    }
 
-  // Generate migrations/index.ts
-  const bundleContent = `// ============================================================
+    // Generate migrations/index.ts
+    const bundleContent = `// ============================================================
 // Auto-bundled Migrations
 // ============================================================
 //
@@ -264,46 +271,62 @@ import type { Migration } from "@ottabase/ottaorm";
 import * as fs from 'fs';
 import * as path from 'path';
 
-${customSqlFiles.length > 0 ? `// ============================================================
+${
+    customSqlFiles.length > 0
+        ? `// ============================================================
 // CUSTOM MIGRATIONS
 // ============================================================
-${customSqlFiles.map((file, i) => {
-  return `import custom${i}Sql from './custom/${file}?raw';`;
-}).join('\n')}
-` : ''}
-${generatedSqlFiles.length > 0 ? `// ============================================================
+${customSqlFiles
+    .map((file, i) => {
+        return `import custom${i}Sql from './custom/${file}?raw';`;
+    })
+    .join('\n')}
+`
+        : ''
+}
+${
+    generatedSqlFiles.length > 0
+        ? `// ============================================================
 // GENERATED MIGRATIONS
 // ============================================================
-${generatedSqlFiles.map((file, i) => {
-  return `import generated${i}Sql from './generated/${file}?raw';`;
-}).join('\n')}
-` : ''}
+${generatedSqlFiles
+    .map((file, i) => {
+        return `import generated${i}Sql from './generated/${file}?raw';`;
+    })
+    .join('\n')}
+`
+        : ''
+}
 export const appMigrations: Migration[] = [
-${customSqlFiles.map((file, i) => {
-  const name = file.replace('.sql', '');
-  return `  {
+${customSqlFiles
+    .map((file, i) => {
+        const name = file.replace('.sql', '');
+        return `  {
     name: '${name}',
     up: async (db: any) => {
       await db.execute(custom${i}Sql);
     },
   },`;
-}).join('\n')}
-${generatedSqlFiles.map((file, i) => {
-  const name = file.replace('.sql', '');
-  return `  {
+    })
+    .join('\n')}
+${generatedSqlFiles
+    .map((file, i) => {
+        const name = file.replace('.sql', '');
+        return `  {
     name: '${name}',
     up: async (db: any) => {
       await db.execute(generated${i}Sql);
     },
   },`;
-}).join('\n')}
+    })
+    .join('\n')}
 ];
 `;
 
-  const indexPath = path.join(migrationsPath, 'index.ts');
-  fs.writeFileSync(indexPath, bundleContent, 'utf-8');
+    const indexPath = path.join(migrationsPath, 'index.ts');
+    fs.writeFileSync(indexPath, bundleContent, 'utf-8');
 
-  console.log(`✅ Migrations bundled: ${indexPath}`);
+    console.log(`✅ Migrations bundled: ${indexPath}`);
 }
 
 /**
@@ -315,25 +338,25 @@ ${generatedSqlFiles.map((file, i) => {
  * 3. Migration bundling
  */
 export async function generateAllMigrations(config: MigrationGeneratorConfig): Promise<void> {
-  console.log('🚀 Starting automated migration generation...\n');
+    console.log('🚀 Starting automated migration generation...\n');
 
-  try {
-    // Step 1: Generate schema from Models
-    await generateSchema(config);
+    try {
+        // Step 1: Generate schema from Models
+        await generateSchema(config);
 
-    // Step 2: Generate migrations with Drizzle Kit
-    await generateMigrations(config);
+        // Step 2: Generate migrations with Drizzle Kit
+        await generateMigrations(config);
 
-    // Step 3: Bundle all migrations
-    await bundleMigrations(config);
+        // Step 3: Bundle all migrations
+        await bundleMigrations(config);
 
-    console.log('\n✅ Migration generation complete!\n');
-    console.log('Next steps:');
-    console.log('  1. Review generated migrations in drizzle/ directory');
-    console.log('  2. Run migrations: POST /api/ottaorm/init');
-    console.log('  3. Or push directly: pnpm db:push\n');
-  } catch (error: any) {
-    console.error('\n❌ Migration generation failed:', error.message);
-    throw error;
-  }
+        console.log('\n✅ Migration generation complete!\n');
+        console.log('Next steps:');
+        console.log('  1. Review generated migrations in drizzle/ directory');
+        console.log('  2. Run migrations: POST /api/ottaorm/init');
+        console.log('  3. Or push directly: pnpm db:push\n');
+    } catch (error: any) {
+        console.error('\n❌ Migration generation failed:', error.message);
+        throw error;
+    }
 }

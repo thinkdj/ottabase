@@ -1,50 +1,50 @@
 {
-  "name": "@ottabase/ottaselect",
-  "version": "1.0.0",
-  "description": "A select component with single/multi-select, search, and CrudHub integration",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "name": "@ottabase/ottaselect",
+    "version": "1.0.0",
+    "description": "A select component with single/multi-select, search, and CrudHub integration",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./ottaselect": {
+            "types": "./dist/ottaselect.d.ts",
+            "import": "./dist/ottaselect.mjs",
+            "require": "./dist/ottaselect.js"
+        }
     },
-    "./ottaselect": {
-      "types": "./dist/ottaselect.d.ts",
-      "import": "./dist/ottaselect.mjs",
-      "require": "./dist/ottaselect.js"
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts src/ottaselect.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/ottaselect.ts --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "dependencies": {
+        "@ottabase/config": "workspace:*",
+        "clsx": "catalog:",
+        "lucide-react": "catalog:"
+    },
+    "peerDependencies": {
+        "react": ">=18.0.0",
+        "react-dom": ">=18.0.0"
+    },
+    "devDependencies": {
+        "typescript": "catalog:",
+        "tsup": "catalog:",
+        "rimraf": "catalog:",
+        "eslint": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:"
     }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsup src/index.ts src/ottaselect.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts src/ottaselect.ts --format cjs,esm --dts --watch",
-    "clean": "rimraf dist",
-    "lint": "eslint src --ext .ts,.tsx",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "dependencies": {
-    "@ottabase/config": "workspace:*",
-    "clsx": "catalog:",
-    "lucide-react": "catalog:"
-  },
-  "peerDependencies": {
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
-  },
-  "devDependencies": {
-    "typescript": "catalog:",
-    "tsup": "catalog:",
-    "rimraf": "catalog:",
-    "eslint": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:"
-  }
 }

@@ -1,8 +1,6 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense } from 'react';
 
-const EditorClient = lazy(() =>
-    import("./EditorClient").then((mod) => ({ default: mod.EditorClient })),
-);
+const EditorClient = lazy(() => import('./EditorClient').then((mod) => ({ default: mod.EditorClient })));
 
 export function OttaEditorDemoPage() {
     return (

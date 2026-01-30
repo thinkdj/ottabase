@@ -1,8 +1,8 @@
-import react from "@vitejs/plugin-react";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { defineConfig, Plugin } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
+import react from '@vitejs/plugin-react';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, Plugin } from 'vite';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 // Resolve __dirname in ESM
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -13,117 +13,112 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * (F5) or direct navigation to nested routes.
  */
 function spaFallback(): Plugin {
-  return {
-    name: "spa-fallback",
-    configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        const url = req.url || "";
-        // Bypass API and Redirect routes
-        if (url.startsWith("/api") || url.startsWith("/shortlinks/go"))
-          return next();
-        // Strip query/fragment and check for a file extension
-        const pathname = url.split(/[?#]/)[0];
-        const isFile = pathname.includes(".");
-        // If it's not a file and the client expects HTML, rewrite to index.html
-        if (!isFile && req.headers.accept?.includes("text/html")) {
-          req.url = "/index.html";
-        }
-        next();
-      });
-    },
-  };
+    return {
+        name: 'spa-fallback',
+        configureServer(server) {
+            server.middlewares.use((req, res, next) => {
+                const url = req.url || '';
+                // Bypass API and Redirect routes
+                if (url.startsWith('/api') || url.startsWith('/shortlinks/go')) return next();
+                // Strip query/fragment and check for a file extension
+                const pathname = url.split(/[?#]/)[0];
+                const isFile = pathname.includes('.');
+                // If it's not a file and the client expects HTML, rewrite to index.html
+                if (!isFile && req.headers.accept?.includes('text/html')) {
+                    req.url = '/index.html';
+                }
+                next();
+            });
+        },
+    };
 }
 
 export default defineConfig({
-  // Base URL – keep it relative for most deployments
-  base: "/",
-  plugins: [
-    tsconfigPaths({
-      projects: [path.resolve(__dirname, "./tsconfig.json")],
-      ignoreConfigErrors: true,
-    }),
-    // React plugin with SWC for fast transforms and automatic Fast Refresh
-    react({
-      // Enable the new JSX runtime and fast refresh
-      jsxRuntime: "automatic",
-    }),
-    spaFallback(),
-  ],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-  optimizeDeps: {
-    include: ["react/jsx-runtime", "react/jsx-dev-runtime"],
-    esbuildOptions: {
-      target: "esnext",
-    },
-  },
-  esbuild: {
-    target: "esnext",
-    legalComments: "none",
-    treeShaking: true,
-    // Remove dead code and console statements
-    drop: ["console", "debugger"],
-  },
-  logLevel: "info",
-  build: {
-    outDir: "dist",
-    sourcemap: false,
-    // Security‑focused minification
-    minify: "esbuild",
-    cssMinify: true,
-    cssTarget: "esnext",
-    target: "esnext",
-    // Smaller chunks improve caching and initial load
-    chunkSizeWarningLimit: 1500,
-    assetsInlineLimit: 40960, // 40 KB – keep small assets inlined
-    cssCodeSplit: true,
-    // Enable module preload polyfill for better HTTP/2 performance
-    modulePreload: { polyfill: true },
-    commonjsOptions: { transformMixedEsModules: true },
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          mantine: [
-            "@mantine/core",
-            "@mantine/hooks",
-            "@mantine/modals",
-            "@mantine/notifications",
-            "@mantine/carousel",
-          ],
-          tanstack: [
-            "@tanstack/react-query",
-            "@tanstack/react-query-devtools",
-            "@tanstack/react-router",
-          ],
-          ottaeditor: ["@ottabase/ottaeditor"],
+    // Base URL – keep it relative for most deployments
+    base: '/',
+    plugins: [
+        tsconfigPaths({
+            projects: [path.resolve(__dirname, './tsconfig.json')],
+            ignoreConfigErrors: true,
+        }),
+        // React plugin with SWC for fast transforms and automatic Fast Refresh
+        react({
+            // Enable the new JSX runtime and fast refresh
+            jsxRuntime: 'automatic',
+        }),
+        spaFallback(),
+    ],
+    resolve: {
+        alias: {
+            '@': path.resolve(__dirname, './src'),
         },
-      },
     },
-  },
-  server: {
-    host: "127.0.0.1",
-    port: parseInt(process.env.PORT_FE || "3003"),
-    strictPort: true,
-    // Proxy API calls to the backend worker
-    proxy: {
-      "/api": {
-        target: `http://127.0.0.1:${process.env.PORT_BE || 3004}`,
-        changeOrigin: true,
-        secure: false,
-      },
-      "/shortlinks/go": {
-        target: `http://127.0.0.1:${process.env.PORT_BE || 3004}`,
-        changeOrigin: true,
-        secure: false,
-      },
+    optimizeDeps: {
+        include: ['react/jsx-runtime', 'react/jsx-dev-runtime'],
+        esbuildOptions: {
+            target: 'esnext',
+        },
     },
-    // Harden the dev server – disallow serving files outside the project root
-    fs: { strict: true },
-  },
-  preview: {
-    port: 4173,
-  },
+    esbuild: {
+        target: 'esnext',
+        legalComments: 'none',
+        treeShaking: true,
+        // Remove dead code and console statements
+        drop: ['console', 'debugger'],
+    },
+    logLevel: 'info',
+    build: {
+        outDir: 'dist',
+        sourcemap: false,
+        // Security‑focused minification
+        minify: 'esbuild',
+        cssMinify: true,
+        cssTarget: 'esnext',
+        target: 'esnext',
+        // Smaller chunks improve caching and initial load
+        chunkSizeWarningLimit: 1500,
+        assetsInlineLimit: 40960, // 40 KB – keep small assets inlined
+        cssCodeSplit: true,
+        // Enable module preload polyfill for better HTTP/2 performance
+        modulePreload: { polyfill: true },
+        commonjsOptions: { transformMixedEsModules: true },
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    mantine: [
+                        '@mantine/core',
+                        '@mantine/hooks',
+                        '@mantine/modals',
+                        '@mantine/notifications',
+                        '@mantine/carousel',
+                    ],
+                    tanstack: ['@tanstack/react-query', '@tanstack/react-query-devtools', '@tanstack/react-router'],
+                    ottaeditor: ['@ottabase/ottaeditor'],
+                },
+            },
+        },
+    },
+    server: {
+        host: '127.0.0.1',
+        port: parseInt(process.env.PORT_FE || '3003'),
+        strictPort: true,
+        // Proxy API calls to the backend worker
+        proxy: {
+            '/api': {
+                target: `http://127.0.0.1:${process.env.PORT_BE || 3004}`,
+                changeOrigin: true,
+                secure: false,
+            },
+            '/shortlinks/go': {
+                target: `http://127.0.0.1:${process.env.PORT_BE || 3004}`,
+                changeOrigin: true,
+                secure: false,
+            },
+        },
+        // Harden the dev server – disallow serving files outside the project root
+        fs: { strict: true },
+    },
+    preview: {
+        port: 4173,
+    },
 });

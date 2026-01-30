@@ -27,33 +27,33 @@ pnpm add @ottabase/ottablog @ottabase/ottaorm @ottabase/db drizzle-orm
 ### 1. Use Models in Your App
 
 ```typescript
-import { Post, PostCategory, PostTag, PostSeries } from "@ottabase/ottablog";
-import { setDriver } from "@ottabase/ottaorm";
-import { createD1Driver } from "@ottabase/db/drizzle-d1";
+import { Post, PostCategory, PostTag, PostSeries } from '@ottabase/ottablog';
+import { setDriver } from '@ottabase/ottaorm';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
 
 // Set up database connection
 setDriver(createD1Driver(env.OBCF_D1));
 
 // Create a post
 const post = await Post.create({
-  title: "My First Post",
-  slug: "my-first-post",
-  content: { blocks: [] }, // EditorJS format
-  status: "published",
-  authorId: "user-123",
+    title: 'My First Post',
+    slug: 'my-first-post',
+    content: { blocks: [] }, // EditorJS format
+    status: 'published',
+    authorId: 'user-123',
 });
 
 // Query posts
 const published = await Post.published({ limit: 10 });
-const featured = await Post.featured({ contentType: "blog" });
-const byCategory = await Post.byCategory("category-123");
+const featured = await Post.featured({ contentType: 'blog' });
+const byCategory = await Post.byCategory('category-123');
 
 // Create and manage blog tags
 const tag = await PostTag.create({
-  name: "JavaScript",
-  slug: "javascript",
-  color: "#f7df1e",
-  type: "post"
+    name: 'JavaScript',
+    slug: 'javascript',
+    color: '#f7df1e',
+    type: 'post',
 });
 
 // Get tags for a post
@@ -65,13 +65,13 @@ const tags = await post.tags();
 ```typescript
 // ottabase/db/schema.ts
 export {
-  postsTable,
-  categoriesTable,
-  postTagsTable,
-  postTagLinksTable,
-  postVersionsTable,
-  seriesTable,
-} from "@ottabase/ottablog";
+    postsTable,
+    categoriesTable,
+    postTagsTable,
+    postTagLinksTable,
+    postVersionsTable,
+    seriesTable,
+} from '@ottabase/ottablog';
 ```
 
 ### 3. Initialize Database
@@ -89,37 +89,39 @@ Comprehensive blog post model with rich content support.
 
 ```typescript
 const post = await Post.create({
-  title: "Blog Post Title",
-  slug: "blog-post-title",
-  excerpt: "Short summary...",
-  content: { /* EditorJS JSON */ },
-  contentType: "blog", // blog, changelog, docs, news, announcement
-  status: "published", // draft, published, archived, scheduled
-  categoryId: "cat-123",
-  seriesId: "series-123",
-  heroImage: {
-    url: "https://...",
-    alt: "Image alt text",
-    caption: "Image caption",
-  },
-  seoMeta: {
-    title: "SEO Title",
-    description: "Meta description",
-    keywords: ["keyword1", "keyword2"],
-    canonicalUrl: "https://...",
-  },
-  authorId: "user-123",
-  publishedAt: new Date(),
-  isFeatured: true,
-  allowComments: true,
+    title: 'Blog Post Title',
+    slug: 'blog-post-title',
+    excerpt: 'Short summary...',
+    content: {
+        /* EditorJS JSON */
+    },
+    contentType: 'blog', // blog, changelog, docs, news, announcement
+    status: 'published', // draft, published, archived, scheduled
+    categoryId: 'cat-123',
+    seriesId: 'series-123',
+    heroImage: {
+        url: 'https://...',
+        alt: 'Image alt text',
+        caption: 'Image caption',
+    },
+    seoMeta: {
+        title: 'SEO Title',
+        description: 'Meta description',
+        keywords: ['keyword1', 'keyword2'],
+        canonicalUrl: 'https://...',
+    },
+    authorId: 'user-123',
+    publishedAt: new Date(),
+    isFeatured: true,
+    allowComments: true,
 });
 
 // Query methods
-await Post.findBySlug("my-post");
+await Post.findBySlug('my-post');
 await Post.published({ limit: 10 });
-await Post.featured({ contentType: "blog" });
-await Post.byCategory("category-123");
-await Post.bySeries("series-123");
+await Post.featured({ contentType: 'blog' });
+await Post.byCategory('category-123');
+await Post.bySeries('series-123');
 
 // Instance methods
 await post.publish();
@@ -133,6 +135,7 @@ post.generateExcerpt(); // Auto-generate from content
 ```
 
 **Fields:**
+
 - `id` - Unique identifier
 - `title` - Post title
 - `slug` - URL-friendly identifier (unique per appId)
@@ -162,24 +165,25 @@ Hierarchical category system with type support.
 
 ```typescript
 const category = await PostCategory.create({
-  name: "Technology",
-  slug: "technology",
-  description: "Tech articles and guides",
-  parentId: null, // null for root categories
-  type: "post", // post, news, docs, etc.
-  sortOrder: 1,
+    name: 'Technology',
+    slug: 'technology',
+    description: 'Tech articles and guides',
+    parentId: null, // null for root categories
+    type: 'post', // post, news, docs, etc.
+    sortOrder: 1,
 });
 
 // Query methods
-await PostCategory.roots({ appId: "app-123" });
-await PostCategory.children("parent-cat-123");
-await PostCategory.findBySlug("technology", { appId: "app-123" });
+await PostCategory.roots({ appId: 'app-123' });
+await PostCategory.children('parent-cat-123');
+await PostCategory.findBySlug('technology', { appId: 'app-123' });
 
 // Instance methods
 category.generateSlug();
 ```
 
 **Fields:**
+
 - `id` - Unique identifier
 - `name` - Category name
 - `slug` - URL-friendly identifier
@@ -195,15 +199,15 @@ Flexible tagging system with type support.
 
 ```typescript
 const tag = await PostTag.create({
-  name: "React",
-  slug: "react",
-  color: "#61dafb",
-  type: "post", // post, news, docs, etc.
+    name: 'React',
+    slug: 'react',
+    color: '#61dafb',
+    type: 'post', // post, news, docs, etc.
 });
 
 // Query methods
-await PostTag.findBySlug("react", { appId: "app-123" });
-await PostTag.forApp("app-123");
+await PostTag.findBySlug('react', { appId: 'app-123' });
+await PostTag.forApp('app-123');
 
 // Instance methods
 tag.generateSlug();
@@ -211,6 +215,7 @@ const style = tag.getStyle(); // { backgroundColor, color } for contrast
 ```
 
 **Fields:**
+
 - `id` - Unique identifier
 - `name` - Tag name
 - `slug` - URL-friendly identifier
@@ -225,18 +230,19 @@ Version history tracking for posts.
 ```typescript
 // Auto-created when posts change
 const version = await PostVersion.createFromPost(post, {
-  changedBy: "user-123",
-  changeNote: "Fixed typo in intro",
+    changedBy: 'user-123',
+    changeNote: 'Fixed typo in intro',
 });
 
 // Query methods
-await PostVersion.forPost("post-123");
-await PostVersion.latestForPost("post-123");
-await PostVersion.getVersion("post-123", 1);
-await PostVersion.getNextVersionNumber("post-123");
+await PostVersion.forPost('post-123');
+await PostVersion.latestForPost('post-123');
+await PostVersion.getVersion('post-123', 1);
+await PostVersion.getNextVersionNumber('post-123');
 ```
 
 **Fields:**
+
 - `id` - Unique identifier
 - `postId` - Post reference
 - `versionNumber` - Version number
@@ -251,21 +257,22 @@ Group related posts into ordered collections.
 
 ```typescript
 const series = await PostSeries.create({
-  title: "Learning React",
-  slug: "learning-react",
-  description: "A 5-part series on React basics",
-  coverImage: { url: "...", alt: "..." },
-  isComplete: false,
-  sortOrder: 1,
+    title: 'Learning React',
+    slug: 'learning-react',
+    description: 'A 5-part series on React basics',
+    coverImage: { url: '...', alt: '...' },
+    isComplete: false,
+    sortOrder: 1,
 });
 
 // Query methods
-await PostSeries.list({ appId: "app-123" });
-await PostSeries.complete({ appId: "app-123" });
-await PostSeries.findBySlug("learning-react", { appId: "app-123" });
+await PostSeries.list({ appId: 'app-123' });
+await PostSeries.complete({ appId: 'app-123' });
+await PostSeries.findBySlug('learning-react', { appId: 'app-123' });
 ```
 
 **Fields:**
+
 - `id` - Unique identifier
 - `title` - Series title
 - `slug` - URL-friendly identifier
@@ -282,30 +289,31 @@ The `type` column on categories and tags enables reuse across multiple content t
 ```typescript
 // Post-specific categories
 const postCats = await PostCategory.where({
-  type: "post",
-  appId: "app-123"
+    type: 'post',
+    appId: 'app-123',
 });
 
 // News categories (same table, different type)
 const newsCats = await PostCategory.where({
-  type: "news",
-  appId: "app-123"
+    type: 'news',
+    appId: 'app-123',
 });
 
 // Documentation categories
 const docsCats = await PostCategory.where({
-  type: "docs",
-  appId: "app-123"
+    type: 'docs',
+    appId: 'app-123',
 });
 
 // Custom types
 const customCats = await PostCategory.where({
-  type: "myCustomType",
-  appId: "app-123"
+    type: 'myCustomType',
+    appId: 'app-123',
 });
 ```
 
 **Available Types:**
+
 - `post` - Standard blog posts (default)
 - `news` - News articles
 - `docs` - Documentation
@@ -321,8 +329,8 @@ const author = await post.author(['id', 'name', 'email']);
 
 // Post to Tags (many-to-many)
 const tags = await post.tags({
-  select: ['id', 'name', 'slug'],
-  orderBy: 'name',
+    select: ['id', 'name', 'slug'],
+    orderBy: 'name',
 });
 ```
 
@@ -332,18 +340,18 @@ All models support the `appId` field for multi-tenant scenarios:
 
 ```typescript
 // Query posts for specific app
-const appPosts = await Post.where({ appId: "app-123" });
+const appPosts = await Post.where({ appId: 'app-123' });
 
 // Categories by type and app
 const appCategories = await PostCategory.where({
-  type: "post",
-  appId: "app-123"
+    type: 'post',
+    appId: 'app-123',
 });
 
 // Filter tags by app and type
 const appTags = await PostTag.where({
-  type: "blog",
-  appId: "app-123"
+    type: 'blog',
+    appId: 'app-123',
 });
 ```
 
@@ -352,17 +360,10 @@ const appTags = await PostTag.where({
 Register models for dynamic CRUD:
 
 ```typescript
-import { registerModels } from "@ottabase/ottaorm";
-import { Post, PostCategory, PostTag, PostTagLink, PostVersion, PostSeries } from "@ottabase/ottablog";
+import { registerModels } from '@ottabase/ottaorm';
+import { Post, PostCategory, PostTag, PostTagLink, PostVersion, PostSeries } from '@ottabase/ottablog';
 
-registerModels([
-  Post,
-  PostCategory,
-  PostTag,
-  PostTagLink,
-  PostVersion,
-  PostSeries,
-]);
+registerModels([Post, PostCategory, PostTag, PostTagLink, PostVersion, PostSeries]);
 ```
 
 ## EditorJS Integration
@@ -371,20 +372,20 @@ Content is stored in EditorJS format for flexibility:
 
 ```typescript
 const post = await Post.create({
-  content: {
-    time: Date.now(),
-    blocks: [
-      {
-        type: "paragraph",
-        data: { text: "First paragraph" }
-      },
-      {
-        type: "image",
-        data: { url: "..." }
-      }
-    ],
-    version: "2.28.0"
-  }
+    content: {
+        time: Date.now(),
+        blocks: [
+            {
+                type: 'paragraph',
+                data: { text: 'First paragraph' },
+            },
+            {
+                type: 'image',
+                data: { url: '...' },
+            },
+        ],
+        version: '2.28.0',
+    },
 });
 ```
 
@@ -394,17 +395,17 @@ Built-in SEO support:
 
 ```typescript
 const post = await Post.create({
-  seoMeta: {
-    title: "Custom SEO Title",
-    description: "Meta description for search engines",
-    keywords: ["keyword1", "keyword2"],
-    canonicalUrl: "https://example.com/canonical",
-    ogImage: "https://...",
-    ogType: "article",
-    twitterCard: "summary_large_image",
-    noIndex: false,
-    noFollow: false,
-  }
+    seoMeta: {
+        title: 'Custom SEO Title',
+        description: 'Meta description for search engines',
+        keywords: ['keyword1', 'keyword2'],
+        canonicalUrl: 'https://example.com/canonical',
+        ogImage: 'https://...',
+        ogType: 'article',
+        twitterCard: 'summary_large_image',
+        noIndex: false,
+        noFollow: false,
+    },
 });
 ```
 

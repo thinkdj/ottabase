@@ -1,6 +1,7 @@
 # Ottabase Monorepo
 
-Modern full-stack monorepo with pnpm workspaces and Turborepo. Deploy to Cloudflare Workers with D1, KV, R2, Queues, and Durable Objects.
+Modern full-stack monorepo with pnpm workspaces and Turborepo. Deploy to Cloudflare Workers with D1, KV, R2, Queues, and
+Durable Objects.
 
 ## Structure
 
@@ -30,7 +31,9 @@ ottabase/
 
 - **Node.js**: `>=24.0.0`
 - **pnpm**: `>=10.0.0`
-- **Windows Users**: Ensure [Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-supported-redistributable-version) is installed for builds to work correctly.
+- **Windows Users**: Ensure
+  [Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-supported-redistributable-version)
+  is installed for builds to work correctly.
 
 ## Quick Start
 
@@ -56,42 +59,44 @@ Central to the codebase. Each model contains schema, validation, relationships, 
 
 ```typescript
 // ottabase/models/Todo.ts
-import { BaseModel } from "@ottabase/ottaorm";
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { BaseModel } from '@ottabase/ottaorm';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
-export const todosTable = sqliteTable("todos", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  title: text("title").notNull(),
-  completed: integer("completed", { mode: "boolean" }).default(false).notNull(),
-  userId: text("user_id"),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+export const todosTable = sqliteTable('todos', {
+    id: text('id')
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    title: text('title').notNull(),
+    completed: integer('completed', { mode: 'boolean' }).default(false).notNull(),
+    userId: text('user_id'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
 
 export class Todo extends BaseModel {
-  static entity = "todos";
-  static table = todosTable;
-  static primaryKey = "id";
+    static entity = 'todos';
+    static table = todosTable;
+    static primaryKey = 'id';
 
-  static casts = {
-    completed: "boolean" as const,
-    createdAt: "date" as const,
-  };
+    static casts = {
+        completed: 'boolean' as const,
+        createdAt: 'date' as const,
+    };
 
-  // Relationship
-  async user() {
-    const { User } = await import("@ottabase/ottaorm");
-    return this.belongsTo(User, "userId");
-  }
+    // Relationship
+    async user() {
+        const { User } = await import('@ottabase/ottaorm');
+        return this.belongsTo(User, 'userId');
+    }
 
-  // Custom methods
-  static async incomplete() {
-    return this.where({ completed: false });
-  }
+    // Custom methods
+    static async incomplete() {
+        return this.where({ completed: false });
+    }
 
-  async toggle() {
-    this.set("completed", !this.get("completed"));
-    return this.save();
-  }
+    async toggle() {
+        this.set('completed', !this.get('completed'));
+        return this.save();
+    }
 }
 ```
 
@@ -99,24 +104,24 @@ export class Todo extends BaseModel {
 
 ```typescript
 // ottabase/db/schema.ts
-export { usersTable, postsTable } from "@ottabase/ottaorm";  // Core
-export { todosTable } from "../models/Todo";                   // App
+export { usersTable, postsTable } from '@ottabase/ottaorm'; // Core
+export { todosTable } from '../models/Todo'; // App
 ```
 
 ### Use Model
 
 ```typescript
-import { setDriver } from "@ottabase/ottaorm";
-import { createD1Driver } from "@ottabase/db/drizzle-d1";
-import { Todo } from "./ottabase/models/Todo";
+import { setDriver } from '@ottabase/ottaorm';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { Todo } from './ottabase/models/Todo';
 
 // In worker
 setDriver(createD1Driver(env.OBCF_D1));
 
 // CRUD
-const todo = await Todo.create({ title: "Buy groceries" });
+const todo = await Todo.create({ title: 'Buy groceries' });
 const all = await Todo.all();
-const one = await Todo.find("id");
+const one = await Todo.find('id');
 await todo.toggle();
 await todo.delete();
 ```
@@ -135,60 +140,60 @@ Add columns by updating schema and re-running init.
 
 ```typescript
 // ottabase/hooks/useTodo.ts
-import { createModelHooks } from "@ottabase/ottaorm/client";
-import type { TodoType } from "@/ottabase/models/Todo";
+import { createModelHooks } from '@ottabase/ottaorm/client';
+import type { TodoType } from '@/ottabase/models/Todo';
 
 export const {
-  useList: useTodos,
-  useDetail: useTodo,
-  useCreate: useCreateTodo,
-  useUpdate: useUpdateTodo,
-  useDelete: useDeleteTodo,
-} = createModelHooks<TodoType>({ entity: "todos" });
+    useList: useTodos,
+    useDetail: useTodo,
+    useCreate: useCreateTodo,
+    useUpdate: useUpdateTodo,
+    useDelete: useDeleteTodo,
+} = createModelHooks<TodoType>({ entity: 'todos' });
 ```
 
 ```tsx
 // Usage in component
 const { data: todos } = useTodos();
 const createTodo = useCreateTodo();
-createTodo.mutate({ title: "New Todo" });
+createTodo.mutate({ title: 'New Todo' });
 ```
 
 ## Packages
 
 ### Database & ORM
 
-| Package | Purpose |
-|---------|---------|
-| `@ottabase/ottaorm` | Fat models, CRUD, relationships, auto-migrations |
-| `@ottabase/db` | Drizzle D1 driver (`createD1Driver`) |
-| `@ottabase/cf` | D1, KV, R2, Queues, Rate Limiting wrappers |
-| `@ottabase/queue` | Job queue system (dispatch, handlers, deduplication, chaining, priority) |
-| `@ottabase/auth` | Auth.js v5 with D1 adapter |
+| Package             | Purpose                                                                  |
+| ------------------- | ------------------------------------------------------------------------ |
+| `@ottabase/ottaorm` | Fat models, CRUD, relationships, auto-migrations                         |
+| `@ottabase/db`      | Drizzle D1 driver (`createD1Driver`)                                     |
+| `@ottabase/cf`      | D1, KV, R2, Queues, Rate Limiting wrappers                               |
+| `@ottabase/queue`   | Job queue system (dispatch, handlers, deduplication, chaining, priority) |
+| `@ottabase/auth`    | Auth.js v5 with D1 adapter                                               |
 
 ### UI
 
-| Package | Purpose |
-|---------|---------|
-| `@ottabase/ui-shadcn` | shadcn/ui components, ShadcnProviders |
-| `@ottabase/ui-mantine` | Mantine provider, pre-built themes |
-| `@ottabase/ui-base` | Framework-agnostic base styles |
-| `@ottabase/ottaeditor` | EditorJS with 15 plugins |
-| `@ottabase/ottaupload` | File upload (R2, CF Images) |
+| Package                | Purpose                               |
+| ---------------------- | ------------------------------------- |
+| `@ottabase/ui-shadcn`  | shadcn/ui components, ShadcnProviders |
+| `@ottabase/ui-mantine` | Mantine provider, pre-built themes    |
+| `@ottabase/ui-base`    | Framework-agnostic base styles        |
+| `@ottabase/ottaeditor` | EditorJS with 15 plugins              |
+| `@ottabase/ottaupload` | File upload (R2, CF Images)           |
 
 ### State & Utils
 
-| Package | Purpose |
-|---------|---------|
-| `@ottabase/state` | Jotai atoms (theme, user, sidebar) |
+| Package           | Purpose                                    |
+| ----------------- | ------------------------------------------ |
+| `@ottabase/state` | Jotai atoms (theme, user, sidebar)         |
 | `@ottabase/utils` | timezone, string, file, url, git utilities |
 
 ### Features
 
-| Package | Purpose |
-|---------|---------|
-| `@ottabase/shortlinks` | URL shortener schema + model |
-| `@ottabase/referrals` | Referral tracking system |
+| Package                 | Purpose                             |
+| ----------------------- | ----------------------------------- |
+| `@ottabase/shortlinks`  | URL shortener schema + model        |
+| `@ottabase/referrals`   | Referral tracking system            |
 | `@ottabase/cf-realtime` | WebSocket pub/sub (Durable Objects) |
 
 ## Multi-App Database Sharing
@@ -197,10 +202,10 @@ Multiple apps can share a single database using the optional `appId` column.
 
 ### How It Works
 
-| Mode | `scopeByAppId` | `appId` column | Behavior |
-|------|----------------|----------------|----------|
-| **Default** | `false` | `null` | Single app, no filtering |
-| **Multi-app** | `true` | `"my-app"` | Auto-inject/filter by `appId` |
+| Mode          | `scopeByAppId` | `appId` column | Behavior                      |
+| ------------- | -------------- | -------------- | ----------------------------- |
+| **Default**   | `false`        | `null`         | Single app, no filtering      |
+| **Multi-app** | `true`         | `"my-app"`     | Auto-inject/filter by `appId` |
 
 ### Configuration
 
@@ -208,19 +213,19 @@ Multiple apps can share a single database using the optional `appId` column.
 import { createAppConfig } from '@ottabase/config';
 
 const config = createAppConfig({
-  appId: 'my-unique-app-id',
-  defaults: {
-    features: { scopeByAppId: true }  // Enable appId scoping
-  }
+    appId: 'my-unique-app-id',
+    defaults: {
+        features: { scopeByAppId: true }, // Enable appId scoping
+    },
 });
 ```
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `APP_ID` | `"ottabase-template-app"` | Unique app identifier |
-| `SCOPE_BY_APP_ID` | `"false"` | Enable appId scoping for DB |
+| Variable          | Default                   | Description                 |
+| ----------------- | ------------------------- | --------------------------- |
+| `APP_ID`          | `"ottabase-template-app"` | Unique app identifier       |
+| `SCOPE_BY_APP_ID` | `"false"`                 | Enable appId scoping for DB |
 
 ### Schema Support
 
@@ -258,7 +263,7 @@ export class Shortlink extends BaseModel {
 ### 2. App registers model
 
 ```typescript
-import { Shortlink } from "@ottabase/shortlinks";
+import { Shortlink } from '@ottabase/shortlinks';
 registerModels([Shortlink]);
 ```
 
@@ -266,7 +271,7 @@ registerModels([Shortlink]);
 
 ```typescript
 // ottabase/db/schema.ts
-export { shortlinksTable } from "@ottabase/shortlinks";
+export { shortlinksTable } from '@ottabase/shortlinks';
 ```
 
 ### 4. Create hooks

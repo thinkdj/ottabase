@@ -2,15 +2,11 @@
 // @ottabase/db - Feature Registry
 // ============================================================
 
-import type {
-  FeatureId,
-  FeatureRegistry,
-  FeatureSchemaDefinition,
-} from "./config";
+import type { FeatureId, FeatureRegistry, FeatureSchemaDefinition } from './config';
 
 // Re-export defineFeatureSchema for convenience
-export { defineFeatureSchema } from "./config";
-export type { FeatureSchemaDefinition } from "./config";
+export { defineFeatureSchema } from './config';
+export type { FeatureSchemaDefinition } from './config';
 
 /**
  * Creates a new feature registry instance
@@ -33,85 +29,79 @@ export type { FeatureSchemaDefinition } from "./config";
  * ```
  */
 export function createFeatureRegistry(): FeatureRegistry {
-  const features = new Map<FeatureId, FeatureSchemaDefinition>();
+    const features = new Map<FeatureId, FeatureSchemaDefinition>();
 
-  return {
-    register(definition: FeatureSchemaDefinition): void {
-      if (features.has(definition.featureId)) {
-        console.warn(
-          `[db] Feature "${definition.featureId}" is already registered. Overwriting.`,
-        );
-      }
-      features.set(definition.featureId, definition);
-    },
+    return {
+        register(definition: FeatureSchemaDefinition): void {
+            if (features.has(definition.featureId)) {
+                console.warn(`[db] Feature "${definition.featureId}" is already registered. Overwriting.`);
+            }
+            features.set(definition.featureId, definition);
+        },
 
-    get(featureId: FeatureId): FeatureSchemaDefinition | undefined {
-      return features.get(featureId);
-    },
+        get(featureId: FeatureId): FeatureSchemaDefinition | undefined {
+            return features.get(featureId);
+        },
 
-    getAll(): FeatureSchemaDefinition[] {
-      return Array.from(features.values());
-    },
+        getAll(): FeatureSchemaDefinition[] {
+            return Array.from(features.values());
+        },
 
-    has(featureId: FeatureId): boolean {
-      return features.has(featureId);
-    },
+        has(featureId: FeatureId): boolean {
+            return features.has(featureId);
+        },
 
-    /**
-     * Resolve features with dependencies using topological sort
-     *
-     * This ensures that features are returned in the correct order,
-     * with dependencies appearing before the features that depend on them.
-     *
-     * @throws Error if a circular dependency is detected
-     * @throws Error if a required feature is not registered
-     */
-    resolve(featureIds: FeatureId[]): FeatureSchemaDefinition[] {
-      const resolved: FeatureSchemaDefinition[] = [];
-      const visited = new Set<FeatureId>();
-      const visiting = new Set<FeatureId>();
+        /**
+         * Resolve features with dependencies using topological sort
+         *
+         * This ensures that features are returned in the correct order,
+         * with dependencies appearing before the features that depend on them.
+         *
+         * @throws Error if a circular dependency is detected
+         * @throws Error if a required feature is not registered
+         */
+        resolve(featureIds: FeatureId[]): FeatureSchemaDefinition[] {
+            const resolved: FeatureSchemaDefinition[] = [];
+            const visited = new Set<FeatureId>();
+            const visiting = new Set<FeatureId>();
 
-      const visit = (featureId: FeatureId): void => {
-        // Already processed
-        if (visited.has(featureId)) return;
+            const visit = (featureId: FeatureId): void => {
+                // Already processed
+                if (visited.has(featureId)) return;
 
-        // Circular dependency detection
-        if (visiting.has(featureId)) {
-          throw new Error(
-            `[db] Circular dependency detected for feature: ${featureId}`,
-          );
-        }
+                // Circular dependency detection
+                if (visiting.has(featureId)) {
+                    throw new Error(`[db] Circular dependency detected for feature: ${featureId}`);
+                }
 
-        const feature = features.get(featureId);
-        if (!feature) {
-          throw new Error(
-            `[db] Feature "${featureId}" not found in registry. ` +
-              `Available features: ${
-                Array.from(features.keys()).join(", ") || "none"
-              }`,
-          );
-        }
+                const feature = features.get(featureId);
+                if (!feature) {
+                    throw new Error(
+                        `[db] Feature "${featureId}" not found in registry. ` +
+                            `Available features: ${Array.from(features.keys()).join(', ') || 'none'}`,
+                    );
+                }
 
-        visiting.add(featureId);
+                visiting.add(featureId);
 
-        // Visit dependencies first (ensures correct order)
-        for (const dep of feature.dependencies || []) {
-          visit(dep);
-        }
+                // Visit dependencies first (ensures correct order)
+                for (const dep of feature.dependencies || []) {
+                    visit(dep);
+                }
 
-        visiting.delete(featureId);
-        visited.add(featureId);
-        resolved.push(feature);
-      };
+                visiting.delete(featureId);
+                visited.add(featureId);
+                resolved.push(feature);
+            };
 
-      // Process each requested feature
-      for (const featureId of featureIds) {
-        visit(featureId);
-      }
+            // Process each requested feature
+            for (const featureId of featureIds) {
+                visit(featureId);
+            }
 
-      return resolved;
-    },
-  };
+            return resolved;
+        },
+    };
 }
 
 // ============================================================
@@ -135,10 +125,10 @@ let globalRegistry: FeatureRegistry | null = null;
  * ```
  */
 export function getFeatureRegistry(): FeatureRegistry {
-  if (!globalRegistry) {
-    globalRegistry = createFeatureRegistry();
-  }
-  return globalRegistry;
+    if (!globalRegistry) {
+        globalRegistry = createFeatureRegistry();
+    }
+    return globalRegistry;
 }
 
 /**
@@ -160,14 +150,14 @@ export function getFeatureRegistry(): FeatureRegistry {
  * ```
  */
 export function registerFeature(definition: FeatureSchemaDefinition): void {
-  getFeatureRegistry().register(definition);
+    getFeatureRegistry().register(definition);
 }
 
 /**
  * Reset the global registry (mainly for testing)
  */
 export function resetFeatureRegistry(): void {
-  globalRegistry = null;
+    globalRegistry = null;
 }
 
 /**
@@ -179,35 +169,28 @@ export function resetFeatureRegistry(): void {
  *
  * @param packageNames - Optional list of package names to load
  */
-export async function discoverFeatures(
-  packageNames?: string[],
-): Promise<FeatureSchemaDefinition[]> {
-  const registry = getFeatureRegistry();
-  const discovered: FeatureSchemaDefinition[] = [];
+export async function discoverFeatures(packageNames?: string[]): Promise<FeatureSchemaDefinition[]> {
+    const registry = getFeatureRegistry();
+    const discovered: FeatureSchemaDefinition[] = [];
 
-  const packagesToLoad = packageNames || [
-    "@ottabase/auth",
-    "@ottabase/billing",
-    "@ottabase/notifications",
-  ];
+    const packagesToLoad = packageNames || ['@ottabase/auth', '@ottabase/billing', '@ottabase/notifications'];
 
-  for (const packageName of packagesToLoad) {
-    try {
-      // Try to require the feature definition
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const featureModule = require(`${packageName}/db.feature`);
-      const definition: FeatureSchemaDefinition =
-        featureModule.default || featureModule;
+    for (const packageName of packagesToLoad) {
+        try {
+            // Try to require the feature definition
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const featureModule = require(`${packageName}/db.feature`);
+            const definition: FeatureSchemaDefinition = featureModule.default || featureModule;
 
-      if (definition && definition.featureId) {
-        registry.register(definition);
-        discovered.push(definition);
-      }
-    } catch {
-      // Package not installed or doesn't have a feature definition
-      // This is expected for optional features
+            if (definition && definition.featureId) {
+                registry.register(definition);
+                discovered.push(definition);
+            }
+        } catch {
+            // Package not installed or doesn't have a feature definition
+            // This is expected for optional features
+        }
     }
-  }
 
-  return discovered;
+    return discovered;
 }

@@ -17,19 +17,19 @@
 // CORE TABLES (from @ottabase/ottaorm)
 // ============================================================
 export {
-  // User & Auth
-  usersTable,
-  accountsTable,
-  sessionsTable,
-  verificationTokensTable,
-  authenticatorsTable,
-  // Content
-  postsTable,
-  postTagsTable,
-  tagsTable,
-} from "@ottabase/ottaorm";
+    // User & Auth
+    usersTable,
+    accountsTable,
+    sessionsTable,
+    verificationTokensTable,
+    authenticatorsTable,
+    // Content
+    postsTable,
+    postTagsTable,
+    tagsTable,
+} from '@ottabase/ottaorm';
 
 // ============================================================
 // APP-SPECIFIC TABLES
 // ============================================================
-export { todosTable } from "../models/Todo";
+export { todosTable } from '../models/Todo';

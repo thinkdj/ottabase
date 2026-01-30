@@ -12,34 +12,30 @@
 // ============================================================
 
 // Re-export Prisma client and types
-export type { PrismaClient } from "@prisma/client";
-export { prisma } from "./client";
+export type { PrismaClient } from '@prisma/client';
+export { prisma } from './client';
 
 // Configuration types and helpers
 export type {
-  AppDbConfig,
-  CoreSchemaName,
-  CreateClientOptions,
-  DbProvider,
-  FeatureId,
-  FeatureRegistry,
-  FeatureSchemaDefinition,
-  GeneratorConfig,
-  MigrationConfig,
-  ResolvedAppDbConfig,
-} from "../config";
+    AppDbConfig,
+    CoreSchemaName,
+    CreateClientOptions,
+    DbProvider,
+    FeatureId,
+    FeatureRegistry,
+    FeatureSchemaDefinition,
+    GeneratorConfig,
+    MigrationConfig,
+    ResolvedAppDbConfig,
+} from '../config';
 
-export {
-  defineAppDbConfig,
-  defineFeatureSchema,
-  resolveAppDbConfig,
-} from "../config";
+export { defineAppDbConfig, defineFeatureSchema, resolveAppDbConfig } from '../config';
 
 // Feature registry
 export {
-  createFeatureRegistry,
-  discoverFeatures,
-  getFeatureRegistry,
-  registerFeature,
-  resetFeatureRegistry,
-} from "../registry";
+    createFeatureRegistry,
+    discoverFeatures,
+    getFeatureRegistry,
+    registerFeature,
+    resetFeatureRegistry,
+} from '../registry';

@@ -4,10 +4,10 @@
  */
 
 // Export types
-export type { AppState, AppStateConfig, BaseUser, Theme, ThemeInfo, SidebarState } from "./types";
+export type { AppState, AppStateConfig, BaseUser, Theme, ThemeInfo, SidebarState } from './types';
 
 // Export main function
-export { createAppState } from "./createAppState";
+export { createAppState } from './createAppState';
 
 // Export provider
-export { default as ProviderState } from "./ProviderState";
+export { default as ProviderState } from './ProviderState';

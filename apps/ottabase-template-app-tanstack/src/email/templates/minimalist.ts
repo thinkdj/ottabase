@@ -1,9 +1,9 @@
-import type { EmailTemplate } from "@ottabase/email";
+import type { EmailTemplate } from '@ottabase/email';
 
 export const minimalistTemplate: EmailTemplate = {
-  name: "minimalist",
-  subject: "{{subject}}",
-  layout: `<!doctype html>
+    name: 'minimalist',
+    subject: '{{subject}}',
+    layout: `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -29,8 +29,8 @@ export const minimalistTemplate: EmailTemplate = {
     </div>
   </body>
 </html>`,
-  header: "{{header}}",
-  body: "{{{body}}}",
-  footer: "{{footer}}",
-  text: "{{header}}\n\n{{body}}\n\n{{footer}}",
+    header: '{{header}}',
+    body: '{{{body}}}',
+    footer: '{{footer}}',
+    text: '{{header}}\n\n{{body}}\n\n{{footer}}',
 };

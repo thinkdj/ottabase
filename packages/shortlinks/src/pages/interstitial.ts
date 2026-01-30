@@ -1,22 +1,20 @@
-import { getShortlinkPageCss } from "./styles";
+import { getShortlinkPageCss } from './styles';
 
 type InterstitialOptions = {
-  url: string;
-  seconds?: number;
+    url: string;
+    seconds?: number;
 };
 
 function truncateUrl(url: string, maxLength: number = 60) {
-  if (url.length <= maxLength) return url;
-  return `${url.slice(0, maxLength - 1)}…`;
+    if (url.length <= maxLength) return url;
+    return `${url.slice(0, maxLength - 1)}…`;
 }
 
-export function renderShortlinkInterstitialPage(
-  options: InterstitialOptions,
-): Response {
-  const seconds = Math.max(1, Math.min(60, options.seconds ?? 10));
-  const targetUrl = options.url;
-  const displayUrl = truncateUrl(targetUrl);
-  const css = `${getShortlinkPageCss({ maxWidth: 520 })}
+export function renderShortlinkInterstitialPage(options: InterstitialOptions): Response {
+    const seconds = Math.max(1, Math.min(60, options.seconds ?? 10));
+    const targetUrl = options.url;
+    const displayUrl = truncateUrl(targetUrl);
+    const css = `${getShortlinkPageCss({ maxWidth: 520 })}
 .count {
   font-size: 36px;
   font-weight: 600;
@@ -24,7 +22,7 @@ export function renderShortlinkInterstitialPage(
 }
 `;
 
-  const html = `<!doctype html>
+    const html = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -83,11 +81,11 @@ export function renderShortlinkInterstitialPage(
   </body>
 </html>`;
 
-  return new Response(html, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
+    return new Response(html, {
+        status: 200,
+        headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-store',
+        },
+    });
 }

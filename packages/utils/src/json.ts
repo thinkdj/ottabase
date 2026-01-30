@@ -2,13 +2,13 @@
  * Safely parse a JSON string with a default fallback value.
  */
 function safeJSONParse<T = any>(str: string, defaultValue: T = {} as T): T {
-  if (!str) return defaultValue;
+    if (!str) return defaultValue;
 
-  try {
-    return JSON.parse(str);
-  } catch (error) {
-    return defaultValue;
-  }
+    try {
+        return JSON.parse(str);
+    } catch (error) {
+        return defaultValue;
+    }
 }
 
 /**
@@ -22,48 +22,42 @@ function safeJSONParse<T = any>(str: string, defaultValue: T = {} as T): T {
  * @example
  * parseJsonFromString('Some text {"key": "value"} more text', true) // { key: "value" }
  */
-export function parseJsonFromString(
-  str: string,
-  sanitize: boolean = true,
-): unknown | null {
-  if (!str) return null;
+export function parseJsonFromString(str: string, sanitize: boolean = true): unknown | null {
+    if (!str) return null;
 
-  try {
-    let sanitizedStr = str;
+    try {
+        let sanitizedStr = str;
 
-    if (sanitize) {
-      const firstOpeningBraceIndex = str.indexOf("{");
-      const lastClosingBraceIndex = str.lastIndexOf("}");
+        if (sanitize) {
+            const firstOpeningBraceIndex = str.indexOf('{');
+            const lastClosingBraceIndex = str.lastIndexOf('}');
 
-      if (firstOpeningBraceIndex === -1 || lastClosingBraceIndex === -1) {
+            if (firstOpeningBraceIndex === -1 || lastClosingBraceIndex === -1) {
+                return null;
+            }
+
+            sanitizedStr = str.slice(firstOpeningBraceIndex, lastClosingBraceIndex + 1);
+        }
+
+        return safeJSONParse(sanitizedStr, null);
+    } catch (error) {
+        console.error('[parseJsonFromString] Error parsing JSON:', error);
         return null;
-      }
-
-      sanitizedStr = str.slice(
-        firstOpeningBraceIndex,
-        lastClosingBraceIndex + 1,
-      );
     }
-
-    return safeJSONParse(sanitizedStr, null);
-  } catch (error) {
-    console.error("[parseJsonFromString] Error parsing JSON:", error);
-    return null;
-  }
 }
 
 /**
  * Safely stringify an object to JSON with error handling.
  */
 export function safeStringify(obj: any, space?: number): string {
-  if (obj === null || obj === undefined) return "";
+    if (obj === null || obj === undefined) return '';
 
-  try {
-    return JSON.stringify(obj, null, space);
-  } catch (error) {
-    console.error("[safeStringify] Error stringifying object:", error);
-    return "";
-  }
+    try {
+        return JSON.stringify(obj, null, space);
+    } catch (error) {
+        console.error('[safeStringify] Error stringifying object:', error);
+        return '';
+    }
 }
 
 /**
@@ -71,26 +65,26 @@ export function safeStringify(obj: any, space?: number): string {
  * Note: This method has limitations with functions, dates, etc.
  */
 export function deepClone<T>(obj: T): T | null {
-  if (obj === null || obj === undefined) return null;
+    if (obj === null || obj === undefined) return null;
 
-  try {
-    return JSON.parse(JSON.stringify(obj));
-  } catch (error) {
-    console.error("[deepClone] Error cloning object:", error);
-    return null;
-  }
+    try {
+        return JSON.parse(JSON.stringify(obj));
+    } catch (error) {
+        console.error('[deepClone] Error cloning object:', error);
+        return null;
+    }
 }
 
 /**
  * Check if a string is valid JSON.
  */
 export function isValidJson(str: string): boolean {
-  if (!str) return false;
+    if (!str) return false;
 
-  try {
-    JSON.parse(str);
-    return true;
-  } catch (error) {
-    return false;
-  }
+    try {
+        JSON.parse(str);
+        return true;
+    } catch (error) {
+        return false;
+    }
 }

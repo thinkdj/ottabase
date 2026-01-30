@@ -1,11 +1,8 @@
-export { cn } from "./lib/utils";
+export { cn } from './lib/utils';
 
-export * from "../components/ui";
+export * from '../components/ui';
 
-export { toast } from "sonner";
+export { toast } from 'sonner';
 
-export type {
-  ThemeProviderProps,
-  ShadcnThemeProviderProps,
-} from "../providers/theme-provider";
-export { ThemeProvider, ShadcnProviders } from "../providers/theme-provider";
+export type { ThemeProviderProps, ShadcnThemeProviderProps } from '../providers/theme-provider';
+export { ThemeProvider, ShadcnProviders } from '../providers/theme-provider';

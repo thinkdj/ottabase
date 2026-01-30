@@ -26,19 +26,15 @@
 
 // Adapter types
 export type {
-  QueueAdapter,
-  AdapterResult,
-  SendOptions,
-  QueueMessage,
-  QueueMessageBatch,
-  AdapterConfig,
-  AdapterFactory,
-} from "./types";
+    QueueAdapter,
+    AdapterResult,
+    SendOptions,
+    QueueMessage,
+    QueueMessageBatch,
+    AdapterConfig,
+    AdapterFactory,
+} from './types';
 
 // Cloudflare adapter
-export {
-  CloudflareAdapter,
-  createCloudflareAdapter,
-  toAdapterBatch,
-} from "./cloudflare";
-export type { CloudflareAdapterConfig } from "./cloudflare";
+export { CloudflareAdapter, createCloudflareAdapter, toAdapterBatch } from './cloudflare';
+export type { CloudflareAdapterConfig } from './cloudflare';

@@ -1,9 +1,8 @@
-
-import { RenderFn } from "editorjs-blocks-react-renderer";
-import HTMLReactParser from "html-react-parser";
+import { RenderFn } from 'editorjs-blocks-react-renderer';
+import HTMLReactParser from 'html-react-parser';
 
 // Simple check icon SVG component
-const IconCheck = ({ size = 12, className = "" }: { size?: number; className?: string }) => (
+const IconCheck = ({ size = 12, className = '' }: { size?: number; className?: string }) => (
     <svg
         width={size}
         height={size}
@@ -24,7 +23,7 @@ export interface ChecklistItem {
     checked: boolean;
 }
 
-const Checklist: RenderFn<{ items: ChecklistItem[] }> = ({ data, className = "" }) => {
+const Checklist: RenderFn<{ items: ChecklistItem[] }> = ({ data, className = '' }) => {
     return (
         <ul className={`${className} list-none p-0 m-0 space-y-2`}>
             {data?.items?.map((item, i) => {
@@ -34,9 +33,7 @@ const Checklist: RenderFn<{ items: ChecklistItem[] }> = ({ data, className = "" 
                 const checkboxBorderColor = item.checked
                     ? 'border-gray-400 dark:border-gray-500'
                     : 'border-gray-300 dark:border-gray-600';
-                const checkboxBgColor = item.checked
-                    ? 'bg-blue-500 dark:bg-blue-600'
-                    : 'bg-white dark:bg-gray-700';
+                const checkboxBgColor = item.checked ? 'bg-blue-500 dark:bg-blue-600' : 'bg-white dark:bg-gray-700';
 
                 return (
                     <li key={i} className="flex items-start">
@@ -52,9 +49,7 @@ const Checklist: RenderFn<{ items: ChecklistItem[] }> = ({ data, className = "" 
                                 )}
                             </div>
                         </div>
-                        <span className={`${textColor} flex-grow`}>
-                            {HTMLReactParser(item.text ?? "")}
-                        </span>
+                        <span className={`${textColor} flex-grow`}>{HTMLReactParser(item.text ?? '')}</span>
                     </li>
                 );
             })}

@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { DarkModeToggle } from "@ottabase/ui-components/dark-mode-toggle";
+import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
 
 /**
  * Demo Layout
@@ -15,19 +15,15 @@ import { DarkModeToggle } from "@ottabase/ui-components/dark-mode-toggle";
  * that adds the Mantine providers.
  */
 
-export default function DemoLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="relative min-h-screen">
-      {/* Dark Mode Toggle - Fixed top-right */}
-      <div className="fixed right-5 top-5 z-50">
-        <DarkModeToggle type="button" title="Toggle dark/light mode" />
-      </div>
+export default function DemoLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <div className="relative min-h-screen">
+            {/* Dark Mode Toggle - Fixed top-right */}
+            <div className="fixed right-5 top-5 z-50">
+                <DarkModeToggle type="button" title="Toggle dark/light mode" />
+            </div>
 
-      {children}
-    </div>
-  );
+            {children}
+        </div>
+    );
 }

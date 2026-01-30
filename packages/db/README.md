@@ -8,7 +8,7 @@ Best for Cloudflare D1 and modern edge deployments with better type safety and p
 
 ```typescript
 // Use in Cloudflare Worker with D1
-import { createD1Driver } from "@ottabase/db/drizzle-d1";
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
 
 const driver = createD1Driver(env.DB);
 const db = driver.getDb();
@@ -22,27 +22,19 @@ const users = await db.select().from(usersTable);
 Execute custom SQL when you need more control:
 
 ```typescript
-import { createD1Driver, raw } from "@ottabase/db/drizzle-d1";
+import { createD1Driver, raw } from '@ottabase/db/drizzle-d1';
 
 const driver = createD1Driver(env.DB);
 
 // Simple query
-const result = await raw(driver, "SELECT * FROM users WHERE active = 1");
+const result = await raw(driver, 'SELECT * FROM users WHERE active = 1');
 console.log(result.results); // typed as unknown[]
 
 // With parameters
-const user = await raw<{ id: string; name: string }>(
-  driver,
-  "SELECT id, name FROM users WHERE id = ?",
-  [userId]
-);
+const user = await raw<{ id: string; name: string }>(driver, 'SELECT id, name FROM users WHERE id = ?', [userId]);
 
 // INSERT/UPDATE/DELETE
-const inserted = await raw(
-  driver,
-  "INSERT INTO logs (message) VALUES (?)",
-  ["User logged in"]
-);
+const inserted = await raw(driver, 'INSERT INTO logs (message) VALUES (?)', ['User logged in']);
 console.log(inserted.meta?.changes); // rows affected
 ```
 

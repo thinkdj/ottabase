@@ -1,4 +1,3 @@
-
 ### code
 
 ```
@@ -10,25 +9,27 @@ packages/hello-world/
   tsconfig.json
 ```
 
-
 ### build
+
 ```
 pnpm install
 pnpm build --filter @ottabase/hello-world
 ```
+
 This generates dist/ with compiled component + types.
 
-
 ### publish
-````
+
+```
 npm login --scope=@ottabase
 
 
 cd packages/hello-world
 npm publish --access public
-````
+```
 
-### use 
+### use
+
 ```
 import { HelloBox } from "@ottabase/hello-world";
 

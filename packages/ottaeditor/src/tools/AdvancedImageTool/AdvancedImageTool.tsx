@@ -1,4 +1,3 @@
-
 // IMP TODO: SimpleImage and rendering does similar function. Unify and use only advancedImageTool in future
 // Missing functionality: better menu items with text like simple image, Paste support,
 
@@ -22,7 +21,7 @@ export default class AdvancedImageTool {
     static get toolbox() {
         return {
             title: 'Advanced Image',
-            icon: Icons.image
+            icon: Icons.image,
         };
     }
 
@@ -251,31 +250,43 @@ export default class AdvancedImageTool {
     setupDragAndDrop() {
         if (!this.uploadArea) return;
 
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
             this.uploadArea.addEventListener(eventName, this.preventDefaults, false);
         });
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            this.uploadArea.addEventListener(eventName, () => {
-                this.uploadArea.classList.add('advanced-image-upload-area--dragover');
-            }, false);
+        ['dragenter', 'dragover'].forEach((eventName) => {
+            this.uploadArea.addEventListener(
+                eventName,
+                () => {
+                    this.uploadArea.classList.add('advanced-image-upload-area--dragover');
+                },
+                false,
+            );
         });
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            this.uploadArea.addEventListener(eventName, () => {
-                this.uploadArea.classList.remove('advanced-image-upload-area--dragover');
-            }, false);
+        ['dragleave', 'drop'].forEach((eventName) => {
+            this.uploadArea.addEventListener(
+                eventName,
+                () => {
+                    this.uploadArea.classList.remove('advanced-image-upload-area--dragover');
+                },
+                false,
+            );
         });
 
-        this.uploadArea.addEventListener('drop', (e) => {
-            const files = e.dataTransfer?.files;
-            if (files && files.length > 0) {
-                const file = files[0];
-                if (file.type.startsWith('image/')) {
-                    this.uploadFile(file);
+        this.uploadArea.addEventListener(
+            'drop',
+            (e) => {
+                const files = e.dataTransfer?.files;
+                if (files && files.length > 0) {
+                    const file = files[0];
+                    if (file.type.startsWith('image/')) {
+                        this.uploadFile(file);
+                    }
                 }
-            }
-        }, false);
+            },
+            false,
+        );
     }
 
     preventDefaults(e: Event) {
@@ -330,7 +341,7 @@ export default class AdvancedImageTool {
                 onError: (error) => {
                     console.error('File upload error:', error);
                     this.showError(error.message || 'Failed to upload image');
-                }
+                },
             });
 
             // Handle failed upload
@@ -424,7 +435,7 @@ export default class AdvancedImageTool {
             { name: 'useNextImage', icon: Icons.image, label: 'Image optimization' },
         ];
 
-        toggleSettings.forEach(setting => {
+        toggleSettings.forEach((setting) => {
             const settingItem = document.createElement('div');
             settingItem.classList.add('ce-popover-item');
 
@@ -519,7 +530,11 @@ export default class AdvancedImageTool {
         if (!this.imageContainer) return;
 
         // Remove existing aspect ratio classes
-        this.imageContainer.classList.remove('advanced-image-container--aspect-16-9', 'advanced-image-container--aspect-4-3', 'advanced-image-container--aspect-1-1');
+        this.imageContainer.classList.remove(
+            'advanced-image-container--aspect-16-9',
+            'advanced-image-container--aspect-4-3',
+            'advanced-image-container--aspect-1-1',
+        );
 
         // Apply new aspect ratio
         const aspectRatio = this.data.aspectRatio || 'original';
