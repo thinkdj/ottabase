@@ -4,13 +4,20 @@ Extensible logger for Ottabase with support for multiple transports and formatte
 
 ## Features
 
-- Multiple log levels (debug, info, warn, error)
-- Extensible transport system
-- Multiple built-in formatters (JSON, pretty, simple)
-- Child loggers with inherited context
-- TypeScript support with full type definitions
-- Works in Node.js, Cloudflare Workers, and browsers
-- Zero dependencies
+- **Multiple log levels** (debug, info, warn, error, silent)
+- **Extensible transport system** with built-in transports:
+    - Console (with colors)
+    - File (with rotation)
+    - HTTP (buffered)
+    - Sentry (error tracking)
+    - Memory (testing)
+    - Multi, Filter, Buffered
+- **Configuration-based setup** for easy environment management
+- **Multiple built-in formatters** (JSON, pretty, simple, custom)
+- **Child loggers** with inherited context
+- **TypeScript support** with full type definitions
+- **Multi-environment** - Works in Node.js, Cloudflare Workers, and browsers
+- **Zero runtime dependencies** (peer dependencies for Sentry integration)
 
 ## Installation
 
@@ -91,6 +98,74 @@ const logger = createLogger({
 });
 ```
 
+## Configuration-Based Setup
+
+For applications, use configuration-based logging to easily manage different environments:
+
+```typescript
+import { createAutoLogger, type LogConfig, LogLevelEnum } from '@ottabase/logger';
+
+const logConfig: LogConfig = {
+    level: LogLevelEnum.INFO,
+    context: { app: 'my-app', version: '1.0.0' },
+
+    // Server-side configuration
+    server: {
+        console: { enabled: true },
+        file: {
+            enabled: true,
+            options: {
+                path: './logs/app.log',
+                maxSize: 10 * 1024 * 1024, // 10MB
+                maxFiles: 5,
+            },
+        },
+        sentry: {
+            enabled: true,
+            options: {
+                dsn: 'your-sentry-dsn',
+                environment: 'production',
+            },
+        },
+    },
+
+    // Client-side configuration
+    client: {
+        console: { enabled: true },
+        http: {
+            enabled: true,
+            options: {
+                url: '/api/logs',
+                bufferSize: 50,
+            },
+        },
+    },
+};
+
+// Automatically detects environment and creates appropriate logger
+const logger = createAutoLogger(logConfig, {
+    file: (opts) => new FileTransport({ path: opts?.path as string }),
+    sentry: (opts) => new SentryTransport({ dsn: opts?.dsn as string }),
+});
+```
+
+### Environment-Specific Loggers
+
+Create loggers for specific environments:
+
+```typescript
+import { createLoggerFromConfig } from '@ottabase/logger';
+
+// Explicitly create a server logger
+const serverLogger = createLoggerFromConfig(logConfig, 'server');
+
+// Explicitly create a client logger
+const clientLogger = createLoggerFromConfig(logConfig, 'client');
+
+// Explicitly create a worker logger
+const workerLogger = createLoggerFromConfig(logConfig, 'worker');
+```
+
 ### Built-in Transports
 
 #### ConsoleTransport
@@ -160,6 +235,61 @@ Send logs to multiple transports:
 import { MultiTransport, ConsoleTransport, HttpTransport } from '@ottabase/logger/transports';
 
 const multi = new MultiTransport([new ConsoleTransport(), new HttpTransport({ url: 'https://logs.example.com' })]);
+```
+
+#### FileTransport
+
+Write logs to a file with automatic rotation (Node.js only):
+
+```typescript
+import { FileTransport } from '@ottabase/logger';
+
+const fileTransport = new FileTransport({
+    path: './logs/app.log',
+    maxSize: 10 * 1024 * 1024, // 10MB
+    maxFiles: 5, // Keep up to 5 rotated files
+});
+
+const logger = createLogger({
+    transports: [fileTransport],
+});
+```
+
+#### SentryTransport
+
+Send errors to Sentry for monitoring (requires @sentry/node or @sentry/browser):
+
+```typescript
+import { SentryTransport } from '@ottabase/logger';
+
+const sentryTransport = new SentryTransport({
+    dsn: 'your-sentry-dsn',
+    environment: 'production',
+    release: '1.0.0',
+    sampleRate: 1.0,
+    tracesSampleRate: 0.1,
+    minLevel: 3, // Only send ERROR and above (default)
+});
+
+const logger = createLogger({
+    transports: [new ConsoleTransport(), sentryTransport],
+});
+
+// Errors are automatically sent to Sentry
+logger.error('Payment failed', new Error('Insufficient funds'), {
+    userId: 123,
+    amount: 50.0,
+});
+```
+
+**Note:** Install Sentry SDK:
+
+```bash
+# For Node.js
+pnpm add @sentry/node
+
+# For browser
+pnpm add @sentry/browser
 ```
 
 #### FilterTransport

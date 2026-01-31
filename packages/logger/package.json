@@ -24,14 +24,19 @@
             "types": "./dist/formatters.d.ts",
             "import": "./dist/formatters.mjs",
             "require": "./dist/formatters.js"
+        },
+        "./config": {
+            "types": "./dist/config.d.ts",
+            "import": "./dist/config.mjs",
+            "require": "./dist/config.js"
         }
     },
     "files": [
         "dist"
     ],
     "scripts": {
-        "build": "tsup src/index.ts src/transports.ts src/formatters.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/transports.ts src/formatters.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/transports.ts src/formatters.ts src/config.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/transports.ts src/formatters.ts src/config.ts --format cjs,esm --dts --watch",
         "lint": "eslint .",
         "type-check": "tsc --noEmit",
         "test": "vitest",

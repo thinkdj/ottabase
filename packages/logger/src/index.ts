@@ -9,8 +9,18 @@ export type { ILogger, LogEntry, LogLevel, LogLevelName, LoggerOptions, Transpor
 export { LogLevel as LogLevelEnum } from './types.js';
 
 // Re-export common transports and formatters
-export { ConsoleTransport, MemoryTransport } from './transports.js';
-export { prettyFormatter, jsonFormatter, simpleFormatter } from './formatters.js';
+export { ConsoleTransport, MemoryTransport, FileTransport, SentryTransport } from './transports.js';
+export { prettyFormatter, jsonFormatter, simpleFormatter, createFormatter } from './formatters.js';
+
+// Re-export configuration utilities
+export {
+    createLoggerFromConfig,
+    createAutoLogger,
+    createTransportsFromConfig,
+    detectEnvironment,
+    defaultLogConfig,
+} from './config.js';
+export type { LogConfig, EnvironmentLogConfig, TransportConfig, LogEnvironment } from './config.js';
 
 /**
  * Default logger instance
