@@ -2,14 +2,14 @@ name: CI - Build & Test
 
 on:
     workflow_dispatch:
-    pull_request:
-        branches:
-            - main
-            - develop
-    push:
-        branches:
-            - main
-            - develop
+#     pull_request:
+#         branches:
+#             - main
+#             - develop
+#     push:
+#         branches:
+#             - main
+#             - develop
 
 jobs:
     # Build & Test on ubuntu-latest
