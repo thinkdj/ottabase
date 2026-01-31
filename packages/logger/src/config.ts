@@ -233,18 +233,24 @@ export function createLoggerFromConfig(
  * Helper to detect current environment
  */
 export function detectEnvironment(): LogEnvironment {
-    // Check for Cloudflare Workers
-    if (typeof globalThis !== 'undefined' && 'caches' in globalThis && 'Request' in globalThis) {
-        return 'worker';
-    }
-
-    // Check for Node.js/Server
+    // Check for Node.js/Server first (most specific check)
     // @ts-expect-error - process is a Node.js global
     if (typeof process !== 'undefined' && process.versions?.node) {
         return 'server';
     }
 
-    // Default to client
+    // Check for Worker environments (Cloudflare Workers, Service Workers)
+    // Must check for absence of window to distinguish from browser
+    if (
+        typeof globalThis !== 'undefined' &&
+        'caches' in globalThis &&
+        'Request' in globalThis &&
+        typeof (globalThis as any).window === 'undefined'
+    ) {
+        return 'worker';
+    }
+
+    // Default to client (browser)
     return 'client';
 }
 

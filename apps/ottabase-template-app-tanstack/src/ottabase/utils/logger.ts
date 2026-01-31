@@ -62,6 +62,16 @@ export function createChildLogger(context: Record<string, unknown>) {
 }
 
 /**
+ * Get current time in milliseconds (with fallback for environments without performance.now)
+ */
+function now(): number {
+    if (typeof performance !== 'undefined' && performance.now) {
+        return performance.now();
+    }
+    return Date.now();
+}
+
+/**
  * Performance logging helper
  *
  * Usage:
@@ -72,10 +82,10 @@ export function createChildLogger(context: Record<string, unknown>) {
  * ```
  */
 export function logPerformance(operation: string) {
-    const start = performance.now();
+    const start = now();
 
     return (additionalContext?: Record<string, unknown>) => {
-        const duration = performance.now() - start;
+        const duration = now() - start;
         logger.info(`Performance: ${operation}`, {
             operation,
             duration: `${duration.toFixed(2)}ms`,

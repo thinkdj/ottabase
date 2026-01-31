@@ -78,16 +78,19 @@ export class MemoryTransport implements Transport {
 export class BufferedTransport implements Transport {
     private buffer: LogEntry[] = [];
     private bufferSize: number;
+    private maxBufferSize: number;
     private flushInterval: number;
     private timer: ReturnType<typeof setTimeout> | null = null;
     private onFlush: (entries: LogEntry[]) => void | Promise<void>;
 
     constructor(options: {
         bufferSize?: number;
+        maxBufferSize?: number;
         flushInterval?: number;
         onFlush: (entries: LogEntry[]) => void | Promise<void>;
     }) {
         this.bufferSize = options.bufferSize || 100;
+        this.maxBufferSize = options.maxBufferSize || this.bufferSize * 10; // 10x buffer size by default
         this.flushInterval = options.flushInterval || 5000;
         this.onFlush = options.onFlush;
 
@@ -105,6 +108,15 @@ export class BufferedTransport implements Transport {
 
     log(entry: LogEntry): void {
         this.buffer.push(entry);
+
+        // If buffer exceeds max size, drop oldest entries
+        if (this.buffer.length > this.maxBufferSize) {
+            const dropped = this.buffer.length - this.maxBufferSize;
+            this.buffer = this.buffer.slice(dropped);
+            console.warn(`BufferedTransport: Dropped ${dropped} old log entries due to max buffer size`);
+        }
+
+        // Flush if we reach the normal buffer size
         if (this.buffer.length >= this.bufferSize) {
             this.flush();
         }
@@ -514,13 +526,21 @@ export class SentryTransport implements Transport {
         if (!this.initialized || !this.sentry) return;
 
         try {
-            await this.sentry.close(2000);
+            // Use flush() to send pending events without closing the SDK
+            await this.sentry.flush(2000);
         } catch (error) {
             console.error('Error flushing Sentry:', error);
         }
     }
 
     async close(): Promise<void> {
-        await this.flush();
+        if (!this.initialized || !this.sentry) return;
+
+        try {
+            // Use close() to shutdown the SDK
+            await this.sentry.close(2000);
+        } catch (error) {
+            console.error('Error closing Sentry:', error);
+        }
     }
 }

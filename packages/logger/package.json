@@ -49,6 +49,18 @@
         "typescript": "catalog:",
         "vitest": "catalog:"
     },
+    "peerDependencies": {
+        "@sentry/browser": "*",
+        "@sentry/node": "*"
+    },
+    "peerDependenciesMeta": {
+        "@sentry/browser": {
+            "optional": true
+        },
+        "@sentry/node": {
+            "optional": true
+        }
+    },
     "publishConfig": {
         "access": "public"
     }

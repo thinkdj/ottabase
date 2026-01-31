@@ -22,6 +22,7 @@ export interface LogEntry {
     levelName: LogLevelName;
     message: string;
     timestamp: Date;
+    name?: string;
     context?: Record<string, unknown>;
     error?: Error;
     [key: string]: unknown;
