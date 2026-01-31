@@ -243,6 +243,8 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0 # Need full history for Turbo change detection
 
             - name: Load app configuration
               id: config
@@ -361,6 +363,15 @@ jobs:
               with:
                   node-version: "24"
                   cache: "pnpm"
+
+            - name: Cache node_modules
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      node_modules
+                      apps/*/node_modules
+                      packages/*/node_modules
+                  key: ${{ runner.os }}-modules-${{ hashFiles('pnpm-lock.yaml') }}
 
             - name: Install dependencies
               run: pnpm install --frozen-lockfile --ignore-scripts=false

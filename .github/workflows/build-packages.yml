@@ -8,14 +8,6 @@ name: Build and Cache Packages
 # 4. Called from other workflows
 
 on:
-    push:
-        branches:
-            - main
-        paths:
-            - "packages/**"
-            - "pnpm-lock.yaml"
-            - "package.json"
-            - "turbo.json"
     workflow_dispatch: # Allow manual triggers
     workflow_call: # Allow being called from other workflows
         outputs:
@@ -81,6 +73,16 @@ jobs:
                   key: ${{ steps.cache-info.outputs.cache-key }}
                   restore-keys: |
                       packages-build-${{ hashFiles('pnpm-lock.yaml') }}-
+
+            - name: Cache node_modules
+              if: steps.check-cache.outputs.cache-hit != 'true'
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      node_modules
+                      apps/*/node_modules
+                      packages/*/node_modules
+                  key: ${{ runner.os }}-modules-${{ hashFiles('pnpm-lock.yaml') }}
 
             # Only install and build if cache miss
             - name: Install dependencies
