@@ -33,7 +33,7 @@ function spaFallback(): Plugin {
     };
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
     // Base URL – keep it relative for most deployments
     base: '/',
     plugins: [
@@ -51,10 +51,15 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            // Stub @sentry/node in browser build so Vite never bundles it (it uses node:inspector).
+            // Logger's SentryTransport will catch and try @sentry/browser or show optional warning.
+            '@sentry/node': path.resolve(__dirname, './src/stubs/sentry-node-stub.ts'),
         },
     },
     optimizeDeps: {
         include: ['react/jsx-runtime', 'react/jsx-dev-runtime'],
+        // Do not pre-bundle Sentry node; we alias it to a stub in browser
+        exclude: ['@sentry/node'],
         esbuildOptions: {
             target: 'esnext',
         },
@@ -63,8 +68,8 @@ export default defineConfig({
         target: 'esnext',
         legalComments: 'none',
         treeShaking: true,
-        // Remove dead code and console statements
-        drop: ['console', 'debugger'],
+        // Drop console/debugger only in production build so logger demo works in dev
+        ...(command === 'build' ? { drop: ['console', 'debugger'] as const } : {}),
     },
     logLevel: 'info',
     build: {
@@ -77,7 +82,7 @@ export default defineConfig({
         target: 'esnext',
         // Smaller chunks improve caching and initial load
         chunkSizeWarningLimit: 1500,
-        assetsInlineLimit: 40960, // 40 KB – keep small assets inlined
+        assetsInlineLimit: 96 * 1024, // 96 KB – keep small assets inlined
         cssCodeSplit: true,
         // Enable module preload polyfill for better HTTP/2 performance
         modulePreload: { polyfill: true },
@@ -121,4 +126,4 @@ export default defineConfig({
     preview: {
         port: 4173,
     },
-});
+}));

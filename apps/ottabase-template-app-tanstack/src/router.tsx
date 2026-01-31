@@ -439,6 +439,16 @@ const demoEmailRoute = new Route({
     ),
 });
 
+const demoLoggerRoute = new Route({
+    getParentRoute: () => demoLayoutRoute,
+    path: 'logger',
+    component: lazyRouteComponent(() =>
+        import('@/pages/demo/logger/LoggerDemoPage').then((m) => ({
+            default: m.LoggerDemoPage,
+        })),
+    ),
+});
+
 // Auth routes
 const loginRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -623,6 +633,7 @@ demoLayoutRoute.addChildren([
     demoOttaOrmRoute,
     demoOttaFormsRoute,
     demoOttaSelectRoute,
+    demoLoggerRoute,
     demoTimezoneRoute,
     demoCloudflareRoute,
     demoCloudflareD1Route,

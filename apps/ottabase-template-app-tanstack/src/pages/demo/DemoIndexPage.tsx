@@ -136,6 +136,20 @@ export function DemoIndexPage() {
 
                 <Card>
                     <CardHeader>
+                        <CardTitle>Logger</CardTitle>
+                        <CardDescription>
+                            Extensible logger with levels, transports, formatters, child loggers, and config-based setup
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild variant="outline" className="w-full">
+                            <Link to="/demo/logger">View Logger Demo</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
                         <CardTitle>API Client</CardTitle>
                         <CardDescription>
                             Type-safe fetch wrapper with error handling, auth injection, and shorthand method syntax

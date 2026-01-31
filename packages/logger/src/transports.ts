@@ -2,7 +2,8 @@ import { jsonFormatter, prettyFormatter, simpleFormatter } from './formatters.js
 import type { Formatter, LogEntry, Transport } from './types.js';
 
 /**
- * Console transport - outputs logs to console
+ * Console transport - outputs logs via console (debug/info/warn/error).
+ * Default transport for createLogger(). Works in browser, Node.js, and Cloudflare Workers.
  */
 export class ConsoleTransport implements Transport {
     private formatter: Formatter;

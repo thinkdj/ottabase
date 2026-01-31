@@ -27,6 +27,10 @@ pnpm add @ottabase/logger
 
 ## Quick Start
 
+By default, `createLogger()` uses **Console transport**: logs go to `console.debug`, `console.info`, `console.warn`, and
+`console.error`. This works in the **browser**, **Node.js**, and **Cloudflare Workers** (Wrangler), so the same code
+runs on client and server.
+
 ```typescript
 import { createLogger } from '@ottabase/logger';
 
@@ -37,6 +41,8 @@ logger.info('Info message');
 logger.warn('Warning message');
 logger.error('Error message', new Error('Something went wrong'));
 ```
+
+Open DevTools → Console (browser) or your terminal/worker logs to see output.
 
 ## Usage
 
@@ -170,7 +176,9 @@ const workerLogger = createLoggerFromConfig(logConfig, 'worker');
 
 #### ConsoleTransport
 
-Logs to the console with colored output (default):
+Logs to the console with colored output. This is the **default transport** when you call `createLogger()` with no
+options. Uses `console.debug` / `console.info` / `console.warn` / `console.error` so logs appear in browser DevTools,
+Node.js stdout, and Cloudflare Workers logs.
 
 ```typescript
 import { createLogger, ConsoleTransport } from '@ottabase/logger';

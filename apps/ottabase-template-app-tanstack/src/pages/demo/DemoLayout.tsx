@@ -6,10 +6,11 @@ import {
     Cloud,
     Code,
     Database,
-    Mail,
+    FileStack,
     FileText,
     Layout,
     List,
+    Mail,
     Palette,
     Settings,
     Type,
@@ -25,6 +26,7 @@ interface DemoLinkProps {
 
 const DEMO_LINKS: DemoLinkProps[] = [
     { to: '/demo/state', icon: Settings, label: 'State Management' },
+    { to: '/demo/logger', icon: FileStack, label: 'Logger' },
     { to: '/demo/mantine', icon: Layout, label: 'Mantine UI' },
     { to: '/demo/shadcn', icon: Palette, label: 'shadcn/ui' },
     { to: '/demo/ottaeditor', icon: Type, label: 'OttaEditor' },
