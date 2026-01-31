@@ -4,12 +4,11 @@
  * Logs go to browser console (ConsoleTransport) and to the in-page list (MemoryTransport).
  */
 import {
+    ConsoleTransport,
     createLogger,
+    jsonFormatter,
     LogLevelEnum,
     MemoryTransport,
-    ConsoleTransport,
-    jsonFormatter,
-    prettyFormatter,
     simpleFormatter,
 } from '@ottabase/logger';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
@@ -35,7 +34,8 @@ export function LoggerDemoPage() {
             createLogger({
                 level,
                 name: 'demo-page',
-                transports: [new ConsoleTransport({ formatter: prettyFormatter }), memoryTransport],
+                // Use simpleFormatter in browser — prettyFormatter uses ANSI codes that show as garbled text in DevTools
+                transports: [new ConsoleTransport({ formatter: simpleFormatter }), memoryTransport],
                 context: { page: 'logger-demo' },
             }),
         [level],
@@ -45,21 +45,26 @@ export function LoggerDemoPage() {
         setLogs(
             memoryTransport
                 .getLogs()
+                .reverse()
                 .map((e) => `${e.levelName} ${e.message} ${e.context ? JSON.stringify(e.context) : ''}`),
         );
     }, []);
 
     const runDemo = useCallback(() => {
-        memoryTransport.clear();
         logger.debug('Debug message', { detail: 'only visible when level is DEBUG' });
         logger.info('Info message', { userId: 1, action: 'view' });
         logger.warn('Warning message', { retries: 2 });
-        logger.error('Error message', new Error('Demo error'), { code: 500 });
+        // Log ERROR without passing an Error so the console doesn't show a stack trace (demo stays clear)
+        logger.error('Error message (demo)', undefined, { code: 500 });
+        refreshLogs();
+    }, [logger, refreshLogs]);
+
+    const logError = useCallback(() => {
+        logger.error('Error logged (demo)', undefined, { code: 500, action: 'demo' });
         refreshLogs();
     }, [logger, refreshLogs]);
 
     const runChildDemo = useCallback(() => {
-        memoryTransport.clear();
         const child = logger.child({ requestId: 'req-123' });
         child.info('Request started');
         child.info('Request completed', { duration: 42 });
@@ -67,7 +72,6 @@ export function LoggerDemoPage() {
     }, [logger, refreshLogs]);
 
     const runFormatterDemo = useCallback(() => {
-        memoryTransport.clear();
         const jsonLogger = createLogger({
             level: LogLevelEnum.INFO,
             transports: [new ConsoleTransport({ formatter: jsonFormatter })],
@@ -82,6 +86,11 @@ export function LoggerDemoPage() {
         logger.info('Formatter demo: check browser console for JSON and simple output');
         refreshLogs();
     }, [logger, refreshLogs]);
+
+    const clearLogs = useCallback(() => {
+        memoryTransport.clear();
+        setLogs([]);
+    }, []);
 
     return (
         <div className="mx-auto w-full max-w-5xl space-y-8 pb-16">
@@ -106,32 +115,31 @@ export function LoggerDemoPage() {
             <Card className="border-primary/30 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">
                 <CardHeader>
                     <CardTitle className="text-lg">How to use this demo</CardTitle>
-                    <div className="text-sm text-muted-foreground">
-                        <ol className="list-inside list-decimal space-y-1.5">
+                    <div className="text-sm text-muted-foreground space-y-2">
+                        <p className="font-medium text-foreground">Quick flow:</p>
+                        <ol className="list-inside list-decimal space-y-1">
                             <li>
-                                Open <strong>DevTools</strong> (F12 or right‑click → Inspect).
+                                Open <strong>DevTools</strong> (F12) → <strong>Console</strong> tab.
                             </li>
                             <li>
-                                Go to the <strong>Console</strong> tab.
+                                <strong>Left:</strong> Pick a log level (DEBUG / INFO / WARN / ERROR), then click
+                                &quot;Run level demo&quot; to emit all four levels (filtered by your choice).
                             </li>
                             <li>
-                                Use the buttons below: set a log level, then run &quot;Run level demo&quot;, &quot;Child
-                                logger demo&quot;, or &quot;Formatters&quot;.
+                                <strong>Right:</strong> Use &quot;Log error&quot;, &quot;Child logger demo&quot;, or
+                                &quot;Formatters&quot; for other demos.
                             </li>
                             <li>
-                                Logs appear in the Console (debug/info/warn/error) and in the &quot;In-memory logs&quot;
-                                list after you click &quot;Refresh log list&quot;.
+                                See logs in the Console and in &quot;In-memory logs&quot; (click{' '}
+                                <strong>Refresh log list</strong> to update the list).
                             </li>
                         </ol>
+                        <p className="pt-1 text-muted-foreground">
+                            Same logger works on <strong>client</strong> (browser) and <strong>server</strong> (Wrangler
+                            / CF Workers). Default transport is Console.
+                        </p>
                     </div>
                 </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                        Same logger works on <strong>client</strong> (browser) and <strong>server</strong> (Wrangler /
-                        CF Workers). Default transport is <strong>Console</strong> (console.debug / console.info /
-                        console.warn / console.error).
-                    </p>
-                </CardContent>
             </Card>
 
             <div className="grid gap-6 md:grid-cols-2">
@@ -139,44 +147,67 @@ export function LoggerDemoPage() {
                     <CardHeader>
                         <CardTitle>Log levels</CardTitle>
                         <CardDescription>
-                            Minimum level controls what is emitted. Change level and run demo.
+                            <strong>Minimum level</strong> the logger will output. Only messages at or above this level
+                            appear. Pick a level, then click &quot;Run level demo&quot; to emit DEBUG, INFO, WARN, ERROR
+                            (filtered by this level).
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="flex flex-wrap gap-2">
-                        {[
-                            { value: LogLevelEnum.DEBUG, label: 'DEBUG' },
-                            { value: LogLevelEnum.INFO, label: 'INFO' },
-                            { value: LogLevelEnum.WARN, label: 'WARN' },
-                            { value: LogLevelEnum.ERROR, label: 'ERROR' },
-                        ].map(({ value, label }) => (
-                            <Button
-                                key={value}
-                                variant={level === value ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setLevel(value)}
-                            >
-                                {label}
-                            </Button>
-                        ))}
+                    <CardContent className="flex flex-col gap-3">
+                        <div className="flex flex-wrap gap-2">
+                            {[
+                                { value: LogLevelEnum.DEBUG, label: 'DEBUG' },
+                                { value: LogLevelEnum.INFO, label: 'INFO' },
+                                { value: LogLevelEnum.WARN, label: 'WARN' },
+                                { value: LogLevelEnum.ERROR, label: 'ERROR' },
+                            ].map(({ value, label }) => (
+                                <Button
+                                    key={value}
+                                    variant={level === value ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setLevel(value)}
+                                >
+                                    {label}
+                                </Button>
+                            ))}
+                        </div>
+                        <Button onClick={runDemo} className="w-full sm:w-auto">
+                            Run level demo
+                        </Button>
                     </CardContent>
                 </Card>
 
                 <Card className="dark:border-border dark:bg-card">
                     <CardHeader>
                         <CardTitle>Actions</CardTitle>
-                        <CardDescription>Emit logs and refresh the in-memory list.</CardDescription>
+                        <CardDescription>
+                            Other demos. Results go to the browser Console and (after &quot;Refresh log list&quot;) to
+                            the in-page list below.
+                        </CardDescription>
                     </CardHeader>
-                    <CardContent className="flex flex-wrap gap-2">
-                        <Button onClick={runDemo}>Run level demo</Button>
-                        <Button variant="outline" onClick={runChildDemo}>
-                            Child logger demo
-                        </Button>
-                        <Button variant="outline" onClick={runFormatterDemo}>
-                            Formatters (console)
-                        </Button>
-                        <Button variant="outline" onClick={refreshLogs}>
-                            Refresh log list
-                        </Button>
+                    <CardContent className="flex flex-col gap-2">
+                        <div className="flex flex-wrap gap-2">
+                            <Button variant="outline" onClick={logError}>
+                                Log error
+                            </Button>
+                            <Button variant="outline" onClick={runChildDemo}>
+                                Child logger demo
+                            </Button>
+                            <Button variant="outline" onClick={runFormatterDemo}>
+                                Formatters (console)
+                            </Button>
+                            <Button variant="outline" onClick={refreshLogs}>
+                                Refresh log list
+                            </Button>
+                            <Button variant="outline" onClick={clearLogs}>
+                                Clear logs
+                            </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            <strong>Log error</strong> — logs one ERROR. <strong>Child logger demo</strong> — two INFO
+                            lines with extra context. <strong>Formatters</strong> — JSON + simple lines in Console.{' '}
+                            <strong>Refresh log list</strong> — updates the in-page list. <strong>Clear logs</strong> —
+                            empties the in-memory list.
+                        </p>
                     </CardContent>
                 </Card>
             </div>
@@ -185,8 +216,8 @@ export function LoggerDemoPage() {
                 <CardHeader>
                     <CardTitle>In-memory logs (last 50)</CardTitle>
                     <CardDescription>
-                        Logs captured by MemoryTransport. The same entries are also sent to the browser Console
-                        (ConsoleTransport) — check DevTools → Console to see them there.
+                        Logs accumulate across all actions (MemoryTransport keeps the last 50). Click &quot;Refresh log
+                        list&quot; to update; &quot;Clear logs&quot; to reset. Same entries go to the browser Console.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
