@@ -18,7 +18,8 @@ import { ProviderUIBase } from '@ottabase/ui-base';
 import { ProviderCodeHighlight } from '@ottabase/ui-code-highlight';
 import { ShadcnProviders } from '@ottabase/ui-shadcn/providers';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import React from 'react';
+import React, { useEffect } from 'react';
+import { initBlogSystem } from '@/ottabase/blog/init';
 
 export function Providers({ children }: { children: React.ReactNode }) {
     const fontFamilies = {
@@ -26,6 +27,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         heading: headingFontFamily.style.fontFamily,
         monospace: monospaceFontFamily.style.fontFamily,
     };
+
+    // Initialize blog system (hooks, themes, plugins)
+    useEffect(() => {
+        initBlogSystem();
+    }, []);
 
     return (
         <ProviderState>

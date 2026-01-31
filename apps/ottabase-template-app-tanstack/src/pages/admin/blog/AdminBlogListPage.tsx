@@ -24,7 +24,7 @@ import {
     Input,
 } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
-import { Clock, Edit, Eye, FileText, Filter, Plus, Search, Star, Trash2 } from 'lucide-react';
+import { Clock, Edit, Eye, FileText, Filter, Plus, Plug, Search, Star, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface BlogPost {
@@ -130,12 +130,20 @@ export function AdminBlogListPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Blog Posts</h1>
                     <p className="text-muted-foreground mt-1">Manage your blog posts, changelogs, and documentation.</p>
                 </div>
-                <Button asChild>
-                    <Link to="/admin/blog/new">
-                        <Plus className="mr-2 h-4 w-4" />
-                        New Post
-                    </Link>
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" asChild>
+                        <Link to="/admin/blog/extensibility">
+                            <Plug className="mr-2 h-4 w-4" />
+                            Themes & Plugins
+                        </Link>
+                    </Button>
+                    <Button asChild>
+                        <Link to="/admin/blog/new">
+                            <Plus className="mr-2 h-4 w-4" />
+                            New Post
+                        </Link>
+                    </Button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -305,7 +313,6 @@ export function AdminBlogListPage() {
                 </CardContent>
             </Card>
 
-
             <AlertDialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -323,7 +330,10 @@ export function AdminBlogListPage() {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <AlertDialog open={alertDialog.open} onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}>
+            <AlertDialog
+                open={alertDialog.open}
+                onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}
+            >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>{alertDialog.title}</AlertDialogTitle>

@@ -91,3 +91,15 @@ export {
 // Components (React)
 export { BlogRenderer, BlogExcerptCard } from './components/BlogRenderer';
 export type { BlogPostData, BlogRendererProps, BlogExcerptCardProps } from './components/BlogRenderer';
+
+// Hooks System
+export * from './hooks';
+
+// Theme System
+export * from './themes';
+
+// Plugin System
+export * from './plugins';
+
+// Initialization
+export { initOttablog } from './init';

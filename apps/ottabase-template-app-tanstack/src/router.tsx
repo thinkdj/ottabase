@@ -577,6 +577,16 @@ const adminBlogEditRoute = new Route({
     ),
 });
 
+const adminBlogExtensibilityRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/blog/extensibility',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/blog/AdminBlogExtensibilityPage').then((m) => ({
+            default: m.AdminBlogExtensibilityPage,
+        })),
+    ),
+});
+
 // Public Blog routes
 const blogListRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -657,6 +667,7 @@ const routeTree = rootRoute.addChildren([
     adminBlogRoute,
     adminBlogNewRoute,
     adminBlogEditRoute,
+    adminBlogExtensibilityRoute,
     adminDbRoute,
     blogListRoute,
     blogDetailRoute,
