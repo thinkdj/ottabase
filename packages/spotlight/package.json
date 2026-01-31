@@ -18,13 +18,13 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup",
-        "dev": "tsup --watch",
-        "clean": "rimraf dist",
-        "lint": "eslint src --ext .ts,.tsx",
-        "type-check": "tsc --noEmit",
-        "test": "vitest --passWithNoTests",
-        "test:coverage": "vitest --coverage --passWithNoTests"
+        "build": "pnpm exec tsup",
+        "dev": "pnpm exec tsup --watch",
+        "clean": "pnpm exec rimraf dist",
+        "lint": "pnpm exec eslint src --ext .ts,.tsx",
+        "type-check": "pnpm exec tsc --noEmit",
+        "test": "pnpm exec vitest --passWithNoTests",
+        "test:coverage": "pnpm exec vitest --coverage --passWithNoTests"
     },
     "keywords": [
         "react",

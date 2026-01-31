@@ -17,12 +17,12 @@
         }
     },
     "scripts": {
-        "build": "tsup src/index.ts --format cjs,esm",
-        "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
-        "clean": "rimraf .turbo dist",
-        "typecheck": "tsc --noEmit",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "build": "pnpm exec tsup src/index.ts --format cjs,esm",
+        "dev": "pnpm exec tsup src/index.ts --format cjs,esm --dts --watch",
+        "clean": "pnpm exec rimraf .turbo dist",
+        "typecheck": "pnpm exec tsc --noEmit",
+        "test": "pnpm exec vitest",
+        "test:coverage": "pnpm exec vitest --coverage"
     },
     "dependencies": {
         "highlight.js": "^11.11.1"

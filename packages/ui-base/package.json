@@ -20,13 +20,13 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup src/index.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
-        "clean": "rimraf dist",
-        "lint": "eslint src --ext .ts,.tsx",
-        "type-check": "tsc --noEmit",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "build": "pnpm exec tsup src/index.ts --format cjs,esm --dts --clean",
+        "dev": "pnpm exec tsup src/index.ts --format cjs,esm --dts --watch",
+        "clean": "pnpm exec rimraf dist",
+        "lint": "pnpm exec eslint src --ext .ts,.tsx",
+        "type-check": "pnpm exec tsc --noEmit",
+        "test": "pnpm exec vitest",
+        "test:coverage": "pnpm exec vitest --coverage"
     },
     "keywords": [
         "ui",

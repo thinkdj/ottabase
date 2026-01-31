@@ -11,9 +11,9 @@
         }
     },
     "scripts": {
-        "build": "tsc",
-        "dev": "tsc --watch",
-        "clean": "rm -rf dist .turbo node_modules"
+        "build": "pnpm exec tsc",
+        "dev": "pnpm exec tsc --watch",
+        "clean": "pnpm exec rm -rf dist .turbo node_modules"
     },
     "dependencies": {
         "@ottabase/db": "workspace:*",

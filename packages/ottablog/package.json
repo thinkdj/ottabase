@@ -14,9 +14,9 @@
         }
     },
     "scripts": {
-        "clean": "rm -rf .turbo node_modules",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "clean": "pnpm exec rm -rf .turbo node_modules",
+        "test": "pnpm exec vitest",
+        "test:coverage": "pnpm exec vitest --coverage"
     },
     "peerDependencies": {
         "drizzle-orm": "catalog:",
