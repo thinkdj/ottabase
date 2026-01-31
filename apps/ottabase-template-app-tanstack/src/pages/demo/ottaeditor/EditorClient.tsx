@@ -93,7 +93,6 @@ function DemoEditor({ title, description, config, sampleData, id }: DemoEditorPr
         const data = await editor.save();
         if (data) {
             setSavedData(data);
-    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
         }
     };
 
@@ -139,6 +138,11 @@ function DemoEditor({ title, description, config, sampleData, id }: DemoEditorPr
 
 export function EditorClient() {
     const [uploadProvider, setUploadProvider] = useState<UploadProvider>('r2');
+    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
+        open: false,
+        title: '',
+        message: '',
+    });
 
     return (
         <div className="mx-auto max-w-7xl space-y-8 p-6">

@@ -5,7 +5,24 @@
  */
 import { CONTENT_TYPES, POST_STATUSES, type ContentType, type PostStatus } from '@ottabase/ottablog';
 import { createModelHooks } from '@ottabase/ottaorm/client';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Input,
+} from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { Clock, Edit, Eye, FileText, Filter, Plus, Search, Star, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -32,6 +49,12 @@ export function AdminBlogListPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<PostStatus | 'all'>('all');
     const [contentTypeFilter, setContentTypeFilter] = useState<ContentType | 'all'>('all');
+    const [deleteDialog, setDeleteDialog] = useState<{ id: string; title: string } | null>(null);
+    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
+        open: false,
+        title: '',
+        message: '',
+    });
 
     const { data: posts = [], isLoading, error } = blogPostHooks.useList();
 
@@ -51,7 +74,7 @@ export function AdminBlogListPage() {
     });
 
     const handleDelete = (id: string, title: string) => {
-    const [deleteDialog, setDeleteDialog] = useState<{ id: string; title: string } | null>(null);
+        setDeleteDialog({ id, title });
     };
 
     const handleConfirmDelete = async () => {
@@ -64,7 +87,7 @@ export function AdminBlogListPage() {
             console.error('Failed to delete blog post:', err);
             const failedTitle = deleteDialog.title;
             setDeleteDialog(null);
-    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
+            setAlertDialog({
                 open: true,
                 title: 'Error',
                 message: `Failed to delete "${failedTitle}". Please try again.`,

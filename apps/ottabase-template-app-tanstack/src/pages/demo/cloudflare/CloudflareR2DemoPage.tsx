@@ -1,6 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    Input,
+} from '@ottabase/ui-shadcn';
 
 interface R2Object {
     key: string;
@@ -17,7 +32,7 @@ export function CloudflareR2DemoPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+    const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
 
     const loadObjects = async () => {
         try {
