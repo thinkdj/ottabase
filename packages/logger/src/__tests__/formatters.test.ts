@@ -33,7 +33,7 @@ describe('Formatters', () => {
             expect(parsed.context).toEqual({ userId: 123 });
         });
 
-        it('should include error in JSON', () => {
+        it('should include error in JSON (serialized as name, message, stack)', () => {
             const error = new Error('test error');
             const entry: LogEntry = {
                 ...baseEntry,
@@ -44,6 +44,9 @@ describe('Formatters', () => {
             const parsed = JSON.parse(result);
 
             expect(parsed.error).toBeDefined();
+            expect(parsed.error.name).toBe('Error');
+            expect(parsed.error.message).toBe('test error');
+            expect(parsed.error.stack).toBeDefined();
         });
     });
 

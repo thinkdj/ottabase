@@ -219,6 +219,7 @@ export function createLoggerFromConfig(
 
     const transports = createTransportsFromConfig(envConfig, transportFactories);
 
+    // Fallback to console when no transports enabled so the logger always has output
     const options: LoggerOptions = {
         level: envConfig.level ?? mergedConfig.level,
         name: mergedConfig.name,

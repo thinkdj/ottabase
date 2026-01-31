@@ -157,14 +157,14 @@ export class Logger implements ILogger {
      * Flush all transports
      */
     async flush(): Promise<void> {
-        await Promise.all(this.transports.map((transport) => transport.flush?.()));
+        await Promise.all(this.transports.map((transport) => Promise.resolve(transport.flush?.())));
     }
 
     /**
      * Close all transports
      */
     async close(): Promise<void> {
-        await Promise.all(this.transports.map((transport) => transport.close?.()));
+        await Promise.all(this.transports.map((transport) => Promise.resolve(transport.close?.())));
     }
 }
 

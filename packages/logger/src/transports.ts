@@ -82,6 +82,7 @@ export class BufferedTransport implements Transport {
     private flushInterval: number;
     private timer: ReturnType<typeof setTimeout> | null = null;
     private onFlush: (entries: LogEntry[]) => void | Promise<void>;
+    private flushing: boolean = false;
 
     constructor(options: {
         bufferSize?: number;
@@ -116,17 +117,18 @@ export class BufferedTransport implements Transport {
             console.warn(`BufferedTransport: Dropped ${dropped} old log entries due to max buffer size`);
         }
 
-        // Flush if we reach the normal buffer size
-        if (this.buffer.length >= this.bufferSize) {
-            this.flush();
+        // Flush if we reach the normal buffer size (skip if already flushing)
+        if (!this.flushing && this.buffer.length >= this.bufferSize) {
+            void this.flush();
         }
     }
 
     async flush(): Promise<void> {
-        if (this.buffer.length === 0) {
+        if (this.flushing || this.buffer.length === 0) {
             return;
         }
 
+        this.flushing = true;
         const entries = [...this.buffer];
         this.buffer = [];
 
@@ -134,9 +136,10 @@ export class BufferedTransport implements Transport {
             await this.onFlush(entries);
         } catch (error) {
             console.error('Error flushing logs:', error);
+        } finally {
+            this.flushing = false;
+            this.startTimer();
         }
-
-        this.startTimer();
     }
 
     async close(): Promise<void> {
@@ -391,12 +394,10 @@ export class FileTransport implements Transport {
     }
 
     async flush(): Promise<void> {
-        if (this.initializing) return;
-        if (!this.writeStream) return;
+        if (this.initializing || !this.writeStream) return;
 
-        return new Promise((resolve) => {
-            this.writeStream.once('drain', resolve);
-            this.writeStream.write('');
+        return new Promise<void>((resolve) => {
+            this.writeStream.write('', () => resolve());
         });
     }
 

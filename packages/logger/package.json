@@ -6,45 +6,55 @@
     "license": "MIT",
     "type": "module",
     "sideEffects": false,
-    "main": "./dist/index.js",
-    "module": "./dist/index.mjs",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
-            "import": "./dist/index.mjs",
-            "require": "./dist/index.js"
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
         },
         "./transports": {
             "types": "./dist/transports.d.ts",
-            "import": "./dist/transports.mjs",
-            "require": "./dist/transports.js"
+            "import": "./dist/transports.js",
+            "require": "./dist/transports.cjs"
         },
         "./formatters": {
             "types": "./dist/formatters.d.ts",
-            "import": "./dist/formatters.mjs",
-            "require": "./dist/formatters.js"
+            "import": "./dist/formatters.js",
+            "require": "./dist/formatters.cjs"
         },
         "./config": {
             "types": "./dist/config.d.ts",
-            "import": "./dist/config.mjs",
-            "require": "./dist/config.js"
+            "import": "./dist/config.js",
+            "require": "./dist/config.cjs"
         }
     },
     "files": [
-        "dist"
+        "dist",
+        "README.md"
+    ],
+    "keywords": [
+        "logger",
+        "logging",
+        "transport",
+        "formatter",
+        "ottabase"
     ],
     "scripts": {
-        "build": "tsup src/index.ts src/transports.ts src/formatters.ts src/config.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/transports.ts src/formatters.ts src/config.ts --format cjs,esm --dts --watch",
-        "lint": "eslint .",
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "lint": "eslint src --ext .ts",
         "type-check": "tsc --noEmit",
         "test": "vitest",
         "test:coverage": "vitest --coverage",
         "clean": "rimraf dist"
     },
     "devDependencies": {
-        "@ottabase/config": "workspace:*",
+        "@types/node": "catalog:",
+        "eslint": "catalog:",
+        "rimraf": "catalog:",
         "tsup": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:"

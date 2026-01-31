@@ -55,10 +55,30 @@ function padEnd(str: string, targetLength: number, padString: string = ' '): str
 }
 
 /**
+ * Serialize an Error for JSON output (JSON.stringify omits Error properties)
+ */
+function serializeError(error: Error): Record<string, unknown> {
+    return {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+    };
+}
+
+/**
  * JSON formatter - outputs logs as JSON strings
  */
 export const jsonFormatter: Formatter = (entry: LogEntry): string => {
-    return JSON.stringify(entry);
+    const serializable: Record<string, unknown> = {
+        level: entry.level,
+        levelName: entry.levelName,
+        message: entry.message,
+        timestamp: entry.timestamp,
+        ...(entry.name != null && { name: entry.name }),
+        ...(entry.context != null && { context: entry.context }),
+        ...(entry.error != null && { error: serializeError(entry.error) }),
+    };
+    return JSON.stringify(serializable);
 };
 
 /**

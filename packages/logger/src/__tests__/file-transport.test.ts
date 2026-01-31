@@ -1,57 +1,39 @@
-import fs from 'fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FileTransport } from '../transports.js';
 
-// Mock fs module
-vi.mock('fs', async () => {
-    return {
-        default: {
-            existsSync: vi.fn(),
-            statSync: vi.fn(),
-            createWriteStream: vi.fn(),
-            unlinkSync: vi.fn(),
-            renameSync: vi.fn(),
-        },
+const { writeMock, mockFs } = vi.hoisted(() => {
+    const writeMock = vi.fn();
+    const writeStreamMock = {
+        write: writeMock,
+        end: vi.fn((cb?: () => void) => cb?.()),
+        once: vi.fn((_event: string, cb: () => void) => cb()),
     };
+    const mockFs = {
+        existsSync: vi.fn(() => false),
+        statSync: vi.fn(() => ({ size: 0 })),
+        createWriteStream: vi.fn(() => writeStreamMock),
+        unlinkSync: vi.fn(),
+        renameSync: vi.fn(),
+    };
+    return { writeMock, mockFs };
 });
+
+vi.mock('fs', () => ({
+    default: mockFs,
+    ...mockFs,
+}));
 
 describe('FileTransport', () => {
     afterEach(() => {
         vi.restoreAllMocks();
+        writeMock.mockClear();
     });
 
-    it('should buffer logs while initializing', async () => {
-        // We need to delay the dynamic import of fs to test buffering
-        // However, since we mock 'fs' above, the dynamic import in FileTransport
-        // will resolve quickly.
-        // To test buffering properly, we might need to mock the import itself
-        // or delay the mock response.
-
-        // Alternatively, we can check if the buffer logic is present.
-        // But integration testing is better.
-
-        // Since FileTransport uses `await import('fs')`, it waits for the promise.
-        // If we can control that promise, we can test buffering.
-
-        // For now, let's just ensure it eventually writes to file.
-
-        const writeMock = vi.fn();
-        const writeStreamMock = {
-            write: writeMock,
-            end: vi.fn((cb) => cb?.()),
-            once: vi.fn((event, cb) => {
-                if (event === 'drain') cb();
-            }),
-        };
-
-        // @ts-expect-error - Mocking
-        fs.createWriteStream = vi.fn(() => writeStreamMock);
-
+    it('should buffer logs while initializing then write after fs is ready', async () => {
         const transport = new FileTransport({
             path: './test.log',
         });
 
-        // Log immediately
         transport.log({
             level: 1,
             levelName: 'info',
@@ -59,7 +41,6 @@ describe('FileTransport', () => {
             timestamp: new Date(),
         });
 
-        // Wait for initialization (process.nextTick/setImmediate equivalent)
         await new Promise((resolve) => setTimeout(resolve, 100));
 
         expect(writeMock).toHaveBeenCalled();

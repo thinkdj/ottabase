@@ -282,7 +282,7 @@ logger.error('Payment failed', new Error('Insufficient funds'), {
 });
 ```
 
-**Note:** Install Sentry SDK:
+**Note:** Install Sentry SDK. Use a single `SentryTransport` instance per app to avoid multiple `Sentry.init()` calls.
 
 ```bash
 # For Node.js
@@ -382,17 +382,20 @@ Available log levels:
 
 ### Flushing and Cleanup
 
-Ensure all logs are written before shutdown:
+Ensure all logs are written before shutdown (e.g. in serverless or before process exit):
 
 ```typescript
 const logger = createLogger();
 
-// Flush all transports
+// Flush all transports (waits for buffered/async transports)
 await logger.flush();
 
 // Close all transports (also flushes)
 await logger.close();
 ```
+
+**Production tip:** Call `await logger.flush()` before process exit so buffered transports (HTTP, file) have time to
+write.
 
 ## Advanced Examples
 
