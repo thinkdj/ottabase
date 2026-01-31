@@ -74,16 +74,6 @@ jobs:
                   restore-keys: |
                       packages-build-${{ hashFiles('pnpm-lock.yaml') }}-
 
-            - name: Cache node_modules
-              if: steps.check-cache.outputs.cache-hit != 'true'
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      node_modules
-                      apps/*/node_modules
-                      packages/*/node_modules
-                  key: ${{ runner.os }}-modules-${{ hashFiles('pnpm-lock.yaml') }}
-
             # Only install and build if cache miss
             - name: Install dependencies
               if: steps.check-cache.outputs.cache-hit != 'true'
