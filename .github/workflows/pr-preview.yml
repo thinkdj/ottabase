@@ -258,8 +258,6 @@ jobs:
 
             - name: Setup pnpm
               uses: pnpm/action-setup@v3
-              with:
-                  version: 10.15.1
 
             - name: Setup Node.js
               uses: actions/setup-node@v4
@@ -506,10 +504,17 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v4
 
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v3
+
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
                   node-version: "24"
+                  cache: "pnpm"
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile --ignore-scripts=false
 
             - name: Determine worker subdomain
               id: cleanup-config
@@ -564,8 +569,7 @@ jobs:
 
             - name: Delete preview worker
               run: |
-                  npm install -g wrangler
-                  wrangler delete ${{ steps.cleanup-name.outputs.preview-name }}
+                  pnpm exec wrangler delete ${{ steps.cleanup-name.outputs.preview-name }}
               env:
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

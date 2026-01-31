@@ -6,7 +6,22 @@ import {
     type OutputData,
     type BlockToolConstructable,
 } from '@ottabase/ottaeditor';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@ottabase/ui-shadcn';
 import Link from 'next/link';
 import { useState } from 'react';
 import CustomAlertPlugin from './CustomAlertPlugin';
@@ -205,6 +220,11 @@ const sampleDataMinimal: OutputData = {
 export function EditorClient() {
     const [savedData1, setSavedData1] = useState<OutputData | null>(null);
     const [savedData2, setSavedData2] = useState<OutputData | null>(null);
+    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
+        open: false,
+        title: '',
+        message: '',
+    });
 
     // Editor 1: All default plugins
     const editor1 = useOttaEditor({
@@ -229,21 +249,19 @@ export function EditorClient() {
         minHeight: 300,
     });
 
-    const handleSave1 = async () => {
+    const handleSaveFullFeaturedEditor = async () => {
         const data = await editor1.save();
         if (data) {
             setSavedData1(data);
-            console.log('Editor 1 saved:', data);
-            alert('Editor 1 saved successfully!');
+            setAlertDialog({ open: true, title: 'Success', message: 'Full-featured editor saved successfully!' });
         }
     };
 
-    const handleSave2 = async () => {
+    const handleSaveCustomPluginEditor = async () => {
         const data = await editor2.save();
         if (data) {
             setSavedData2(data);
-            console.log('Editor 2 saved:', data);
-            alert('Editor 2 saved successfully!');
+            setAlertDialog({ open: true, title: 'Success', message: 'Custom plugin editor saved successfully!' });
         }
     };
 
@@ -318,7 +336,7 @@ const editor2 = useOttaEditor({
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex gap-2">
-                        <Button onClick={handleSave1} disabled={!editor1.isReady || !editor1.hasUnsavedChanges}>
+                        <Button onClick={handleSaveFullFeaturedEditor} disabled={!editor1.isReady || !editor1.hasUnsavedChanges}>
                             💾 Save Editor 1{editor1.hasUnsavedChanges && <span className="ml-2 text-xs">●</span>}
                         </Button>
                         <Button onClick={() => editor1.clear()} disabled={!editor1.isReady} variant="destructive">
@@ -369,7 +387,7 @@ const editor2 = useOttaEditor({
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex gap-2">
-                        <Button onClick={handleSave2} disabled={!editor2.isReady || !editor2.hasUnsavedChanges}>
+                        <Button onClick={handleSaveCustomPluginEditor} disabled={!editor2.isReady || !editor2.hasUnsavedChanges}>
                             💾 Save Editor 2{editor2.hasUnsavedChanges && <span className="ml-2 text-xs">●</span>}
                         </Button>
                         <Button onClick={() => editor2.clear()} disabled={!editor2.isReady} variant="destructive">
@@ -463,6 +481,21 @@ const editor2 = useOttaEditor({
                     </ul>
                 </CardContent>
             </Card>
+
+
+            <AlertDialog open={alertDialog.open} onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{alertDialog.title}</AlertDialogTitle>
+                        <AlertDialogDescription>{alertDialog.message}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setAlertDialog({ ...alertDialog, open: false })}>
+                            OK
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

@@ -9,6 +9,13 @@ import {
 import {
     Badge,
     Button,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Card,
     CardContent,
     CardDescription,
@@ -86,7 +93,6 @@ function DemoEditor({ title, description, config, sampleData, id }: DemoEditorPr
         const data = await editor.save();
         if (data) {
             setSavedData(data);
-            alert('Editor saved successfully!');
         }
     };
 
@@ -132,6 +138,11 @@ function DemoEditor({ title, description, config, sampleData, id }: DemoEditorPr
 
 export function EditorClient() {
     const [uploadProvider, setUploadProvider] = useState<UploadProvider>('r2');
+    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
+        open: false,
+        title: '',
+        message: '',
+    });
 
     return (
         <div className="mx-auto max-w-7xl space-y-8 p-6">
@@ -220,6 +231,21 @@ export function EditorClient() {
                 }}
                 sampleData={sampleDataMinimal}
             />
+
+
+            <AlertDialog open={alertDialog.open} onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{alertDialog.title}</AlertDialogTitle>
+                        <AlertDialogDescription>{alertDialog.message}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setAlertDialog({ ...alertDialog, open: false })}>
+                            OK
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

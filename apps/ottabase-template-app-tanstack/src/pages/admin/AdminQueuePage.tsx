@@ -1,7 +1,22 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@ottabase/ui-shadcn';
 import { api, isApiError } from '@/lib/api';
 import {
     ArrowLeft,
@@ -76,6 +91,15 @@ export function AdminQueuePage() {
     const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
     const [isRetryingAll, setIsRetryingAll] = useState(false);
     const [isPurgingDLQ, setIsPurgingDLQ] = useState(false);
+    const [resetStatsDialog, setResetStatsDialog] = useState(false);
+    const [deleteJobDialog, setDeleteJobDialog] = useState<string | null>(null);
+    const [retryAllDialog, setRetryAllDialog] = useState(false);
+    const [purgeDLQDialog, setPurgeDLQDialog] = useState(false);
+    const [alertDialog, setAlertDialog] = useState<{
+        open: boolean;
+        title: string;
+        message: string;
+    }>({ open: false, title: '', message: '' });
     const queryClient = useQueryClient();
 
     // Fetch queue overview
@@ -121,17 +145,24 @@ export function AdminQueuePage() {
         enabled: activeTab === 'dlq',
     });
 
-    const handleResetStats = async () => {
-        if (!confirm('Are you sure you want to reset all queue statistics?')) return;
+    const handleResetStats = () => {
+        setResetStatsDialog(true);
+    };
 
+    const handleConfirmResetStats = async () => {
         try {
             setIsResetting(true);
             await api('/api/admin/queues/reset-stats', { method: 'POST' });
             await queryClient.invalidateQueries({ queryKey: ['admin', 'queues'] });
         } catch (err) {
-            alert(isApiError(err) ? err.message : 'Failed to reset stats');
+            setAlertDialog({
+                open: true,
+                title: 'Error',
+                message: isApiError(err) ? err.message : 'Failed to reset stats',
+            });
         } finally {
             setIsResetting(false);
+            setResetStatsDialog(false);
         }
     };
 
@@ -141,57 +172,93 @@ export function AdminQueuePage() {
             await api(`/api/admin/queues/dlq/${jobId}/retry`, { method: 'POST' });
             await queryClient.invalidateQueries({ queryKey: ['admin', 'queues'] });
         } catch (err) {
-            alert(isApiError(err) ? err.message : 'Failed to retry job');
+            setAlertDialog({
+                open: true,
+                title: 'Error',
+                message: isApiError(err) ? err.message : 'Failed to retry job',
+            });
         } finally {
             setRetryingJobId(null);
         }
     };
 
-    const handleDeleteJob = async (jobId: string) => {
-        if (!confirm('Remove this job from the Dead Letter Queue?')) return;
+    const handleDeleteJob = (jobId: string) => {
+        setDeleteJobDialog(jobId);
+    };
+
+    const handleConfirmDeleteJob = async () => {
+        const jobId = deleteJobDialog;
+        if (!jobId) return;
 
         try {
             setDeletingJobId(jobId);
             await api(`/api/admin/queues/dlq/${jobId}`, { method: 'DELETE' });
             await queryClient.invalidateQueries({ queryKey: ['admin', 'queues'] });
         } catch (err) {
-            alert(isApiError(err) ? err.message : 'Failed to delete job');
+            setAlertDialog({
+                open: true,
+                title: 'Error',
+                message: isApiError(err) ? err.message : 'Failed to delete job',
+            });
         } finally {
             setDeletingJobId(null);
+            setDeleteJobDialog(null);
         }
     };
 
-    const handleRetryAll = async () => {
-        if (!confirm('Retry all jobs in the Dead Letter Queue?')) return;
+    const handleRetryAll = () => {
+        setRetryAllDialog(true);
+    };
 
+    const handleConfirmRetryAll = async () => {
         try {
             setIsRetryingAll(true);
             const result = await api<{ success: number; failed: number }>('/api/admin/queues/dlq/retry-all', {
                 method: 'POST',
             });
-            alert(`Retried ${result.success} jobs. ${result.failed} failed.`);
+            setAlertDialog({
+                open: true,
+                title: 'Success',
+                message: `Retried ${result.success} jobs. ${result.failed} failed.`,
+            });
             await queryClient.invalidateQueries({ queryKey: ['admin', 'queues'] });
         } catch (err) {
-            alert(isApiError(err) ? err.message : 'Failed to retry jobs');
+            setAlertDialog({
+                open: true,
+                title: 'Error',
+                message: isApiError(err) ? err.message : 'Failed to retry jobs',
+            });
         } finally {
             setIsRetryingAll(false);
+            setRetryAllDialog(false);
         }
     };
 
-    const handlePurgeDLQ = async () => {
-        if (!confirm('Permanently delete ALL jobs from the Dead Letter Queue? This cannot be undone.')) return;
+    const handlePurgeDLQ = () => {
+        setPurgeDLQDialog(true);
+    };
 
+    const handleConfirmPurgeDLQ = async () => {
         try {
             setIsPurgingDLQ(true);
             const result = await api<{ deleted: number }>('/api/admin/queues/dlq', {
                 method: 'DELETE',
             });
-            alert(`Deleted ${result.deleted} jobs from DLQ.`);
+            setAlertDialog({
+                open: true,
+                title: 'Success',
+                message: `Deleted ${result.deleted} jobs from DLQ.`,
+            });
             await queryClient.invalidateQueries({ queryKey: ['admin', 'queues'] });
         } catch (err) {
-            alert(isApiError(err) ? err.message : 'Failed to purge DLQ');
+            setAlertDialog({
+                open: true,
+                title: 'Error',
+                message: isApiError(err) ? err.message : 'Failed to purge DLQ',
+            });
         } finally {
             setIsPurgingDLQ(false);
+            setPurgeDLQDialog(false);
         }
     };
 
@@ -686,6 +753,108 @@ export function AdminQueuePage() {
                     </Card>
                 )}
             </div>
+
+            {/* Reset Stats Confirmation Dialog */}
+            <AlertDialog open={resetStatsDialog} onOpenChange={setResetStatsDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Reset Queue Statistics?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will reset all queue statistics. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleConfirmResetStats}
+                            disabled={isResetting}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isResetting ? 'Resetting...' : 'Reset Stats'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Job Confirmation Dialog */}
+            <AlertDialog open={deleteJobDialog !== null} onOpenChange={(open) => !open && setDeleteJobDialog(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Job from Dead Letter Queue?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This job will be permanently deleted from the queue. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deletingJobId !== null}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleConfirmDeleteJob}
+                            disabled={deletingJobId !== null}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {deletingJobId !== null ? 'Deleting...' : 'Delete'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Retry All Confirmation Dialog */}
+            <AlertDialog open={retryAllDialog} onOpenChange={setRetryAllDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Retry All Dead Letter Queue Jobs?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will retry all jobs currently in the Dead Letter Queue.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isRetryingAll}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleConfirmRetryAll}
+                            disabled={isRetryingAll}
+                        >
+                            {isRetryingAll ? 'Retrying...' : 'Retry All'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Purge DLQ Confirmation Dialog */}
+            <AlertDialog open={purgeDLQDialog} onOpenChange={setPurgeDLQDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Permanently Delete All DLQ Jobs?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete ALL jobs from the Dead Letter Queue. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isPurgingDLQ}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleConfirmPurgeDLQ}
+                            disabled={isPurgingDLQ}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isPurgingDLQ ? 'Purging...' : 'Delete All'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Alert/Info Dialog */}
+            <AlertDialog open={alertDialog.open} onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{alertDialog.title}</AlertDialogTitle>
+                        <AlertDialogDescription>{alertDialog.message}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setAlertDialog({ ...alertDialog, open: false })}>
+                            OK
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

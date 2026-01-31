@@ -8,14 +8,6 @@ name: Build and Cache Packages
 # 4. Called from other workflows
 
 on:
-    push:
-        branches:
-            - main
-        paths:
-            - "packages/**"
-            - "pnpm-lock.yaml"
-            - "package.json"
-            - "turbo.json"
     workflow_dispatch: # Allow manual triggers
     workflow_call: # Allow being called from other workflows
         outputs:
@@ -41,8 +33,6 @@ jobs:
 
             - name: Setup pnpm
               uses: pnpm/action-setup@v3
-              with:
-                  version: 10.15.1
 
             - name: Setup Node.js
               uses: actions/setup-node@v4

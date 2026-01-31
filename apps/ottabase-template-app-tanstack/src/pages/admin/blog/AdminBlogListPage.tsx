@@ -5,7 +5,24 @@
  */
 import { CONTENT_TYPES, POST_STATUSES, type ContentType, type PostStatus } from '@ottabase/ottablog';
 import { createModelHooks } from '@ottabase/ottaorm/client';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Input,
+} from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { Clock, Edit, Eye, FileText, Filter, Plus, Search, Star, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -32,6 +49,12 @@ export function AdminBlogListPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<PostStatus | 'all'>('all');
     const [contentTypeFilter, setContentTypeFilter] = useState<ContentType | 'all'>('all');
+    const [deleteDialog, setDeleteDialog] = useState<{ id: string; title: string } | null>(null);
+    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
+        open: false,
+        title: '',
+        message: '',
+    });
 
     const { data: posts = [], isLoading, error } = blogPostHooks.useList();
 
@@ -50,14 +73,25 @@ export function AdminBlogListPage() {
         return matchesSearch && matchesStatus && matchesType;
     });
 
-    const handleDelete = async (id: string, title: string) => {
-        if (window.confirm(`Are you sure you want to delete "${title}"?`)) {
-            try {
-                await deletePost.mutateAsync(id);
-            } catch (err) {
-                console.error('Failed to delete blog post:', err);
-                window.alert(`Failed to delete "${title}". Please try again.`);
-            }
+    const handleDelete = (id: string, title: string) => {
+        setDeleteDialog({ id, title });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteDialog) return;
+
+        try {
+            await deletePost.mutateAsync(deleteDialog.id);
+        } catch (err) {
+            console.error('Failed to delete blog post:', err);
+            const failedTitle = deleteDialog.title;
+            setAlertDialog({
+                open: true,
+                title: 'Error',
+                message: `Failed to delete "${failedTitle}". Please try again.`,
+            });
+        } finally {
+            setDeleteDialog(null);
         }
     };
 
@@ -270,6 +304,38 @@ export function AdminBlogListPage() {
                     )}
                 </CardContent>
             </Card>
+
+
+            <AlertDialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Post?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete "{deleteDialog?.title}"?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deletePost.isPending}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmDelete} disabled={deletePost.isPending}>
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={alertDialog.open} onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{alertDialog.title}</AlertDialogTitle>
+                        <AlertDialogDescription>{alertDialog.message}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setAlertDialog({ ...alertDialog, open: false })}>
+                            OK
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

@@ -1,44 +1,38 @@
 name: CI - Build & Test
 
 on:
-    workflow_dispatch: # Manual trigger only
-    # Disabled automatic triggers - uncomment to enable:
-    # pull_request:
-    #     branches:
-    #         - main
-    #         - develop
-    # push:
-    #     branches:
-    #         - main
-    #         - develop
+    workflow_dispatch:
+#     pull_request:
+#         branches:
+#             - main
+#             - develop
+#     push:
+#         branches:
+#             - main
+#             - develop
 
 jobs:
-    # Test on multiple platforms
+    # Build & Test on ubuntu-latest
     test:
-        name: Test on ${{ matrix.os }} - Node ${{ matrix.node }}
-        runs-on: ${{ matrix.os }}
+        name: CI - Build & Test
+        runs-on: ubuntu-latest
         timeout-minutes: 15
         strategy:
             fail-fast: false
-            matrix:
-                os: [ubuntu-latest, windows-latest, macos-latest]
-                node: ["24"]
-                # Optionally test multiple Node versions
-                # node: ['24', '22']
 
         steps:
             - name: Checkout
               uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
             - name: Install pnpm
               uses: pnpm/action-setup@v3
-              with:
-                  version: 10.15.1
 
-            - name: Setup Node.js ${{ matrix.node }}
+            - name: Setup Node.js 24
               uses: actions/setup-node@v4
               with:
-                  node-version: ${{ matrix.node }}
+                  node-version: "24"
                   cache: "pnpm"
 
             - name: Install dependencies
@@ -55,22 +49,8 @@ jobs:
                   restore-keys: |
                       ${{ runner.os }}-turbo-
 
-            - name: Lint
-              run: pnpm lint
-              continue-on-error: true
-
-            - name: Type Check
-              run: pnpm type-check
-
-            - name: Build All Packages (with Turborepo)
-              run: pnpm build:packages
-
-            - name: Build All Apps (with dependencies)
-              run: pnpm build:apps
-
-            - name: Test
-              run: pnpm test
-              continue-on-error: true
+            - name: Run CI (Lint, Type-Check, Build, Test)
+              run: pnpm turbo run lint type-check test build
 
     # Validate Cloudflare configuration
     validate-cloudflare:
@@ -85,8 +65,6 @@ jobs:
 
             - name: Install pnpm
               uses: pnpm/action-setup@v3
-              with:
-                  version: 10.15.1
 
             - name: Setup Node.js
               uses: actions/setup-node@v4

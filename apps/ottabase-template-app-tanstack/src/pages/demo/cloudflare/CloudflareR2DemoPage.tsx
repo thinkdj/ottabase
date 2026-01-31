@@ -1,6 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    Input,
+} from '@ottabase/ui-shadcn';
 
 interface R2Object {
     key: string;
@@ -17,6 +32,7 @@ export function CloudflareR2DemoPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
 
     const loadObjects = async () => {
         try {
@@ -82,8 +98,13 @@ export function CloudflareR2DemoPage() {
     };
 
     const handleDelete = async (objectKey: string) => {
-        if (!confirm(`Delete ${objectKey}?`)) return;
+        setDeleteDialog(objectKey);
+    };
 
+    const handleConfirmDelete = async () => {
+        if (!deleteDialog) return;
+
+        const objectKey = deleteDialog;
         try {
             setLoading(true);
             setError(null);
@@ -103,6 +124,7 @@ export function CloudflareR2DemoPage() {
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Unknown error');
         } finally {
+            setDeleteDialog(null);
             setLoading(false);
         }
     };
@@ -256,6 +278,27 @@ export function CloudflareR2DemoPage() {
                     )}
                 </CardContent>
             </Card>
+        
+            <AlertDialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete File?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Delete {deleteDialog}?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleConfirmDelete}
+                            disabled={loading}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

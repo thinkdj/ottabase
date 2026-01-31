@@ -6,7 +6,8 @@
         "baseUrl": ".",
         "paths": {},
         "skipLibCheck": true,
-        "lib": ["esnext", "dom", "dom.iterable"]
+        "lib": ["esnext", "dom", "dom.iterable"],
+        "noEmit": false
     },
     "include": ["src/**/*"],
     "exclude": ["node_modules", "dist"]

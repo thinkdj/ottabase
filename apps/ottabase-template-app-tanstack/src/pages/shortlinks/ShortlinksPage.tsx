@@ -3,6 +3,14 @@ import type { PaginatedResponse, Pagination } from '@/lib/api-types';
 import type { ShortlinkRecord } from '@ottabase/shortlinks';
 import {
     Badge,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Button,
     Card,
     CardContent,
@@ -40,6 +48,7 @@ export function ShortlinksPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingShortlink, setEditingShortlink] = useState<ShortlinkRecord | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -80,13 +89,20 @@ export function ShortlinksPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this shortlink?')) return;
+        setDeleteDialog(id);
+    };
 
+    const handleConfirmDelete = async () => {
+        if (!deleteDialog) return;
+
+        const id = deleteDialog;
         try {
             await api(`/api/ottaorm/shortlinks/${id}`, { method: 'DELETE' });
             await fetchShortlinks(currentPage, perPage);
         } catch (err) {
             setError(isApiError(err) ? err.message : 'Failed to delete shortlink');
+        } finally {
+            setDeleteDialog(null);
         }
     };
 
@@ -522,6 +538,24 @@ export function ShortlinksPage() {
                     )}
                 </CardContent>
             </Card>
+
+
+            <AlertDialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Shortlink?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete this shortlink?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmDelete}>
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

@@ -24,6 +24,14 @@ import { createModelHooks } from '@ottabase/ottaorm/client';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import {
     Badge,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Button,
     Card,
     CardContent,
@@ -221,6 +229,10 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     const [activeTab, setActiveTab] = useState('content');
     const [previewVersion, setPreviewVersion] = useState<BlogPostVersion | null>(null);
     const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+    const [loadVersionDialog, setLoadVersionDialog] = useState<{ open: boolean; versionNumber?: number } | null>(null);
+    const [deleteVersionDialog, setDeleteVersionDialog] = useState<{ open: boolean; versionId?: string; versionNumber?: number } | null>(null);
+    const [deletePostDialog, setDeletePostDialog] = useState(false);
+    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
     const [slugError, setSlugError] = useState<string | null>(null);
 
     // Content editors - initialData is guaranteed to be available in edit mode
@@ -382,7 +394,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
             }
         } catch (error) {
             console.error('Hero image upload failed:', error);
-            alert('Failed to upload image. Please try again.');
+            setAlertDialog({ open: true, title: 'Error', message: 'Failed to upload image. Please try again.' });
         } finally {
             setIsUploadingHero(false);
         }
@@ -439,18 +451,18 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     // Save post
     const handleSave = async (publishNow = false) => {
         if (!title.trim()) {
-            alert('Title is required');
+            setAlertDialog({ open: true, title: 'Validation Error', message: 'Title is required' });
             return;
         }
 
         const baseSlug = (slug || generateSlug(title)).trim();
         if (!/^[A-Za-z0-9_-]+$/.test(baseSlug)) {
-            alert('Slug can only contain letters, numbers, hyphens, and underscores.');
+            setAlertDialog({ open: true, title: 'Validation Error', message: 'Slug can only contain letters, numbers, hyphens, and underscores.' });
             return;
         }
 
         if (slugStatus === 'taken') {
-            alert('Slug already in use. Please choose a different slug.');
+            setAlertDialog({ open: true, title: 'Validation Error', message: 'Slug already in use. Please choose a different slug.' });
             return;
         }
 
@@ -538,7 +550,72 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
             navigate({ to: '/admin/blog' });
         } catch (error) {
             console.error('Failed to save post:', error);
-            alert('Failed to save post. Please try again.');
+            setAlertDialog({ open: true, title: 'Error', message: 'Failed to save post. Please try again.' });
+        }
+    };
+
+    const handleLoadVersion = async () => {
+        if (loadVersionDialog?.open && loadVersionDialog.versionNumber !== undefined) {
+            try {
+                // Find the version object by versionNumber
+                const version = allVersions?.find((v) => v.versionNumber === loadVersionDialog.versionNumber);
+                if (version) {
+                    await applyVersionToEditor(version);
+                }
+            } catch (error) {
+                console.error('Failed to load version:', error);
+            } finally {
+                setLoadVersionDialog(null);
+            }
+        }
+    };
+
+    const handleDeleteVersion = async () => {
+        if (deleteVersionDialog?.open && deleteVersionDialog.versionId) {
+            try {
+                await deleteVersion.mutateAsync(deleteVersionDialog.versionId);
+                refetchVersions();
+            } catch (error) {
+                console.error('Failed to delete version:', error);
+                setAlertDialog({
+                    open: true,
+                    title: 'Error',
+                    message: error instanceof Error ? error.message : 'Failed to delete version',
+                });
+            } finally {
+                setDeleteVersionDialog(null);
+            }
+        }
+    };
+
+    const handleDeletePost = async () => {
+        if (deletePostDialog) {
+            try {
+                if (!postId) {
+                    console.error('No post ID available for deletion');
+                    return;
+                }
+
+                const response = await fetch(`/api/admin/blog/${encodeURIComponent(postId)}`, {
+                    method: 'DELETE',
+                });
+
+                if (!response.ok) {
+                    const errorData = (await response.json()) as { error?: string };
+                    throw new Error(errorData.error || 'Failed to delete post');
+                }
+
+                navigate({ to: '/admin/blog' });
+            } catch (error) {
+                console.error('Failed to delete post:', error);
+                setAlertDialog({
+                    open: true,
+                    title: 'Error',
+                    message: error instanceof Error ? error.message : 'Failed to delete post. Please try again.',
+                });
+            } finally {
+                setDeletePostDialog(false);
+            }
         }
     };
 
@@ -1051,15 +1128,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                                         variant="outline"
                                                         size="sm"
                                                         className="h-6 px-2"
-                                                        onClick={async () => {
-                                                            if (
-                                                                window.confirm(
-                                                                    `Load version ${version.versionNumber} into the editor?`,
-                                                                )
-                                                            ) {
-                                                                await applyVersionToEditor(version);
-                                                            }
-                                                        }}
+                                                        onClick={() => setLoadVersionDialog({ open: true, versionNumber: version.versionNumber })}
                                                     >
                                                         Load
                                                     </Button>
@@ -1067,16 +1136,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                                         variant="ghost"
                                                         size="sm"
                                                         className="h-6 px-2 text-destructive hover:text-destructive"
-                                                        onClick={async () => {
-                                                            if (
-                                                                window.confirm(
-                                                                    `Delete version ${version.versionNumber}?`,
-                                                                )
-                                                            ) {
-                                                                await deleteVersion.mutateAsync(version.id);
-                                                                refetchVersions();
-                                                            }
-                                                        }}
+                                                        onClick={() => setDeleteVersionDialog({ open: true, versionId: version.id, versionNumber: version.versionNumber })}
                                                     >
                                                         <Trash2 className="h-3 w-3" />
                                                     </Button>
@@ -1105,27 +1165,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                 <Button
                                     variant="destructive"
                                     className="w-full"
-                                    onClick={async () => {
-                                        if (window.confirm('Are you sure you want to delete this post?')) {
-                                            // Attempt to delete the post before navigating away
-                                            try {
-                                                const pathSegments = window.location.pathname
-                                                    .split('/')
-                                                    .filter(Boolean);
-                                                const postId = pathSegments[pathSegments.length - 1];
-
-                                                if (postId) {
-                                                    await fetch(`/api/admin/blog/${encodeURIComponent(postId)}`, {
-                                                        method: 'DELETE',
-                                                    });
-                                                }
-                                            } catch (error) {
-                                                // Log the error but still navigate away to avoid trapping the user
-                                                console.error('Failed to delete post:', error);
-                                            }
-                                            navigate({ to: '/admin/blog' });
-                                        }
-                                    }}
+                                    onClick={() => setDeletePostDialog(true)}
                                 >
                                     <Trash2 className="mr-2 h-4 w-4" />
                                     Delete Post
@@ -1234,6 +1274,76 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                     )}
                 </DialogContent>
             </Dialog>
+
+
+            {/* Load Version Confirmation Dialog */}
+            <AlertDialog open={loadVersionDialog?.open ?? false} onOpenChange={(open) => !open && setLoadVersionDialog(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Load Version?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Load version {loadVersionDialog?.versionNumber} into the editor?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleLoadVersion}>
+                            Load
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Version Confirmation Dialog */}
+            <AlertDialog open={deleteVersionDialog?.open ?? false} onOpenChange={(open) => !open && setDeleteVersionDialog(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Version?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Delete version {deleteVersionDialog?.versionNumber}?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteVersion} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Post Confirmation Dialog */}
+            <AlertDialog open={deletePostDialog} onOpenChange={setDeletePostDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Post?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete this post?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeletePost} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* General Alert Dialog */}
+            <AlertDialog open={alertDialog.open} onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{alertDialog.title}</AlertDialogTitle>
+                        <AlertDialogDescription>{alertDialog.message}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setAlertDialog({ ...alertDialog, open: false })}>
+                            OK
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

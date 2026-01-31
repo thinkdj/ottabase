@@ -61,6 +61,7 @@ export function AdminDbPage() {
 
     const queryClient = useQueryClient();
     const [isDropTableDialogOpen, setIsDropTableDialogOpen] = useState(false);
+    const [deleteRowDialog, setDeleteRowDialog] = useState<{ id: any; pkField: string } | null>(null);
 
     // Load tables list
     const { data: tablesData, isLoading: tablesLoading } = useQuery({
@@ -182,8 +183,19 @@ export function AdminDbPage() {
             return;
         }
 
-        if (confirm(`Are you sure you want to delete this row? (${pkField}: ${id})`)) {
-            deleteRowMutation.mutate({ id, pkField });
+        setDeleteRowDialog({ id, pkField });
+    };
+
+    const handleConfirmDeleteRow = () => {
+        if (deleteRowDialog) {
+            deleteRowMutation.mutate(
+                { id: deleteRowDialog.id, pkField: deleteRowDialog.pkField },
+                {
+                    onSettled: () => {
+                        setDeleteRowDialog(null);
+                    },
+                },
+            );
         }
     };
 
@@ -498,6 +510,23 @@ export function AdminDbPage() {
                     )}
                 </div>
             </div>
+
+            <AlertDialog open={deleteRowDialog !== null} onOpenChange={(open) => !open && setDeleteRowDialog(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Row?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete this row? ({deleteRowDialog?.pkField}: {deleteRowDialog?.id})
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deleteRowMutation.isPending}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmDeleteRow} disabled={deleteRowMutation.isPending}>
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Drop Table Confirmation Dialog */}
             <AlertDialog open={isDropTableDialogOpen} onOpenChange={setIsDropTableDialogOpen}>

@@ -2,6 +2,14 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Button,
     Card,
     CardContent,
@@ -89,6 +97,12 @@ export function AdminCronPage() {
         isActive: true,
     });
     const [payloadError, setPayloadError] = useState<string | null>(null);
+    const [deleteDialog, setDeleteDialog] = useState<{ taskId: string; taskName: string } | null>(null);
+    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
+        open: false,
+        title: '',
+        message: '',
+    });
     const queryClient = useQueryClient();
 
     // Validate payload is valid JSON (or empty)
@@ -155,6 +169,16 @@ export function AdminCronPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin', 'cron'] });
         },
+        onError: (error) => {
+            setAlertDialog({
+                open: true,
+                title: 'Error',
+                message: isApiError(error) ? error.message : 'Failed to delete task',
+            });
+        },
+        onSettled: () => {
+            setDeleteDialog(null);
+        },
     });
 
     // Run task now mutation
@@ -176,9 +200,9 @@ export function AdminCronPage() {
         createMutation.mutate(newTask);
     };
 
-    const handleDeleteTask = (taskId: string, taskName: string) => {
-        if (confirm(`Delete scheduled task "${taskName}"?`)) {
-            deleteMutation.mutate(taskId);
+    const handleConfirmDelete = () => {
+        if (deleteDialog) {
+            deleteMutation.mutate(deleteDialog.taskId);
         }
     };
 
@@ -515,7 +539,7 @@ export function AdminCronPage() {
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => handleDeleteTask(task.id, task.name)}
+                                                onClick={() => setDeleteDialog({ taskId: task.id, taskName: task.name })}
                                                 disabled={deleteMutation.isPending}
                                                 title="Delete"
                                                 className="h-8 px-2 text-red-600 hover:bg-red-50"
@@ -549,6 +573,37 @@ export function AdminCronPage() {
                     </CardContent>
                 </Card>
             )}
+
+            <AlertDialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Scheduled Task?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Delete scheduled task "{deleteDialog?.taskName}"?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmDelete} disabled={deleteMutation.isPending}>
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={alertDialog.open} onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{alertDialog.title}</AlertDialogTitle>
+                        <AlertDialogDescription>{alertDialog.message}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setAlertDialog({ ...alertDialog, open: false })}>
+                            OK
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
