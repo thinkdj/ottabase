@@ -1,5 +1,5 @@
-import type { Transport, LogEntry, Formatter } from './types.js';
-import { prettyFormatter, simpleFormatter, jsonFormatter } from './formatters.js';
+import { jsonFormatter, prettyFormatter, simpleFormatter } from './formatters.js';
+import type { Formatter, LogEntry, Transport } from './types.js';
 
 /**
  * Console transport - outputs logs to console
@@ -282,6 +282,8 @@ export class FileTransport implements Transport {
     private currentSize: number = 0;
     private writeStream: any;
     private fs: any;
+    private buffer: LogEntry[] = [];
+    private initializing: boolean = true;
 
     constructor(options: {
         path: string;
@@ -301,14 +303,23 @@ export class FileTransport implements Transport {
     private async initializeFileSystem(): Promise<void> {
         try {
             // Only load fs in Node.js environment
-            // @ts-expect-error - process is a Node.js global
             if (typeof process !== 'undefined' && process.versions?.node) {
-                // @ts-expect-error - dynamic import of Node.js module
+                // Dynamic import of Node.js module
                 this.fs = await import('fs');
                 this.createWriteStream();
+
+                // Flush buffer
+                this.initializing = false;
+                if (this.buffer.length > 0) {
+                    this.buffer.forEach((entry) => this.log(entry));
+                    this.buffer = [];
+                }
+            } else {
+                this.initializing = false;
             }
         } catch (error) {
             console.error('FileTransport requires Node.js fs module:', error);
+            this.initializing = false;
         }
     }
 
@@ -360,10 +371,14 @@ export class FileTransport implements Transport {
     }
 
     log(entry: LogEntry): void {
+        if (this.initializing) {
+            this.buffer.push(entry);
+            return;
+        }
+
         if (!this.writeStream) return;
 
         const formatted = this.formatter(entry) + '\n';
-        // @ts-expect-error - Buffer is a Node.js global
         const size = typeof Buffer !== 'undefined' ? Buffer.byteLength(formatted, 'utf8') : formatted.length;
 
         // Check if rotation is needed
@@ -376,6 +391,7 @@ export class FileTransport implements Transport {
     }
 
     async flush(): Promise<void> {
+        if (this.initializing) return;
         if (!this.writeStream) return;
 
         return new Promise((resolve) => {
@@ -385,6 +401,7 @@ export class FileTransport implements Transport {
     }
 
     async close(): Promise<void> {
+        if (this.initializing) return;
         if (!this.writeStream) return;
 
         return new Promise((resolve) => {
@@ -401,6 +418,8 @@ export class SentryTransport implements Transport {
     private sentry: any;
     private minLevel: number;
     private initialized: boolean = false;
+    private initializing: boolean = true;
+    private buffer: LogEntry[] = [];
 
     constructor(options: {
         dsn: string;
@@ -426,17 +445,17 @@ export class SentryTransport implements Transport {
             let Sentry;
             try {
                 // Try Node.js Sentry first
-                // @ts-expect-error - optional dependency
                 Sentry = await import('@sentry/node');
             } catch {
                 // Fall back to browser Sentry
                 try {
-                    // @ts-expect-error - optional dependency
+                    // Optional dependency
                     Sentry = await import('@sentry/browser');
                 } catch {
                     console.warn(
                         'Sentry SDK not found. Install @sentry/node or @sentry/browser to use SentryTransport.',
                     );
+                    this.initializing = false;
                     return;
                 }
             }
@@ -453,12 +472,25 @@ export class SentryTransport implements Transport {
             });
 
             this.initialized = true;
+            this.initializing = false;
+
+            // Flush buffer
+            if (this.buffer.length > 0) {
+                this.buffer.forEach((entry) => this.log(entry));
+                this.buffer = [];
+            }
         } catch (error) {
             console.error('Error initializing Sentry:', error);
+            this.initializing = false;
         }
     }
 
     log(entry: LogEntry): void {
+        if (this.initializing) {
+            this.buffer.push(entry);
+            return;
+        }
+
         if (!this.initialized || !this.sentry) return;
 
         // Only send logs at or above the minimum level
@@ -523,6 +555,7 @@ export class SentryTransport implements Transport {
     }
 
     async flush(): Promise<void> {
+        if (this.initializing) return;
         if (!this.initialized || !this.sentry) return;
 
         try {
@@ -534,6 +567,7 @@ export class SentryTransport implements Transport {
     }
 
     async close(): Promise<void> {
+        if (this.initializing) return;
         if (!this.initialized || !this.sentry) return;
 
         try {

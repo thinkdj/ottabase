@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-    ConsoleTransport,
-    MemoryTransport,
     BufferedTransport,
-    MultiTransport,
+    ConsoleTransport,
     FilterTransport,
+    MemoryTransport,
+    MultiTransport,
 } from '../transports.js';
 import type { LogEntry } from '../types.js';
 
@@ -112,6 +112,8 @@ describe('Transports', () => {
             expect(onFlush).toHaveBeenCalledWith(
                 expect.arrayContaining([expect.objectContaining({ message: 'test 1' })]),
             );
+
+            await transport.close();
         });
 
         it('should flush logs on close', async () => {
@@ -138,6 +140,7 @@ describe('Transports', () => {
             await transport.flush();
 
             expect(onFlush).toHaveBeenCalled();
+            await transport.close();
         });
     });
 
