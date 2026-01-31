@@ -11,6 +11,10 @@ export {
     postTagLinksTable,
     PostVersion,
     postVersionsTable,
+    OttablogPlugin,
+    ottablogPluginsTable,
+    OttablogTheme,
+    ottablogThemesTable,
 } from './models';
 export type {
     Series,
@@ -27,4 +31,8 @@ export type {
     NewPostTagLinkType,
     PostVersion,
     NewPostVersion,
+    OttablogPluginType,
+    NewOttablogPluginType,
+    OttablogThemeType,
+    NewOttablogThemeType,
 } from './models';

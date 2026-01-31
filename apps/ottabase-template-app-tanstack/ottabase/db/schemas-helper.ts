@@ -14,7 +14,13 @@
 // await autoInit({ driver, schema: allSchemas, ... });
 // ============================================================
 
-import { postsTable, postTagLinksTable, postTagsTable } from '@ottabase/ottablog';
+import {
+    ottablogPluginsTable,
+    ottablogThemesTable,
+    postsTable,
+    postTagLinksTable,
+    postTagsTable,
+} from '@ottabase/ottablog';
 import {
     accountsTable,
     authenticatorsTable,
@@ -47,6 +53,8 @@ export function getAllSchemas() {
         postsTable,
         postTagsTable,
         postTagLinksTable,
+        ottablogPluginsTable,
+        ottablogThemesTable,
     };
 
     // 3. App-specific schemas
@@ -87,6 +95,8 @@ export function getSchemaSummary() {
         postsTable,
         postTagsTable,
         postTagLinksTable,
+        ottablogPluginsTable,
+        ottablogThemesTable,
     };
 
     const appTables = {

@@ -25,6 +25,8 @@ import {
 } from '@ottabase/ottaorm';
 import {
     categoriesTable,
+    ottablogPluginsTable,
+    ottablogThemesTable,
     postTagLinksTable,
     postTagsTable,
     postVersionsTable,
@@ -46,6 +48,8 @@ export { todosTable } from '../models/Todo';
 // ============================================================
 export {
     categoriesTable,
+    ottablogPluginsTable,
+    ottablogThemesTable,
     postTagLinksTable,
     postTagsTable,
     postVersionsTable,

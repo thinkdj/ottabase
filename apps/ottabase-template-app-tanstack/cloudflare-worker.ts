@@ -13,7 +13,16 @@ import {
     type TemplateContent,
     type TemplateVariables,
 } from '@ottabase/email';
-import { Post, PostCategory, PostSeries, PostTag, PostTagLink, PostVersion } from '@ottabase/ottablog';
+import {
+    OttablogPlugin,
+    OttablogTheme,
+    Post,
+    PostCategory,
+    PostSeries,
+    PostTag,
+    PostTagLink,
+    PostVersion,
+} from '@ottabase/ottablog';
 import {
     Tag,
     User,
@@ -189,6 +198,8 @@ function initDbConnection(env: CloudflareEnv): void {
         PostCategory,
         PostSeries,
         PostVersion,
+        OttablogPlugin,
+        OttablogTheme,
         // Package models
         Shortlink,
         ReferralTracking,

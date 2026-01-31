@@ -47,6 +47,10 @@ export {
     postTagLinksTable,
     PostVersion,
     postVersionsTable,
+    OttablogPlugin,
+    ottablogPluginsTable,
+    OttablogTheme,
+    ottablogThemesTable,
 } from './ottaorm-models';
 
 // Type exports from models
@@ -73,6 +77,10 @@ export type {
     NewPostType,
     PostVersionType,
     NewPostVersionType,
+    OttablogPluginType,
+    NewOttablogPluginType,
+    OttablogThemeType,
+    NewOttablogThemeType,
 } from './ottaorm-models';
 
 // Type exports
@@ -100,6 +108,9 @@ export * from './themes';
 
 // Plugin System
 export * from './plugins';
+
+// Extensibility System (WordPress-style themes/plugins management)
+export * from './extensibility';
 
 // Initialization
 export { initOttablog } from './init';

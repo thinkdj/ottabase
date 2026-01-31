@@ -21,3 +21,11 @@ export type { NewPostTagLinkType, PostTagLinkType } from './PostTagLink';
 // PostVersion exports
 export { PostVersion, postVersionsTable } from './PostVersion';
 export type { NewPostVersion, NewPostVersionType, PostVersionType } from './PostVersion';
+
+// OttablogPlugin exports
+export { OttablogPlugin, ottablogPluginsTable } from './OttablogPlugin';
+export type { NewOttablogPluginType, OttablogPluginType } from './OttablogPlugin';
+
+// OttablogTheme exports
+export { OttablogTheme, ottablogThemesTable } from './OttablogTheme';
+export type { NewOttablogThemeType, OttablogThemeType } from './OttablogTheme';
