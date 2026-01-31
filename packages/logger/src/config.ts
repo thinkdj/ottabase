@@ -234,7 +234,6 @@ export function createLoggerFromConfig(
  */
 export function detectEnvironment(): LogEnvironment {
     // Check for Node.js/Server first (most specific check)
-    // Check for Node.js/Server first (most specific check)
     if (typeof process !== 'undefined' && process.versions?.node) {
         return 'server';
     }
