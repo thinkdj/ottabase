@@ -62,13 +62,13 @@
         "README.md"
     ],
     "scripts": {
-        "build": "pnpm exec tsup",
-        "dev": "pnpm exec tsup --watch",
-        "clean": "pnpm exec rimraf dist",
-        "lint": "pnpm exec eslint src --ext .ts",
-        "type-check": "pnpm exec tsc --noEmit",
-        "test": "pnpm exec vitest",
-        "test:coverage": "pnpm exec vitest --coverage"
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
     },
     "keywords": [
         "auth",

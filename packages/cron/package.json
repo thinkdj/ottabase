@@ -15,11 +15,11 @@
     },
     "sideEffects": false,
     "scripts": {
-        "build": "pnpm exec tsup src/index.ts --format cjs,esm --dts --clean",
-        "dev": "pnpm exec tsup src/index.ts --format cjs,esm --dts --watch",
-        "type-check": "pnpm exec tsc --noEmit",
-        "test": "pnpm exec vitest",
-        "test:coverage": "pnpm exec vitest --coverage"
+        "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
     },
     "devDependencies": {
         "@cloudflare/workers-types": "catalog:",

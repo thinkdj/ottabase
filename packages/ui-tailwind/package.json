@@ -18,7 +18,7 @@
         "tailwind-merge": "catalog:"
     },
     "scripts": {
-        "test": "pnpm exec vitest",
-        "test:coverage": "pnpm exec vitest --coverage"
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
     }
 }
