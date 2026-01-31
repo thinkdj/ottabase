@@ -163,7 +163,15 @@ export function AdminCronPage() {
         mutationFn: (taskId: string) => api(`/api/admin/cron/${taskId}`, { method: 'DELETE' }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin', 'cron'] });
-        
+        },
+        onError: (error) => {
+            setAlertDialog({
+                open: true,
+                title: 'Error',
+                message: isApiError(error) ? error.message : 'Failed to delete task',
+            });
+        },
+        onSettled: () => {
             setDeleteDialog(null);
         },
     });

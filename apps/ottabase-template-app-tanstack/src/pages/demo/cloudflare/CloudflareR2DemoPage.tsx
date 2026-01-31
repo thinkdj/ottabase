@@ -121,10 +121,10 @@ export function CloudflareR2DemoPage() {
 
             setSuccess('File deleted successfully!');
             await loadObjects();
-            setDeleteDialog(null);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Unknown error');
         } finally {
+            setDeleteDialog(null);
             setLoading(false);
         }
     };

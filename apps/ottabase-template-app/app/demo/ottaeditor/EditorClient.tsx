@@ -220,6 +220,11 @@ const sampleDataMinimal: OutputData = {
 export function EditorClient() {
     const [savedData1, setSavedData1] = useState<OutputData | null>(null);
     const [savedData2, setSavedData2] = useState<OutputData | null>(null);
+    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
+        open: false,
+        title: '',
+        message: '',
+    });
 
     // Editor 1: All default plugins
     const editor1 = useOttaEditor({
