@@ -577,6 +577,11 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                 refetchVersions();
             } catch (error) {
                 console.error('Failed to delete version:', error);
+                setAlertDialog({
+                    open: true,
+                    title: 'Error',
+                    message: error instanceof Error ? error.message : 'Failed to delete version',
+                });
             } finally {
                 setDeleteVersionDialog(null);
             }
