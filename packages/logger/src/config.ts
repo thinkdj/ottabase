@@ -1,6 +1,6 @@
-import type { LogLevel, LoggerOptions, Transport } from './types.js';
 import { Logger } from './logger.js';
 import { ConsoleTransport } from './transports.js';
+import type { LogLevel, LoggerOptions, Transport } from './types.js';
 
 /**
  * Environment types for logging configuration
@@ -234,7 +234,7 @@ export function createLoggerFromConfig(
  */
 export function detectEnvironment(): LogEnvironment {
     // Check for Node.js/Server first (most specific check)
-    // @ts-expect-error - process is a Node.js global
+    // Check for Node.js/Server first (most specific check)
     if (typeof process !== 'undefined' && process.versions?.node) {
         return 'server';
     }
