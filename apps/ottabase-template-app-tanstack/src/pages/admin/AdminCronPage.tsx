@@ -98,6 +98,11 @@ export function AdminCronPage() {
     });
     const [payloadError, setPayloadError] = useState<string | null>(null);
     const [deleteDialog, setDeleteDialog] = useState<{ taskId: string; taskName: string } | null>(null);
+    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
+        open: false,
+        title: '',
+        message: '',
+    });
     const queryClient = useQueryClient();
 
     // Validate payload is valid JSON (or empty)
@@ -581,6 +586,20 @@ export function AdminCronPage() {
                         <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={handleConfirmDelete} disabled={deleteMutation.isPending}>
                             Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={alertDialog.open} onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{alertDialog.title}</AlertDialogTitle>
+                        <AlertDialogDescription>{alertDialog.message}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setAlertDialog({ ...alertDialog, open: false })}>
+                            OK
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
