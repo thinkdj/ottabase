@@ -17,7 +17,7 @@ export function CloudflareR2DemoPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
-    const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
 
     const loadObjects = async () => {
         try {

@@ -51,7 +51,7 @@ export function AdminBlogListPage() {
     });
 
     const handleDelete = (id: string, title: string) => {
-        setDeleteDialog({ id, title });
+    const [deleteDialog, setDeleteDialog] = useState<{ id: string; title: string } | null>(null);
     };
 
     const handleConfirmDelete = async () => {
@@ -64,7 +64,7 @@ export function AdminBlogListPage() {
             console.error('Failed to delete blog post:', err);
             const failedTitle = deleteDialog.title;
             setDeleteDialog(null);
-            setAlertDialog({
+    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
                 open: true,
                 title: 'Error',
                 message: `Failed to delete "${failedTitle}". Please try again.`,

@@ -93,7 +93,7 @@ function DemoEditor({ title, description, config, sampleData, id }: DemoEditorPr
         const data = await editor.save();
         if (data) {
             setSavedData(data);
-            setAlertDialog({ open: true, title: 'Success', message: 'Editor saved successfully!' });
+    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
         }
     };
 
