@@ -188,7 +188,14 @@ export function AdminDbPage() {
 
     const handleConfirmDeleteRow = () => {
         if (deleteRowDialog) {
-            deleteRowMutation.mutate({ id: deleteRowDialog.id, pkField: deleteRowDialog.pkField });
+            deleteRowMutation.mutate(
+                { id: deleteRowDialog.id, pkField: deleteRowDialog.pkField },
+                {
+                    onSettled: () => {
+                        setDeleteRowDialog(null);
+                    },
+                },
+            );
         }
     };
 

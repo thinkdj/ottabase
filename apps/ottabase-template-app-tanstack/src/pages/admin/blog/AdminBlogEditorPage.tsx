@@ -567,9 +567,14 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
 
     const handleDeleteVersion = async () => {
         if (deleteVersionDialog?.open && deleteVersionDialog.versionId) {
-            await deleteVersion.mutateAsync(deleteVersionDialog.versionId);
-            refetchVersions();
-            setDeleteVersionDialog(null);
+            try {
+                await deleteVersion.mutateAsync(deleteVersionDialog.versionId);
+                refetchVersions();
+            } catch (error) {
+                console.error('Failed to delete version:', error);
+            } finally {
+                setDeleteVersionDialog(null);
+            }
         }
     };
 

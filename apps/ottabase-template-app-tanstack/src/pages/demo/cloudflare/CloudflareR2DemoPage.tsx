@@ -274,7 +274,11 @@ export function CloudflareR2DemoPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmDelete} disabled={loading}>
+                        <AlertDialogAction
+                            onClick={handleConfirmDelete}
+                            disabled={loading}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
                             Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
