@@ -28,8 +28,6 @@ jobs:
 
             - name: Install pnpm
               uses: pnpm/action-setup@v3
-              with:
-                  version: 10.15.1
 
             - name: Setup Node.js 24
               uses: actions/setup-node@v4
@@ -67,8 +65,6 @@ jobs:
 
             - name: Install pnpm
               uses: pnpm/action-setup@v3
-              with:
-                  version: 10.15.1
 
             - name: Setup Node.js
               uses: actions/setup-node@v4
