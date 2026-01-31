@@ -65,7 +65,7 @@ export function createChildLogger(context: Record<string, unknown>) {
  * Get current time in milliseconds (with fallback for environments without performance.now)
  */
 function now(): number {
-    if (typeof performance !== 'undefined' && performance.now) {
+    if (typeof performance !== 'undefined' && performance?.now) {
         return performance.now();
     }
     return Date.now();

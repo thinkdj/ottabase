@@ -1,6 +1,10 @@
 import type { LogConfig } from '@ottabase/logger';
 import { LogLevelEnum } from '@ottabase/logger';
 
+// Safe access for non-Vite environments (SSR, tests) where import.meta.env may be undefined
+const env = typeof import.meta !== 'undefined' ? import.meta.env : undefined;
+const isDev = env?.DEV ?? false;
+
 /**
  * Logging configuration for the application
  *
@@ -18,12 +22,12 @@ import { LogLevelEnum } from '@ottabase/logger';
  */
 export const logConfig: LogConfig = {
     // Global log level (can be overridden per environment)
-    level: import.meta.env.DEV ? LogLevelEnum.DEBUG : LogLevelEnum.INFO,
+    level: isDev ? LogLevelEnum.DEBUG : LogLevelEnum.INFO,
 
     // Global context to include in all logs
     context: {
         app: 'ottabase-template-app-tanstack',
-        version: import.meta.env.VITE_APP_VERSION || '0.0.0',
+        version: env?.VITE_APP_VERSION ?? '0.0.0',
     },
 
     // Server-side logging configuration
@@ -35,7 +39,7 @@ export const logConfig: LogConfig = {
 
         // File logging - only enabled in production for server-side
         file: {
-            enabled: !import.meta.env.DEV,
+            enabled: !isDev,
             options: {
                 path: './logs/app.log',
                 maxSize: 10 * 1024 * 1024, // 10MB
@@ -47,7 +51,7 @@ export const logConfig: LogConfig = {
         http: {
             enabled: false,
             options: {
-                url: import.meta.env.VITE_LOG_ENDPOINT || 'https://logs.example.com',
+                url: env?.VITE_LOG_ENDPOINT ?? 'https://logs.example.com',
                 bufferSize: 100,
                 flushInterval: 5000,
             },
@@ -55,10 +59,10 @@ export const logConfig: LogConfig = {
 
         // Sentry - error tracking and monitoring
         sentry: {
-            enabled: !import.meta.env.DEV,
+            enabled: !isDev,
             options: {
-                dsn: import.meta.env.VITE_SENTRY_DSN,
-                environment: import.meta.env.MODE,
+                dsn: env?.VITE_SENTRY_DSN,
+                environment: env?.MODE ?? 'production',
                 sampleRate: 1.0,
                 tracesSampleRate: 0.1,
             },
@@ -67,7 +71,7 @@ export const logConfig: LogConfig = {
 
     // Client-side logging configuration
     client: {
-        level: import.meta.env.DEV ? LogLevelEnum.DEBUG : LogLevelEnum.WARN,
+        level: isDev ? LogLevelEnum.DEBUG : LogLevelEnum.WARN,
 
         // Console logging - enabled in development, limited in production
         console: {
@@ -76,7 +80,7 @@ export const logConfig: LogConfig = {
 
         // HTTP logging - send client logs to server
         http: {
-            enabled: !import.meta.env.DEV,
+            enabled: !isDev,
             options: {
                 url: '/api/logs',
                 bufferSize: 50,
@@ -86,10 +90,10 @@ export const logConfig: LogConfig = {
 
         // Sentry - client-side error tracking
         sentry: {
-            enabled: !import.meta.env.DEV,
+            enabled: !isDev,
             options: {
-                dsn: import.meta.env.VITE_SENTRY_DSN,
-                environment: import.meta.env.MODE,
+                dsn: env?.VITE_SENTRY_DSN,
+                environment: env?.MODE ?? 'production',
                 sampleRate: 0.5, // Sample 50% of client events
                 tracesSampleRate: 0.05,
             },
@@ -107,7 +111,7 @@ export const logConfig: LogConfig = {
         http: {
             enabled: false,
             options: {
-                url: import.meta.env.VITE_LOG_ENDPOINT,
+                url: env?.VITE_LOG_ENDPOINT,
                 bufferSize: 100,
                 flushInterval: 5000,
             },
@@ -115,10 +119,10 @@ export const logConfig: LogConfig = {
 
         // Sentry - worker error tracking
         sentry: {
-            enabled: !import.meta.env.DEV,
+            enabled: !isDev,
             options: {
-                dsn: import.meta.env.VITE_SENTRY_DSN,
-                environment: import.meta.env.MODE,
+                dsn: env?.VITE_SENTRY_DSN,
+                environment: env?.MODE ?? 'production',
             },
         },
     },
@@ -169,7 +173,7 @@ export const prodLogConfig: LogConfig = {
         sentry: {
             enabled: true,
             options: {
-                dsn: import.meta.env.VITE_SENTRY_DSN,
+                dsn: env?.VITE_SENTRY_DSN,
                 environment: 'production',
             },
         },
@@ -180,7 +184,7 @@ export const prodLogConfig: LogConfig = {
         sentry: {
             enabled: true,
             options: {
-                dsn: import.meta.env.VITE_SENTRY_DSN,
+                dsn: env?.VITE_SENTRY_DSN,
                 environment: 'production',
             },
         },
@@ -190,7 +194,7 @@ export const prodLogConfig: LogConfig = {
         sentry: {
             enabled: true,
             options: {
-                dsn: import.meta.env.VITE_SENTRY_DSN,
+                dsn: env?.VITE_SENTRY_DSN,
                 environment: 'production',
             },
         },
