@@ -150,7 +150,6 @@ export function AdminQueuePage() {
     };
 
     const handleConfirmResetStats = async () => {
-        setResetStatsDialog(false);
         try {
             setIsResetting(true);
             await api('/api/admin/queues/reset-stats', { method: 'POST' });
@@ -163,6 +162,7 @@ export function AdminQueuePage() {
             });
         } finally {
             setIsResetting(false);
+            setResetStatsDialog(false);
         }
     };
 
@@ -189,7 +189,6 @@ export function AdminQueuePage() {
     const handleConfirmDeleteJob = async () => {
         const jobId = deleteJobDialog;
         if (!jobId) return;
-        setDeleteJobDialog(null);
 
         try {
             setDeletingJobId(jobId);
@@ -203,6 +202,7 @@ export function AdminQueuePage() {
             });
         } finally {
             setDeletingJobId(null);
+            setDeleteJobDialog(null);
         }
     };
 
@@ -211,8 +211,6 @@ export function AdminQueuePage() {
     };
 
     const handleConfirmRetryAll = async () => {
-        setRetryAllDialog(false);
-
         try {
             setIsRetryingAll(true);
             const result = await api<{ success: number; failed: number }>('/api/admin/queues/dlq/retry-all', {
@@ -232,6 +230,7 @@ export function AdminQueuePage() {
             });
         } finally {
             setIsRetryingAll(false);
+            setRetryAllDialog(false);
         }
     };
 
@@ -240,8 +239,6 @@ export function AdminQueuePage() {
     };
 
     const handleConfirmPurgeDLQ = async () => {
-        setPurgeDLQDialog(false);
-
         try {
             setIsPurgingDLQ(true);
             const result = await api<{ deleted: number }>('/api/admin/queues/dlq', {
@@ -261,6 +258,7 @@ export function AdminQueuePage() {
             });
         } finally {
             setIsPurgingDLQ(false);
+            setPurgeDLQDialog(false);
         }
     };
 

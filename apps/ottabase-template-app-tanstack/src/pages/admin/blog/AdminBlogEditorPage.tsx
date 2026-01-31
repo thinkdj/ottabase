@@ -556,12 +556,17 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
 
     const handleLoadVersion = async () => {
         if (loadVersionDialog?.open && loadVersionDialog.versionNumber !== undefined) {
-            // Find the version object by versionNumber
-            const version = allVersions?.find((v) => v.versionNumber === loadVersionDialog.versionNumber);
-            if (version) {
-                await applyVersionToEditor(version);
+            try {
+                // Find the version object by versionNumber
+                const version = allVersions?.find((v) => v.versionNumber === loadVersionDialog.versionNumber);
+                if (version) {
+                    await applyVersionToEditor(version);
+                }
+            } catch (error) {
+                console.error('Failed to load version:', error);
+            } finally {
+                setLoadVersionDialog(null);
             }
-            setLoadVersionDialog(null);
         }
     };
 
@@ -595,7 +600,6 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                     throw new Error(errorData.error || 'Failed to delete post');
                 }
 
-                setDeletePostDialog(false);
                 navigate({ to: '/admin/blog' });
             } catch (error) {
                 console.error('Failed to delete post:', error);
@@ -604,6 +608,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                     title: 'Error',
                     message: error instanceof Error ? error.message : 'Failed to delete post. Please try again.',
                 });
+            } finally {
                 setDeletePostDialog(false);
             }
         }

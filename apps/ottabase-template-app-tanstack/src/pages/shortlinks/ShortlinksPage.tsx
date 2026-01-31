@@ -99,7 +99,6 @@ export function ShortlinksPage() {
         try {
             await api(`/api/ottaorm/shortlinks/${id}`, { method: 'DELETE' });
             await fetchShortlinks(currentPage, perPage);
-            setDeleteDialog(null);
         } catch (err) {
             setError(isApiError(err) ? err.message : 'Failed to delete shortlink');
         } finally {

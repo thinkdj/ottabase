@@ -82,16 +82,16 @@ export function AdminBlogListPage() {
 
         try {
             await deletePost.mutateAsync(deleteDialog.id);
-            setDeleteDialog(null);
         } catch (err) {
             console.error('Failed to delete blog post:', err);
             const failedTitle = deleteDialog.title;
-            setDeleteDialog(null);
             setAlertDialog({
                 open: true,
                 title: 'Error',
                 message: `Failed to delete "${failedTitle}". Please try again.`,
             });
+        } finally {
+            setDeleteDialog(null);
         }
     };
 

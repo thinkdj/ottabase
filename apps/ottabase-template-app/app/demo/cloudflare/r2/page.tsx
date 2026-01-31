@@ -102,7 +102,6 @@ export default function R2DemoPage() {
         if (!deleteDialog) return;
 
         const objectKey = deleteDialog;
-        setDeleteDialog(null);
 
         try {
             setLoading(true);
@@ -123,6 +122,7 @@ export default function R2DemoPage() {
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Unknown error');
         } finally {
+            setDeleteDialog(null);
             setLoading(false);
         }
     };
