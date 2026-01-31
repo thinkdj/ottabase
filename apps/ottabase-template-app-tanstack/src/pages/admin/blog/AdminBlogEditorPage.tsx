@@ -581,22 +581,31 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     const handleDeletePost = async () => {
         if (deletePostDialog) {
             try {
-                const pathSegments = window.location.pathname
-                    .split('/')
-                    .filter(Boolean);
-                const postId = pathSegments[pathSegments.length - 1];
-
-                if (postId) {
-                    await fetch(`/api/admin/blog/${encodeURIComponent(postId)}`, {
-                        method: 'DELETE',
-                    });
+                if (!postId) {
+                    console.error('No post ID available for deletion');
+                    return;
                 }
+
+                const response = await fetch(`/api/admin/blog/${encodeURIComponent(postId)}`, {
+                    method: 'DELETE',
+                });
+
+                if (!response.ok) {
+                    const errorData = (await response.json()) as { error?: string };
+                    throw new Error(errorData.error || 'Failed to delete post');
+                }
+
+                setDeletePostDialog(false);
+                navigate({ to: '/admin/blog' });
             } catch (error) {
                 console.error('Failed to delete post:', error);
+                setAlertDialog({
+                    open: true,
+                    title: 'Error',
+                    message: error instanceof Error ? error.message : 'Failed to delete post. Please try again.',
+                });
+                setDeletePostDialog(false);
             }
-
-            setDeletePostDialog(false);
-            navigate({ to: '/admin/blog' });
         }
     };
 
