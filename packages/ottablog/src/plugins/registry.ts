@@ -55,7 +55,7 @@ class PluginRegistryImpl implements PluginRegistry {
             const hookIds = new Map<string, string>();
             for (const [hookName, registrations] of Object.entries(plugin.hooks)) {
                 for (const registration of registrations) {
-                    const hookId = registration.id || `${id}_${hookName}_${Date.now()}`;
+                    const hookId = registration.id || `${id}_${hookName}_${Math.random().toString(36).substr(2, 9)}`;
                     const priority = registration.priority || 10;
 
                     // Determine if it's a filter or action based on hook name
