@@ -61,7 +61,7 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
     const apiPath = config.apiPath ?? `/api/ottaorm/${entityName}`;
     const queryKeys = createQueryKeys(entityName);
 
-    function normalizeListResponse(result: unknown, entity: string): T[] {
+    function normalizeListResponse(result: any, entity: string): T[] {
         if (Array.isArray(result)) return result;
         const obj = result as Record<string, unknown>;
         const byEntity = obj?.[entity];
