@@ -37,47 +37,66 @@ function registerBlogThemesAndPlugins() {
     registerPlugin(plugin);
 }
 
+/** In-flight promise so concurrent calls (e.g. Strict Mode double effect) share one request */
+let studioStateFetchPromise: Promise<StudioState | null> | null = null;
+
 /**
  * Fetch studio state from API and apply active theme, enabled plugins, and configs.
+ * Concurrent calls share the same in-flight request (avoids 2x from React Strict Mode).
  */
 export async function applyStudioStateFromApi() {
-    try {
-        const state = await api<StudioState>('/api/blog/studio/state');
-
-        // Apply active theme (use activeThemeId as source of truth)
-        if (state.activeThemeId) {
-            setActiveTheme(state.activeThemeId);
+    if (studioStateFetchPromise) {
+        const state = await studioStateFetchPromise;
+        if (state) await applyState(state);
+        return;
+    }
+    studioStateFetchPromise = (async () => {
+        try {
+            const state = await api<StudioState>('/api/blog/studio/state');
+            await applyState(state);
+            return state;
+        } catch (err) {
+            console.warn('Could not load blog studio state:', err);
+            return null;
+        } finally {
+            studioStateFetchPromise = null;
         }
+    })();
+    await studioStateFetchPromise;
+}
 
-        // Apply enabled plugins with their configurations
-        for (const row of state.plugins || []) {
-            const p = row as StudioPluginState;
-            if (!p.enabled) continue;
+async function applyState(state: StudioState) {
+    // Apply active theme (use activeThemeId as source of truth)
+    if (state.activeThemeId) {
+        setActiveTheme(state.activeThemeId);
+    }
 
-            const config = (p.config || {}) as Record<string, unknown>;
+    // Apply enabled plugins with their configurations
+    for (const row of state.plugins || []) {
+        const p = row as StudioPluginState;
+        if (!p.enabled) continue;
 
-            // Handle content-injector-plugin
-            if (p.pluginId === 'content-injector-plugin') {
-                // Only register if not already registered (prevents duplicate registration)
-                if (!hasPlugin(p.pluginId)) {
-                    const plugin = createContentInjectorPlugin({
-                        content: (config.content as string) ?? '',
-                        position: (config.position as 'beginning' | 'end' | 'random') ?? 'end',
-                        contentTypes: (config.contentTypes as string[]) ?? [],
-                        priority: (config.priority as number) ?? 10,
-                        enabled: true,
-                    });
-                    registerPlugin(plugin);
-                }
+        const config = (p.config || {}) as Record<string, unknown>;
+
+        // Handle content-injector-plugin
+        if (p.pluginId === 'content-injector-plugin') {
+            // Only register if not already registered (prevents duplicate registration)
+            if (!hasPlugin(p.pluginId)) {
+                const plugin = createContentInjectorPlugin({
+                    content: (config.content as string) ?? '',
+                    position: (config.position as 'beginning' | 'end' | 'random') ?? 'end',
+                    contentTypes: (config.contentTypes as string[]) ?? [],
+                    priority: (config.priority as number) ?? 10,
+                    enabled: true,
+                });
+                registerPlugin(plugin);
             }
-
-            // Add similar handling for other plugins here in the future
-
-            // Activate the plugin
-            await activatePlugin(p.pluginId);
         }
-    } catch (err) {
-        console.warn('Could not load blog studio state:', err);
+
+        // Add similar handling for other plugins here in the future
+
+        // Activate the plugin
+        await activatePlugin(p.pluginId);
     }
 }
 

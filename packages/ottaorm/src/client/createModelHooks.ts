@@ -61,6 +61,18 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
     const apiPath = config.apiPath ?? `/api/ottaorm/${entityName}`;
     const queryKeys = createQueryKeys(entityName);
 
+    function normalizeListResponse(result: unknown, entity: string): T[] {
+        if (Array.isArray(result)) return result;
+        const obj = result as Record<string, unknown>;
+        const byEntity = obj?.[entity];
+        if (Array.isArray(byEntity)) return byEntity;
+        const data = obj?.data;
+        if (Array.isArray(data)) return data;
+        const inner = (data as Record<string, unknown>)?.data;
+        if (Array.isArray(inner)) return inner;
+        return [];
+    }
+
     // ============================================================
     // API Fetcher Factory - Creates fetchers that use API client
     // ============================================================
@@ -90,8 +102,8 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
 
             // Use API client if available, otherwise fall back to fetch
             if (apiClient) {
-                const result = await apiClient<Record<string, T[]> & { data?: T[] }>(url);
-                return result[entityName] || result.data || (result as unknown as T[]);
+                const result = await apiClient<Record<string, T[]> & { data?: T[] | { data?: T[] } }>(url);
+                return normalizeListResponse(result, entityName);
             }
 
             // Fallback to raw fetch
@@ -101,8 +113,8 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
                 throw new Error(error.error || `Failed to fetch ${entityName}`);
             }
 
-            const result = (await response.json()) as Record<string, T[]> & { data?: T[] };
-            return result[entityName] || result.data || (result as unknown as T[]);
+            const result = (await response.json()) as Record<string, T[]> & { data?: T[] | { data?: T[] } };
+            return normalizeListResponse(result, entityName);
         }
 
         async function fetchDetail(id: string | number): Promise<T | null> {

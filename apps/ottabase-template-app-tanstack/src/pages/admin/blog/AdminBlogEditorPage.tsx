@@ -22,6 +22,7 @@ import {
 } from '@ottabase/ottaeditor';
 import { SERIES_LIST_QUERY_CONFIG, VERSION_HISTORY_QUERY_CONFIG } from '@/config/queryConfig';
 import { createModelHooks } from '@ottabase/ottaorm/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import {
     AlertDialog,
@@ -70,7 +71,7 @@ import {
     User,
     X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface BlogPost {
     id: string;
@@ -208,8 +209,6 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     const { data: seriesListData } = blogSeriesHooks.useList(undefined, SERIES_LIST_QUERY_CONFIG);
     const seriesList = seriesListData?.data || [];
 
-    // Lazy load version history only when the Version History tab is viewed
-    const [hasViewedVersionHistory, setHasViewedVersionHistory] = useState(false);
     const {
         data: versionsData,
         refetch: refetchVersions,
@@ -222,11 +221,17 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
             limit: 20,
         },
         {
-            enabled: isEditMode && hasViewedVersionHistory, // Only fetch when tab is viewed
+            enabled: isEditMode && !!postId,
             ...VERSION_HISTORY_QUERY_CONFIG,
         },
     );
-    const versions = isEditMode && hasViewedVersionHistory ? versionsData || [] : [];
+    // Normalize: API may return array or { data: array, pagination }
+    const versions = useMemo(() => {
+        if (!isEditMode) return [];
+        if (Array.isArray(versionsData)) return versionsData;
+        const data = versionsData as { data?: BlogPostVersion[] } | undefined;
+        return Array.isArray(data?.data) ? data.data : [];
+    }, [isEditMode, versionsData]);
     const versionHistory = versions.length > 0 ? versions.slice(1) : [];
 
     // API hooks
@@ -237,6 +242,66 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     const deleteVersion = blogPostVersionHooks.useDelete();
 
     const isSaving = createPost.isPending || updatePost.isPending;
+    const isInSaveCooldown = saveCooldownUntil > Date.now();
+    const saveDisabled = isSaving || isInSaveCooldown || (isEditMode && !isDirty);
+    const queryClient = useQueryClient();
+
+    // Dirty state: has any field changed from initial? (Save disabled when not dirty in edit mode)
+    const isDirty = useMemo(() => {
+        if (!initialData && !isEditMode) return true; // New post: allow save
+        if (!initialData) return false;
+        const same =
+            title === (initialData.title ?? '') &&
+            slug === (initialData.slug ?? '') &&
+            excerpt === (initialData.excerpt ?? '') &&
+            contentType === initialData.contentType &&
+            status === initialData.status &&
+            authorName === (initialData.authorName ?? '') &&
+            isFeatured === initialData.isFeatured &&
+            allowComments === initialData.allowComments &&
+            (publishedAt || '') ===
+                (initialData.publishedAt ? new Date(initialData.publishedAt).toISOString().slice(0, 16) : '') &&
+            (seriesId ?? '') === (initialData.seriesId ?? '') &&
+            (seriesOrder ?? '') === (initialData.seriesOrder ?? '') &&
+            (maxVersionsToKeep ?? '') === (initialData.maxVersionsToKeep ?? '') &&
+            JSON.stringify(heroImage) === JSON.stringify(initialData.heroImage) &&
+            JSON.stringify({
+                title: seoTitle,
+                description: seoDescription,
+                keywords: seoKeywords
+                    ?.split(',')
+                    .map((k) => k.trim())
+                    .filter(Boolean),
+                noIndex: seoNoIndex,
+            }) ===
+                JSON.stringify({
+                    title: initialData.seoMeta?.title ?? '',
+                    description: initialData.seoMeta?.description ?? '',
+                    keywords: initialData.seoMeta?.keywords ?? [],
+                    noIndex: initialData.seoMeta?.noIndex ?? false,
+                });
+        return !same;
+    }, [
+        title,
+        slug,
+        excerpt,
+        contentType,
+        status,
+        authorName,
+        isFeatured,
+        allowComments,
+        publishedAt,
+        seriesId,
+        seriesOrder,
+        maxVersionsToKeep,
+        heroImage,
+        seoTitle,
+        seoDescription,
+        seoKeywords,
+        seoNoIndex,
+        initialData,
+        isEditMode,
+    ]);
 
     // Active tab
     const [activeTab, setActiveTab] = useState('content');
@@ -255,6 +320,15 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
         message: '',
     });
     const [slugError, setSlugError] = useState<string | null>(null);
+    const [saveCooldownUntil, setSaveCooldownUntil] = useState(0);
+    const SAVE_COOLDOWN_MS = 1500;
+
+    // Clear save cooldown after delay so Save button re-enables
+    useEffect(() => {
+        if (saveCooldownUntil <= 0) return;
+        const timer = setTimeout(() => setSaveCooldownUntil(0), Math.max(0, saveCooldownUntil - Date.now()));
+        return () => clearTimeout(timer);
+    }, [saveCooldownUntil]);
 
     // Content editors - initialData is guaranteed to be available in edit mode
     const mainEditor = useOttaEditor({
@@ -324,67 +398,54 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     const hasPreviewContent = previewPost?.content?.blocks && previewPost.content.blocks.length > 0;
     const hasPreviewFootnotes = previewPost?.footnotes?.blocks && previewPost.footnotes.blocks.length > 0;
 
-    // Effective slug is what we'd save (user's slug or derived from title); only check when it changes
-    const effectiveSlug = (slug || generateSlug(title)).trim();
-
-    useEffect(() => {
-        if (!effectiveSlug) {
-            setSlugStatus('idle');
-            setSlugError(null);
-            return;
-        }
-
-        const isSlugValid = /^[A-Za-z0-9_-]+$/.test(effectiveSlug);
-        if (!isSlugValid) {
-            setSlugStatus('idle');
-            setSlugError('Slug can only contain letters, numbers, hyphens, and underscores.');
-            return;
-        }
-
-        setSlugError(null);
-
-        let cancelled = false;
-        setSlugStatus('checking');
-
-        const timer = setTimeout(async () => {
-            try {
-                const params = new URLSearchParams();
-                params.set('uniqueField', 'slug');
-                params.set('uniqueValue', effectiveSlug);
-                if (postId) {
-                    params.set('uniqueIgnoreId', postId);
-                }
-                if (initialData?.appId) {
-                    params.set('where', JSON.stringify({ appId: initialData.appId }));
-                }
-
-                const response = await fetch(`/api/ottaorm/posts/unique?${params.toString()}`);
-                if (!response.ok) {
-                    if (!cancelled) setSlugStatus('idle');
-                    return;
-                }
-
-                const result = (await response.json()) as { unique?: boolean };
-                if (!cancelled) {
-                    setSlugStatus(result.unique ? 'available' : 'taken');
-                }
-            } catch {
-                if (!cancelled) setSlugStatus('idle');
+    // Slug availability check: run only on Title or Slug blur (not on every keystroke)
+    const doSlugCheck = useCallback(
+        (slugToCheck?: string) => {
+            const toCheck = (slugToCheck ?? (slug || generateSlug(title))).trim();
+            if (!toCheck) {
+                setSlugStatus('idle');
+                setSlugError(null);
+                return;
             }
-        }, 350);
+            const isSlugValid = /^[A-Za-z0-9_-]+$/.test(toCheck);
+            if (!isSlugValid) {
+                setSlugStatus('idle');
+                setSlugError('Slug can only contain letters, numbers, hyphens, and underscores.');
+                return;
+            }
+            setSlugError(null);
+            setSlugStatus('checking');
+            const params = new URLSearchParams();
+            params.set('uniqueField', 'slug');
+            params.set('uniqueValue', toCheck);
+            if (postId) params.set('uniqueIgnoreId', postId);
+            if (initialData?.appId) params.set('where', JSON.stringify({ appId: initialData.appId }));
+            fetch(`/api/ottaorm/posts/unique?${params.toString()}`)
+                .then((res) => res.json())
+                .then((result: { unique?: boolean }) => setSlugStatus(result.unique ? 'available' : 'taken'))
+                .catch(() => setSlugStatus('idle'));
+        },
+        [slug, title, postId, initialData?.appId],
+    );
 
-        return () => {
-            cancelled = true;
-            clearTimeout(timer);
-        };
-    }, [effectiveSlug, postId, initialData?.appId]);
-
-    // Auto-generate slug from title
+    // Auto-generate slug from title only on Title blur (not on every keystroke)
     const handleTitleChange = (newTitle: string) => {
         setTitle(newTitle);
+        setSlugStatus('idle');
+    };
+
+    const handleTitleBlur = () => {
         if (!isEditMode || !slug) {
-            setSlug(generateSlug(newTitle));
+            const newSlug = generateSlug(title);
+            setSlug(newSlug);
+            doSlugCheck(newSlug);
+        } else {
+            doSlugCheck();
         }
+    };
+
+    const handleSlugBlur = () => {
+        doSlugCheck();
     };
 
     // Handle hero image upload
@@ -567,6 +628,9 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
 
             if (isEditMode && postId) {
                 await updatePost.mutateAsync({ id: postId, data: postData });
+                setSaveCooldownUntil(Date.now() + SAVE_COOLDOWN_MS);
+                // Invalidate post detail so initialData refreshes and isDirty becomes false
+                queryClient.invalidateQueries({ queryKey: ['posts'] });
 
                 // Prune old versions if setting is enabled
                 if (maxVersionsToKeep && maxVersionsToKeep > 0) {
@@ -577,6 +641,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                 // Stay on same editor page after save
             } else {
                 const created = await createPost.mutateAsync(postData);
+                setSaveCooldownUntil(Date.now() + SAVE_COOLDOWN_MS);
                 // Go to the new post's editor so user stays on "blog details" for that post
                 if (created?.id) {
                     navigate({ to: '/admin/blog/$postId/edit', params: { postId: created.id } });
@@ -665,7 +730,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                     <Badge variant={status === 'published' ? 'default' : 'secondary'}>
                         {POST_STATUSES[status].label}
                     </Badge>
-                    <Button variant="outline" onClick={() => handleSave(false)} disabled={isSaving}>
+                    <Button variant="outline" onClick={() => handleSave(false)} disabled={saveDisabled}>
                         {isSaving ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
@@ -673,7 +738,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                         )}
                         Save
                     </Button>
-                    <Button onClick={() => handleSave(true)} disabled={isSaving}>
+                    <Button onClick={() => handleSave(true)} disabled={saveDisabled}>
                         {isSaving ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
@@ -697,6 +762,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                     id="title"
                                     value={title}
                                     onChange={(e) => handleTitleChange(e.target.value)}
+                                    onBlur={handleTitleBlur}
                                     placeholder="Enter post title..."
                                     className="text-lg font-semibold"
                                 />
@@ -706,7 +772,11 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                 <Input
                                     id="slug"
                                     value={slug}
-                                    onChange={(e) => setSlug(e.target.value)}
+                                    onChange={(e) => {
+                                        setSlug(e.target.value);
+                                        setSlugStatus('idle');
+                                    }}
+                                    onBlur={handleSlugBlur}
                                     placeholder="url-friendly-slug"
                                     aria-invalid={slugStatus === 'taken' || !!slugError}
                                     className={
@@ -730,16 +800,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                     </Card>
 
                     {/* Content Tabs */}
-                    <Tabs
-                        value={activeTab}
-                        onValueChange={(tab) => {
-                            setActiveTab(tab);
-                            // Lazy load version history when the settings tab is opened
-                            if (tab === 'settings' && !hasViewedVersionHistory) {
-                                setHasViewedVersionHistory(true);
-                            }
-                        }}
-                    >
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
                         <TabsList className="grid w-full grid-cols-4">
                             <TabsTrigger value="content" className="flex items-center gap-2">
                                 <FileText className="h-4 w-4" />

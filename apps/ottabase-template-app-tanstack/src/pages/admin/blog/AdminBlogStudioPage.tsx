@@ -35,9 +35,12 @@ import {
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { api } from '@/lib/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, Loader2, Palette, Puzzle, Settings } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+
+const STUDIO_STATE_QUERY_KEY = ['blog', 'studio', 'state'] as const;
 
 interface StudioStateResponse {
     activeThemeId: string | null;
@@ -86,9 +89,17 @@ function formToPluginConfig(form: ContentInjectorConfigForm): Record<string, unk
 }
 
 export function AdminBlogStudioPage() {
-    const [state, setState] = useState<StudioStateResponse | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
+    const queryClient = useQueryClient();
+    const {
+        data: state,
+        isLoading,
+        isError,
+        error,
+        refetch,
+    } = useQuery({
+        queryKey: STUDIO_STATE_QUERY_KEY,
+        queryFn: () => api<StudioStateResponse>('/api/blog/studio/state'),
+    });
     const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
         open: false,
         title: '',
@@ -101,47 +112,30 @@ export function AdminBlogStudioPage() {
     const [configForm, setConfigForm] = useState<ContentInjectorConfigForm>(defaultContentInjectorForm);
     const [savingConfig, setSavingConfig] = useState(false);
 
-    const fetchState = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const data = await api<StudioStateResponse>('/api/blog/studio/state');
-            setState(data);
-        } catch (err) {
-            setError(err instanceof Error ? err : new Error('Failed to load'));
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchState();
-    }, [fetchState]);
-
     const activateTheme = useCallback(
         async (themeId: string) => {
             try {
                 await api('/api/blog/studio/theme/activate', { method: 'POST', body: { themeId } });
-                await fetchState();
+                await queryClient.invalidateQueries({ queryKey: STUDIO_STATE_QUERY_KEY });
             } catch (err) {
                 console.error('Failed to activate theme', err);
                 setAlertDialog({ open: true, title: 'Error', message: 'Failed to activate theme. Please try again.' });
             }
         },
-        [fetchState],
+        [queryClient],
     );
 
     const setPluginEnabled = useCallback(
         async (pluginId: string, enabled: boolean) => {
             try {
                 await api('/api/blog/studio/plugin/enable', { method: 'POST', body: { pluginId, enabled } });
-                await fetchState();
+                await queryClient.invalidateQueries({ queryKey: STUDIO_STATE_QUERY_KEY });
             } catch (err) {
                 console.error('Failed to update plugin', err);
                 setAlertDialog({ open: true, title: 'Error', message: 'Failed to update plugin. Please try again.' });
             }
         },
-        [fetchState],
+        [queryClient],
     );
 
     const openConfigModal = useCallback((plugin: StudioPluginState) => {
@@ -171,7 +165,7 @@ export function AdminBlogStudioPage() {
                 method: 'POST',
                 body: { pluginId: plugin.pluginId, config },
             });
-            await fetchState();
+            await queryClient.invalidateQueries({ queryKey: STUDIO_STATE_QUERY_KEY });
             closeConfigModal();
         } catch (err) {
             console.error('Failed to save plugin config', err);
@@ -179,15 +173,23 @@ export function AdminBlogStudioPage() {
         } finally {
             setSavingConfig(false);
         }
-    }, [configModal.plugin, configForm, fetchState, closeConfigModal]);
+    }, [configModal.plugin, configForm, queryClient, closeConfigModal]);
 
-    if (error) {
+    if (isError && error) {
         return (
             <div className="space-y-6 p-6">
                 <p className="text-destructive">Failed to load studio state.</p>
                 <Button asChild variant="outline">
                     <Link to="/admin/blog">Back to Blog</Link>
                 </Button>
+            </div>
+        );
+    }
+
+    if (!state) {
+        return (
+            <div className="flex items-center justify-center p-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
