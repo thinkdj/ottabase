@@ -10,6 +10,7 @@ export { LogLevel as LogLevelEnum } from './types.js';
 
 // Re-export common transports and formatters
 export { ConsoleTransport, MemoryTransport, FileTransport, SentryTransport } from './transports.js';
+export { AuditDbTransport } from './audit-transport.js';
 export { prettyFormatter, jsonFormatter, simpleFormatter, createFormatter } from './formatters.js';
 
 // Re-export configuration utilities

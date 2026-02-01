@@ -19,3 +19,11 @@ export {
 
 // Cron scheduler
 export { ScheduledTask, scheduledTasksTable, type NewScheduledTaskType, type ScheduledTaskType } from './ScheduledTask';
+
+// RBAC models
+export { Role, rolesTable, type NewRoleType, type RoleType } from './Role';
+export { Permission, permissionsTable, type NewPermissionType, type PermissionType } from './Permission';
+export { UserRole, userRolesTable, type NewUserRoleType, type UserRoleType } from './UserRole';
+
+// Audit logging
+export { AuditLog, auditLogsTable, type NewAuditLogType, type AuditLogType } from './AuditLog';

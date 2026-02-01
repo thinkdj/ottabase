@@ -1,0 +1,66 @@
+{
+    "name": "@ottabase/audit",
+    "version": "1.0.0",
+    "description": "Audit logging utilities and middleware for Ottabase",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./middleware": {
+            "types": "./dist/middleware.d.ts",
+            "import": "./dist/middleware.mjs",
+            "require": "./dist/middleware.js"
+        },
+        "./utils": {
+            "types": "./dist/utils.d.ts",
+            "import": "./dist/utils.mjs",
+            "require": "./dist/utils.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts src/middleware.ts src/utils.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/middleware.ts src/utils.ts --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "audit",
+        "logging",
+        "compliance",
+        "tracking"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/logger": "workspace:*"
+    },
+    "peerDependencies": {
+        "@cloudflare/workers-types": ">=4.0.0"
+    },
+    "peerDependenciesMeta": {
+        "@cloudflare/workers-types": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "tsup": "catalog:",
+        "rimraf": "catalog:",
+        "eslint": "catalog:"
+    }
+}

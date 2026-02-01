@@ -29,6 +29,11 @@
             "types": "./dist/config.d.ts",
             "import": "./dist/config.js",
             "require": "./dist/config.cjs"
+        },
+        "./audit-transport": {
+            "types": "./dist/audit-transport.d.ts",
+            "import": "./dist/audit-transport.js",
+            "require": "./dist/audit-transport.cjs"
         }
     },
     "files": [
@@ -59,6 +64,9 @@
         "typescript": "catalog:",
         "vitest": "catalog:"
     },
+    "dependencies": {
+        "@ottabase/ottaorm": "workspace:*"
+    },
     "peerDependencies": {
         "@sentry/browser": "*",
         "@sentry/node": "*"
@@ -68,6 +76,9 @@
             "optional": true
         },
         "@sentry/node": {
+            "optional": true
+        },
+        "@ottabase/ottaorm": {
             "optional": true
         }
     },
