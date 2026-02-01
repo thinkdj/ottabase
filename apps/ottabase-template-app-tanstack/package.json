@@ -35,6 +35,7 @@
         "@ottabase/db": "workspace:*",
         "@ottabase/email": "workspace:*",
         "@ottabase/forms": "workspace:*",
+        "@ottabase/i18n": "workspace:*",
         "@ottabase/ottaeditor": "workspace:*",
         "@ottabase/logger": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",

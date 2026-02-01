@@ -12,6 +12,7 @@ import { ThemeProvider } from '@/ottabase/providers/ProviderTheme';
 import { SidebarStateManager } from '@/ottabase/providers/SidebarStateManager';
 import { ThemeManager } from '@/ottabase/providers/ThemeManager';
 import { ZoomManager } from '@/ottabase/providers/ZoomManager';
+import { I18nProvider } from '@ottabase/i18n/react';
 import { OttaQueryProvider } from '@ottabase/ottaorm/client';
 import { SpotlightProvider } from '@ottabase/spotlight';
 import { ProviderState } from '@ottabase/state';
@@ -30,34 +31,36 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     return (
         <ProviderState>
-            <BlogStudioProvider>
-                <OttaQueryProvider apiClient={api}>
-                    <ProviderUIBase
-                        preventFOUC={appConfig.ui.preventFOUC}
-                        preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
-                        fontFamilies={fontFamilies}
-                    >
-                        <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
-                            <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
-                                <ThemeProvider>
-                                    <ThemeManager />
-                                    <ZoomManager />
-                                    <SidebarStateManager />
-                                    <ShadcnProviders enableThemeProvider={false} enableToaster>
-                                        <SpotlightProvider
-                                            enabled={appConfig.features.spotlight.enabled}
-                                            shortcuts={appConfig.features.spotlight.shortcuts}
-                                        >
-                                            <ProviderCodeHighlight>{children}</ProviderCodeHighlight>
-                                        </SpotlightProvider>
-                                    </ShadcnProviders>
-                                </ThemeProvider>
-                            </ProviderNextThemes>
-                        </ProviderFont>
-                    </ProviderUIBase>
-                    <ReactQueryDevtools initialIsOpen={false} />
-                </OttaQueryProvider>
-            </BlogStudioProvider>
+            <I18nProvider defaultLanguage="en">
+                <BlogStudioProvider>
+                    <OttaQueryProvider apiClient={api}>
+                        <ProviderUIBase
+                            preventFOUC={appConfig.ui.preventFOUC}
+                            preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
+                            fontFamilies={fontFamilies}
+                        >
+                            <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
+                                <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
+                                    <ThemeProvider>
+                                        <ThemeManager />
+                                        <ZoomManager />
+                                        <SidebarStateManager />
+                                        <ShadcnProviders enableThemeProvider={false} enableToaster>
+                                            <SpotlightProvider
+                                                enabled={appConfig.features.spotlight.enabled}
+                                                shortcuts={appConfig.features.spotlight.shortcuts}
+                                            >
+                                                <ProviderCodeHighlight>{children}</ProviderCodeHighlight>
+                                            </SpotlightProvider>
+                                        </ShadcnProviders>
+                                    </ThemeProvider>
+                                </ProviderNextThemes>
+                            </ProviderFont>
+                        </ProviderUIBase>
+                        <ReactQueryDevtools initialIsOpen={false} />
+                    </OttaQueryProvider>
+                </BlogStudioProvider>
+            </I18nProvider>
         </ProviderState>
     );
 }

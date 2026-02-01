@@ -1,3 +1,4 @@
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { ReferralTracker } from '@/components/ReferralTracker';
 import { api, isApiError } from '@/lib/api';
@@ -89,6 +90,7 @@ function RootLayout() {
 
                         <ThemeSwitcher />
                         <DarkModeToggle type="button" title="Toggle dark/light mode" />
+                        <LanguageSwitcher showLabel={false} />
 
                         {isAuthenticated ? (
                             <div className="flex items-center gap-2 ml-2 pl-2 border-l">
@@ -449,6 +451,16 @@ const demoLoggerRoute = new Route({
     ),
 });
 
+const demoI18nRoute = new Route({
+    getParentRoute: () => demoLayoutRoute,
+    path: 'i18n',
+    component: lazyRouteComponent(() =>
+        import('@/pages/demo/i18n/I18nDemoPage').then((m) => ({
+            default: m.I18nDemoPage,
+        })),
+    ),
+});
+
 // Auth routes
 const loginRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -644,6 +656,7 @@ demoLayoutRoute.addChildren([
     demoOttaFormsRoute,
     demoOttaSelectRoute,
     demoLoggerRoute,
+    demoI18nRoute,
     demoTimezoneRoute,
     demoCloudflareRoute,
     demoCloudflareD1Route,
