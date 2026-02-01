@@ -1,7 +1,10 @@
 /**
  * @ottabase/ottablog - Content Injector Plugin
  *
- * Example plugin that injects content at the beginning, end, or random position
+ * Injects content at the beginning, end, or random position.
+ *
+ * Security: Content is rendered as HTML inside EditorJS paragraph blocks. Only allow input from
+ * trusted admins, or sanitize HTML (e.g. DOMPurify) before saving in the admin UI to prevent XSS.
  */
 
 import React from 'react';
@@ -57,10 +60,10 @@ export function createContentInjectorPlugin(options: ContentInjectorPluginOption
             return postContent || { blocks: [] };
         }
 
-        // Convert content to EditorJS block format
+        // Convert content to EditorJS block format (no sanitization here; caller must use trusted or sanitized input)
         const contentText = typeof content === 'string' ? content : String(content);
 
-        // Create a paragraph block with HTML content (EditorJS supports HTML in paragraph text)
+        // Create a paragraph block (EditorJS supports HTML in paragraph text)
         const contentBlock = {
             type: 'paragraph',
             data: { text: contentText },

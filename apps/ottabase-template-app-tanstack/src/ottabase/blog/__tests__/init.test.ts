@@ -59,7 +59,8 @@ describe('blog init applyStudioStateFromApi', () => {
         const { applyStudioStateFromApi } = await import('../init');
 
         await applyStudioStateFromApi();
-        await new Promise((r) => setTimeout(r, 15));
+        // Wait longer than STUDIO_STATE_DEDUPE_CLEAR_MS (50ms) so the in-flight ref is cleared
+        await new Promise((r) => setTimeout(r, 60));
         await applyStudioStateFromApi();
 
         expect(mockApi).toHaveBeenCalledTimes(2);

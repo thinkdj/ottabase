@@ -68,8 +68,10 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
         if (Array.isArray(byEntity)) return byEntity;
         const data = obj?.data;
         if (Array.isArray(data)) return data;
-        const inner = (data as Record<string, unknown>)?.data;
-        if (Array.isArray(inner)) return inner;
+        if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+            const inner = (data as Record<string, unknown>).data;
+            if (Array.isArray(inner)) return inner;
+        }
         return [];
     }
 

@@ -159,6 +159,11 @@ for (const p of state.plugins.filter((x) => x.enabled)) {
 
 ---
 
+## Content Injector – security (XSS)
+
+Content is rendered as HTML in EditorJS paragraph blocks. Only allow input from trusted admins, or sanitize HTML (e.g.
+DOMPurify) in the admin UI before saving to prevent XSS.
+
 ## Content Injector config (JSON)
 
 | Key            | Type                               | Description                          |

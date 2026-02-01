@@ -41,9 +41,13 @@ function registerBlogThemesAndPlugins() {
 /** In-flight promise so concurrent calls (e.g. Strict Mode double effect) share one request */
 let studioStateFetchPromise: Promise<StudioState | null> | null = null;
 
+/** Delay before clearing in-flight ref so a concurrent caller (same tick / next microtask) still sees the promise */
+const STUDIO_STATE_DEDUPE_CLEAR_MS = 50;
+
 /**
  * Fetch studio state from API and apply active theme, enabled plugins, and configs.
  * Concurrent calls share the same in-flight request (avoids 2x from React Strict Mode).
+ * Clear is delayed so a very fast response does not set the ref to null before a second caller checks it.
  */
 export async function applyStudioStateFromApi() {
     if (studioStateFetchPromise) {
@@ -60,7 +64,9 @@ export async function applyStudioStateFromApi() {
             console.warn('Could not load blog studio state:', err);
             return null;
         } finally {
-            studioStateFetchPromise = null;
+            setTimeout(() => {
+                studioStateFetchPromise = null;
+            }, STUDIO_STATE_DEDUPE_CLEAR_MS);
         }
     })();
     await studioStateFetchPromise;
