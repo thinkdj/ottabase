@@ -1,23 +1,9 @@
 /**
  * Admin Blog Extensibility Page
  *
- * Manage hooks, themes, and plugins for ottablog
+ * Manage hooks, themes, and plugins for ottablog (reads/writes from DB via API)
  */
-import {
-    getAllThemes,
-    getActiveTheme,
-    setActiveTheme,
-    getAllPlugins,
-    getActivePlugins,
-    activatePlugin,
-    deactivatePlugin,
-    isPluginActive,
-    getPlugin,
-    registerPlugin,
-    type Theme,
-    type Plugin,
-} from '@ottabase/ottablog';
-import { updatePostContentPluginConfig, type PostContentPluginConfig } from '@ottabase/ottablog';
+import type { PostContentPluginConfig } from '@ottabase/ottablog';
 import {
     Badge,
     Button,
@@ -46,43 +32,61 @@ import {
     TabsTrigger,
     Textarea,
 } from '@ottabase/ui-shadcn';
+import { api } from '@/lib/api';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, CheckCircle2, Code, Palette, Plug, Power, Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+/** Theme record from DB (API response) */
+interface DbTheme {
+    id: string;
+    themeId: string;
+    name: string;
+    description?: string | null;
+    version?: string | null;
+    author?: string | null;
+    url?: string | null;
+    screenshot?: string | null;
+    isActive: boolean;
+    config?: Record<string, unknown> | null;
+}
+
+/** Plugin record from DB (API response) */
+interface DbPlugin {
+    id: string;
+    pluginId: string;
+    name: string;
+    description?: string | null;
+    version?: string | null;
+    author?: string | null;
+    url?: string | null;
+    enabled: boolean;
+    config?: Record<string, unknown> | null;
+}
+
 export function AdminBlogExtensibilityPage() {
-    const [themes, setThemes] = useState<Theme[]>([]);
+    const [themes, setThemes] = useState<DbTheme[]>([]);
     const [activeThemeId, setActiveThemeId] = useState<string | null>(null);
-    const [plugins, setPlugins] = useState<Plugin[]>([]);
-    const [activePlugins, setActivePlugins] = useState<Set<string>>(new Set());
+    const [plugins, setPlugins] = useState<DbPlugin[]>([]);
     const [loading, setLoading] = useState(true);
     const [configDialogOpen, setConfigDialogOpen] = useState(false);
-    const [configuringPlugin, setConfiguringPlugin] = useState<Plugin | null>(null);
+    const [configuringPlugin, setConfiguringPlugin] = useState<DbPlugin | null>(null);
     const [pluginConfig, setPluginConfig] = useState<Partial<PostContentPluginConfig>>({});
 
     useEffect(() => {
         loadData();
     }, []);
 
-    const loadData = () => {
+    const loadData = async () => {
         setLoading(true);
         try {
-            // Load themes
-            const allThemes = getAllThemes();
-            setThemes(allThemes);
-
-            // Get active theme
-            const active = getActiveTheme();
-            setActiveThemeId(active?.metadata.id || null);
-
-            // Load plugins
-            const allPlugins = getAllPlugins();
-            setPlugins(allPlugins);
-
-            // Get active plugins
-            const activePluginsList = getActivePlugins();
-            setActivePlugins(new Set(activePluginsList.map((p) => p.metadata.id)));
+            const data = await api<{ themes: DbTheme[]; plugins: DbPlugin[]; activeThemeId: string | null }>(
+                '/api/blog/extensibility',
+            );
+            setThemes(data.themes ?? []);
+            setPlugins(data.plugins ?? []);
+            setActiveThemeId(data.activeThemeId ?? null);
         } catch (error) {
             console.error('Error loading extensibility data:', error);
             toast.error('Failed to load extensibility data');
@@ -91,15 +95,14 @@ export function AdminBlogExtensibilityPage() {
         }
     };
 
-    const handleThemeActivate = (themeId: string) => {
+    const handleThemeActivate = async (themeId: string) => {
         try {
-            const success = setActiveTheme(themeId);
-            if (success) {
-                setActiveThemeId(themeId);
-                toast.success(`Theme "${themeId}" activated`);
-            } else {
-                toast.error(`Failed to activate theme "${themeId}"`);
-            }
+            await api('/api/blog/extensibility/theme/activate', {
+                method: 'POST',
+                body: { themeId },
+            });
+            setActiveThemeId(themeId);
+            toast.success(`Theme "${themeId}" activated`);
         } catch (error) {
             console.error('Error activating theme:', error);
             toast.error('Failed to activate theme');
@@ -107,38 +110,39 @@ export function AdminBlogExtensibilityPage() {
     };
 
     const handlePluginToggle = async (pluginId: string) => {
+        const plugin = plugins.find((p) => p.pluginId === pluginId);
+        const isEnabled = plugin?.enabled ?? false;
         try {
-            const isActive = isPluginActive(pluginId);
-            if (isActive) {
-                await deactivatePlugin(pluginId);
-                setActivePlugins((prev) => {
-                    const next = new Set(prev);
-                    next.delete(pluginId);
-                    return next;
+            if (isEnabled) {
+                await api('/api/blog/extensibility/plugin/disable', {
+                    method: 'POST',
+                    body: { pluginId },
                 });
                 toast.success(`Plugin "${pluginId}" deactivated`);
             } else {
-                await activatePlugin(pluginId);
-                setActivePlugins((prev) => new Set(prev).add(pluginId));
+                await api('/api/blog/extensibility/plugin/enable', {
+                    method: 'POST',
+                    body: { pluginId },
+                });
                 toast.success(`Plugin "${pluginId}" activated`);
             }
-            loadData(); // Reload to get updated plugin state
+            await loadData();
         } catch (error) {
             console.error('Error toggling plugin:', error);
-            toast.error(`Failed to ${isPluginActive(pluginId) ? 'deactivate' : 'activate'} plugin`);
+            toast.error(`Failed to ${isEnabled ? 'deactivate' : 'activate'} plugin`);
         }
     };
 
-    const handleConfigurePlugin = (plugin: Plugin) => {
-        if (plugin.metadata.id === 'post-content-plugin') {
-            const options = (plugin.options || {}) as Partial<PostContentPluginConfig>;
+    const handleConfigurePlugin = (plugin: DbPlugin) => {
+        if (plugin.pluginId === 'post-content-plugin') {
+            const cfg = (plugin.config || {}) as Partial<PostContentPluginConfig>;
             setPluginConfig({
-                content: (options.content as string) || '',
-                position: options.position || 'end',
-                contentTypes: options.contentTypes || [],
-                postIds: options.postIds || [],
-                priority: options.priority || 10,
-                enabled: options.enabled !== false,
+                content: (cfg.content as string) || '',
+                position: cfg.position || 'end',
+                contentTypes: Array.isArray(cfg.contentTypes) ? cfg.contentTypes : [],
+                postIds: Array.isArray(cfg.postIds) ? cfg.postIds : [],
+                priority: cfg.priority ?? 10,
+                enabled: cfg.enabled !== false,
             });
             setConfiguringPlugin(plugin);
             setConfigDialogOpen(true);
@@ -146,28 +150,16 @@ export function AdminBlogExtensibilityPage() {
     };
 
     const handleSavePluginConfig = async () => {
-        if (!configuringPlugin || configuringPlugin.metadata.id !== 'post-content-plugin') return;
+        if (!configuringPlugin || configuringPlugin.pluginId !== 'post-content-plugin') return;
 
         try {
-            const updatedPlugin = updatePostContentPluginConfig(configuringPlugin, pluginConfig);
-
-            // Deactivate old plugin
-            const wasActive = isPluginActive(configuringPlugin.metadata.id);
-            if (wasActive) {
-                await deactivatePlugin(configuringPlugin.metadata.id);
-            }
-
-            // Register updated plugin
-            registerPlugin(updatedPlugin);
-
-            // Reactivate if it was active
-            if (wasActive) {
-                await activatePlugin(updatedPlugin.metadata.id);
-            }
-
+            await api(`/api/blog/extensibility/plugin/${encodeURIComponent(configuringPlugin.pluginId)}/config`, {
+                method: 'PUT',
+                body: pluginConfig as Record<string, unknown>,
+            });
             setConfigDialogOpen(false);
             setConfiguringPlugin(null);
-            loadData();
+            await loadData();
             toast.success('Plugin configuration saved');
         } catch (error) {
             console.error('Error saving plugin config:', error);
@@ -222,14 +214,14 @@ export function AdminBlogExtensibilityPage() {
                 <TabsContent value="themes" className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {themes.map((theme) => {
-                            const isActive = activeThemeId === theme.metadata.id;
+                            const isActive = activeThemeId === theme.themeId;
                             return (
-                                <Card key={theme.metadata.id} className={isActive ? 'border-primary' : ''}>
+                                <Card key={theme.themeId} className={isActive ? 'border-primary' : ''}>
                                     <CardHeader>
                                         <div className="flex items-start justify-between">
                                             <div className="flex-1">
                                                 <CardTitle className="flex items-center gap-2">
-                                                    {theme.metadata.name}
+                                                    {theme.name}
                                                     {isActive && (
                                                         <Badge variant="default" className="text-xs">
                                                             Active
@@ -237,7 +229,7 @@ export function AdminBlogExtensibilityPage() {
                                                     )}
                                                 </CardTitle>
                                                 <CardDescription className="mt-1">
-                                                    {theme.metadata.description || 'No description'}
+                                                    {theme.description || 'No description'}
                                                 </CardDescription>
                                             </div>
                                         </div>
@@ -246,23 +238,23 @@ export function AdminBlogExtensibilityPage() {
                                         <div className="space-y-3">
                                             <div className="text-sm text-muted-foreground">
                                                 <div>
-                                                    <strong>ID:</strong> {theme.metadata.id}
+                                                    <strong>ID:</strong> {theme.themeId}
                                                 </div>
-                                                {theme.metadata.version && (
+                                                {theme.version && (
                                                     <div>
-                                                        <strong>Version:</strong> {theme.metadata.version}
+                                                        <strong>Version:</strong> {theme.version}
                                                     </div>
                                                 )}
-                                                {theme.metadata.author && (
+                                                {theme.author && (
                                                     <div>
-                                                        <strong>Author:</strong> {theme.metadata.author}
+                                                        <strong>Author:</strong> {theme.author}
                                                     </div>
                                                 )}
                                             </div>
 
                                             {!isActive && (
                                                 <Button
-                                                    onClick={() => handleThemeActivate(theme.metadata.id)}
+                                                    onClick={() => handleThemeActivate(theme.themeId)}
                                                     className="w-full"
                                                     size="sm"
                                                 >
@@ -295,14 +287,14 @@ export function AdminBlogExtensibilityPage() {
                 <TabsContent value="plugins" className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {plugins.map((plugin) => {
-                            const isActive = activePlugins.has(plugin.metadata.id);
+                            const isActive = plugin.enabled;
                             return (
-                                <Card key={plugin.metadata.id} className={isActive ? 'border-primary' : ''}>
+                                <Card key={plugin.pluginId} className={isActive ? 'border-primary' : ''}>
                                     <CardHeader>
                                         <div className="flex items-start justify-between">
                                             <div className="flex-1">
                                                 <CardTitle className="flex items-center gap-2">
-                                                    {plugin.metadata.name}
+                                                    {plugin.name}
                                                     {isActive && (
                                                         <Badge variant="default" className="text-xs">
                                                             Active
@@ -310,7 +302,7 @@ export function AdminBlogExtensibilityPage() {
                                                     )}
                                                 </CardTitle>
                                                 <CardDescription className="mt-1">
-                                                    {plugin.metadata.description || 'No description'}
+                                                    {plugin.description || 'No description'}
                                                 </CardDescription>
                                             </div>
                                         </div>
@@ -319,27 +311,22 @@ export function AdminBlogExtensibilityPage() {
                                         <div className="space-y-3">
                                             <div className="text-sm text-muted-foreground">
                                                 <div>
-                                                    <strong>ID:</strong> {plugin.metadata.id}
+                                                    <strong>ID:</strong> {plugin.pluginId}
                                                 </div>
-                                                {plugin.metadata.version && (
+                                                {plugin.version && (
                                                     <div>
-                                                        <strong>Version:</strong> {plugin.metadata.version}
+                                                        <strong>Version:</strong> {plugin.version}
                                                     </div>
                                                 )}
-                                                {plugin.metadata.author && (
+                                                {plugin.author && (
                                                     <div>
-                                                        <strong>Author:</strong> {plugin.metadata.author}
-                                                    </div>
-                                                )}
-                                                {plugin.hooks && (
-                                                    <div>
-                                                        <strong>Hooks:</strong> {Object.keys(plugin.hooks).length}
+                                                        <strong>Author:</strong> {plugin.author}
                                                     </div>
                                                 )}
                                             </div>
 
                                             <div className="flex gap-2">
-                                                {plugin.metadata.id === 'post-content-plugin' && (
+                                                {plugin.pluginId === 'post-content-plugin' && (
                                                     <Button
                                                         onClick={() => handleConfigurePlugin(plugin)}
                                                         className="flex-1"
@@ -351,11 +338,9 @@ export function AdminBlogExtensibilityPage() {
                                                     </Button>
                                                 )}
                                                 <Button
-                                                    onClick={() => handlePluginToggle(plugin.metadata.id)}
+                                                    onClick={() => handlePluginToggle(plugin.pluginId)}
                                                     className={
-                                                        plugin.metadata.id === 'post-content-plugin'
-                                                            ? 'flex-1'
-                                                            : 'w-full'
+                                                        plugin.pluginId === 'post-content-plugin' ? 'flex-1' : 'w-full'
                                                     }
                                                     size="sm"
                                                     variant={isActive ? 'destructive' : 'default'}
