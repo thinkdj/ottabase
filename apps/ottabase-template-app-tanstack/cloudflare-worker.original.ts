@@ -63,22 +63,151 @@ import {
 } from './ottabase/queue';
 import { registerAppEmailTemplates } from './src/email/templates';
 
-// Import modular worker utilities and handlers
-import { isHtmlRequest, readJson } from './worker/utils/request';
-import { simulateRateLimit } from './worker/utils/rate-limit';
-import { initDbConnection, initAdminCron, checkMigrationAuth } from './worker/utils/db';
-import { handlePreflight, getCorsHeaders } from './worker/middleware/cors';
-import { handleHealthCheck } from './worker/handlers/health';
-import { handleDemo } from './worker/handlers/demo';
-import { handleEmailProviders, handleEmailTest } from './worker/handlers/email';
-import { handleAuthConfig, handleRegistration, handleAuthRoutes } from './worker/handlers/auth';
-import { handleCronList, handleCronCreate, handleCronTaskOperations } from './worker/handlers/cron';
-import { handleBlogStudio } from './worker/handlers/blog';
-import { handleOttaorm, handleOttaormInit, handleModelsMetadata } from './worker/handlers/ottaorm';
-
 export { RealtimeActor };
 
 const SPA_REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
+function isHtmlRequest(request: Request): boolean {
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+
+    // If the path has a file extension, it's not an HTML request
+    if (/\.[a-zA-Z0-9]+$/.test(pathname)) {
+        return false;
+    }
+
+    // For routes without extensions, check the Accept header as fallback
+    const accept = request.headers.get('Accept');
+    return !!accept && accept.includes('text/html');
+}
+
+async function readJson<T = any>(request: Request): Promise<T> {
+    try {
+        return (await request.json()) as T;
+    } catch {
+        // @ts-expect-error - ok
+        return {};
+    }
+}
+
+async function simulateRateLimit(env: CloudflareEnv, key: string) {
+    if (!env.OBCF_KV) return null;
+
+    const kv = createKVClient({ namespace: env.OBCF_KV as any });
+    const rateLimitKey = `ratelimit:${key}`;
+
+    const LIMIT = 10;
+    const PERIOD = 60; // seconds
+
+    const result = await kv.getText(rateLimitKey);
+
+    let count = 0;
+    let firstRequestTime = Date.now();
+    const now = Date.now();
+
+    if (result.success && result.data) {
+        try {
+            const parsed = JSON.parse(result.data);
+            count = parsed.count || 0;
+            firstRequestTime = parsed.firstRequestTime || now;
+        } catch {
+            // ignore
+        }
+    }
+
+    let elapsed = (now - firstRequestTime) / 1000;
+    if (elapsed >= PERIOD) {
+        count = 0;
+        firstRequestTime = now;
+        elapsed = 0;
+    }
+
+    count++;
+    const isAllowed = count <= LIMIT;
+    const remaining = Math.max(0, LIMIT - count);
+    const resetAfter = Math.max(1, Math.ceil(PERIOD - elapsed));
+
+    await kv.put(rateLimitKey, JSON.stringify({ count, firstRequestTime }), {
+        expirationTtl: PERIOD + 10,
+    });
+
+    return {
+        success: isAllowed,
+        limit: LIMIT,
+        remaining,
+        resetAfter,
+    };
+}
+
+function initAdminCron(env: CloudflareEnv): Response | null {
+    if (!env.OBCF_D1) {
+        return errorResponse('D1 database binding not configured', 500, {
+            code: 'CONFIG_ERROR',
+        });
+    }
+
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+    return null;
+}
+
+async function checkMigrationAuth(request: Request, env: CloudflareEnv): Promise<boolean> {
+    const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT;
+    if (isDev) return true;
+
+    if (!env.MIGRATION_SECRET) return false;
+
+    let providedSecret: string | null = null;
+    const url = new URL(request.url);
+    providedSecret = url.searchParams.get('secret');
+
+    if (!providedSecret && request.method === 'POST') {
+        const body = await readJson<{ secret?: string }>(request);
+        providedSecret = body.secret ?? null;
+    }
+
+    if (!providedSecret) {
+        const authHeader = request.headers.get('authorization');
+        if (authHeader?.startsWith('Bearer ')) {
+            providedSecret = authHeader.substring(7);
+        }
+    }
+
+    return providedSecret === env.MIGRATION_SECRET;
+}
+
+function initDbConnection(env: CloudflareEnv): void {
+    if (!env.OBCF_D1) return;
+
+    if (hasConnection('default')) {
+        clearConnection('default');
+    }
+
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+    registerModels([
+        // Core models
+        User,
+        Tag,
+        Account,
+        Authenticator,
+        Session,
+        VerificationToken,
+        ScheduledTask,
+        // Blog models
+        Post,
+        PostTag,
+        PostTagLink,
+        PostCategory,
+        PostSeries,
+        PostVersion,
+        OttablogPlugin,
+        OttablogTheme,
+        // Package models
+        Shortlink,
+        ReferralTracking,
+        // App models
+        Todo,
+    ]);
+}
 
 export default {
     async fetch(request: Request, env: CloudflareEnv): Promise<Response> {
@@ -91,65 +220,443 @@ export default {
 
             const url = new URL(request.url);
             const origin = request.headers.get('Origin') || '*';
+            const authCorsHeaders = {
+                'Access-Control-Allow-Origin': origin,
+                'Access-Control-Allow-Credentials': 'true',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                Vary: 'Origin',
+            };
 
-            // ============================================================
-            // Middleware: CORS Preflight
-            // ============================================================
-            const preflightResponse = handlePreflight(request);
-            if (preflightResponse) return preflightResponse;
+            if (url.pathname.startsWith('/api/') && request.method === 'OPTIONS') {
+                return new Response(null, {
+                    status: 204,
+                    headers: authCorsHeaders,
+                });
+            }
 
-            // ============================================================
-            // Simple Handlers
-            // ============================================================
             if (url.pathname === '/api/health') {
-                return handleHealthCheck();
+                return Response.json({
+                    ok: true,
+                    name: 'ottabase-template-app-tanstack',
+                    timestamp: Date.now(),
+                });
             }
 
             if (url.pathname === '/api/auth/config' && request.method === 'GET') {
-                return handleAuthConfig(env, origin);
+                const config = getLoginConfig(env as any);
+                const response = jsonResponse(
+                    {
+                        ...config,
+                        authSecretConfigured: !!env.AUTH_SECRET,
+                    },
+                    200,
+                );
+                Object.entries(authCorsHeaders).forEach(([key, value]) => {
+                    response.headers.set(key, value);
+                });
+                return response;
             }
 
-            // Email
+            // Check available email providers
             if (url.pathname === '/api/email/providers' && request.method === 'GET') {
-                return handleEmailProviders(env);
+                const providers = {
+                    resend: {
+                        available: !!env.EMAIL_RESEND_API_KEY,
+                        required: ['EMAIL_RESEND_API_KEY'],
+                        optional: ['EMAIL_FROM'],
+                    },
+                    ses: {
+                        available: !!(env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY),
+                        required: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
+                        optional: ['AWS_REGION', 'EMAIL_FROM'],
+                    },
+                    nodemailer: {
+                        available: !!env.EMAIL_SERVER,
+                        required: ['EMAIL_SERVER'],
+                        optional: ['EMAIL_FROM'],
+                    },
+                };
+
+                return jsonResponse(providers);
             }
 
             if (url.pathname === '/api/email/test' && request.method === 'POST') {
-                return handleEmailTest(request, env);
+                const body = await readJson<{
+                    recipients?: string[];
+                    template?: string;
+                    emailType?: string;
+                    subject?: string;
+                    content?: TemplateContent;
+                    variables?: TemplateVariables;
+                    provider?: 'auto' | 'resend' | 'ses' | 'nodemailer';
+                }>(request);
+
+                const from = env.EMAIL_FROM || 'noreply@example.com';
+                const recipients = body.recipients || [];
+
+                if (!recipients.length) {
+                    return errorResponse('Recipients list is required', 400, {
+                        code: 'VALIDATION_ERROR',
+                    });
+                }
+
+                registerAppEmailTemplates();
+
+                let mailer;
+                const selectedProvider = body.provider || 'auto';
+
+                if (selectedProvider === 'nodemailer' || selectedProvider === 'auto') {
+                    if (env.EMAIL_SERVER) {
+                        const { createNodemailerMailer } = await import('@ottabase/email/providers/nodemailer');
+                        mailer = createNodemailerMailer({ server: env.EMAIL_SERVER });
+                    } else if (selectedProvider === 'nodemailer') {
+                        return errorResponse('EMAIL_SERVER must be configured for Nodemailer provider', 400, {
+                            code: 'CONFIG_ERROR',
+                        });
+                    }
+                }
+
+                if (!mailer && (selectedProvider === 'ses' || selectedProvider === 'auto')) {
+                    if (env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY) {
+                        mailer = createSESMailer({
+                            accessKeyId: env.AWS_ACCESS_KEY_ID,
+                            secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+                            region: env.AWS_REGION || 'us-east-1',
+                        });
+                    } else if (selectedProvider === 'ses') {
+                        return errorResponse(
+                            'AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be configured for SES provider',
+                            400,
+                            {
+                                code: 'CONFIG_ERROR',
+                            },
+                        );
+                    }
+                }
+
+                if (!mailer && (selectedProvider === 'resend' || selectedProvider === 'auto')) {
+                    if (env.EMAIL_RESEND_API_KEY) {
+                        mailer = createResendMailer({ apiKey: env.EMAIL_RESEND_API_KEY });
+                    } else if (selectedProvider === 'resend') {
+                        return errorResponse('EMAIL_RESEND_API_KEY must be configured for Resend provider', 400, {
+                            code: 'CONFIG_ERROR',
+                        });
+                    }
+                }
+
+                if (!mailer) {
+                    return errorResponse(
+                        'No email provider configured. Set EMAIL_SERVER, EMAIL_RESEND_API_KEY, or AWS SES credentials',
+                        400,
+                        {
+                            code: 'CONFIG_ERROR',
+                        },
+                    );
+                }
+                const results = await Promise.all(
+                    recipients.map(async (email) => {
+                        const response = await sendTemplatedEmail(mailer, {
+                            from,
+                            to: email,
+                            template: body.template || 'default',
+                            subject: body.subject || 'Test Email',
+                            variables: body.variables,
+                            content: body.content || {
+                                header: 'Test Email',
+                                body: '<p>Hello from Ottabase.</p>',
+                                footer: '<p>Sent from /api/email/test</p>',
+                            },
+                        });
+
+                        return {
+                            email,
+                            ok: response.success,
+                        };
+                    }),
+                );
+
+                return jsonResponse(
+                    {
+                        ok: true,
+                        emailType: body.emailType,
+                        results,
+                    },
+                    200,
+                );
             }
 
-            // Cron Management
+            // ============================================================
+            // Admin Cron API
+            // ============================================================
+
+            // List tasks and stats
             if (url.pathname === '/api/admin/cron' && request.method === 'GET') {
-                return handleCronList(env);
+                const initErr = initAdminCron(env);
+                if (initErr) return initErr;
+
+                // Get all tasks
+                const tasks = await ScheduledTask.all();
+
+                // Calculate stats
+                const activeCount = tasks.filter((t) => t.get('isActive')).length;
+                const totalRuns = tasks.reduce((sum, t) => sum + ((t.get('runCount') as number) || 0), 0);
+                const totalFails = tasks.reduce((sum, t) => sum + ((t.get('failCount') as number) || 0), 0);
+
+                // Get registered handlers (mock for now, would come from registry)
+                const registeredHandlers = [
+                    'cleanup:sessions',
+                    'cleanup:temp-files',
+                    'email:send-queue',
+                    'backup:database',
+                    'analytics:aggregate',
+                ];
+
+                return jsonResponse({
+                    tasks: tasks.map((t) => t.toJson()),
+                    registeredHandlers,
+                    stats: {
+                        total: tasks.length,
+                        active: activeCount,
+                        totalRuns,
+                        totalFails,
+                    },
+                });
             }
 
+            // Create task
             if (url.pathname === '/api/admin/cron' && request.method === 'POST') {
-                return handleCronCreate(request, env);
+                const initErr = initAdminCron(env);
+                if (initErr) return initErr;
+
+                const body = await readJson<{
+                    name?: string;
+                    description?: string;
+                    schedule?: string;
+                    taskType?: string;
+                    task?: string;
+                    payload?: string;
+                    isActive?: boolean;
+                }>(request);
+
+                if (!body.name || !body.schedule || !body.task) {
+                    return errorResponse('name, schedule, and task are required', 400, {
+                        code: 'VALIDATION_ERROR',
+                    });
+                }
+
+                try {
+                    const newTask = await ScheduledTask.create({
+                        name: body.name,
+                        description: body.description,
+                        schedule: body.schedule,
+                        taskType: body.taskType || 'handler',
+                        task: body.task,
+                        payload: body.payload || null,
+                        isActive: body.isActive ?? true,
+                    });
+
+                    return jsonResponse(newTask.toJson(), 201);
+                } catch (error) {
+                    return errorResponse(error instanceof Error ? error.message : 'Failed to create task', 400, {
+                        code: 'VALIDATION_ERROR',
+                    });
+                }
             }
 
+            // Handle specific task operations
             const cronTaskMatch = url.pathname.match(/^\/api\/admin\/cron\/(.+)$/);
             if (cronTaskMatch) {
-                return handleCronTaskOperations(request, env, cronTaskMatch[1]);
+                const initErr = initAdminCron(env);
+                if (initErr) return initErr;
+
+                const taskId = cronTaskMatch[1];
+                const isToggle = taskId.endsWith('/toggle');
+                const isRun = taskId.endsWith('/run');
+
+                // Clean ID if it has action suffix
+                const cleanId = isToggle ? taskId.replace('/toggle', '') : isRun ? taskId.replace('/run', '') : taskId;
+
+                const task = await ScheduledTask.find(cleanId);
+
+                if (!task) {
+                    return errorResponse('Task not found', 404);
+                }
+
+                // Toggle active status
+                if (isToggle && request.method === 'POST') {
+                    await task.toggle();
+                    return jsonResponse({ success: true, task: task.toJson() });
+                }
+
+                // Run task manually
+                if (isRun && request.method === 'POST') {
+                    await task.markRunning();
+                    // In a real implementation, this would dispatch the task immediately
+                    // For now, we'll just acknowledge the request
+                    return jsonResponse({
+                        success: true,
+                        message: 'Task execution started',
+                        task: task.toJson(),
+                    });
+                }
+
+                // Delete task
+                if (request.method === 'DELETE' && !isToggle && !isRun) {
+                    await ScheduledTask.delete(cleanId);
+                    return jsonResponse({ success: true, message: 'Task deleted' });
+                }
             }
 
-            // Blog Studio
+            // Blog Studio API: themes and plugins state
+            // ============================================================
             if (url.pathname.startsWith('/api/blog/studio/')) {
-                const blogResponse = await handleBlogStudio(request, url, env);
-                if (blogResponse) return blogResponse;
+                if (!env.OBCF_D1) {
+                    return errorResponse('D1 database binding not configured', 500, {
+                        code: 'CONFIG_ERROR',
+                    });
+                }
+
+                const appId: string | null = null; // could come from session later
+
+                // GET /api/blog/studio/state
+                if (url.pathname === '/api/blog/studio/state' && request.method === 'GET') {
+                    const state = await StudioManager.getState(appId);
+                    // Seed default theme and plugin if none exist
+                    if (state.themes.length === 0) {
+                        await OttablogTheme.create({
+                            themeId: 'default',
+                            name: 'Default',
+                            description: 'Clean, modern default theme',
+                            appId,
+                            isActive: true,
+                        });
+                    }
+                    if (state.plugins.length === 0) {
+                        await OttablogPlugin.create({
+                            pluginId: 'content-injector-plugin',
+                            name: 'Content Injector Plugin',
+                            description: 'Injects custom content into posts',
+                            appId,
+                            enabled: false,
+                        });
+                    }
+                    const finalState = await StudioManager.getState(appId);
+                    return jsonResponse(finalState);
+                }
+
+                // POST /api/blog/studio/theme/activate
+                if (url.pathname === '/api/blog/studio/theme/activate' && request.method === 'POST') {
+                    const body = await readJson<{ themeId: string }>(request);
+                    const themeId = body?.themeId;
+                    if (!themeId) {
+                        return errorResponse('themeId is required', 400, { code: 'VALIDATION_ERROR' });
+                    }
+                    let themeRow = await OttablogTheme.findByThemeId(themeId, { appId: appId ?? undefined });
+                    if (!themeRow) {
+                        await OttablogTheme.create({
+                            themeId,
+                            name: themeId,
+                            appId,
+                            isActive: false,
+                        });
+                        themeRow = await OttablogTheme.findByThemeId(themeId, { appId: appId ?? undefined });
+                    }
+                    if (themeRow) {
+                        await themeRow.activate({ appId: appId ?? undefined });
+                    }
+                    return jsonResponse({ success: true });
+                }
+
+                // POST /api/blog/studio/plugin/enable
+                if (url.pathname === '/api/blog/studio/plugin/enable' && request.method === 'POST') {
+                    const body = await readJson<{ pluginId: string; enabled: boolean }>(request);
+                    const pluginId = body?.pluginId;
+                    const enabled = body?.enabled ?? true;
+                    if (!pluginId) {
+                        return errorResponse('pluginId is required', 400, { code: 'VALIDATION_ERROR' });
+                    }
+                    let pluginRow = await OttablogPlugin.findByPluginId(pluginId, { appId: appId ?? undefined });
+                    if (!pluginRow) {
+                        await OttablogPlugin.create({
+                            pluginId,
+                            name: pluginId,
+                            appId,
+                            enabled,
+                        });
+                    } else {
+                        pluginRow.set('enabled', enabled);
+                        await pluginRow.save();
+                    }
+                    return jsonResponse({ success: true });
+                }
+
+                // POST /api/blog/studio/plugin/config
+                if (url.pathname === '/api/blog/studio/plugin/config' && request.method === 'POST') {
+                    const body = await readJson<{ pluginId: string; config: Record<string, unknown> }>(request);
+                    const pluginId = body?.pluginId;
+                    const config = body?.config;
+                    if (!pluginId) {
+                        return errorResponse('pluginId is required', 400, { code: 'VALIDATION_ERROR' });
+                    }
+                    const pluginRow = await OttablogPlugin.findByPluginId(pluginId, { appId: appId ?? undefined });
+                    if (!pluginRow) {
+                        return errorResponse('Plugin not found', 404, { code: 'NOT_FOUND' });
+                    }
+                    await pluginRow.updateConfig(config ?? {});
+                    return jsonResponse({ success: true });
+                }
             }
 
-            // OttaORM - Specific routes FIRST (before generic)
-            if (url.pathname === '/api/ottaorm/models-metadata' && request.method === 'GET') {
-                return handleModelsMetadata();
-            }
+            // Generic OttaORM CRUD API
+            // ============================================================
+            // Handles all registered models via /api/ottaorm/{model}/{id?}
+            // GET    /api/ottaorm/shortlinks              - List all (paginated)
+            // GET    /api/ottaorm/shortlinks/123          - Get by ID
+            // GET    /api/ottaorm/shortlinks?field=X&value=Y - Get by field/value
+            // POST   /api/ottaorm/shortlinks              - Create
+            // PATCH  /api/ottaorm/shortlinks/123          - Update
+            // DELETE /api/ottaorm/shortlinks/123          - Delete
+            // Query params: page, per_page, sort, order, where (JSON), field, value
+            // ============================================================
 
-            if (url.pathname === '/api/ottaorm/init' && (request.method === 'GET' || request.method === 'POST')) {
-                return handleOttaormInit(request, env);
-            }
+            if (
+                url.pathname.startsWith('/api/ottaorm/') &&
+                url.pathname !== '/api/ottaorm/init' &&
+                url.pathname !== '/api/ottaorm/models-metadata'
+            ) {
+                if (!env.OBCF_D1) {
+                    return errorResponse('D1 database binding not configured', 500, {
+                        code: 'CONFIG_ERROR',
+                    });
+                }
 
-            // OttaORM Generic CRUD
-            if (url.pathname.startsWith('/api/ottaorm/')) {
-                return handleOttaorm(request, url, env);
+                // Connection and models are already registered at the top of fetch()
+                // Parse the request into a CrudRequest
+                const crudRequest = await parseCrudRequest(request, url, '/api/ottaorm');
+
+                if (!crudRequest) {
+                    return errorResponse('Invalid CRUD request', 400, {
+                        code: 'INVALID_REQUEST',
+                        hint: 'Use /api/ottaorm/{model}/{id?} format',
+                    });
+                }
+
+                // Handle the CRUD operation
+                const result = await handleCrud(crudRequest);
+
+                // Return response based on result
+                if (!result.success) {
+                    return errorResponse(result.error || 'Unknown error', result.status, {
+                        code: result.code,
+                        details: result.details,
+                        hint: result.hint,
+                        messages: result.messages,
+                        fieldErrors: result.fieldErrors,
+                    });
+                }
+
+                return jsonResponse(result.data, result.status);
             }
 
             // ============================================================
@@ -590,7 +1097,59 @@ export default {
             // This is a demo endpoint showing how to handle registration with referral attribution
             // In production, you'd integrate this logic into your Auth.js callbacks
             if (url.pathname === '/api/auth/register' && request.method === 'POST') {
-                return handleRegistration(request, env);
+                if (!env.OBCF_D1) {
+                    return errorResponse('D1 database binding not configured', 500, {
+                        code: 'CONFIG_ERROR',
+                    });
+                }
+
+                registerConnection('default', createD1Driver(env.OBCF_D1));
+
+                const body = await readJson<{
+                    email?: string;
+                    password?: string;
+                    name?: string;
+                    referralCode?: string;
+                }>(request);
+
+                if (!body.email || !body.password) {
+                    return errorResponse('email and password are required', 400);
+                }
+
+                try {
+                    // TODO: In production, you would:
+                    // 1. Hash the password
+                    // 2. Validate email uniqueness
+                    // 3. Create user in database
+                    // 4. Send verification email
+
+                    // For demo purposes, create a mock user
+                    const newUser = await User.create({
+                        email: body.email,
+                        name: body.name,
+                        emailVerified: null,
+                    });
+
+                    const newUserId = newUser.get('id');
+
+                    // Process referral attribution if referralCode provided
+                    let attributionResult;
+                    if (body.referralCode) {
+                        attributionResult = await processReferralAttribution({
+                            newUserId,
+                            referralCode: body.referralCode,
+                        });
+                    }
+
+                    return jsonResponse({
+                        success: true,
+                        user: newUser.toJson(),
+                        referralAttribution: attributionResult || null,
+                    });
+                } catch (error) {
+                    console.error('Registration error:', error);
+                    return errorResponse(error instanceof Error ? error.message : 'Registration failed', 500);
+                }
             }
 
             // ============================================================
@@ -599,14 +1158,58 @@ export default {
             // Handles all Auth.js routes: /api/auth/signin, /api/auth/signout,
             // /api/auth/session, /api/auth/callback/*, etc.
             if (url.pathname.startsWith('/api/auth/')) {
-                return handleAuthRoutes(request, env, origin);
+                const response = await handleAuthRequest(request, env as any);
+                Object.entries(authCorsHeaders).forEach(([key, value]) => {
+                    response.headers.set(key, value);
+                });
+                return response;
             }
 
             // ============================================================
             // API Client Demo
             // ============================================================
-            if (url.pathname.startsWith('/api/demo')) {
-                return handleDemo(request, url);
+
+            if (url.pathname === '/api/demo') {
+                if (request.method === 'GET') {
+                    return jsonResponse({
+                        message: 'Hello from GET',
+                        method: 'GET',
+                        timestamp: Date.now(),
+                    });
+                }
+
+                if (request.method === 'POST') {
+                    const body = await readJson<{ name?: string }>(request);
+                    return jsonResponse({
+                        message: `Hello, ${body.name || 'World'}!`,
+                        method: 'POST',
+                        timestamp: Date.now(),
+                    });
+                }
+
+                if (request.method === 'DELETE') {
+                    return jsonResponse({
+                        message: 'Resource deleted',
+                        method: 'DELETE',
+                        timestamp: Date.now(),
+                    });
+                }
+
+                return errorResponse('Method not allowed', 405, {
+                    code: 'METHOD_NOT_ALLOWED',
+                });
+            }
+
+            if (url.pathname === '/api/demo/error') {
+                return errorResponse('Something went wrong', 500, {
+                    code: 'DEMO_ERROR',
+                    hint: 'This is a demo error response with multiple messages',
+                    messages: [
+                        'Primary error: Database connection failed',
+                        'Secondary issue: Authentication token expired',
+                        'Additional context: Rate limit may have been exceeded',
+                    ],
+                });
             }
 
             // ============================================================
@@ -1467,7 +2070,8 @@ export default {
                     return errorResponse('Rate limit exceeded', 429, {
                         code: 'RATE_LIMITED',
                         details: `Limit: ${limit}, Remaining: ${remaining}, Reset After: ${resetAfter}`,
-                    });
+                        status: 429,
+                    } as any); // status is handled by errorResponse
                 }
 
                 return jsonResponse(
@@ -1566,6 +2170,71 @@ export default {
             // ============================================================
             // OttaORM Init
             // ============================================================
+
+            console.log('[DEBUG] Checking init route:', url.pathname, request.method);
+
+            // GET /api/ottaorm/models-metadata
+            if (url.pathname === '/api/ottaorm/models-metadata' && request.method === 'GET') {
+                const metadataMap = getAllModelsMetadata();
+
+                const models = Array.from(metadataMap.entries()).map(([entityName, entry]) => ({
+                    entityName,
+                    modelName: entry.metadata.modelName,
+                    packageName: entry.metadata.packageName,
+                    packageType: entry.metadata.packageType,
+                    tableName: entry.metadata.tableName,
+                    displayName: entry.model.displayName,
+                    displayNamePlural: entry.model.displayNamePlural,
+                }));
+
+                return jsonResponse({
+                    models,
+                    total: models.length,
+                });
+            }
+
+            if (url.pathname === '/api/ottaorm/init' && (request.method === 'GET' || request.method === 'POST')) {
+                console.log('[DEBUG] Init route matched!');
+                if (!env.OBCF_D1) {
+                    return errorResponse('D1 database not configured', 500, {
+                        code: 'CONFIG_ERROR',
+                    });
+                }
+
+                const isAuthorized = await checkMigrationAuth(request, env);
+                if (!isAuthorized) {
+                    return errorResponse('Unauthorized - MIGRATION_SECRET required in production', 401, {
+                        code: 'UNAUTHORIZED',
+                    });
+                }
+
+                // ============================================================
+                // AUTOMATED MIGRATIONS
+                // ============================================================
+                // This automatically:
+                // 1. Detects all tables from CORE schemas (@ottabase/ottaorm)
+                // 2. Detects all tables from APP-SPECIFIC schemas (Todo, etc.)
+                // 3. Detects all tables from ENABLED PACKAGES (shortlinks, etc.)
+                // 4. Creates tables that don't exist
+                // 5. Adds new columns to existing tables
+                // 6. Runs custom migrations (core + app + package)
+                //
+                // Just define your Models and call this endpoint!
+                // ============================================================
+                const driver = createD1Driver(env.OBCF_D1);
+
+                // Get ALL schemas: core + app + packages
+                const allSchemas = getAllSchemas();
+
+                const result = await autoInit({
+                    driver,
+                    schema: allSchemas,
+                    customMigrations: appMigrations,
+                    verbose: true,
+                });
+
+                return jsonResponse(result);
+            }
 
             // ============================================================
             // Shortlink Explicit Redirect: /shortlinks/go?code=xyz

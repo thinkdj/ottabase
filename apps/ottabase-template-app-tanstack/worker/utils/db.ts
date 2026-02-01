@@ -1,0 +1,92 @@
+/**
+ * Database connection and initialization utilities
+ */
+
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import {
+    Post,
+    PostCategory,
+    PostSeries,
+    PostTag,
+    PostTagLink,
+    PostVersion,
+    OttablogPlugin,
+    OttablogTheme,
+} from '@ottabase/ottablog';
+import { Tag, User, clearConnection, hasConnection, registerConnection, registerModels } from '@ottabase/ottaorm';
+import { Account, Authenticator, ScheduledTask, Session, VerificationToken } from '@ottabase/ottaorm/models';
+import { ReferralTracking } from '@ottabase/referrals';
+import { Shortlink } from '@ottabase/shortlinks';
+import { errorResponse } from '@ottabase/utils/http-errors';
+import { Todo } from '../../ottabase/models/Todo';
+import { readJson } from './request';
+
+export function initAdminCron(env: CloudflareEnv): Response | null {
+    if (!env.OBCF_D1) {
+        return errorResponse('D1 database binding not configured', 500, {
+            code: 'CONFIG_ERROR',
+        });
+    }
+
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+    return null;
+}
+
+export async function checkMigrationAuth(request: Request, env: CloudflareEnv): Promise<boolean> {
+    const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT;
+    if (isDev) return true;
+
+    if (!env.MIGRATION_SECRET) return false;
+
+    let providedSecret: string | null = null;
+    const url = new URL(request.url);
+    providedSecret = url.searchParams.get('secret');
+
+    if (!providedSecret && request.method === 'POST') {
+        const body = await readJson<{ secret?: string }>(request);
+        providedSecret = body.secret ?? null;
+    }
+
+    if (!providedSecret) {
+        const authHeader = request.headers.get('authorization');
+        if (authHeader?.startsWith('Bearer ')) {
+            providedSecret = authHeader.substring(7);
+        }
+    }
+
+    return providedSecret === env.MIGRATION_SECRET;
+}
+
+export function initDbConnection(env: CloudflareEnv): void {
+    if (!env.OBCF_D1) return;
+
+    if (hasConnection('default')) {
+        clearConnection('default');
+    }
+
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+    registerModels([
+        // Core models
+        User,
+        Tag,
+        Account,
+        Authenticator,
+        Session,
+        VerificationToken,
+        ScheduledTask,
+        // Blog models
+        Post,
+        PostTag,
+        PostTagLink,
+        PostCategory,
+        PostSeries,
+        PostVersion,
+        OttablogPlugin,
+        OttablogTheme,
+        // Package models
+        Shortlink,
+        ReferralTracking,
+        // App models
+        Todo,
+    ]);
+}
