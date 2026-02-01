@@ -5,6 +5,14 @@
  */
 
 export * from './types';
-export * from './registry';
+export {
+    getTheme,
+    getActiveTheme,
+    getAllThemes,
+    hasTheme,
+    registerTheme,
+    setActiveTheme,
+    themeRegistry,
+} from './registry';
 export * from './default';
 export * from './minimal';

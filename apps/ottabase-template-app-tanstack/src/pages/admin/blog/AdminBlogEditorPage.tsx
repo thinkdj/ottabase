@@ -6,6 +6,7 @@
  */
 import {
     CONTENT_TYPES,
+    formatDate,
     POST_STATUSES,
     generateSlug,
     type ContentType,
@@ -366,14 +367,6 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     ]);
 
     const saveDisabled = isSaving || (isEditMode && !isDirty);
-
-    const formatDate = (date: string) => {
-        return new Date(date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-        });
-    };
 
     const applyVersionToEditor = async (version: BlogPostVersion) => {
         if (!version) return;

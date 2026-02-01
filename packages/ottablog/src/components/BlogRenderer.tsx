@@ -5,9 +5,10 @@
  * Supports hooks and themes for extensibility.
  * This is a reusable component that can be used in any app.
  */
+import './BlogRenderer.css';
 import React, { useEffect, useMemo, useState } from 'react';
 import { applyFilters, doAction, HOOKS } from '../hooks';
-import { defaultTheme, getActiveTheme } from '../themes';
+import { defaultTheme, getActiveTheme, getTheme } from '../themes';
 import { formatDate as defaultFormatDate } from '../types';
 import type { EditorJSData, HeroImage, SeoMeta } from '../types';
 
@@ -105,11 +106,8 @@ export function BlogRenderer({
     themeId,
     disableHooks = false,
 }: BlogRendererProps) {
-    // Get active theme (memoized to prevent unnecessary re-renders)
-    const theme = useMemo(
-        () => (themeId ? getActiveTheme() || defaultTheme : getActiveTheme() || defaultTheme),
-        [themeId],
-    );
+    // Resolve theme: themeId override > active theme > default (memoized)
+    const theme = useMemo(() => (themeId ? getTheme(themeId) : null) ?? getActiveTheme() ?? defaultTheme, [themeId]);
 
     const props = useMemo(
         () => ({

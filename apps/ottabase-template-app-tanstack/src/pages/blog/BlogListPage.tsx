@@ -3,7 +3,7 @@
  *
  * Displays published blog posts with filtering and pagination.
  */
-import { CONTENT_TYPES, type ContentType } from '@ottabase/ottablog';
+import { CONTENT_TYPES, formatDate, type ContentType } from '@ottabase/ottablog';
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_LIST_QUERY_CONFIG, SERIES_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { createModelHooks } from '@ottabase/ottaorm/client';
@@ -39,14 +39,6 @@ const blogPostHooks = createModelHooks<BlogPost>({ entityName: 'posts' });
 const blogSeriesHooks = createModelHooks<BlogSeries>({
     entityName: 'series',
 });
-
-const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-    });
-};
 
 const POSTS_PER_PAGE = 12;
 

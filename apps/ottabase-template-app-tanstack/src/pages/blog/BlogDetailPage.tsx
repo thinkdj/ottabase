@@ -3,7 +3,7 @@
  *
  * Displays a single blog post with full content using BlogRenderer.
  */
-import { BlogRenderer, type BlogPostData } from '@ottabase/ottablog';
+import { BlogRenderer, formatDate, type BlogPostData } from '@ottabase/ottablog';
 import { useBlogStudio } from '@/ottabase/blog/BlogStudioContext';
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_DETAIL_QUERY_CONFIG, BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
@@ -51,14 +51,6 @@ const blogPostHooks = createModelHooks<BlogPost>({ entityName: 'posts' });
 const blogSeriesHooks = createModelHooks<BlogSeries>({
     entityName: 'series',
 });
-
-const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-    });
-};
 
 export function BlogDetailPage() {
     const params = useParams({ strict: false });

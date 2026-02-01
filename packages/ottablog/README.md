@@ -15,6 +15,8 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
 - **Multi-App Ready** - Built-in appId support for multi-tenant databases
 - **Analytics Ready** - Reading time, word count, view tracking
 - **Type-Safe** - Full TypeScript support with Drizzle ORM
+- **Blog Studio** - Themes and plugins managed from DB; active theme and Content Injector (and config) applied at init
+  (see [STUDIO.md](./STUDIO.md))
 
 ## Installation
 
@@ -427,8 +429,23 @@ const post = await Post.create({
 - **Multi-Tenant Ready** - appId support out of the box
 - **SEO Optimized** - Built-in metadata support
 - **Analytics Ready** - Reading time and view tracking
-- **Version Control** - Full post history tracking
+- **Version Control** - Full post history with optional retention (`maxVersionsToKeep`); older versions pruned on save
 - **Content Organization** - Categories, tags, and series support
+
+## Blog Studio (themes & plugins)
+
+Themes and plugins are managed in the database and applied at init so `BlogRenderer` uses the correct theme and plugin
+hooks (e.g. Content Injector with DB-backed config).
+
+- **Themes** – Register themes; one is active per app. State in `ottablog_themes`.
+- **Plugins** – Register plugins; enable/disable and store config in `ottablog_plugins`. Content Injector injects HTML
+  from its `config.content`.
+- **Client** – Fetch `GET /api/blog/studio/state`, then `setActiveTheme(activeThemeId)` and for each enabled plugin
+  build from `config`, register, and activate. Use an in-flight dedupe so concurrent calls share one request.
+- **Admin** – Blog Studio page: activate theme, enable/disable plugins, configure Content Injector (content, position,
+  content types, priority).
+
+Full architecture, API, and Content Injector config: **[STUDIO.md](./STUDIO.md)**.
 
 ## Styling
 

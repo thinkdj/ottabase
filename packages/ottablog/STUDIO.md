@@ -114,19 +114,32 @@ const state = await StudioManager.getState(appId);
 
 ## Client init
 
-1. Register defaults: `initOttablog()`, then `registerPlugin(contentInjectorPlugin.end(...))` (and any other plugins).
-2. Fetch state: `GET /api/blog/studio/state`.
-3. Apply: `setActiveTheme(activeThemeId)`; for each enabled plugin with `config`, build options from `config`,
-   `createContentInjectorPlugin(options)` (or your factory), `registerPlugin(plugin)`, `activatePlugin(pluginId)`.
+1. **Register defaults**: `initOttablog()`, then `registerPlugin(contentInjectorPlugin.end(...))` with a default static
+   content (fallback until state is applied).
+2. **Fetch state**: `GET /api/blog/studio/state`. Use an **in-flight dedupe** so concurrent calls (e.g. React Strict
+   Mode) share one request: if a request is already in flight, await that promise instead of firing another.
+3. **Apply state**:
+    - `setActiveTheme(activeThemeId)`.
+    - For each plugin that is **disabled** in state (e.g. content-injector): if registered, `deactivatePlugin(pluginId)`
+      so the default static plugin does not run.
+    - For each **enabled** plugin with `config`: for **Content Injector**, **replace** the default plugin with the
+      config-based one: if already registered, `deactivatePlugin(pluginId)` (removes hooks), then
+      `createContentInjectorPlugin(config)`, `registerPlugin(plugin)`, `activatePlugin(pluginId)`. Rendered content then
+      comes from DB config, not the default static message. For other plugins, create from config, register, activate.
 4. Set `isReady` (e.g. BlogStudioContext) and key `BlogRenderer` on it so the tree re-mounts after registries are
    updated.
 
 ```ts
-// Example: apply studio state (simplified)
+// Example: apply studio state (simplified; with Content Injector replacement)
 const state = await api('/api/blog/studio/state');
 if (state.activeThemeId) setActiveTheme(state.activeThemeId);
+// Deactivate disabled plugins (e.g. content-injector when disabled)
+for (const p of state.plugins.filter((x) => !x.enabled && x.pluginId === 'content-injector-plugin'))
+    if (hasPlugin(p.pluginId)) await deactivatePlugin(p.pluginId);
+// Apply enabled plugins: replace default with config-based for Content Injector
 for (const p of state.plugins.filter((x) => x.enabled)) {
     if (p.pluginId === 'content-injector-plugin') {
+        if (hasPlugin(p.pluginId)) await deactivatePlugin(p.pluginId);
         const plugin = createContentInjectorPlugin(p.config || {});
         registerPlugin(plugin);
     }
@@ -139,6 +152,8 @@ for (const p of state.plugins.filter((x) => x.enabled)) {
 ## Admin UI
 
 - **Blog Studio** page: list themes (Activate) and plugins (Enable/Enabled + Configure for Content Injector).
+- State is loaded with **React Query** (`GET /api/blog/studio/state`) so multiple consumers share one request and Strict
+  Mode does not double-fetch.
 - Enable/disable only on the row; no “enabled” in config modal.
 - Config modal: Content, Position, Content types, Priority → `POST /api/blog/studio/plugin/config`.
 
@@ -192,7 +207,9 @@ await activatePlugin('my-plugin');
 
 ## Exports
 
-`StudioManager`, `StudioState`, `StudioThemeState`, `StudioPluginState`.  
-Theme: `registerTheme`, `setActiveTheme`, `getActiveTheme`, `getAllThemes`, `getTheme`, `hasTheme`.  
-Plugin: `registerPlugin`, `getPlugin`, `getAllPlugins`, `activatePlugin`, `deactivatePlugin`, `isPluginActive`,
-`getActivePlugins`, `hasPlugin`.
+- **Studio**: `StudioManager`, `StudioState`, `StudioThemeState`, `StudioPluginState`.
+- **Theme**: `registerTheme`, `setActiveTheme`, `getActiveTheme`, `getAllThemes`, `getTheme`, `hasTheme`.
+- **Plugin**: `registerPlugin`, `getPlugin`, `getAllPlugins`, `activatePlugin`, `deactivatePlugin`, `isPluginActive`,
+  `getActivePlugins`, `hasPlugin`.
+- **Content Injector**: `createContentInjectorPlugin`, `contentInjectorPlugin` (`.begin()`, `.end()`, `.random()`),
+  `updateContentInjectorPluginConfig`.

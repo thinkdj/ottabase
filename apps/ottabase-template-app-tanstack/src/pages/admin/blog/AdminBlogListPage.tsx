@@ -3,7 +3,7 @@
  *
  * Lists all blog posts with filtering, status management, and CRUD operations.
  */
-import { CONTENT_TYPES, POST_STATUSES, type ContentType, type PostStatus } from '@ottabase/ottablog';
+import { CONTENT_TYPES, formatShortDate, POST_STATUSES, type ContentType, type PostStatus } from '@ottabase/ottablog';
 import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 import {
@@ -154,15 +154,6 @@ export function AdminBlogListPage() {
                 {CONTENT_TYPES[contentType].label}
             </Badge>
         );
-    };
-
-    const formatDate = (dateString: string | null) => {
-        if (!dateString) return '—';
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
     };
 
     return (
@@ -319,8 +310,8 @@ export function AdminBlogListPage() {
                                             {post.authorName && <span>by {post.authorName}</span>}
                                             <span>
                                                 {post.status === 'published'
-                                                    ? `Published ${formatDate(post.publishedAt)}`
-                                                    : `Updated ${formatDate(post.updatedAt)}`}
+                                                    ? `Published ${formatShortDate(post.publishedAt)}`
+                                                    : `Updated ${formatShortDate(post.updatedAt)}`}
                                             </span>
                                         </div>
                                     </div>
