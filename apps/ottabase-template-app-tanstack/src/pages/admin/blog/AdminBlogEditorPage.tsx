@@ -242,8 +242,6 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     const deleteVersion = blogPostVersionHooks.useDelete();
 
     const isSaving = createPost.isPending || updatePost.isPending;
-    const isInSaveCooldown = saveCooldownUntil > Date.now();
-    const saveDisabled = isSaving || isInSaveCooldown || (isEditMode && !isDirty);
     const queryClient = useQueryClient();
 
     // Dirty state: has any field changed from initial? (Save disabled when not dirty in edit mode)
@@ -329,6 +327,9 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
         const timer = setTimeout(() => setSaveCooldownUntil(0), Math.max(0, saveCooldownUntil - Date.now()));
         return () => clearTimeout(timer);
     }, [saveCooldownUntil]);
+
+    const isInSaveCooldown = saveCooldownUntil > Date.now();
+    const saveDisabled = isSaving || isInSaveCooldown || (isEditMode && !isDirty);
 
     // Content editors - initialData is guaranteed to be available in edit mode
     const mainEditor = useOttaEditor({
