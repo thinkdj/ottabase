@@ -9,6 +9,7 @@ import {
     activatePlugin,
     contentInjectorPlugin,
     createContentInjectorPlugin,
+    hasPlugin,
     initOttablog,
     registerPlugin,
     setActiveTheme,
@@ -42,29 +43,37 @@ function registerBlogThemesAndPlugins() {
 export async function applyStudioStateFromApi() {
     try {
         const state = await api<StudioState>('/api/blog/studio/state');
+
+        // Apply active theme (use activeThemeId as source of truth)
         if (state.activeThemeId) {
             setActiveTheme(state.activeThemeId);
         }
-        for (const theme of state.themes || []) {
-            if ((theme as StudioThemeState).isActive && (theme as StudioThemeState).themeId) {
-                setActiveTheme((theme as StudioThemeState).themeId);
-                break;
-            }
-        }
+
+        // Apply enabled plugins with their configurations
         for (const row of state.plugins || []) {
             const p = row as StudioPluginState;
             if (!p.enabled) continue;
+
             const config = (p.config || {}) as Record<string, unknown>;
+
+            // Handle content-injector-plugin
             if (p.pluginId === 'content-injector-plugin') {
-                const plugin = createContentInjectorPlugin({
-                    content: (config.content as string) ?? '',
-                    position: (config.position as 'beginning' | 'end' | 'random') ?? 'end',
-                    contentTypes: (config.contentTypes as string[]) ?? [],
-                    priority: (config.priority as number) ?? 10,
-                    enabled: true,
-                });
-                registerPlugin(plugin);
+                // Only register if not already registered (prevents duplicate registration)
+                if (!hasPlugin(p.pluginId)) {
+                    const plugin = createContentInjectorPlugin({
+                        content: (config.content as string) ?? '',
+                        position: (config.position as 'beginning' | 'end' | 'random') ?? 'end',
+                        contentTypes: (config.contentTypes as string[]) ?? [],
+                        priority: (config.priority as number) ?? 10,
+                        enabled: true,
+                    });
+                    registerPlugin(plugin);
+                }
             }
+
+            // Add similar handling for other plugins here in the future
+
+            // Activate the plugin
             await activatePlugin(p.pluginId);
         }
     } catch (err) {

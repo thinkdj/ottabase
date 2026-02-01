@@ -4,10 +4,12 @@
  * Displays published blog posts with filtering and pagination.
  */
 import { CONTENT_TYPES, type ContentType } from '@ottabase/ottablog';
+import { SEOHead } from '@/components/SEOHead';
+import { BLOG_LIST_QUERY_CONFIG, SERIES_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { createModelHooks } from '@ottabase/ottaorm/client';
-import { Card, CardContent, Input } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, Input } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
-import { Calendar, Clock, Search, User } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Clock, Search, User } from 'lucide-react';
 import { useState } from 'react';
 
 interface BlogPost {
@@ -46,29 +48,42 @@ const formatDate = (date: string) => {
     });
 };
 
+const POSTS_PER_PAGE = 12;
+
 export function BlogListPage() {
     const [search, setSearch] = useState('');
     const [contentType, setContentType] = useState<ContentType | ''>('');
     const [seriesFilter, setSeriesFilter] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
 
-    // Fetch published posts
-    const { data: postsData, isLoading } = blogPostHooks.useList({
-        where: {
-            status: 'published',
-            ...(contentType ? { contentType } : {}),
-            ...(seriesFilter ? { seriesId: seriesFilter } : {}),
+    // Build where clause for server-side filtering
+    const whereClause: Record<string, unknown> = { status: 'published' };
+    if (contentType) {
+        whereClause.contentType = contentType;
+    }
+    if (seriesFilter) {
+        whereClause.seriesId = seriesFilter;
+    }
+
+    // Fetch published posts with pagination
+    const { data: postsData, isLoading } = blogPostHooks.useList(
+        {
+            where: whereClause,
+            orderBy: 'publishedAt',
+            orderDirection: 'desc',
+            limit: POSTS_PER_PAGE,
+            offset: (currentPage - 1) * POSTS_PER_PAGE,
         },
-        orderBy: 'publishedAt',
-        orderDirection: 'desc',
-    });
+        BLOG_LIST_QUERY_CONFIG,
+    );
 
     // Fetch series for filter dropdown
-    const { data: seriesData } = blogSeriesHooks.useList();
+    const { data: seriesData } = blogSeriesHooks.useList(undefined, SERIES_LIST_QUERY_CONFIG);
 
     const posts = postsData || [];
     const series = seriesData || [];
 
-    // Filter by search
+    // Client-side search filter
     const filteredPosts = search
         ? posts.filter(
               (post) =>
@@ -77,12 +92,26 @@ export function BlogListPage() {
           )
         : posts;
 
+    // Reset to page 1 when filters change
+    const handleFilterChange = (callback: () => void) => {
+        callback();
+        setCurrentPage(1);
+    };
+
     // Separate featured posts
     const featuredPosts = filteredPosts.filter((p) => p.isFeatured);
     const regularPosts = filteredPosts.filter((p) => !p.isFeatured);
 
     return (
         <div className="space-y-8">
+            {/* SEO Meta Tags */}
+            <SEOHead
+                title="Blog - Latest Articles and Updates"
+                description="Thoughts, tutorials, and updates from our team. Stay up to date with the latest blog posts, changelogs, and documentation."
+                ogType="website"
+                twitterCard="summary_large_image"
+            />
+
             {/* Header */}
             <div className="text-center space-y-4">
                 <h1 className="text-4xl font-bold">Blog</h1>
@@ -106,7 +135,7 @@ export function BlogListPage() {
                 <div className="flex gap-2">
                     <select
                         value={contentType}
-                        onChange={(e) => setContentType(e.target.value as ContentType | '')}
+                        onChange={(e) => handleFilterChange(() => setContentType(e.target.value as ContentType | ''))}
                         className="rounded-md border border-input bg-background px-3 py-2 text-sm"
                         aria-label="Filter by content type"
                     >
@@ -121,7 +150,7 @@ export function BlogListPage() {
                     {series.length > 0 && (
                         <select
                             value={seriesFilter}
-                            onChange={(e) => setSeriesFilter(e.target.value)}
+                            onChange={(e) => handleFilterChange(() => setSeriesFilter(e.target.value))}
                             className="rounded-md border border-input bg-background px-3 py-2 text-sm"
                             aria-label="Filter by series"
                         >
@@ -173,6 +202,29 @@ export function BlogListPage() {
                         ))}
                     </div>
                 </section>
+            )}
+
+            {/* Pagination Controls */}
+            {!isLoading && filteredPosts.length > 0 && (
+                <div className="flex items-center justify-center gap-4 pt-8">
+                    <Button
+                        variant="outline"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                    >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Previous
+                    </Button>
+                    <span className="text-sm text-muted-foreground">Page {currentPage}</span>
+                    <Button
+                        variant="outline"
+                        onClick={() => setCurrentPage((p) => p + 1)}
+                        disabled={posts.length < POSTS_PER_PAGE}
+                    >
+                        Next
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                </div>
             )}
         </div>
     );

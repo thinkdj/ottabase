@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateReadingTime, extractExcerpt, generateSlug } from '../types';
+import { calculateReadingTime, extractExcerpt, generateSlug, formatDate, formatShortDate } from '../types';
 
 describe('ottablog helpers', () => {
     describe('generateSlug', () => {
@@ -60,6 +60,52 @@ describe('ottablog helpers', () => {
             };
 
             expect(extractExcerpt(content, 160)).toBe('Short excerpt');
+        });
+    });
+
+    describe('formatDate', () => {
+        it('formats a Date object with default options', () => {
+            const date = new Date('2024-01-15T10:30:00Z');
+            const formatted = formatDate(date);
+            expect(formatted).toMatch(/January 15, 2024/);
+        });
+
+        it('formats a date string', () => {
+            const dateString = '2024-01-15T10:30:00Z';
+            const formatted = formatDate(dateString);
+            expect(formatted).toMatch(/January 15, 2024/);
+        });
+
+        it('returns em dash for null date', () => {
+            expect(formatDate(null)).toBe('—');
+        });
+
+        it('accepts custom format options', () => {
+            const date = new Date('2024-01-15T10:30:00Z');
+            const formatted = formatDate(date, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+            });
+            expect(formatted).toMatch(/Jan 15, 2024/);
+        });
+    });
+
+    describe('formatShortDate', () => {
+        it('formats a date with short month', () => {
+            const date = new Date('2024-01-15T10:30:00Z');
+            const formatted = formatShortDate(date);
+            expect(formatted).toMatch(/Jan 15, 2024/);
+        });
+
+        it('returns em dash for null date', () => {
+            expect(formatShortDate(null)).toBe('—');
+        });
+
+        it('formats a date string with short month', () => {
+            const dateString = '2024-12-25T00:00:00Z';
+            const formatted = formatShortDate(dateString);
+            expect(formatted).toMatch(/Dec 25, 2024/);
         });
     });
 });

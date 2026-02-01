@@ -222,3 +222,35 @@ export function extractExcerpt(content: EditorJSData, maxLength = 160): string {
     const lastSpace = truncated.lastIndexOf(' ');
     return (lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated) + '...';
 }
+
+/**
+ * Helper: Format date with default options
+ * @param date - Date object or ISO string
+ * @param options - Intl.DateTimeFormatOptions for custom formatting
+ * @returns Formatted date string
+ */
+export function formatDate(date: Date | string | null, options?: Intl.DateTimeFormatOptions): string {
+    if (!date) return '—';
+
+    const defaultOptions: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    };
+
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toLocaleDateString('en-US', options || defaultOptions);
+}
+
+/**
+ * Helper: Format date in short format (e.g., "Jan 15, 2024")
+ * @param date - Date object or ISO string
+ * @returns Short formatted date string
+ */
+export function formatShortDate(date: Date | string | null): string {
+    return formatDate(date, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    });
+}

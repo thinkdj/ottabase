@@ -1,3 +1,9 @@
+/**
+ * Schema exports for @ottabase/ottablog
+ *
+ * Re-exports schema tables and models from ottaorm-models.
+ * Use this for database schema migrations and table definitions.
+ */
 export {
     PostSeries,
     seriesTable,
@@ -15,7 +21,7 @@ export {
     ottablogPluginsTable,
     OttablogTheme,
     ottablogThemesTable,
-} from './models';
+} from './ottaorm-models';
 export type {
     Series,
     NewSeries,
@@ -35,4 +41,4 @@ export type {
     NewOttablogPluginType,
     OttablogThemeType,
     NewOttablogThemeType,
-} from './models';
+} from './ottaorm-models';

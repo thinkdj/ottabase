@@ -6,18 +6,10 @@
 
 import React from 'react';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
+import { formatDate as defaultFormatDate } from '../types';
 import type { Theme } from './types';
 import type { BlogPostData, BlogRendererProps } from '../components/BlogRenderer';
 import type { EditorJSData } from '../types';
-
-const defaultFormatDate = (date: Date | string): string => {
-    const d = typeof date === 'string' ? new Date(date) : date;
-    return d.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-    });
-};
 
 /**
  * Default Theme - Modern, clean design with dark mode

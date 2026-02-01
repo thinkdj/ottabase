@@ -20,6 +20,7 @@ import {
     type OutputData,
     type ToolSettings,
 } from '@ottabase/ottaeditor';
+import { SERIES_LIST_QUERY_CONFIG, VERSION_HISTORY_QUERY_CONFIG } from '@/config/queryConfig';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import {
@@ -204,22 +205,34 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     const [maxVersionsToKeep, setMaxVersionsToKeep] = useState<number | null>(initialData?.maxVersionsToKeep || null);
 
     // Fetch series list for dropdown
-    const { data: seriesListData } = blogSeriesHooks.useList();
+    const { data: seriesListData } = blogSeriesHooks.useList(undefined, SERIES_LIST_QUERY_CONFIG);
     const seriesList = seriesListData?.data || [];
 
-    // Fetch version history for this post (edit mode only)
-    const { data: versionsData, refetch: refetchVersions } = blogPostVersionHooks.useList({
-        where: postId ? { postId } : undefined,
-        orderBy: 'versionNumber',
-        orderDirection: 'desc',
-        limit: 20,
-    });
-    const versions = isEditMode ? versionsData || [] : [];
+    // Lazy load version history only when the Version History tab is viewed
+    const [hasViewedVersionHistory, setHasViewedVersionHistory] = useState(false);
+    const {
+        data: versionsData,
+        refetch: refetchVersions,
+        isLoading: isLoadingVersions,
+    } = blogPostVersionHooks.useList(
+        {
+            where: postId ? { postId } : undefined,
+            orderBy: 'versionNumber',
+            orderDirection: 'desc',
+            limit: 20,
+        },
+        {
+            enabled: isEditMode && hasViewedVersionHistory, // Only fetch when tab is viewed
+            ...VERSION_HISTORY_QUERY_CONFIG,
+        },
+    );
+    const versions = isEditMode && hasViewedVersionHistory ? versionsData || [] : [];
     const versionHistory = versions.length > 0 ? versions.slice(1) : [];
 
     // API hooks
     const createPost = blogPostHooks.useCreate();
     const updatePost = blogPostHooks.useUpdate();
+    const deletePost = blogPostHooks.useDelete();
     const createVersion = blogPostVersionHooks.useCreate();
     const deleteVersion = blogPostVersionHooks.useDelete();
 
@@ -580,8 +593,8 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     const handleLoadVersion = async () => {
         if (loadVersionDialog?.open && loadVersionDialog.versionNumber !== undefined) {
             try {
-                // Find the version object by versionNumber
-                const version = allVersions?.find((v) => v.versionNumber === loadVersionDialog.versionNumber);
+                // Find the version object by versionNumber (fixed: use 'versions' not 'allVersions')
+                const version = versions?.find((v) => v.versionNumber === loadVersionDialog.versionNumber);
                 if (version) {
                     await applyVersionToEditor(version);
                 }
@@ -612,22 +625,10 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     };
 
     const handleDeletePost = async () => {
-        if (deletePostDialog) {
+        if (deletePostDialog && postId) {
             try {
-                if (!postId) {
-                    console.error('No post ID available for deletion');
-                    return;
-                }
-
-                const response = await fetch(`/api/admin/blog/${encodeURIComponent(postId)}`, {
-                    method: 'DELETE',
-                });
-
-                if (!response.ok) {
-                    const errorData = (await response.json()) as { error?: string };
-                    throw new Error(errorData.error || 'Failed to delete post');
-                }
-
+                // Use OttaORM delete hook (same as list page) instead of non-existent /api/admin/blog/:id
+                await deletePost.mutateAsync(postId);
                 navigate({ to: '/admin/blog' });
             } catch (error) {
                 console.error('Failed to delete post:', error);
@@ -729,7 +730,16 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                     </Card>
 
                     {/* Content Tabs */}
-                    <Tabs value={activeTab} onValueChange={setActiveTab}>
+                    <Tabs
+                        value={activeTab}
+                        onValueChange={(tab) => {
+                            setActiveTab(tab);
+                            // Lazy load version history when the settings tab is opened
+                            if (tab === 'settings' && !hasViewedVersionHistory) {
+                                setHasViewedVersionHistory(true);
+                            }
+                        }}
+                    >
                         <TabsList className="grid w-full grid-cols-4">
                             <TabsTrigger value="content" className="flex items-center gap-2">
                                 <FileText className="h-4 w-4" />
@@ -1113,7 +1123,14 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                 </p>
                             </div>
 
-                            {isEditMode && versionHistory.length > 0 && (
+                            {isEditMode && isLoadingVersions && (
+                                <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    Loading version history...
+                                </div>
+                            )}
+
+                            {isEditMode && !isLoadingVersions && versionHistory.length > 0 && (
                                 <div className="space-y-2">
                                     <Label>Recent Versions ({versionHistory.length})</Label>
                                     <div className="max-h-[200px] overflow-y-auto rounded-md border divide-y">

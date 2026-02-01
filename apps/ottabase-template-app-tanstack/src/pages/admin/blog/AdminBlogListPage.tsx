@@ -4,6 +4,7 @@
  * Lists all blog posts with filtering, status management, and CRUD operations.
  */
 import { CONTENT_TYPES, POST_STATUSES, type ContentType, type PostStatus } from '@ottabase/ottablog';
+import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 import {
     AlertDialog,
@@ -24,7 +25,19 @@ import {
     Input,
 } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
-import { Clock, Edit, Eye, FileText, Filter, Plus, Search, Star, Trash2 } from 'lucide-react';
+import {
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    Edit,
+    Eye,
+    FileText,
+    Filter,
+    Plus,
+    Search,
+    Star,
+    Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 
 interface BlogPost {
@@ -45,10 +58,13 @@ interface BlogPost {
 
 const blogPostHooks = createModelHooks<BlogPost>({ entityName: 'posts' });
 
+const POSTS_PER_PAGE = 20;
+
 export function AdminBlogListPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<PostStatus | 'all'>('all');
     const [contentTypeFilter, setContentTypeFilter] = useState<ContentType | 'all'>('all');
+    const [currentPage, setCurrentPage] = useState(1);
     const [deleteDialog, setDeleteDialog] = useState<{ id: string; title: string } | null>(null);
     const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
         open: false,
@@ -56,22 +72,49 @@ export function AdminBlogListPage() {
         message: '',
     });
 
-    const { data: posts = [], isLoading, error } = blogPostHooks.useList();
+    // Build where clause for server-side filtering
+    const whereClause: Record<string, unknown> = {};
+    if (statusFilter !== 'all') {
+        whereClause.status = statusFilter;
+    }
+    if (contentTypeFilter !== 'all') {
+        whereClause.contentType = contentTypeFilter;
+    }
+
+    // Fetch posts with pagination and server-side filtering
+    const {
+        data: postsResponse,
+        isLoading,
+        error,
+    } = blogPostHooks.useList(
+        {
+            where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+            orderBy: 'updatedAt',
+            orderDirection: 'desc',
+            limit: POSTS_PER_PAGE,
+            offset: (currentPage - 1) * POSTS_PER_PAGE,
+        },
+        ADMIN_LIST_QUERY_CONFIG,
+    );
+
+    const posts = postsResponse || [];
 
     const deletePost = blogPostHooks.useDelete();
 
-    // Filter posts
-    const filteredPosts = posts.filter((post) => {
-        const matchesSearch =
-            !searchQuery ||
-            post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            post.slug.toLowerCase().includes(searchQuery.toLowerCase());
+    // Client-side search filter (only for search query, other filters are server-side)
+    const filteredPosts = searchQuery
+        ? posts.filter(
+              (post) =>
+                  post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  post.slug.toLowerCase().includes(searchQuery.toLowerCase()),
+          )
+        : posts;
 
-        const matchesStatus = statusFilter === 'all' || post.status === statusFilter;
-        const matchesType = contentTypeFilter === 'all' || post.contentType === contentTypeFilter;
-
-        return matchesSearch && matchesStatus && matchesType;
-    });
+    // Reset to page 1 when filters change
+    const handleFilterChange = (callback: () => void) => {
+        callback();
+        setCurrentPage(1);
+    };
 
     const handleDelete = (id: string, title: string) => {
         setDeleteDialog({ id, title });
@@ -163,7 +206,9 @@ export function AdminBlogListPage() {
                             <Filter className="h-4 w-4 text-muted-foreground" />
                             <select
                                 value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value as PostStatus | 'all')}
+                                onChange={(e) =>
+                                    handleFilterChange(() => setStatusFilter(e.target.value as PostStatus | 'all'))
+                                }
                                 className="rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 aria-label="Filter by status"
                             >
@@ -179,7 +224,9 @@ export function AdminBlogListPage() {
                         {/* Content Type Filter */}
                         <select
                             value={contentTypeFilter}
-                            onChange={(e) => setContentTypeFilter(e.target.value as ContentType | 'all')}
+                            onChange={(e) =>
+                                handleFilterChange(() => setContentTypeFilter(e.target.value as ContentType | 'all'))
+                            }
                             className="rounded-md border border-input bg-background px-3 py-2 text-sm"
                             aria-label="Filter by content type"
                         >
@@ -309,6 +356,37 @@ export function AdminBlogListPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Pagination Controls */}
+            {!isLoading && filteredPosts.length > 0 && (
+                <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                        Showing {Math.min((currentPage - 1) * POSTS_PER_PAGE + 1, filteredPosts.length)} to{' '}
+                        {Math.min(currentPage * POSTS_PER_PAGE, filteredPosts.length)} results
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                        >
+                            <ChevronLeft className="h-4 w-4 mr-1" />
+                            Previous
+                        </Button>
+                        <span className="text-sm text-muted-foreground px-2">Page {currentPage}</span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage((p) => p + 1)}
+                            disabled={posts.length < POSTS_PER_PAGE}
+                        >
+                            Next
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             <AlertDialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
                 <AlertDialogContent>

@@ -430,6 +430,68 @@ const post = await Post.create({
 - **Version Control** - Full post history tracking
 - **Content Organization** - Categories, tags, and series support
 
+## Styling
+
+The package includes a `BlogRenderer` component for rendering blog posts with theme support.
+
+### Option 1: Tailwind Classes (Recommended)
+
+The default theme uses Tailwind CSS classes. No additional CSS import required:
+
+```tsx
+import { BlogRenderer, initOttablog } from '@ottabase/ottablog';
+
+initOttablog({ defaultThemeId: 'default' });
+
+<BlogRenderer post={post} showHeroImage showMetadata />;
+```
+
+### Option 2: Optional CSS Styles
+
+A CSS file is provided at `src/components/BlogRenderer.css` with:
+
+- `.blog-post` and related classes for post rendering
+- `.blog-card` and related classes for post listings
+- Dark mode support via `prefers-color-scheme`
+
+**To use the CSS:**
+
+```typescript
+// Import in your app entry point (only if not using Tailwind)
+import '@ottabase/ottablog/src/components/BlogRenderer.css';
+```
+
+**Note:** The CSS is optional and not required if you're using Tailwind or custom themes.
+
+### Option 3: Custom Themes
+
+Create your own theme with complete control:
+
+```typescript
+import { registerTheme, setActiveTheme, type Theme } from '@ottabase/ottablog';
+
+const myTheme: Theme = {
+  metadata: {
+    id: 'my-theme',
+    name: 'My Custom Theme',
+    version: '1.0.0',
+  },
+  renderers: {
+    renderTitle: (post) => <h1 className="custom-title">{post.title}</h1>,
+    renderContent: (post) => <div className="custom-content">{/* render content */}</div>,
+    // ... other renderers
+  },
+  config: {
+    classes: {
+      container: 'max-w-4xl mx-auto px-4',
+    },
+  },
+};
+
+registerTheme(myTheme);
+setActiveTheme('my-theme');
+```
+
 ## License
 
 MIT

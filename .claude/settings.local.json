@@ -12,7 +12,9 @@
             "Bash(pnpm type-check:*)",
             "Bash(ls -la*)",
             "Bash(ls:*)",
-            "Bash(grep:*)"
+            "Bash(grep:*)",
+            "Bash(tree:*)",
+            "Bash(pnpm:*)"
         ],
         "deny": [],
         "ask": []

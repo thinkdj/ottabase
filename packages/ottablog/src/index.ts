@@ -93,12 +93,15 @@ export {
     POST_STATUSES,
     calculateReadingTime,
     extractExcerpt,
+    formatDate,
+    formatShortDate,
     generateSlug,
 } from './types';
 
 // Components (React)
 export { BlogExcerptCard, BlogRenderer } from './components/BlogRenderer';
 export type { BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './components/BlogRenderer';
+export { BlogRendererErrorBoundary } from './components/BlogRendererErrorBoundary';
 
 // Hooks System
 export * from './hooks';

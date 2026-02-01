@@ -5,9 +5,10 @@
  * Supports hooks and themes for extensibility.
  * This is a reusable component that can be used in any app.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { applyFilters, doAction, HOOKS } from '../hooks';
 import { defaultTheme, getActiveTheme } from '../themes';
+import { formatDate as defaultFormatDate } from '../types';
 import type { EditorJSData, HeroImage, SeoMeta } from '../types';
 
 export interface BlogPostData {
@@ -72,15 +73,6 @@ export interface BlogRendererProps {
     disableHooks?: boolean;
 }
 
-const defaultFormatDate = (date: Date | string): string => {
-    const d = typeof date === 'string' ? new Date(date) : date;
-    return d.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-    });
-};
-
 /**
  * BlogRenderer - Renders a complete blog post with all metadata
  * Supports hooks and themes for extensibility
@@ -113,81 +105,155 @@ export function BlogRenderer({
     themeId,
     disableHooks = false,
 }: BlogRendererProps) {
-    // Get active theme
-    const theme = themeId ? getActiveTheme() || defaultTheme : getActiveTheme() || defaultTheme;
-    const props = {
-        post,
-        showHeroImage,
-        showTitle,
-        showMetadata,
-        showExcerpt,
-        showFootnotes,
-        showSeries,
-        className,
-        contentClassName,
-        formatDate,
-        renderHeader,
-        renderFooter,
-        renderSeriesNav,
-        onAuthorClick,
-    };
+    // Get active theme (memoized to prevent unnecessary re-renders)
+    const theme = useMemo(
+        () => (themeId ? getActiveTheme() || defaultTheme : getActiveTheme() || defaultTheme),
+        [themeId],
+    );
+
+    const props = useMemo(
+        () => ({
+            post,
+            showHeroImage,
+            showTitle,
+            showMetadata,
+            showExcerpt,
+            showFootnotes,
+            showSeries,
+            className,
+            contentClassName,
+            formatDate,
+            renderHeader,
+            renderFooter,
+            renderSeriesNav,
+            onAuthorClick,
+        }),
+        [
+            post,
+            showHeroImage,
+            showTitle,
+            showMetadata,
+            showExcerpt,
+            showFootnotes,
+            showSeries,
+            className,
+            contentClassName,
+            formatDate,
+            renderHeader,
+            renderFooter,
+            renderSeriesNav,
+            onAuthorClick,
+        ],
+    );
 
     // Apply filters to post data (synchronously for React)
     const [filteredPost, setFilteredPost] = useState<BlogPostData>(post);
     const [filteredContent, setFilteredContent] = useState<EditorJSData | null>(post.content || null);
-    const [hookNodes, setHookNodes] = useState<React.ReactNode[]>([]);
+    const [isFilteringComplete, setIsFilteringComplete] = useState(false);
 
     useEffect(() => {
         if (!disableHooks) {
+            setIsFilteringComplete(false);
+
             // Apply filters asynchronously
             Promise.all([
                 applyFilters(HOOKS['post.title.filter'], post.title, post),
                 applyFilters(HOOKS['post.excerpt.filter'], post.excerpt, post),
                 applyFilters(HOOKS['post.content.filter'], post.content, post),
             ]).then(([filteredTitle, filteredExcerpt, filteredContentResult]) => {
-                setFilteredPost((prev) => ({
-                    ...prev,
+                const newFilteredPost = {
+                    ...post,
                     title: filteredTitle as string,
                     excerpt: filteredExcerpt as string | null,
-                }));
-                setFilteredContent(filteredContentResult as EditorJSData | null);
-            });
+                };
 
-            // Execute action hooks (for side effects, not rendering)
-            doAction(HOOKS['post.render.before'], filteredPost, props);
+                setFilteredPost(newFilteredPost);
+                setFilteredContent(filteredContentResult as EditorJSData | null);
+                setIsFilteringComplete(true);
+
+                // Execute action hooks AFTER filters have been applied (fixes race condition)
+                doAction(HOOKS['post.render.before'], newFilteredPost, props);
+            });
+        } else {
+            // If hooks are disabled, use original post data
+            setFilteredPost(post);
+            setFilteredContent(post.content || null);
+            setIsFilteringComplete(true);
         }
-    }, [post.id, disableHooks]); // Only re-run when post ID changes
+    }, [post.id, post.title, post.excerpt, post.content, disableHooks, props]);
 
     const hasContent = filteredContent?.blocks && filteredContent.blocks.length > 0;
     const hasFootnotes = post.footnotes?.blocks && post.footnotes.blocks.length > 0;
     const hasSeriesInfo = post.seriesId && post.seriesTitle;
 
-    // Use theme renderers if available, otherwise fall back to default
-    const renderHero = theme.renderers.renderHero || defaultTheme.renderers.renderHero;
-    const renderTitle = theme.renderers.renderTitle || defaultTheme.renderers.renderTitle;
-    const renderMetadata = theme.renderers.renderMetadata || defaultTheme.renderers.renderMetadata;
-    const renderExcerpt = theme.renderers.renderExcerpt || defaultTheme.renderers.renderExcerpt;
-    const renderContent = theme.renderers.renderContent || defaultTheme.renderers.renderContent;
-    const renderFootnotes = theme.renderers.renderFootnotes || defaultTheme.renderers.renderFootnotes;
-    const renderSeries = theme.renderers.renderSeries || defaultTheme.renderers.renderSeries;
+    // Use theme renderers if available, otherwise fall back to default (memoized)
+    // Wrap each renderer in error handling to prevent theme bugs from crashing the entire render
+    const renderers = useMemo(() => {
+        const safeRenderer = <T extends unknown[]>(
+            renderer: ((...args: T) => React.ReactNode) | undefined,
+            fallback: (...args: T) => React.ReactNode,
+            name: string,
+        ) => {
+            return (...args: T): React.ReactNode => {
+                try {
+                    const fn = renderer || fallback;
+                    return fn(...args);
+                } catch (error) {
+                    console.error(`Error in theme renderer "${name}":`, error);
+                    return null; // Fail gracefully - render nothing instead of crashing
+                }
+            };
+        };
+
+        return {
+            renderHero: safeRenderer(theme.renderers.renderHero, defaultTheme.renderers.renderHero, 'renderHero'),
+            renderTitle: safeRenderer(theme.renderers.renderTitle, defaultTheme.renderers.renderTitle, 'renderTitle'),
+            renderMetadata: safeRenderer(
+                theme.renderers.renderMetadata,
+                defaultTheme.renderers.renderMetadata,
+                'renderMetadata',
+            ),
+            renderExcerpt: safeRenderer(
+                theme.renderers.renderExcerpt,
+                defaultTheme.renderers.renderExcerpt,
+                'renderExcerpt',
+            ),
+            renderContent: safeRenderer(
+                theme.renderers.renderContent,
+                defaultTheme.renderers.renderContent,
+                'renderContent',
+            ),
+            renderFootnotes: safeRenderer(
+                theme.renderers.renderFootnotes,
+                defaultTheme.renderers.renderFootnotes,
+                'renderFootnotes',
+            ),
+            renderSeries: safeRenderer(
+                theme.renderers.renderSeries,
+                defaultTheme.renderers.renderSeries,
+                'renderSeries',
+            ),
+        };
+    }, [theme]);
 
     const containerClass = `${theme.config?.classes?.container || ''} ${className}`.trim();
 
     // Execute action hooks (side effects only, not for rendering)
+    // Only run after filtering is complete to ensure hooks receive filtered data
     useEffect(() => {
-        if (!disableHooks) {
+        if (!disableHooks && isFilteringComplete) {
             doAction(HOOKS['post.content.before'], filteredPost, props);
             return () => {
                 doAction(HOOKS['post.content.after'], filteredPost, props);
             };
         }
-    }, [filteredPost.id]);
+    }, [disableHooks, isFilteringComplete, filteredPost, props]);
 
     useEffect(() => {
-        if (!disableHooks) {
+        if (!disableHooks && isFilteringComplete) {
             doAction(HOOKS['post.render.after'], filteredPost, props);
         }
-    }, [filteredPost.id]);
+    }, [disableHooks, isFilteringComplete, filteredPost, props]);
 
     return (
         <article className={`blog-post ${containerClass}`}>
@@ -198,25 +264,25 @@ export function BlogRenderer({
             {theme.renderers.renderHeader?.(filteredPost, props)}
 
             {/* Theme renderer: Hero Image */}
-            {renderHero(filteredPost, props)}
+            {renderers.renderHero(filteredPost, props)}
 
             {/* Theme renderer: Series */}
-            {renderSeries(filteredPost, props)}
+            {renderers.renderSeries(filteredPost, props)}
 
             {/* Theme renderer: Title */}
-            {renderTitle(filteredPost, props)}
+            {renderers.renderTitle(filteredPost, props)}
 
             {/* Theme renderer: Metadata */}
-            {renderMetadata(filteredPost, props)}
+            {renderers.renderMetadata(filteredPost, props)}
 
             {/* Theme renderer: Excerpt */}
-            {renderExcerpt(filteredPost, props)}
+            {renderers.renderExcerpt(filteredPost, props)}
 
             {/* Theme renderer: Main Content */}
-            {renderContent({ ...filteredPost, content: filteredContent }, props)}
+            {renderers.renderContent({ ...filteredPost, content: filteredContent }, props)}
 
             {/* Theme renderer: Footnotes */}
-            {renderFootnotes(filteredPost, props)}
+            {renderers.renderFootnotes(filteredPost, props)}
 
             {/* Theme renderer: Footer */}
             {theme.renderers.renderFooter?.(filteredPost, props)}

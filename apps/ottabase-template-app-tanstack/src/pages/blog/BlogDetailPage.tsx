@@ -5,6 +5,8 @@
  */
 import { BlogRenderer, type BlogPostData } from '@ottabase/ottablog';
 import { useBlogStudio } from '@/ottabase/blog/BlogStudioContext';
+import { SEOHead } from '@/components/SEOHead';
+import { BLOG_DETAIL_QUERY_CONFIG, BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 import { Button } from '@ottabase/ui-shadcn';
@@ -66,11 +68,13 @@ export function BlogDetailPage() {
     // Fetch post by slug using the new useFind hook
     const { data: post, isLoading: isLoadingPost } = blogPostHooks.useFind('slug', slug || '', {
         enabled: !!slug,
+        ...BLOG_DETAIL_QUERY_CONFIG,
     });
 
     // Fetch series info if post is part of a series (using useDetail for primary key lookup)
     const { data: series } = blogSeriesHooks.useDetail(post?.seriesId || '', {
         enabled: !!post?.seriesId,
+        ...BLOG_DETAIL_QUERY_CONFIG,
     });
 
     // Fetch other posts in the series for navigation
@@ -82,6 +86,7 @@ export function BlogDetailPage() {
         },
         {
             enabled: !!post?.seriesId,
+            ...BLOG_LIST_QUERY_CONFIG,
         },
     );
     const seriesPosts = seriesPostsData || [];
@@ -145,8 +150,31 @@ export function BlogDetailPage() {
         seriesTotalParts: seriesPosts.length > 0 ? seriesPosts.length : null,
     };
 
+    // Generate SEO meta tags
+    const seoTitle = post.seoMeta?.title || post.title;
+    const seoDescription = post.seoMeta?.description || post.excerpt || undefined;
+    const seoKeywords = post.seoMeta?.keywords;
+    const canonicalUrl =
+        post.seoMeta?.canonicalUrl || (typeof window !== 'undefined' ? window.location.href : undefined);
+    const ogImage = post.seoMeta?.ogImage || post.heroImage?.url;
+
     return (
         <div className="max-w-4xl mx-auto px-4 py-8">
+            {/* SEO Meta Tags */}
+            <SEOHead
+                title={seoTitle}
+                description={seoDescription}
+                keywords={seoKeywords}
+                canonicalUrl={canonicalUrl}
+                ogImage={ogImage}
+                ogType="article"
+                twitterCard="summary_large_image"
+                noIndex={post.seoMeta?.noIndex}
+                noFollow={post.seoMeta?.noFollow}
+                publishedTime={post.publishedAt || undefined}
+                author={post.authorName || undefined}
+            />
+
             {/* Back link */}
             <div className="mb-6">
                 <Button variant="ghost" size="sm" asChild>
