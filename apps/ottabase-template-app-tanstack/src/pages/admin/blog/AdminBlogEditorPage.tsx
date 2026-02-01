@@ -244,11 +244,69 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     const isSaving = createPost.isPending || updatePost.isPending;
     const queryClient = useQueryClient();
 
-    // Dirty state: has any field changed from initial? (Save disabled when not dirty in edit mode)
+    // Active tab
+    const [activeTab, setActiveTab] = useState('content');
+    const [previewVersion, setPreviewVersion] = useState<BlogPostVersion | null>(null);
+    const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+    const [loadVersionDialog, setLoadVersionDialog] = useState<{ open: boolean; versionNumber?: number } | null>(null);
+    const [deleteVersionDialog, setDeleteVersionDialog] = useState<{
+        open: boolean;
+        versionId?: string;
+        versionNumber?: number;
+    } | null>(null);
+    const [deletePostDialog, setDeletePostDialog] = useState(false);
+    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
+        open: false,
+        title: '',
+        message: '',
+    });
+    const [slugError, setSlugError] = useState<string | null>(null);
+    const justSavedRef = useRef(false);
+
+    // After save we invalidate; when initialData refreshes, sync form state so isDirty stays false
+    useEffect(() => {
+        if (!justSavedRef.current || !initialData) return;
+        justSavedRef.current = false;
+        setTitle(initialData.title ?? '');
+        setSlug(initialData.slug ?? '');
+        setExcerpt(initialData.excerpt ?? '');
+        setContentType(initialData.contentType ?? 'blog');
+        setStatus(initialData.status ?? 'draft');
+        setAuthorName(initialData.authorName ?? '');
+        setIsFeatured(initialData.isFeatured ?? false);
+        setAllowComments(initialData.allowComments ?? true);
+        setPublishedAt(initialData.publishedAt ? new Date(initialData.publishedAt).toISOString().slice(0, 16) : '');
+        setHeroImage(initialData.heroImage ?? null);
+        setSeoTitle(initialData.seoMeta?.title ?? '');
+        setSeoDescription(initialData.seoMeta?.description ?? '');
+        setSeoKeywords(initialData.seoMeta?.keywords?.join(', ') ?? '');
+        setSeoNoIndex(initialData.seoMeta?.noIndex ?? false);
+        setSeriesId(initialData.seriesId ?? null);
+        setSeriesOrder(initialData.seriesOrder ?? null);
+        setMaxVersionsToKeep(initialData.maxVersionsToKeep ?? null);
+    }, [initialData]);
+
+    // Content editors - initialData is guaranteed to be available in edit mode
+    const mainEditor = useOttaEditor({
+        ...getEditorConfig('Start writing your post...'),
+        data: initialData?.content ?? undefined,
+    });
+
+    const notesEditor = useOttaEditor({
+        ...getEditorConfig('Private notes (not shown publicly)...'),
+        data: initialData?.privateNotes ?? undefined,
+    });
+
+    const footnotesEditor = useOttaEditor({
+        ...getEditorConfig('Add footnotes and references...'),
+        data: initialData?.footnotes ?? undefined,
+    });
+
+    // Dirty state: form fields or any editor (EditorJS) has changes (Save enabled when dirty in edit mode)
     const isDirty = useMemo(() => {
         if (!initialData && !isEditMode) return true; // New post: allow save
-        if (!initialData) return false;
-        const same =
+        const formSame =
+            initialData &&
             title === (initialData.title ?? '') &&
             slug === (initialData.slug ?? '') &&
             excerpt === (initialData.excerpt ?? '') &&
@@ -278,7 +336,10 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                     keywords: initialData.seoMeta?.keywords ?? [],
                     noIndex: initialData.seoMeta?.noIndex ?? false,
                 });
-        return !same;
+        const formDirty = !initialData ? false : !formSame;
+        const editorDirty =
+            mainEditor.hasUnsavedChanges || notesEditor.hasUnsavedChanges || footnotesEditor.hasUnsavedChanges;
+        return formDirty || editorDirty;
     }, [
         title,
         slug,
@@ -299,53 +360,12 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
         seoNoIndex,
         initialData,
         isEditMode,
+        mainEditor.hasUnsavedChanges,
+        notesEditor.hasUnsavedChanges,
+        footnotesEditor.hasUnsavedChanges,
     ]);
 
-    // Active tab
-    const [activeTab, setActiveTab] = useState('content');
-    const [previewVersion, setPreviewVersion] = useState<BlogPostVersion | null>(null);
-    const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
-    const [loadVersionDialog, setLoadVersionDialog] = useState<{ open: boolean; versionNumber?: number } | null>(null);
-    const [deleteVersionDialog, setDeleteVersionDialog] = useState<{
-        open: boolean;
-        versionId?: string;
-        versionNumber?: number;
-    } | null>(null);
-    const [deletePostDialog, setDeletePostDialog] = useState(false);
-    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
-        open: false,
-        title: '',
-        message: '',
-    });
-    const [slugError, setSlugError] = useState<string | null>(null);
-    const [saveCooldownUntil, setSaveCooldownUntil] = useState(0);
-    const SAVE_COOLDOWN_MS = 1500;
-
-    // Clear save cooldown after delay so Save button re-enables
-    useEffect(() => {
-        if (saveCooldownUntil <= 0) return;
-        const timer = setTimeout(() => setSaveCooldownUntil(0), Math.max(0, saveCooldownUntil - Date.now()));
-        return () => clearTimeout(timer);
-    }, [saveCooldownUntil]);
-
-    const isInSaveCooldown = saveCooldownUntil > Date.now();
-    const saveDisabled = isSaving || isInSaveCooldown || (isEditMode && !isDirty);
-
-    // Content editors - initialData is guaranteed to be available in edit mode
-    const mainEditor = useOttaEditor({
-        ...getEditorConfig('Start writing your post...'),
-        data: initialData?.content ?? undefined,
-    });
-
-    const notesEditor = useOttaEditor({
-        ...getEditorConfig('Private notes (not shown publicly)...'),
-        data: initialData?.privateNotes ?? undefined,
-    });
-
-    const footnotesEditor = useOttaEditor({
-        ...getEditorConfig('Add footnotes and references...'),
-        data: initialData?.footnotes ?? undefined,
-    });
+    const saveDisabled = isSaving || (isEditMode && !isDirty);
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString('en-US', {
@@ -429,6 +449,9 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
         [slug, title, postId, initialData?.appId],
     );
 
+    // Initial slug (from server) – only run availability check when slug has changed from this
+    const initialSlug = (initialData?.slug ?? '').trim();
+
     // Auto-generate slug from title only on Title blur (not on every keystroke)
     const handleTitleChange = (newTitle: string) => {
         setTitle(newTitle);
@@ -439,14 +462,14 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
         if (!isEditMode || !slug) {
             const newSlug = generateSlug(title);
             setSlug(newSlug);
-            doSlugCheck(newSlug);
-        } else {
+            if (newSlug !== initialSlug) doSlugCheck(newSlug);
+        } else if (slug.trim() !== initialSlug) {
             doSlugCheck();
         }
     };
 
     const handleSlugBlur = () => {
-        doSlugCheck();
+        if (slug.trim() !== initialSlug) doSlugCheck();
     };
 
     // Handle hero image upload
@@ -629,8 +652,8 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
 
             if (isEditMode && postId) {
                 await updatePost.mutateAsync({ id: postId, data: postData });
-                setSaveCooldownUntil(Date.now() + SAVE_COOLDOWN_MS);
-                // Invalidate post detail so initialData refreshes and isDirty becomes false
+                justSavedRef.current = true;
+                // Invalidate post detail; when initialData refreshes we sync form state so isDirty stays false
                 queryClient.invalidateQueries({ queryKey: ['posts'] });
 
                 // Prune old versions if setting is enabled
@@ -642,7 +665,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                 // Stay on same editor page after save
             } else {
                 const created = await createPost.mutateAsync(postData);
-                setSaveCooldownUntil(Date.now() + SAVE_COOLDOWN_MS);
+                justSavedRef.current = true;
                 // Go to the new post's editor so user stays on "blog details" for that post
                 if (created?.id) {
                     navigate({ to: '/admin/blog/$postId/edit', params: { postId: created.id } });
@@ -1183,6 +1206,16 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                 <p className="text-xs text-muted-foreground">
                                     Older versions will be automatically deleted on save
                                 </p>
+                                {isEditMode &&
+                                    maxVersionsToKeep != null &&
+                                    maxVersionsToKeep > 0 &&
+                                    versions.length > maxVersionsToKeep && (
+                                        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                                            {versions.length - maxVersionsToKeep} version
+                                            {versions.length - maxVersionsToKeep === 1 ? '' : 's'} in the database would
+                                            be deleted on next save.
+                                        </p>
+                                    )}
                             </div>
 
                             {isEditMode && isLoadingVersions && (

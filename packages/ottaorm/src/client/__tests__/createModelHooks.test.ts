@@ -149,4 +149,70 @@ describe('createModelHooks - useFind', () => {
             await expect(hooks.fetchers.fetchFind('slug', 'test-slug')).rejects.toThrow('Network error');
         });
     });
+
+    describe('fetchers.fetchList / normalizeListResponse', () => {
+        it('should return array when API returns plain array', async () => {
+            const mockList: TestModel[] = [
+                { id: '1', slug: 'a', title: 'A' },
+                { id: '2', slug: 'b', title: 'B' },
+            ];
+            (global.fetch as any).mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                json: async () => mockList,
+            });
+
+            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
+            const result = await hooks.fetchers.fetchList();
+
+            expect(result).toEqual(mockList);
+            expect(Array.isArray(result)).toBe(true);
+        });
+
+        it('should return data array when API returns { data: array, pagination } (version history shape)', async () => {
+            const mockList: TestModel[] = [
+                { id: '1', slug: 'a', title: 'A' },
+                { id: '2', slug: 'b', title: 'B' },
+            ];
+            (global.fetch as any).mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                json: async () => ({ data: mockList, pagination: { page: 1, perPage: 10, total: 2 } }),
+            });
+
+            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
+            const result = await hooks.fetchers.fetchList();
+
+            expect(result).toEqual(mockList);
+            expect(result).toHaveLength(2);
+        });
+
+        it('should return inner data when API returns { data: { data: array, pagination } }', async () => {
+            const mockList: TestModel[] = [{ id: '1', slug: 'x', title: 'X' }];
+            (global.fetch as any).mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                json: async () => ({ data: { data: mockList, pagination: {} } }),
+            });
+
+            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
+            const result = await hooks.fetchers.fetchList();
+
+            expect(result).toEqual(mockList);
+            expect(result).toHaveLength(1);
+        });
+
+        it('should return empty array when API returns empty or unexpected shape', async () => {
+            (global.fetch as any).mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                json: async () => ({}),
+            });
+
+            const hooks = createModelHooks<TestModel>({ entityName: 'posts' });
+            const result = await hooks.fetchers.fetchList();
+
+            expect(result).toEqual([]);
+        });
+    });
 });
