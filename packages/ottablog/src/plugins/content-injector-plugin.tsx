@@ -1,5 +1,5 @@
 /**
- * @ottabase/ottablog - Post Content Plugin
+ * @ottabase/ottablog - Content Injector Plugin
  *
  * Example plugin that injects content at the beginning, end, or random position
  */
@@ -10,15 +10,13 @@ import { HOOKS } from '../hooks';
 import type { BlogPostData } from '../components/BlogRenderer';
 import type { EditorJSData } from '../types';
 
-export interface PostContentPluginOptions {
+export interface ContentInjectorPluginOptions {
     /** Content to inject */
     content?: React.ReactNode | string;
     /** Position: 'beginning', 'end', or 'random' */
     position?: 'beginning' | 'end' | 'random';
     /** Only inject for specific content types */
     contentTypes?: string[];
-    /** Only inject for specific post IDs */
-    postIds?: string[];
     /** Priority for the hook */
     priority?: number;
     /** Enable/disable the plugin */
@@ -26,17 +24,10 @@ export interface PostContentPluginOptions {
 }
 
 /**
- * Post Content Plugin - Injects content into posts
+ * Content Injector Plugin - Injects content into posts
  */
-export function createPostContentPlugin(options: PostContentPluginOptions = {}): Plugin {
-    const {
-        content = null,
-        position = 'end',
-        contentTypes = [],
-        postIds = [],
-        priority = 10,
-        enabled = true,
-    } = options;
+export function createContentInjectorPlugin(options: ContentInjectorPluginOptions = {}): Plugin {
+    const { content = null, position = 'end', contentTypes = [], priority = 10, enabled = true } = options;
 
     const shouldInject = (post: BlogPostData): boolean => {
         if (!enabled) return false;
@@ -48,14 +39,17 @@ export function createPostContentPlugin(options: PostContentPluginOptions = {}):
             }
         }
 
-        // Check post ID filter
-        if (postIds.length > 0) {
-            if (!postIds.includes(post.id)) {
-                return false;
-            }
-        }
-
         return true;
+    };
+
+    /** Deterministic hash from post id so "random" position is stable per post across re-renders */
+    const hashPostId = (id: string): number => {
+        let h = 0;
+        for (let i = 0; i < id.length; i++) {
+            h = (h << 5) - h + id.charCodeAt(i);
+            h |= 0;
+        }
+        return Math.abs(h);
     };
 
     const injectContent = (postContent: EditorJSData | null, post: BlogPostData): EditorJSData => {
@@ -85,11 +79,14 @@ export function createPostContentPlugin(options: PostContentPluginOptions = {}):
                 ...baseContent,
                 blocks: [...blocks, contentBlock],
             };
-        } else if (position === 'random' && blocks.length > 0) {
-            const randomIndex = Math.floor(Math.random() * blocks.length);
+        } else if (position === 'random') {
+            // Random among all EditorJS blocks: inject at one of (before first, between blocks, after last).
+            // Use deterministic hash from post.id so position is stable per post (no jump on re-render).
+            const numSlots = blocks.length + 1; // 0 = before first, 1..length-1 = between, length = after last
+            const slot = blocks.length === 0 ? 0 : hashPostId(post.id) % numSlots;
             return {
                 ...baseContent,
-                blocks: [...blocks.slice(0, randomIndex), contentBlock, ...blocks.slice(randomIndex)],
+                blocks: [...blocks.slice(0, slot), contentBlock, ...blocks.slice(slot)],
             };
         }
 
@@ -98,8 +95,8 @@ export function createPostContentPlugin(options: PostContentPluginOptions = {}):
 
     return {
         metadata: {
-            id: 'post-content-plugin',
-            name: 'Post Content Plugin',
+            id: 'content-injector-plugin',
+            name: 'Content Injector Plugin',
             description: 'Injects custom content into blog posts at specified positions',
             version: '1.0.0',
             author: 'Ottabase',
@@ -119,7 +116,6 @@ export function createPostContentPlugin(options: PostContentPluginOptions = {}):
             content,
             position,
             contentTypes,
-            postIds,
             priority,
             enabled,
         },
@@ -129,11 +125,10 @@ export function createPostContentPlugin(options: PostContentPluginOptions = {}):
 /**
  * Plugin configuration interface for admin UI
  */
-export interface PostContentPluginConfig {
+export interface ContentInjectorPluginConfig {
     content: string;
     position: 'beginning' | 'end' | 'random';
     contentTypes: string[];
-    postIds: string[];
     priority: number;
     enabled: boolean;
 }
@@ -141,31 +136,36 @@ export interface PostContentPluginConfig {
 /**
  * Update plugin configuration
  */
-export function updatePostContentPluginConfig(plugin: Plugin, config: Partial<PostContentPluginConfig>): Plugin {
+export function updateContentInjectorPluginConfig(
+    plugin: Plugin,
+    config: Partial<ContentInjectorPluginConfig>,
+): Plugin {
     const currentOptions = (plugin as any).options || {};
     const newOptions = { ...currentOptions, ...config };
-    return createPostContentPlugin(newOptions);
+    return createContentInjectorPlugin(newOptions);
 }
 
 /**
  * Pre-configured plugin instances
  */
-export const postContentPlugin = {
+export const contentInjectorPlugin = {
     /**
      * Inject content at the beginning of posts
      */
-    beginning: (content: React.ReactNode | string, options?: Omit<PostContentPluginOptions, 'position' | 'content'>) =>
-        createPostContentPlugin({ ...options, content, position: 'beginning' }),
+    beginning: (
+        content: React.ReactNode | string,
+        options?: Omit<ContentInjectorPluginOptions, 'position' | 'content'>,
+    ) => createContentInjectorPlugin({ ...options, content, position: 'beginning' }),
 
     /**
      * Inject content at the end of posts
      */
-    end: (content: React.ReactNode | string, options?: Omit<PostContentPluginOptions, 'position' | 'content'>) =>
-        createPostContentPlugin({ ...options, content, position: 'end' }),
+    end: (content: React.ReactNode | string, options?: Omit<ContentInjectorPluginOptions, 'position' | 'content'>) =>
+        createContentInjectorPlugin({ ...options, content, position: 'end' }),
 
     /**
      * Inject content at a random position in posts
      */
-    random: (content: React.ReactNode | string, options?: Omit<PostContentPluginOptions, 'position' | 'content'>) =>
-        createPostContentPlugin({ ...options, content, position: 'random' }),
+    random: (content: React.ReactNode | string, options?: Omit<ContentInjectorPluginOptions, 'position' | 'content'>) =>
+        createContentInjectorPlugin({ ...options, content, position: 'random' }),
 };

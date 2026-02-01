@@ -35,70 +35,70 @@
 
 // Models + schema exports (fat models)
 export {
-    PostSeries,
-    seriesTable,
-    PostCategory,
-    categoriesTable,
-    Post,
-    postsTable,
-    PostTag,
-    postTagsTable,
-    PostTagLink,
-    postTagLinksTable,
-    PostVersion,
-    postVersionsTable,
     OttablogPlugin,
-    ottablogPluginsTable,
     OttablogTheme,
+    Post,
+    PostCategory,
+    PostSeries,
+    PostTag,
+    PostTagLink,
+    PostVersion,
+    categoriesTable,
+    ottablogPluginsTable,
     ottablogThemesTable,
+    postTagLinksTable,
+    postTagsTable,
+    postVersionsTable,
+    postsTable,
+    seriesTable,
 } from './ottaorm-models';
 
 // Type exports from models
 export type {
-    Series,
-    NewSeries,
     Category,
     NewCategory,
-    Post,
+    NewOttablogPluginType,
+    NewOttablogThemeType,
     NewPost,
-    PostTag,
-    PostTagType,
+    NewPostCategoryType,
+    NewPostSeriesType,
+    NewPostTagLinkType,
     NewPostTagType,
+    NewPostType,
+    NewPostVersion,
+    NewPostVersionType,
+    NewSeries,
+    OttablogPluginType,
+    OttablogThemeType,
+    Post,
+    PostCategoryType,
+    PostSeriesType,
+    PostTag,
     PostTagLink,
     PostTagLinkType,
-    NewPostTagLinkType,
-    PostVersion,
-    NewPostVersion,
-    PostSeriesType,
-    NewPostSeriesType,
-    PostCategoryType,
-    NewPostCategoryType,
+    PostTagType,
     PostType,
-    NewPostType,
+    PostVersion,
     PostVersionType,
-    NewPostVersionType,
-    OttablogPluginType,
-    NewOttablogPluginType,
-    OttablogThemeType,
-    NewOttablogThemeType,
+    Series,
 } from './ottaorm-models';
 
 // Type exports
-export type { ContentType, PostStatus, SeoMeta, HeroImage, Author, EditorJSData, ReadingTime } from './types';
+export type { Author, ContentType, EditorJSData, HeroImage, PostStatus, ReadingTime, SeoMeta } from './types';
 
 // Constants and helpers
 export {
     CONTENT_TYPES,
-    POST_STATUSES,
     DEFAULT_SEO_META,
+    POST_STATUSES,
     calculateReadingTime,
-    generateSlug,
     extractExcerpt,
+    generateSlug,
 } from './types';
 
 // Components (React)
-export { BlogRenderer, BlogExcerptCard } from './components/BlogRenderer';
-export type { BlogPostData, BlogRendererProps, BlogExcerptCardProps } from './components/BlogRenderer';
+export { BlogExcerptCard, BlogRenderer } from './components/BlogRenderer';
+export type { BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './components/BlogRenderer';
 
 // Hooks System
 export * from './hooks';
@@ -109,8 +109,8 @@ export * from './themes';
 // Plugin System
 export * from './plugins';
 
-// Extensibility System (WordPress-style themes/plugins management)
-export * from './extensibility';
+// Studio (themes/plugins management)
+export * from './studio';
 
 // Initialization
 export { initOttablog } from './init';

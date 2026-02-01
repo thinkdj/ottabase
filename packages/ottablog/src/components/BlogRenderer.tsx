@@ -6,10 +6,9 @@
  * This is a reusable component that can be used in any app.
  */
 import React, { useEffect, useState } from 'react';
-import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
-import type { HeroImage, SeoMeta, EditorJSData } from '../types';
-import { doAction, applyFilters, HOOKS } from '../hooks';
-import { getActiveTheme, defaultTheme } from '../themes';
+import { applyFilters, doAction, HOOKS } from '../hooks';
+import { defaultTheme, getActiveTheme } from '../themes';
+import type { EditorJSData, HeroImage, SeoMeta } from '../types';
 
 export interface BlogPostData {
     id: string;

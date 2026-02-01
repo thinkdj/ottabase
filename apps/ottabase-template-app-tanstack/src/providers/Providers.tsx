@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { BlogStudioProvider } from '@/ottabase/blog/BlogStudioContext';
 import { appConfig } from '@/ottabase/config/app.config';
 import {
     headingFontFamily,
@@ -18,8 +19,7 @@ import { ProviderUIBase } from '@ottabase/ui-base';
 import { ProviderCodeHighlight } from '@ottabase/ui-code-highlight';
 import { ShadcnProviders } from '@ottabase/ui-shadcn/providers';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import React, { useEffect } from 'react';
-import { initBlogSystem } from '@/ottabase/blog/init';
+import React from 'react';
 
 export function Providers({ children }: { children: React.ReactNode }) {
     const fontFamilies = {
@@ -28,39 +28,36 @@ export function Providers({ children }: { children: React.ReactNode }) {
         monospace: monospaceFontFamily.style.fontFamily,
     };
 
-    // Initialize blog system (hooks, themes, plugins)
-    useEffect(() => {
-        initBlogSystem();
-    }, []);
-
     return (
         <ProviderState>
-            <OttaQueryProvider apiClient={api}>
-                <ProviderUIBase
-                    preventFOUC={appConfig.ui.preventFOUC}
-                    preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
-                    fontFamilies={fontFamilies}
-                >
-                    <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
-                        <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
-                            <ThemeProvider>
-                                <ThemeManager />
-                                <ZoomManager />
-                                <SidebarStateManager />
-                                <ShadcnProviders enableThemeProvider={false} enableToaster>
-                                    <SpotlightProvider
-                                        enabled={appConfig.features.spotlight.enabled}
-                                        shortcuts={appConfig.features.spotlight.shortcuts}
-                                    >
-                                        <ProviderCodeHighlight>{children}</ProviderCodeHighlight>
-                                    </SpotlightProvider>
-                                </ShadcnProviders>
-                            </ThemeProvider>
-                        </ProviderNextThemes>
-                    </ProviderFont>
-                </ProviderUIBase>
-                <ReactQueryDevtools initialIsOpen={false} />
-            </OttaQueryProvider>
+            <BlogStudioProvider>
+                <OttaQueryProvider apiClient={api}>
+                    <ProviderUIBase
+                        preventFOUC={appConfig.ui.preventFOUC}
+                        preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
+                        fontFamilies={fontFamilies}
+                    >
+                        <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
+                            <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
+                                <ThemeProvider>
+                                    <ThemeManager />
+                                    <ZoomManager />
+                                    <SidebarStateManager />
+                                    <ShadcnProviders enableThemeProvider={false} enableToaster>
+                                        <SpotlightProvider
+                                            enabled={appConfig.features.spotlight.enabled}
+                                            shortcuts={appConfig.features.spotlight.shortcuts}
+                                        >
+                                            <ProviderCodeHighlight>{children}</ProviderCodeHighlight>
+                                        </SpotlightProvider>
+                                    </ShadcnProviders>
+                                </ThemeProvider>
+                            </ProviderNextThemes>
+                        </ProviderFont>
+                    </ProviderUIBase>
+                    <ReactQueryDevtools initialIsOpen={false} />
+                </OttaQueryProvider>
+            </BlogStudioProvider>
         </ProviderState>
     );
 }

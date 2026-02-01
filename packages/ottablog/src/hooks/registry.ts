@@ -1,7 +1,7 @@
 /**
  * @ottabase/ottablog - Hook Registry
  *
- * WordPress-style hook system implementation
+ * Ottablog hook system implementation
  */
 
 import type { HookCallback, HookEntry, HookName, HookPriority, HookRegistry } from './types';

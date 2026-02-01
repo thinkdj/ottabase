@@ -1,6 +1,6 @@
 # Ottablog Hooks, Themes & Plugins
 
-Ottablog now supports a WordPress-style extensibility system with hooks, themes, and plugins.
+Ottablog supports a WordPress-style extensibility system with hooks, themes, and plugins.
 
 ## Hooks System
 

@@ -24,7 +24,7 @@ import {
     Input,
 } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
-import { Clock, Edit, Eye, FileText, Filter, Plus, Plug, Search, Star, Trash2 } from 'lucide-react';
+import { Clock, Edit, Eye, FileText, Filter, Plus, Search, Star, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface BlogPost {
@@ -131,11 +131,8 @@ export function AdminBlogListPage() {
                     <p className="text-muted-foreground mt-1">Manage your blog posts, changelogs, and documentation.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" asChild>
-                        <Link to="/admin/blog/extensibility">
-                            <Plug className="mr-2 h-4 w-4" />
-                            Themes & Plugins
-                        </Link>
+                    <Button asChild variant="outline">
+                        <Link to="/admin/blog/studio">Studio</Link>
                     </Button>
                     <Button asChild>
                         <Link to="/admin/blog/new">

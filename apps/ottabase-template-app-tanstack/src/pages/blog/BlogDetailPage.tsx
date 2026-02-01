@@ -3,12 +3,13 @@
  *
  * Displays a single blog post with full content using BlogRenderer.
  */
-import type { OutputData } from '@ottabase/ottaeditor';
 import { BlogRenderer, type BlogPostData } from '@ottabase/ottablog';
+import { useBlogStudio } from '@/ottabase/blog/BlogStudioContext';
+import type { OutputData } from '@ottabase/ottaeditor';
 import { createModelHooks } from '@ottabase/ottaorm/client';
-import { Button, Card, CardContent } from '@ottabase/ui-shadcn';
+import { Button } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
-import { ArrowLeft, ArrowRight, ChevronLeft, Layers, User, Calendar, Clock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft } from 'lucide-react';
 
 interface BlogPost {
     id: string;
@@ -60,6 +61,7 @@ const formatDate = (date: string) => {
 export function BlogDetailPage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug;
+    const { isReady: studioReady } = useBlogStudio();
 
     // Fetch post by slug using the new useFind hook
     const { data: post, isLoading: isLoadingPost } = blogPostHooks.useFind('slug', slug || '', {
@@ -155,8 +157,9 @@ export function BlogDetailPage() {
                 </Button>
             </div>
 
-            {/* Blog Renderer with hooks and theme support */}
+            {/* Blog Renderer with hooks and theme support; key forces re-mount when studio state is applied */}
             <BlogRenderer
+                key={studioReady ? 'studio-ready' : 'studio-loading'}
                 post={blogPostData}
                 showHeroImage
                 showTitle

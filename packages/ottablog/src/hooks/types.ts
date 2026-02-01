@@ -1,10 +1,8 @@
 /**
  * @ottabase/ottablog - Hook System Types
  *
- * WordPress-style hooks system for extensibility
+ * Ottablog hooks system for extensibility
  */
-
-import type { BlogPostData } from '../components/BlogRenderer';
 
 /**
  * Hook priority - determines execution order

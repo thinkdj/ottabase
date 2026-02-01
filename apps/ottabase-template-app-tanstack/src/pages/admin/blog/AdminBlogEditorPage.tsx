@@ -23,7 +23,6 @@ import {
 import { createModelHooks } from '@ottabase/ottaorm/client';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import {
-    Badge,
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -32,6 +31,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    Badge,
     Button,
     Card,
     CardContent,
@@ -230,9 +230,17 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     const [previewVersion, setPreviewVersion] = useState<BlogPostVersion | null>(null);
     const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
     const [loadVersionDialog, setLoadVersionDialog] = useState<{ open: boolean; versionNumber?: number } | null>(null);
-    const [deleteVersionDialog, setDeleteVersionDialog] = useState<{ open: boolean; versionId?: string; versionNumber?: number } | null>(null);
+    const [deleteVersionDialog, setDeleteVersionDialog] = useState<{
+        open: boolean;
+        versionId?: string;
+        versionNumber?: number;
+    } | null>(null);
     const [deletePostDialog, setDeletePostDialog] = useState(false);
-    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
+    const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
+        open: false,
+        title: '',
+        message: '',
+    });
     const [slugError, setSlugError] = useState<string | null>(null);
 
     // Content editors - initialData is guaranteed to be available in edit mode
@@ -303,15 +311,17 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     const hasPreviewContent = previewPost?.content?.blocks && previewPost.content.blocks.length > 0;
     const hasPreviewFootnotes = previewPost?.footnotes?.blocks && previewPost.footnotes.blocks.length > 0;
 
+    // Effective slug is what we'd save (user's slug or derived from title); only check when it changes
+    const effectiveSlug = (slug || generateSlug(title)).trim();
+
     useEffect(() => {
-        const baseSlug = (slug || generateSlug(title)).trim();
-        if (!baseSlug) {
+        if (!effectiveSlug) {
             setSlugStatus('idle');
             setSlugError(null);
             return;
         }
 
-        const isSlugValid = /^[A-Za-z0-9_-]+$/.test(baseSlug);
+        const isSlugValid = /^[A-Za-z0-9_-]+$/.test(effectiveSlug);
         if (!isSlugValid) {
             setSlugStatus('idle');
             setSlugError('Slug can only contain letters, numbers, hyphens, and underscores.');
@@ -327,7 +337,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
             try {
                 const params = new URLSearchParams();
                 params.set('uniqueField', 'slug');
-                params.set('uniqueValue', baseSlug);
+                params.set('uniqueValue', effectiveSlug);
                 if (postId) {
                     params.set('uniqueIgnoreId', postId);
                 }
@@ -354,7 +364,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
             cancelled = true;
             clearTimeout(timer);
         };
-    }, [slug, title, postId, initialData?.appId]);
+    }, [effectiveSlug, postId, initialData?.appId]);
 
     // Auto-generate slug from title
     const handleTitleChange = (newTitle: string) => {
@@ -457,12 +467,20 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
 
         const baseSlug = (slug || generateSlug(title)).trim();
         if (!/^[A-Za-z0-9_-]+$/.test(baseSlug)) {
-            setAlertDialog({ open: true, title: 'Validation Error', message: 'Slug can only contain letters, numbers, hyphens, and underscores.' });
+            setAlertDialog({
+                open: true,
+                title: 'Validation Error',
+                message: 'Slug can only contain letters, numbers, hyphens, and underscores.',
+            });
             return;
         }
 
         if (slugStatus === 'taken') {
-            setAlertDialog({ open: true, title: 'Validation Error', message: 'Slug already in use. Please choose a different slug.' });
+            setAlertDialog({
+                open: true,
+                title: 'Validation Error',
+                message: 'Slug already in use. Please choose a different slug.',
+            });
             return;
         }
 
@@ -501,7 +519,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                 content: content || undefined,
                 contentType,
                 status: publishNow ? 'published' : status,
-                heroImage: heroImage || undefined,
+                heroImage,
                 seoMeta,
                 privateNotes: privateNotes || undefined,
                 footnotes: footnotes || undefined,
@@ -543,11 +561,16 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                     const latestVersions = ((refreshed.data || []) as BlogPostVersion[]) ?? [];
                     await pruneOldVersions(latestVersions, maxVersionsToKeep);
                 }
+                // Stay on same editor page after save
             } else {
-                await createPost.mutateAsync(postData);
+                const created = await createPost.mutateAsync(postData);
+                // Go to the new post's editor so user stays on "blog details" for that post
+                if (created?.id) {
+                    navigate({ to: '/admin/blog/$postId/edit', params: { postId: created.id } });
+                } else {
+                    navigate({ to: '/admin/blog' });
+                }
             }
-
-            navigate({ to: '/admin/blog' });
         } catch (error) {
             console.error('Failed to save post:', error);
             setAlertDialog({ open: true, title: 'Error', message: 'Failed to save post. Please try again.' });
@@ -1128,7 +1151,12 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                                         variant="outline"
                                                         size="sm"
                                                         className="h-6 px-2"
-                                                        onClick={() => setLoadVersionDialog({ open: true, versionNumber: version.versionNumber })}
+                                                        onClick={() =>
+                                                            setLoadVersionDialog({
+                                                                open: true,
+                                                                versionNumber: version.versionNumber,
+                                                            })
+                                                        }
                                                     >
                                                         Load
                                                     </Button>
@@ -1136,7 +1164,13 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                                         variant="ghost"
                                                         size="sm"
                                                         className="h-6 px-2 text-destructive hover:text-destructive"
-                                                        onClick={() => setDeleteVersionDialog({ open: true, versionId: version.id, versionNumber: version.versionNumber })}
+                                                        onClick={() =>
+                                                            setDeleteVersionDialog({
+                                                                open: true,
+                                                                versionId: version.id,
+                                                                versionNumber: version.versionNumber,
+                                                            })
+                                                        }
                                                     >
                                                         <Trash2 className="h-3 w-3" />
                                                     </Button>
@@ -1275,9 +1309,11 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                 </DialogContent>
             </Dialog>
 
-
             {/* Load Version Confirmation Dialog */}
-            <AlertDialog open={loadVersionDialog?.open ?? false} onOpenChange={(open) => !open && setLoadVersionDialog(null)}>
+            <AlertDialog
+                open={loadVersionDialog?.open ?? false}
+                onOpenChange={(open) => !open && setLoadVersionDialog(null)}
+            >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Load Version?</AlertDialogTitle>
@@ -1287,15 +1323,16 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleLoadVersion}>
-                            Load
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={handleLoadVersion}>Load</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
             {/* Delete Version Confirmation Dialog */}
-            <AlertDialog open={deleteVersionDialog?.open ?? false} onOpenChange={(open) => !open && setDeleteVersionDialog(null)}>
+            <AlertDialog
+                open={deleteVersionDialog?.open ?? false}
+                onOpenChange={(open) => !open && setDeleteVersionDialog(null)}
+            >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Version?</AlertDialogTitle>
@@ -1305,7 +1342,10 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteVersion} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        <AlertDialogAction
+                            onClick={handleDeleteVersion}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
                             Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -1317,13 +1357,14 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Post?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Are you sure you want to delete this post?
-                        </AlertDialogDescription>
+                        <AlertDialogDescription>Are you sure you want to delete this post?</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeletePost} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        <AlertDialogAction
+                            onClick={handleDeletePost}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
                             Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -1331,7 +1372,10 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
             </AlertDialog>
 
             {/* General Alert Dialog */}
-            <AlertDialog open={alertDialog.open} onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}>
+            <AlertDialog
+                open={alertDialog.open}
+                onOpenChange={(open) => !open && setAlertDialog({ ...alertDialog, open: false })}
+            >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>{alertDialog.title}</AlertDialogTitle>

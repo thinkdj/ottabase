@@ -1,7 +1,7 @@
 /**
  * OttablogPlugin Model
  *
- * OttaORM model for managing blog plugins (WordPress-style).
+ * OttaORM model for managing blog plugins.
  * Stores plugin registry state, enabled status, and configuration.
  */
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';

@@ -4,6 +4,6 @@
  * Export plugin system
  */
 
-export * from './types';
+export * from './content-injector-plugin';
 export * from './registry';
-export * from './post-content-plugin';
+export * from './types';

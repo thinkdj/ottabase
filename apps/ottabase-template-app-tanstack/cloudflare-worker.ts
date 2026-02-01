@@ -14,7 +14,6 @@ import {
     type TemplateVariables,
 } from '@ottabase/email';
 import {
-    createExtensibilityManager,
     OttablogPlugin,
     OttablogTheme,
     Post,
@@ -23,6 +22,7 @@ import {
     PostTag,
     PostTagLink,
     PostVersion,
+    StudioManager,
 } from '@ottabase/ottablog';
 import {
     Tag,
@@ -61,7 +61,6 @@ import {
     retryAllDLQJobs,
     retryDLQJob,
 } from './ottabase/queue';
-import { registerBlogThemesAndPlugins } from './src/ottabase/blog/init';
 import { registerAppEmailTemplates } from './src/email/templates';
 
 export { RealtimeActor };
@@ -509,6 +508,106 @@ export default {
                 }
             }
 
+            // Blog Studio API: themes and plugins state
+            // ============================================================
+            if (url.pathname.startsWith('/api/blog/studio/')) {
+                if (!env.OBCF_D1) {
+                    return errorResponse('D1 database binding not configured', 500, {
+                        code: 'CONFIG_ERROR',
+                    });
+                }
+
+                const appId: string | null = null; // could come from session later
+
+                // GET /api/blog/studio/state
+                if (url.pathname === '/api/blog/studio/state' && request.method === 'GET') {
+                    const state = await StudioManager.getState(appId);
+                    // Seed default theme and plugin if none exist
+                    if (state.themes.length === 0) {
+                        await OttablogTheme.create({
+                            themeId: 'default',
+                            name: 'Default',
+                            description: 'Clean, modern default theme',
+                            appId,
+                            isActive: true,
+                        });
+                    }
+                    if (state.plugins.length === 0) {
+                        await OttablogPlugin.create({
+                            pluginId: 'content-injector-plugin',
+                            name: 'Content Injector Plugin',
+                            description: 'Injects custom content into posts',
+                            appId,
+                            enabled: false,
+                        });
+                    }
+                    const finalState = await StudioManager.getState(appId);
+                    return jsonResponse(finalState);
+                }
+
+                // POST /api/blog/studio/theme/activate
+                if (url.pathname === '/api/blog/studio/theme/activate' && request.method === 'POST') {
+                    const body = await readJson<{ themeId: string }>(request);
+                    const themeId = body?.themeId;
+                    if (!themeId) {
+                        return errorResponse('themeId is required', 400, { code: 'VALIDATION_ERROR' });
+                    }
+                    let themeRow = await OttablogTheme.findByThemeId(themeId, { appId: appId ?? undefined });
+                    if (!themeRow) {
+                        await OttablogTheme.create({
+                            themeId,
+                            name: themeId,
+                            appId,
+                            isActive: false,
+                        });
+                        themeRow = await OttablogTheme.findByThemeId(themeId, { appId: appId ?? undefined });
+                    }
+                    if (themeRow) {
+                        await themeRow.activate({ appId: appId ?? undefined });
+                    }
+                    return jsonResponse({ success: true });
+                }
+
+                // POST /api/blog/studio/plugin/enable
+                if (url.pathname === '/api/blog/studio/plugin/enable' && request.method === 'POST') {
+                    const body = await readJson<{ pluginId: string; enabled: boolean }>(request);
+                    const pluginId = body?.pluginId;
+                    const enabled = body?.enabled ?? true;
+                    if (!pluginId) {
+                        return errorResponse('pluginId is required', 400, { code: 'VALIDATION_ERROR' });
+                    }
+                    let pluginRow = await OttablogPlugin.findByPluginId(pluginId, { appId: appId ?? undefined });
+                    if (!pluginRow) {
+                        await OttablogPlugin.create({
+                            pluginId,
+                            name: pluginId,
+                            appId,
+                            enabled,
+                        });
+                    } else {
+                        pluginRow.set('enabled', enabled);
+                        await pluginRow.save();
+                    }
+                    return jsonResponse({ success: true });
+                }
+
+                // POST /api/blog/studio/plugin/config
+                if (url.pathname === '/api/blog/studio/plugin/config' && request.method === 'POST') {
+                    const body = await readJson<{ pluginId: string; config: Record<string, unknown> }>(request);
+                    const pluginId = body?.pluginId;
+                    const config = body?.config;
+                    if (!pluginId) {
+                        return errorResponse('pluginId is required', 400, { code: 'VALIDATION_ERROR' });
+                    }
+                    const pluginRow = await OttablogPlugin.findByPluginId(pluginId, { appId: appId ?? undefined });
+                    if (!pluginRow) {
+                        return errorResponse('Plugin not found', 404, { code: 'NOT_FOUND' });
+                    }
+                    await pluginRow.updateConfig(config ?? {});
+                    return jsonResponse({ success: true });
+                }
+            }
+
             // Generic OttaORM CRUD API
             // ============================================================
             // Handles all registered models via /api/ottaorm/{model}/{id?}
@@ -558,179 +657,6 @@ export default {
                 }
 
                 return jsonResponse(result.data, result.status);
-            }
-
-            // ============================================================
-            // Blog Extensibility (themes/plugins - read/write from DB)
-            // ============================================================
-            if (url.pathname.startsWith('/api/blog/extensibility')) {
-                if (!env.OBCF_D1) {
-                    return errorResponse('D1 database not configured', 500, {
-                        code: 'CONFIG_ERROR',
-                    });
-                }
-
-                // Register themes/plugins then load state from DB
-                registerBlogThemesAndPlugins();
-                const manager = createExtensibilityManager({ appId: undefined });
-
-                // GET /api/blog/extensibility - list themes & plugins from DB (for admin UI)
-                if (url.pathname === '/api/blog/extensibility' && request.method === 'GET') {
-                    try {
-                        await manager.initialize();
-                        const [dbThemes, dbPlugins, activeTheme] = await Promise.all([
-                            manager.getAllThemes(),
-                            manager.getAllPlugins(),
-                            manager.getActiveTheme(),
-                        ]);
-                        const activeThemeId = activeTheme ? (activeTheme.get('themeId') as string) : null;
-                        const themes = dbThemes.map((t) => ({
-                            id: t.get('id'),
-                            themeId: t.get('themeId'),
-                            name: t.get('name'),
-                            description: t.get('description'),
-                            version: t.get('version'),
-                            author: t.get('author'),
-                            url: t.get('url'),
-                            screenshot: t.get('screenshot'),
-                            isActive: t.get('isActive'),
-                            config: t.get('config'),
-                            appId: t.get('appId'),
-                            createdAt: t.get('createdAt'),
-                            updatedAt: t.get('updatedAt'),
-                        }));
-                        const plugins = dbPlugins.map((p) => ({
-                            id: p.get('id'),
-                            pluginId: p.get('pluginId'),
-                            name: p.get('name'),
-                            description: p.get('description'),
-                            version: p.get('version'),
-                            author: p.get('author'),
-                            url: p.get('url'),
-                            enabled: p.get('enabled'),
-                            config: p.get('config'),
-                            appId: p.get('appId'),
-                            createdAt: p.get('createdAt'),
-                            updatedAt: p.get('updatedAt'),
-                        }));
-                        return jsonResponse({
-                            themes,
-                            plugins,
-                            activeThemeId,
-                        });
-                    } catch (err) {
-                        console.error('Blog extensibility GET error:', err);
-                        return errorResponse('Failed to load extensibility state', 500, {
-                            details: err instanceof Error ? err.message : String(err),
-                        });
-                    }
-                }
-
-                // GET /api/blog/extensibility/state - lightweight state for client init (active theme + enabled plugin ids + configs)
-                if (url.pathname === '/api/blog/extensibility/state' && request.method === 'GET') {
-                    try {
-                        await manager.initialize();
-                        const activeTheme = await manager.getActiveTheme();
-                        const enabledPlugins = await manager.getEnabledPlugins();
-                        const activeThemeId = activeTheme ? (activeTheme.get('themeId') as string) : null;
-                        const enabledPluginIds = enabledPlugins.map((p) => p.get('pluginId') as string);
-                        const pluginConfigs: Record<string, Record<string, unknown>> = {};
-                        for (const id of enabledPluginIds) {
-                            const cfg = await manager.getPluginConfig(id);
-                            if (cfg && Object.keys(cfg).length > 0) {
-                                pluginConfigs[id] = cfg;
-                            }
-                        }
-                        return jsonResponse({ activeThemeId, enabledPluginIds, pluginConfigs });
-                    } catch (err) {
-                        console.error('Blog extensibility state error:', err);
-                        return errorResponse('Failed to load extensibility state', 500, {
-                            details: err instanceof Error ? err.message : String(err),
-                        });
-                    }
-                }
-
-                // POST /api/blog/extensibility/theme/activate
-                if (url.pathname === '/api/blog/extensibility/theme/activate' && request.method === 'POST') {
-                    try {
-                        const body = await readJson<{ themeId: string }>(request);
-                        if (!body?.themeId) {
-                            return errorResponse('themeId is required', 400);
-                        }
-                        await manager.activateTheme(body.themeId);
-                        return jsonResponse({ success: true, activeThemeId: body.themeId });
-                    } catch (err) {
-                        console.error('Blog theme activate error:', err);
-                        return errorResponse(err instanceof Error ? err.message : 'Failed to activate theme', 500);
-                    }
-                }
-
-                // POST /api/blog/extensibility/plugin/enable
-                if (url.pathname === '/api/blog/extensibility/plugin/enable' && request.method === 'POST') {
-                    try {
-                        const body = await readJson<{ pluginId: string }>(request);
-                        if (!body?.pluginId) {
-                            return errorResponse('pluginId is required', 400);
-                        }
-                        await manager.enablePlugin(body.pluginId);
-                        return jsonResponse({ success: true, pluginId: body.pluginId });
-                    } catch (err) {
-                        console.error('Blog plugin enable error:', err);
-                        return errorResponse(err instanceof Error ? err.message : 'Failed to enable plugin', 500);
-                    }
-                }
-
-                // POST /api/blog/extensibility/plugin/disable
-                if (url.pathname === '/api/blog/extensibility/plugin/disable' && request.method === 'POST') {
-                    try {
-                        const body = await readJson<{ pluginId: string }>(request);
-                        if (!body?.pluginId) {
-                            return errorResponse('pluginId is required', 400);
-                        }
-                        await manager.disablePlugin(body.pluginId);
-                        return jsonResponse({ success: true, pluginId: body.pluginId });
-                    } catch (err) {
-                        console.error('Blog plugin disable error:', err);
-                        return errorResponse(err instanceof Error ? err.message : 'Failed to disable plugin', 500);
-                    }
-                }
-
-                // PUT /api/blog/extensibility/plugin/:pluginId/config
-                const pluginConfigMatch = url.pathname.match(/^\/api\/blog\/extensibility\/plugin\/([^/]+)\/config$/);
-                if (pluginConfigMatch && request.method === 'PUT') {
-                    const pluginId = decodeURIComponent(pluginConfigMatch[1]);
-                    try {
-                        const config = await readJson<Record<string, unknown>>(request);
-                        if (!config || typeof config !== 'object') {
-                            return errorResponse('config object is required', 400);
-                        }
-                        await manager.updatePluginConfig(pluginId, config);
-                        return jsonResponse({ success: true, pluginId });
-                    } catch (err) {
-                        console.error('Blog plugin config error:', err);
-                        return errorResponse(
-                            err instanceof Error ? err.message : 'Failed to update plugin config',
-                            500,
-                        );
-                    }
-                }
-
-                // PUT /api/blog/extensibility/theme/:themeId/config
-                const themeConfigMatch = url.pathname.match(/^\/api\/blog\/extensibility\/theme\/([^/]+)\/config$/);
-                if (themeConfigMatch && request.method === 'PUT') {
-                    const themeId = decodeURIComponent(themeConfigMatch[1]);
-                    try {
-                        const config = await readJson<Record<string, unknown>>(request);
-                        if (!config || typeof config !== 'object') {
-                            return errorResponse('config object is required', 400);
-                        }
-                        await manager.updateThemeConfig(themeId, config);
-                        return jsonResponse({ success: true, themeId });
-                    } catch (err) {
-                        console.error('Blog theme config error:', err);
-                        return errorResponse(err instanceof Error ? err.message : 'Failed to update theme config', 500);
-                    }
-                }
             }
 
             // ============================================================

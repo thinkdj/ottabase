@@ -1,82 +1,82 @@
 /**
  * Ottablog Initialization for TanStack App
  *
- * Initialize themes, plugins, and hooks. Loads active theme and enabled plugins from DB via API.
+ * Initialize themes, plugins, and hooks. Optionally loads studio state from API
+ * and applies active theme and enabled plugins (with config).
  */
 
-import { initOttablog, registerPlugin, activatePlugin, setActiveTheme, postContentPlugin } from '@ottabase/ottablog';
-
-const DEFAULT_PLUGIN_CONTENT =
-    '<div class="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 my-4 rounded"><p class="text-sm text-blue-800 dark:text-blue-200"><strong>Note:</strong> This content was injected by the Post Content Plugin!</p></div>';
-
-const defaultPluginOptions = {
-    position: 'end' as const,
-    priority: 10,
-    enabled: true,
-    contentTypes: [] as string[],
-    postIds: [] as string[],
-};
-
-/** State from API (active theme + enabled plugins + plugin configs) */
-interface ExtensibilityState {
-    activeThemeId?: string | null;
-    enabledPluginIds?: string[];
-    pluginConfigs?: Record<string, Record<string, unknown>>;
-}
+import {
+    activatePlugin,
+    contentInjectorPlugin,
+    createContentInjectorPlugin,
+    initOttablog,
+    registerPlugin,
+    setActiveTheme,
+    type StudioPluginState,
+    type StudioState,
+    type StudioThemeState,
+} from '@ottabase/ottablog';
+import { api } from '@/lib/api';
 
 /**
- * Register themes and plugins only (no fetch). Used by the worker before ExtensibilityManager.initialize().
+ * Register default themes and the content injector plugin (in-memory).
  */
-export function registerBlogThemesAndPlugins() {
+function registerBlogThemesAndPlugins() {
     initOttablog({ defaultThemeId: 'default' });
-    const defaultPlugin = postContentPlugin.end(DEFAULT_PLUGIN_CONTENT, defaultPluginOptions);
-    registerPlugin(defaultPlugin);
+
+    const plugin = contentInjectorPlugin.end(
+        '<div class="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 my-4 rounded"><p class="text-sm text-blue-800 dark:text-blue-200"><strong>Note:</strong> This content was injected by the Content Injector Plugin!</p></div>',
+        {
+            position: 'end',
+            priority: 10,
+            enabled: true,
+            contentTypes: [],
+        },
+    );
+    registerPlugin(plugin);
 }
 
 /**
- * Initialize ottablog system: register themes/plugins, then load state from DB and apply (client only).
+ * Fetch studio state from API and apply active theme, enabled plugins, and configs.
+ */
+export async function applyStudioStateFromApi() {
+    try {
+        const state = await api<StudioState>('/api/blog/studio/state');
+        if (state.activeThemeId) {
+            setActiveTheme(state.activeThemeId);
+        }
+        for (const theme of state.themes || []) {
+            if ((theme as StudioThemeState).isActive && (theme as StudioThemeState).themeId) {
+                setActiveTheme((theme as StudioThemeState).themeId);
+                break;
+            }
+        }
+        for (const row of state.plugins || []) {
+            const p = row as StudioPluginState;
+            if (!p.enabled) continue;
+            const config = (p.config || {}) as Record<string, unknown>;
+            if (p.pluginId === 'content-injector-plugin') {
+                const plugin = createContentInjectorPlugin({
+                    content: (config.content as string) ?? '',
+                    position: (config.position as 'beginning' | 'end' | 'random') ?? 'end',
+                    contentTypes: (config.contentTypes as string[]) ?? [],
+                    priority: (config.priority as number) ?? 10,
+                    enabled: true,
+                });
+                registerPlugin(plugin);
+            }
+            await activatePlugin(p.pluginId);
+        }
+    } catch (err) {
+        console.warn('Could not load blog studio state:', err);
+    }
+}
+
+/**
+ * Initialize ottablog system: register themes/plugins, then load and apply DB studio state.
  */
 export async function initBlogSystem() {
     registerBlogThemesAndPlugins();
-
-    try {
-        const base = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
-        const res = await fetch(`${base}/api/blog/extensibility/state`);
-        if (!res.ok) return;
-        const data = (await res.json()) as ExtensibilityState;
-        const activeThemeId = data.activeThemeId ?? 'default';
-        const enabledPluginIds = data.enabledPluginIds ?? [];
-        const pluginConfigs = data.pluginConfigs ?? {};
-
-        // Apply active theme from DB
-        setActiveTheme(activeThemeId);
-
-        // Apply post-content-plugin config from DB if present
-        const postContentConfig = pluginConfigs['post-content-plugin'];
-        if (postContentConfig && typeof postContentConfig === 'object') {
-            const opts = {
-                content: (postContentConfig.content as string) ?? DEFAULT_PLUGIN_CONTENT,
-                position: (postContentConfig.position as 'beginning' | 'end' | 'random') ?? 'end',
-                priority: typeof postContentConfig.priority === 'number' ? postContentConfig.priority : 10,
-                enabled: postContentConfig.enabled !== false,
-                contentTypes: Array.isArray(postContentConfig.contentTypes) ? postContentConfig.contentTypes : [],
-                postIds: Array.isArray(postContentConfig.postIds) ? postContentConfig.postIds : [],
-            };
-            const plugin = postContentPlugin.end(opts.content, opts);
-            registerPlugin(plugin);
-        }
-
-        // Activate only plugins that are enabled in DB
-        for (const pluginId of enabledPluginIds) {
-            try {
-                await activatePlugin(pluginId);
-            } catch {
-                // Plugin may not exist in registry; ignore
-            }
-        }
-    } catch {
-        // If API fails (e.g. offline), keep default theme and no plugins active
-    }
-
-    console.log('✅ Ottablog initialized with hooks, themes, and plugins');
+    await applyStudioStateFromApi();
+    console.log('✅ Ottablog initialized with hooks, themes, and plugins (database-backed)');
 }

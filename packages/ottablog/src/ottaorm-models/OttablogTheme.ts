@@ -1,7 +1,7 @@
 /**
  * OttablogTheme Model
  *
- * OttaORM model for managing blog themes (WordPress-style).
+ * OttaORM model for managing blog themes.
  * Stores theme registry state, active status, and configuration.
  */
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';

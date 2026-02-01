@@ -1,3 +1,3 @@
-export { AdminBlogListPage } from './AdminBlogListPage';
 export { AdminBlogEditorPage } from './AdminBlogEditorPage';
-export { AdminBlogExtensibilityPage } from './AdminBlogExtensibilityPage';
+export { AdminBlogListPage } from './AdminBlogListPage';
+export { AdminBlogStudioPage } from './AdminBlogStudioPage';
