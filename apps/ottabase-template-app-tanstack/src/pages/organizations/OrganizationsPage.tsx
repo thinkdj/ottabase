@@ -1,6 +1,9 @@
 import { api, isApiError } from '@/lib/api';
 import type { PaginatedResponse, Pagination } from '@/lib/api-types';
 import type { OrganizationRecord, BadgeVariant } from '@/types/rbac';
+import { ApiErrorDisplay } from '@/components/ErrorBoundary';
+import { TableSkeleton } from '@/components/LoadingSkeletons';
+import { useRBACToast } from '@/hooks/useToast';
 import {
     Badge,
     AlertDialog,
@@ -43,9 +46,10 @@ import { OrganizationForm, type OrganizationFormData } from './components/Organi
 type OrganizationsResponse = PaginatedResponse<OrganizationRecord>;
 
 export function OrganizationsPage() {
+    const toast = useRBACToast();
     const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<Error | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOrg, setEditingOrg] = useState<OrganizationRecord | null>(null);
     const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
@@ -68,7 +72,8 @@ export function OrganizationsPage() {
                 setCurrentPage(response.pagination.page);
             }
         } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to load organizations');
+            const error = err instanceof Error ? err : new Error('Failed to load organizations');
+            setError(error);
         } finally {
             setLoading(false);
         }
@@ -98,10 +103,12 @@ export function OrganizationsPage() {
         const id = deleteDialog;
         try {
             await api(`/api/ottaorm/organizations/${id}`, { method: 'DELETE' });
+            toast.rbac.organizationDeleted();
             await fetchOrganizations(currentPage, perPage);
             setDeleteDialog(null);
         } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to delete organization');
+            const error = err instanceof Error ? err : new Error('Failed to delete organization');
+            toast.error('Delete failed', error.message);
         }
     };
 
@@ -112,11 +119,13 @@ export function OrganizationsPage() {
                     method: 'PATCH',
                     body: JSON.stringify(data),
                 });
+                toast.rbac.organizationUpdated();
             } else {
                 await api('/api/ottaorm/organizations', {
                     method: 'POST',
                     body: JSON.stringify(data),
                 });
+                toast.rbac.organizationCreated();
             }
             await fetchOrganizations(currentPage, perPage);
             setIsDialogOpen(false);
@@ -174,11 +183,16 @@ export function OrganizationsPage() {
                 </CardHeader>
                 <CardContent>
                     {error && (
-                        <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-md">{error}</div>
+                        <ApiErrorDisplay
+                            error={error}
+                            onRetry={() => fetchOrganizations(currentPage, perPage)}
+                            onDismiss={() => setError(null)}
+                            className="mb-4"
+                        />
                     )}
 
                     {loading && organizations.length === 0 ? (
-                        <div className="text-center py-8">Loading organizations...</div>
+                        <TableSkeleton rows={5} columns={6} />
                     ) : organizations.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                             No organizations found. Create your first one!
