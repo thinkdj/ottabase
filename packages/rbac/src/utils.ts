@@ -7,8 +7,9 @@ import type { RBACContext, RBACCheckOptions, PermissionCheckResult } from './typ
 
 /**
  * Create RBAC context from user
+ * Optimized with optional caching support
  */
-export async function createRBACContext(user: User | null): Promise<RBACContext> {
+export async function createRBACContext(user: User | null, cache?: any): Promise<RBACContext> {
     if (!user) {
         return {
             user: null,
@@ -18,15 +19,46 @@ export async function createRBACContext(user: User | null): Promise<RBACContext>
         };
     }
 
-    const roles = await user.roles();
-    const permissions = await user.getPermissions();
+    const userId = user.get('id') as string;
 
-    return {
+    // Try to get full context from cache first
+    if (cache) {
+        try {
+            const cached = await cache.getUserContext(userId);
+            if (cached) {
+                return { ...cached, user }; // Re-attach user object
+            }
+        } catch (error) {
+            // Ignore cache errors, fallback to DB
+        }
+    }
+
+    // Get roles and permissions with cache support
+    const roles = await user.roles({ cache });
+    const permissions = await user.getPermissions({ cache });
+
+    const context: RBACContext = {
         user,
         roles: roles.map((r) => r.get('name') as string),
         permissions,
         isAuthenticated: true,
     };
+
+    // Cache the context
+    if (cache) {
+        try {
+            await cache.setUserContext(userId, {
+                user: null, // Don't cache the user object itself
+                roles: context.roles,
+                permissions: context.permissions,
+                isAuthenticated: true,
+            });
+        } catch (error) {
+            // Ignore cache errors
+        }
+    }
+
+    return context;
 }
 
 /**

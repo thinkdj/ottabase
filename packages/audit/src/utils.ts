@@ -18,6 +18,34 @@ export async function logAudit(data: AuditLogData): Promise<void> {
 }
 
 /**
+ * Simple audit logger - logs which user did what action with optional metadata
+ *
+ * @example
+ * ```typescript
+ * // Simple usage
+ * await log('user-123', 'updated_profile', { field: 'name', value: 'John' });
+ *
+ * // With user email
+ * await log('user-123', 'deleted_post', { postId: 'post-456' }, 'user@example.com');
+ * ```
+ */
+export async function log(
+    userId: string,
+    action: string,
+    metadata?: Record<string, any>,
+    userEmail?: string
+): Promise<void> {
+    await logAudit({
+        userId,
+        userEmail,
+        action,
+        resourceType: 'custom',
+        metadata,
+        status: 'success',
+    });
+}
+
+/**
  * Log create action
  */
 export async function logCreate(

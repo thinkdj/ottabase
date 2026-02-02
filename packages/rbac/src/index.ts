@@ -22,3 +22,7 @@ export { withRBAC, requirePermission, requireRole, checkPermission, checkRole } 
 
 // Context (React)
 export type { RBACContextValue } from './context';
+
+// Cache
+export type { RBACCacheConfig } from './cache';
+export { RBACCache, initRBACCache, getRBACCache, clearRBACCache } from './cache';

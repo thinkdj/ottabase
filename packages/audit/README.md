@@ -20,6 +20,25 @@ pnpm add @ottabase/audit
 
 ## Quick Start
 
+### 0. Simple Audit Logging (Recommended for Quick Start)
+
+For the simplest use case, just log which user did what action with optional metadata:
+
+```typescript
+import { log } from '@ottabase/audit';
+
+// Simple: log who did what
+await log('user-123', 'updated_profile');
+
+// With metadata
+await log('user-123', 'deleted_post', { postId: 'post-456', reason: 'spam' });
+
+// With user email
+await log('user-123', 'changed_password', { method: '2fa' }, 'user@example.com');
+```
+
+That's it! The audit log is automatically saved to the database.
+
 ### 1. Automatic Audit Logging (Middleware)
 
 ```typescript

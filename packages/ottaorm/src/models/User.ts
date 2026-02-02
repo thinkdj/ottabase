@@ -181,17 +181,61 @@ export class User extends BaseModel {
 
     /**
      * Get user's roles (ManyToMany through UserRole)
+     * Optimized with optional caching support
      */
-    async roles(options?: { select?: string[]; orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
+    async roles(options?: { select?: string[]; orderBy?: string; orderDirection?: 'asc' | 'desc'; cache?: any }) {
+        const userId = this.get('id') as string;
         const { UserRole } = await import('./UserRole');
         const { Role } = await import('./Role');
 
-        const userRoles = await UserRole.where({ userId: this.get('id') });
+        // Try cache first if provided
+        if (options?.cache) {
+            try {
+                const cachedRoleNames = await options.cache.getUserRoles(userId);
+                if (cachedRoleNames && cachedRoleNames.length > 0) {
+                    // Get Role objects by names from cache
+                    const roles = [];
+                    for (const roleName of cachedRoleNames) {
+                        const role = await Role.findByName(roleName);
+                        if (role) roles.push(role);
+                    }
+                    return roles;
+                }
+            } catch (error) {
+                // Ignore cache errors, fallback to DB
+            }
+        }
+
+        // Optimized query: Get UserRole records for this user
+        const userRoles = await UserRole.where({ userId });
         const roleIds = userRoles.map((ur) => ur.get('roleId'));
 
-        if (roleIds.length === 0) return [];
+        if (roleIds.length === 0) {
+            // Cache empty result
+            if (options?.cache) {
+                try {
+                    await options.cache.setUserRoles(userId, []);
+                } catch (error) {
+                    // Ignore cache errors
+                }
+            }
+            return [];
+        }
 
-        return Role.whereIn('id', roleIds);
+        // Single query to get all roles
+        const roles = await Role.whereIn('id', roleIds);
+
+        // Cache the role names
+        if (options?.cache && roles.length > 0) {
+            try {
+                const roleNames = roles.map((r) => r.get('name') as string);
+                await options.cache.setUserRoles(userId, roleNames);
+            } catch (error) {
+                // Ignore cache errors
+            }
+        }
+
+        return roles;
     }
 
     /**
@@ -255,33 +299,61 @@ export class User extends BaseModel {
 
     /**
      * Assign a role to the user
+     * Automatically invalidates cache if provided
      */
-    async assignRole(roleId: string, assignedBy?: string, organizationId?: string): Promise<void> {
+    async assignRole(
+        roleId: string,
+        assignedBy?: string,
+        organizationId?: string,
+        options?: { cache?: any }
+    ): Promise<void> {
         const { UserRole } = await import('./UserRole');
+        const userId = this.get('id') as string;
 
         // Check if already assigned
         const existing = await UserRole.first({
-            userId: this.get('id'),
+            userId,
             roleId,
             ...(organizationId ? { organizationId } : {}),
         });
 
         if (!existing) {
             await UserRole.create({
-                userId: this.get('id'),
+                userId,
                 roleId,
                 assignedBy,
                 organizationId,
             });
+
+            // Invalidate cache
+            if (options?.cache) {
+                try {
+                    await options.cache.invalidateUser(userId);
+                } catch (error) {
+                    // Ignore cache errors
+                }
+            }
         }
     }
 
     /**
      * Remove a role from the user
+     * Automatically invalidates cache if provided
      */
-    async removeRole(roleId: string, organizationId?: string): Promise<void> {
+    async removeRole(roleId: string, organizationId?: string, options?: { cache?: any }): Promise<void> {
         const { UserRole } = await import('./UserRole');
-        await UserRole.removeRole(this.get('id'), roleId, organizationId);
+        const userId = this.get('id') as string;
+
+        await UserRole.removeRole(userId, roleId, organizationId);
+
+        // Invalidate cache
+        if (options?.cache) {
+            try {
+                await options.cache.invalidateUser(userId);
+            } catch (error) {
+                // Ignore cache errors
+            }
+        }
     }
 
     /**
@@ -322,8 +394,22 @@ export class User extends BaseModel {
 
     /**
      * Get all permissions for the user (from all roles)
+     * Optimized with optional caching support
      */
-    async getPermissions(): Promise<string[]> {
+    async getPermissions(options?: { cache?: any }): Promise<string[]> {
+        const userId = this.get('id') as string;
+
+        // Try cache first if provided
+        if (options?.cache) {
+            try {
+                const cached = await options.cache.getUserPermissions(userId);
+                if (cached) return cached;
+            } catch (error) {
+                // Ignore cache errors, fallback to DB
+            }
+        }
+
+        // Get roles and collect permissions (optimized single query per role type)
         const roles = await this.roles();
         const permissions = new Set<string>();
 
@@ -332,15 +418,27 @@ export class User extends BaseModel {
             rolePermissions.forEach((p) => permissions.add(p));
         }
 
-        return Array.from(permissions);
+        const permissionsArray = Array.from(permissions);
+
+        // Cache the result if cache is provided
+        if (options?.cache) {
+            try {
+                await options.cache.setUserPermissions(userId, permissionsArray);
+            } catch (error) {
+                // Ignore cache errors
+            }
+        }
+
+        return permissionsArray;
     }
 
     /**
      * Check if user has a specific permission
      * Supports wildcard matching: users:* matches users:read, users:create, etc.
+     * Optimized with optional caching support
      */
-    async hasPermission(permission: string): Promise<boolean> {
-        const permissions = await this.getPermissions();
+    async hasPermission(permission: string, options?: { cache?: any }): Promise<boolean> {
+        const permissions = await this.getPermissions(options);
 
         // Check for exact match first
         if (permissions.includes(permission)) {

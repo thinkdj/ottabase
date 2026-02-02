@@ -13,6 +13,7 @@ export type {
 
 // Utils
 export {
+    log, // Simple: log(userId, action, metadata?, userEmail?)
     logAudit,
     logCreate,
     logUpdate,

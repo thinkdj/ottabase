@@ -1,6 +1,6 @@
 # @ottabase/rbac
 
-Role-Based Access Control (RBAC) package for Ottabase with middleware and utilities.
+Role-Based Access Control (RBAC) package for Ottabase with middleware, utilities, and optimized caching.
 
 ## Features
 
@@ -10,12 +10,31 @@ Role-Based Access Control (RBAC) package for Ottabase with middleware and utilit
 - ✅ Decorator support for class methods
 - ✅ Organization/tenant scoping support
 - ✅ Integration with @ottabase/ottaorm models
+- 🚀 **Two-level caching (request-level + Cloudflare KV)**
+- ⚡ **Optimized for minimal database queries**
 
 ## Installation
 
 ```bash
 pnpm add @ottabase/rbac
 ```
+
+## Performance & Caching
+
+The RBAC package is optimized for minimal database queries with two-level caching:
+
+1. **Request-level cache**: In-memory cache for same-request access (60s TTL)
+   - Prevents duplicate queries within a single request
+   - Zero latency on cache hits
+
+2. **KV cache**: Cloudflare KV for cross-request caching (5min default TTL)
+   - Shares cache across requests and workers
+   - Dramatically reduces database load
+
+**Performance gains:**
+- First request: 2-3 DB queries (user roles + role permissions)
+- Subsequent requests (cached): 0 DB queries
+- Automatic cache invalidation on role changes
 
 ## Quick Start
 
@@ -71,7 +90,86 @@ export const POST = withRBAC(
 );
 ```
 
-### 3. Check Permissions in Code
+### 3. Enable Caching (Optional but Recommended)
+
+```typescript
+// Initialize cache once (e.g., in middleware or app setup)
+import { initRBACCache } from '@ottabase/rbac';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+
+const { env } = await getCloudflareContext();
+const cache = initRBACCache({
+  kv: env.RBAC_KV, // Your KV namespace binding
+  ttl: 300, // Cache TTL in seconds (default: 300)
+  prefix: 'rbac:', // Cache key prefix (default: 'rbac:')
+});
+
+// Then use cache in middleware
+export const GET = withRBAC(
+  async (request) => {
+    return Response.json({ data: 'protected' });
+  },
+  {
+    permissions: ['users:read'],
+    cache: true // Use global cache (or pass cache instance)
+  }
+);
+
+// Or pass cache directly
+export const POST = withRBAC(
+  async (request) => {
+    return Response.json({ success: true });
+  },
+  {
+    permissions: ['users:create'],
+    cache: cache // Pass cache instance
+  }
+);
+```
+
+**Manual cache usage:**
+
+```typescript
+import { User } from '@ottabase/ottaorm/models';
+import { getRBACCache } from '@ottabase/rbac';
+
+const cache = getRBACCache();
+const user = await User.find('user-id');
+
+// Get permissions with cache
+const permissions = await user.getPermissions({ cache });
+
+// Check permission with cache
+const canCreate = await user.hasPermission('users:create', { cache });
+
+// Get roles with cache
+const roles = await user.roles({ cache });
+
+// Assign role and invalidate cache
+await user.assignRole(roleId, assignedBy, undefined, { cache });
+
+// Remove role and invalidate cache
+await user.removeRole(roleId, undefined, { cache });
+```
+
+**Cache invalidation:**
+
+```typescript
+import { getRBACCache } from '@ottabase/rbac';
+
+const cache = getRBACCache();
+
+// Invalidate specific user cache
+await cache.invalidateUser('user-id');
+
+// Invalidate all users with a role (after role permission changes)
+await cache.invalidateRole('admin');
+
+// Clear all RBAC caches
+await cache.clear();
+```
+
+### 4. Check Permissions in Code
 
 ```typescript
 import { checkPermission, checkRole } from '@ottabase/rbac/middleware';

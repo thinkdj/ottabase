@@ -5,6 +5,7 @@
 import { User } from '@ottabase/ottaorm/models';
 import { RBACError, type RBACCheckOptions } from './types';
 import { createRBACContext, hasPermission, hasRole } from './utils';
+import { getRBACCache, type RBACCache } from './cache';
 
 /**
  * RBAC Middleware for Next.js API routes
@@ -29,6 +30,7 @@ export function withRBAC<T extends (...args: any[]) => Promise<Response>>(
         roles?: string | string[];
         requireAll?: boolean;
         getUserFromRequest?: (request: Request) => Promise<User | null>;
+        cache?: RBACCache | boolean; // Pass cache instance or true to use global cache
     }
 ): T {
     return (async (...args: any[]) => {
@@ -40,8 +42,11 @@ export function withRBAC<T extends (...args: any[]) => Promise<Response>>(
                 ? await config.getUserFromRequest(request)
                 : await getUserFromRequest(request);
 
-            // Create RBAC context
-            const rbacContext = await createRBACContext(user);
+            // Get cache instance
+            const cache = config.cache === true ? getRBACCache() : config.cache || undefined;
+
+            // Create RBAC context with cache support
+            const rbacContext = await createRBACContext(user, cache);
 
             // Check if user is authenticated
             if (!rbacContext.isAuthenticated) {
