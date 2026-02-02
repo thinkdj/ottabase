@@ -27,8 +27,8 @@ describe('i18n Configuration', () => {
                 // @ts-expect-error reset so we re-init and detect
                 i18n.isInitialized = false;
             }
-
-            await initI18n({ defaultLanguage: 'en' });
+            // supportedLngs: ['en'] so any previously detected language (e.g. 'fr') is invalid -> fall back to defaultLanguage
+            await initI18n({ defaultLanguage: 'en', supportedLngs: ['en'] });
 
             expect(i18n.language).toBe('en');
         });
@@ -36,21 +36,22 @@ describe('i18n Configuration', () => {
 
     describe('initI18n', () => {
         it('should initialize i18n with default settings', async () => {
-            const instance = await initI18n();
+            const instance = await initI18n({ defaultLanguage: 'en', supportedLngs: ['en'] });
 
             expect(instance).toBe(i18n);
             expect(i18n.isInitialized).toBe(true);
             expect(i18n.language).toBe('en');
         });
 
-        it('should initialize with custom default language', async () => {
-            await initI18n({ defaultLanguage: 'es' });
+        it('should use defaultLanguage when no valid language is detected', async () => {
+            // supportedLngs: ['es'] so navigator's 'en' is not valid -> fall back to defaultLanguage
+            await initI18n({ defaultLanguage: 'es', supportedLngs: ['es'] });
 
             expect(i18n.language).toBe('es');
         });
 
         it('should not re-initialize if already initialized', async () => {
-            const first = await initI18n({ defaultLanguage: 'en' });
+            const first = await initI18n({ defaultLanguage: 'en', supportedLngs: ['en'] });
             const second = await initI18n({ defaultLanguage: 'fr' });
 
             expect(first).toBe(second);

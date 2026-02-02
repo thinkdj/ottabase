@@ -39,7 +39,15 @@ export const languageNames: Record<SupportedLanguage, string> = {
 };
 
 export interface InitI18nOptions {
+    /**
+     * Default/fallback language when none is detected or persisted.
+     * Precedence: localStorage → navigator → defaultLanguage. So defaultLanguage does not override detection.
+     */
     defaultLanguage?: SupportedLanguage;
+    /** Languages the app allows (constrains package supportedLanguages). If omitted, all package languages are used. */
+    supportedLngs?: readonly string[];
+    /** Fallback language when a translation is missing. Defaults to defaultLanguage or 'en'. */
+    fallbackLng?: string;
     debug?: boolean;
     resources?: Resource;
 }
@@ -54,19 +62,24 @@ export const initI18n = async (options?: InitI18nOptions): Promise<typeof i18n> 
     // Merge default resources with provided resources (only on first init)
     const finalResources = options?.resources ? deepMerge(resources, options.resources) : resources;
 
+    const effectiveSupportedLngs = (
+        options?.supportedLngs?.length ? [...options.supportedLngs] : supportedLanguages
+    ) as string[];
+    const effectiveFallbackLng = options?.fallbackLng ?? options?.defaultLanguage ?? 'en';
+
     // Always use detector so changeLanguage() caches to localStorage
     i18n.use(LanguageDetector);
 
     await i18n.init({
         resources: finalResources,
         defaultNS,
-        fallbackLng: options?.defaultLanguage || 'en',
-        lng: options?.defaultLanguage ?? undefined,
+        fallbackLng: effectiveFallbackLng,
+        lng: undefined, // Let detector run first; defaultLanguage used only when nothing detected
         debug: options?.debug || false,
         interpolation: {
             escapeValue: false, // React already escapes values
         },
-        supportedLngs: supportedLanguages,
+        supportedLngs: effectiveSupportedLngs,
         load: 'languageOnly', // Use only base language code (en, not en-US)
         detection: {
             order: ['localStorage', 'navigator'],
@@ -77,14 +90,16 @@ export const initI18n = async (options?: InitI18nOptions): Promise<typeof i18n> 
 
     // Normalize to base code when detector returns a region (e.g. en-US -> en)
     if (i18n.language) {
-        const base = i18n.language.split('-')[0] as SupportedLanguage;
-        if (supportedLanguages.includes(base) && base !== i18n.language) {
+        const base = i18n.language.split('-')[0];
+        if (effectiveSupportedLngs.includes(base) && base !== i18n.language) {
             await i18n.changeLanguage(base);
         }
     }
 
-    // Force language when defaultLanguage was explicitly passed (in case init didn't set it)
-    if (options?.defaultLanguage && i18n.language !== options.defaultLanguage) {
+    // Use defaultLanguage only when no valid language was detected or persisted (act as fallback, not override)
+    const currentBase = i18n.language?.split('-')[0];
+    const hasValidDetected = currentBase && effectiveSupportedLngs.includes(currentBase);
+    if (options?.defaultLanguage && !hasValidDetected) {
         await i18n.changeLanguage(options.defaultLanguage);
     }
 

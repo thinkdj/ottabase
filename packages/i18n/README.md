@@ -123,7 +123,10 @@ Wraps your application to provide i18n context.
 **Props:**
 
 - `children`: ReactNode - Your app components
-- `defaultLanguage?`: SupportedLanguage - Initial language (default: 'en')
+- `defaultLanguage?`: SupportedLanguage - Fallback when no language is detected or persisted (does not override
+  localStorage/navigator)
+- `supportedLngs?`: readonly string[] - Languages the app allows (constrains package list; e.g. app `enabledLanguages`)
+- `fallbackLng?`: string - Fallback when a translation is missing (defaults to defaultLanguage or 'en')
 - `debug?`: boolean - Enable debug mode (default: false)
 - `fallback?`: ReactNode - Loading fallback component
 
@@ -145,7 +148,10 @@ Initialize i18next instance.
 
 **Options:**
 
-- `defaultLanguage?`: SupportedLanguage
+- `defaultLanguage?`: SupportedLanguage - Used only when no language is detected (localStorage/navigator) or detected
+  language is not in supportedLngs
+- `supportedLngs?`: readonly string[] - Allowed languages (passed to i18next)
+- `fallbackLng?`: string - Fallback for missing translations
 - `debug?`: boolean
 
 #### `supportedLanguages`

@@ -60,9 +60,9 @@ describe('Integration Tests', () => {
                 );
             }
 
-            // Initial render with English
+            // Initial render with English (supportedLngs so we get 'en' even if previous test left another lang)
             render(
-                <I18nProvider defaultLanguage="en">
+                <I18nProvider defaultLanguage="en" supportedLngs={['en', 'fr', 'de']}>
                     <App />
                 </I18nProvider>,
             );

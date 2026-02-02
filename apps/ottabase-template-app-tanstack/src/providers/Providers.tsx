@@ -40,7 +40,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     return (
         <ProviderState>
-            <I18nProvider defaultLanguage={i18nConfig.defaultLanguage} resources={appResources}>
+            <I18nProvider
+                defaultLanguage={i18nConfig.defaultLanguage}
+                supportedLngs={i18nConfig.enabledLanguages}
+                fallbackLng={i18nConfig.fallbackLanguage}
+                resources={appResources}
+            >
                 <LanguageManager />
                 <BlogStudioProvider>
                     <OttaQueryProvider apiClient={api}>

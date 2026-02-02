@@ -10,8 +10,13 @@ export const initReactI18n = async (options?: InitI18nOptions): Promise<typeof i
         await initI18n(options);
         return i18n;
     }
-    // Already initialized: apply defaultLanguage so provider options take effect (e.g. in tests)
-    if (options?.defaultLanguage && i18n.language !== options.defaultLanguage) {
+    // Already initialized: only apply defaultLanguage when current language is not in supported set (e.g. in tests)
+    if (options?.defaultLanguage && options.supportedLngs?.length) {
+        const currentBase = i18n.language?.split('-')[0];
+        if (!currentBase || !options.supportedLngs.includes(currentBase)) {
+            await i18n.changeLanguage(options.defaultLanguage);
+        }
+    } else if (options?.defaultLanguage && i18n.language !== options.defaultLanguage) {
         await i18n.changeLanguage(options.defaultLanguage);
     }
     return i18n;
@@ -38,12 +43,26 @@ export interface I18nProviderProps extends InitI18nOptions {
  * }
  * ```
  */
-export function I18nProvider({ children, defaultLanguage, debug, resources, fallback = null }: I18nProviderProps) {
+export function I18nProvider({
+    children,
+    defaultLanguage,
+    supportedLngs,
+    fallbackLng,
+    debug,
+    resources,
+    fallback = null,
+}: I18nProviderProps) {
     const [ready, setReady] = useState(false);
 
     // Run once on mount; each test mounts a new provider with its own options
     useEffect(() => {
-        initReactI18n({ defaultLanguage, debug, resources }).then(() => setReady(true));
+        initReactI18n({
+            defaultLanguage,
+            supportedLngs,
+            fallbackLng,
+            debug,
+            resources,
+        }).then(() => setReady(true));
     }, []);
 
     if (!ready) {

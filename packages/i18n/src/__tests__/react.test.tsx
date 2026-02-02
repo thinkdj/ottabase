@@ -53,7 +53,7 @@ describe('React Integration', () => {
 
         it('should initialize with custom default language', async () => {
             render(
-                <I18nProvider defaultLanguage="fr">
+                <I18nProvider defaultLanguage="fr" supportedLngs={['fr']}>
                     <TestComponent />
                 </I18nProvider>,
             );
@@ -135,7 +135,7 @@ describe('React Integration', () => {
             }
 
             render(
-                <I18nProvider defaultLanguage="es">
+                <I18nProvider defaultLanguage="es" supportedLngs={['es']}>
                     <HookTest />
                 </I18nProvider>,
             );

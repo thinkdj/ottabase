@@ -5,6 +5,7 @@ import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
 import { ThemeSwitcher } from '@/ottabase/components/ThemeSwitcher';
 import { APP_META } from '@/ottabase/config/app.config';
+import { i18nConfig } from '@/ottabase/config/i18n.config';
 import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
 import { Avatar, AvatarFallback, AvatarImage, Button, Toaster } from '@ottabase/ui-shadcn';
 import {
@@ -90,7 +91,7 @@ function RootLayout() {
 
                         <ThemeSwitcher />
                         <DarkModeToggle type="button" title="Toggle dark/light mode" />
-                        <LanguageSwitcher showLabel={false} />
+                        <LanguageSwitcher languages={i18nConfig.enabledLanguages} showLabel={false} />
 
                         {isAuthenticated ? (
                             <div className="flex items-center gap-2 ml-2 pl-2 border-l">
