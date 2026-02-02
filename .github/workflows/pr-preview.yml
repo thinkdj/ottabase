@@ -25,8 +25,7 @@ jobs:
                   PR_TITLE: ${{ github.event.pull_request.title }}
                   PR_BODY: ${{ github.event.pull_request.body || '' }}
               run: |
-                  COMBINED="${PR_TITLE} ${PR_BODY}"
-                  if printf '%s\n' "$COMBINED" | grep -qiE '#skippr|#skipdeploy'; then
+                  if printf '%s\n' "$PR_TITLE" "$PR_BODY" | grep -qiE '#skippr|#skipdeploy'; then
                     echo "skip_pr=true" >> $GITHUB_OUTPUT
                     echo "⏭️  Skipping PR preview: #skippr or #skipdeploy found in PR title/description"
                   else
