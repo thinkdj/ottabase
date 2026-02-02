@@ -20,10 +20,14 @@ export {
 // Cron scheduler
 export { ScheduledTask, scheduledTasksTable, type NewScheduledTaskType, type ScheduledTaskType } from './ScheduledTask';
 
-// RBAC models
+// Multi-tenant organization models
+export { Organization, organizationsTable, type NewOrganizationType, type OrganizationType } from './Organization';
+export { OrganizationMember, organizationMembersTable, type NewOrganizationMemberType, type OrganizationMemberType } from './OrganizationMember';
+
+// RBAC models (with tenant + app scoping)
 export { Role, rolesTable, type NewRoleType, type RoleType } from './Role';
 export { Permission, permissionsTable, type NewPermissionType, type PermissionType } from './Permission';
 export { UserRole, userRolesTable, type NewUserRoleType, type UserRoleType } from './UserRole';
 
-// Audit logging
+// Audit logging (with tenant + app scoping)
 export { AuditLog, auditLogsTable, type NewAuditLogType, type AuditLogType } from './AuditLog';

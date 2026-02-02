@@ -30,12 +30,14 @@ export type AuditAction =
 export type AuditStatus = 'success' | 'failure' | 'error';
 
 /**
- * Audit log data (multi-tenant aware)
+ * Audit log data (multi-tenant and multi-app aware)
+ * Hierarchy: Tenant > App > User
  */
 export interface AuditLogData {
     userId?: string;
     userEmail?: string;
     organizationId?: string; // Organization/tenant context
+    appId?: string; // App context (web, admin, api)
     action: AuditAction | string;
     resourceType: string;
     resourceId?: string;
@@ -48,12 +50,14 @@ export interface AuditLogData {
 }
 
 /**
- * Request context for audit logging (multi-tenant aware)
+ * Request context for audit logging (multi-tenant and multi-app aware)
+ * Hierarchy: Tenant > App > User
  */
 export interface AuditRequestContext {
     userId?: string;
     userEmail?: string;
     organizationId?: string; // Organization/tenant context
+    appId?: string; // App context (web, admin, api)
     ipAddress?: string;
     userAgent?: string;
     url?: string;

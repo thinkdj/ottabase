@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/rbac - Cache Layer (Production-Optimized)
+// @ottabase/rbac - Cache Layer (Production-Optimized, Multi-Tenant Secure)
 // ============================================================
 
 import type { KVNamespace } from '@cloudflare/workers-types';
@@ -13,7 +13,6 @@ export interface RBACCacheConfig {
     ttl?: number; // Cache TTL in seconds (default: 300 = 5 minutes)
     prefix?: string; // Cache key prefix (default: 'rbac:')
     enabled?: boolean; // Enable/disable caching (default: true if KV is provided)
-    version?: string; // Cache version for instant invalidation (default: 'v1')
 }
 
 /**
@@ -60,12 +59,20 @@ class RequestCache {
 }
 
 /**
- * RBAC cache manager with multi-tenant support and cache versioning
+ * RBAC cache manager with enforced multi-tenant security
+ *
+ * SECURITY: organizationId is REQUIRED in all operations to prevent cross-tenant data leakage
+ * PERFORMANCE: Per-organization cache versioning enables O(1) invalidation
+ *
+ * Hierarchy: Tenant > App > User
+ *
+ * Cache Key Format:
+ * - With app: rbac:org:org-123:v1:app:web:user:user-456
+ * - Without app: rbac:org:org-123:v1:user:user-456
+ *
  * Provides two-level caching:
  * 1. Request-level in-memory cache (short TTL, same request)
  * 2. KV cache (longer TTL, across requests)
- *
- * Cache versioning enables O(1) invalidation instead of O(n)
  */
 export class RBACCache {
     private kv?: KVNamespace;
@@ -73,8 +80,6 @@ export class RBACCache {
     private prefix: string;
     private enabled: boolean;
     private requestCache: RequestCache;
-    private version: string;
-    private versionCacheKey: string;
 
     constructor(config: RBACCacheConfig = {}) {
         this.kv = config.kv;
@@ -82,65 +87,81 @@ export class RBACCache {
         this.prefix = config.prefix || 'rbac:';
         this.enabled = config.enabled !== undefined ? config.enabled : !!config.kv;
         this.requestCache = new RequestCache();
-        this.version = config.version || 'v1';
-        this.versionCacheKey = `${this.prefix}cache_version`;
     }
 
     /**
-     * Get current cache version from KV (or use default)
-     * Cache version enables instant invalidation
+     * Get current cache version for an organization from KV
+     * Each organization has its own cache version for isolated invalidation
+     * Format: rbac:version:org:org-123 -> "v1", "v2", etc.
      */
-    private async getCacheVersion(): Promise<string> {
-        if (!this.kv) return this.version;
+    private async getOrgCacheVersion(organizationId: string): Promise<string> {
+        if (!this.kv) return 'v1';
 
         try {
-            const stored = await this.kv.get(this.versionCacheKey, 'text');
-            return stored || this.version;
+            const versionKey = `${this.prefix}version:org:${organizationId}`;
+            const stored = await this.kv.get(versionKey, 'text');
+            return stored || 'v1';
         } catch (error) {
-            console.error('Failed to get cache version from KV:', error);
-            return this.version;
+            console.error(`Failed to get cache version for org ${organizationId}:`, error);
+            return 'v1';
         }
     }
 
     /**
-     * Increment cache version for instant O(1) invalidation
-     * Old cache entries will naturally expire, no need to delete them
+     * Increment cache version for a specific organization (O(1) invalidation!)
+     * Only affects one organization, not all tenants
      */
-    private async incrementCacheVersion(): Promise<string> {
-        if (!this.kv) return this.version;
+    private async incrementOrgCacheVersion(organizationId: string): Promise<string> {
+        if (!this.kv) return 'v1';
 
         try {
-            const current = await this.getCacheVersion();
+            const current = await this.getOrgCacheVersion(organizationId);
             const match = current.match(/v(\d+)/);
             const num = match ? parseInt(match[1], 10) : 1;
             const newVersion = `v${num + 1}`;
 
-            await this.kv.put(this.versionCacheKey, newVersion, {
+            const versionKey = `${this.prefix}version:org:${organizationId}`;
+            await this.kv.put(versionKey, newVersion, {
                 expirationTtl: 86400 * 30, // 30 days
             });
 
-            this.version = newVersion;
             return newVersion;
         } catch (error) {
-            console.error('Failed to increment cache version:', error);
-            return this.version;
+            console.error(`Failed to increment cache version for org ${organizationId}:`, error);
+            return 'v1';
         }
     }
 
     /**
-     * Build cache key with tenant/org scoping and versioning
-     * Format: rbac:v1:org:org-123:user:user-456
+     * Build cache key with REQUIRED organization scoping and optional app scoping
+     *
+     * Format examples:
+     * - With app: rbac:org:org-123:v1:app:web:user:user-456
+     * - Without app: rbac:org:org-123:v1:user:user-456
+     *
+     * @param type Cache entry type (user, roles, perms)
+     * @param userId User ID
+     * @param organizationId Organization ID (REQUIRED for security)
+     * @param appId Optional app ID (null means all apps)
+     * @param version Cache version (will be fetched if not provided)
      */
-    private buildCacheKey(
+    private async buildCacheKey(
         type: 'user' | 'roles' | 'perms',
         userId: string,
-        organizationId?: string
-    ): string {
-        const version = this.version;
-        const parts = [this.prefix, version];
+        organizationId: string,
+        appId?: string | null,
+        version?: string
+    ): Promise<string> {
+        const orgVersion = version || await this.getOrgCacheVersion(organizationId);
+        const parts = [
+            this.prefix.replace(/:$/, ''), // Remove trailing colon if exists
+            'org',
+            organizationId,
+            orgVersion,
+        ];
 
-        if (organizationId) {
-            parts.push('org', organizationId);
+        if (appId) {
+            parts.push('app', appId);
         }
 
         parts.push(type, userId);
@@ -148,13 +169,23 @@ export class RBACCache {
     }
 
     /**
-     * Get user RBAC context from cache (tenant-aware)
+     * Get user RBAC context from cache
+     * @param userId User ID
+     * @param organizationId Organization ID (REQUIRED for security)
+     * @param appId Optional app ID
      */
-    async getUserContext(userId: string, organizationId?: string): Promise<RBACContext | null> {
+    async getUserContext(
+        userId: string,
+        organizationId: string,
+        appId?: string | null
+    ): Promise<RBACContext | null> {
         if (!this.enabled) return null;
+        if (!organizationId) {
+            throw new Error('organizationId is required for tenant-scoped caching');
+        }
 
-        const version = await this.getCacheVersion();
-        const requestCacheKey = this.buildCacheKey('user', userId, organizationId);
+        const version = await this.getOrgCacheVersion(organizationId);
+        const requestCacheKey = await this.buildCacheKey('user', userId, organizationId, appId, version);
 
         // Check request cache first (fastest)
         const requestCached = this.requestCache.get<RBACContext>(requestCacheKey);
@@ -163,8 +194,7 @@ export class RBACCache {
         // Check KV cache
         if (this.kv) {
             try {
-                const kvKey = this.buildCacheKey('user', userId, organizationId);
-                const cached = await this.kv.get(kvKey, 'json');
+                const cached = await this.kv.get(requestCacheKey, 'json');
                 if (cached) {
                     const context = cached as RBACContext;
                     // Store in request cache for fast subsequent access
@@ -180,22 +210,33 @@ export class RBACCache {
     }
 
     /**
-     * Set user RBAC context in cache (tenant-aware)
+     * Set user RBAC context in cache
+     * @param userId User ID
+     * @param context RBAC context
+     * @param organizationId Organization ID (REQUIRED for security)
+     * @param appId Optional app ID
      */
-    async setUserContext(userId: string, context: RBACContext, organizationId?: string): Promise<void> {
+    async setUserContext(
+        userId: string,
+        context: RBACContext,
+        organizationId: string,
+        appId?: string | null
+    ): Promise<void> {
         if (!this.enabled) return;
+        if (!organizationId) {
+            throw new Error('organizationId is required for tenant-scoped caching');
+        }
 
-        const version = await this.getCacheVersion();
-        const requestCacheKey = this.buildCacheKey('user', userId, organizationId);
+        const version = await this.getOrgCacheVersion(organizationId);
+        const cacheKey = await this.buildCacheKey('user', userId, organizationId, appId, version);
 
         // Always set in request cache
-        this.requestCache.set(requestCacheKey, context, 60);
+        this.requestCache.set(cacheKey, context, 60);
 
         // Set in KV if available
         if (this.kv) {
             try {
-                const kvKey = this.buildCacheKey('user', userId, organizationId);
-                await this.kv.put(kvKey, JSON.stringify(context), {
+                await this.kv.put(cacheKey, JSON.stringify(context), {
                     expirationTtl: this.ttl,
                 });
             } catch (error) {
@@ -205,26 +246,35 @@ export class RBACCache {
     }
 
     /**
-     * Get user roles from cache (tenant-aware)
+     * Get user roles from cache
+     * @param userId User ID
+     * @param organizationId Organization ID (REQUIRED for security)
+     * @param appId Optional app ID
      */
-    async getUserRoles(userId: string, organizationId?: string): Promise<string[] | null> {
+    async getUserRoles(
+        userId: string,
+        organizationId: string,
+        appId?: string | null
+    ): Promise<string[] | null> {
         if (!this.enabled) return null;
+        if (!organizationId) {
+            throw new Error('organizationId is required for tenant-scoped caching');
+        }
 
-        const version = await this.getCacheVersion();
-        const requestCacheKey = this.buildCacheKey('roles', userId, organizationId);
+        const version = await this.getOrgCacheVersion(organizationId);
+        const cacheKey = await this.buildCacheKey('roles', userId, organizationId, appId, version);
 
         // Check request cache first
-        const requestCached = this.requestCache.get<string[]>(requestCacheKey);
+        const requestCached = this.requestCache.get<string[]>(cacheKey);
         if (requestCached) return requestCached;
 
         // Check KV cache
         if (this.kv) {
             try {
-                const kvKey = this.buildCacheKey('roles', userId, organizationId);
-                const cached = await this.kv.get(kvKey, 'json');
+                const cached = await this.kv.get(cacheKey, 'json');
                 if (cached) {
                     const roles = cached as string[];
-                    this.requestCache.set(requestCacheKey, roles, 60);
+                    this.requestCache.set(cacheKey, roles, 60);
                     return roles;
                 }
             } catch (error) {
@@ -236,22 +286,33 @@ export class RBACCache {
     }
 
     /**
-     * Set user roles in cache (tenant-aware)
+     * Set user roles in cache
+     * @param userId User ID
+     * @param roles User roles
+     * @param organizationId Organization ID (REQUIRED for security)
+     * @param appId Optional app ID
      */
-    async setUserRoles(userId: string, roles: string[], organizationId?: string): Promise<void> {
+    async setUserRoles(
+        userId: string,
+        roles: string[],
+        organizationId: string,
+        appId?: string | null
+    ): Promise<void> {
         if (!this.enabled) return;
+        if (!organizationId) {
+            throw new Error('organizationId is required for tenant-scoped caching');
+        }
 
-        const version = await this.getCacheVersion();
-        const requestCacheKey = this.buildCacheKey('roles', userId, organizationId);
+        const version = await this.getOrgCacheVersion(organizationId);
+        const cacheKey = await this.buildCacheKey('roles', userId, organizationId, appId, version);
 
         // Always set in request cache
-        this.requestCache.set(requestCacheKey, roles, 60);
+        this.requestCache.set(cacheKey, roles, 60);
 
         // Set in KV if available
         if (this.kv) {
             try {
-                const kvKey = this.buildCacheKey('roles', userId, organizationId);
-                await this.kv.put(kvKey, JSON.stringify(roles), {
+                await this.kv.put(cacheKey, JSON.stringify(roles), {
                     expirationTtl: this.ttl,
                 });
             } catch (error) {
@@ -261,26 +322,35 @@ export class RBACCache {
     }
 
     /**
-     * Get user permissions from cache (tenant-aware)
+     * Get user permissions from cache
+     * @param userId User ID
+     * @param organizationId Organization ID (REQUIRED for security)
+     * @param appId Optional app ID
      */
-    async getUserPermissions(userId: string, organizationId?: string): Promise<string[] | null> {
+    async getUserPermissions(
+        userId: string,
+        organizationId: string,
+        appId?: string | null
+    ): Promise<string[] | null> {
         if (!this.enabled) return null;
+        if (!organizationId) {
+            throw new Error('organizationId is required for tenant-scoped caching');
+        }
 
-        const version = await this.getCacheVersion();
-        const requestCacheKey = this.buildCacheKey('perms', userId, organizationId);
+        const version = await this.getOrgCacheVersion(organizationId);
+        const cacheKey = await this.buildCacheKey('perms', userId, organizationId, appId, version);
 
         // Check request cache first
-        const requestCached = this.requestCache.get<string[]>(requestCacheKey);
+        const requestCached = this.requestCache.get<string[]>(cacheKey);
         if (requestCached) return requestCached;
 
         // Check KV cache
         if (this.kv) {
             try {
-                const kvKey = this.buildCacheKey('perms', userId, organizationId);
-                const cached = await this.kv.get(kvKey, 'json');
+                const cached = await this.kv.get(cacheKey, 'json');
                 if (cached) {
                     const permissions = cached as string[];
-                    this.requestCache.set(requestCacheKey, permissions, 60);
+                    this.requestCache.set(cacheKey, permissions, 60);
                     return permissions;
                 }
             } catch (error) {
@@ -292,22 +362,33 @@ export class RBACCache {
     }
 
     /**
-     * Set user permissions in cache (tenant-aware)
+     * Set user permissions in cache
+     * @param userId User ID
+     * @param permissions User permissions
+     * @param organizationId Organization ID (REQUIRED for security)
+     * @param appId Optional app ID
      */
-    async setUserPermissions(userId: string, permissions: string[], organizationId?: string): Promise<void> {
+    async setUserPermissions(
+        userId: string,
+        permissions: string[],
+        organizationId: string,
+        appId?: string | null
+    ): Promise<void> {
         if (!this.enabled) return;
+        if (!organizationId) {
+            throw new Error('organizationId is required for tenant-scoped caching');
+        }
 
-        const version = await this.getCacheVersion();
-        const requestCacheKey = this.buildCacheKey('perms', userId, organizationId);
+        const version = await this.getOrgCacheVersion(organizationId);
+        const cacheKey = await this.buildCacheKey('perms', userId, organizationId, appId, version);
 
         // Always set in request cache
-        this.requestCache.set(requestCacheKey, permissions, 60);
+        this.requestCache.set(cacheKey, permissions, 60);
 
         // Set in KV if available
         if (this.kv) {
             try {
-                const kvKey = this.buildCacheKey('perms', userId, organizationId);
-                await this.kv.put(kvKey, JSON.stringify(permissions), {
+                await this.kv.put(cacheKey, JSON.stringify(permissions), {
                     expirationTtl: this.ttl,
                 });
             } catch (error) {
@@ -317,47 +398,68 @@ export class RBACCache {
     }
 
     /**
-     * Invalidate all cache for a user (tenant-aware)
-     * Only clears request cache, KV entries expire naturally
+     * Invalidate all cache for a specific user in an organization
+     * @param userId User ID
+     * @param organizationId Organization ID (REQUIRED)
+     * @param appId Optional app ID (if specified, only invalidate for that app)
      */
-    async invalidateUser(userId: string, organizationId?: string): Promise<void> {
-        // Clear request cache for this user (all types)
-        const userPattern = organizationId
-            ? new RegExp(`${this.prefix}.*:org:${organizationId}:.*:${userId}$`)
-            : new RegExp(`${this.prefix}.*:user:${userId}$|${this.prefix}.*:roles:${userId}$|${this.prefix}.*:perms:${userId}$`);
+    async invalidateUser(
+        userId: string,
+        organizationId: string,
+        appId?: string | null
+    ): Promise<void> {
+        if (!organizationId) {
+            throw new Error('organizationId is required for tenant-scoped cache invalidation');
+        }
 
-        this.requestCache.deletePattern(userPattern);
+        // Clear request cache for this user
+        const pattern = appId
+            ? new RegExp(`${this.prefix}org:${organizationId}:.*:app:${appId}:.*:${userId}$`)
+            : new RegExp(`${this.prefix}org:${organizationId}:.*:${userId}$`);
+
+        this.requestCache.deletePattern(pattern);
 
         // Note: We don't delete from KV - entries expire naturally
         // This avoids costly KV.delete() operations
     }
 
     /**
-     * Invalidate role cache for all users (O(1) operation!)
-     * Increments cache version instead of deleting individual entries
-     * Old cache entries will naturally expire based on TTL
+     * Invalidate role cache for an entire organization (O(1) operation!)
+     * Increments the organization's cache version, instantly invalidating all cached data
+     *
+     * @param organizationId Organization ID (REQUIRED)
+     * @param roleName Optional role name for logging
      */
-    async invalidateRole(roleName: string): Promise<void> {
-        // Increment cache version for instant invalidation
-        await this.incrementCacheVersion();
+    async invalidateOrganization(
+        organizationId: string,
+        roleName?: string
+    ): Promise<void> {
+        if (!organizationId) {
+            throw new Error('organizationId is required for organization cache invalidation');
+        }
 
-        // Clear request cache
-        this.requestCache.clear();
+        // Increment cache version for THIS organization only (O(1)!)
+        const newVersion = await this.incrementOrgCacheVersion(organizationId);
 
-        console.log(`Cache invalidated for role: ${roleName}. New version: ${this.version}`);
+        // Clear request cache for this organization
+        const pattern = new RegExp(`${this.prefix}org:${organizationId}:`);
+        this.requestCache.deletePattern(pattern);
+
+        const roleInfo = roleName ? ` (role: ${roleName})` : '';
+        console.log(`Cache invalidated for organization ${organizationId}${roleInfo}. New version: ${newVersion}`);
     }
 
     /**
      * Clear all caches (useful for testing or emergency)
-     * This is the only O(n) operation, but should rarely be used
+     * WARNING: This is an O(n) operation across ALL organizations
      */
     async clear(): Promise<void> {
         this.requestCache.clear();
 
         if (this.kv) {
             try {
-                // Only list and delete entries with current version
-                const list = await this.kv.list({ prefix: `${this.prefix}${this.version}:` });
+                // List and delete all entries with our prefix
+                const list = await this.kv.list({ prefix: this.prefix });
                 if (list.keys.length > 0) {
                     const deletePromises = list.keys.map((key) => this.kv!.delete(key.name));
                     await Promise.all(deletePromises);
@@ -369,16 +471,18 @@ export class RBACCache {
     }
 
     /**
-     * Get current cache statistics (for monitoring)
+     * Get current cache statistics for an organization (for monitoring)
      */
-    async getStats(): Promise<{
+    async getOrgStats(organizationId: string): Promise<{
+        organizationId: string;
         version: string;
         requestCacheSize: number;
         enabled: boolean;
         kvAvailable: boolean;
     }> {
         return {
-            version: await this.getCacheVersion(),
+            organizationId,
+            version: await this.getOrgCacheVersion(organizationId),
             requestCacheSize: this.requestCache['cache'].size,
             enabled: this.enabled,
             kvAvailable: !!this.kv,
