@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
-import { Activity, Clock, Database, FileText, Layers, Palette, UserPlus } from 'lucide-react';
+import { Activity, Building2, Clock, Database, FileText, Layers, Palette, Shield, UserPlus } from 'lucide-react';
 
 export function AdminIndexPage() {
     const adminLinks = [
@@ -16,6 +16,20 @@ export function AdminIndexPage() {
             description: 'Manage blog themes and plugins (activate theme, enable/disable plugins).',
             href: '/admin/blog/studio',
             icon: Palette,
+            disabled: false,
+        },
+        {
+            title: 'Organizations',
+            description: 'Manage multi-tenant organizations, members, and settings.',
+            href: '/organizations',
+            icon: Building2,
+            disabled: false,
+        },
+        {
+            title: 'RBAC Administration',
+            description: 'Manage roles, permissions, and access control for multi-tenant security.',
+            href: '/admin/rbac',
+            icon: Shield,
             disabled: false,
         },
         {
@@ -61,14 +75,6 @@ export function AdminIndexPage() {
             external: true,
             disabled: false,
         },
-        // Add placeholders for future panels
-        // {
-        //   title: "User Management (Future)",
-        //   description: "Manage users, roles, and permissions.",
-        //   href: "/admin/users",
-        //   icon: ShieldAlert,
-        //   disabled: true
-        // }
     ];
 
     return (

@@ -635,6 +635,48 @@ const blogDetailRoute = new Route({
     ),
 });
 
+// Organizations routes
+const organizationsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/organizations',
+    component: lazyRouteComponent(() =>
+        import('@/pages/organizations/OrganizationsPage').then((m) => ({
+            default: m.OrganizationsPage,
+        })),
+    ),
+});
+
+const organizationMembersRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/organizations/$organizationId/members',
+    component: lazyRouteComponent(() =>
+        import('@/pages/organizations/OrganizationMembersPage').then((m) => ({
+            default: m.OrganizationMembersPage,
+        })),
+    ),
+});
+
+// Admin RBAC routes
+const adminRBACRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/rbac',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/rbac/RBACAdminPage').then((m) => ({
+            default: m.RBACAdminPage,
+        })),
+    ),
+});
+
+const adminRBACRolesRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/rbac/roles',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/rbac/RBACRolesPage').then((m) => ({
+            default: m.RBACRolesPage,
+        })),
+    ),
+});
+
 demoLayoutRoute.addChildren([
     demoIndexRoute,
     demoMantineRoute,
@@ -680,8 +722,12 @@ const routeTree = rootRoute.addChildren([
     adminBlogEditRoute,
     adminBlogStudioRoute,
     adminDbRoute,
+    adminRBACRoute,
+    adminRBACRolesRoute,
     blogListRoute,
     blogDetailRoute,
+    organizationsRoute,
+    organizationMembersRoute,
 ]);
 
 const browserHistory = createBrowserHistory();
