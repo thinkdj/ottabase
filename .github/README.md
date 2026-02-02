@@ -125,10 +125,12 @@ Generated file is `wrangler.production.jsonc` (or `wrangler.preview.jsonc` for P
   apps).
 - **Change detection:** Only apps with changes (in that app or under `packages/`) are deployed unless `FORCE_DEPLOY` is
   true.
-- **Skip:** If the commit message on `main` contains `#skipdeploy`, the deployment matrix is empty and no deploy runs.
-  See [Skip deployment](#skip-deployment).
+- **Skip:** If the commit message on `main` contains `#skipdeploy`, it is checked first (`check-skip-deploy` job); then
+  `build-packages` and deploy are skipped, and `prepare-deployment` outputs an empty matrix. See
+  [Skip deployment](#skip-deployment).
 
-**Deploy logic** (prepare-deployment job, before building the matrix):
+**Deploy logic** — `#skipdeploy` is checked first (`check-skip-deploy`). When not skipping, the following run in
+`prepare-deployment`:
 
 1. **Target apps** — From secret `APPS_TO_DEPLOY` or default (e.g. `ottabase-template-app-tanstack`).
 2. **File change detection** — `CHANGED_FILES` (e.g. `git diff HEAD~1 HEAD`), then `PACKAGES_CHANGED` (any path under

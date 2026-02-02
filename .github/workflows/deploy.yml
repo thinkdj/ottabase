@@ -13,14 +13,35 @@ on:
                 type: boolean
 
 jobs:
+    # Check commit message for #skipdeploy first (skip build-packages + deploy when set)
+    check-skip-deploy:
+        runs-on: ubuntu-latest
+        outputs:
+            skip_deploy: ${{ steps.check.outputs.skip_deploy }}
+        steps:
+            - name: Check for #skipdeploy
+              id: check
+              env:
+                  COMMIT_MSG: ${{ github.event.head_commit.message || github.event.commits[0].message || '' }}
+              run: |
+                  if printf '%s\n' "$COMMIT_MSG" | grep -qiE '#skipdeploy'; then
+                    echo "skip_deploy=true" >> $GITHUB_OUTPUT
+                    echo "⏭️  Skipping deployment: #skipdeploy found in commit message"
+                  else
+                    echo "skip_deploy=false" >> $GITHUB_OUTPUT
+                    echo "✅ No #skipdeploy – deployment will run"
+                  fi
+
     # Build and cache packages first (reusable workflow)
     build-packages:
+        needs: check-skip-deploy
+        if: needs.check-skip-deploy.outputs.skip_deploy != 'true'
         name: Build Packages
         uses: ./.github/workflows/build-packages.yml
 
     # Prepare deployment matrix based on target apps and code changes
     prepare-deployment:
-        needs: build-packages
+        needs: check-skip-deploy
         runs-on: ubuntu-latest
         timeout-minutes: 5
         name: Prepare deployment
@@ -41,15 +62,15 @@ jobs:
             - name: Find target apps and changes / Build deployment matrix
               id: build-matrix
               env:
-                  COMMIT_MSG: ${{ github.event.head_commit.message || github.event.commits[0].message || '' }}
+                  SKIP_DEPLOY: ${{ needs.check-skip-deploy.outputs.skip_deploy }}
               run: |
                   echo "🔍 Preparing deployment matrix..."
 
-                  # Check merge/commit message for #skipdeploy (skip production deploy)
-                  if printf '%s\n' "$COMMIT_MSG" | grep -qiE '#skipdeploy'; then
+                  # Skip when #skipdeploy was detected in check-skip-deploy (build-packages was skipped)
+                  if [ "$SKIP_DEPLOY" = "true" ]; then
                     echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
                     echo "has-apps=false" >> $GITHUB_OUTPUT
-                    echo "⏭️  Skipping deployment: #skipdeploy found in commit message"
+                    echo "⏭️  Skipping deployment: #skipdeploy (checked early)"
                     exit 0
                   fi
 

@@ -40,10 +40,10 @@ jobs:
         if: github.event.action != 'closed' && needs.check-skip-pr.outputs.skip_pr != 'true'
         uses: ./.github/workflows/build-packages.yml
 
-    # Prepare deployment matrix for preview environments
+    # Prepare deployment matrix for preview environments (skipped when build-packages is skipped, i.e. skip_pr=true)
     prepare-deployment:
         needs: [build-packages, check-skip-pr]
-        if: github.event.action != 'closed' && needs.check-skip-pr.outputs.skip_pr != 'true'
+        if: github.event.action != 'closed'
         runs-on: ubuntu-latest
         timeout-minutes: 5
         name: Prepare preview deployment
