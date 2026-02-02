@@ -3,7 +3,7 @@
 // ============================================================
 
 import { eq, and, sql } from 'drizzle-orm';
-import { BaseModel } from '../base/BaseModel';
+import { BaseModel, type PackageType, type ModelFields } from '../base/BaseModel';
 import {
     organizationMembersTable,
     type OrganizationMemberType,
@@ -22,6 +22,131 @@ export class OrganizationMember extends BaseModel {
     static table = organizationMembersTable;
     static primaryKey = 'userId'; // Composite key, but we'll use userId as primary
     static connection = 'default';
+    static packageName = '@ottabase/ottaorm';
+    static packageType: PackageType = 'core';
+
+    // UI/Forms metadata
+    static displayName = 'Organization Member';
+    static displayNamePlural = 'Organization Members';
+    static defaultSort = 'joinedAt';
+    static defaultSortDirection = 'desc' as const;
+
+    static casts = {
+        joinedAt: 'date' as const,
+        invitedAt: 'date' as const,
+        metadata: 'json' as const,
+    };
+
+    protected static fields: ModelFields = {
+        userId: {
+            type: 'string',
+            primaryKey: true,
+            editable: false,
+            uiConfig: {
+                label: 'User ID',
+            },
+            tableConfig: {
+                visible: true,
+            },
+        },
+        organizationId: {
+            type: 'string',
+            editable: false,
+            uiConfig: {
+                label: 'Organization ID',
+            },
+            tableConfig: {
+                visible: true,
+            },
+        },
+        role: {
+            type: 'string',
+            editable: true,
+            uiConfig: {
+                label: 'Role',
+                description: 'Member role in organization',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'select',
+                options: [
+                    { value: 'owner', label: 'Owner' },
+                    { value: 'admin', label: 'Admin' },
+                    { value: 'member', label: 'Member' },
+                ],
+            },
+            tableConfig: {
+                visible: true,
+            },
+            validation: {
+                rules: 'required|in:owner,admin,member',
+                messages: {
+                    required: 'Role is required',
+                    in: 'Invalid role',
+                },
+            },
+        },
+        status: {
+            type: 'string',
+            editable: true,
+            uiConfig: {
+                label: 'Status',
+                description: 'Membership status',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'select',
+                options: [
+                    { value: 'active', label: 'Active' },
+                    { value: 'invited', label: 'Invited' },
+                    { value: 'suspended', label: 'Suspended' },
+                ],
+            },
+            tableConfig: {
+                visible: true,
+            },
+        },
+        invitedBy: {
+            type: 'string',
+            editable: false,
+            uiConfig: {
+                label: 'Invited By',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+        invitedAt: {
+            type: 'date',
+            editable: false,
+            uiConfig: {
+                label: 'Invited At',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+        joinedAt: {
+            type: 'date',
+            editable: false,
+            uiConfig: {
+                label: 'Joined At',
+            },
+            tableConfig: {
+                visible: true,
+            },
+        },
+        metadata: {
+            type: 'json',
+            editable: true,
+            uiConfig: {
+                label: 'Metadata',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+    };
 
     /**
      * Add a user to an organization
