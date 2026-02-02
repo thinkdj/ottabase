@@ -95,11 +95,17 @@ export const POST = withRBAC(
 ```typescript
 // Initialize cache once (e.g., in middleware or app setup)
 import { initRBACCache } from '@ottabase/rbac';
+import { createKVClient } from '@ottabase/cf';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 const { env } = await getCloudflareContext();
+
+// Create KV client from namespace binding
+const kvClient = createKVClient({ namespace: env.RBAC_KV });
+
+// Initialize RBAC cache with KVClient
 const cache = initRBACCache({
-  kv: env.RBAC_KV, // Your KV namespace binding
+  kv: kvClient, // Pass KVClient instance (type-safe with Result returns)
   ttl: 300, // Cache TTL in seconds (default: 300)
   prefix: 'rbac:', // Cache key prefix (default: 'rbac:')
 });

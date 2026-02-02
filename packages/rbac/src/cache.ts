@@ -2,7 +2,7 @@
 // @ottabase/rbac - Cache Layer (Production-Optimized, Multi-Tenant Secure)
 // ============================================================
 
-import type { KVNamespace } from '@cloudflare/workers-types';
+import type { KVClient } from '@ottabase/cf';
 import type { RBACContext } from './types';
 import logger from '@ottabase/logger';
 
@@ -10,7 +10,7 @@ import logger from '@ottabase/logger';
  * Cache configuration
  */
 export interface RBACCacheConfig {
-    kv?: KVNamespace;
+    kv?: KVClient;
     ttl?: number; // Cache TTL in seconds (default: 300 = 5 minutes)
     prefix?: string; // Cache key prefix (default: 'rbac:')
     enabled?: boolean; // Enable/disable caching (default: true if KV is provided)
@@ -76,7 +76,7 @@ class RequestCache {
  * 2. KV cache (longer TTL, across requests)
  */
 export class RBACCache {
-    private kv?: KVNamespace;
+    private kv?: KVClient;
     private ttl: number;
     private prefix: string;
     private enabled: boolean;
@@ -100,8 +100,12 @@ export class RBACCache {
 
         try {
             const versionKey = `${this.prefix}version:org:${organizationId}`;
-            const stored = await this.kv.get(versionKey, 'text');
-            return stored || 'v1';
+            const result = await this.kv.getText(versionKey);
+
+            if (result.success && result.data) {
+                return result.data;
+            }
+            return 'v1';
         } catch (error) {
             logger.error('Failed to get cache version for organization', { organizationId, error });
             return 'v1';
@@ -122,9 +126,17 @@ export class RBACCache {
             const newVersion = `v${num + 1}`;
 
             const versionKey = `${this.prefix}version:org:${organizationId}`;
-            await this.kv.put(versionKey, newVersion, {
+            const result = await this.kv.put(versionKey, newVersion, {
                 expirationTtl: 86400 * 30, // 30 days
             });
+
+            if (!result.success) {
+                logger.error('Failed to increment cache version for organization', {
+                    organizationId,
+                    error: result.error,
+                });
+                return current; // Return current version on error
+            }
 
             return newVersion;
         } catch (error) {
@@ -195,9 +207,9 @@ export class RBACCache {
         // Check KV cache
         if (this.kv) {
             try {
-                const cached = await this.kv.get(requestCacheKey, 'json');
-                if (cached) {
-                    const context = cached as RBACContext;
+                const result = await this.kv.getJSON<RBACContext>(requestCacheKey);
+                if (result.success && result.data) {
+                    const context = result.data;
                     // Store in request cache for fast subsequent access
                     this.requestCache.set(requestCacheKey, context, 60);
                     return context;
@@ -237,9 +249,12 @@ export class RBACCache {
         // Set in KV if available
         if (this.kv) {
             try {
-                await this.kv.put(cacheKey, JSON.stringify(context), {
+                const result = await this.kv.putJSON(cacheKey, context, {
                     expirationTtl: this.ttl,
                 });
+                if (!result.success) {
+                    logger.error('Failed to set RBAC context in KV', { error: result.error });
+                }
             } catch (error) {
                 logger.error('Failed to set RBAC context in KV', { error });
             }
@@ -272,9 +287,9 @@ export class RBACCache {
         // Check KV cache
         if (this.kv) {
             try {
-                const cached = await this.kv.get(cacheKey, 'json');
-                if (cached) {
-                    const roles = cached as string[];
+                const result = await this.kv.getJSON<string[]>(cacheKey);
+                if (result.success && result.data) {
+                    const roles = result.data;
                     this.requestCache.set(cacheKey, roles, 60);
                     return roles;
                 }
@@ -313,9 +328,12 @@ export class RBACCache {
         // Set in KV if available
         if (this.kv) {
             try {
-                await this.kv.put(cacheKey, JSON.stringify(roles), {
+                const result = await this.kv.putJSON(cacheKey, roles, {
                     expirationTtl: this.ttl,
                 });
+                if (!result.success) {
+                    logger.error('Failed to set roles in KV', { error: result.error });
+                }
             } catch (error) {
                 logger.error('Failed to set roles in KV', { error });
             }
@@ -348,9 +366,9 @@ export class RBACCache {
         // Check KV cache
         if (this.kv) {
             try {
-                const cached = await this.kv.get(cacheKey, 'json');
-                if (cached) {
-                    const permissions = cached as string[];
+                const result = await this.kv.getJSON<string[]>(cacheKey);
+                if (result.success && result.data) {
+                    const permissions = result.data;
                     this.requestCache.set(cacheKey, permissions, 60);
                     return permissions;
                 }
@@ -389,9 +407,12 @@ export class RBACCache {
         // Set in KV if available
         if (this.kv) {
             try {
-                await this.kv.put(cacheKey, JSON.stringify(permissions), {
+                const result = await this.kv.putJSON(cacheKey, permissions, {
                     expirationTtl: this.ttl,
                 });
+                if (!result.success) {
+                    logger.error('Failed to set permissions in KV', { error: result.error });
+                }
             } catch (error) {
                 logger.error('Failed to set permissions in KV', { error });
             }
@@ -460,9 +481,9 @@ export class RBACCache {
         if (this.kv) {
             try {
                 // List and delete all entries with our prefix
-                const list = await this.kv.list({ prefix: this.prefix });
-                if (list.keys.length > 0) {
-                    const deletePromises = list.keys.map((key) => this.kv!.delete(key.name));
+                const listResult = await this.kv.list({ prefix: this.prefix });
+                if (listResult.success && listResult.data.keys.length > 0) {
+                    const deletePromises = listResult.data.keys.map((key) => this.kv!.delete(key.name));
                     await Promise.all(deletePromises);
                 }
             } catch (error) {
