@@ -32,11 +32,12 @@
  */
 
 export {
-    initI18n,
+    defaultNS,
     i18n,
+    initI18n,
+    languageNames,
     resources,
     supportedLanguages,
-    languageNames,
-    defaultNS,
+    type InitI18nOptions,
     type SupportedLanguage,
 } from './config';

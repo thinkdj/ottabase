@@ -1,213 +1,274 @@
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
-import { useTranslation } from '@ottabase/i18n/react';
-import { supportedLanguages, languageNames } from '@ottabase/i18n/react';
-import { Card, Container, Stack, Title, Text, Group, Badge, Code, Table } from '@mantine/core';
+import { languageNames, supportedLanguages, Trans, useTranslation } from '@ottabase/i18n/react';
+import {
+    Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@ottabase/ui-shadcn';
 
 export function I18nDemoPage() {
     const { t, i18n } = useTranslation('common');
 
     return (
-        <Container size="lg">
-            <Stack gap="xl">
-                <div>
-                    <Title order={1} mb="md">
-                        Internationalization (i18n) Demo
-                    </Title>
-                    <Text c="dimmed">
-                        This page demonstrates the i18n functionality integrated into the Ottabase monorepo using
-                        i18next and react-i18next.
-                    </Text>
-                </div>
+        <div className="container max-w-5xl mx-auto py-8 space-y-8">
+            <div className="space-y-2">
+                <h1 className="text-4xl font-bold">Internationalization (i18n) Demo</h1>
+                <p className="text-muted-foreground">
+                    This page demonstrates the i18n functionality integrated into the Ottabase monorepo using i18next
+                    and react-i18next.
+                </p>
+            </div>
 
-                {/* Current Language */}
-                <Card shadow="sm" padding="lg" radius="md" withBorder>
-                    <Title order={3} mb="md">
-                        Current Language
-                    </Title>
-                    <Group gap="md">
-                        <Badge size="lg" variant="filled">
+            {/* Current Language */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Current Language</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center gap-4">
+                        <Badge variant="default" className="text-base px-4 py-2">
                             {languageNames[i18n.language as keyof typeof languageNames] || i18n.language}
                         </Badge>
-                        <Text size="sm" c="dimmed">
-                            Language Code: <Code>{i18n.language}</Code>
-                        </Text>
-                    </Group>
-                </Card>
+                        <p className="text-sm text-muted-foreground">
+                            Use the language switcher in the header to change the language.
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
 
-                {/* Language Switcher */}
-                <Card shadow="sm" padding="lg" radius="md" withBorder>
-                    <Title order={3} mb="md">
-                        Language Switcher Component
-                    </Title>
-                    <Text mb="md" c="dimmed">
-                        Use the language switcher to change the application language. Changes are persisted to
-                        localStorage.
-                    </Text>
-                    <Group gap="md">
-                        <LanguageSwitcher variant="filled" showLabel />
-                        <LanguageSwitcher variant="outline" showLabel />
-                        <LanguageSwitcher variant="subtle" showLabel={false} />
-                    </Group>
-                </Card>
+            {/* Language Switcher Component */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Language Switcher</CardTitle>
+                    <CardDescription>Interactive component to change the application language</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center gap-4">
+                    <LanguageSwitcher />
+                    <p className="text-sm text-muted-foreground">Click to switch between available languages</p>
+                </CardContent>
+            </Card>
 
-                {/* Supported Languages */}
-                <Card shadow="sm" padding="lg" radius="md" withBorder>
-                    <Title order={3} mb="md">
-                        Supported Languages
-                    </Title>
-                    <Table striped highlightOnHover>
-                        <Table.Thead>
-                            <Table.Tr>
-                                <Table.Th>Language Code</Table.Th>
-                                <Table.Th>Language Name</Table.Th>
-                                <Table.Th>Status</Table.Th>
-                            </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                            {supportedLanguages.map((lang) => (
-                                <Table.Tr key={lang}>
-                                    <Table.Td>
-                                        <Code>{lang}</Code>
-                                    </Table.Td>
-                                    <Table.Td>{languageNames[lang]}</Table.Td>
-                                    <Table.Td>
-                                        {i18n.language === lang ? (
-                                            <Badge color="green" variant="light">
-                                                Active
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="light">Available</Badge>
-                                        )}
-                                    </Table.Td>
-                                </Table.Tr>
-                            ))}
-                        </Table.Tbody>
-                    </Table>
-                </Card>
+            {/* Supported Languages */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Supported Languages</CardTitle>
+                    <CardDescription>
+                        The following languages are currently configured in the{' '}
+                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">@ottabase/i18n</code> package
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                        {supportedLanguages.map((lang) => (
+                            <Badge
+                                key={lang}
+                                variant={i18n.language === lang ? 'default' : 'outline'}
+                                className="px-3 py-1"
+                            >
+                                {languageNames[lang]}
+                            </Badge>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
 
-                {/* Translation Examples */}
-                <Card shadow="sm" padding="lg" radius="md" withBorder>
-                    <Title order={3} mb="md">
-                        Translation Examples
-                    </Title>
-                    <Text mb="lg" c="dimmed">
+            {/* Translation Examples */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Translation Examples</CardTitle>
+                    <CardDescription>
                         Below are examples of common translations. Switch languages to see them change in real-time.
-                    </Text>
-                    <Table striped highlightOnHover>
-                        <Table.Thead>
-                            <Table.Tr>
-                                <Table.Th>Translation Key</Table.Th>
-                                <Table.Th>Translated Value</Table.Th>
-                            </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                            <Table.Tr>
-                                <Table.Td>
-                                    <Code>welcome</Code>
-                                </Table.Td>
-                                <Table.Td>{t('welcome')}</Table.Td>
-                            </Table.Tr>
-                            <Table.Tr>
-                                <Table.Td>
-                                    <Code>language</Code>
-                                </Table.Td>
-                                <Table.Td>{t('language')}</Table.Td>
-                            </Table.Tr>
-                            <Table.Tr>
-                                <Table.Td>
-                                    <Code>loading</Code>
-                                </Table.Td>
-                                <Table.Td>{t('loading')}</Table.Td>
-                            </Table.Tr>
-                            <Table.Tr>
-                                <Table.Td>
-                                    <Code>save</Code>
-                                </Table.Td>
-                                <Table.Td>{t('save')}</Table.Td>
-                            </Table.Tr>
-                            <Table.Tr>
-                                <Table.Td>
-                                    <Code>cancel</Code>
-                                </Table.Td>
-                                <Table.Td>{t('cancel')}</Table.Td>
-                            </Table.Tr>
-                            <Table.Tr>
-                                <Table.Td>
-                                    <Code>delete</Code>
-                                </Table.Td>
-                                <Table.Td>{t('delete')}</Table.Td>
-                            </Table.Tr>
-                            <Table.Tr>
-                                <Table.Td>
-                                    <Code>settings</Code>
-                                </Table.Td>
-                                <Table.Td>{t('settings')}</Table.Td>
-                            </Table.Tr>
-                            <Table.Tr>
-                                <Table.Td>
-                                    <Code>logout</Code>
-                                </Table.Td>
-                                <Table.Td>{t('logout')}</Table.Td>
-                            </Table.Tr>
-                        </Table.Tbody>
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[200px]">Translation Key</TableHead>
+                                <TableHead>Translated Value</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">welcome</code>
+                                </TableCell>
+                                <TableCell>{t('welcome')}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">language</code>
+                                </TableCell>
+                                <TableCell>{t('language')}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">save</code>
+                                </TableCell>
+                                <TableCell>{t('save')}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">cancel</code>
+                                </TableCell>
+                                <TableCell>{t('cancel')}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">loading</code>
+                                </TableCell>
+                                <TableCell>{t('loading')}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">error</code>
+                                </TableCell>
+                                <TableCell>{t('error')}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">success</code>
+                                </TableCell>
+                                <TableCell>{t('success')}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">login</code>
+                                </TableCell>
+                                <TableCell>{t('login')}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">logout</code>
+                                </TableCell>
+                                <TableCell>{t('logout')}</TableCell>
+                            </TableRow>
+                        </TableBody>
                     </Table>
-                </Card>
+                </CardContent>
+            </Card>
 
-                {/* Usage Example */}
-                <Card shadow="sm" padding="lg" radius="md" withBorder>
-                    <Title order={3} mb="md">
-                        Usage Example
-                    </Title>
-                    <Text mb="md" c="dimmed">
-                        Here's how to use i18n in your components:
-                    </Text>
-                    <Code block>
-                        {`import { useTranslation } from '@ottabase/i18n/react';
+            {/* Advanced Examples */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Advanced Examples</CardTitle>
+                    <CardDescription>Interpolation, pluralization, and rich text rendering</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[200px]">Feature</TableHead>
+                                <TableHead>Example</TableHead>
+                                <TableHead>Usage</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">Interpolation</code>
+                                </TableCell>
+                                <TableCell>{t('greeting', { name: 'Developer' })}</TableCell>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                        t('greeting', &#123; name: 'Developer' &#125;)
+                                    </code>
+                                </TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">Pluralization (1)</code>
+                                </TableCell>
+                                <TableCell>{t('messages', { count: 1 })}</TableCell>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                        t('messages', &#123; count: 1 &#125;)
+                                    </code>
+                                </TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">Pluralization (5)</code>
+                                </TableCell>
+                                <TableCell>{t('messages', { count: 5 })}</TableCell>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                        t('messages', &#123; count: 5 &#125;)
+                                    </code>
+                                </TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">Rich Text</code>
+                                </TableCell>
+                                <TableCell>
+                                    <Trans
+                                        i18nKey="agreement"
+                                        components={{
+                                            1: <a href="#" className="text-primary underline" />,
+                                        }}
+                                    />
+                                </TableCell>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                        &lt;Trans i18nKey="agreement" /&gt;
+                                    </code>
+                                </TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
 
-function MyComponent() {
-  const { t, i18n } = useTranslation('common');
-
-  return (
-    <div>
-      <h1>{t('welcome')}</h1>
-      <button onClick={() => i18n.changeLanguage('es')}>
-        Change to Spanish
-      </button>
-    </div>
-  );
-}`}
-                    </Code>
-                </Card>
-
-                {/* Features */}
-                <Card shadow="sm" padding="lg" radius="md" withBorder>
-                    <Title order={3} mb="md">
-                        Features
-                    </Title>
-                    <Stack gap="sm">
-                        <Group gap="xs">
-                            <Badge color="blue">Type-Safe</Badge>
-                            <Text size="sm">Full TypeScript support with autocomplete for translation keys</Text>
-                        </Group>
-                        <Group gap="xs">
-                            <Badge color="green">Auto-Detection</Badge>
-                            <Text size="sm">Automatically detects user's browser language</Text>
-                        </Group>
-                        <Group gap="xs">
-                            <Badge color="violet">Persistent</Badge>
-                            <Text size="sm">Language preference saved to localStorage</Text>
-                        </Group>
-                        <Group gap="xs">
-                            <Badge color="orange">Namespaced</Badge>
-                            <Text size="sm">Organize translations by namespace for better code splitting</Text>
-                        </Group>
-                        <Group gap="xs">
-                            <Badge color="pink">Extensible</Badge>
-                            <Text size="sm">Easy to add new languages and translation keys</Text>
-                        </Group>
-                    </Stack>
-                </Card>
-            </Stack>
-        </Container>
+            {/* Package Info */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Package Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div>
+                        <h4 className="text-sm font-semibold mb-2">Location</h4>
+                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">packages/i18n</code>
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-semibold mb-2">Key Features</h4>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                            <li>Centralized i18n configuration for the entire monorepo</li>
+                            <li>Type-safe translations with TypeScript support</li>
+                            <li>Browser language detection and localStorage persistence</li>
+                            <li>Support for interpolation, pluralization, and rich text</li>
+                            <li>Hybrid model: shared package translations + app-specific overrides</li>
+                            <li>React hooks and components for easy integration</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-semibold mb-2">Usage</h4>
+                        <div className="space-y-2">
+                            <p className="text-sm">
+                                Import the provider in your app:{' '}
+                                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                    import &#123; I18nProvider &#125; from '@ottabase/i18n/react'
+                                </code>
+                            </p>
+                            <p className="text-sm">
+                                Use the hook in components:{' '}
+                                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                    const &#123; t &#125; = useTranslation()
+                                </code>
+                            </p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
     );
 }

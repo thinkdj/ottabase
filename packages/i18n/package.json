@@ -27,7 +27,9 @@
         "dev": "tsup src/index.ts src/react.tsx --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "lint": "eslint src --ext .ts,.tsx",
-        "type-check": "tsc --noEmit"
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
     },
     "keywords": [
         "i18n",
@@ -42,18 +44,24 @@
     "author": "",
     "license": "MIT",
     "dependencies": {
+        "deepmerge": "^4.3.1",
         "i18next": "^24.2.0",
         "i18next-browser-languagedetector": "^8.0.2"
     },
     "devDependencies": {
+        "@testing-library/react": "catalog:",
+        "@types/deepmerge": "^2.2.0",
         "@types/node": "catalog:",
         "@types/react": "catalog:",
+        "@vitest/coverage-v8": "catalog:",
         "eslint": "catalog:",
         "react": "catalog:",
+        "react-dom": "catalog:",
         "react-i18next": "^15.2.0",
         "rimraf": "catalog:",
         "tsup": "catalog:",
-        "typescript": "catalog:"
+        "typescript": "catalog:",
+        "vitest": "catalog:"
     },
     "peerDependencies": {
         "react": "catalog:",

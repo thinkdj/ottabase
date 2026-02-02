@@ -1,11 +1,17 @@
-import { Button, Menu } from '@mantine/core';
-import { useTranslation } from '@ottabase/i18n/react';
-import { supportedLanguages, languageNames, type SupportedLanguage } from '@ottabase/i18n/react';
-import { Languages } from 'lucide-react';
+import { languageNames, supportedLanguages, useTranslation, type SupportedLanguage } from '@ottabase/i18n/react';
+import {
+    Button,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from '@ottabase/ui-shadcn';
+import { Check, Languages } from 'lucide-react';
 
 export interface LanguageSwitcherProps {
-    variant?: 'default' | 'subtle' | 'filled' | 'light' | 'outline';
-    size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+    variant?: 'default' | 'ghost' | 'outline' | 'secondary';
+    size?: 'default' | 'sm' | 'lg' | 'icon';
     showIcon?: boolean;
     showLabel?: boolean;
 }
@@ -19,11 +25,11 @@ export interface LanguageSwitcherProps {
  * <LanguageSwitcher />
  *
  * // Customized
- * <LanguageSwitcher variant="subtle" size="sm" showLabel={false} />
+ * <LanguageSwitcher variant="ghost" size="sm" showLabel={false} />
  * ```
  */
 export function LanguageSwitcher({
-    variant = 'subtle',
+    variant = 'ghost',
     size = 'sm',
     showIcon = true,
     showLabel = true,
@@ -36,25 +42,24 @@ export function LanguageSwitcher({
     };
 
     return (
-        <Menu shadow="md" width={200}>
-            <Menu.Target>
-                <Button variant={variant} size={size} leftSection={showIcon ? <Languages size={16} /> : undefined}>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant={variant} size={size} className="gap-2">
+                    {showIcon && <Languages size={16} />}
                     {showLabel && (languageNames[currentLanguage] || t('language'))}
                 </Button>
-            </Menu.Target>
-
-            <Menu.Dropdown>
-                <Menu.Label>{t('selectLanguage')}</Menu.Label>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuLabel>{t('selectLanguage')}</DropdownMenuLabel>
                 {supportedLanguages.map((lang) => (
-                    <Menu.Item
-                        key={lang}
-                        onClick={() => handleLanguageChange(lang)}
-                        bg={currentLanguage === lang ? 'var(--mantine-color-blue-light)' : undefined}
-                    >
-                        {languageNames[lang]}
-                    </Menu.Item>
+                    <DropdownMenuItem key={lang} onClick={() => handleLanguageChange(lang)} className="cursor-pointer">
+                        <div className="flex items-center justify-between w-full">
+                            <span>{languageNames[lang]}</span>
+                            {currentLanguage === lang && <Check size={16} className="ml-2" />}
+                        </div>
+                    </DropdownMenuItem>
                 ))}
-            </Menu.Dropdown>
-        </Menu>
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }

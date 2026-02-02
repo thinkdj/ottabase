@@ -32,5 +32,10 @@
     "pageNotFound": "Page non trouvée",
     "serverError": "Erreur du serveur",
     "unauthorized": "Accès non autorisé",
-    "forbidden": "Accès interdit"
+    "forbidden": "Accès interdit",
+    "greeting": "Bonjour, {{name}} !",
+    "messages_one": "Vous avez {{count}} nouveau message",
+    "messages_other": "Vous avez {{count}} nouveaux messages",
+    "agreement": "J'accepte les <1>Conditions d'utilisation</1>",
+    "status": "Statut"
 }

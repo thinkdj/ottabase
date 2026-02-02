@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import enApp from '@/locales/en/app.json';
 import { BlogStudioProvider } from '@/ottabase/blog/BlogStudioContext';
 import { appConfig } from '@/ottabase/config/app.config';
 import {
@@ -22,6 +23,12 @@ import { ShadcnProviders } from '@ottabase/ui-shadcn/providers';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import React from 'react';
 
+const appResources = {
+    en: {
+        common: enApp,
+    },
+};
+
 export function Providers({ children }: { children: React.ReactNode }) {
     const fontFamilies = {
         primary: primaryFontFamily.style.fontFamily,
@@ -31,7 +38,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     return (
         <ProviderState>
-            <I18nProvider defaultLanguage="en">
+            <I18nProvider defaultLanguage="en" resources={appResources}>
                 <BlogStudioProvider>
                     <OttaQueryProvider apiClient={api}>
                         <ProviderUIBase

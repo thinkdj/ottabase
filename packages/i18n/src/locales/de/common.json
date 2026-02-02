@@ -32,5 +32,10 @@
     "pageNotFound": "Seite nicht gefunden",
     "serverError": "Serverfehler aufgetreten",
     "unauthorized": "Nicht autorisierter Zugriff",
-    "forbidden": "Zugriff verboten"
+    "forbidden": "Zugriff verboten",
+    "greeting": "Hallo, {{name}}!",
+    "messages_one": "Sie haben {{count}} neue Nachricht",
+    "messages_other": "Sie haben {{count}} neue Nachrichten",
+    "agreement": "Ich stimme den <1>Nutzungsbedingungen</1> zu",
+    "status": "Status"
 }

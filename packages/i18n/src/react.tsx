@@ -1,21 +1,19 @@
 import { type ReactNode, Suspense } from 'react';
-import { initReactI18next, I18nextProvider } from 'react-i18next';
-import { i18n, initI18n, type SupportedLanguage } from './config';
+import { I18nextProvider, initReactI18next } from 'react-i18next';
+import { i18n, initI18n, type InitI18nOptions } from './config';
 
 // Initialize i18next with React bindings
-export const initReactI18n = (options?: { defaultLanguage?: SupportedLanguage; debug?: boolean }) => {
-    // Only initialize if not already initialized
+export const initReactI18n = (options?: InitI18nOptions) => {
     if (!i18n.isInitialized) {
+        // CRITICAL: Must add React plugin BEFORE calling initI18n
         i18n.use(initReactI18next);
         initI18n(options);
     }
     return i18n;
 };
 
-export interface I18nProviderProps {
+export interface I18nProviderProps extends InitI18nOptions {
     children: ReactNode;
-    defaultLanguage?: SupportedLanguage;
-    debug?: boolean;
     fallback?: ReactNode;
 }
 
@@ -35,8 +33,8 @@ export interface I18nProviderProps {
  * }
  * ```
  */
-export function I18nProvider({ children, defaultLanguage, debug, fallback = null }: I18nProviderProps) {
-    const i18nInstance = initReactI18n({ defaultLanguage, debug });
+export function I18nProvider({ children, defaultLanguage, debug, resources, fallback = null }: I18nProviderProps) {
+    const i18nInstance = initReactI18n({ defaultLanguage, debug, resources });
 
     return (
         <I18nextProvider i18n={i18nInstance}>
@@ -46,7 +44,9 @@ export function I18nProvider({ children, defaultLanguage, debug, fallback = null
 }
 
 // Re-export commonly used hooks and functions from react-i18next
-export { useTranslation, Trans } from 'react-i18next';
+export { Trans, useTranslation } from 'react-i18next';
 
 // Re-export config utilities
-export { i18n, resources, supportedLanguages, languageNames, type SupportedLanguage } from './config';
+export { i18n, languageNames, resources, supportedLanguages, type SupportedLanguage } from './config';
+
+import './types';
