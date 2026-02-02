@@ -1,4 +1,5 @@
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@ottabase/ui-shadcn';
+import type { MemberRole, MemberStatus } from '@/types/rbac';
 import { useState } from 'react';
 
 export interface InviteMemberFormProps {
@@ -9,8 +10,8 @@ export interface InviteMemberFormProps {
 
 export interface InviteMemberFormData {
     userId: string;
-    role: 'owner' | 'admin' | 'member';
-    status: 'active' | 'invited' | 'suspended';
+    role: MemberRole;
+    status: MemberStatus;
 }
 
 export function InviteMemberForm({ organizationId, onSubmit, onCancel }: InviteMemberFormProps) {

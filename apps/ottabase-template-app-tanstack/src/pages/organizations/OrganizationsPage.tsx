@@ -1,5 +1,6 @@
 import { api, isApiError } from '@/lib/api';
 import type { PaginatedResponse, Pagination } from '@/lib/api-types';
+import type { OrganizationRecord, BadgeVariant } from '@/types/rbac';
 import {
     Badge,
     AlertDialog,
@@ -38,19 +39,6 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit, Plus, Tra
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { OrganizationForm, type OrganizationFormData } from './components/OrganizationForm';
-
-interface OrganizationRecord {
-    id: string;
-    name: string;
-    slug: string;
-    plan: string;
-    status: string;
-    ownerId: string;
-    settings?: Record<string, unknown>;
-    metadata?: Record<string, unknown>;
-    createdAt: string;
-    updatedAt: string;
-}
 
 type OrganizationsResponse = PaginatedResponse<OrganizationRecord>;
 
@@ -147,7 +135,7 @@ export function OrganizationsPage() {
         setCurrentPage(1);
     };
 
-    const getPlanBadgeVariant = (plan: string): "default" | "secondary" | "outline" => {
+    const getPlanBadgeVariant = (plan: string): BadgeVariant => {
         switch (plan) {
             case 'enterprise':
                 return 'default';
@@ -158,7 +146,7 @@ export function OrganizationsPage() {
         }
     };
 
-    const getStatusBadgeVariant = (status: string): "default" | "destructive" | "outline" => {
+    const getStatusBadgeVariant = (status: string): BadgeVariant => {
         switch (status) {
             case 'active':
                 return 'default';

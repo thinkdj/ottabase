@@ -1,5 +1,6 @@
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@ottabase/ui-shadcn';
 import type { Organization } from '@ottabase/ottaorm';
+import type { OrganizationPlan, OrganizationStatus, OrganizationSettings } from '@/types/rbac';
 import { useState, useEffect } from 'react';
 
 export interface OrganizationFormProps {
@@ -11,13 +12,9 @@ export interface OrganizationFormProps {
 export interface OrganizationFormData {
     name: string;
     slug: string;
-    plan: 'free' | 'pro' | 'enterprise';
-    status: 'active' | 'suspended' | 'deleted';
-    settings?: {
-        features?: string[];
-        maxMembers?: number;
-        [key: string]: unknown;
-    };
+    plan: OrganizationPlan;
+    status: OrganizationStatus;
+    settings?: OrganizationSettings;
     metadata?: Record<string, unknown>;
 }
 

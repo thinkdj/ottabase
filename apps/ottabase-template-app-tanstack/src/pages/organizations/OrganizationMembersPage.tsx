@@ -1,5 +1,6 @@
 import { api, isApiError } from '@/lib/api';
 import type { PaginatedResponse, Pagination } from '@/lib/api-types';
+import type { OrganizationMemberRecord, BadgeVariant } from '@/types/rbac';
 import {
     Badge,
     AlertDialog,
@@ -37,18 +38,6 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit, Plus, Tra
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from '@tanstack/react-router';
 import { InviteMemberForm, type InviteMemberFormData } from './components/InviteMemberForm';
-
-interface OrganizationMemberRecord {
-    id: string;
-    userId: string;
-    organizationId: string;
-    role: string;
-    status: string;
-    invitedBy?: string;
-    invitedAt?: string;
-    joinedAt?: string;
-    metadata?: Record<string, unknown>;
-}
 
 type MembersResponse = PaginatedResponse<OrganizationMemberRecord>;
 
@@ -151,7 +140,7 @@ export function OrganizationMembersPage() {
         setCurrentPage(1);
     };
 
-    const getRoleBadgeVariant = (role: string): "default" | "secondary" | "outline" => {
+    const getRoleBadgeVariant = (role: string): BadgeVariant => {
         switch (role) {
             case 'owner':
                 return 'default';
@@ -162,7 +151,7 @@ export function OrganizationMembersPage() {
         }
     };
 
-    const getStatusBadgeVariant = (status: string): "default" | "secondary" | "outline" => {
+    const getStatusBadgeVariant = (status: string): BadgeVariant => {
         switch (status) {
             case 'active':
                 return 'default';

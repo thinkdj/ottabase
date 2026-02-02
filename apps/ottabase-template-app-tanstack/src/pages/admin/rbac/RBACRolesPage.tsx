@@ -1,4 +1,5 @@
 import { api, isApiError } from '@/lib/api';
+import type { RoleRecord } from '@/types/rbac';
 import {
     Badge,
     AlertDialog,
@@ -33,19 +34,6 @@ import {
 import { Edit, Plus, Shield, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
-
-interface RoleRecord {
-    id: string;
-    name: string;
-    displayName?: string;
-    description?: string;
-    permissions?: string[];
-    organizationId?: string;
-    appId?: string;
-    isSystem?: boolean;
-    createdAt: string;
-    updatedAt: string;
-}
 
 interface RoleFormData {
     name: string;
