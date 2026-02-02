@@ -4,6 +4,7 @@
 
 import type { User } from '@ottabase/ottaorm/models';
 import type { RBACCache } from './cache';
+import logger from '@ottabase/logger';
 
 /**
  * Unified application context
@@ -141,7 +142,7 @@ export async function buildAppContext(
 
             context.permissions = permissions;
         } catch (error) {
-            console.error('Failed to load RBAC context:', error);
+            logger.error('Failed to load RBAC context', { userId: context.userId, organizationId, error });
             // Continue with empty roles/permissions rather than failing
         }
     }
@@ -210,7 +211,7 @@ export async function extractOrganizationId(
                 return jwt[jwtClaim];
             }
         } catch (error) {
-            console.error('Failed to extract organizationId from JWT:', error);
+            logger.error('Failed to extract organizationId from JWT', { error });
         }
     }
 

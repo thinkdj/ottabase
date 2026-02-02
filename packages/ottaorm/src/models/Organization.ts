@@ -3,7 +3,7 @@
 // ============================================================
 
 import { eq, and, sql } from 'drizzle-orm';
-import { BaseModel } from '../base/BaseModel';
+import { BaseModel, type PackageType, type ModelFields } from '../base/BaseModel';
 import {
     organizationsTable,
     type OrganizationType,
@@ -20,6 +20,190 @@ export class Organization extends BaseModel {
     static table = organizationsTable;
     static primaryKey = 'id';
     static connection = 'default';
+    static packageName = '@ottabase/ottaorm';
+    static packageType: PackageType = 'core';
+
+    // UI/Forms metadata
+    static displayName = 'Organization';
+    static displayNamePlural = 'Organizations';
+    static defaultSort = 'createdAt';
+    static defaultSortDirection = 'desc' as const;
+
+    static casts = {
+        createdAt: 'date' as const,
+        updatedAt: 'date' as const,
+        settings: 'json' as const,
+        metadata: 'json' as const,
+    };
+
+    protected static fields: ModelFields = {
+        id: {
+            type: 'id',
+            primaryKey: true,
+            editable: false,
+            uiConfig: {
+                label: 'ID',
+                description: 'Unique organization identifier',
+            },
+            tableConfig: {
+                visible: true,
+            },
+        },
+        name: {
+            type: 'string',
+            editable: true,
+            searchable: true,
+            uiConfig: {
+                label: 'Name',
+                description: 'Organization name',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'input',
+                placeholder: 'Enter organization name',
+            },
+            tableConfig: {
+                visible: true,
+            },
+            validation: {
+                rules: 'required|min:2|max:100',
+                messages: {
+                    required: 'Organization name is required',
+                    min: 'Name must be at least 2 characters',
+                    max: 'Name cannot exceed 100 characters',
+                },
+            },
+        },
+        slug: {
+            type: 'string',
+            editable: true,
+            searchable: true,
+            uiConfig: {
+                label: 'Slug',
+                description: 'URL-friendly identifier',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'input',
+                placeholder: 'organization-slug',
+            },
+            tableConfig: {
+                visible: true,
+            },
+            validation: {
+                rules: 'required|min:2|max:50|alpha_dash',
+                messages: {
+                    required: 'Slug is required',
+                    alpha_dash: 'Slug can only contain letters, numbers, dashes and underscores',
+                },
+            },
+        },
+        ownerId: {
+            type: 'string',
+            editable: true,
+            uiConfig: {
+                label: 'Owner',
+                description: 'Organization owner user ID',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'select',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+        plan: {
+            type: 'string',
+            editable: true,
+            uiConfig: {
+                label: 'Plan',
+                description: 'Subscription plan',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'select',
+                options: [
+                    { value: 'free', label: 'Free' },
+                    { value: 'pro', label: 'Pro' },
+                    { value: 'enterprise', label: 'Enterprise' },
+                ],
+            },
+            tableConfig: {
+                visible: true,
+            },
+        },
+        status: {
+            type: 'string',
+            editable: true,
+            uiConfig: {
+                label: 'Status',
+                description: 'Organization status',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'select',
+                options: [
+                    { value: 'active', label: 'Active' },
+                    { value: 'suspended', label: 'Suspended' },
+                    { value: 'cancelled', label: 'Cancelled' },
+                ],
+            },
+            tableConfig: {
+                visible: true,
+            },
+        },
+        settings: {
+            type: 'json',
+            editable: true,
+            uiConfig: {
+                label: 'Settings',
+                description: 'Organization settings (JSON)',
+            },
+            formConfig: {
+                visible: false,
+                fieldType: 'textarea',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+        metadata: {
+            type: 'json',
+            editable: true,
+            uiConfig: {
+                label: 'Metadata',
+                description: 'Additional metadata (JSON)',
+            },
+            formConfig: {
+                visible: false,
+                fieldType: 'textarea',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+        createdAt: {
+            type: 'date',
+            editable: false,
+            uiConfig: {
+                label: 'Created At',
+            },
+            tableConfig: {
+                visible: true,
+            },
+        },
+        updatedAt: {
+            type: 'date',
+            editable: false,
+            uiConfig: {
+                label: 'Updated At',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+    };
 
     /**
      * Create a new organization

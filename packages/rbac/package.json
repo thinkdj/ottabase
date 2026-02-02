@@ -51,7 +51,9 @@
     "license": "MIT",
     "dependencies": {
         "@ottabase/ottaorm": "workspace:*",
-        "@ottabase/auth": "workspace:*"
+        "@ottabase/auth": "workspace:*",
+        "@ottabase/logger": "workspace:*",
+        "@ottabase/cf": "workspace:*"
     },
     "peerDependencies": {
         "@cloudflare/workers-types": ">=4.0.0"

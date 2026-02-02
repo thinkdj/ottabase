@@ -4,6 +4,7 @@
 
 import type { KVNamespace } from '@cloudflare/workers-types';
 import type { RBACContext } from './types';
+import logger from '@ottabase/logger';
 
 /**
  * Cache configuration
@@ -102,7 +103,7 @@ export class RBACCache {
             const stored = await this.kv.get(versionKey, 'text');
             return stored || 'v1';
         } catch (error) {
-            console.error(`Failed to get cache version for org ${organizationId}:`, error);
+            logger.error('Failed to get cache version for organization', { organizationId, error });
             return 'v1';
         }
     }
@@ -127,7 +128,7 @@ export class RBACCache {
 
             return newVersion;
         } catch (error) {
-            console.error(`Failed to increment cache version for org ${organizationId}:`, error);
+            logger.error('Failed to increment cache version for organization', { organizationId, error });
             return 'v1';
         }
     }
@@ -202,7 +203,7 @@ export class RBACCache {
                     return context;
                 }
             } catch (error) {
-                console.error('Failed to get RBAC context from KV:', error);
+                logger.error('Failed to get RBAC context from KV', { error });
             }
         }
 
@@ -240,7 +241,7 @@ export class RBACCache {
                     expirationTtl: this.ttl,
                 });
             } catch (error) {
-                console.error('Failed to set RBAC context in KV:', error);
+                logger.error('Failed to set RBAC context in KV', { error });
             }
         }
     }
@@ -278,7 +279,7 @@ export class RBACCache {
                     return roles;
                 }
             } catch (error) {
-                console.error('Failed to get roles from KV:', error);
+                logger.error('Failed to get roles from KV', { error });
             }
         }
 
@@ -316,7 +317,7 @@ export class RBACCache {
                     expirationTtl: this.ttl,
                 });
             } catch (error) {
-                console.error('Failed to set roles in KV:', error);
+                logger.error('Failed to set roles in KV', { error });
             }
         }
     }
@@ -354,7 +355,7 @@ export class RBACCache {
                     return permissions;
                 }
             } catch (error) {
-                console.error('Failed to get permissions from KV:', error);
+                logger.error('Failed to get permissions from KV', { error });
             }
         }
 
@@ -392,7 +393,7 @@ export class RBACCache {
                     expirationTtl: this.ttl,
                 });
             } catch (error) {
-                console.error('Failed to set permissions in KV:', error);
+                logger.error('Failed to set permissions in KV', { error });
             }
         }
     }
@@ -446,7 +447,7 @@ export class RBACCache {
         this.requestCache.deletePattern(pattern);
 
         const roleInfo = roleName ? ` (role: ${roleName})` : '';
-        console.log(`Cache invalidated for organization ${organizationId}${roleInfo}. New version: ${newVersion}`);
+        logger.info('Cache invalidated for organization', { organizationId, roleName, newVersion });
     }
 
     /**
@@ -465,7 +466,7 @@ export class RBACCache {
                     await Promise.all(deletePromises);
                 }
             } catch (error) {
-                console.error('Failed to clear RBAC cache in KV:', error);
+                logger.error('Failed to clear RBAC cache in KV', { error });
             }
         }
     }

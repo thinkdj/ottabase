@@ -4,6 +4,7 @@
 
 import { AuditLog } from '@ottabase/ottaorm/models';
 import type { AuditLogData, AuditRequestContext } from './types';
+import logger from '@ottabase/logger';
 
 /**
  * Log an audit event
@@ -12,7 +13,7 @@ export async function logAudit(data: AuditLogData): Promise<void> {
     try {
         await AuditLog.log(data);
     } catch (error) {
-        console.error('Failed to log audit event:', error);
+        logger.error('Failed to log audit event', { data, error });
         throw error;
     }
 }
