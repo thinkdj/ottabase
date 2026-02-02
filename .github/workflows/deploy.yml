@@ -44,7 +44,7 @@ jobs:
                   echo "🔍 Preparing deployment matrix..."
 
                   # Check merge/commit message for #skipdeploy (skip production deploy)
-                  COMMIT_MSG="${{ github.event.head_commit.message || '' }}"
+                  COMMIT_MSG="${{ github.event.head_commit.message || github.event.commits[0].message || '' }}"
                   if echo "$COMMIT_MSG" | grep -qiE '#skipdeploy'; then
                     echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
                     echo "has-apps=false" >> $GITHUB_OUTPUT
