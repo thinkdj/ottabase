@@ -52,6 +52,8 @@ export interface InitI18nOptions {
     resources?: Resource;
 }
 
+let detectorAdded = false;
+
 // Initialize i18next (without React bindings). Returns Promise so callers can await language/detection.
 export const initI18n = async (options?: InitI18nOptions): Promise<typeof i18n> => {
     // Skip if already initialized (do not override language - preserve existing)
@@ -67,8 +69,11 @@ export const initI18n = async (options?: InitI18nOptions): Promise<typeof i18n> 
     ) as string[];
     const effectiveFallbackLng = options?.fallbackLng ?? options?.defaultLanguage ?? 'en';
 
-    // Always use detector so changeLanguage() caches to localStorage
-    i18n.use(LanguageDetector);
+    // Add detector only once (safe when tests reset isInitialized and call init again)
+    if (!detectorAdded) {
+        i18n.use(LanguageDetector);
+        detectorAdded = true;
+    }
 
     await i18n.init({
         resources: finalResources,

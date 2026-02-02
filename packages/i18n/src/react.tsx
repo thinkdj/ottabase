@@ -54,7 +54,8 @@ export function I18nProvider({
 }: I18nProviderProps) {
     const [ready, setReady] = useState(false);
 
-    // Run once on mount; each test mounts a new provider with its own options
+    // Re-run when config that can affect init or already-initialized behavior changes.
+    // resources omitted: often an inline object (new ref each render); apply once on mount or memoize in caller.
     useEffect(() => {
         initReactI18n({
             defaultLanguage,
@@ -63,7 +64,7 @@ export function I18nProvider({
             debug,
             resources,
         }).then(() => setReady(true));
-    }, []);
+    }, [defaultLanguage, supportedLngs, fallbackLng, debug]);
 
     if (!ready) {
         return <>{fallback}</>;
