@@ -15,6 +15,9 @@ ottabase/
 │   ├── cf/            # Cloudflare bindings (D1, KV, R2, Queues)
 │   ├── queue/         # Job queue (Laravel-style dispatch/handlers)
 │   ├── auth/          # Auth.js v5 with D1
+│   ├── rbac/          # Role-based access control with KV caching
+│   ├── audit/         # Audit logging middleware & utilities
+│   ├── logger/        # Structured logging with context
 │   ├── state/         # Global state (Jotai)
 │   ├── ui-shadcn/     # shadcn/ui components
 │   ├── ui-mantine/    # Mantine provider + themes
@@ -170,6 +173,9 @@ createTodo.mutate({ title: 'New Todo' });
 | `@ottabase/cf`      | D1, KV, R2, Queues, Rate Limiting wrappers                               |
 | `@ottabase/queue`   | Job queue system (dispatch, handlers, deduplication, chaining, priority) |
 | `@ottabase/auth`    | Auth.js v5 with D1 adapter                                               |
+| `@ottabase/rbac`    | Role-based access control with per-org KV caching                        |
+| `@ottabase/audit`   | Audit logging middleware with event tracking                             |
+| `@ottabase/logger`  | Structured logging with context (replaces console.log)                   |
 
 ### UI
 

@@ -631,6 +631,114 @@ The package includes these core models (in `@ottabase/ottaorm`):
 **Note:** The Post model has been moved to `@ottabase/ottablog` as a comprehensive blog/content management model with
 enhanced features.
 
+## Multi-Tenant Models
+
+Ottabase includes built-in multi-tenant SaaS models following the **Tenant > App > User** hierarchy:
+
+- **Organization** - Tenants with plan, status, settings, metadata
+- **OrganizationMember** - User memberships with roles (owner, admin, member)
+
+### Organization Model
+
+Organizations represent tenants in your multi-tenant application:
+
+```typescript
+import { Organization } from '@ottabase/ottaorm';
+
+// Create organization (tenant)
+const org = await Organization.create({
+    name: 'Acme Corp',
+    slug: 'acme-corp',
+    ownerId: 'user-123',
+    plan: 'pro',
+    status: 'active',
+    settings: {
+        features: ['rbac', 'audit'],
+        maxMembers: 50,
+    },
+});
+
+// Find by slug
+const org = await Organization.first({ slug: 'acme-corp' });
+
+// Get all active organizations
+const activeOrgs = await Organization.where({ status: 'active' });
+```
+
+**Available Plans:** `free`, `pro`, `enterprise`
+**Available Statuses:** `active`, `suspended`, `deleted`
+
+### OrganizationMember Model
+
+Manage user memberships and roles within organizations:
+
+```typescript
+import { OrganizationMember } from '@ottabase/ottaorm';
+
+// Add member to organization
+const member = await OrganizationMember.create({
+    userId: 'user-456',
+    organizationId: org.id,
+    role: 'member',
+    status: 'active',
+    invitedBy: 'user-123',
+    joinedAt: new Date(),
+});
+
+// Get all members of an organization
+const members = await OrganizationMember.where(
+    { organizationId: org.id, status: 'active' },
+    { orderBy: 'joinedAt', orderDirection: 'desc' },
+);
+
+// Check user's role in organization
+const membership = await OrganizationMember.first({
+    userId: 'user-456',
+    organizationId: org.id,
+});
+console.log(membership.get('role')); // 'admin', 'member', etc.
+
+// Update member role
+await OrganizationMember.update(membership.id, { role: 'admin' });
+```
+
+**Available Roles:** `owner`, `admin`, `member`
+**Available Statuses:** `active`, `invited`, `suspended`
+
+### Multi-Tenant Setup
+
+```typescript
+// ottabase/db/schema.ts
+export {
+    usersTable,
+    organizationsTable, // Multi-tenant
+    organizationMembersTable, // Multi-tenant
+} from '@ottabase/ottaorm';
+
+// ottabase/middleware/tenant.ts
+import { Organization, OrganizationMember } from '@ottabase/ottaorm';
+
+export async function getTenantContext(userId: string, orgSlug: string) {
+    const org = await Organization.first({ slug: orgSlug });
+    if (!org) throw new Error('Organization not found');
+
+    const member = await OrganizationMember.first({
+        userId,
+        organizationId: org.id,
+        status: 'active',
+    });
+    if (!member) throw new Error('Not a member');
+
+    return {
+        organization: org,
+        role: member.get('role'),
+        userId,
+    };
+}
+```
+
+For complete RBAC integration with these models, see the [@ottabase/rbac](../rbac/README.md) package.
+
 ## Architecture
 
 ```
