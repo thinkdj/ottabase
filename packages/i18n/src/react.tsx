@@ -1,13 +1,18 @@
-import { type ReactNode, Suspense } from 'react';
+import { type ReactNode, Suspense, useEffect, useState } from 'react';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
 import { i18n, initI18n, type InitI18nOptions } from './config';
 
-// Initialize i18next with React bindings
-export const initReactI18n = (options?: InitI18nOptions) => {
+// Initialize i18next with React bindings. Returns Promise so provider can wait for language/detection.
+export const initReactI18n = async (options?: InitI18nOptions): Promise<typeof i18n> => {
     if (!i18n.isInitialized) {
         // CRITICAL: Must add React plugin BEFORE calling initI18n
         i18n.use(initReactI18next);
-        initI18n(options);
+        await initI18n(options);
+        return i18n;
+    }
+    // Already initialized: apply defaultLanguage so provider options take effect (e.g. in tests)
+    if (options?.defaultLanguage && i18n.language !== options.defaultLanguage) {
+        await i18n.changeLanguage(options.defaultLanguage);
     }
     return i18n;
 };
@@ -34,10 +39,19 @@ export interface I18nProviderProps extends InitI18nOptions {
  * ```
  */
 export function I18nProvider({ children, defaultLanguage, debug, resources, fallback = null }: I18nProviderProps) {
-    const i18nInstance = initReactI18n({ defaultLanguage, debug, resources });
+    const [ready, setReady] = useState(false);
+
+    // Run once on mount; each test mounts a new provider with its own options
+    useEffect(() => {
+        initReactI18n({ defaultLanguage, debug, resources }).then(() => setReady(true));
+    }, []);
+
+    if (!ready) {
+        return <>{fallback}</>;
+    }
 
     return (
-        <I18nextProvider i18n={i18nInstance}>
+        <I18nextProvider i18n={i18n}>
             <Suspense fallback={fallback}>{children}</Suspense>
         </I18nextProvider>
     );

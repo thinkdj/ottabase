@@ -1,4 +1,5 @@
 import { atom } from 'jotai';
+import { atomWithStorage } from 'jotai/utils';
 import type { AppState, AppStateConfig, BaseUser } from './types';
 
 /**
@@ -19,6 +20,7 @@ const DEFAULT_STATE: Omit<AppState, 'appName'> = {
     scale: 1.0,
     zoom: 1.0,
     isLoading: false,
+    language: 'en', // Default language
 };
 
 /**
@@ -67,6 +69,9 @@ export function createAppState<TUser extends BaseUser = BaseUser>(config: AppSta
     const zoomAtom = createAtom('zoom');
     const isLoadingAtom = createAtom('isLoading');
 
+    // Language atom with localStorage persistence (similar to theme)
+    const languageAtom = atomWithStorage<string>('ottabase-language', 'en');
+
     return {
         /** The main atom containing entire global state */
         appStateAtom,
@@ -84,9 +89,10 @@ export function createAppState<TUser extends BaseUser = BaseUser>(config: AppSta
             scaleAtom,
             zoomAtom,
             isLoadingAtom,
+            languageAtom,
         },
     };
 }
 
 // Re-export types
-export type { AppState, AppStateConfig, BaseUser, Theme, ThemeInfo, SidebarState } from './types';
+export type { AppState, AppStateConfig, BaseUser, SidebarState, Theme, ThemeInfo } from './types';

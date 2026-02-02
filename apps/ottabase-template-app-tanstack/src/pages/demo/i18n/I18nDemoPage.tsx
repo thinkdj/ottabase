@@ -1,7 +1,10 @@
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { i18nConfig } from '@/ottabase/config/i18n.config';
+import { languageAtom } from '@/ottabase/state/appState';
 import { languageNames, supportedLanguages, Trans, useTranslation } from '@ottabase/i18n/react';
 import {
     Badge,
+    Button,
     Card,
     CardContent,
     CardDescription,
@@ -14,36 +17,20 @@ import {
     TableHeader,
     TableRow,
 } from '@ottabase/ui-shadcn';
+import { useAtom } from 'jotai';
 
 export function I18nDemoPage() {
     const { t, i18n } = useTranslation('common');
+    const [globalLanguage, setGlobalLanguage] = useAtom(languageAtom);
 
     return (
         <div className="container max-w-5xl mx-auto py-8 space-y-8">
             <div className="space-y-2">
                 <h1 className="text-4xl font-bold">Internationalization (i18n) Demo</h1>
                 <p className="text-muted-foreground">
-                    This page demonstrates the i18n functionality integrated into the Ottabase monorepo using i18next
-                    and react-i18next.
+                    Demonstrating i18n hybrid model: package defaults + app overrides + global state integration
                 </p>
             </div>
-
-            {/* Current Language */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Current Language</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center gap-4">
-                        <Badge variant="default" className="text-base px-4 py-2">
-                            {languageNames[i18n.language as keyof typeof languageNames] || i18n.language}
-                        </Badge>
-                        <p className="text-sm text-muted-foreground">
-                            Use the language switcher in the header to change the language.
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
 
             {/* Language Switcher Component */}
             <Card>
@@ -229,6 +216,176 @@ export function I18nDemoPage() {
                 </CardContent>
             </Card>
 
+            {/* App Config Overrides */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>📝 App Config Overrides</CardTitle>
+                    <CardDescription>How this app configures i18n using ottabase/config/i18n.config.ts</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-1">
+                            <p className="text-sm font-medium">Default Language</p>
+                            <Badge variant="outline">{i18nConfig.defaultLanguage}</Badge>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-sm font-medium">Fallback Language</p>
+                            <Badge variant="outline">{i18nConfig.fallbackLanguage}</Badge>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-sm font-medium">Enabled Languages</p>
+                            <div className="flex gap-1">
+                                {i18nConfig.enabledLanguages.map((lang) => (
+                                    <Badge key={lang} variant="secondary" className="text-xs">
+                                        {lang}
+                                    </Badge>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-4 p-4 bg-muted rounded-md">
+                        <pre className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                            {`// src/ottabase/config/i18n.config.ts
+export const i18nConfig = {
+  defaultLanguage: '${i18nConfig.defaultLanguage}',
+  enabledLanguages: [${i18nConfig.enabledLanguages.map((l) => `'${l}'`).join(', ')}],
+  fallbackLanguage: '${i18nConfig.fallbackLanguage}',
+};`}
+                        </pre>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Global State Integration */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>🔄 Global State Integration</CardTitle>
+                    <CardDescription>Language syncs with @ottabase/state via Jotai atom</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <p className="text-sm font-medium">i18n Language</p>
+                            <Badge className="text-base px-4 py-2">{i18n.language}</Badge>
+                        </div>
+                        <div className="space-y-2">
+                            <p className="text-sm font-medium">State Atom Language</p>
+                            <Badge className="text-base px-4 py-2" variant="secondary">
+                                {globalLanguage}
+                            </Badge>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setGlobalLanguage('es')}
+                            disabled={globalLanguage === 'es'}
+                        >
+                            Set via State Atom → ES
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => i18n.changeLanguage('fr')}
+                            disabled={i18n.language === 'fr'}
+                        >
+                            Set via i18n → FR
+                        </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        ✨ Both values stay in sync automatically via{' '}
+                        <code className="bg-muted px-1 rounded">useLanguageManager</code> hook
+                    </p>
+                </CardContent>
+            </Card>
+
+            {/* Persistence Demonstration */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>💾 Persistence Demonstration</CardTitle>
+                    <CardDescription>Language selection persists to localStorage</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <p className="text-sm font-medium">localStorage Key</p>
+                            <code className="text-xs bg-muted px-2 py-1 rounded">ottabase-language</code>
+                        </div>
+                        <div className="space-y-2">
+                            <p className="text-sm font-medium">Stored Value</p>
+                            <code className="text-xs bg-muted px-2 py-1 rounded">
+                                {typeof localStorage !== 'undefined'
+                                    ? localStorage.getItem('ottabase-language') || 'Not set'
+                                    : 'N/A'}
+                            </code>
+                        </div>
+                    </div>
+                    <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-md border border-blue-200 dark:border-blue-800">
+                        <p className="text-sm font-medium mb-2">🔄 Try it!</p>
+                        <ol className="text-sm space-y-1 list-decimal list-inside text-muted-foreground">
+                            <li>Change language using switcher above</li>
+                            <li>Reload this page (F5 or Ctrl+R)</li>
+                            <li>Your language selection will be preserved ✅</li>
+                        </ol>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Resource Override Comparison */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>🎨 Resource Override Example</CardTitle>
+                    <CardDescription>App resources override package defaults via deep merge</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[200px]">Translation Key</TableHead>
+                                <TableHead>Package Default</TableHead>
+                                <TableHead>App Override</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">welcome</code>
+                                </TableCell>
+                                <TableCell className="text-muted-foreground italic">Welcome to Ottabase</TableCell>
+                                <TableCell className="font-medium">{t('welcome')}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">app_title</code>
+                                </TableCell>
+                                <TableCell className="text-muted-foreground italic text-xs">(not in package)</TableCell>
+                                <TableCell className="font-medium">{t('app_title' as any)}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">save</code>
+                                </TableCell>
+                                <TableCell className="font-medium">{t('save')}</TableCell>
+                                <TableCell className="text-muted-foreground italic text-xs">
+                                    (uses package default)
+                                </TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                    <div className="mt-4 p-4 bg-muted rounded-md">
+                        <pre className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                            {`// src/locales/en/app.json
+{
+  "welcome": "Welcome to Ottabase (App Override)", // Overrides package
+  "app_title": "Ottabase Application",              // New key
+  // "save" not defined, falls back to package "Save"
+}`}
+                        </pre>
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Package Info */}
             <Card>
                 <CardHeader>
@@ -247,20 +404,22 @@ export function I18nDemoPage() {
                             <li>Browser language detection and localStorage persistence</li>
                             <li>Support for interpolation, pluralization, and rich text</li>
                             <li>Hybrid model: shared package translations + app-specific overrides</li>
+                            <li>Global state integration via Jotai</li>
                             <li>React hooks and components for easy integration</li>
+                            <li>30+ comprehensive tests with 80%+ coverage</li>
                         </ul>
                     </div>
                     <div>
                         <h4 className="text-sm font-semibold mb-2">Usage</h4>
                         <div className="space-y-2">
                             <p className="text-sm">
-                                Import the provider in your app:{' '}
+                                Import the provider:{' '}
                                 <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
                                     import &#123; I18nProvider &#125; from '@ottabase/i18n/react'
                                 </code>
                             </p>
                             <p className="text-sm">
-                                Use the hook in components:{' '}
+                                Use the hook:{' '}
                                 <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
                                     const &#123; t &#125; = useTranslation()
                                 </code>

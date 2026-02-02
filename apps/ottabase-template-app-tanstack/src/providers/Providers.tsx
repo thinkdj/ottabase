@@ -2,6 +2,7 @@ import { api } from '@/lib/api';
 import enApp from '@/locales/en/app.json';
 import { BlogStudioProvider } from '@/ottabase/blog/BlogStudioContext';
 import { appConfig } from '@/ottabase/config/app.config';
+import { i18nConfig } from '@/ottabase/config/i18n.config';
 import {
     headingFontFamily,
     monospaceFontFamily,
@@ -9,6 +10,7 @@ import {
     ProviderFont,
     ProviderNextThemes,
 } from '@/ottabase/providers';
+import { LanguageManager } from '@/ottabase/providers/LanguageManager';
 import { ThemeProvider } from '@/ottabase/providers/ProviderTheme';
 import { SidebarStateManager } from '@/ottabase/providers/SidebarStateManager';
 import { ThemeManager } from '@/ottabase/providers/ThemeManager';
@@ -38,7 +40,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     return (
         <ProviderState>
-            <I18nProvider defaultLanguage="en" resources={appResources}>
+            <I18nProvider defaultLanguage={i18nConfig.defaultLanguage} resources={appResources}>
+                <LanguageManager />
                 <BlogStudioProvider>
                     <OttaQueryProvider apiClient={api}>
                         <ProviderUIBase
