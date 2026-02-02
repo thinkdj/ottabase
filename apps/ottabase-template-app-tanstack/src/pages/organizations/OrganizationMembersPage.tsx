@@ -1,6 +1,6 @@
 import { api, isApiError } from '@/lib/api';
 import type { PaginatedResponse, Pagination } from '@/lib/api-types';
-import type { OrganizationMemberRecord, BadgeVariant } from '@/types/rbac';
+import type { OrganizationMemberRecord, BadgeVariant, MemberRole } from '@/types/rbac';
 import {
     Badge,
     AlertDialog,
@@ -38,17 +38,22 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit, Plus, Tra
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from '@tanstack/react-router';
 import { InviteMemberForm, type InviteMemberFormData } from './components/InviteMemberForm';
+import { ApiErrorDisplay } from '@/components/ErrorBoundary';
+import { TableSkeleton } from '@/components/LoadingSkeletons';
+import { useRBACToast } from '@/hooks/useToast';
 
 type MembersResponse = PaginatedResponse<OrganizationMemberRecord>;
 
 export function OrganizationMembersPage() {
+    const toast = useRBACToast();
     const { organizationId } = useParams({ from: '/organizations/$organizationId/members' });
     const [members, setMembers] = useState<OrganizationMemberRecord[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<Error | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingMember, setEditingMember] = useState<OrganizationMemberRecord | null>(null);
     const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
+    const [changingRoleId, setChangingRoleId] = useState<string | null>(null);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -69,7 +74,8 @@ export function OrganizationMembersPage() {
                 setCurrentPage(response.pagination.page);
             }
         } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to load members');
+            const error = err instanceof Error ? err : new Error('Failed to load members');
+            setError(error);
         } finally {
             setLoading(false);
         }
@@ -99,10 +105,29 @@ export function OrganizationMembersPage() {
         const id = deleteDialog;
         try {
             await api(`/api/ottaorm/organization_members/${id}`, { method: 'DELETE' });
+            toast.rbac.memberRemoved();
             await fetchMembers(currentPage, perPage);
             setDeleteDialog(null);
         } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to remove member');
+            const error = err instanceof Error ? err : new Error('Failed to remove member');
+            toast.error('Failed to remove member', error.message);
+        }
+    };
+
+    const handleQuickRoleChange = async (memberId: string, newRole: MemberRole) => {
+        try {
+            setChangingRoleId(memberId);
+            await api(`/api/ottaorm/organization_members/${memberId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ role: newRole }),
+            });
+            toast.rbac.memberUpdated();
+            await fetchMembers(currentPage, perPage);
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error('Failed to update member role');
+            toast.error('Failed to update role', error.message);
+        } finally {
+            setChangingRoleId(null);
         }
     };
 
@@ -113,6 +138,7 @@ export function OrganizationMembersPage() {
                     method: 'PATCH',
                     body: JSON.stringify(data),
                 });
+                toast.rbac.memberUpdated();
             } else {
                 await api('/api/ottaorm/organization_members', {
                     method: 'POST',
@@ -122,6 +148,7 @@ export function OrganizationMembersPage() {
                         invitedAt: new Date().toISOString(),
                     }),
                 });
+                toast.rbac.memberInvited();
             }
             await fetchMembers(currentPage, perPage);
             setIsDialogOpen(false);
@@ -184,11 +211,16 @@ export function OrganizationMembersPage() {
                 </CardHeader>
                 <CardContent>
                     {error && (
-                        <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-md">{error}</div>
+                        <ApiErrorDisplay
+                            error={error}
+                            onRetry={() => fetchMembers(currentPage, perPage)}
+                            onDismiss={() => setError(null)}
+                            className="mb-4"
+                        />
                     )}
 
                     {loading && members.length === 0 ? (
-                        <div className="text-center py-8">Loading members...</div>
+                        <TableSkeleton rows={5} columns={6} />
                     ) : members.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                             No members found. Invite the first member!
@@ -213,9 +245,28 @@ export function OrganizationMembersPage() {
                                                 <code className="text-sm bg-muted px-2 py-1 rounded">{member.userId}</code>
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant={getRoleBadgeVariant(member.role)}>
-                                                    {member.role}
-                                                </Badge>
+                                                <Select
+                                                    value={member.role}
+                                                    onValueChange={(value: MemberRole) => handleQuickRoleChange(member.id, value)}
+                                                    disabled={changingRoleId === member.id}
+                                                >
+                                                    <SelectTrigger className="w-32">
+                                                        <Badge variant={getRoleBadgeVariant(member.role)}>
+                                                            {member.role}
+                                                        </Badge>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="owner">
+                                                            <Badge variant="default">Owner</Badge>
+                                                        </SelectItem>
+                                                        <SelectItem value="admin">
+                                                            <Badge variant="secondary">Admin</Badge>
+                                                        </SelectItem>
+                                                        <SelectItem value="member">
+                                                            <Badge variant="outline">Member</Badge>
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant={getStatusBadgeVariant(member.status)}>

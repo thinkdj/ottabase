@@ -34,6 +34,9 @@ import {
 import { Edit, Plus, Shield, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
+import { ApiErrorDisplay } from '@/components/ErrorBoundary';
+import { TableSkeleton } from '@/components/LoadingSkeletons';
+import { useRBACToast } from '@/hooks/useToast';
 
 interface RoleFormData {
     name: string;
@@ -43,9 +46,10 @@ interface RoleFormData {
 }
 
 export function RBACRolesPage() {
+    const toast = useRBACToast();
     const [roles, setRoles] = useState<RoleRecord[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<Error | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingRole, setEditingRole] = useState<RoleRecord | null>(null);
     const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
@@ -66,7 +70,8 @@ export function RBACRolesPage() {
                 setRoles(response.data);
             }
         } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to load roles');
+            const error = err instanceof Error ? err : new Error('Failed to load roles');
+            setError(error);
         } finally {
             setLoading(false);
         }
@@ -107,10 +112,12 @@ export function RBACRolesPage() {
 
         try {
             await api(`/api/rbac/roles/${deleteDialog}`, { method: 'DELETE' });
+            toast.rbac.roleDeleted();
             await fetchRoles();
             setDeleteDialog(null);
         } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to delete role');
+            const error = err instanceof Error ? err : new Error('Failed to delete role');
+            toast.error('Failed to delete role', error.message);
         }
     };
 
@@ -130,16 +137,19 @@ export function RBACRolesPage() {
                     method: 'PATCH',
                     body: JSON.stringify(data),
                 });
+                toast.rbac.roleUpdated();
             } else {
                 await api('/api/rbac/roles', {
                     method: 'POST',
                     body: JSON.stringify(data),
                 });
+                toast.rbac.roleCreated();
             }
             await fetchRoles();
             setIsDialogOpen(false);
         } catch (err) {
-            setError(isApiError(err) ? err.message : 'Failed to save role');
+            const error = err instanceof Error ? err : new Error('Failed to save role');
+            toast.error('Failed to save role', error.message);
         }
     };
 
@@ -163,11 +173,16 @@ export function RBACRolesPage() {
                 </CardHeader>
                 <CardContent>
                     {error && (
-                        <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-md">{error}</div>
+                        <ApiErrorDisplay
+                            error={error}
+                            onRetry={() => fetchRoles()}
+                            onDismiss={() => setError(null)}
+                            className="mb-4"
+                        />
                     )}
 
                     {loading && roles.length === 0 ? (
-                        <div className="text-center py-8">Loading roles...</div>
+                        <TableSkeleton rows={5} columns={6} />
                     ) : roles.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                             No roles found. Create your first one!
