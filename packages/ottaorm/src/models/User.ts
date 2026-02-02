@@ -181,17 +181,24 @@ export class User extends BaseModel {
 
     /**
      * Get user's roles (ManyToMany through UserRole)
-     * Optimized with optional caching support
+     * Optimized with optional caching support and organization scoping
      */
-    async roles(options?: { select?: string[]; orderBy?: string; orderDirection?: 'asc' | 'desc'; cache?: any }) {
+    async roles(options?: {
+        select?: string[];
+        orderBy?: string;
+        orderDirection?: 'asc' | 'desc';
+        cache?: any;
+        organizationId?: string;
+    }) {
         const userId = this.get('id') as string;
+        const organizationId = options?.organizationId;
         const { UserRole } = await import('./UserRole');
         const { Role } = await import('./Role');
 
         // Try cache first if provided
         if (options?.cache) {
             try {
-                const cachedRoleNames = await options.cache.getUserRoles(userId);
+                const cachedRoleNames = await options.cache.getUserRoles(userId, organizationId);
                 if (cachedRoleNames && cachedRoleNames.length > 0) {
                     // Get Role objects by names from cache
                     const roles = [];
@@ -206,15 +213,19 @@ export class User extends BaseModel {
             }
         }
 
-        // Optimized query: Get UserRole records for this user
-        const userRoles = await UserRole.where({ userId });
+        // Optimized query: Get UserRole records for this user (with org filter if provided)
+        const whereClause: any = { userId };
+        if (organizationId) {
+            whereClause.organizationId = organizationId;
+        }
+        const userRoles = await UserRole.where(whereClause);
         const roleIds = userRoles.map((ur) => ur.get('roleId'));
 
         if (roleIds.length === 0) {
             // Cache empty result
             if (options?.cache) {
                 try {
-                    await options.cache.setUserRoles(userId, []);
+                    await options.cache.setUserRoles(userId, [], organizationId);
                 } catch (error) {
                     // Ignore cache errors
                 }
@@ -229,7 +240,7 @@ export class User extends BaseModel {
         if (options?.cache && roles.length > 0) {
             try {
                 const roleNames = roles.map((r) => r.get('name') as string);
-                await options.cache.setUserRoles(userId, roleNames);
+                await options.cache.setUserRoles(userId, roleNames, organizationId);
             } catch (error) {
                 // Ignore cache errors
             }
@@ -394,23 +405,24 @@ export class User extends BaseModel {
 
     /**
      * Get all permissions for the user (from all roles)
-     * Optimized with optional caching support
+     * Optimized with optional caching support and organization scoping
      */
-    async getPermissions(options?: { cache?: any }): Promise<string[]> {
+    async getPermissions(options?: { cache?: any; organizationId?: string }): Promise<string[]> {
         const userId = this.get('id') as string;
+        const organizationId = options?.organizationId;
 
         // Try cache first if provided
         if (options?.cache) {
             try {
-                const cached = await options.cache.getUserPermissions(userId);
+                const cached = await options.cache.getUserPermissions(userId, organizationId);
                 if (cached) return cached;
             } catch (error) {
                 // Ignore cache errors, fallback to DB
             }
         }
 
-        // Get roles and collect permissions (optimized single query per role type)
-        const roles = await this.roles();
+        // Get roles and collect permissions (optimized single query per role type, with org filter)
+        const roles = await this.roles({ cache: options?.cache, organizationId });
         const permissions = new Set<string>();
 
         for (const role of roles) {
@@ -423,7 +435,7 @@ export class User extends BaseModel {
         // Cache the result if cache is provided
         if (options?.cache) {
             try {
-                await options.cache.setUserPermissions(userId, permissionsArray);
+                await options.cache.setUserPermissions(userId, permissionsArray, organizationId);
             } catch (error) {
                 // Ignore cache errors
             }
@@ -435,9 +447,9 @@ export class User extends BaseModel {
     /**
      * Check if user has a specific permission
      * Supports wildcard matching: users:* matches users:read, users:create, etc.
-     * Optimized with optional caching support
+     * Optimized with optional caching support and organization scoping
      */
-    async hasPermission(permission: string, options?: { cache?: any }): Promise<boolean> {
+    async hasPermission(permission: string, options?: { cache?: any; organizationId?: string }): Promise<boolean> {
         const permissions = await this.getPermissions(options);
 
         // Check for exact match first

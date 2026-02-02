@@ -1,0 +1,643 @@
+# RBAC & Audit Logging - Complete Setup Guide
+
+## 🎯 Overview
+
+This guide walks you through setting up Role-Based Access Control (RBAC) and Audit Logging in your Ottabase application from scratch.
+
+**What you'll get:**
+- ✅ Production-ready RBAC with roles and permissions
+- ✅ Wildcard permission matching (`users:*`, `*:read`, `*:*`)
+- ✅ Two-level caching (request + KV) for performance
+- ✅ Complete audit logging with multi-tenant support
+- ✅ Database migrations and seed scripts
+- ✅ Working examples
+
+---
+
+## 📋 Prerequisites
+
+- Ottabase monorepo set up
+- Database (D1/SQLite) configured
+- Node.js 18+ and pnpm installed
+
+---
+
+## 🚀 Quick Start (5 Minutes)
+
+###Step 1: Run Database Migration
+
+```bash
+# Apply the migration to create tables
+sqlite3 your-database.db < packages/ottaorm/migrations/001_add_rbac_and_audit.sql
+```
+
+**What this creates:**
+- `roles` table - Stores roles (admin, editor, viewer)
+- `permissions` table - Stores permissions (users:read, etc.)
+- `user_roles` table - Junction table for user-role relationships
+- `audit_logs` table - Stores all audit logs
+- Default system roles (admin, editor, viewer)
+- Default permissions (users:*, roles:*, audit:*, etc.)
+
+### Step 2: Verify Setup
+
+```bash
+# Check tables were created
+sqlite3 your-database.db ".tables"
+# Should show: roles, permissions, user_roles, audit_logs
+
+# Check default roles
+sqlite3 your-database.db "SELECT name FROM roles;"
+# Should show: admin, editor, viewer
+```
+
+### Step 3: Assign a Role to a User
+
+```typescript
+import { User, Role } from '@ottabase/ottaorm/models';
+
+// Get user and role
+const user = await User.findByEmail('user@example.com');
+const adminRole = await Role.findByName('admin');
+
+// Assign role
+await user.assignRole(adminRole.get('id'));
+
+// Verify
+const isAdmin = await user.isAdmin();
+console.log('Is admin:', isAdmin); // true
+```
+
+### Step 4: Check Permissions
+
+```typescript
+// Check specific permission
+const canDeleteUsers = await user.hasPermission('users:delete');
+console.log('Can delete users:', canDeleteUsers);
+
+// Check wildcard permission
+const canReadAnything = await user.hasPermission('posts:read');
+console.log('Can read posts:', canReadAnything); // true (admin has *:*)
+```
+
+### Step 5: Log Actions to Audit
+
+```typescript
+import { log } from '@ottabase/audit';
+
+// Simple logging
+await log('user-123', 'updated_profile', { field: 'name' });
+
+// Detailed logging
+import { logCreate } from '@ottabase/audit';
+
+await logCreate('user', userId, userData, {
+  userId: currentUser.id,
+  userEmail: currentUser.email,
+  organizationId: 'org-123',
+  ipAddress: request.headers.get('cf-connecting-ip'),
+  userAgent: request.headers.get('user-agent'),
+});
+```
+
+---
+
+## 🏗️ Complete Setup (Step by Step)
+
+### Part 1: Database Setup
+
+#### 1.1 Run Migration
+
+```bash
+# For D1 (Cloudflare)
+wrangler d1 execute your-database --file=packages/ottaorm/migrations/001_add_rbac_and_audit.sql
+
+# For SQLite (local)
+sqlite3 your-database.db < packages/ottaorm/migrations/001_add_rbac_and_audit.sql
+
+# For other databases
+# Use your database's import tool to run the SQL migration
+```
+
+#### 1.2 Verify Migration
+
+```sql
+-- Check roles table
+SELECT * FROM roles;
+
+-- Check permissions table
+SELECT * FROM permissions;
+
+-- Check user_roles table (should be empty initially)
+SELECT * FROM user_roles;
+
+-- Check audit_logs table (should be empty initially)
+SELECT * FROM audit_logs;
+```
+
+### Part 2: Seed Data (Optional)
+
+If you want to add custom roles/permissions beyond the defaults:
+
+```typescript
+import { seedRBAC } from '@ottabase/ottaorm/seed/rbac';
+
+// Seed default roles and permissions
+await seedRBAC();
+```
+
+Or use the CLI:
+
+```bash
+tsx packages/ottaorm/src/seed/rbac.ts
+```
+
+### Part 3: Configure Caching (Optional but Recommended)
+
+#### 3.1 Create KV Namespace
+
+```bash
+# For Cloudflare Workers
+wrangler kv:namespace create "RBAC_CACHE"
+wrangler kv:namespace create "RBAC_CACHE" --preview
+```
+
+#### 3.2 Add to wrangler.toml
+
+```toml
+[[kv_namespaces]]
+binding = "RBAC_KV"
+id = "your-namespace-id"
+preview_id = "your-preview-namespace-id"
+```
+
+#### 3.3 Initialize Cache
+
+```typescript
+import { initRBACCache } from '@ottabase/rbac';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+
+// In your app setup or middleware
+const { env } = await getCloudflareContext();
+
+const cache = initRBACCache({
+  kv: env.RBAC_KV,
+  ttl: 300, // 5 minutes
+  prefix: 'rbac:',
+});
+```
+
+### Part 4: Assign Roles to Users
+
+```typescript
+import { User, Role } from '@ottabase/ottaorm/models';
+
+async function assignRolesToUsers() {
+  // Find roles
+  const adminRole = await Role.findByName('admin');
+  const editorRole = await Role.findByName('editor');
+  const viewerRole = await Role.findByName('viewer');
+
+  // Find users
+  const adminUser = await User.findByEmail('admin@example.com');
+  const editorUser = await User.findByEmail('editor@example.com');
+  const viewerUser = await User.findByEmail('viewer@example.com');
+
+  // Assign roles
+  await adminUser.assignRole(adminRole.get('id'));
+  await editorUser.assignRole(editorRole.get('id'));
+  await viewerUser.assignRole(viewerRole.get('id'));
+
+  console.log('Roles assigned successfully!');
+}
+```
+
+### Part 5: Protect API Routes
+
+#### 5.1 Basic Protection
+
+```typescript
+// app/api/users/route.ts
+import { withRBAC } from '@ottabase/rbac/middleware';
+import { User } from '@ottabase/ottaorm/models';
+
+export const GET = withRBAC(
+  async (request) => {
+    const users = await User.all();
+    return Response.json({ users });
+  },
+  {
+    permissions: ['users:read'],
+    getUserFromRequest: async (request) => {
+      const userId = request.headers.get('x-user-id');
+      return userId ? await User.find(userId) : null;
+    },
+  }
+);
+```
+
+#### 5.2 With Caching
+
+```typescript
+import { withRBAC } from '@ottabase/rbac/middleware';
+
+export const GET = withRBAC(
+  async (request) => {
+    // Your handler
+    return Response.json({ data: 'protected' });
+  },
+  {
+    permissions: ['users:read'],
+    cache: true, // Use global cache
+  }
+);
+```
+
+#### 5.3 With Audit Logging
+
+```typescript
+import { withRBAC } from '@ottabase/rbac/middleware';
+import { logRead, extractRequestContext } from '@ottabase/audit';
+
+export const GET = withRBAC(
+  async (request) => {
+    const users = await User.all();
+
+    // Log the read action
+    const userId = request.headers.get('x-user-id');
+    const context = extractRequestContext(request, userId);
+    await logRead('users', 'all', context);
+
+    return Response.json({ users });
+  },
+  {
+    permissions: ['users:read'],
+    cache: true,
+  }
+);
+```
+
+### Part 6: Query Audit Logs
+
+```typescript
+import { AuditLog } from '@ottabase/ottaorm/models';
+
+// Get recent logs
+const recentLogs = await AuditLog.getRecent(100);
+
+// Get logs by user
+const userLogs = await AuditLog.getByUser('user-123');
+
+// Get logs by organization
+const orgLogs = await AuditLog.getByOrganization('org-123');
+
+// Get logs by resource
+const userResourceLogs = await AuditLog.getByResource('user', 'user-456');
+
+// Get failed actions
+const failures = await AuditLog.getFailures();
+
+// Get logs in date range
+const logs = await AuditLog.getByDateRange(
+  new Date('2024-01-01'),
+  new Date('2024-12-31')
+);
+```
+
+---
+
+## 🏢 Multi-Tenant Setup
+
+### Enable Multi-Tenancy
+
+```typescript
+import { User } from '@ottabase/ottaorm/models';
+import { createRBACContext } from '@ottabase/rbac';
+
+// Assign role in specific organization
+const user = await User.find('user-123');
+await user.assignRole(roleId, assignedBy, 'org-abc');
+
+// Check permissions in organization
+const canDelete = await user.hasPermission('users:delete', {
+  organizationId: 'org-abc',
+});
+
+// Get roles in organization
+const roles = await user.roles({ organizationId: 'org-abc' });
+
+// Create RBAC context with organization
+const context = await createRBACContext(user, cache, {
+  organizationId: 'org-abc',
+});
+
+// Log with organization context
+await logCreate('user', userId, data, {
+  userId: currentUser.id,
+  organizationId: 'org-abc', // Include organization
+  ipAddress: '127.0.0.1',
+});
+```
+
+---
+
+## 📊 Monitoring & Debugging
+
+### Check Cache Statistics
+
+```typescript
+import { getRBACCache } from '@ottabase/rbac';
+
+const cache = getRBACCache();
+const stats = await cache.getStats();
+
+console.log('Cache stats:', stats);
+// {
+//   version: 'v2',
+//   requestCacheSize: 42,
+//   enabled: true,
+//   kvAvailable: true
+// }
+```
+
+### Invalidate Cache
+
+```typescript
+const cache = getRBACCache();
+
+// Invalidate specific user
+await cache.invalidateUser('user-123');
+
+// Invalidate role (O(1) operation - increments version)
+await cache.invalidateRole('admin');
+
+// Clear all caches (rare, only for emergencies)
+await cache.clear();
+```
+
+### View Audit Logs
+
+```typescript
+// Get recent activity
+const logs = await AuditLog.getRecent(50);
+
+for (const log of logs) {
+  console.log({
+    user: log.get('userEmail'),
+    action: log.get('action'),
+    resource: log.get('resourceType'),
+    status: log.get('status'),
+    timestamp: log.get('createdAt'),
+  });
+}
+```
+
+---
+
+## 🎨 Common Patterns
+
+### Pattern 1: Admin-Only Route
+
+```typescript
+export const DELETE = withRBAC(
+  async (request, { params }) => {
+    const user = await User.find(params.id);
+    await user.destroy();
+    return Response.json({ success: true });
+  },
+  {
+    roles: ['admin'], // Only admins
+  }
+);
+```
+
+### Pattern 2: Role-Based Content
+
+```typescript
+export const GET = async (request) => {
+  const userId = request.headers.get('x-user-id');
+  const user = await User.find(userId);
+
+  if (await user.hasRole('admin')) {
+    // Return admin view with all data
+    return Response.json({ data: allData });
+  } else if (await user.hasRole('editor')) {
+    // Return editor view
+    return Response.json({ data: editorData });
+  } else {
+    // Return viewer view
+    return Response.json({ data: publicData });
+  }
+};
+```
+
+### Pattern 3: Audit All User Actions
+
+```typescript
+import { logCreate, logUpdate, logDelete } from '@ottabase/audit';
+
+// Create with audit
+export const POST = withRBAC(
+  async (request) => {
+    const body = await request.json();
+    const user = await User.create(body);
+
+    // Log creation
+    const context = extractRequestContext(request);
+    await logCreate('user', user.get('id'), body, context);
+
+    return Response.json({ user });
+  },
+  { permissions: ['users:create'] }
+);
+```
+
+### Pattern 4: Permission-Based UI
+
+```typescript
+// In your frontend/API
+export const GET = async (request) => {
+  const userId = request.headers.get('x-user-id');
+  const user = await User.find(userId);
+
+  const permissions = await user.getPermissions();
+
+  return Response.json({
+    canCreateUsers: permissions.includes('users:create'),
+    canDeleteUsers: permissions.includes('users:delete'),
+    canViewAudit: permissions.includes('audit:read'),
+    isAdmin: await user.isAdmin(),
+  });
+};
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### Issue: "Role not found"
+
+```typescript
+// Make sure migration ran successfully
+const roles = await Role.all();
+console.log('Available roles:', roles.map(r => r.get('name')));
+
+// If empty, run seed script
+import { seedRoles } from '@ottabase/ottaorm/seed/rbac';
+await seedRoles();
+```
+
+### Issue: "User has no permissions"
+
+```typescript
+// Check if user has roles assigned
+const user = await User.find('user-123');
+const roles = await user.roles();
+console.log('User roles:', roles.map(r => r.get('name')));
+
+// If empty, assign a role
+const viewerRole = await Role.findByName('viewer');
+await user.assignRole(viewerRole.get('id'));
+```
+
+### Issue: "Cache not working"
+
+```typescript
+// Check cache is enabled
+const cache = getRBACCache();
+const stats = await cache.getStats();
+console.log('Cache enabled:', stats.enabled);
+console.log('KV available:', stats.kvAvailable);
+
+// If disabled, initialize with KV
+initRBACCache({ kv: env.RBAC_KV });
+```
+
+### Issue: "Permissions not updating"
+
+```typescript
+// Cache may need invalidation
+const cache = getRBACCache();
+
+// If you changed a role's permissions:
+await cache.invalidateRole('admin');
+
+// If you changed a user's roles:
+await cache.invalidateUser('user-123');
+```
+
+---
+
+## 📚 API Reference
+
+### User RBAC Methods
+
+```typescript
+// Role assignment
+await user.assignRole(roleId, assignedBy?, organizationId?, { cache? });
+await user.removeRole(roleId, organizationId?, { cache? });
+
+// Role checking
+await user.hasRole(roleName, organizationId?);
+await user.hasAnyRole(roleNames, organizationId?);
+await user.hasAllRoles(roleNames, organizationId?);
+await user.isAdmin();
+
+// Permission checking
+await user.hasPermission(permission, { cache?, organizationId? });
+await user.hasAnyPermission(permissions, { cache?, organizationId? });
+await user.hasAllPermissions(permissions, { cache?, organizationId? });
+
+// Get data
+await user.getPermissions({ cache?, organizationId? });
+await user.roles({ cache?, organizationId? });
+```
+
+### Audit Logging
+
+```typescript
+// Simple logging
+import { log } from '@ottabase/audit';
+await log(userId, action, metadata?, userEmail?);
+
+// Detailed logging
+import { logCreate, logUpdate, logDelete, logRead } from '@ottabase/audit';
+
+await logCreate(resourceType, resourceId, data, context);
+await logUpdate(resourceType, resourceId, changes, context);
+await logDelete(resourceType, resourceId, context);
+await logRead(resourceType, resourceId, context);
+
+// Query logs
+await AuditLog.getRecent(limit);
+await AuditLog.getByUser(userId, limit?);
+await AuditLog.getByOrganization(orgId, limit?);
+await AuditLog.getByResource(resourceType, resourceId, limit?);
+await AuditLog.getFailures(limit?);
+```
+
+### Cache Management
+
+```typescript
+import { initRBACCache, getRBACCache } from '@ottabase/rbac';
+
+// Initialize
+const cache = initRBACCache({ kv, ttl?, prefix? });
+
+// Get instance
+const cache = getRBACCache();
+
+// Operations
+await cache.invalidateUser(userId, organizationId?);
+await cache.invalidateRole(roleName); // O(1)
+await cache.clear();
+await cache.getStats();
+```
+
+---
+
+## 🎯 Best Practices
+
+1. **Always use caching in production** - Reduces database queries by 90%+
+2. **Invalidate cache on role changes** - Ensures permissions stay current
+3. **Log all sensitive operations** - Compliance and debugging
+4. **Use organization scoping** - For multi-tenant applications
+5. **Assign minimal permissions** - Principle of least privilege
+6. **Monitor audit logs** - Set up alerts for suspicious activity
+7. **Archive old logs** - Implement retention policies
+
+---
+
+## 🚀 Production Checklist
+
+- [ ] Database migration applied
+- [ ] Default roles created (admin, editor, viewer)
+- [ ] Roles assigned to users
+- [ ] KV namespace configured for caching
+- [ ] Cache initialized in application
+- [ ] API routes protected with RBAC middleware
+- [ ] Audit logging enabled for sensitive operations
+- [ ] Multi-tenant organization IDs configured
+- [ ] Cache invalidation tested
+- [ ] Audit log retention policy defined
+- [ ] Monitoring/alerting set up
+
+---
+
+## 📖 Further Reading
+
+- [RBAC Package README](packages/rbac/README.md)
+- [Audit Package README](packages/audit/README.md)
+- [Optimization Roadmap](RBAC_AUDIT_ROADMAP.md)
+- [Optimization Summary](OPTIMIZATION_SUMMARY.md)
+- [Complete Demo Example](packages/ottaorm/examples/rbac-audit-demo.ts)
+
+---
+
+## 🆘 Need Help?
+
+- Check [OPTIMIZATION_SUMMARY.md](OPTIMIZATION_SUMMARY.md) for common issues
+- Review [examples](packages/ottaorm/examples/) for working code
+- See [RBAC_AUDIT_ROADMAP.md](RBAC_AUDIT_ROADMAP.md) for advanced features
+
+**You're all set! 🎉**
