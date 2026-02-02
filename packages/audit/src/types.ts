@@ -30,11 +30,12 @@ export type AuditAction =
 export type AuditStatus = 'success' | 'failure' | 'error';
 
 /**
- * Audit log data
+ * Audit log data (multi-tenant aware)
  */
 export interface AuditLogData {
     userId?: string;
     userEmail?: string;
+    organizationId?: string; // Organization/tenant context
     action: AuditAction | string;
     resourceType: string;
     resourceId?: string;
@@ -47,11 +48,12 @@ export interface AuditLogData {
 }
 
 /**
- * Request context for audit logging
+ * Request context for audit logging (multi-tenant aware)
  */
 export interface AuditRequestContext {
     userId?: string;
     userEmail?: string;
+    organizationId?: string; // Organization/tenant context
     ipAddress?: string;
     userAgent?: string;
     url?: string;

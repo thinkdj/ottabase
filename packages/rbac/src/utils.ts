@@ -6,53 +6,69 @@ import { User } from '@ottabase/ottaorm/models';
 import type { RBACContext, RBACCheckOptions, PermissionCheckResult } from './types';
 
 /**
- * Create RBAC context from user
+ * Create RBAC context from user with multi-tenant support
  * Optimized with optional caching support
  */
-export async function createRBACContext(user: User | null, cache?: any): Promise<RBACContext> {
+export async function createRBACContext(
+    user: User | null,
+    cache?: any,
+    options?: { organizationId?: string; tenantId?: string }
+): Promise<RBACContext> {
     if (!user) {
         return {
             user: null,
             roles: [],
             permissions: [],
             isAuthenticated: false,
+            organizationId: options?.organizationId,
+            tenantId: options?.tenantId,
         };
     }
 
     const userId = user.get('id') as string;
+    const organizationId = options?.organizationId;
+    const tenantId = options?.tenantId;
 
-    // Try to get full context from cache first
+    // Try to get full context from cache first (tenant-aware)
     if (cache) {
         try {
-            const cached = await cache.getUserContext(userId);
+            const cached = await cache.getUserContext(userId, organizationId);
             if (cached) {
-                return { ...cached, user }; // Re-attach user object
+                return { ...cached, user, organizationId, tenantId }; // Re-attach user and tenant info
             }
         } catch (error) {
             // Ignore cache errors, fallback to DB
         }
     }
 
-    // Get roles and permissions with cache support
-    const roles = await user.roles({ cache });
-    const permissions = await user.getPermissions({ cache });
+    // Get roles and permissions with cache support (tenant-aware)
+    const roles = await user.roles({ cache, organizationId });
+    const permissions = await user.getPermissions({ cache, organizationId });
 
     const context: RBACContext = {
         user,
         roles: roles.map((r) => r.get('name') as string),
         permissions,
         isAuthenticated: true,
+        organizationId,
+        tenantId,
     };
 
-    // Cache the context
+    // Cache the context (tenant-aware)
     if (cache) {
         try {
-            await cache.setUserContext(userId, {
-                user: null, // Don't cache the user object itself
-                roles: context.roles,
-                permissions: context.permissions,
-                isAuthenticated: true,
-            });
+            await cache.setUserContext(
+                userId,
+                {
+                    user: null, // Don't cache the user object itself
+                    roles: context.roles,
+                    permissions: context.permissions,
+                    isAuthenticated: true,
+                    organizationId,
+                    tenantId,
+                },
+                organizationId
+            );
         } catch (error) {
             // Ignore cache errors
         }

@@ -17,6 +17,8 @@ export const auditLogsTable = sqliteTable('audit_logs', {
     // Who performed the action
     userId: text('user_id').references(() => usersTable.id, { onDelete: 'set null' }),
     userEmail: text('user_email'), // Denormalized for quick access
+    // Multi-tenant context
+    organizationId: text('organization_id'), // Organization/tenant scoping
     // What action was performed
     action: text('action').notNull(), // e.g., 'create', 'update', 'delete', 'login', 'logout'
     // What resource was affected

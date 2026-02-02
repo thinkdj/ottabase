@@ -5,13 +5,15 @@
 import type { User } from '@ottabase/ottaorm/models';
 
 /**
- * RBAC Context - contains user and their permissions
+ * RBAC Context - contains user and their permissions with multi-tenant support
  */
 export interface RBACContext {
     user: User | null;
     roles: string[];
     permissions: string[];
     isAuthenticated: boolean;
+    organizationId?: string; // Organization/tenant context
+    tenantId?: string; // Alternative tenant identifier
 }
 
 /**

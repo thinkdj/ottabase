@@ -81,6 +81,18 @@ export class AuditLog extends BaseModel {
                 visible: true,
             },
         },
+        organizationId: {
+            type: 'string',
+            editable: false,
+            filterable: true,
+            uiConfig: {
+                label: 'Organization ID',
+                description: 'Organization/tenant context',
+            },
+            tableConfig: {
+                visible: true,
+            },
+        },
         action: {
             type: 'string',
             editable: false,
@@ -249,11 +261,12 @@ export class AuditLog extends BaseModel {
     }
 
     /**
-     * Log an action
+     * Log an action (multi-tenant aware)
      */
     static async log(data: {
         userId?: string;
         userEmail?: string;
+        organizationId?: string; // Organization/tenant context
         action: string;
         resourceType: string;
         resourceId?: string;
@@ -337,5 +350,43 @@ export class AuditLog extends BaseModel {
             }
             return false;
         });
+    }
+
+    /**
+     * Get audit logs by organization (multi-tenant)
+     */
+    static async getByOrganization(organizationId: string, limit?: number) {
+        const query = this.where({ organizationId });
+        if (limit) {
+            return query.slice(0, limit);
+        }
+        return query;
+    }
+
+    /**
+     * Get audit logs by user in organization (multi-tenant)
+     */
+    static async getByUserInOrganization(userId: string, organizationId: string, limit?: number) {
+        const query = this.where({ userId, organizationId });
+        if (limit) {
+            return query.slice(0, limit);
+        }
+        return query;
+    }
+
+    /**
+     * Get audit logs by resource in organization (multi-tenant)
+     */
+    static async getByResourceInOrganization(
+        resourceType: string,
+        resourceId: string,
+        organizationId: string,
+        limit?: number
+    ) {
+        const query = this.where({ resourceType, resourceId, organizationId });
+        if (limit) {
+            return query.slice(0, limit);
+        }
+        return query;
     }
 }
