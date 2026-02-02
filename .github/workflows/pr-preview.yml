@@ -13,15 +13,37 @@ permissions:
     actions: write
 
 jobs:
+    # Check PR title/body for #skippr or #skipdeploy to skip preview build & deploy
+    check-skip-pr:
+        runs-on: ubuntu-latest
+        if: github.event_name == 'pull_request'
+        outputs:
+            skip_pr: ${{ steps.check.outputs.skip_pr }}
+        steps:
+            - name: Check for skip markers
+              id: check
+              run: |
+                  TITLE="${{ github.event.pull_request.title }}"
+                  BODY="${{ github.event.pull_request.body || '' }}"
+                  COMBINED="${TITLE} ${BODY}"
+                  if echo "$COMBINED" | grep -qiE '#skippr|#skipdeploy'; then
+                    echo "skip_pr=true" >> $GITHUB_OUTPUT
+                    echo "⏭️  Skipping PR preview: #skippr or #skipdeploy found in PR title/description"
+                  else
+                    echo "skip_pr=false" >> $GITHUB_OUTPUT
+                    echo "✅ No skip markers – PR preview will run"
+                  fi
+
     # Build and cache packages first (reusable workflow)
     build-packages:
-        if: github.event.action != 'closed'
+        needs: check-skip-pr
+        if: github.event.action != 'closed' && needs.check-skip-pr.outputs.skip_pr != 'true'
         uses: ./.github/workflows/build-packages.yml
 
     # Prepare deployment matrix for preview environments
     prepare-deployment:
-        needs: build-packages
-        if: github.event.action != 'closed'
+        needs: [build-packages, check-skip-pr]
+        if: github.event.action != 'closed' && needs.check-skip-pr.outputs.skip_pr != 'true'
         runs-on: ubuntu-latest
         timeout-minutes: 5
         name: Prepare preview deployment

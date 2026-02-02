@@ -106,6 +106,17 @@ wrangler deploy --env production
 - `vite` - Vite apps
 - `custom` - Custom build
 
+## Skip deployment
+
+You can skip builds/deploys by adding markers in PR or merge text:
+
+| Marker        | Where                                        | Effect                                                        |
+| ------------- | -------------------------------------------- | ------------------------------------------------------------- |
+| `#skippr`     | PR title or description                      | Skips PR preview build and deploy                             |
+| `#skipdeploy` | PR title/description or merge commit message | Skips PR preview; on merge to `main`, skips production deploy |
+
+Use these for docs-only or CI-only PRs to avoid unnecessary preview or production deployments.
+
 ## How It Works
 
 ### Workflow

@@ -43,6 +43,15 @@ jobs:
               run: |
                   echo "🔍 Preparing deployment matrix..."
 
+                  # Check merge/commit message for #skipdeploy (skip production deploy)
+                  COMMIT_MSG="${{ github.event.head_commit.message || '' }}"
+                  if echo "$COMMIT_MSG" | grep -qiE '#skipdeploy'; then
+                    echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
+                    echo "has-apps=false" >> $GITHUB_OUTPUT
+                    echo "⏭️  Skipping deployment: #skipdeploy found in commit message"
+                    exit 0
+                  fi
+
                   # Step 1: Get target apps from secret or use default
                   APPS_TO_DEPLOY="${{ secrets.APPS_TO_DEPLOY }}"
                   if [ -z "$APPS_TO_DEPLOY" ]; then
