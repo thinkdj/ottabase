@@ -16,17 +16,17 @@ jobs:
     # Check PR title/body for #skippr or #skipdeploy to skip preview build & deploy
     check-skip-pr:
         runs-on: ubuntu-latest
-        if: github.event_name == 'pull_request'
         outputs:
             skip_pr: ${{ steps.check.outputs.skip_pr }}
         steps:
             - name: Check for skip markers
               id: check
+              env:
+                  PR_TITLE: ${{ github.event.pull_request.title }}
+                  PR_BODY: ${{ github.event.pull_request.body || '' }}
               run: |
-                  TITLE="${{ github.event.pull_request.title }}"
-                  BODY="${{ github.event.pull_request.body || '' }}"
-                  COMBINED="${TITLE} ${BODY}"
-                  if echo "$COMBINED" | grep -qiE '#skippr|#skipdeploy'; then
+                  COMBINED="${PR_TITLE} ${PR_BODY}"
+                  if printf '%s\n' "$COMBINED" | grep -qiE '#skippr|#skipdeploy'; then
                     echo "skip_pr=true" >> $GITHUB_OUTPUT
                     echo "⏭️  Skipping PR preview: #skippr or #skipdeploy found in PR title/description"
                   else
