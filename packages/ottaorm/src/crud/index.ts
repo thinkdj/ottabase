@@ -378,3 +378,6 @@ export async function parseCrudRequest(
         query: Object.keys(query).length > 0 ? query : undefined,
     };
 }
+
+// Export tenant-aware CRUD
+export { handleTenantAwareCrud, tenantAwareCrudMiddleware, type TenantAwareCrudOptions } from "./tenant-aware";
