@@ -1,6 +1,18 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
-import { Activity, Building2, Clock, Database, FileText, Layers, Palette, Shield, ShieldCheck, UserPlus } from 'lucide-react';
+import {
+    Activity,
+    Building2,
+    Clock,
+    Database,
+    FileText,
+    Layers,
+    Palette,
+    Shield,
+    ShieldCheck,
+    UserPlus,
+    Users,
+} from 'lucide-react';
 
 export function AdminIndexPage() {
     const adminLinks = [
