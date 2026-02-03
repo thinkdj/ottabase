@@ -193,13 +193,11 @@ export class UserRole extends BaseModel {
      * @param organizationId Organization ID (REQUIRED for multi-tenant security)
      * @param appId Optional app ID (null = remove from all apps)
      */
-    static async removeRole(
-        userId: string,
-        roleId: string,
-        organizationId: string,
-        appId?: string | null
-    ) {
-        const where: Record<string, any> = { userId, roleId, organizationId };
+    static async removeRole(userId: string, roleId: string, organizationId?: string | null, appId?: string | null) {
+        const where: Record<string, any> = { userId, roleId };
+        if (organizationId !== undefined && organizationId !== null) {
+            where.organizationId = organizationId;
+        }
         if (appId !== undefined) {
             where.appId = appId;
         }
@@ -220,10 +218,13 @@ export class UserRole extends BaseModel {
     static async hasRole(
         userId: string,
         roleId: string,
-        organizationId: string,
-        appId?: string | null
+        organizationId?: string | null,
+        appId?: string | null,
     ): Promise<boolean> {
-        const where: Record<string, any> = { userId, roleId, organizationId };
+        const where: Record<string, any> = { userId, roleId };
+        if (organizationId !== undefined && organizationId !== null) {
+            where.organizationId = organizationId;
+        }
         if (appId !== undefined) {
             where.appId = appId;
         }
@@ -238,11 +239,7 @@ export class UserRole extends BaseModel {
      * @param organizationId Organization ID (REQUIRED for multi-tenant security)
      * @param appId Optional app ID filter (if not provided, returns roles from all apps)
      */
-    static async getUserRoles(
-        userId: string,
-        organizationId: string,
-        appId?: string | null
-    ) {
+    static async getUserRoles(userId: string, organizationId: string, appId?: string | null) {
         const where: Record<string, any> = { userId, organizationId };
         if (appId !== undefined) {
             where.appId = appId;
@@ -257,11 +254,7 @@ export class UserRole extends BaseModel {
      * @param organizationId Organization ID (REQUIRED for multi-tenant security)
      * @param appId Optional app ID filter
      */
-    static async getUsersWithRole(
-        roleId: string,
-        organizationId: string,
-        appId?: string | null
-    ) {
+    static async getUsersWithRole(roleId: string, organizationId: string, appId?: string | null) {
         const where: Record<string, any> = { roleId, organizationId };
         if (appId !== undefined) {
             where.appId = appId;

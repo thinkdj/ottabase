@@ -4,11 +4,7 @@
 
 import { eq, and, sql } from 'drizzle-orm';
 import { BaseModel, type PackageType, type ModelFields } from '../base/BaseModel';
-import {
-    organizationsTable,
-    type OrganizationType,
-    type NewOrganizationType,
-} from './Organization.schema';
+import { organizationsTable, type OrganizationType, type NewOrganizationType } from './Organization.schema';
 import { getConnection } from '../context';
 
 /**
@@ -124,9 +120,9 @@ export class Organization extends BaseModel {
                 visible: true,
                 fieldType: 'select',
                 options: [
-                    { value: 'free', label: 'Free' },
-                    { value: 'pro', label: 'Pro' },
-                    { value: 'enterprise', label: 'Enterprise' },
+                    { id: 'free', name: 'Free' },
+                    { id: 'pro', name: 'Pro' },
+                    { id: 'enterprise', name: 'Enterprise' },
                 ],
             },
             tableConfig: {
@@ -144,9 +140,9 @@ export class Organization extends BaseModel {
                 visible: true,
                 fieldType: 'select',
                 options: [
-                    { value: 'active', label: 'Active' },
-                    { value: 'suspended', label: 'Suspended' },
-                    { value: 'cancelled', label: 'Cancelled' },
+                    { id: 'active', name: 'Active' },
+                    { id: 'suspended', name: 'Suspended' },
+                    { id: 'cancelled', name: 'Cancelled' },
                 ],
             },
             tableConfig: {
@@ -208,20 +204,18 @@ export class Organization extends BaseModel {
     /**
      * Create a new organization
      */
-    static async create(data: NewOrganizationType): Promise<OrganizationType> {
-        const db = getConnection(this.connection);
-
+    static async create<T extends typeof BaseModel>(
+        this: T,
+        data: Record<string, any>,
+        driver?: any,
+    ): Promise<InstanceType<T>> {
         // Generate slug from name if not provided
         if (!data.slug && data.name) {
-            data.slug = this.generateSlug(data.name);
+            data.slug = Organization.generateSlug(data.name);
         }
 
-        const [organization] = await db
-            .insert(organizationsTable)
-            .values(data)
-            .returning();
-
-        return organization;
+        // Call parent create method
+        return (await super.create.call(this, data, driver)) as InstanceType<T>;
     }
 
     /**
@@ -242,42 +236,31 @@ export class Organization extends BaseModel {
     /**
      * Update organization
      */
-    static async update(
+    static async update<T extends typeof BaseModel>(
+        this: T,
         id: string,
-        data: Partial<NewOrganizationType>
-    ): Promise<OrganizationType | undefined> {
-        const db = getConnection(this.connection);
+        data: Record<string, any>,
+        driver?: any,
+    ): Promise<InstanceType<T>> {
+        // Update updatedAt timestamp
+        data.updatedAt = new Date();
 
-        const [updated] = await db
-            .update(organizationsTable)
-            .set({
-                ...data,
-                updatedAt: new Date(),
-            })
-            .where(eq(organizationsTable.id, id))
-            .returning();
-
-        return updated;
+        // Call parent update method
+        return (await super.update.call(this, id, data, driver)) as InstanceType<T>;
     }
 
     /**
      * Update organization settings
      */
-    static async updateSettings(
-        id: string,
-        settings: Record<string, any>
-    ): Promise<OrganizationType | undefined> {
-        return this.update(id, { settings });
+    static async updateSettings(id: string, settings: Record<string, any>): Promise<Organization> {
+        return (await this.update(id, { settings })) as Organization;
     }
 
     /**
      * Update organization status
      */
-    static async updateStatus(
-        id: string,
-        status: 'active' | 'suspended' | 'cancelled'
-    ): Promise<OrganizationType | undefined> {
-        return this.update(id, { status });
+    static async updateStatus(id: string, status: 'active' | 'suspended' | 'cancelled'): Promise<Organization> {
+        return (await this.update(id, { status })) as Organization;
     }
 
     /**
@@ -300,7 +283,7 @@ export class Organization extends BaseModel {
      */
     static async isActive(id: string): Promise<boolean> {
         const org = await this.find(id);
-        return org?.status === 'active';
+        return org?.get('status') === 'active';
     }
 
     /**
@@ -344,7 +327,7 @@ export class Organization extends BaseModel {
             .select()
             .from(organizationsTable)
             .where(
-                sql`${organizationsTable.name} LIKE ${searchPattern} OR ${organizationsTable.slug} LIKE ${searchPattern}`
+                sql`${organizationsTable.name} LIKE ${searchPattern} OR ${organizationsTable.slug} LIKE ${searchPattern}`,
             )
             .limit(limit);
     }

@@ -120,7 +120,7 @@ export class Role extends BaseModel {
             },
             formConfig: {
                 visible: true,
-                fieldType: 'checkbox',
+                fieldType: 'boolean',
             },
             tableConfig: {
                 visible: true,

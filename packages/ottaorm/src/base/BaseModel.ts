@@ -218,6 +218,52 @@ export class BaseModel extends AbstractBaseModel {
     }
 
     /**
+     * Get all records where a field is in an array of values
+     */
+    static async whereIn<T extends typeof BaseModel>(
+        this: T,
+        field: string,
+        values: any[],
+        options?: {
+            orderBy?: string;
+            orderDirection?: 'asc' | 'desc';
+            limit?: number;
+            offset?: number;
+        },
+        driver?: DbDriver,
+    ): Promise<InstanceType<T>[]> {
+        const db = this.getDriver(driver).getDb();
+        const table = this.getTable();
+
+        const fieldColumn = (table as any)[field];
+        if (!fieldColumn) {
+            throw new Error(`Field "${field}" does not exist on table "${this.entity}"`);
+        }
+
+        let query = db.select().from(table).where(inArray(fieldColumn, values));
+
+        // Apply ordering
+        if (options?.orderBy) {
+            const orderColumn = (table as any)[options.orderBy];
+            if (orderColumn) {
+                query = query.orderBy(options.orderDirection === 'desc' ? desc(orderColumn) : asc(orderColumn));
+            }
+        }
+
+        // Apply limit/offset
+        if (options?.limit) {
+            query = query.limit(options.limit);
+        }
+        if (options?.offset) {
+            query = query.offset(options.offset);
+        }
+
+        const results = await query;
+
+        return results.map((row: any) => new this({ entity: this.entity, data: row }) as InstanceType<T>);
+    }
+
+    /**
      * Get all records
      */
     static async all<T extends typeof BaseModel>(

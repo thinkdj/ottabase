@@ -239,7 +239,7 @@ export class User extends BaseModel {
         // Cache the role names
         if (options?.cache && roles.length > 0) {
             try {
-                const roleNames = roles.map((r) => r.get('name') as string);
+                const roleNames = roles.map((r: InstanceType<typeof Role>) => r.get('name') as string);
                 await options.cache.setUserRoles(userId, roleNames, organizationId);
             } catch (error) {
                 // Ignore cache errors
@@ -316,7 +316,7 @@ export class User extends BaseModel {
         roleId: string,
         assignedBy?: string,
         organizationId?: string,
-        options?: { cache?: any }
+        options?: { cache?: any },
     ): Promise<void> {
         const { UserRole } = await import('./UserRole');
         const userId = this.get('id') as string;
@@ -427,7 +427,7 @@ export class User extends BaseModel {
 
         for (const role of roles) {
             const rolePermissions = role.getPermissions();
-            rolePermissions.forEach((p) => permissions.add(p));
+            rolePermissions.forEach((p: string) => permissions.add(p));
         }
 
         const permissionsArray = Array.from(permissions);

@@ -70,9 +70,9 @@ export class OrganizationMember extends BaseModel {
                 visible: true,
                 fieldType: 'select',
                 options: [
-                    { value: 'owner', label: 'Owner' },
-                    { value: 'admin', label: 'Admin' },
-                    { value: 'member', label: 'Member' },
+                    { id: 'owner', name: 'Owner' },
+                    { id: 'admin', name: 'Admin' },
+                    { id: 'member', name: 'Member' },
                 ],
             },
             tableConfig: {
@@ -97,9 +97,9 @@ export class OrganizationMember extends BaseModel {
                 visible: true,
                 fieldType: 'select',
                 options: [
-                    { value: 'active', label: 'Active' },
-                    { value: 'invited', label: 'Invited' },
-                    { value: 'suspended', label: 'Suspended' },
+                    { id: 'active', name: 'Active' },
+                    { id: 'invited', name: 'Invited' },
+                    { id: 'suspended', name: 'Suspended' },
                 ],
             },
             tableConfig: {
@@ -151,9 +151,7 @@ export class OrganizationMember extends BaseModel {
     /**
      * Add a user to an organization
      */
-    static async addMember(
-        data: NewOrganizationMemberType
-    ): Promise<OrganizationMemberType> {
+    static async addMember(data: NewOrganizationMemberType): Promise<OrganizationMemberType> {
         const db = getConnection(this.connection);
 
         const [member] = await db
@@ -170,10 +168,7 @@ export class OrganizationMember extends BaseModel {
     /**
      * Remove a user from an organization
      */
-    static async removeMember(
-        userId: string,
-        organizationId: string
-    ): Promise<boolean> {
+    static async removeMember(userId: string, organizationId: string): Promise<boolean> {
         const db = getConnection(this.connection);
 
         const result = await db
@@ -181,8 +176,8 @@ export class OrganizationMember extends BaseModel {
             .where(
                 and(
                     eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId)
-                )
+                    eq(organizationMembersTable.organizationId, organizationId),
+                ),
             );
 
         return true;
@@ -194,7 +189,7 @@ export class OrganizationMember extends BaseModel {
     static async updateRole(
         userId: string,
         organizationId: string,
-        role: 'owner' | 'admin' | 'member'
+        role: 'owner' | 'admin' | 'member',
     ): Promise<OrganizationMemberType | undefined> {
         const db = getConnection(this.connection);
 
@@ -204,8 +199,8 @@ export class OrganizationMember extends BaseModel {
             .where(
                 and(
                     eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId)
-                )
+                    eq(organizationMembersTable.organizationId, organizationId),
+                ),
             )
             .returning();
 
@@ -218,7 +213,7 @@ export class OrganizationMember extends BaseModel {
     static async updateStatus(
         userId: string,
         organizationId: string,
-        status: 'active' | 'invited' | 'suspended'
+        status: 'active' | 'invited' | 'suspended',
     ): Promise<OrganizationMemberType | undefined> {
         const db = getConnection(this.connection);
 
@@ -228,8 +223,8 @@ export class OrganizationMember extends BaseModel {
             .where(
                 and(
                     eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId)
-                )
+                    eq(organizationMembersTable.organizationId, organizationId),
+                ),
             )
             .returning();
 
@@ -245,7 +240,7 @@ export class OrganizationMember extends BaseModel {
             status?: 'active' | 'invited' | 'suspended';
             role?: 'owner' | 'admin' | 'member';
             limit?: number;
-        }
+        },
     ): Promise<Array<OrganizationMemberType & { user?: any }>> {
         const db = getConnection(this.connection);
 
@@ -295,7 +290,7 @@ export class OrganizationMember extends BaseModel {
         options?: {
             status?: 'active' | 'invited' | 'suspended';
             role?: 'owner' | 'admin' | 'member';
-        }
+        },
     ): Promise<Array<OrganizationMemberType & { organization?: any }>> {
         const db = getConnection(this.connection);
 
@@ -328,70 +323,14 @@ export class OrganizationMember extends BaseModel {
                 },
             })
             .from(organizationMembersTable)
-            .leftJoin(
-                organizationsTable,
-                eq(organizationMembersTable.organizationId, organizationsTable.id)
-            )
+            .leftJoin(organizationsTable, eq(organizationMembersTable.organizationId, organizationsTable.id))
             .where(and(...conditions));
     }
 
     /**
      * Check if user is member of organization
      */
-    static async isMember(
-        userId: string,
-        organizationId: string
-    ): Promise<boolean> {
-        const db = getConnection(this.connection);
-
-        const [member] = await db
-            .select()
-            .from(organizationMembersTable)
-            .where(
-                and(
-                    eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId),
-                    eq(organizationMembersTable.status, 'active')
-                )
-            )
-            .limit(1);
-
-        return !!member;
-    }
-
-    /**
-     * Check if user has specific role in organization
-     */
-    static async hasRole(
-        userId: string,
-        organizationId: string,
-        role: 'owner' | 'admin' | 'member'
-    ): Promise<boolean> {
-        const db = getConnection(this.connection);
-
-        const [member] = await db
-            .select()
-            .from(organizationMembersTable)
-            .where(
-                and(
-                    eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId),
-                    eq(organizationMembersTable.role, role),
-                    eq(organizationMembersTable.status, 'active')
-                )
-            )
-            .limit(1);
-
-        return !!member;
-    }
-
-    /**
-     * Check if user is owner or admin
-     */
-    static async isOwnerOrAdmin(
-        userId: string,
-        organizationId: string
-    ): Promise<boolean> {
+    static async isMember(userId: string, organizationId: string): Promise<boolean> {
         const db = getConnection(this.connection);
 
         const [member] = await db
@@ -402,8 +341,51 @@ export class OrganizationMember extends BaseModel {
                     eq(organizationMembersTable.userId, userId),
                     eq(organizationMembersTable.organizationId, organizationId),
                     eq(organizationMembersTable.status, 'active'),
-                    sql`${organizationMembersTable.role} IN ('owner', 'admin')`
-                )
+                ),
+            )
+            .limit(1);
+
+        return !!member;
+    }
+
+    /**
+     * Check if user has specific role in organization
+     */
+    static async hasRole(userId: string, organizationId: string, role: 'owner' | 'admin' | 'member'): Promise<boolean> {
+        const db = getConnection(this.connection);
+
+        const [member] = await db
+            .select()
+            .from(organizationMembersTable)
+            .where(
+                and(
+                    eq(organizationMembersTable.userId, userId),
+                    eq(organizationMembersTable.organizationId, organizationId),
+                    eq(organizationMembersTable.role, role),
+                    eq(organizationMembersTable.status, 'active'),
+                ),
+            )
+            .limit(1);
+
+        return !!member;
+    }
+
+    /**
+     * Check if user is owner or admin
+     */
+    static async isOwnerOrAdmin(userId: string, organizationId: string): Promise<boolean> {
+        const db = getConnection(this.connection);
+
+        const [member] = await db
+            .select()
+            .from(organizationMembersTable)
+            .where(
+                and(
+                    eq(organizationMembersTable.userId, userId),
+                    eq(organizationMembersTable.organizationId, organizationId),
+                    eq(organizationMembersTable.status, 'active'),
+                    sql`${organizationMembersTable.role} IN ('owner', 'admin')`,
+                ),
             )
             .limit(1);
 
@@ -413,10 +395,7 @@ export class OrganizationMember extends BaseModel {
     /**
      * Get member details
      */
-    static async getMember(
-        userId: string,
-        organizationId: string
-    ): Promise<OrganizationMemberType | undefined> {
+    static async getMember(userId: string, organizationId: string): Promise<OrganizationMemberType | undefined> {
         const db = getConnection(this.connection);
 
         const [member] = await db
@@ -425,8 +404,8 @@ export class OrganizationMember extends BaseModel {
             .where(
                 and(
                     eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId)
-                )
+                    eq(organizationMembersTable.organizationId, organizationId),
+                ),
             )
             .limit(1);
 
@@ -434,8 +413,4 @@ export class OrganizationMember extends BaseModel {
     }
 }
 
-export {
-    organizationMembersTable,
-    type OrganizationMemberType,
-    type NewOrganizationMemberType,
-};
+export { organizationMembersTable, type OrganizationMemberType, type NewOrganizationMemberType };

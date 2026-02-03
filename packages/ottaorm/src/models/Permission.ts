@@ -126,12 +126,12 @@ export class Permission extends BaseModel {
             formConfig: {
                 visible: true,
                 fieldType: 'select',
-                selectOptions: [
-                    { value: 'create', label: 'Create' },
-                    { value: 'read', label: 'Read' },
-                    { value: 'update', label: 'Update' },
-                    { value: 'delete', label: 'Delete' },
-                    { value: 'manage', label: 'Manage' },
+                options: [
+                    { id: 'create', name: 'Create' },
+                    { id: 'read', name: 'Read' },
+                    { id: 'update', name: 'Update' },
+                    { id: 'delete', name: 'Delete' },
+                    { id: 'manage', name: 'Manage' },
                 ],
             },
             tableConfig: {
@@ -215,7 +215,7 @@ export class Permission extends BaseModel {
                             description: `${action.charAt(0).toUpperCase() + action.slice(1)} ${resource}`,
                             resource,
                             action,
-                        })
+                        }),
                     );
                 }
             }
