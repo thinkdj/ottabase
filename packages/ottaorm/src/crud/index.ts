@@ -379,5 +379,6 @@ export async function parseCrudRequest(
     };
 }
 
-// Export tenant-aware CRUD
-export { handleTenantAwareCrud, tenantAwareCrudMiddleware, type TenantAwareCrudOptions } from "./tenant-aware";
+// NOTE: tenant-aware CRUD exports are commented out to avoid circular dependencies during build
+// Users can import directly from '@ottabase/ottaorm/crud/tenant-aware' if needed
+// export { handleTenantAwareCrud, tenantAwareCrudMiddleware, type TenantAwareCrudOptions } from "./tenant-aware";

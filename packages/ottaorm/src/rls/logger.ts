@@ -6,6 +6,9 @@
 
 import type { RLSViolation } from './types';
 
+// Type declaration for process (may not exist in all environments)
+declare const process: { env?: { NODE_ENV?: string } } | undefined;
+
 /**
  * Log security violation
  * In production, send to monitoring service (Sentry, CloudWatch, etc.)
