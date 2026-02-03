@@ -31,6 +31,8 @@ import {
  */
 export interface AuthEnv extends ProviderEnv {
     AUTH_SECRET?: string;
+    AUTH_URL?: string;
+    NEXTAUTH_URL?: string;
     OBCF_D1?: D1Database;
 }
 
@@ -163,6 +165,11 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
     if (verbose) console.log('✅ Credentials authentication enabled');
 
     // Create the auth configuration
+    // Determine the frontend URL for redirects
+    // In development, use AUTH_URL env var or default to localhost:3003 (frontend)
+    // In production, this should be your public frontend URL
+    const authUrl = env.AUTH_URL || env.NEXTAUTH_URL || 'http://127.0.0.1:3003';
+
     const config = createOttabaseAuthConfig({
         d1: env.OBCF_D1,
         providers,
@@ -198,6 +205,19 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
              */
             trustHost: true,
             callbacks: {
+                async redirect({ url, baseUrl }) {
+                    // Ensure redirects go to the frontend URL, not the backend
+                    // If url is relative, make it absolute using the frontend baseUrl
+                    if (url.startsWith('/')) {
+                        return `${authUrl}${url}`;
+                    }
+                    // If url is already absolute but points to backend, replace with frontend
+                    if (url.startsWith('http://127.0.0.1:3004') || url.startsWith('http://localhost:3004')) {
+                        return url.replace(/:\d+/, ':3003');
+                    }
+                    // Otherwise, use the url as-is if it's already pointing to frontend or external
+                    return url;
+                },
                 async jwt({ token, user }) {
                     if (user) {
                         token.id = user.id;

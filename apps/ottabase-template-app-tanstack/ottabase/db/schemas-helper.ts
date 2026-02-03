@@ -14,19 +14,20 @@
 // await autoInit({ driver, schema: allSchemas, ... });
 // ============================================================
 
-import {
-    ottablogPluginsTable,
-    ottablogThemesTable,
-    postsTable,
-    postTagLinksTable,
-    postTagsTable,
-} from '@ottabase/ottablog';
+// Blog tables are included via package registry (getEnabledPackageTables)
+// No need to import them directly here to avoid duplication
 import {
     accountsTable,
+    auditLogsTable,
     authenticatorsTable,
+    organizationMembersTable,
+    organizationsTable,
+    permissionsTable,
+    rolesTable,
     scheduledTasksTable,
     sessionsTable,
     tagsTable,
+    userRolesTable,
     usersTable,
     verificationTokensTable,
 } from '@ottabase/ottaorm';
@@ -46,30 +47,28 @@ export function getAllSchemas() {
         usersTable,
         verificationTokensTable,
         scheduledTasksTable,
+        // Multi-tenant/RBAC tables
+        organizationsTable,
+        organizationMembersTable,
+        rolesTable,
+        permissionsTable,
+        userRolesTable,
+        auditLogsTable,
     };
 
-    // 2. Blog/Content schemas from @ottabase/ottablog
-    const blogTables = {
-        postsTable,
-        postTagsTable,
-        postTagLinksTable,
-        ottablogPluginsTable,
-        ottablogThemesTable,
-    };
-
-    // 3. App-specific schemas
+    // 2. App-specific schemas
     const appTables = {
         todosTable,
     };
 
-    // 4. Package schemas from enabled packages (shortlinks, etc.)
+    // 3. Package schemas from enabled packages (ottablog, shortlinks, referrals, etc.)
+    // This includes blog tables (posts, categories, series, etc.) from ottablog package
     const packageTables = getEnabledPackageTables();
 
     // Combine all schemas
     // Note: Later entries override earlier ones if there are duplicates
     const allSchemas = {
         ...coreTables,
-        ...blogTables,
         ...appTables,
         ...packageTables,
     };
@@ -89,14 +88,13 @@ export function getSchemaSummary() {
         usersTable,
         verificationTokensTable,
         scheduledTasksTable,
-    };
-
-    const blogTables = {
-        postsTable,
-        postTagsTable,
-        postTagLinksTable,
-        ottablogPluginsTable,
-        ottablogThemesTable,
+        // Multi-tenant/RBAC tables
+        organizationsTable,
+        organizationMembersTable,
+        rolesTable,
+        permissionsTable,
+        userRolesTable,
+        auditLogsTable,
     };
 
     const appTables = {
@@ -107,12 +105,10 @@ export function getSchemaSummary() {
 
     return {
         core: Object.keys(coreTables),
-        blog: Object.keys(blogTables),
         app: Object.keys(appTables),
         packages: Object.keys(packageTables),
         total: Object.keys({
             ...coreTables,
-            ...blogTables,
             ...appTables,
             ...packageTables,
         }).length,

@@ -10,15 +10,17 @@
 // 3. Enable it in `migrationConfig`
 // ============================================================
 
-import type { Migration } from '@ottabase/ottaorm';
 import {
     categoriesTable,
+    ottablogPluginsTable,
+    ottablogThemesTable,
     postTagLinksTable,
     postTagsTable,
     postVersionsTable,
     postsTable,
     seriesTable,
 } from '@ottabase/ottablog';
+import type { Migration } from '@ottabase/ottaorm';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 
@@ -35,6 +37,8 @@ const PACKAGE_REGISTRY = {
             postTagsTable,
             postTagLinksTable,
             postVersionsTable,
+            ottablogPluginsTable,
+            ottablogThemesTable,
         },
         migrations: [] as Migration[],
     },
