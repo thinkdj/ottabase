@@ -22,6 +22,28 @@ export type { ModelMetadata, ModelRegistryEntry } from './registry';
 export { handleCrud, parseCrudRequest } from './crud';
 export type { CrudRequest, CrudResponse } from './crud';
 
+// Row-Level Security (RLS)
+export {
+    initRLS,
+    registerPolicy,
+    getRegisteredModels as getRLSModels,
+    RLSPolicies,
+    globalRLS,
+    RLSError,
+    rlsMiddleware,
+    secureCrud,
+    extractSecurityContext,
+    logSecurityViolation,
+} from './rls';
+export type {
+    SecurityContext,
+    RLSPolicy,
+    ModelRLSConfig,
+    RLSViolation,
+    SecurityLevel,
+    SecureCrudOptions,
+} from './rls';
+
 // Migrations
 export { coreMigrations, rollbackMigrations, runMigrations } from './migrations';
 export type { Migration } from './migrations';

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
-import { Activity, Building2, Clock, Database, FileText, Layers, Palette, Shield, UserPlus } from 'lucide-react';
+import { Activity, Building2, Clock, Database, FileText, Layers, Palette, Shield, ShieldCheck, UserPlus } from 'lucide-react';
 
 export function AdminIndexPage() {
     const adminLinks = [
@@ -37,6 +37,13 @@ export function AdminIndexPage() {
             description: 'View and search audit logs for security and compliance tracking.',
             href: '/admin/audit',
             icon: FileText,
+            disabled: false,
+        },
+        {
+            title: 'RLS Security Demo',
+            description: 'Interactive demo of Row-Level Security with live security tests and policy overview.',
+            href: '/admin/security/rls',
+            icon: ShieldCheck,
             disabled: false,
         },
         {

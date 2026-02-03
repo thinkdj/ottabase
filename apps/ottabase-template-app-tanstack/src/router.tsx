@@ -710,6 +710,16 @@ const adminAuditRoute = new Route({
     ),
 });
 
+const adminSecurityRLSRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/security/rls',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/security/RLSSecurityDemoPage').then((m) => ({
+            default: m.RLSSecurityDemoPage,
+        })),
+    ),
+});
+
 demoLayoutRoute.addChildren([
     demoIndexRoute,
     demoMantineRoute,
@@ -760,6 +770,7 @@ const routeTree = rootRoute.addChildren([
     adminRBACRolesRoute,
     adminRBACPermissionsRoute,
     adminAuditRoute,
+    adminSecurityRLSRoute,
     blogListRoute,
     blogDetailRoute,
     organizationsRoute,
