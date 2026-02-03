@@ -33,6 +33,13 @@ export function AdminIndexPage() {
             disabled: false,
         },
         {
+            title: 'Audit Logs',
+            description: 'View and search audit logs for security and compliance tracking.',
+            href: '/admin/audit',
+            icon: FileText,
+            disabled: false,
+        },
+        {
             title: 'Migration Status',
             description: 'Check database schema status, view migration history, and initialize tables.',
             href: '/migration-status',

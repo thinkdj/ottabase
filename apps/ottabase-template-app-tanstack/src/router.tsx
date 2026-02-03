@@ -687,6 +687,16 @@ const adminRBACPermissionsRoute = new Route({
     ),
 });
 
+const adminAuditRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/audit',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/audit/AuditLogViewerPage').then((m) => ({
+            default: m.AuditLogViewerPage,
+        })),
+    ),
+});
+
 demoLayoutRoute.addChildren([
     demoIndexRoute,
     demoMantineRoute,
@@ -735,6 +745,7 @@ const routeTree = rootRoute.addChildren([
     adminRBACRoute,
     adminRBACRolesRoute,
     adminRBACPermissionsRoute,
+    adminAuditRoute,
     blogListRoute,
     blogDetailRoute,
     organizationsRoute,
