@@ -5,8 +5,8 @@
  */
 
 import { globalRLS } from './engine';
-import { RLSPolicies } from './types';
 import type { ModelRLSConfig } from './types';
+import { RLSPolicies } from './types';
 
 /**
  * Define RLS policies for all models
@@ -18,7 +18,23 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
 
     {
         model: 'organizations',
-        policy: RLSPolicies.TenantScoped(true), // Allow null for system-level ops
+        policy: {
+            level: 'custom',
+            filter: (context) => {
+                // Organizations don't have organizationId - they ARE the organization
+                // Users should see organizations they own OR are members of
+                // For now, filter by ownerId if userId is present
+                // Note: This doesn't include organizations where user is a member (not owner)
+                // For full membership filtering, use organization_members table in app logic
+                if (!context.userId) {
+                    // No userId = no access (return null to deny)
+                    return null;
+                }
+                // Filter by ownerId - user can see organizations they own
+                // TODO: Also include organizations where user is a member via organization_members
+                return { ownerId: context.userId };
+            },
+        },
         auditEnabled: true,
     },
 
@@ -101,6 +117,76 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
     {
         model: 'posts',
         policy: RLSPolicies.Hierarchical(false), // Tenant + User scoped
+        auditEnabled: true,
+    },
+
+    // Blog series - app-scoped (no tenant isolation, filtered by appId)
+    {
+        model: 'series',
+        policy: RLSPolicies.AppScoped(), // Filter by appId
+        auditEnabled: true,
+    },
+
+    // Blog categories - app-scoped
+    {
+        model: 'categories',
+        policy: RLSPolicies.AppScoped(), // Filter by appId
+        auditEnabled: true,
+    },
+
+    // Blog tags - app-scoped
+    {
+        model: 'post_tags',
+        policy: RLSPolicies.AppScoped(), // Filter by appId
+        auditEnabled: true,
+    },
+
+    // Blog tag links (junction table) - app-scoped
+    {
+        model: 'post_tag_links',
+        policy: RLSPolicies.AppScoped(), // Filter by appId
+        auditEnabled: true,
+    },
+
+    // Blog post versions - app-scoped
+    {
+        model: 'post_versions',
+        policy: RLSPolicies.AppScoped(), // Filter by appId
+        auditEnabled: true,
+    },
+
+    // Blog themes - app-scoped
+    {
+        model: 'ottablog_themes',
+        policy: RLSPolicies.AppScoped(), // Filter by appId
+        auditEnabled: true,
+    },
+
+    // Blog plugins - app-scoped
+    {
+        model: 'ottablog_plugins',
+        policy: RLSPolicies.AppScoped(), // Filter by appId
+        auditEnabled: true,
+    },
+
+    // Shortlinks - app-scoped
+    {
+        model: 'shortlinks',
+        policy: RLSPolicies.AppScoped(), // Filter by appId
+        auditEnabled: true,
+    },
+
+    // Referral tracking - app-scoped
+    {
+        model: 'referral_tracking',
+        policy: RLSPolicies.AppScoped(), // Filter by appId
+        auditEnabled: true,
+    },
+
+    // Todos - user-scoped (todos belong to users)
+    {
+        model: 'todos',
+        policy: RLSPolicies.UserScoped(), // Filter by userId
         auditEnabled: true,
     },
 

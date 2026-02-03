@@ -29,19 +29,25 @@ import {
     User,
     autoInit,
     clearConnection,
+    executeSecureCrudRequest,
     getAllModelsMetadata,
-    handleCrud,
     hasConnection,
+    // RLS imports
+    initRLS,
     parseCrudRequest,
     registerConnection,
     registerModels,
-    // RLS imports
-    initRLS,
-    extractSecurityContext,
-    secureCrud,
     type SecurityContext,
 } from '@ottabase/ottaorm';
-import { Account, Authenticator, ScheduledTask, Session, VerificationToken } from '@ottabase/ottaorm/models';
+import {
+    Account,
+    Authenticator,
+    Organization,
+    OrganizationMember,
+    ScheduledTask,
+    Session,
+    VerificationToken,
+} from '@ottabase/ottaorm/models';
 import { uploadFileToCloudflareImages, uploadFileToR2 } from '@ottabase/ottaupload/server';
 import { dispatch, dispatchBatch } from '@ottabase/queue';
 import { ReferralTracking } from '@ottabase/referrals';
@@ -197,6 +203,9 @@ function initDbConnection(env: CloudflareEnv): void {
         Session,
         VerificationToken,
         ScheduledTask,
+        // Multi-tenant models
+        Organization,
+        OrganizationMember,
         // Blog models
         Post,
         PostTag,
@@ -743,7 +752,7 @@ export default {
 
                 // Handle the CRUD operation with RLS protection
                 // This automatically enforces tenant isolation, user ownership, and permission checks
-                const result = await secureCrud(crudRequest, securityContext);
+                const result = await executeSecureCrudRequest(crudRequest, securityContext);
 
                 // Return response based on result
                 if (!result.success) {

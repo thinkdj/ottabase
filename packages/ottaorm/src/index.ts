@@ -24,25 +24,19 @@ export type { CrudRequest, CrudResponse } from './crud';
 
 // Row-Level Security (RLS)
 export {
-    initRLS,
-    registerPolicy,
-    getRegisteredModels as getRLSModels,
-    RLSPolicies,
-    globalRLS,
     RLSError,
+    RLSPolicies,
+    executeSecureCrudRequest,
+    extractSecurityContext,
+    getRegisteredModels as getRLSModels,
+    globalRLS,
+    initRLS,
+    logSecurityViolation,
+    registerPolicy,
     rlsMiddleware,
     secureCrud,
-    extractSecurityContext,
-    logSecurityViolation,
 } from './rls';
-export type {
-    SecurityContext,
-    RLSPolicy,
-    ModelRLSConfig,
-    RLSViolation,
-    SecurityLevel,
-    SecureCrudOptions,
-} from './rls';
+export type { ModelRLSConfig, RLSPolicy, RLSViolation, SecureCrudOptions, SecurityContext, SecurityLevel } from './rls';
 
 // Migrations
 export { coreMigrations, rollbackMigrations, runMigrations } from './migrations';
@@ -62,8 +56,8 @@ export { AbstractBaseModel, BaseModel } from './base';
 export type {
     IModelConstructorParams,
     ModelFieldDescriptor,
-    ModelFields,
     ModelFieldType,
+    ModelFields,
     PackageType,
     PaginationResult,
     RelationshipConfig,
@@ -76,19 +70,19 @@ export type {
  */
 export {
     Account,
-    accountsTable,
     // Auth.js SQL models (Edge-safe)
     Authenticator,
-    authenticatorsTable,
     ScheduledTask,
-    scheduledTasksTable,
     Session,
-    sessionsTable,
     Tag,
-    tagsTable,
     User,
-    usersTable,
     VerificationToken,
+    accountsTable,
+    authenticatorsTable,
+    scheduledTasksTable,
+    sessionsTable,
+    tagsTable,
+    usersTable,
     verificationTokensTable,
 } from './models';
 export type {

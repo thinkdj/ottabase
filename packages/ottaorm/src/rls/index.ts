@@ -24,34 +24,23 @@
  */
 
 // Core engine
-export { RLSEngine, globalRLS, RLSError } from './engine';
+export { RLSEngine, RLSError, globalRLS } from './engine';
 
 // Types
-export type {
-  SecurityContext,
-  RLSPolicy,
-  ModelRLSConfig,
-  RLSViolation,
-  SecurityLevel,
-} from './types';
 export { RLSPolicies } from './types';
+export type { ModelRLSConfig, RLSPolicy, RLSViolation, SecurityContext, SecurityLevel } from './types';
 
 // Registry
-export {
-  MODEL_POLICIES,
-  registerAllPolicies,
-  registerPolicy,
-  getRegisteredModels,
-  initRLS,
-} from './registry';
+export { MODEL_POLICIES, getRegisteredModels, initRLS, registerAllPolicies, registerPolicy } from './registry';
 
 // Secure CRUD
 export {
-  secureCrud,
-  extractSecurityContext,
-  rlsMiddleware,
-  type SecureCrudOptions,
+    executeSecureCrudRequest,
+    extractSecurityContext,
+    rlsMiddleware,
+    secureCrud,
+    type SecureCrudOptions,
 } from './secure-crud';
 
 // Logger
-export { logSecurityViolation, getRecentViolations } from './logger';
+export { getRecentViolations, logSecurityViolation } from './logger';
