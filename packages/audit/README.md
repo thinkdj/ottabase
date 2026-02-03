@@ -1,134 +1,160 @@
 # @ottabase/audit
 
-Audit logging utilities and middleware for Ottabase applications.
+Audit logging for multi-tenant applications with RBAC context integration.
 
 ## Features
 
-- ✅ Automatic audit logging for API routes
-- ✅ Manual audit logging utilities
-- ✅ Database persistence via @ottabase/ottaorm
-- ✅ Change tracking (before/after values)
-- ✅ Request context capture (IP, user agent)
-- ✅ Integration with @ottabase/logger
-- ✅ Support for success/failure/error status
+- ✅ **Multi-tenant support** - Organization + App context tracking
+- ✅ **RBAC integration** - Automatic context from @ottabase/rbac
+- ✅ **Change tracking** - Before/after value capture
+- ✅ **Request metadata** - IP, user agent, URL, method
+- ✅ **Database persistence** - Auto-save to audit_logs table
+- ✅ **Structured logging** - Uses @ottabase/logger
+- ✅ **Compliance ready** - Queryable audit trail
 
 ## Installation
 
 ```bash
-pnpm add @ottabase/audit
+pnpm add @ottabase/audit @ottabase/ottaorm @ottabase/logger
 ```
 
 ## Quick Start
 
-### 0. Simple Audit Logging (Recommended for Quick Start)
-
-For the simplest use case, just log which user did what action with optional metadata:
+### 1. Simple Logging
 
 ```typescript
 import { log } from '@ottabase/audit';
 
-// Simple: log who did what
+// Basic: who did what
 await log('user-123', 'updated_profile');
 
 // With metadata
-await log('user-123', 'deleted_post', { postId: 'post-456', reason: 'spam' });
+await log('user-123', 'deleted_post', {
+  postId: 'post-456',
+  reason: 'spam',
+});
 
 // With user email
-await log('user-123', 'changed_password', { method: '2fa' }, 'user@example.com');
+await log('user-123', 'changed_password', {
+  method: '2fa',
+}, 'user@example.com');
 ```
 
-That's it! The audit log is automatically saved to the database.
-
-### 1. Automatic Audit Logging (Middleware)
+### 2. Detailed Logging
 
 ```typescript
-// app/api/users/route.ts
-import { withAudit } from '@ottabase/audit/middleware';
-import { User } from '@ottabase/ottaorm/models';
+import { logCreate, logUpdate, logDelete } from '@ottabase/audit';
 
-export const POST = withAudit(
-  async (request) => {
-    const body = await request.json();
-    const user = await User.create(body);
-    return Response.json({ user });
-  },
-  {
-    resourceType: 'user',
-    action: 'create',
-    includeRequestBody: true
-  }
-);
-
-export const PATCH = withAudit(
-  async (request, { params }) => {
-    const body = await request.json();
-    const user = await User.find(params.id);
-    user.set('name', body.name);
-    await user.save();
-    return Response.json({ user });
-  },
-  {
-    resourceType: 'user',
-    action: 'update',
-    getResourceId: (req, params) => params.id,
-    getChanges: async (req, params) => {
-      const body = await req.clone().json();
-      return { name: { from: 'old', to: body.name } };
-    }
-  }
-);
-```
-
-### 2. Manual Audit Logging
-
-```typescript
-import { logCreate, logUpdate, logDelete, logAuth } from '@ottabase/audit/utils';
-
-// Log creation
-await logCreate('user', userId, userData, {
-  userId: currentUserId,
-  userEmail: currentUserEmail,
-  ipAddress: '127.0.0.1',
-  userAgent: 'Mozilla/5.0'
+// Log creation with context
+await logCreate('post', postId, postData, {
+  userId: currentUser.id,
+  userEmail: currentUser.email,
+  organizationId: 'org-123',  // Multi-tenant context
+  appId: 'web',                // App context
+  ipAddress: request.headers.get('cf-connecting-ip'),
+  userAgent: request.headers.get('user-agent'),
 });
 
 // Log update with changes
-await logUpdate('user', userId, {
-  name: { from: 'Old Name', to: 'New Name' },
-  email: { from: 'old@example.com', to: 'new@example.com' }
+await logUpdate('post', postId, {
+  title: { from: 'Old Title', to: 'New Title' },
+  status: { from: 'draft', to: 'published' },
 }, context);
 
 // Log deletion
-await logDelete('user', userId, context);
-
-// Log authentication
-await logAuth('login', userId, userEmail, context, true);
+await logDelete('post', postId, context);
 ```
 
-### 3. Extract Request Context
+### 3. RBAC Integration
 
 ```typescript
-import { extractRequestContext } from '@ottabase/audit/utils';
+import { buildAppContext, createAuditData } from '@ottabase/rbac';
+import { logCreate } from '@ottabase/audit';
 
-export async function POST(request: NextRequest) {
-  const userId = request.headers.get('x-user-id');
-  const userEmail = request.headers.get('x-user-email');
+// Build RBAC context
+const context = await buildAppContext({
+  organizationId: 'org-123',
+  appId: 'web',
+  user,
+  cache,
+  ipAddress: request.headers.get('cf-connecting-ip'),
+  userAgent: request.headers.get('user-agent'),
+});
 
-  const context = extractRequestContext(request, userId, userEmail);
-  // context contains: userId, userEmail, ipAddress, userAgent, url, method
+// Create audit data from RBAC context
+const auditData = createAuditData(
+  context,
+  'create',
+  'organization',
+  orgId,
+  { name: 'Acme Corp' }
+);
 
-  await logCreate('resource', 'resource-id', data, context);
+// Log with full context
+await logCreate('organization', orgId, orgData, auditData);
+```
+
+## Multi-Tenant Architecture
+
+### Context Structure
+
+```typescript
+interface AuditLogData {
+  userId?: string;          // Who performed the action
+  userEmail?: string;       // User email for readability
+  organizationId?: string;  // Tenant context (required for multi-tenant)
+  appId?: string;           // App context (web, admin, api)
+  action: string;           // What happened
+  resourceType: string;     // Resource being modified
+  resourceId?: string;      // Specific resource ID
+  changes?: Record<string, { from?: any; to?: any }>;  // What changed
+  metadata?: Record<string, any>;   // Additional context
+  ipAddress?: string;       // Client IP
+  userAgent?: string;       // Client user agent
+  status?: 'success' | 'failure' | 'error';  // Result status
+  errorMessage?: string;    // Error if failed
 }
+```
+
+### Organization-Scoped Queries
+
+```typescript
+import { AuditLog } from '@ottabase/ottaorm/models';
+
+// Get all logs for an organization
+const orgLogs = await AuditLog.where({
+  organizationId: 'org-123',
+}, {
+  orderBy: 'timestamp',
+  orderDirection: 'desc',
+  limit: 100,
+});
+
+// Filter by action
+const deletions = await AuditLog.where({
+  organizationId: 'org-123',
+  action: 'delete',
+});
+
+// Filter by user
+const userActions = await AuditLog.where({
+  organizationId: 'org-123',
+  userId: 'user-456',
+});
+
+// Filter by resource type
+const postChanges = await AuditLog.where({
+  organizationId: 'org-123',
+  resourceType: 'post',
+});
 ```
 
 ## Audit Actions
 
-The package supports the following audit actions:
-
 | Action | Description |
 |--------|-------------|
 | `create` | Resource creation |
-| `read` | Resource access/read |
+| `read` | Resource access |
 | `update` | Resource modification |
 | `delete` | Resource deletion |
 | `login` | User login |
@@ -137,8 +163,8 @@ The package supports the following audit actions:
 | `password_change` | Password changed |
 | `password_reset` | Password reset |
 | `email_verify` | Email verification |
-| `role_assign` | Role assigned to user |
-| `role_remove` | Role removed from user |
+| `role_assign` | Role assigned |
+| `role_remove` | Role removed |
 | `permission_grant` | Permission granted |
 | `permission_revoke` | Permission revoked |
 | `export` | Data export |
@@ -147,175 +173,281 @@ The package supports the following audit actions:
 
 ## API Reference
 
-### Middleware
+### Core Functions
 
-#### `withAudit(handler, options)`
+#### `log(userId, action, metadata?, userEmail?)`
 
-Wraps an API route handler with automatic audit logging.
-
-```typescript
-withAudit(handler, {
-  resourceType: string,
-  action?: string,
-  getResourceId?: (request, params) => string | Promise<string>,
-  getChanges?: (request, params) => Record<string, any> | Promise<Record<string, any>>,
-  includeRequestBody?: boolean,
-  includeResponseBody?: boolean
-})
-```
-
-### Utilities
-
-#### `logAudit(data)`
-
-Low-level audit logging function.
+Simple audit logging:
 
 ```typescript
-await logAudit({
-  userId?: string,
-  userEmail?: string,
-  action: string,
-  resourceType: string,
-  resourceId?: string,
-  changes?: Record<string, { from?: any, to?: any }>,
-  metadata?: Record<string, any>,
-  ipAddress?: string,
-  userAgent?: string,
-  status?: 'success' | 'failure' | 'error',
-  errorMessage?: string
-});
+await log(
+  'user-123',
+  'updated_settings',
+  { setting: 'theme', value: 'dark' },
+  'user@example.com'
+);
 ```
 
 #### `logCreate(resourceType, resourceId, data, context?)`
 
-Log resource creation.
+Log resource creation:
+
+```typescript
+await logCreate('organization', orgId, {
+  name: 'Acme Corp',
+  plan: 'pro',
+}, {
+  userId: user.id,
+  organizationId: org.id,
+  appId: 'web',
+});
+```
 
 #### `logUpdate(resourceType, resourceId, changes, context?)`
 
-Log resource update with before/after changes.
+Log resource updates with change tracking:
+
+```typescript
+await logUpdate('member', memberId, {
+  role: { from: 'member', to: 'admin' },
+  status: { from: 'invited', to: 'active' },
+}, context);
+```
 
 #### `logDelete(resourceType, resourceId, context?)`
 
-Log resource deletion.
+Log resource deletion:
+
+```typescript
+await logDelete('organization', orgId, context);
+```
 
 #### `logRead(resourceType, resourceId, context?)`
 
-Log resource access.
+Log resource access (for sensitive data):
+
+```typescript
+await logRead('user', userId, context);
+```
 
 #### `logAuth(action, userId, userEmail, context?, success?)`
 
-Log authentication action (login/logout/signup).
+Log authentication events:
+
+```typescript
+await logAuth('login', userId, userEmail, context, true);
+await logAuth('logout', userId, userEmail, context);
+```
 
 #### `logRoleAssign(userId, roleId, roleName, assignedBy?, context?)`
 
-Log role assignment.
+Log role assignment:
+
+```typescript
+await logRoleAssign(
+  'user-123',
+  'role-456',
+  'admin',
+  currentUser.id,
+  context
+);
+```
 
 #### `logRoleRemove(userId, roleId, roleName, removedBy?, context?)`
 
-Log role removal.
+Log role removal:
+
+```typescript
+await logRoleRemove(
+  'user-123',
+  'role-456',
+  'admin',
+  currentUser.id,
+  context
+);
+```
 
 #### `logFailure(action, resourceType, error, context?, resourceId?)`
 
-Log failed action.
+Log failed operations:
+
+```typescript
+try {
+  // Operation that might fail
+} catch (error) {
+  await logFailure(
+    'delete',
+    'organization',
+    error,
+    context,
+    orgId
+  );
+  throw error;
+}
+```
+
+### Utility Functions
 
 #### `extractRequestContext(request, userId?, userEmail?)`
 
-Extract audit context from request.
+Extract audit context from HTTP request:
+
+```typescript
+const context = extractRequestContext(
+  request,
+  user?.id,
+  user?.email
+);
+
+// Returns:
+// {
+//   userId: '...',
+//   userEmail: '...',
+//   ipAddress: '...',  // from cf-connecting-ip or x-forwarded-for
+//   userAgent: '...',
+//   url: '...',
+//   method: '...',
+// }
+```
 
 #### `detectChanges(oldData, newData)`
 
-Detect changes between two objects.
+Detect changes between two objects:
 
 ```typescript
 const changes = detectChanges(
-  { name: 'Old', email: 'old@example.com' },
-  { name: 'New', email: 'new@example.com' }
+  { name: 'Old Name', status: 'draft' },
+  { name: 'New Name', status: 'published' }
 );
-// Returns: { name: { from: 'Old', to: 'New' }, email: { from: 'old@example.com', to: 'new@example.com' } }
+
+// Returns:
+// {
+//   name: { from: 'Old Name', to: 'New Name' },
+//   status: { from: 'draft', to: 'published' },
+// }
 ```
 
 #### `sanitizeData(data, sensitiveFields?)`
 
-Remove sensitive data before logging.
+Remove sensitive fields before logging:
 
 ```typescript
-const sanitized = sanitizeData(
-  { name: 'John', password: 'secret', apiKey: 'key123' },
-  ['password', 'apiKey', 'token']
+const safe = sanitizeData(
+  { name: 'John', password: 'secret123', apiKey: 'key' },
+  ['password', 'apiKey']
 );
-// Returns: { name: 'John', password: '[REDACTED]', apiKey: '[REDACTED]' }
+
+// Returns:
+// { name: 'John', password: '[REDACTED]', apiKey: '[REDACTED]' }
 ```
 
-## Querying Audit Logs
+## Integration Examples
+
+### With RBAC Context
 
 ```typescript
-import { AuditLog } from '@ottabase/ottaorm/models';
+import { buildAppContext } from '@ottabase/rbac';
+import { logUpdate } from '@ottabase/audit';
 
-// Get all audit logs for a user
-const logs = await AuditLog.getByUser('user-id');
-
-// Get audit logs for a resource
-const resourceLogs = await AuditLog.getByResource('user', 'user-id');
-
-// Get audit logs by action
-const createLogs = await AuditLog.getByAction('create');
-
-// Get recent audit logs
-const recentLogs = await AuditLog.getRecent(100);
-
-// Get failed actions
-const failures = await AuditLog.getFailures();
-
-// Get audit logs in date range
-const logs = await AuditLog.getByDateRange(
-  new Date('2024-01-01'),
-  new Date('2024-12-31')
-);
-```
-
-## Database Transport (Logger Integration)
-
-Use audit logging with @ottabase/logger:
-
-```typescript
-import { createLogger } from '@ottabase/logger';
-import { AuditDbTransport } from '@ottabase/logger/audit-transport';
-
-const logger = createLogger({
-  transports: [
-    new AuditDbTransport({
-      getUserContext: () => ({
-        userId: 'user-123',
-        userEmail: 'user@example.com'
-      }),
-      getRequestContext: () => ({
-        ipAddress: '127.0.0.1',
-        userAgent: 'Mozilla/5.0'
-      }),
-      minLevel: 1, // INFO and above
-      bufferSize: 10,
-      flushInterval: 5000
-    })
-  ]
+// Build context from request
+const context = await buildAppContext({
+  organizationId: extractOrgId(request),
+  appId: 'web',
+  user: await getCurrentUser(request),
+  cache,
+  ipAddress: request.headers.get('cf-connecting-ip'),
+  userAgent: request.headers.get('user-agent'),
 });
 
-// Log with audit context
-logger.info('User created', {
-  action: 'create',
-  resourceType: 'user',
-  resourceId: 'user-123',
-  changes: { name: 'John Doe' }
+// Update resource
+const old = await Resource.find(resourceId);
+await Resource.update(resourceId, newData);
+
+// Log with full context
+await logUpdate('resource', resourceId, {
+  name: { from: old.name, to: newData.name },
+}, {
+  userId: context.userId,
+  userEmail: context.userEmail,
+  organizationId: context.organizationId,
+  appId: context.appId,
+  ipAddress: context.ipAddress,
+  userAgent: context.userAgent,
 });
 ```
 
-## Best Practices
+### Worker Integration
 
-1. **Always sanitize sensitive data** before logging
-2. **Use middleware for automatic logging** when possible
-3. **Include request context** for compliance and debugging
-4. **Log both successes and failures**
-5. **Use structured changes** for updates (before/after)
-6. **Set appropriate buffer sizes** for high-traffic applications
+```typescript
+// Cloudflare Worker
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const user = await getCurrentUser(request, env);
+    const orgId = await extractOrganizationId({ request });
+
+    // Build context
+    const context = {
+      userId: user?.id,
+      userEmail: user?.email,
+      organizationId: orgId,
+      appId: 'web',
+      ipAddress: request.headers.get('cf-connecting-ip'),
+      userAgent: request.headers.get('user-agent'),
+    };
+
+    try {
+      // Perform operation
+      const result = await someOperation();
+
+      // Log success
+      await logCreate('resource', result.id, result, context);
+
+      return Response.json({ success: true, result });
+    } catch (error) {
+      // Log failure
+      await logFailure('create', 'resource', error, context);
+
+      return Response.json({ error: error.message }, { status: 500 });
+    }
+  }
+};
+```
+
+### Compliance Queries
+
+```typescript
+// Export audit logs for compliance
+const auditExport = await AuditLog.where({
+  organizationId: 'org-123',
+  timestamp: { $gte: startDate, $lte: endDate },
+}, {
+  orderBy: 'timestamp',
+  orderDirection: 'asc',
+});
+
+const exportData = auditExport.map(log => ({
+  timestamp: log.timestamp,
+  user: log.userEmail || log.userId,
+  action: log.action,
+  resource: `${log.resourceType}:${log.resourceId}`,
+  changes: log.changes,
+  ip: log.ipAddress,
+}));
+
+// Write to CSV or send to compliance system
+```
+
+## Related Packages
+
+- **@ottabase/rbac** - RBAC context integration
+- **@ottabase/ottaorm** - AuditLog model and database persistence
+- **@ottabase/logger** - Structured logging
+
+## Documentation
+
+- **RBAC_MULTI_TENANT_GUIDE.md** - Complete multi-tenant guide
+- **packages/rbac/README.md** - RBAC package reference
+- **packages/ottaorm/README.md** - ORM and model usage
 
 ## License
 

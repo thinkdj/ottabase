@@ -1,349 +1,398 @@
 # @ottabase/rbac
 
-Role-Based Access Control (RBAC) package for Ottabase with middleware, utilities, and optimized caching.
+Production-ready Role-Based Access Control with multi-tenant support and optimized caching.
 
 ## Features
 
-- ✅ Role and permission-based access control
-- ✅ Wildcard permission matching (`users:*`, `*:read`, `*:*`)
-- ✅ Next.js API route middleware
-- ✅ Decorator support for class methods
-- ✅ Organization/tenant scoping support
-- ✅ Integration with @ottabase/ottaorm models
-- 🚀 **Two-level caching (request-level + Cloudflare KV)**
-- ⚡ **Optimized for minimal database queries**
+- ✅ **Multi-tenant isolation** - Per-organization role scoping
+- ✅ **Wildcard permissions** - `users:*`, `*:read`, `*:*`
+- ✅ **Two-level caching** - Request + Cloudflare KV
+- ✅ **Per-org cache versioning** - O(1) cache invalidation
+- ✅ **App context support** - Tenant > App > User hierarchy
+- ✅ **Type-safe** - Full TypeScript support
+- ⚡ **Zero DB queries on cache hits**
 
 ## Installation
 
 ```bash
-pnpm add @ottabase/rbac
+pnpm add @ottabase/rbac @ottabase/cf @ottabase/logger
+```
+
+## Quick Start
+
+### 1. Database Setup
+
+```bash
+# Run migration (auto-applied or manual)
+sqlite3 .wrangler/state/v3/d1/*.sqlite \
+  < packages/ottaorm/migrations/001_add_rbac_and_audit.sql
+
+# Seed default roles
+pnpm --filter @ottabase/ottaorm seed:rbac
+```
+
+Creates tables: `roles`, `permissions`, `user_roles`
+Default roles: `owner`, `admin`, `member`
+
+### 2. Initialize Cache
+
+```typescript
+import { initRBACCache } from '@ottabase/rbac';
+import { createKVClient } from '@ottabase/cf';
+
+// In your worker
+const cache = initRBACCache({
+  kv: createKVClient({ namespace: env.RBAC_KV }),
+  ttl: 300, // 5 minutes
+  prefix: 'rbac:', // Cache key prefix
+});
+
+// Cache keys are automatically tenant-scoped:
+// rbac:org:org-123:v1:user:user-456
+```
+
+### 3. Assign Roles
+
+```typescript
+import { User, Role } from '@ottabase/ottaorm/models';
+
+const user = await User.find('user-id');
+const adminRole = await Role.findByName('admin');
+
+// Assign role (org-scoped)
+await user.assignRole(
+  adminRole.id,
+  currentUserId,
+  organizationId, // Required for multi-tenant
+);
+
+// Verify
+const isAdmin = await user.hasRole('admin', organizationId);
+```
+
+### 4. Check Permissions
+
+```typescript
+// Check permission (with cache)
+const canEdit = await user.hasPermission('posts:edit', {
+  cache,
+  organizationId: 'org-123', // Tenant context
+});
+
+// Get all permissions
+const permissions = await user.getPermissions({
+  cache,
+  organizationId: 'org-123',
+});
+
+// Get user roles
+const roles = await user.roles({
+  cache,
+  organizationId: 'org-123',
+});
+```
+
+## Multi-Tenant Architecture
+
+### Hierarchy
+
+```
+System (Global)
+├─ Roles: owner, admin, member
+└─ Organization (Tenant)
+   ├─ Custom Roles (org-scoped)
+   ├─ Members with Roles
+   └─ Apps (Optional)
+      └─ Users + Permissions
+```
+
+### Organization-Scoped Roles
+
+```typescript
+// Create org-scoped role
+const editorRole = await Role.create({
+  name: 'editor',
+  displayName: 'Content Editor',
+  description: 'Can create and edit content',
+  organizationId: 'org-123', // Scoped to org (null = system)
+  permissions: ['posts:*', 'tags:read'],
+});
+
+// Assign to user in this org
+await user.assignRole(editorRole.id, adminId, 'org-123');
+
+// Check permission in org context
+const canEditInOrgA = await user.hasPermission('posts:edit', {
+  organizationId: 'org-123',
+}); // true
+
+// Same user, different org
+const canEditInOrgB = await user.hasPermission('posts:edit', {
+  organizationId: 'org-456',
+}); // false (different permissions per org)
+```
+
+### App Context Integration
+
+```typescript
+import { buildAppContext, hasPermission } from '@ottabase/rbac';
+
+// Build complete context
+const context = await buildAppContext({
+  organizationId: 'org-123',
+  appId: 'web',
+  user,
+  cache,
+});
+
+// Context includes:
+// {
+//   organizationId: 'org-123',
+//   tenantId: 'org-123',  // Alias
+//   appId: 'web',
+//   user: User,
+//   roles: ['editor'],
+//   permissions: ['posts:*', 'tags:read'],
+//   isAuthenticated: true
+// }
+
+// Check permission from context
+if (hasPermission(context, 'posts:edit')) {
+  // User can edit posts
+}
 ```
 
 ## Performance & Caching
 
-The RBAC package is optimized for minimal database queries with two-level caching:
+### Two-Level Cache
 
-1. **Request-level cache**: In-memory cache for same-request access (60s TTL)
-   - Prevents duplicate queries within a single request
+1. **Request-level cache** - In-memory, 60s TTL
    - Zero latency on cache hits
+   - Prevents duplicate queries in same request
 
-2. **KV cache**: Cloudflare KV for cross-request caching (5min default TTL)
-   - Shares cache across requests and workers
-   - Dramatically reduces database load
+2. **KV cache** - Cloudflare KV, 5min TTL
+   - Shared across requests/workers
+   - Per-organization versioning
 
-**Performance gains:**
-- First request: 2-3 DB queries (user roles + role permissions)
-- Subsequent requests (cached): 0 DB queries
-- Automatic cache invalidation on role changes
+**Performance:**
+- First request: 2-3 DB queries
+- Cached requests: **0 DB queries** ⚡
 
-## Quick Start
-
-### 1. Setup Roles and Permissions
+### Per-Org Cache Versioning
 
 ```typescript
-import { Role, Permission, User } from '@ottabase/ottaorm/models';
+// Cache keys include org ID and version:
+// rbac:org:org-123:v1:user:user-456
+// rbac:org:org-456:v1:user:user-456
 
-// Create default roles (run once during setup)
-await Role.ensureDefaultRoles();
-
-// Seed permissions
-await Permission.seedDefaultPermissions();
-
-// Assign role to user
-const user = await User.find('user-id');
-const adminRole = await Role.findByName('admin');
-await user.assignRole(adminRole.get('id'));
+// Invalidate ONE org's cache (O(1))
+await cache.invalidateOrganization('org-123');
+// Only increments version for org-123, not org-456
+// New cache keys: rbac:org:org-123:v2:user:user-456
 ```
 
-### 2. Protect API Routes with Middleware
+### Manual Cache Control
 
 ```typescript
-// app/api/users/route.ts
-import { withRBAC } from '@ottabase/rbac/middleware';
-import { User } from '@ottabase/ottaorm/models';
-
-export const GET = withRBAC(
-  async (request) => {
-    // Only users with 'users:read' permission can access
-    const users = await User.all();
-    return Response.json({ users });
-  },
-  {
-    permissions: ['users:read'],
-    getUserFromRequest: async (request) => {
-      const userId = request.headers.get('x-user-id');
-      return userId ? await User.find(userId) : null;
-    }
-  }
-);
-
-export const POST = withRBAC(
-  async (request) => {
-    // Only admins can create users
-    const body = await request.json();
-    const user = await User.create(body);
-    return Response.json({ user });
-  },
-  {
-    roles: ['admin']
-  }
-);
-```
-
-### 3. Enable Caching (Optional but Recommended)
-
-```typescript
-// Initialize cache once (e.g., in middleware or app setup)
-import { initRBACCache } from '@ottabase/rbac';
-import { createKVClient } from '@ottabase/cf';
-import { getCloudflareContext } from '@opennextjs/cloudflare';
-
-const { env } = await getCloudflareContext();
-
-// Create KV client from namespace binding
-const kvClient = createKVClient({ namespace: env.RBAC_KV });
-
-// Initialize RBAC cache with KVClient
-const cache = initRBACCache({
-  kv: kvClient, // Pass KVClient instance (type-safe with Result returns)
-  ttl: 300, // Cache TTL in seconds (default: 300)
-  prefix: 'rbac:', // Cache key prefix (default: 'rbac:')
-});
-
-// Then use cache in middleware
-export const GET = withRBAC(
-  async (request) => {
-    return Response.json({ data: 'protected' });
-  },
-  {
-    permissions: ['users:read'],
-    cache: true // Use global cache (or pass cache instance)
-  }
-);
-
-// Or pass cache directly
-export const POST = withRBAC(
-  async (request) => {
-    return Response.json({ success: true });
-  },
-  {
-    permissions: ['users:create'],
-    cache: cache // Pass cache instance
-  }
-);
-```
-
-**Manual cache usage:**
-
-```typescript
-import { User } from '@ottabase/ottaorm/models';
-import { getRBACCache } from '@ottabase/rbac';
-
-const cache = getRBACCache();
-const user = await User.find('user-id');
-
-// Get permissions with cache
-const permissions = await user.getPermissions({ cache });
-
-// Check permission with cache
-const canCreate = await user.hasPermission('users:create', { cache });
-
-// Get roles with cache
-const roles = await user.roles({ cache });
-
-// Assign role and invalidate cache
-await user.assignRole(roleId, assignedBy, undefined, { cache });
-
-// Remove role and invalidate cache
-await user.removeRole(roleId, undefined, { cache });
-```
-
-**Cache invalidation:**
-
-```typescript
-import { getRBACCache } from '@ottabase/rbac';
-
-const cache = getRBACCache();
-
-// Invalidate specific user cache
+// Invalidate specific user
 await cache.invalidateUser('user-id');
 
-// Invalidate all users with a role (after role permission changes)
+// Invalidate all users with role (after permission changes)
 await cache.invalidateRole('admin');
 
-// Clear all RBAC caches
+// Clear entire cache
 await cache.clear();
-```
-
-### 4. Check Permissions in Code
-
-```typescript
-import { checkPermission, checkRole } from '@ottabase/rbac/middleware';
-
-// Check permission (throws RBACError if denied)
-await checkPermission(user, 'users:create');
-
-// Check role
-await checkRole(user, 'admin');
-
-// Check multiple permissions (any)
-await checkPermission(user, ['users:read', 'users:update']);
-
-// Check multiple permissions (all required)
-await checkPermission(user, ['users:read', 'users:update'], { requireAll: true });
-```
-
-### 4. Use RBAC Context
-
-```typescript
-import { createRBACContext, hasPermission, hasRole, isAdmin } from '@ottabase/rbac';
-
-const user = await User.find('user-id');
-const context = await createRBACContext(user);
-
-// Check permissions
-const canRead = hasPermission(context, 'users:read');
-const canManageUsers = hasPermission(context, 'users:*');
-
-// Check roles
-const isEditor = hasRole(context, 'editor');
-const isAdminUser = isAdmin(context);
-
-// Get allowed actions
-const actions = getAllowedActions(context, 'users');
-// Returns: ['create', 'read', 'update', 'delete']
 ```
 
 ## Permission Format
 
-Permissions follow the format `resource:action`:
-
-- `users:read` - Read users
-- `users:create` - Create users
-- `users:update` - Update users
-- `users:delete` - Delete users
-- `users:*` - All actions on users
-- `*:read` - Read all resources
-- `*:*` - All permissions (admin)
-
-## Default Roles
-
-The package includes three default roles:
-
-| Role | Description | Permissions |
-|------|-------------|-------------|
-| `admin` | Full system access | `*:*` |
-| `editor` | Create and edit content | `*:read`, `*:create`, `*:update` |
-| `viewer` | Read-only access | `*:read` |
-
-## API Reference
-
-### Middleware
-
-#### `withRBAC(handler, config)`
-
-Wraps an API route handler with RBAC checks.
-
 ```typescript
-withRBAC(handler, {
-  permissions?: string | string[],
-  roles?: string | string[],
-  requireAll?: boolean,
-  getUserFromRequest?: (request: Request) => Promise<User | null>
-})
+// Format: resource:action
+'users:read'     // Read users
+'users:create'   // Create users
+'users:update'   // Update users
+'users:delete'   // Delete users
+'users:*'        // All user operations
+
+// Wildcards
+'*:read'         // Read all resources
+'*:*'            // Full access (superadmin)
 ```
 
-#### `checkPermission(user, permission, options?)`
-
-Checks if user has permission (throws on failure).
-
-#### `checkRole(user, role, options?)`
-
-Checks if user has role (throws on failure).
-
-### Utilities
-
-#### `createRBACContext(user)`
-
-Creates an RBAC context from a user.
-
-#### `hasPermission(context, permission, options?)`
-
-Returns permission check result.
-
-#### `hasRole(context, role, options?)`
-
-Returns role check result.
-
-#### `isAdmin(context)`
-
-Checks if user is admin.
-
-#### `getAllowedActions(context, resource)`
-
-Gets all allowed actions for a resource.
-
-## User Model Methods
-
-The User model is extended with RBAC methods:
+## User Model Extensions
 
 ```typescript
 const user = await User.find('user-id');
 
-// Assign/remove roles
+// Role management (org-scoped)
 await user.assignRole(roleId, assignedBy?, organizationId?);
 await user.removeRole(roleId, organizationId?);
 
-// Check roles
-await user.hasRole('admin');
-await user.hasAnyRole(['admin', 'editor']);
-await user.hasAllRoles(['editor', 'viewer']);
+// Role checks
+await user.hasRole('admin', organizationId);
+await user.hasAnyRole(['admin', 'editor'], organizationId);
+await user.hasAllRoles(['editor', 'viewer'], organizationId);
+await user.isAdmin(organizationId);
 
-// Check permissions
-await user.hasPermission('users:read');
-await user.hasAnyPermission(['users:read', 'posts:read']);
-await user.hasAllPermissions(['users:read', 'users:create']);
+// Permission checks
+await user.hasPermission('users:read', { organizationId, cache });
+await user.hasAnyPermission(['users:read', 'posts:read'], { organizationId });
+await user.hasAllPermissions(['users:read', 'users:create'], { organizationId });
 
-// Get permissions
-const permissions = await user.getPermissions();
-
-// Get roles
-const roles = await user.roles();
-
-// Check if admin
-await user.isAdmin();
+// Get data
+const permissions = await user.getPermissions({ organizationId, cache });
+const roles = await user.roles({ organizationId, cache });
 ```
 
-## Organization/Tenant Scoping
-
-RBAC supports multi-tenant applications with organization scoping:
+## Context Utilities
 
 ```typescript
-// Assign role to user in specific organization
-await user.assignRole(roleId, assignedBy, 'org-123');
+import {
+  buildAppContext,
+  extractOrganizationId,
+  extractAppId,
+  hasPermission,
+  hasAnyRole,
+  hasAllRoles,
+  isOwnerOrAdmin,
+} from '@ottabase/rbac';
 
-// Check role in organization
-await user.hasRole('admin', 'org-123');
+// Extract tenant ID from request
+const orgId = await extractOrganizationId({
+  request,
+  headerName: 'X-Organization-Id',     // Default
+  queryParam: 'organizationId',         // Default
+  subdomainPrefix: 'org-',              // acme.app.com → org-acme
+});
 
-// Remove role from organization
-await user.removeRole(roleId, 'org-123');
+// Extract app ID from request
+const appId = extractAppId({
+  request,
+  headerName: 'X-App-Id',
+  queryParam: 'appId',
+  env,
+  defaultAppId: 'web',
+});
+
+// Build context
+const context = await buildAppContext({
+  organizationId: orgId,
+  appId,
+  user,
+  cache,
+  ipAddress: request.headers.get('cf-connecting-ip'),
+  userAgent: request.headers.get('user-agent'),
+});
+
+// Use context helpers
+if (hasPermission(context, 'posts:edit')) { }
+if (hasAnyRole(context, ['admin', 'editor'])) { }
+if (isOwnerOrAdmin(context)) { }
 ```
 
-## Error Handling
+## Default Roles
+
+| Role | Permissions | Description |
+|------|-------------|-------------|
+| `owner` | `*:*` | Full organization control |
+| `admin` | `*:*` (org-scoped) | Manage org members and settings |
+| `member` | `*:read` | Basic read access |
+
+Create custom roles:
 
 ```typescript
-import { RBACError } from '@ottabase/rbac';
+const role = await Role.create({
+  name: 'content-manager',
+  displayName: 'Content Manager',
+  description: 'Manage all content',
+  organizationId: 'org-123', // null = system role
+  permissions: ['posts:*', 'tags:*', 'media:*'],
+});
+```
 
-try {
-  await checkPermission(user, 'users:delete');
-} catch (error) {
-  if (error instanceof RBACError) {
-    console.log(error.code); // 'UNAUTHORIZED' | 'FORBIDDEN'
-    console.log(error.message);
-    console.log(error.details);
+## Two Modes
+
+### Multi-Tenant SaaS
+
+```typescript
+// Each org is isolated
+await user.hasPermission('posts:edit', {
+  organizationId: 'org-acme', // Required
+});
+```
+
+### Single Founder
+
+```typescript
+// No org required (set organizationId: null or omit)
+await user.hasPermission('posts:edit', {
+  organizationId: null, // Global context
+});
+```
+
+## Integration Examples
+
+### Worker Route
+
+```typescript
+// Cloudflare Worker
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    // Build context
+    const orgId = await extractOrganizationId({ request });
+    const user = await getCurrentUser(request, env);
+
+    const context = await buildAppContext({
+      organizationId: orgId,
+      appId: 'web',
+      user,
+      cache: initRBACCache({ kv: createKVClient({ namespace: env.RBAC_KV }) }),
+    });
+
+    // Check permission
+    if (!hasPermission(context, 'posts:create')) {
+      return new Response('Forbidden', { status: 403 });
+    }
+
+    // ... handle request
   }
-}
+};
 ```
+
+### Audit Integration
+
+```typescript
+import { logCreate } from '@ottabase/audit';
+import { createAuditData } from '@ottabase/rbac';
+
+// Create audit log from context
+const auditData = createAuditData(
+  context,
+  'create',
+  'post',
+  postId,
+  { title: 'New Post' }
+);
+
+await logCreate('post', postId, postData, {
+  ...auditData,
+  ipAddress: context.ipAddress,
+  userAgent: context.userAgent,
+});
+```
+
+## Related Packages
+
+- **@ottabase/audit** - Audit logging with RBAC context
+- **@ottabase/ottaorm** - Models (User, Role, Permission, Organization)
+- **@ottabase/cf** - KVClient for caching
+- **@ottabase/logger** - Structured logging
+
+## Documentation
+
+- **RBAC_MULTI_TENANT_GUIDE.md** - Complete guide with UI examples
+- **TENANT_ISOLATION.md** - Security and isolation details
+- **packages/ottaorm/README.md** - Model usage and patterns
 
 ## License
 
