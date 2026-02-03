@@ -47,6 +47,13 @@ export function AdminIndexPage() {
             disabled: false,
         },
         {
+            title: 'User Management',
+            description: 'View and manage all users, assign roles, and control organization access.',
+            href: '/admin/users',
+            icon: Users,
+            disabled: false,
+        },
+        {
             title: 'Migration Status',
             description: 'Check database schema status, view migration history, and initialize tables.',
             href: '/migration-status',

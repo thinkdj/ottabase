@@ -1,4 +1,5 @@
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { OrganizationSwitcher } from '@/components/OrganizationSwitcher';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { ReferralTracker } from '@/components/ReferralTracker';
 import { api, isApiError } from '@/lib/api';
@@ -26,6 +27,22 @@ function RootLayout() {
     const { isAuthenticated, user, logout } = useSession();
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Organization switcher state
+    const [currentOrgId, setCurrentOrgId] = useState<string | undefined>(() => {
+        // Load from localStorage if available
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('currentOrgId') || undefined;
+        }
+        return undefined;
+    });
+
+    const handleOrgChange = (orgId: string) => {
+        setCurrentOrgId(orgId);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('currentOrgId', orgId);
+        }
+    };
 
     const handleLogout = () => {
         logout();
@@ -92,6 +109,13 @@ function RootLayout() {
                         <ThemeSwitcher />
                         <DarkModeToggle type="button" title="Toggle dark/light mode" />
                         <LanguageSwitcher languages={i18nConfig.enabledLanguages} showLabel={false} />
+
+                        {isAuthenticated && (
+                            <OrganizationSwitcher
+                                currentOrgId={currentOrgId}
+                                onOrgChange={handleOrgChange}
+                            />
+                        )}
 
                         {isAuthenticated ? (
                             <div className="flex items-center gap-2 ml-2 pl-2 border-l">
@@ -669,6 +693,58 @@ const organizationMembersRoute = new Route({
     ),
 });
 
+const organizationRegistrationRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/organizations/new',
+    component: lazyRouteComponent(() =>
+        import('@/pages/organizations/OrganizationRegistrationPage').then((m) => ({
+            default: m.OrganizationRegistrationPage,
+        })),
+    ),
+});
+
+const organizationSettingsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/organizations/$organizationId/settings',
+    component: lazyRouteComponent(() =>
+        import('@/pages/organizations/OrganizationSettingsPage').then((m) => ({
+            default: m.OrganizationSettingsPage,
+        })),
+    ),
+});
+
+// User routes
+const userProfileRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/profile',
+    component: lazyRouteComponent(() =>
+        import('@/pages/user/UserProfilePage').then((m) => ({
+            default: m.UserProfilePage,
+        })),
+    ),
+});
+
+// Admin user routes
+const adminUsersRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/users',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/users/UserManagementPage').then((m) => ({
+            default: m.UserManagementPage,
+        })),
+    ),
+});
+
+const adminUserRBACRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/users/$userId/rbac',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/users/UserRBACPage').then((m) => ({
+            default: m.UserRBACPage,
+        })),
+    ),
+});
+
 // Admin RBAC routes
 const adminRBACRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -771,10 +847,15 @@ const routeTree = rootRoute.addChildren([
     adminRBACPermissionsRoute,
     adminAuditRoute,
     adminSecurityRLSRoute,
+    adminUsersRoute,
+    adminUserRBACRoute,
     blogListRoute,
     blogDetailRoute,
     organizationsRoute,
     organizationMembersRoute,
+    organizationRegistrationRoute,
+    organizationSettingsRoute,
+    userProfileRoute,
 ]);
 
 const browserHistory = createBrowserHistory();

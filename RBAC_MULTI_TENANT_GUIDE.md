@@ -120,11 +120,28 @@ export default {
 ### 4. Access Admin UI
 
 ```
-http://localhost:5173/admin/rbac          # RBAC Admin Dashboard
-http://localhost:5173/admin/rbac/roles    # Roles Management
-http://localhost:5173/admin/rbac/permissions  # Permissions Matrix
-http://localhost:5173/organizations       # Organization Management
-http://localhost:5173/admin/audit         # Audit Log Viewer
+# Core Admin Pages
+http://localhost:5173/admin                      # Admin Dashboard
+http://localhost:5173/admin/users                # User Management (NEW)
+http://localhost:5173/admin/users/:userId/rbac   # User RBAC Assignment (NEW)
+
+# RBAC Management
+http://localhost:5173/admin/rbac                 # RBAC Admin Dashboard
+http://localhost:5173/admin/rbac/roles           # Roles Management
+http://localhost:5173/admin/rbac/permissions     # Permissions Matrix
+
+# Organization Management
+http://localhost:5173/organizations              # Organizations List
+http://localhost:5173/organizations/new          # Create Organization (NEW)
+http://localhost:5173/organizations/:id/settings # Organization Settings (NEW)
+http://localhost:5173/organizations/:id/members  # Organization Members
+
+# User Profile
+http://localhost:5173/profile                    # User Profile Page (NEW)
+
+# Audit & Security
+http://localhost:5173/admin/audit                # Audit Log Viewer
+http://localhost:5173/admin/security/rls         # RLS Demo Page
 ```
 
 ---
@@ -401,6 +418,101 @@ Features:
 - Pagination (10/25/50/100 per page)
 - Export for compliance
 - Real-time updates
+
+### Organization Registration (NEW)
+
+**Route:** `/organizations/new`
+**File:** `apps/ottabase-template-app-tanstack/src/pages/organizations/OrganizationRegistrationPage.tsx`
+
+Features:
+- First-time organization creation flow
+- Form validation (name, slug, plan)
+- Auto-slug generation from name
+- Plan selection (free/pro/enterprise)
+- Centered card layout for onboarding
+- Navigates to members page on success
+
+### Organization Settings (NEW)
+
+**Route:** `/organizations/:id/settings`
+**File:** `apps/ottabase-template-app-tanstack/src/pages/organizations/OrganizationSettingsPage.tsx`
+
+Features:
+- Full organization CRUD interface
+- Copy organization ID to clipboard
+- Edit name, slug, plan, status
+- Organization metadata display
+- **Danger Zone** section for deletion
+- Confirmation dialog for destructive actions
+- Real-time updates with optimistic UI
+
+### User Profile (NEW)
+
+**Route:** `/profile`
+**File:** `apps/ottabase-template-app-tanstack/src/pages/user/UserProfilePage.tsx`
+
+Features:
+- Current user account management
+- Avatar with initials fallback
+- Edit name and email
+- Copyable user ID
+- Email verification badge
+- Member since date display
+- Security section (password, 2FA placeholders)
+- Dark mode support
+
+### User Management (NEW)
+
+**Route:** `/admin/users`
+**File:** `apps/ottabase-template-app-tanstack/src/pages/admin/users/UserManagementPage.tsx`
+
+Features:
+- Admin-level system-wide user management
+- Statistics cards (total users, admins, verified, new this month)
+- Search functionality
+- User table with avatars, roles, status
+- Links to individual user RBAC page
+- GitHub-like minimal design
+
+### User RBAC Assignment (NEW)
+
+**Route:** `/admin/users/:userId/rbac`
+**File:** `apps/ottabase-template-app-tanstack/src/pages/admin/users/UserRBACPage.tsx`
+
+Features:
+- Assign users to organizations with roles
+- View user's current organization memberships
+- Add to organization dialog
+- Quick role change dropdown with color-coded badges
+- Remove from organization
+- User profile display with avatar
+- Real-time updates with optimistic UI
+
+### Organization Switcher Component (NEW)
+
+**File:** `apps/ottabase-template-app-tanstack/src/components/OrganizationSwitcher.tsx`
+
+A reusable dropdown component for switching between organizations:
+
+```typescript
+import { OrganizationSwitcher } from '@/components/OrganizationSwitcher';
+
+<OrganizationSwitcher
+  currentOrgId={currentOrgId}
+  onOrgChange={(orgId) => {
+    setCurrentOrgId(orgId);
+    localStorage.setItem('currentOrgId', orgId);
+  }}
+/>
+```
+
+Features:
+- Dropdown menu with all user's organizations
+- Current organization indicator (checkmark)
+- "Create Organization" option
+- Integrated in main application header
+- Persists selection to localStorage
+- GitHub-like minimal styling
 
 ---
 
