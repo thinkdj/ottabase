@@ -249,8 +249,8 @@ async function getSecurityContext(request: Request, session: any | null): Promis
     // Extract userId from session
     const userId = session?.user?.id;
 
-    // Extract organizationId from multiple sources (priority order):
-    let organizationId: string | null | undefined = undefined;
+    // Extract organizationId from multiple sources (priority order). Use null as single sentinel for "no org".
+    let organizationId: string | null = null;
 
     // 1. From session/JWT (if your JWT includes organizationId)
     if (session?.user?.organizationId) {
@@ -294,7 +294,7 @@ async function getSecurityContext(request: Request, session: any | null): Promis
 
     return {
         userId,
-        organizationId: organizationId === 'null' ? null : organizationId,
+        organizationId,
         appId,
         roles,
         permissions,

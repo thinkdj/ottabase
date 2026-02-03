@@ -1,16 +1,10 @@
-import { isApiError } from '@/lib/api';
-import type { OrganizationRecord, BadgeVariant } from '@/types/rbac';
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
 import { TableSkeleton } from '@/components/LoadingSkeletons';
+import { useCreateOrganization, useDeleteOrganization, useOrganizations, useUpdateOrganization } from '@/hooks/useRBAC';
 import { useRBACToast } from '@/hooks/useToast';
+import { isApiError } from '@/lib/api';
+import type { BadgeVariant, OrganizationRecord } from '@/types/rbac';
 import {
-    useOrganizations,
-    useCreateOrganization,
-    useUpdateOrganization,
-    useDeleteOrganization,
-} from '@/hooks/useRBAC';
-import {
-    Badge,
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -19,6 +13,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    Badge,
     Button,
     Card,
     CardContent,
@@ -37,9 +32,9 @@ import {
     TableHeader,
     TableRow,
 } from '@ottabase/ui-shadcn';
+import { Link } from '@tanstack/react-router';
 import { Edit, Plus, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
 import { OrganizationForm, type OrganizationFormData } from './components/OrganizationForm';
 
 export function OrganizationsPage() {
@@ -174,26 +169,15 @@ export function OrganizationsPage() {
                                             <code className="text-sm bg-muted px-2 py-1 rounded">{org.slug}</code>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant={getPlanBadgeVariant(org.plan)}>
-                                                {org.plan}
-                                            </Badge>
+                                            <Badge variant={getPlanBadgeVariant(org.plan)}>{org.plan}</Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant={getStatusBadgeVariant(org.status)}>
-                                                {org.status}
-                                            </Badge>
+                                            <Badge variant={getStatusBadgeVariant(org.status)}>{org.status}</Badge>
                                         </TableCell>
-                                        <TableCell>
-                                            {new Date(org.createdAt).toLocaleDateString()}
-                                        </TableCell>
+                                        <TableCell>{new Date(org.createdAt).toLocaleDateString()}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => {}}
-                                                    asChild
-                                                >
+                                                <Button variant="ghost" size="icon" asChild>
                                                     <Link to={`/organizations/${org.id}/members`}>
                                                         <Users className="h-4 w-4" />
                                                     </Link>
@@ -230,7 +214,9 @@ export function OrganizationsPage() {
                     <DialogHeader>
                         <DialogTitle>{editingOrg ? 'Edit Organization' : 'Create Organization'}</DialogTitle>
                         <DialogDescription>
-                            {editingOrg ? 'Update organization details and settings' : 'Create a new organization tenant'}
+                            {editingOrg
+                                ? 'Update organization details and settings'
+                                : 'Create a new organization tenant'}
                         </DialogDescription>
                     </DialogHeader>
                     <OrganizationForm
@@ -247,7 +233,8 @@ export function OrganizationsPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Organization?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete the organization and all associated data. This action cannot be undone.
+                            This will permanently delete the organization and all associated data. This action cannot be
+                            undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

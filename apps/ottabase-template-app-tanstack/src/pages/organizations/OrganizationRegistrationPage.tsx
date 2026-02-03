@@ -5,8 +5,9 @@
  * Minimal, GitHub-like UI with dark mode support
  */
 
-import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useCreateOrganization } from '@/hooks/useRBAC';
+import { useRBACToast } from '@/hooks/useToast';
+import { slugFromName } from '@/lib/slug';
 import {
     Button,
     Card,
@@ -23,9 +24,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@ottabase/ui-shadcn';
+import { useNavigate } from '@tanstack/react-router';
 import { Building2, Loader2 } from 'lucide-react';
-import { useCreateOrganization } from '@/hooks/useRBAC';
-import { useRBACToast } from '@/hooks/useToast';
+import { useState } from 'react';
 
 export function OrganizationRegistrationPage() {
     const navigate = useNavigate();
@@ -36,26 +37,22 @@ export function OrganizationRegistrationPage() {
         name: '',
         slug: '',
         plan: 'free' as 'free' | 'pro' | 'enterprise',
-        status: 'active' as 'active' | 'suspended' | 'trial',
+        status: 'active' as 'active' | 'suspended' | 'deleted',
     });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const handleChange = (field: string, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
+        setFormData((prev) => ({ ...prev, [field]: value }));
 
         // Auto-generate slug from name
         if (field === 'name' && !formData.slug) {
-            const slug = value
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '');
-            setFormData(prev => ({ ...prev, slug }));
+            setFormData((prev) => ({ ...prev, slug: slugFromName(value) }));
         }
 
         // Clear error
         if (errors[field]) {
-            setErrors(prev => {
+            setErrors((prev) => {
                 const next = { ...prev };
                 delete next[field];
                 return next;
@@ -108,9 +105,7 @@ export function OrganizationRegistrationPage() {
                         <Building2 className="h-6 w-6 text-primary" />
                     </div>
                     <CardTitle className="text-2xl">Create Organization</CardTitle>
-                    <CardDescription>
-                        Set up your organization to get started
-                    </CardDescription>
+                    <CardDescription>Set up your organization to get started</CardDescription>
                 </CardHeader>
 
                 <form onSubmit={handleSubmit}>
@@ -129,9 +124,7 @@ export function OrganizationRegistrationPage() {
                                 disabled={createMutation.isPending}
                                 className={errors.name ? 'border-destructive' : ''}
                             />
-                            {errors.name && (
-                                <p className="text-sm text-destructive">{errors.name}</p>
-                            )}
+                            {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
                         </div>
 
                         {/* Slug */}
@@ -153,9 +146,7 @@ export function OrganizationRegistrationPage() {
                                     Your organization URL: /org/{formData.slug}
                                 </p>
                             )}
-                            {errors.slug && (
-                                <p className="text-sm text-destructive">{errors.slug}</p>
-                            )}
+                            {errors.slug && <p className="text-sm text-destructive">{errors.slug}</p>}
                         </div>
 
                         {/* Plan */}
@@ -173,25 +164,19 @@ export function OrganizationRegistrationPage() {
                                     <SelectItem value="free">
                                         <div className="flex items-center gap-2">
                                             <span>Free</span>
-                                            <span className="text-xs text-muted-foreground">
-                                                Up to 3 users
-                                            </span>
+                                            <span className="text-xs text-muted-foreground">Up to 3 users</span>
                                         </div>
                                     </SelectItem>
                                     <SelectItem value="pro">
                                         <div className="flex items-center gap-2">
                                             <span>Pro</span>
-                                            <span className="text-xs text-muted-foreground">
-                                                Up to 50 users
-                                            </span>
+                                            <span className="text-xs text-muted-foreground">Up to 50 users</span>
                                         </div>
                                     </SelectItem>
                                     <SelectItem value="enterprise">
                                         <div className="flex items-center gap-2">
                                             <span>Enterprise</span>
-                                            <span className="text-xs text-muted-foreground">
-                                                Unlimited
-                                            </span>
+                                            <span className="text-xs text-muted-foreground">Unlimited</span>
                                         </div>
                                     </SelectItem>
                                 </SelectContent>
@@ -200,11 +185,7 @@ export function OrganizationRegistrationPage() {
                     </CardContent>
 
                     <CardFooter className="flex flex-col gap-2">
-                        <Button
-                            type="submit"
-                            className="w-full"
-                            disabled={createMutation.isPending}
-                        >
+                        <Button type="submit" className="w-full" disabled={createMutation.isPending}>
                             {createMutation.isPending ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

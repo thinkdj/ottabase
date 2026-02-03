@@ -1,4 +1,15 @@
-import { Card, CardContent, CardHeader, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ottabase/ui-shadcn';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    Skeleton,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@ottabase/ui-shadcn';
 
 /**
  * Table skeleton loader with configurable rows
@@ -91,12 +102,17 @@ export function PageHeaderSkeleton() {
 /**
  * Grid skeleton for card layouts
  */
+const SUPPORTED_GRID_COLUMNS = [2, 3, 4] as const;
+
 export function GridSkeleton({ items = 6, columns = 3 }: { items?: number; columns?: number }) {
+    const safeColumns = SUPPORTED_GRID_COLUMNS.includes(columns as (typeof SUPPORTED_GRID_COLUMNS)[number])
+        ? columns
+        : 3;
     const gridCols = {
         2: 'md:grid-cols-2',
         3: 'md:grid-cols-3',
         4: 'md:grid-cols-4',
-    }[columns] || 'md:grid-cols-3';
+    }[safeColumns];
 
     return (
         <div className={`grid gap-4 ${gridCols}`}>

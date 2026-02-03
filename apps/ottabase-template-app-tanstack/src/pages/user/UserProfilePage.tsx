@@ -5,7 +5,7 @@
  * GitHub-like minimal UI with dark mode support
  */
 
-import { useState } from 'react';
+import { useRBACToast } from '@/hooks/useToast';
 import { useSession } from '@/lib/auth';
 import {
     Avatar,
@@ -22,8 +22,8 @@ import {
     Label,
     Separator,
 } from '@ottabase/ui-shadcn';
-import { User, Mail, Calendar, Loader2, Check } from 'lucide-react';
-import { useRBACToast } from '@/hooks/useToast';
+import { Calendar, Check, Loader2, Mail, User } from 'lucide-react';
+import { useState } from 'react';
 
 export function UserProfilePage() {
     const { user } = useSession();
@@ -130,9 +130,7 @@ export function UserProfilePage() {
                             onChange={(e) => handleChange('email', e.target.value)}
                             disabled={isSaving}
                         />
-                        <p className="text-sm text-muted-foreground">
-                            Your email is used for login and notifications
-                        </p>
+                        <p className="text-sm text-muted-foreground">Your email is used for login and notifications</p>
                     </div>
 
                     {/* Save Button */}
@@ -220,7 +218,7 @@ export function UserProfilePage() {
                         <div>
                             <h4 className="font-medium">Password</h4>
                             <p className="text-sm text-muted-foreground">
-                                Last changed: Never (OAuth login)
+                                Password management is not available from this app.
                             </p>
                         </div>
                         <Button variant="outline" size="sm" disabled>
@@ -233,9 +231,7 @@ export function UserProfilePage() {
                     <div className="flex items-center justify-between">
                         <div>
                             <h4 className="font-medium">Two-Factor Authentication</h4>
-                            <p className="text-sm text-muted-foreground">
-                                Add an extra layer of security
-                            </p>
+                            <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
                         </div>
                         <Button variant="outline" size="sm" disabled>
                             Enable 2FA

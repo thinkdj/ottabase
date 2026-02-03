@@ -30,8 +30,9 @@ export function logSecurityViolation(violation: RLSViolation): void {
         },
     };
 
-    // Log to console in development
-    if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
+    // Log to console in development (Cloudflare Workers have no process; use env or assume dev when not in production)
+    const isProduction = typeof process !== 'undefined' && process.env?.NODE_ENV === 'production';
+    if (!isProduction) {
         console.error('🚨 RLS VIOLATION:', JSON.stringify(logEntry, null, 2));
     }
 

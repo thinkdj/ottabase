@@ -2,6 +2,7 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { OrganizationSwitcher } from '@/components/OrganizationSwitcher';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { ReferralTracker } from '@/components/ReferralTracker';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
 import { ThemeSwitcher } from '@/ottabase/components/ThemeSwitcher';
@@ -28,20 +29,10 @@ function RootLayout() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Organization switcher state
-    const [currentOrgId, setCurrentOrgId] = useState<string | undefined>(() => {
-        // Load from localStorage if available
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('currentOrgId') || undefined;
-        }
-        return undefined;
-    });
+    const [currentOrgId, setCurrentOrgId] = useLocalStorage<string>('currentOrgId');
 
     const handleOrgChange = (orgId: string) => {
         setCurrentOrgId(orgId);
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('currentOrgId', orgId);
-        }
     };
 
     const handleLogout = () => {
@@ -111,10 +102,7 @@ function RootLayout() {
                         <LanguageSwitcher languages={i18nConfig.enabledLanguages} showLabel={false} />
 
                         {isAuthenticated && (
-                            <OrganizationSwitcher
-                                currentOrgId={currentOrgId}
-                                onOrgChange={handleOrgChange}
-                            />
+                            <OrganizationSwitcher currentOrgId={currentOrgId} onOrgChange={handleOrgChange} />
                         )}
 
                         {isAuthenticated ? (

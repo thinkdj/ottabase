@@ -1,7 +1,17 @@
-import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@ottabase/ui-shadcn';
+import { slugFromName } from '@/lib/slug';
+import type { OrganizationPlan, OrganizationSettings, OrganizationStatus } from '@/types/rbac';
 import type { Organization } from '@ottabase/ottaorm';
-import type { OrganizationPlan, OrganizationStatus, OrganizationSettings } from '@/types/rbac';
-import { useState, useEffect } from 'react';
+import {
+    Button,
+    Input,
+    Label,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@ottabase/ui-shadcn';
+import { useEffect, useState } from 'react';
 
 export interface OrganizationFormProps {
     organization?: Organization | null;
@@ -56,8 +66,7 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
         setFormData((prev) => ({
             ...prev,
             name,
-            // Auto-generate slug from name if creating new
-            slug: organization ? prev.slug : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+            slug: organization ? prev.slug : slugFromName(name),
         }));
     };
 
@@ -76,7 +85,9 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                         minLength={2}
                         maxLength={100}
                     />
-                    <p className="text-sm text-muted-foreground">The display name of your organization (2-100 characters)</p>
+                    <p className="text-sm text-muted-foreground">
+                        The display name of your organization (2-100 characters)
+                    </p>
                 </div>
 
                 {/* Slug */}
@@ -96,15 +107,19 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                     <p className="text-sm text-muted-foreground">
                         {organization
                             ? 'Slug cannot be changed after creation'
-                            : 'URL-friendly identifier (lowercase, numbers, hyphens only)'
-                        }
+                            : 'URL-friendly identifier (lowercase, numbers, hyphens only)'}
                     </p>
                 </div>
 
                 {/* Plan */}
                 <div className="space-y-2">
                     <Label htmlFor="plan">Plan*</Label>
-                    <Select value={formData.plan} onValueChange={(value: 'free' | 'pro' | 'enterprise') => setFormData({ ...formData, plan: value })}>
+                    <Select
+                        value={formData.plan}
+                        onValueChange={(value: 'free' | 'pro' | 'enterprise') =>
+                            setFormData({ ...formData, plan: value })
+                        }
+                    >
                         <SelectTrigger id="plan">
                             <SelectValue placeholder="Select plan" />
                         </SelectTrigger>
@@ -119,7 +134,12 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                 {/* Status */}
                 <div className="space-y-2">
                     <Label htmlFor="status">Status*</Label>
-                    <Select value={formData.status} onValueChange={(value: 'active' | 'suspended' | 'deleted') => setFormData({ ...formData, status: value })}>
+                    <Select
+                        value={formData.status}
+                        onValueChange={(value: 'active' | 'suspended' | 'deleted') =>
+                            setFormData({ ...formData, status: value })
+                        }
+                    >
                         <SelectTrigger id="status">
                             <SelectValue placeholder="Select status" />
                         </SelectTrigger>
@@ -138,15 +158,19 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                         id="maxMembers"
                         type="number"
                         value={formData.settings?.maxMembers || ''}
-                        onChange={(e) => setFormData({
-                            ...formData,
-                            settings: { ...formData.settings, maxMembers: parseInt(e.target.value) || undefined }
-                        })}
+                        onChange={(e) =>
+                            setFormData({
+                                ...formData,
+                                settings: { ...formData.settings, maxMembers: parseInt(e.target.value) || undefined },
+                            })
+                        }
                         placeholder="50"
                         min={1}
                         max={10000}
                     />
-                    <p className="text-sm text-muted-foreground">Maximum number of members (leave empty for unlimited)</p>
+                    <p className="text-sm text-muted-foreground">
+                        Maximum number of members (leave empty for unlimited)
+                    </p>
                 </div>
 
                 {/* Features (Settings) */}
@@ -155,13 +179,18 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                     <Input
                         id="features"
                         value={formData.settings?.features?.join(', ') || ''}
-                        onChange={(e) => setFormData({
-                            ...formData,
-                            settings: {
-                                ...formData.settings,
-                                features: e.target.value.split(',').map(f => f.trim()).filter(Boolean)
-                            }
-                        })}
+                        onChange={(e) =>
+                            setFormData({
+                                ...formData,
+                                settings: {
+                                    ...formData.settings,
+                                    features: e.target.value
+                                        .split(',')
+                                        .map((f) => f.trim())
+                                        .filter(Boolean),
+                                },
+                            })
+                        }
                         placeholder="rbac, audit, api"
                     />
                     <p className="text-sm text-muted-foreground">Comma-separated list of enabled features</p>
