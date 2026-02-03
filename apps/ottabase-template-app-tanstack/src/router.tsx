@@ -677,6 +677,16 @@ const adminRBACRolesRoute = new Route({
     ),
 });
 
+const adminRBACPermissionsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/rbac/permissions',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/rbac/PermissionsMatrixPage').then((m) => ({
+            default: m.PermissionsMatrixPage,
+        })),
+    ),
+});
+
 demoLayoutRoute.addChildren([
     demoIndexRoute,
     demoMantineRoute,
@@ -724,6 +734,7 @@ const routeTree = rootRoute.addChildren([
     adminDbRoute,
     adminRBACRoute,
     adminRBACRolesRoute,
+    adminRBACPermissionsRoute,
     blogListRoute,
     blogDetailRoute,
     organizationsRoute,

@@ -165,10 +165,18 @@ export function RBACRolesPage() {
                             </CardTitle>
                             <CardDescription>Manage roles and their permissions</CardDescription>
                         </div>
-                        <Button onClick={handleCreate} className="gap-2">
-                            <Plus className="h-4 w-4" />
-                            New Role
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="outline" asChild>
+                                <Link to="/admin/rbac/permissions">View Permissions Matrix</Link>
+                            </Button>
+                            <Button variant="outline" asChild>
+                                <Link to="/admin/rbac">← Back to RBAC</Link>
+                            </Button>
+                            <Button onClick={handleCreate} className="gap-2">
+                                <Plus className="h-4 w-4" />
+                                New Role
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>

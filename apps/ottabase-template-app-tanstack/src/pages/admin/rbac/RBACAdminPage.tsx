@@ -20,10 +20,10 @@ export function RBACAdminPage() {
         },
         {
             title: 'Permissions Matrix',
-            description: 'View and manage the complete permissions matrix',
+            description: 'View and manage the complete permissions matrix across the hierarchy',
             href: '/admin/rbac/permissions',
             icon: Key,
-            disabled: true, // Can be implemented later
+            disabled: false,
         },
     ];
 
