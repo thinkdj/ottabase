@@ -12,8 +12,8 @@ import logger from '@ottabase/logger';
 export async function logAudit(data: AuditLogData): Promise<void> {
     try {
         await AuditLog.log(data);
-    } catch (error) {
-        logger.error('Failed to log audit event', { data, error });
+    } catch (error: any) {
+        logger.error('Failed to log audit event', error instanceof Error ? error : new Error(String(error)), { data });
         throw error;
     }
 }
@@ -34,7 +34,7 @@ export async function log(
     userId: string,
     action: string,
     metadata?: Record<string, any>,
-    userEmail?: string
+    userEmail?: string,
 ): Promise<void> {
     await logAudit({
         userId,
@@ -53,7 +53,7 @@ export async function logCreate(
     resourceType: string,
     resourceId: string,
     data: Record<string, any>,
-    context?: AuditRequestContext
+    context?: AuditRequestContext,
 ): Promise<void> {
     await logAudit({
         userId: context?.userId,
@@ -79,7 +79,7 @@ export async function logUpdate(
     resourceType: string,
     resourceId: string,
     changes: Record<string, { from: any; to: any }>,
-    context?: AuditRequestContext
+    context?: AuditRequestContext,
 ): Promise<void> {
     await logAudit({
         userId: context?.userId,
@@ -104,7 +104,7 @@ export async function logUpdate(
 export async function logDelete(
     resourceType: string,
     resourceId: string,
-    context?: AuditRequestContext
+    context?: AuditRequestContext,
 ): Promise<void> {
     await logAudit({
         userId: context?.userId,
@@ -125,11 +125,7 @@ export async function logDelete(
 /**
  * Log read/access action
  */
-export async function logRead(
-    resourceType: string,
-    resourceId: string,
-    context?: AuditRequestContext
-): Promise<void> {
+export async function logRead(resourceType: string, resourceId: string, context?: AuditRequestContext): Promise<void> {
     await logAudit({
         userId: context?.userId,
         userEmail: context?.userEmail,
@@ -154,7 +150,7 @@ export async function logAuth(
     userId: string,
     userEmail: string,
     context?: AuditRequestContext,
-    success: boolean = true
+    success: boolean = true,
 ): Promise<void> {
     await logAudit({
         userId,
@@ -180,7 +176,7 @@ export async function logRoleAssign(
     roleId: string,
     roleName: string,
     assignedBy?: string,
-    context?: AuditRequestContext
+    context?: AuditRequestContext,
 ): Promise<void> {
     await logAudit({
         userId: assignedBy,
@@ -212,7 +208,7 @@ export async function logRoleRemove(
     roleId: string,
     roleName: string,
     removedBy?: string,
-    context?: AuditRequestContext
+    context?: AuditRequestContext,
 ): Promise<void> {
     await logAudit({
         userId: removedBy,
@@ -244,7 +240,7 @@ export async function logFailure(
     resourceType: string,
     error: Error | string,
     context?: AuditRequestContext,
-    resourceId?: string
+    resourceId?: string,
 ): Promise<void> {
     await logAudit({
         userId: context?.userId,
@@ -280,7 +276,10 @@ export function extractRequestContext(request: Request, userId?: string, userEma
 /**
  * Compare objects and extract changes
  */
-export function detectChanges(oldData: Record<string, any>, newData: Record<string, any>): Record<string, { from: any; to: any }> {
+export function detectChanges(
+    oldData: Record<string, any>,
+    newData: Record<string, any>,
+): Record<string, { from: any; to: any }> {
     const changes: Record<string, { from: any; to: any }> = {};
 
     // Check for changed and new fields
@@ -309,7 +308,10 @@ export function detectChanges(oldData: Record<string, any>, newData: Record<stri
 /**
  * Sanitize sensitive data before logging
  */
-export function sanitizeData(data: Record<string, any>, sensitiveFields: string[] = ['password', 'token', 'secret', 'apiKey']): Record<string, any> {
+export function sanitizeData(
+    data: Record<string, any>,
+    sensitiveFields: string[] = ['password', 'token', 'secret', 'apiKey'],
+): Record<string, any> {
     const sanitized = { ...data };
 
     for (const field of sensitiveFields) {

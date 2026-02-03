@@ -79,9 +79,7 @@ export interface BuildAppContextOptions {
  * Build a complete app context
  * Loads user roles and permissions if user is provided
  */
-export async function buildAppContext(
-    options: BuildAppContextOptions
-): Promise<AppContext> {
+export async function buildAppContext(options: BuildAppContextOptions): Promise<AppContext> {
     const {
         organizationId,
         appId,
@@ -108,8 +106,8 @@ export async function buildAppContext(
         appId,
         appName,
         user: user || null,
-        userId: userId || user?.id,
-        userEmail: user?.email,
+        userId: userId || (user ? (user.get('id') as string) : undefined),
+        userEmail: user ? (user.get('email') as string) : undefined,
         roles: [],
         permissions: [],
         isAuthenticated: !!(user || userId),
@@ -132,7 +130,7 @@ export async function buildAppContext(
                 // Roles with specific appId will be filtered during permission checks
             });
 
-            context.roles = roles.map((role) => role.name);
+            context.roles = roles.map((role) => role.get('name') as string);
 
             // Get user permissions (scoped by organization)
             const permissions = await user.getPermissions({
@@ -141,8 +139,11 @@ export async function buildAppContext(
             });
 
             context.permissions = permissions;
-        } catch (error) {
-            logger.error('Failed to load RBAC context', { userId: context.userId, organizationId, error });
+        } catch (error: any) {
+            logger.error('Failed to load RBAC context', error instanceof Error ? error : new Error(String(error)), {
+                userId: context.userId,
+                organizationId,
+            });
             // Continue with empty roles/permissions rather than failing
         }
     }
@@ -167,9 +168,7 @@ export interface ExtractOrgOptions {
     getJWT?: (request: Request) => Promise<any>; // Custom JWT decoder
 }
 
-export async function extractOrganizationId(
-    options: ExtractOrgOptions
-): Promise<string | null> {
+export async function extractOrganizationId(options: ExtractOrgOptions): Promise<string | null> {
     const {
         request,
         subdomainPrefix = 'org-',
@@ -210,8 +209,11 @@ export async function extractOrganizationId(
             if (jwt && jwt[jwtClaim]) {
                 return jwt[jwtClaim];
             }
-        } catch (error) {
-            logger.error('Failed to extract organizationId from JWT', { error });
+        } catch (error: any) {
+            logger.error(
+                'Failed to extract organizationId from JWT',
+                error instanceof Error ? error : new Error(String(error)),
+            );
         }
     }
 
@@ -235,13 +237,7 @@ export interface ExtractAppOptions {
 }
 
 export function extractAppId(options: ExtractAppOptions): string {
-    const {
-        request,
-        headerName = 'X-App-Id',
-        queryParam = 'appId',
-        env,
-        defaultAppId = 'web',
-    } = options;
+    const { request, headerName = 'X-App-Id', queryParam = 'appId', env, defaultAppId = 'web' } = options;
 
     // Strategy 1: Check header
     const headerValue = request.headers.get(headerName);
@@ -328,7 +324,7 @@ export function createAuditData(
     action: string,
     resourceType: string,
     resourceId?: string,
-    changes?: Record<string, any>
+    changes?: Record<string, any>,
 ): {
     userId?: string;
     userEmail?: string;

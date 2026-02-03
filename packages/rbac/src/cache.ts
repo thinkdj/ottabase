@@ -107,7 +107,11 @@ export class RBACCache {
             }
             return 'v1';
         } catch (error) {
-            logger.error('Failed to get cache version for organization', { organizationId, error });
+            logger.error(
+                'Failed to get cache version for organization',
+                error instanceof Error ? error : new Error(String(error)),
+                { organizationId },
+            );
             return 'v1';
         }
     }
@@ -131,16 +135,21 @@ export class RBACCache {
             });
 
             if (!result.success) {
-                logger.error('Failed to increment cache version for organization', {
-                    organizationId,
-                    error: result.error,
-                });
+                logger.error(
+                    'Failed to increment cache version for organization',
+                    result.error instanceof Error ? result.error : new Error(String(result.error)),
+                    { organizationId },
+                );
                 return current; // Return current version on error
             }
 
             return newVersion;
         } catch (error) {
-            logger.error('Failed to increment cache version for organization', { organizationId, error });
+            logger.error(
+                'Failed to increment cache version for organization',
+                error instanceof Error ? error : new Error(String(error)),
+                { organizationId },
+            );
             return 'v1';
         }
     }
@@ -163,9 +172,9 @@ export class RBACCache {
         userId: string,
         organizationId: string,
         appId?: string | null,
-        version?: string
+        version?: string,
     ): Promise<string> {
-        const orgVersion = version || await this.getOrgCacheVersion(organizationId);
+        const orgVersion = version || (await this.getOrgCacheVersion(organizationId));
         const parts = [
             this.prefix.replace(/:$/, ''), // Remove trailing colon if exists
             'org',
@@ -187,11 +196,7 @@ export class RBACCache {
      * @param organizationId Organization ID (REQUIRED for security)
      * @param appId Optional app ID
      */
-    async getUserContext(
-        userId: string,
-        organizationId: string,
-        appId?: string | null
-    ): Promise<RBACContext | null> {
+    async getUserContext(userId: string, organizationId: string, appId?: string | null): Promise<RBACContext | null> {
         if (!this.enabled) return null;
         if (!organizationId) {
             throw new Error('organizationId is required for tenant-scoped caching');
@@ -215,7 +220,10 @@ export class RBACCache {
                     return context;
                 }
             } catch (error) {
-                logger.error('Failed to get RBAC context from KV', { error });
+                logger.error(
+                    'Failed to get RBAC context from KV',
+                    error instanceof Error ? error : new Error(String(error)),
+                );
             }
         }
 
@@ -233,7 +241,7 @@ export class RBACCache {
         userId: string,
         context: RBACContext,
         organizationId: string,
-        appId?: string | null
+        appId?: string | null,
     ): Promise<void> {
         if (!this.enabled) return;
         if (!organizationId) {
@@ -253,10 +261,16 @@ export class RBACCache {
                     expirationTtl: this.ttl,
                 });
                 if (!result.success) {
-                    logger.error('Failed to set RBAC context in KV', { error: result.error });
+                    logger.error(
+                        'Failed to set RBAC context in KV',
+                        result.error instanceof Error ? result.error : new Error(String(result.error)),
+                    );
                 }
             } catch (error) {
-                logger.error('Failed to set RBAC context in KV', { error });
+                logger.error(
+                    'Failed to set RBAC context in KV',
+                    error instanceof Error ? error : new Error(String(error)),
+                );
             }
         }
     }
@@ -267,11 +281,7 @@ export class RBACCache {
      * @param organizationId Organization ID (REQUIRED for security)
      * @param appId Optional app ID
      */
-    async getUserRoles(
-        userId: string,
-        organizationId: string,
-        appId?: string | null
-    ): Promise<string[] | null> {
+    async getUserRoles(userId: string, organizationId: string, appId?: string | null): Promise<string[] | null> {
         if (!this.enabled) return null;
         if (!organizationId) {
             throw new Error('organizationId is required for tenant-scoped caching');
@@ -294,7 +304,7 @@ export class RBACCache {
                     return roles;
                 }
             } catch (error) {
-                logger.error('Failed to get roles from KV', { error });
+                logger.error('Failed to get roles from KV', error instanceof Error ? error : new Error(String(error)));
             }
         }
 
@@ -308,12 +318,7 @@ export class RBACCache {
      * @param organizationId Organization ID (REQUIRED for security)
      * @param appId Optional app ID
      */
-    async setUserRoles(
-        userId: string,
-        roles: string[],
-        organizationId: string,
-        appId?: string | null
-    ): Promise<void> {
+    async setUserRoles(userId: string, roles: string[], organizationId: string, appId?: string | null): Promise<void> {
         if (!this.enabled) return;
         if (!organizationId) {
             throw new Error('organizationId is required for tenant-scoped caching');
@@ -332,10 +337,13 @@ export class RBACCache {
                     expirationTtl: this.ttl,
                 });
                 if (!result.success) {
-                    logger.error('Failed to set roles in KV', { error: result.error });
+                    logger.error(
+                        'Failed to set roles in KV',
+                        result.error instanceof Error ? result.error : new Error(String(result.error)),
+                    );
                 }
             } catch (error) {
-                logger.error('Failed to set roles in KV', { error });
+                logger.error('Failed to set roles in KV', error instanceof Error ? error : new Error(String(error)));
             }
         }
     }
@@ -346,11 +354,7 @@ export class RBACCache {
      * @param organizationId Organization ID (REQUIRED for security)
      * @param appId Optional app ID
      */
-    async getUserPermissions(
-        userId: string,
-        organizationId: string,
-        appId?: string | null
-    ): Promise<string[] | null> {
+    async getUserPermissions(userId: string, organizationId: string, appId?: string | null): Promise<string[] | null> {
         if (!this.enabled) return null;
         if (!organizationId) {
             throw new Error('organizationId is required for tenant-scoped caching');
@@ -373,7 +377,10 @@ export class RBACCache {
                     return permissions;
                 }
             } catch (error) {
-                logger.error('Failed to get permissions from KV', { error });
+                logger.error(
+                    'Failed to get permissions from KV',
+                    error instanceof Error ? error : new Error(String(error)),
+                );
             }
         }
 
@@ -391,7 +398,7 @@ export class RBACCache {
         userId: string,
         permissions: string[],
         organizationId: string,
-        appId?: string | null
+        appId?: string | null,
     ): Promise<void> {
         if (!this.enabled) return;
         if (!organizationId) {
@@ -411,10 +418,16 @@ export class RBACCache {
                     expirationTtl: this.ttl,
                 });
                 if (!result.success) {
-                    logger.error('Failed to set permissions in KV', { error: result.error });
+                    logger.error(
+                        'Failed to set permissions in KV',
+                        result.error instanceof Error ? result.error : new Error(String(result.error)),
+                    );
                 }
             } catch (error) {
-                logger.error('Failed to set permissions in KV', { error });
+                logger.error(
+                    'Failed to set permissions in KV',
+                    error instanceof Error ? error : new Error(String(error)),
+                );
             }
         }
     }
@@ -425,11 +438,7 @@ export class RBACCache {
      * @param organizationId Organization ID (REQUIRED)
      * @param appId Optional app ID (if specified, only invalidate for that app)
      */
-    async invalidateUser(
-        userId: string,
-        organizationId: string,
-        appId?: string | null
-    ): Promise<void> {
+    async invalidateUser(userId: string, organizationId: string, appId?: string | null): Promise<void> {
         if (!organizationId) {
             throw new Error('organizationId is required for tenant-scoped cache invalidation');
         }
@@ -452,10 +461,7 @@ export class RBACCache {
      * @param organizationId Organization ID (REQUIRED)
      * @param roleName Optional role name for logging
      */
-    async invalidateOrganization(
-        organizationId: string,
-        roleName?: string
-    ): Promise<void> {
+    async invalidateOrganization(organizationId: string, roleName?: string): Promise<void> {
         if (!organizationId) {
             throw new Error('organizationId is required for organization cache invalidation');
         }
@@ -487,7 +493,10 @@ export class RBACCache {
                     await Promise.all(deletePromises);
                 }
             } catch (error) {
-                logger.error('Failed to clear RBAC cache in KV', { error });
+                logger.error(
+                    'Failed to clear RBAC cache in KV',
+                    error instanceof Error ? error : new Error(String(error)),
+                );
             }
         }
     }
