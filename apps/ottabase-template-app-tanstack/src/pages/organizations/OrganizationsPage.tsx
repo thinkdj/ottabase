@@ -1,9 +1,14 @@
-import { api, isApiError } from '@/lib/api';
-import type { PaginatedResponse, Pagination } from '@/lib/api-types';
+import { isApiError } from '@/lib/api';
 import type { OrganizationRecord, BadgeVariant } from '@/types/rbac';
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
 import { TableSkeleton } from '@/components/LoadingSkeletons';
 import { useRBACToast } from '@/hooks/useToast';
+import {
+    useOrganizations,
+    useCreateOrganization,
+    useUpdateOrganization,
+    useDeleteOrganization,
+} from '@/hooks/useRBAC';
 import {
     Badge,
     AlertDialog,
@@ -25,12 +30,6 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
     Table,
     TableBody,
     TableCell,
@@ -38,50 +37,22 @@ import {
     TableHeader,
     TableRow,
 } from '@ottabase/ui-shadcn';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit, Plus, Trash2, Users } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { Edit, Plus, Trash2, Users } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { OrganizationForm, type OrganizationFormData } from './components/OrganizationForm';
 
-type OrganizationsResponse = PaginatedResponse<OrganizationRecord>;
-
 export function OrganizationsPage() {
     const toast = useRBACToast();
-    const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOrg, setEditingOrg] = useState<OrganizationRecord | null>(null);
     const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
 
-    // Pagination state
-    const [currentPage, setCurrentPage] = useState(1);
-    const [perPage, setPerPage] = useState(15);
-    const [pagination, setPagination] = useState<Pagination | null>(null);
-
-    const fetchOrganizations = useCallback(async (page: number = 1, itemsPerPage: number = 15) => {
-        try {
-            setLoading(true);
-            setError(null);
-            const response = await api<OrganizationsResponse>(
-                `/api/ottaorm/organizations?page=${page}&per_page=${itemsPerPage}`,
-            );
-            if (response.data) {
-                setOrganizations(response.data);
-                setPagination(response.pagination);
-                setCurrentPage(response.pagination.page);
-            }
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error('Failed to load organizations');
-            setError(error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchOrganizations(currentPage, perPage);
-    }, [fetchOrganizations, currentPage, perPage]);
+    // TanStack Query hooks
+    const { data: organizations = [], isLoading, error, refetch } = useOrganizations();
+    const createMutation = useCreateOrganization();
+    const updateMutation = useUpdateOrganization();
+    const deleteMutation = useDeleteOrganization();
 
     const handleCreate = () => {
         setEditingOrg(null);
@@ -101,47 +72,34 @@ export function OrganizationsPage() {
         if (!deleteDialog) return;
 
         const id = deleteDialog;
-        try {
-            await api(`/api/ottaorm/organizations/${id}`, { method: 'DELETE' });
-            toast.rbac.organizationDeleted();
-            await fetchOrganizations(currentPage, perPage);
-            setDeleteDialog(null);
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error('Failed to delete organization');
-            toast.error('Delete failed', error.message);
-        }
+        deleteMutation.mutate(id, {
+            onSuccess: () => {
+                toast.rbac.organizationDeleted();
+                setDeleteDialog(null);
+            },
+            onError: (err) => {
+                toast.error('Delete failed', err instanceof Error ? err.message : 'Unknown error');
+            },
+        });
     };
 
     const handleSubmit = async (data: OrganizationFormData) => {
         try {
             if (editingOrg) {
-                await api(`/api/ottaorm/organizations/${editingOrg.id}`, {
-                    method: 'PATCH',
-                    body: JSON.stringify(data),
+                await updateMutation.mutateAsync({
+                    id: editingOrg.id,
+                    data,
                 });
                 toast.rbac.organizationUpdated();
             } else {
-                await api('/api/ottaorm/organizations', {
-                    method: 'POST',
-                    body: JSON.stringify(data),
-                });
+                await createMutation.mutateAsync(data);
                 toast.rbac.organizationCreated();
             }
-            await fetchOrganizations(currentPage, perPage);
             setIsDialogOpen(false);
             setEditingOrg(null);
         } catch (err) {
             throw new Error(isApiError(err) ? err.message : 'Failed to save organization');
         }
-    };
-
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-    };
-
-    const handlePerPageChange = (value: string) => {
-        setPerPage(parseInt(value));
-        setCurrentPage(1);
     };
 
     const getPlanBadgeVariant = (plan: string): BadgeVariant => {
@@ -184,145 +142,84 @@ export function OrganizationsPage() {
                 <CardContent>
                     {error && (
                         <ApiErrorDisplay
-                            error={error}
-                            onRetry={() => fetchOrganizations(currentPage, perPage)}
-                            onDismiss={() => setError(null)}
+                            error={error instanceof Error ? error : new Error('Failed to load organizations')}
+                            onRetry={() => refetch()}
                             className="mb-4"
                         />
                     )}
 
-                    {loading && organizations.length === 0 ? (
+                    {isLoading ? (
                         <TableSkeleton rows={5} columns={6} />
                     ) : organizations.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                             No organizations found. Create your first one!
                         </div>
                     ) : (
-                        <>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Slug</TableHead>
-                                        <TableHead>Plan</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Created</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Slug</TableHead>
+                                    <TableHead>Plan</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Created</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {organizations.map((org) => (
+                                    <TableRow key={org.id}>
+                                        <TableCell className="font-medium">{org.name}</TableCell>
+                                        <TableCell>
+                                            <code className="text-sm bg-muted px-2 py-1 rounded">{org.slug}</code>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={getPlanBadgeVariant(org.plan)}>
+                                                {org.plan}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={getStatusBadgeVariant(org.status)}>
+                                                {org.status}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            {new Date(org.createdAt).toLocaleDateString()}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => {}}
+                                                    asChild
+                                                >
+                                                    <Link to={`/organizations/${org.id}/members`}>
+                                                        <Users className="h-4 w-4" />
+                                                    </Link>
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleEdit(org)}
+                                                    disabled={updateMutation.isPending}
+                                                >
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleDelete(org.id)}
+                                                    disabled={deleteMutation.isPending}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
                                     </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {organizations.map((org) => (
-                                        <TableRow key={org.id}>
-                                            <TableCell className="font-medium">{org.name}</TableCell>
-                                            <TableCell>
-                                                <code className="text-sm bg-muted px-2 py-1 rounded">{org.slug}</code>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant={getPlanBadgeVariant(org.plan)}>
-                                                    {org.plan}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant={getStatusBadgeVariant(org.status)}>
-                                                    {org.status}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                {new Date(org.createdAt).toLocaleDateString()}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => {}}
-                                                        asChild
-                                                    >
-                                                        <Link to={`/organizations/${org.id}/members`}>
-                                                            <Users className="h-4 w-4" />
-                                                        </Link>
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleEdit(org)}
-                                                    >
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleDelete(org.id)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-
-                            {/* Pagination */}
-                            {pagination && (
-                                <div className="flex items-center justify-between pt-4">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm text-muted-foreground">Rows per page:</span>
-                                        <Select value={perPage.toString()} onValueChange={handlePerPageChange}>
-                                            <SelectTrigger className="w-20">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="10">10</SelectItem>
-                                                <SelectItem value="15">15</SelectItem>
-                                                <SelectItem value="25">25</SelectItem>
-                                                <SelectItem value="50">50</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm text-muted-foreground">
-                                            Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
-                                        </span>
-                                        <div className="flex gap-1">
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() => handlePageChange(1)}
-                                                disabled={currentPage === 1}
-                                            >
-                                                <ChevronsLeft className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() => handlePageChange(currentPage - 1)}
-                                                disabled={currentPage === 1}
-                                            >
-                                                <ChevronLeft className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() => handlePageChange(currentPage + 1)}
-                                                disabled={currentPage === pagination.totalPages}
-                                            >
-                                                <ChevronRight className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() => handlePageChange(pagination.totalPages)}
-                                                disabled={currentPage === pagination.totalPages}
-                                            >
-                                                <ChevronsRight className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </>
+                                ))}
+                            </TableBody>
+                        </Table>
                     )}
                 </CardContent>
             </Card>

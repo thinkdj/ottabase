@@ -1,5 +1,4 @@
-import { api, isApiError } from '@/lib/api';
-import type { RoleRecord, PermissionRecord } from '@/types/rbac';
+import type { RoleRecord } from '@/types/rbac';
 import {
     Badge,
     Button,
@@ -21,11 +20,12 @@ import {
     TabsTrigger,
 } from '@ottabase/ui-shadcn';
 import { Check, Shield, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
 import { TableSkeleton } from '@/components/LoadingSkeletons';
 import { useRBACToast } from '@/hooks/useToast';
+import { useRoles, useTogglePermission } from '@/hooks/useRBAC';
 
 // Predefined permissions for the system
 const SYSTEM_PERMISSIONS = [
@@ -56,85 +56,15 @@ const SYSTEM_PERMISSIONS = [
     { id: 'app:delete', name: 'Delete Apps', category: 'Apps' },
 ];
 
-interface PermissionMatrixData {
-    roles: RoleRecord[];
-    permissions: typeof SYSTEM_PERMISSIONS;
-}
-
 export function PermissionsMatrixPage() {
     const toast = useRBACToast();
-    const [roles, setRoles] = useState<RoleRecord[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
-    const [updatingCell, setUpdatingCell] = useState<string | null>(null); // roleId:permissionId
+    const [activeTab, setActiveTab] = useState('all');
 
-    const fetchRoles = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const response = await api<{ data: RoleRecord[] }>('/api/rbac/roles');
-            if (response.data) {
-                setRoles(response.data);
-            }
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error('Failed to load roles');
-            setError(error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+    // TanStack Query hooks with optimistic updates
+    const { data: roles = [], isLoading, error, refetch } = useRoles();
+    const togglePermission = useTogglePermission();
 
-    useEffect(() => {
-        fetchRoles();
-    }, [fetchRoles]);
-
-    const hasPermission = (role: RoleRecord, permissionId: string): boolean => {
-        return role.permissions?.includes(permissionId) ?? false;
-    };
-
-    const togglePermission = async (role: RoleRecord, permissionId: string) => {
-        const cellKey = `${role.id}:${permissionId}`;
-        setUpdatingCell(cellKey);
-
-        try {
-            const currentPermissions = role.permissions || [];
-            const hasIt = currentPermissions.includes(permissionId);
-            const newPermissions = hasIt
-                ? currentPermissions.filter(p => p !== permissionId)
-                : [...currentPermissions, permissionId];
-
-            await api(`/api/rbac/roles/${role.id}`, {
-                method: 'PATCH',
-                body: JSON.stringify({ permissions: newPermissions }),
-            });
-
-            if (hasIt) {
-                toast.rbac.permissionRevoked();
-            } else {
-                toast.rbac.permissionGranted();
-            }
-
-            await fetchRoles();
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error('Failed to update permission');
-            toast.error('Failed to update permission', error.message);
-        } finally {
-            setUpdatingCell(null);
-        }
-    };
-
-    const groupPermissionsByCategory = () => {
-        const grouped: Record<string, typeof SYSTEM_PERMISSIONS> = {};
-        SYSTEM_PERMISSIONS.forEach(perm => {
-            if (!grouped[perm.category]) {
-                grouped[perm.category] = [];
-            }
-            grouped[perm.category].push(perm);
-        });
-        return grouped;
-    };
-
-    const filterRoles = (filter: 'system' | 'org' | 'app') => {
+    const filterRoles = (filter: string) => {
         switch (filter) {
             case 'system':
                 return roles.filter(r => r.isSystem || (!r.organizationId && !r.appId));
@@ -147,92 +77,44 @@ export function PermissionsMatrixPage() {
         }
     };
 
-    const renderMatrix = (filteredRoles: RoleRecord[]) => {
-        const groupedPermissions = groupPermissionsByCategory();
+    const filteredRoles = filterRoles(activeTab);
 
-        return (
-            <div className="space-y-6">
-                {Object.entries(groupedPermissions).map(([category, permissions]) => (
-                    <Card key={category}>
-                        <CardHeader>
-                            <CardTitle className="text-lg">{category}</CardTitle>
-                            <CardDescription>
-                                {permissions.length} permission{permissions.length !== 1 ? 's' : ''}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-64">Permission</TableHead>
-                                            {filteredRoles.map(role => (
-                                                <TableHead key={role.id} className="text-center min-w-32">
-                                                    <div className="flex flex-col items-center gap-1">
-                                                        <div className="font-semibold">{role.displayName || role.name}</div>
-                                                        {role.isSystem && (
-                                                            <Badge variant="outline" className="text-xs">System</Badge>
-                                                        )}
-                                                        {role.organizationId && (
-                                                            <Badge variant="secondary" className="text-xs">Org</Badge>
-                                                        )}
-                                                        {role.appId && (
-                                                            <Badge variant="default" className="text-xs">App</Badge>
-                                                        )}
-                                                    </div>
-                                                </TableHead>
-                                            ))}
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {permissions.map(permission => (
-                                            <TableRow key={permission.id}>
-                                                <TableCell>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-medium">{permission.name}</span>
-                                                        <code className="text-xs text-muted-foreground">{permission.id}</code>
-                                                    </div>
-                                                </TableCell>
-                                                {filteredRoles.map(role => {
-                                                    const cellKey = `${role.id}:${permission.id}`;
-                                                    const isChecked = hasPermission(role, permission.id);
-                                                    const isUpdating = updatingCell === cellKey;
-                                                    const isSystemRole = role.isSystem;
+    const hasPermission = (role: RoleRecord, permissionId: string): boolean => {
+        return role.permissions?.includes(permissionId) || false;
+    };
 
-                                                    return (
-                                                        <TableCell key={cellKey} className="text-center">
-                                                            <div className="flex justify-center">
-                                                                {isSystemRole ? (
-                                                                    // Read-only for system roles
-                                                                    isChecked ? (
-                                                                        <Check className="h-5 w-5 text-green-600" />
-                                                                    ) : (
-                                                                        <X className="h-5 w-5 text-muted-foreground/30" />
-                                                                    )
-                                                                ) : (
-                                                                    // Editable checkbox for custom roles
-                                                                    <Checkbox
-                                                                        checked={isChecked}
-                                                                        disabled={isUpdating}
-                                                                        onCheckedChange={() => togglePermission(role, permission.id)}
-                                                                        className="h-5 w-5"
-                                                                    />
-                                                                )}
-                                                            </div>
-                                                        </TableCell>
-                                                    );
-                                                })}
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
+    // Optimistic permission toggle with instant UI feedback
+    const handleToggle = async (role: RoleRecord, permissionId: string) => {
+        const hasIt = hasPermission(role, permissionId);
+
+        togglePermission.mutate(
+            {
+                roleId: role.id,
+                permissionId,
+                hasPermission: hasIt,
+            },
+            {
+                onSuccess: () => {
+                    toast.rbac[hasIt ? 'permissionRevoked' : 'permissionGranted']();
+                },
+                onError: (err) => {
+                    toast.error(
+                        'Permission update failed',
+                        err instanceof Error ? err.message : 'Unknown error'
+                    );
+                },
+            }
         );
     };
+
+    // Group permissions by category
+    const permissionsByCategory = SYSTEM_PERMISSIONS.reduce((acc, perm) => {
+        if (!acc[perm.category]) {
+            acc[perm.category] = [];
+        }
+        acc[perm.category].push(perm);
+        return acc;
+    }, {} as Record<string, typeof SYSTEM_PERMISSIONS>);
 
     return (
         <div className="space-y-4">
@@ -245,7 +127,7 @@ export function PermissionsMatrixPage() {
                                 Permissions Matrix
                             </CardTitle>
                             <CardDescription>
-                                Manage role permissions across the hierarchy: System → Organization → App
+                                Manage role permissions across the hierarchy
                             </CardDescription>
                         </div>
                         <Button variant="outline" asChild>
@@ -256,89 +138,132 @@ export function PermissionsMatrixPage() {
                 <CardContent>
                     {error && (
                         <ApiErrorDisplay
-                            error={error}
-                            onRetry={() => fetchRoles()}
-                            onDismiss={() => setError(null)}
+                            error={error instanceof Error ? error : new Error('Failed to load roles')}
+                            onRetry={() => refetch()}
                             className="mb-4"
                         />
                     )}
 
-                    {loading && roles.length === 0 ? (
-                        <TableSkeleton rows={10} columns={4} />
+                    {isLoading ? (
+                        <TableSkeleton rows={8} columns={5} />
                     ) : roles.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                             No roles found. Create roles first to manage permissions.
                         </div>
                     ) : (
-                        <Tabs defaultValue="all" className="space-y-4">
-                            <TabsList>
+                        <Tabs value={activeTab} onValueChange={setActiveTab}>
+                            <TabsList className="mb-4">
                                 <TabsTrigger value="all">All Roles ({roles.length})</TabsTrigger>
                                 <TabsTrigger value="system">
-                                    System Roles ({filterRoles('system').length})
+                                    System ({filterRoles('system').length})
                                 </TabsTrigger>
                                 <TabsTrigger value="org">
-                                    Organization Roles ({filterRoles('org').length})
+                                    Organization ({filterRoles('org').length})
                                 </TabsTrigger>
                                 <TabsTrigger value="app">
-                                    App Roles ({filterRoles('app').length})
+                                    App ({filterRoles('app').length})
                                 </TabsTrigger>
                             </TabsList>
 
-                            <TabsContent value="all" className="space-y-4">
-                                {renderMatrix(roles)}
-                            </TabsContent>
-
-                            <TabsContent value="system" className="space-y-4">
-                                {filterRoles('system').length > 0 ? (
-                                    renderMatrix(filterRoles('system'))
-                                ) : (
+                            <TabsContent value={activeTab} className="overflow-x-auto">
+                                {filteredRoles.length === 0 ? (
                                     <div className="text-center py-8 text-muted-foreground">
-                                        No system roles found.
+                                        No roles found for this filter.
                                     </div>
-                                )}
-                            </TabsContent>
-
-                            <TabsContent value="org" className="space-y-4">
-                                {filterRoles('org').length > 0 ? (
-                                    renderMatrix(filterRoles('org'))
                                 ) : (
-                                    <div className="text-center py-8 text-muted-foreground">
-                                        No organization-scoped roles found.
-                                    </div>
-                                )}
-                            </TabsContent>
+                                    <div className="space-y-6">
+                                        {Object.entries(permissionsByCategory).map(([category, permissions]) => (
+                                            <div key={category}>
+                                                <h3 className="text-sm font-semibold mb-3 text-muted-foreground">
+                                                    {category}
+                                                </h3>
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead className="w-1/4">
+                                                                Permission
+                                                            </TableHead>
+                                                            {filteredRoles.map((role) => (
+                                                                <TableHead key={role.id} className="text-center">
+                                                                    <div className="space-y-1">
+                                                                        <Badge
+                                                                            variant={
+                                                                                role.isSystem
+                                                                                    ? 'default'
+                                                                                    : role.organizationId
+                                                                                    ? 'secondary'
+                                                                                    : 'outline'
+                                                                            }
+                                                                        >
+                                                                            {role.name}
+                                                                        </Badge>
+                                                                        {role.isSystem && (
+                                                                            <div className="text-xs text-muted-foreground">
+                                                                                System
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </TableHead>
+                                                            ))}
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {permissions.map((permission) => (
+                                                            <TableRow key={permission.id}>
+                                                                <TableCell className="font-medium">
+                                                                    {permission.name}
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        <code>{permission.id}</code>
+                                                                    </div>
+                                                                </TableCell>
+                                                                {filteredRoles.map((role) => {
+                                                                    const hasIt = hasPermission(role, permission.id);
+                                                                    return (
+                                                                        <TableCell
+                                                                            key={role.id}
+                                                                            className="text-center"
+                                                                        >
+                                                                            <div className="flex justify-center">
+                                                                                <Checkbox
+                                                                                    checked={hasIt}
+                                                                                    onCheckedChange={() =>
+                                                                                        handleToggle(
+                                                                                            role,
+                                                                                            permission.id
+                                                                                        )
+                                                                                    }
+                                                                                    disabled={
+                                                                                        togglePermission.isPending
+                                                                                    }
+                                                                                    aria-label={`Toggle ${permission.name} for ${role.name}`}
+                                                                                />
+                                                                            </div>
+                                                                        </TableCell>
+                                                                    );
+                                                                })}
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        ))}
 
-                            <TabsContent value="app" className="space-y-4">
-                                {filterRoles('app').length > 0 ? (
-                                    renderMatrix(filterRoles('app'))
-                                ) : (
-                                    <div className="text-center py-8 text-muted-foreground">
-                                        No app-scoped roles found.
+                                        {/* Legend */}
+                                        <div className="flex gap-4 items-center text-sm text-muted-foreground pt-4 border-t">
+                                            <div className="flex items-center gap-2">
+                                                <Check className="h-4 w-4 text-green-600" />
+                                                <span>Permission Granted</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <X className="h-4 w-4 text-red-600" />
+                                                <span>Permission Denied</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </TabsContent>
                         </Tabs>
                     )}
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-sm">Understanding the Hierarchy</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm space-y-2">
-                    <p>
-                        <Badge variant="outline">System Roles</Badge> - Global roles with no tenant/app restrictions
-                    </p>
-                    <p>
-                        <Badge variant="secondary">Organization Roles</Badge> - Scoped to a specific organization (multi-tenant SaaS)
-                    </p>
-                    <p>
-                        <Badge variant="default">App Roles</Badge> - Scoped to a specific app (can be org-scoped or global)
-                    </p>
-                    <div className="pt-2 mt-2 border-t text-muted-foreground">
-                        <p>System roles are read-only. Custom organization and app roles can be modified.</p>
-                    </div>
                 </CardContent>
             </Card>
         </div>

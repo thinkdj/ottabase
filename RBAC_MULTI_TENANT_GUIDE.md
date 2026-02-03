@@ -404,6 +404,202 @@ Features:
 
 ---
 
+## ⚡ TanStack Query Hooks (Optimized)
+
+**File:** `apps/ottabase-template-app-tanstack/src/hooks/useRBAC.ts`
+
+All RBAC operations are now powered by TanStack Query for:
+- ✅ **Automatic caching** - Data persists between navigations
+- ✅ **Optimistic updates** - Instant UI feedback
+- ✅ **Cache invalidation** - Smart refetching strategies
+- ✅ **Loading states** - Built-in isPending/isLoading
+- ✅ **Error handling** - Automatic retry with rollback
+
+### Organizations Hooks
+
+```typescript
+import {
+    useOrganizations,
+    useOrganization,
+    useCreateOrganization,
+    useUpdateOrganization,
+    useDeleteOrganization,
+} from '@/hooks/useRBAC';
+
+// List organizations (5min cache)
+const { data: orgs, isLoading, error, refetch } = useOrganizations();
+
+// Single organization
+const { data: org } = useOrganization(orgId);
+
+// Create with optimistic update
+const createMutation = useCreateOrganization();
+createMutation.mutate({ name: 'New Org', slug: 'new-org' });
+
+// Update with optimistic update
+const updateMutation = useUpdateOrganization();
+updateMutation.mutate({
+    id: orgId,
+    data: { name: 'Updated Name' }
+});
+
+// Delete with optimistic update
+const deleteMutation = useDeleteOrganization();
+deleteMutation.mutate(orgId);
+```
+
+### Members Hooks
+
+```typescript
+import {
+    useOrganizationMembers,
+    useInviteMember,
+    useUpdateMemberRole,
+    useRemoveMember,
+} from '@/hooks/useRBAC';
+
+// List members (2min cache)
+const { data: members } = useOrganizationMembers(orgId);
+
+// Invite member
+const inviteMutation = useInviteMember();
+inviteMutation.mutate({
+    organizationId: orgId,
+    userId: 'user-123',
+    role: 'member',
+});
+
+// Quick role change with optimistic update
+const updateRoleMutation = useUpdateMemberRole();
+updateRoleMutation.mutate({
+    memberId: 'member-123',
+    role: 'admin',
+    organizationId: orgId,
+});
+
+// Remove member
+const removeMutation = useRemoveMember();
+removeMutation.mutate({
+    memberId: 'member-123',
+    organizationId: orgId,
+});
+```
+
+### Roles & Permissions Hooks
+
+```typescript
+import {
+    useRoles,
+    useCreateRole,
+    useUpdateRole,
+    useDeleteRole,
+    useTogglePermission,
+} from '@/hooks/useRBAC';
+
+// List roles (10min cache - roles change infrequently)
+const { data: roles } = useRoles();
+
+// Create role
+const createMutation = useCreateRole();
+createMutation.mutate({
+    name: 'Editor',
+    organizationId: orgId,
+    permissions: ['posts:write', 'posts:read'],
+});
+
+// Toggle permission with optimistic update
+const toggleMutation = useTogglePermission();
+toggleMutation.mutate({
+    roleId: 'role-123',
+    permissionId: 'posts:write',
+    hasPermission: true, // current state
+});
+```
+
+### Audit Logs Hook
+
+```typescript
+import { useAuditLogs } from '@/hooks/useRBAC';
+
+// Fetch with filters (1min cache)
+const { data: response } = useAuditLogs({
+    page: '1',
+    per_page: '25',
+    action: 'create',
+    entityType: 'organization',
+    organizationId: orgId,
+});
+
+const { data: logs, pagination } = response || {};
+```
+
+### Utility Hooks
+
+```typescript
+import {
+    usePrefetchOrganizations,
+    useInvalidateRBAC,
+} from '@/hooks/useRBAC';
+
+// Prefetch for faster navigation
+const prefetch = usePrefetchOrganizations();
+<Link onMouseEnter={prefetch} to="/organizations">
+    Organizations
+</Link>
+
+// Invalidate all RBAC caches
+const invalidateAll = useInvalidateRBAC();
+invalidateAll(); // After major changes
+```
+
+### Query Keys Structure
+
+```typescript
+// Organized hierarchy for cache management
+rbacKeys.all                          // ['rbac']
+rbacKeys.organizations()              // ['rbac', 'organizations']
+rbacKeys.organization(id)             // ['rbac', 'organizations', id]
+rbacKeys.members(orgId)               // ['rbac', 'members', orgId]
+rbacKeys.member(id)                   // ['rbac', 'member', id]
+rbacKeys.roles()                      // ['rbac', 'roles']
+rbacKeys.role(id)                     // ['rbac', 'roles', id]
+rbacKeys.auditLogs(filters)           // ['rbac', 'audit', filters]
+```
+
+### Cache Strategies
+
+- **Organizations:** 5min stale time (moderate changes)
+- **Members:** 2min stale time (frequent changes)
+- **Roles:** 10min stale time (infrequent changes)
+- **Audit Logs:** 1min stale time (real-time monitoring)
+
+### Optimistic Updates
+
+All mutations include automatic optimistic updates:
+
+```typescript
+// Example: Role assignment with instant UI feedback
+const updateRoleMutation = useUpdateMemberRole();
+
+updateRoleMutation.mutate(
+    { memberId, role: 'admin', organizationId },
+    {
+        // UI updates immediately (before server responds)
+        onSuccess: () => toast.rbac.memberUpdated(),
+        // If server fails, UI rolls back automatically
+        onError: (err) => toast.error('Failed', err.message),
+    }
+);
+```
+
+**Benefits:**
+- Users see changes instantly
+- Automatic rollback on errors
+- Network failures don't break UI
+- Reduced perceived latency
+
+---
+
 ## 🛠️ Package Reference
 
 ### @ottabase/rbac
