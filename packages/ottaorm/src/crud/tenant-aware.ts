@@ -57,7 +57,7 @@ export interface TenantAwareCrudOptions {
     request: Request;
     url: URL;
     basePath?: string;
-    getUser?: () => Promise<User | null>;
+    getUser?: () => Promise<InstanceType<typeof User> | null>;
     env?: Record<string, any>;
     // For single-founder mode: if true, allows operations without organizationId
     allowNullTenant?: boolean;
@@ -93,10 +93,16 @@ export interface TenantAwareCrudOptions {
  * }
  * ```
  */
-export async function handleTenantAwareCrud(
-    options: TenantAwareCrudOptions
-): Promise<CrudResponse> {
-    const { request, url, basePath = '/api/ottaorm', getUser, env, allowNullTenant = false, skipTenantScoping = [] } = options;
+export async function handleTenantAwareCrud(options: TenantAwareCrudOptions): Promise<CrudResponse> {
+    const {
+        request,
+        url,
+        basePath = '/api/ottaorm',
+        getUser,
+        env,
+        allowNullTenant = false,
+        skipTenantScoping = [],
+    } = options;
 
     // Parse the CRUD request
     const { parseCrudRequest } = await import('./index');
@@ -123,12 +129,12 @@ export async function handleTenantAwareCrud(
     }
 
     // Get authenticated user
-    let user: User | null = null;
+    let user: InstanceType<typeof User> | null = null;
     if (getUser) {
         try {
             user = await getUser();
-        } catch (error) {
-            logger.error('Failed to get user', { error });
+        } catch (error: any) {
+            logger.error('Failed to get user', { message: error?.message });
         }
     }
 
@@ -139,8 +145,8 @@ export async function handleTenantAwareCrud(
             request,
             getJWT: getUser ? async () => user : undefined,
         });
-    } catch (error) {
-        logger.error('Failed to extract organization ID', { error });
+    } catch (error: any) {
+        logger.error('Failed to extract organization ID', { message: error?.message });
     }
 
     // Check if tenant scoping is required
@@ -265,7 +271,12 @@ export async function handleTenantAwareCrud(
 
                 const verifyResult = await handleCrud(verifyRequest);
                 if (!verifyResult.success) {
-                    logger.warn('Resource not found or access denied for deletion', { model, id, organizationId, userId: user?.id });
+                    logger.warn('Resource not found or access denied for deletion', {
+                        model,
+                        id,
+                        organizationId,
+                        userId: user?.id,
+                    });
                     return {
                         success: false,
                         error: 'Resource not found or access denied',
@@ -312,18 +323,13 @@ export async function handleTenantAwareCrud(
  * }
  * ```
  */
-export async function tenantAwareCrudMiddleware(
-    options: TenantAwareCrudOptions
-): Promise<Response> {
+export async function tenantAwareCrudMiddleware(options: TenantAwareCrudOptions): Promise<Response> {
     const result = await handleTenantAwareCrud(options);
 
-    return new Response(
-        JSON.stringify(result.data || { error: result.error, hint: result.hint }),
-        {
-            status: result.status,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        }
-    );
+    return new Response(JSON.stringify(result.data || { error: result.error, hint: result.hint }), {
+        status: result.status,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
 }
