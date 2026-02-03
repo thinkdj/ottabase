@@ -747,6 +747,14 @@ export default {
 
                 // Return response based on result
                 if (!result.success) {
+                    // Log error for debugging
+                    console.error(`[CRUD Error] ${crudRequest.method} ${crudRequest.model}:`, {
+                        error: result.error,
+                        code: result.code,
+                        details: result.details,
+                        hint: result.hint,
+                    });
+
                     return errorResponse(result.error || 'Unknown error', result.status, {
                         code: result.code,
                         details: result.details,
