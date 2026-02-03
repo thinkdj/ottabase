@@ -712,6 +712,205 @@ updateRoleMutation.mutate(
 
 ---
 
+## 🔐 Authentication Integration (@ottabase/auth)
+
+The RBAC system seamlessly integrates with the `@ottabase/auth` module (Auth.js-based authentication) to automatically enforce security policies based on the authenticated user's session.
+
+### How It Works
+
+1. **User Authentication** - User signs in via Auth.js providers (OAuth, Magic Link, Credentials)
+2. **Session Creation** - Auth.js creates a session with user data
+3. **Security Context Extraction** - Worker extracts userId, organizationId, roles, permissions from session
+4. **RLS Enforcement** - All CRUD operations automatically filtered by security context
+5. **Automatic Isolation** - Cross-tenant data access is impossible by design
+
+### Worker Integration
+
+The TanStack app worker (`cloudflare-worker.ts`) automatically integrates auth with RLS:
+
+```typescript
+import { getSession, handleAuthRequest } from '@ottabase/auth/backend';
+import { initRLS, secureCrud, type SecurityContext } from '@ottabase/ottaorm';
+
+// 1. Initialize RLS on startup
+function initDbConnection(env: CloudflareEnv): void {
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+    registerModels([/* your models */]);
+
+    // Initialize Row-Level Security
+    initRLS();
+}
+
+// 2. Extract security context from auth session
+async function getSecurityContext(request: Request, session: any | null): Promise<SecurityContext> {
+    const userId = session?.user?.id;
+
+    // Extract organizationId from multiple sources (priority order):
+    let organizationId = session?.user?.organizationId           // From JWT/session
+                      || request.headers.get('x-organization-id') // From header
+                      || extractFromSubdomain(request)             // From subdomain
+                      || request.searchParams.get('organizationId'); // From query
+
+    return {
+        userId,
+        organizationId,
+        appId: request.headers.get('x-app-id') || 'web',
+        roles: session?.user?.roles,
+        permissions: session?.user?.permissions,
+    };
+}
+
+// 3. Protect CRUD endpoints with auth + RLS
+if (url.pathname.startsWith('/api/ottaorm/')) {
+    // Get authenticated session
+    const session = await getSession(request, env);
+
+    // Extract security context
+    const securityContext = await getSecurityContext(request, session);
+
+    // Handle CRUD with automatic RLS enforcement
+    const result = await secureCrud(crudRequest, securityContext);
+
+    return jsonResponse(result.data, result.status);
+}
+```
+
+### Auth Routes
+
+All Auth.js routes are handled automatically:
+
+```typescript
+// Handles: /api/auth/signin, /api/auth/signout, /api/auth/session, /api/auth/callback/*
+if (url.pathname.startsWith('/api/auth/')) {
+    return handleAuthRequest(request, env);
+}
+```
+
+### Organization ID Sources
+
+The security context extractor checks multiple sources for organization ID (in priority order):
+
+1. **Session/JWT** - `session.user.organizationId` (if JWT contains org)
+2. **Header** - `X-Organization-Id: org-acme` (explicit org selection)
+3. **Subdomain** - `acme.yourapp.com` → `org-acme` (multi-tenant SaaS)
+4. **Query Parameter** - `?organizationId=org-acme` (fallback)
+
+This allows flexible multi-tenant architectures:
+- Single-tenant: organizationId from session
+- Multi-tenant SaaS: organizationId from subdomain
+- Org switcher: organizationId from header (set by frontend)
+
+### Frontend Integration
+
+Use the `useSession` hook from `@/lib/auth.ts` to access the current user:
+
+```typescript
+import { useSession } from '@/lib/auth';
+
+function MyComponent() {
+    const { isAuthenticated, user } = useSession();
+
+    if (!isAuthenticated) {
+        return <LoginPage />;
+    }
+
+    return (
+        <div>
+            <p>Welcome, {user.name}</p>
+            <p>Organization: {user.organizationId}</p>
+        </div>
+    );
+}
+```
+
+### Client-Side Organization Switching
+
+The OrganizationSwitcher component persists the selected org and sends it via header:
+
+```typescript
+// apps/ottabase-template-app-tanstack/src/router.tsx
+const [currentOrgId, setCurrentOrgId] = useState<string | undefined>(() => {
+    return localStorage.getItem('currentOrgId') || undefined;
+});
+
+<OrganizationSwitcher
+    currentOrgId={currentOrgId}
+    onOrgChange={(orgId) => {
+        setCurrentOrgId(orgId);
+        localStorage.setItem('currentOrgId', orgId);
+        // API calls will include: X-Organization-Id: {orgId}
+    }}
+/>
+```
+
+Update your API client to send the header:
+
+```typescript
+// apps/ottabase-template-app-tanstack/src/lib/api.ts
+export async function api<T = any>(url: string, options: RequestInit = {}): Promise<T> {
+    const orgId = localStorage.getItem('currentOrgId');
+
+    const headers = new Headers(options.headers);
+    if (orgId) {
+        headers.set('X-Organization-Id', orgId);
+    }
+
+    const response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include', // Include session cookie
+    });
+
+    if (!response.ok) {
+        throw new ApiError(response.status, await response.text());
+    }
+
+    return response.json();
+}
+```
+
+### Session Customization
+
+To include organization ID in the JWT/session, customize the Auth.js callbacks:
+
+```typescript
+// apps/ottabase-template-app-tanstack/src/lib/auth-backend.ts
+import { createAuthConfig } from '@ottabase/auth/backend';
+
+export function createAuthConfig(env: AuthEnv) {
+    return {
+        ...createAuthConfig(env),
+        callbacks: {
+            async jwt({ token, user }) {
+                // Add organizationId to JWT on sign-in
+                if (user) {
+                    token.organizationId = await getUserOrganizationId(user.id);
+                }
+                return token;
+            },
+            async session({ session, token }) {
+                // Add organizationId to session object
+                if (token.organizationId) {
+                    session.user.organizationId = token.organizationId;
+                }
+                return session;
+            },
+        },
+    };
+}
+```
+
+### Benefits of Auth + RLS Integration
+
+✅ **Zero-trust security** - Every request authenticated AND authorized
+✅ **Automatic tenant isolation** - No manual filtering required
+✅ **Session-aware** - Security context derived from real user session
+✅ **Multi-source flexibility** - Support subdomain, header, JWT-based org selection
+✅ **Frontend integration** - OrganizationSwitcher works seamlessly
+✅ **Audit-ready** - All violations logged with full user context
+
+---
+
 ## 🛡️ Row-Level Security (RLS)
 
 **NEW:** Automatic database-level tenant isolation that makes data leaks **impossible**.

@@ -1,4 +1,4 @@
-import { handleAuthRequest } from '@ottabase/auth/backend';
+import { getSession, handleAuthRequest } from '@ottabase/auth/backend';
 import { getLoginConfig } from '@ottabase/auth/components';
 import { RealtimeActor, RealtimeBroadcaster } from '@ottabase/cf-realtime/server';
 import { createImagesClient } from '@ottabase/cf/images';
@@ -35,6 +35,11 @@ import {
     parseCrudRequest,
     registerConnection,
     registerModels,
+    // RLS imports
+    initRLS,
+    extractSecurityContext,
+    secureCrud,
+    type SecurityContext,
 } from '@ottabase/ottaorm';
 import { Account, Authenticator, ScheduledTask, Session, VerificationToken } from '@ottabase/ottaorm/models';
 import { uploadFileToCloudflareImages, uploadFileToR2 } from '@ottabase/ottaupload/server';
@@ -207,6 +212,84 @@ function initDbConnection(env: CloudflareEnv): void {
         // App models
         Todo,
     ]);
+
+    // Initialize Row-Level Security (RLS) system
+    // This registers all pre-configured security policies for tenant isolation
+    initRLS();
+}
+
+/**
+ * Extract security context from authenticated session
+ *
+ * This function converts an Auth.js session into a SecurityContext for RLS.
+ * It extracts the user ID and organization ID from the session.
+ *
+ * Organization ID can come from:
+ * 1. Session user object (if JWT contains organizationId)
+ * 2. X-Organization-Id header (for explicit org switching)
+ * 3. Request subdomain (e.g., acme.yourapp.com → org-acme)
+ * 4. Query parameter ?organizationId=org-123
+ *
+ * @param request - The incoming request
+ * @param session - The authenticated session from Auth.js
+ * @returns SecurityContext for RLS enforcement
+ */
+async function getSecurityContext(request: Request, session: any | null): Promise<SecurityContext> {
+    const url = new URL(request.url);
+
+    // Extract userId from session
+    const userId = session?.user?.id;
+
+    // Extract organizationId from multiple sources (priority order):
+    let organizationId: string | null | undefined = undefined;
+
+    // 1. From session/JWT (if your JWT includes organizationId)
+    if (session?.user?.organizationId) {
+        organizationId = session.user.organizationId;
+    }
+
+    // 2. From header (explicit org selection)
+    if (!organizationId) {
+        const orgHeader = request.headers.get('x-organization-id');
+        if (orgHeader && orgHeader !== 'null') {
+            organizationId = orgHeader;
+        }
+    }
+
+    // 3. From subdomain (e.g., acme.yourapp.com → org-acme)
+    if (!organizationId) {
+        const host = request.headers.get('host') || url.hostname;
+        const subdomain = host.split('.')[0];
+        // Only use subdomain if it's not 'www' or the main domain
+        if (subdomain && subdomain !== 'www' && subdomain !== 'localhost' && !host.startsWith('127.0.0.1')) {
+            organizationId = `org-${subdomain}`;
+        }
+    }
+
+    // 4. From query parameter
+    if (!organizationId) {
+        const orgQuery = url.searchParams.get('organizationId');
+        if (orgQuery && orgQuery !== 'null') {
+            organizationId = orgQuery;
+        }
+    }
+
+    // Extract app context (optional)
+    const appId = request.headers.get('x-app-id') || 'web';
+
+    // Extract roles from session (if available)
+    const roles = session?.user?.roles as string[] | undefined;
+
+    // Extract permissions from session (if available)
+    const permissions = session?.user?.permissions as string[] | undefined;
+
+    return {
+        userId,
+        organizationId: organizationId === 'null' ? null : organizationId,
+        appId,
+        roles,
+        permissions,
+    };
 }
 
 export default {
@@ -632,6 +715,22 @@ export default {
                 }
 
                 // Connection and models are already registered at the top of fetch()
+
+                // ============================================================
+                // RLS-PROTECTED CRUD with Auth Integration
+                // ============================================================
+                // 1. Extract authenticated session from Auth.js
+                // 2. Build security context (userId, organizationId, roles, permissions)
+                // 3. Apply Row-Level Security policies automatically
+                // 4. All queries are filtered by security context
+                // ============================================================
+
+                // Get authenticated session
+                const session = await getSession(request, env as any);
+
+                // Extract security context from session and request
+                const securityContext = await getSecurityContext(request, session);
+
                 // Parse the request into a CrudRequest
                 const crudRequest = await parseCrudRequest(request, url, '/api/ottaorm');
 
@@ -642,8 +741,9 @@ export default {
                     });
                 }
 
-                // Handle the CRUD operation
-                const result = await handleCrud(crudRequest);
+                // Handle the CRUD operation with RLS protection
+                // This automatically enforces tenant isolation, user ownership, and permission checks
+                const result = await secureCrud(crudRequest, securityContext);
 
                 // Return response based on result
                 if (!result.success) {
