@@ -107,8 +107,9 @@ export function UserProfilePage() {
         try {
             if (!user) return;
 
+            const trimmedName = formData.name.trim();
             const payload = {
-                name: formData.name.trim() || null,
+                name: trimmedName === '' ? null : trimmedName,
                 email: formData.email.trim(),
                 image: formData.image || null,
             };
@@ -118,7 +119,6 @@ export function UserProfilePage() {
                 body: payload,
             });
 
-            updateUser(payload);
             queryClient.invalidateQueries({ queryKey: ['users'] });
             queryClient.invalidateQueries({ queryKey: ['users', 'detail', user.id] });
 
@@ -189,8 +189,11 @@ export function UserProfilePage() {
                                     onUpload={handleAvatarUpload}
                                     disabled={isSaving}
                                     className="w-full"
+                                    ariaDescribedBy="profile-avatar-help"
                                 />
-                                <p className="text-xs text-muted-foreground mt-2">Upload a square image (max 5MB).</p>
+                                <p id="profile-avatar-help" className="text-xs text-muted-foreground mt-2">
+                                    Upload a square image (max 5MB).
+                                </p>
                             </div>
                         </div>
                     </div>

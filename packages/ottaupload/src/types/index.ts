@@ -111,6 +111,11 @@ export interface FileUploaderProps extends UploadConfig {
      * Custom class name
      */
     className?: string;
+
+    /**
+     * Optional aria-describedby id for helper text
+     */
+    ariaDescribedBy?: string;
 }
 
 /**

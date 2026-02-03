@@ -17,6 +17,7 @@ export function FileUploader({
     autoUpload = false,
     disabled = false,
     className = '',
+    ariaDescribedBy,
 }: FileUploaderProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -83,6 +84,7 @@ export function FileUploader({
                     accept={acceptedFileTypes?.join(',')}
                     disabled={disabled}
                     className="hidden"
+                    aria-describedby={ariaDescribedBy}
                     aria-label="File input"
                 />
                 <button
@@ -135,6 +137,7 @@ export function FileUploader({
                 accept={acceptedFileTypes?.join(',')}
                 disabled={disabled}
                 className="hidden"
+                aria-describedby={ariaDescribedBy}
                 aria-label="File input"
             />
 
