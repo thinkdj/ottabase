@@ -28,24 +28,35 @@ export interface BaseUser {
 
 // Core app global state interface
 export interface AppState<TUser extends BaseUser = BaseUser> {
-    // App identity
+    /** The name of the app */
     appName: string;
 
-    // Theme
-    theme: Theme; // "light" | "dark" - the current mode
-    themeInfo: ThemeInfo; // Theme name and metadata
+    /** Current theme mode ('light' or 'dark') */
+    theme: Theme;
 
-    // User
+    /** Theme information (name, mode) */
+    themeInfo: ThemeInfo;
+
+    /** Current authenticated user */
     user: TUser | null;
+
+    /** Whether the user is authenticated */
     isAuthenticated: boolean;
 
-    // UI State
-    sidebarState: SidebarState; // Consolidated sidebar state
-    scale: number; // UI magnification factor (1.0 = 100%)
-    zoom: number; // Browser zoom level (1.0 = 100%)
+    /** Sidebar state (open, collapsed, width) */
+    sidebarState: SidebarState;
 
-    // Loading states
+    /** Global scale multiplier for UI elements */
+    scale: number;
+
+    /** Global zoom level for content */
+    zoom: number;
+
+    /** Global loading state */
     isLoading: boolean;
+
+    /** Current language code (e.g., 'en', 'es', 'fr', 'de') */
+    language: string;
 }
 
 // Configuration for creating app state

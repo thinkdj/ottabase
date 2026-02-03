@@ -19,6 +19,7 @@ const DEFAULT_STATE: Omit<AppState, 'appName'> = {
     scale: 1.0,
     zoom: 1.0,
     isLoading: false,
+    language: 'en', // Default language
 };
 
 /**
@@ -66,6 +67,7 @@ export function createAppState<TUser extends BaseUser = BaseUser>(config: AppSta
     const scaleAtom = createAtom('scale');
     const zoomAtom = createAtom('zoom');
     const isLoadingAtom = createAtom('isLoading');
+    const languageAtom = createAtom('language');
 
     return {
         /** The main atom containing entire global state */
@@ -84,9 +86,10 @@ export function createAppState<TUser extends BaseUser = BaseUser>(config: AppSta
             scaleAtom,
             zoomAtom,
             isLoadingAtom,
+            languageAtom,
         },
     };
 }
 
 // Re-export types
-export type { AppState, AppStateConfig, BaseUser, Theme, ThemeInfo, SidebarState } from './types';
+export type { AppState, AppStateConfig, BaseUser, SidebarState, Theme, ThemeInfo } from './types';

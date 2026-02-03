@@ -35,6 +35,7 @@ export const {
     scaleAtom,
     zoomAtom,
     isLoadingAtom,
+    languageAtom,
 } = atoms;
 
 // Export main atom and factory

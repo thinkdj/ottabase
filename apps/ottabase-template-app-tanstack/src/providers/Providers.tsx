@@ -1,6 +1,8 @@
 import { api } from '@/lib/api';
+import enApp from '@/locales/en/app.json';
 import { BlogStudioProvider } from '@/ottabase/blog/BlogStudioContext';
 import { appConfig } from '@/ottabase/config/app.config';
+import { i18nConfig } from '@/ottabase/config/i18n.config';
 import {
     headingFontFamily,
     monospaceFontFamily,
@@ -8,10 +10,12 @@ import {
     ProviderFont,
     ProviderNextThemes,
 } from '@/ottabase/providers';
+import { LanguageManager } from '@/ottabase/providers/LanguageManager';
 import { ThemeProvider } from '@/ottabase/providers/ProviderTheme';
 import { SidebarStateManager } from '@/ottabase/providers/SidebarStateManager';
 import { ThemeManager } from '@/ottabase/providers/ThemeManager';
 import { ZoomManager } from '@/ottabase/providers/ZoomManager';
+import { I18nProvider } from '@ottabase/i18n/react';
 import { OttaQueryProvider } from '@ottabase/ottaorm/client';
 import { SpotlightProvider } from '@ottabase/spotlight';
 import { ProviderState } from '@ottabase/state';
@@ -20,6 +24,12 @@ import { ProviderCodeHighlight } from '@ottabase/ui-code-highlight';
 import { ShadcnProviders } from '@ottabase/ui-shadcn/providers';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import React from 'react';
+
+const appResources = {
+    en: {
+        common: enApp,
+    },
+};
 
 export function Providers({ children }: { children: React.ReactNode }) {
     const fontFamilies = {
@@ -30,34 +40,42 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     return (
         <ProviderState>
-            <BlogStudioProvider>
-                <OttaQueryProvider apiClient={api}>
-                    <ProviderUIBase
-                        preventFOUC={appConfig.ui.preventFOUC}
-                        preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
-                        fontFamilies={fontFamilies}
-                    >
-                        <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
-                            <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
-                                <ThemeProvider>
-                                    <ThemeManager />
-                                    <ZoomManager />
-                                    <SidebarStateManager />
-                                    <ShadcnProviders enableThemeProvider={false} enableToaster>
-                                        <SpotlightProvider
-                                            enabled={appConfig.features.spotlight.enabled}
-                                            shortcuts={appConfig.features.spotlight.shortcuts}
-                                        >
-                                            <ProviderCodeHighlight>{children}</ProviderCodeHighlight>
-                                        </SpotlightProvider>
-                                    </ShadcnProviders>
-                                </ThemeProvider>
-                            </ProviderNextThemes>
-                        </ProviderFont>
-                    </ProviderUIBase>
-                    <ReactQueryDevtools initialIsOpen={false} />
-                </OttaQueryProvider>
-            </BlogStudioProvider>
+            <I18nProvider
+                defaultLanguage={i18nConfig.defaultLanguage}
+                supportedLngs={i18nConfig.enabledLanguages}
+                fallbackLng={i18nConfig.fallbackLanguage}
+                resources={appResources}
+            >
+                <LanguageManager />
+                <BlogStudioProvider>
+                    <OttaQueryProvider apiClient={api}>
+                        <ProviderUIBase
+                            preventFOUC={appConfig.ui.preventFOUC}
+                            preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
+                            fontFamilies={fontFamilies}
+                        >
+                            <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
+                                <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
+                                    <ThemeProvider>
+                                        <ThemeManager />
+                                        <ZoomManager />
+                                        <SidebarStateManager />
+                                        <ShadcnProviders enableThemeProvider={false} enableToaster>
+                                            <SpotlightProvider
+                                                enabled={appConfig.features.spotlight.enabled}
+                                                shortcuts={appConfig.features.spotlight.shortcuts}
+                                            >
+                                                <ProviderCodeHighlight>{children}</ProviderCodeHighlight>
+                                            </SpotlightProvider>
+                                        </ShadcnProviders>
+                                    </ThemeProvider>
+                                </ProviderNextThemes>
+                            </ProviderFont>
+                        </ProviderUIBase>
+                        <ReactQueryDevtools initialIsOpen={false} />
+                    </OttaQueryProvider>
+                </BlogStudioProvider>
+            </I18nProvider>
         </ProviderState>
     );
 }

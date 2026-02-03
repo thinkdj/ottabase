@@ -1,29 +1,24 @@
 # Cloudflare Workers Deployment
 
-Dynamic CI/CD system for deploying apps to Cloudflare Workers with automatic discovery and per-app configuration.
+CI/CD for deploying apps to Cloudflare Workers: automatic discovery, per-app config, PR previews, and production deploys
+from `main`.
+
+## Workflows
+
+| Workflow               | Trigger                               | Purpose                                               |
+| ---------------------- | ------------------------------------- | ----------------------------------------------------- |
+| **deploy.yml**         | Push to `main`; `workflow_dispatch`   | Build & deploy to production (change-based or forced) |
+| **pr-preview.yml**     | Pull request (open/sync/reopen/close) | Build & deploy preview worker; cleanup on PR close    |
+| **build-packages.yml** | Called by deploy + pr-preview         | Build shared packages and cache for downstream jobs   |
+| **ci.yml**             | `workflow_dispatch`                   | Lint, type-check, test, build (no deploy)             |
+
+**Target:** Cloudflare Workers only (not Pages). Deployed URLs: `https://<worker>-<env>.<subdomain>.workers.dev`.
 
 ## Quick Start
 
-### Add a New Deployable App
+### Add a deployable app
 
-1. Create `cloudflare-config.json` in your app:
-
-    ```json
-    {
-        "deployable": true,
-        "appType": "tanstack"
-    }
-    ```
-
-2. Push to `main` - auto-deployed!
-
-### Existing Apps
-
-Already configured. Just push to `main`.
-
-## Configuration
-
-### Minimal TanStack (default)
+1. In your app folder (e.g. `apps/my-app/`), add `cloudflare-config.json`:
 
 ```json
 {
@@ -32,162 +27,188 @@ Already configured. Just push to `main`.
 }
 ```
 
-### Minimal Next.js
+2. Ensure `package.json` has a `build` script and (if needed) `wrangler.jsonc` exists.
+3. Push to `main` → production deploy runs when that app (or `packages/`) has changes. Open a PR → preview deploy runs
+   unless skipped.
+
+### Existing apps
+
+Already configured; push to `main` or open PRs as usual.
+
+## Configuration
+
+**Schema:** [schemas/cloudflare-config.schema.json](../schemas/cloudflare-config.schema.json)
+
+### Main properties
+
+| Property             | Default                            | Description                                                        |
+| -------------------- | ---------------------------------- | ------------------------------------------------------------------ |
+| `deployable`         | `true`                             | If `false`, app is skipped by discovery                            |
+| `appType`            | `"tanstack"`                       | `tanstack`, `nextjs`, `react`, `remix`, `vite`, `custom`           |
+| `workerName`         | package name                       | Worker name in Cloudflare                                          |
+| `buildCommand`       | `"build"`                          | pnpm script for app build                                          |
+| `workerBuildCommand` | `null`                             | pnpm script for Worker bundle (e.g. OpenNext); `null` for TanStack |
+| `outputDirectory`    | `"dist"`                           | Dir to verify after build                                          |
+| `verifyPaths`        | `["dist", "cloudflare-worker.ts"]` | Paths that must exist after build                                  |
+| `wranglerConfig`     | `"wrangler.jsonc"`                 | Wrangler config file                                               |
+| `requiresSecrets`    | See below                          | GitHub secrets required for this app                               |
+
+### Minimal examples
+
+**TanStack (default):**
+
+```json
+{ "deployable": true, "appType": "tanstack" }
+```
+
+**Next.js:**
 
 ```json
 {
     "deployable": true,
-    "appType": "nextjs"
+    "appType": "nextjs",
+    "workerBuildCommand": "build:worker",
+    "outputDirectory": ".worker-next",
+    "verifyPaths": [".worker-next", ".worker-next/assets"]
 }
 ```
 
-### Full Configuration
+**Full (optional):**
 
 ```json
 {
     "$schema": "../../schemas/cloudflare-config.schema.json",
     "deployable": true,
-    "appType": "nextjs",
+    "appType": "tanstack",
     "workerName": "my-app",
     "buildCommand": "build",
-    "workerBuildCommand": "build:worker",
-    "outputDirectory": ".worker-next",
-    "verifyPaths": [".worker-next", ".worker-next/assets"],
+    "outputDirectory": "dist",
+    "verifyPaths": ["dist", "cloudflare-worker.ts"],
     "wranglerConfig": "wrangler.jsonc",
-    "requiresSecrets": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
+    "requiresSecrets": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "D1_DATABASE_ID", "KV_NAMESPACE_ID"]
 }
 ```
 
-**Schema:** [schemas/cloudflare-config.schema.json](../schemas/cloudflare-config.schema.json)
+### Wrangler placeholders
 
-## Required GitHub Secrets
+In `wrangler.jsonc` use placeholders; the workflow substitutes them from GitHub secrets:
 
-`Settings → Secrets and variables → Actions`
+- `PRODUCTION_D1_DATABASE_ID` → `D1_DATABASE_ID`
+- `PRODUCTION_KV_NAMESPACE_ID` → `KV_NAMESPACE_ID`
+- `YOUR_CLOUDFLARE_ACCOUNT_ID` → `CLOUDFLARE_ACCOUNT_ID`
 
-- `CLOUDFLARE_API_TOKEN` - From Cloudflare dashboard → My Profile → API Tokens
-- `CLOUDFLARE_ACCOUNT_ID` - From Cloudflare dashboard → Workers & Pages
-- `D1_DATABASE_ID` - (if using D1) From `wrangler d1 create <name>`
-- `KV_NAMESPACE_ID` - (if using KV) From `wrangler kv:namespace create <name>`
+Generated file is `wrangler.production.jsonc` (or `wrangler.preview.jsonc` for PR preview); source file is not modified.
 
-## Build Flow
+## Secrets
 
-### TanStack (Default)
+**Settings → Secrets and variables → Actions**
+
+### Required (production and PR preview)
+
+| Secret                  | Where to get it                                     |
+| ----------------------- | --------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | Cloudflare → My Profile → API Tokens                |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare → Workers & Pages                        |
+| `D1_DATABASE_ID`        | `wrangler d1 create <name>` (if using D1)           |
+| `KV_NAMESPACE_ID`       | `wrangler kv:namespace create <name>` (if using KV) |
+
+### Optional
+
+| Secret                | Default                          | Purpose                                                                         |
+| --------------------- | -------------------------------- | ------------------------------------------------------------------------------- |
+| `APPS_TO_DEPLOY`      | `ottabase-template-app-tanstack` | Comma-separated app names or folder names to deploy (production and PR preview) |
+| `CF_WORKER_SUBDOMAIN` | `apiary`                         | Subdomain in `*.workers.dev` (e.g. `apiary` → `my-worker.apiary.workers.dev`)   |
+
+## Production deploy (deploy.yml)
+
+- **Triggers:** Push to `main`; or **Run workflow** with optional `FORCE_DEPLOY` (default `true` = deploy all target
+  apps).
+- **Change detection:** Only apps with changes (in that app or under `packages/`) are deployed unless `FORCE_DEPLOY` is
+  true.
+- **Skip:** If the commit message on `main` contains `#skipdeploy`, it is checked first (`check-skip-deploy` job); then
+  `build-packages` and deploy are skipped, and `prepare-deployment` outputs an empty matrix. See
+  [Skip deployment](#skip-deployment).
+
+**Deploy logic** — `#skipdeploy` is checked first (`check-skip-deploy`). When not skipping, the following run in
+`prepare-deployment`:
+
+1. **Target apps** — From secret `APPS_TO_DEPLOY` or default (e.g. `ottabase-template-app-tanstack`).
+2. **File change detection** — `CHANGED_FILES` (e.g. `git diff HEAD~1 HEAD`), then `PACKAGES_CHANGED` (any path under
+   `packages/`), and `CHANGED_APP_FOLDERS` (app dirs with changed files).
+3. **Per-app deploy decision** — `SHOULD_DEPLOY` = true if packages changed (deploy all target apps) or that app is in
+   `CHANGED_APP_FOLDERS`; or if `FORCE_DEPLOY` is true on manual run.
+4. **Matrix build** — For each app to deploy: load config, check `deployable`, build matrix JSON; output `matrix` and
+   `has-apps` for the deploy job.
+
+## PR preview (pr-preview.yml)
+
+- **Triggers:** PR opened, synchronized, reopened, or closed.
+- **Open/sync/reopen:** Builds packages, builds app(s), deploys preview worker(s) named e.g. `my-app-pr-123`. Preview
+  URL: `https://<preview-name>.<CF_WORKER_SUBDOMAIN>.workers.dev`.
+- **Closed:** Deletes the preview worker for that PR.
+- **Skip:** If PR title or description contains `#skippr` or `#skipdeploy`, preview build and deploy are skipped. See
+  [Skip deployment](#skip-deployment).
+
+## Skip deployment
+
+Use markers so PR preview or production deploy do not run when not needed (e.g. docs-only PRs).
+
+| Marker        | Where                                        | Effect                            |
+| ------------- | -------------------------------------------- | --------------------------------- |
+| `#skippr`     | PR title or description                      | Skips PR preview build and deploy |
+| `#skipdeploy` | PR title/description                         | Skips PR preview                  |
+| `#skipdeploy` | Commit message on `main` (e.g. merge commit) | Skips production deploy           |
+
+**Examples:**
+
+- PR title: `Docs: fix typo #skippr` → no preview deploy.
+- PR title: `Chore: deps #skipdeploy` → no preview; after merge, if merge commit message contains `#skipdeploy`, no
+  production deploy.
+
+## Build flow (per app type)
+
+**TanStack:** `pnpm run build` → `dist/` + `cloudflare-worker.ts` → `wrangler deploy`.
+
+**Next.js:** `pnpm run build` → `.next/`; then `pnpm run build:worker` (OpenNext) → `.worker-next/` → `wrangler deploy`.
+
+## Local testing
 
 ```bash
-# Step 1: Vite build
-vite build
-# → Output: dist/
-
-# Step 2: Deploy to Cloudflare Workers
-wrangler deploy --env production
-```
-
-### Next.js
-
-```bash
-# Step 1: Next.js build
-next build
-# → Output: .next/
-
-# Step 2: OpenNext Worker build
-opennextjs-cloudflare build --skipBuild
-# → Converts .next/ to .worker-next/
-
-# Step 3: Deploy to Cloudflare Workers
-wrangler deploy --env production
-```
-
-## Supported App Types
-
-- `tanstack` - TanStack Router + Vite (default)
-- `nextjs` - Next.js + OpenNext
-- `react` - React + Vite
-- `remix` - Remix
-- `vite` - Vite apps
-- `custom` - Custom build
-
-## How It Works
-
-### Workflow
-
-1. **Discover** - Auto-detect apps with `cloudflare-config.json`
-2. **Build** - Build packages → Build app → Build Worker
-3. **Deploy** - Deploy to Cloudflare Workers (NOT Pages)
-4. **Verify** - Health check
-
-### Discovery Script
-
-`node .github/scripts/discover-deployable-apps.mjs`
-
-Scans `apps/` for deployable apps and outputs GitHub Actions matrix.
-
-## Error Handling
-
-All errors include:
-
-- What went wrong
-- Why it happened
-- How to fix it
-
-Example:
-
-```
-❌ ERROR: Missing required GitHub secrets
-
-Required: CLOUDFLARE_API_TOKEN
-
-Fix: Settings → Secrets and variables → Actions → New repository secret
-Get token: Cloudflare dashboard → My Profile → API Tokens
-```
-
-## Local Testing
-
-```bash
-# Test discovery
+# Discovery (matrix of deployable apps)
 node .github/scripts/discover-deployable-apps.mjs
 
-# Test builds
+# Build and preview one app
 cd apps/my-app
-pnpm build          # App build
-pnpm build:worker   # Worker build
-pnpm preview        # Test locally
+pnpm build
+pnpm build:worker   # if Next.js
+pnpm preview       # if available
 ```
 
 ## Troubleshooting
 
-**App not discovered?**
+| Issue               | Check                                                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| App not discovered  | `deployable: true` in `cloudflare-config.json`; `package.json` has required scripts; `wrangler.jsonc` present if no cloudflare-config |
+| Build fails         | Actions logs; locally: `pnpm --filter=@ottabase/my-app run build`                                                                     |
+| Deploy fails        | Required secrets set; `wrangler.jsonc` valid; no remaining `PRODUCTION_*` in generated config                                         |
+| Preview not created | PR without `#skippr` / `#skipdeploy`; secrets set; app in `APPS_TO_DEPLOY` or default                                                 |
 
-- Check `deployable: true` in `cloudflare-config.json`
-- Verify build scripts exist in `package.json`
-
-**Build fails?**
-
-- Check GitHub Actions logs
-- Test locally: `pnpm --filter=@ottabase/my-app run build`
-
-**Deployment fails?**
-
-- Verify GitHub secrets are set
-- Check `wrangler.jsonc` is valid
+Errors in workflows include what failed, why, and how to fix (e.g. missing secrets with links to Cloudflare).
 
 ## Files
 
 ```
 .github/
-├── workflows/deploy.yml       # Main deployment workflow
+├── workflows/
+│   ├── deploy.yml           # Production deploy (main / manual)
+│   ├── pr-preview.yml       # PR preview deploy + cleanup
+│   ├── build-packages.yml   # Reusable: build packages
+│   └── ci.yml               # Lint, type-check, test, build
 ├── scripts/
 │   └── discover-deployable-apps.mjs
-└── README.md                  # This file
-
-apps/my-app/
-├── cloudflare-config.json     # Deployment config
-├── wrangler.jsonc             # Cloudflare config
-└── package.json               # Build scripts
-
-schemas/
-└── cloudflare-config.schema.json
+├── README.md                # This file
+└── DEPLOYMENT.md            # Full reference (config, errors, extending)
 ```
 
-## Details
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for complete guide.
+**Full reference:** [DEPLOYMENT.md](DEPLOYMENT.md) — all config properties, framework examples, error messages,
+extending the system.

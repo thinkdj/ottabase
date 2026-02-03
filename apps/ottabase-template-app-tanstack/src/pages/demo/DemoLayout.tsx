@@ -8,6 +8,7 @@ import {
     Database,
     FileStack,
     FileText,
+    Languages,
     Layout,
     List,
     Mail,
@@ -27,6 +28,7 @@ interface DemoLinkProps {
 const DEMO_LINKS: DemoLinkProps[] = [
     { to: '/demo/state', icon: Settings, label: 'State Management' },
     { to: '/demo/logger', icon: FileStack, label: 'Logger' },
+    { to: '/demo/i18n', icon: Languages, label: 'Internationalization (i18n)' },
     { to: '/demo/mantine', icon: Layout, label: 'Mantine UI' },
     { to: '/demo/shadcn', icon: Palette, label: 'shadcn/ui' },
     { to: '/demo/ottaeditor', icon: Type, label: 'OttaEditor' },

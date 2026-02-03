@@ -1,0 +1,65 @@
+{
+    "name": "@ottabase/i18n",
+    "version": "0.1.0",
+    "description": "Internationalization (i18n) configuration and utilities for the Ottabase monorepo",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./react": {
+            "types": "./dist/react.d.ts",
+            "import": "./dist/react.mjs",
+            "require": "./dist/react.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts src/react.tsx --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/react.tsx --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "i18n",
+        "internationalization",
+        "localization",
+        "i18next",
+        "react-i18next",
+        "translations",
+        "typescript",
+        "ottabase"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "i18next": "^24.2.1",
+        "i18next-browser-languagedetector": "^8.0.2"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "eslint": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-i18next": "^15.2.0",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:"
+    },
+    "peerDependencies": {
+        "react": "catalog:",
+        "react-i18next": "^15.2.0"
+    }
+}
