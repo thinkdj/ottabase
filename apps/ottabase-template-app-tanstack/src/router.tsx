@@ -108,7 +108,7 @@ function RootLayout() {
                         {isAuthenticated ? (
                             <div className="flex items-center gap-2 ml-2 pl-2 border-l">
                                 <Button asChild variant="ghost" size="sm">
-                                    <Link to="/dashboard" className="flex items-center gap-2">
+                                    <Link to="/profile" className="flex items-center gap-2">
                                         <Avatar className="h-6 w-6">
                                             {user?.image && <AvatarImage src={user.image} />}
                                             <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
@@ -707,7 +707,11 @@ const userProfileRoute = new Route({
     path: '/profile',
     component: lazyRouteComponent(() =>
         import('@/pages/user/UserProfilePage').then((m) => ({
-            default: m.UserProfilePage,
+            default: () => (
+                <ProtectedRoute>
+                    <m.UserProfilePage />
+                </ProtectedRoute>
+            ),
         })),
     ),
 });

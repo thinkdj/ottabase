@@ -6,7 +6,10 @@
  */
 
 import { useRBACToast } from '@/hooks/useToast';
+import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
+import { useQueryClient } from '@tanstack/react-query';
+import { FileUploader } from '@ottabase/ottaupload/client';
 import {
     Avatar,
     AvatarFallback,
@@ -23,43 +26,115 @@ import {
     Separator,
 } from '@ottabase/ui-shadcn';
 import { Calendar, Check, Loader2, Mail, User } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export function UserProfilePage() {
-    const { user } = useSession();
+    const { user, updateUser } = useSession();
     const toast = useRBACToast();
+    const queryClient = useQueryClient();
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState(() => ({
         name: user?.name || '',
         email: user?.email || '',
-    });
+        image: user?.image || '',
+    }));
 
     const [isSaving, setIsSaving] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
 
-    const userInitials = user?.name
-        ? user.name
-              .split(' ')
-              .filter((n) => n.length > 0)
-              .map((n) => n[0])
-              .join('')
-              .toUpperCase()
-        : user?.email?.[0]?.toUpperCase() || '?';
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                name: user.name || '',
+                email: user.email || '',
+                image: user.image || '',
+            });
+            setHasChanges(false);
+        }
+    }, [user]);
+
+    const userInitials = useMemo(() => {
+        if (formData.name && formData.name.trim().length > 0) {
+            return formData.name
+                .split(' ')
+                .filter((n) => n.length > 0)
+                .map((n) => n[0])
+                .join('')
+                .toUpperCase();
+        }
+        return formData.email?.[0]?.toUpperCase() || '?';
+    }, [formData.email, formData.name]);
 
     const handleChange = (field: string, value: string) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
         setHasChanges(true);
     };
 
+    const handleAvatarUpload = async (files: File[]) => {
+        if (files.length === 0) return;
+
+        try {
+            setIsSaving(true);
+            const formDataPayload = new FormData();
+            formDataPayload.append('file', files[0]);
+            formDataPayload.append('provider', 'r2');
+
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formDataPayload,
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to upload avatar');
+            }
+
+            const result = (await response.json()) as { url?: string };
+            if (result.url) {
+                handleChange('image', result.url);
+                toast.success('Avatar uploaded', 'Remember to save your profile changes.');
+            } else {
+                throw new Error('Upload did not return a URL');
+            }
+        } catch (error) {
+            toast.error('Avatar upload failed', error instanceof Error ? error.message : 'Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            // TODO: Implement user update API
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            if (!user) return;
+
+            const payload = {
+                name: formData.name.trim() || null,
+                email: formData.email.trim(),
+                image: formData.image || null,
+            };
+
+            const updatedUser = await api(`/api/ottaorm/users/${user.id}`, {
+                method: 'PATCH',
+                body: payload,
+            });
+
+            updateUser(payload);
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+            queryClient.invalidateQueries({ queryKey: ['users', 'detail', user.id] });
+
+            if (updatedUser && typeof updatedUser === 'object') {
+                updateUser(updatedUser as Record<string, unknown>);
+            }
+
             toast.success('Profile updated', 'Your profile has been updated successfully');
             setHasChanges(false);
         } catch (error) {
-            toast.error('Update failed', 'Failed to update profile');
+            const message = isApiError(error)
+                ? error.message
+                : error instanceof Error
+                  ? error.message
+                  : 'Failed to update profile';
+            toast.error('Update failed', message);
         } finally {
             setIsSaving(false);
         }
@@ -92,16 +167,30 @@ export function UserProfilePage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {/* Avatar */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                         <Avatar className="h-20 w-20">
-                            <AvatarImage src={user.image || undefined} />
+                            <AvatarImage src={formData.image || undefined} />
                             <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
                         </Avatar>
-                        <div className="space-y-2">
-                            <h3 className="font-semibold">{formData.name || 'No name set'}</h3>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Mail className="h-4 w-4" />
-                                {formData.email}
+                        <div className="space-y-3 flex-1">
+                            <div>
+                                <h3 className="font-semibold">{formData.name || 'No name set'}</h3>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Mail className="h-4 w-4" />
+                                    {formData.email}
+                                </div>
+                            </div>
+                            <div className="max-w-sm">
+                                <FileUploader
+                                    variant="button"
+                                    maxFiles={1}
+                                    maxFileSize={5 * 1024 * 1024}
+                                    acceptedFileTypes={['image/*']}
+                                    onUpload={handleAvatarUpload}
+                                    disabled={isSaving}
+                                    className="w-full"
+                                />
+                                <p className="text-xs text-muted-foreground mt-2">Upload a square image (max 5MB).</p>
                             </div>
                         </div>
                     </div>
