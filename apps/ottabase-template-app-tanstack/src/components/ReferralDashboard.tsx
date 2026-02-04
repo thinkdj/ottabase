@@ -59,11 +59,7 @@ interface TrackingData {
     };
 }
 
-interface ReferralDashboardProps {
-    userId: string;
-}
-
-export function ReferralDashboard({ userId }: ReferralDashboardProps) {
+export function ReferralDashboard() {
     const [data, setData] = useState<ReferralData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -83,24 +79,18 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
 
     useEffect(() => {
         loadData();
-    }, [userId]);
+    }, []);
 
     useEffect(() => {
-        if (userId) {
+        if (data?.user?.id) {
             loadTrackingData();
         }
-    }, [userId, trackingPage]);
+    }, [data?.user?.id, trackingPage]);
 
     const loadData = async () => {
         try {
             setLoading(true);
-            const response = await api(`/api/referrals/user?userId=${userId}`);
-
-            if (!response.ok) {
-                throw new Error('Failed to load referral data');
-            }
-
-            const data = await response.json();
+            const data = await api<ReferralData>('/api/referrals/user');
             setData(data);
             setNewUsername(data.user.referralUsername || '');
         } catch (err) {
@@ -113,17 +103,14 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
     };
 
     const loadTrackingData = async () => {
+        if (!data?.user?.id) {
+            return;
+        }
         try {
             setTrackingLoading(true);
-            const response = await api(
-                `/api/referrals/tracking?userId=${userId}&page=${trackingPage}&perPage=${trackingPerPage}`,
+            const data = await api<TrackingData>(
+                `/api/referrals/tracking?page=${trackingPage}&perPage=${trackingPerPage}`,
             );
-
-            if (!response.ok) {
-                throw new Error('Failed to load activity data');
-            }
-
-            const data = await response.json();
             setTrackingData(data);
         } catch (err) {
             toast.error('Failed to load activity data');
@@ -134,6 +121,7 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
     };
 
     const handleUpdateUsername = async () => {
+        if (!data?.user?.id) return;
         // Validate
         const validation = validateReferralUsername(newUsername);
         if (!validation.valid) {
@@ -145,23 +133,13 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
         setUpdating(true);
 
         try {
-            const response = await api('/api/referrals/username', {
+            await api('/api/referrals/username', {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    userId,
+                body: {
                     referralUsername: newUsername,
-                }),
+                },
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to update username');
-            }
-
-            // Reload data
             await loadData();
             toast.success('Username updated successfully!');
         } catch (err) {

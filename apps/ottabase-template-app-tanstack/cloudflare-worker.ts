@@ -48,6 +48,8 @@ import {
     Session,
     VerificationToken,
 } from '@ottabase/ottaorm/models';
+import { Role } from '@ottabase/ottaorm/models';
+import { hashPassword, verifyPassword } from '@ottabase/auth/backend';
 import { uploadFileToCloudflareImages, uploadFileToR2 } from '@ottabase/ottaupload/server';
 import { dispatch, dispatchBatch } from '@ottabase/queue';
 import { ReferralTracking } from '@ottabase/referrals';
@@ -1060,11 +1062,13 @@ export default {
 
                 registerConnection('default', createD1Driver(env.OBCF_D1));
 
-                // TODO: Get userId from session
-                const userId = url.searchParams.get('userId');
+                const session = await getSession(request, env as any);
+                const userId = session?.user?.id;
 
                 if (!userId) {
-                    return errorResponse('userId is required', 400);
+                    return errorResponse('Authentication required', 401, {
+                        code: 'UNAUTHORIZED',
+                    });
                 }
 
                 const stats = await ReferralTracking.getStats(userId);
@@ -1082,11 +1086,13 @@ export default {
 
                 registerConnection('default', createD1Driver(env.OBCF_D1));
 
-                // TODO: Get userId from session
-                const userId = url.searchParams.get('userId');
+                const session = await getSession(request, env as any);
+                const userId = session?.user?.id;
 
                 if (!userId) {
-                    return errorResponse('userId is required', 400);
+                    return errorResponse('Authentication required', 401, {
+                        code: 'UNAUTHORIZED',
+                    });
                 }
 
                 const user = await User.find(userId);
@@ -1123,14 +1129,14 @@ export default {
 
                 registerConnection('default', createD1Driver(env.OBCF_D1));
 
+                const session = await getSession(request, env as any);
+                const userId = session?.user?.id;
                 const body = await readJson<{
-                    userId?: string;
                     referralUsername?: string;
                 }>(request);
 
-                // TODO: Get userId from session instead
-                if (!body.userId || !body.referralUsername) {
-                    return errorResponse('userId and referralUsername are required', 400);
+                if (!userId || !body.referralUsername) {
+                    return errorResponse('referralUsername is required', 400);
                 }
 
                 // Validate username format
@@ -1145,14 +1151,14 @@ export default {
 
                 // Check if username is already taken
                 const existing = await User.findByReferralUsername(body.referralUsername);
-                if (existing && existing.get('id') !== body.userId) {
+                if (existing && existing.get('id') !== userId) {
                     return errorResponse('Username already taken', 400, {
                         code: 'USERNAME_TAKEN',
                     });
                 }
 
                 // Update user
-                const user = await User.find(body.userId);
+                const user = await User.find(userId);
                 if (!user) {
                     return errorResponse('User not found', 404);
                 }
@@ -1176,11 +1182,13 @@ export default {
 
                 registerConnection('default', createD1Driver(env.OBCF_D1));
 
-                // TODO: Get userId from session
-                const userId = url.searchParams.get('userId');
+                const session = await getSession(request, env as any);
+                const userId = session?.user?.id;
 
                 if (!userId) {
-                    return errorResponse('userId is required', 400);
+                    return errorResponse('Authentication required', 401, {
+                        code: 'UNAUTHORIZED',
+                    });
                 }
 
                 const { page, perPage } = parsePaginationParams(url.searchParams);
@@ -1234,33 +1242,120 @@ export default {
                 }
 
                 try {
-                    // TODO: In production, you would:
-                    // 1. Hash the password
-                    // 2. Validate email uniqueness
-                    // 3. Create user in database
-                    // 4. Send verification email
+                    const email = body.email.trim().toLowerCase();
+                    const name = body.name?.trim() || null;
 
-                    // For demo purposes, create a mock user
-                    const newUser = await User.create({
-                        email: body.email,
-                        name: body.name,
-                        emailVerified: null,
-                    });
+                    const existingUser = await User.first({ email });
+                    if (existingUser) {
+                        return errorResponse('An account with this email already exists', 409, {
+                            code: 'EMAIL_EXISTS',
+                        });
+                    }
 
-                    const newUserId = newUser.get('id');
+                    const passwordHash = await hashPassword(body.password);
+                    const newUserId = crypto.randomUUID();
+                    const now = new Date().toISOString();
 
-                    // Process referral attribution if referralCode provided
+                    await env.OBCF_D1.prepare(
+                        `INSERT INTO users (id, name, email, image, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?)`,
+                    )
+                        .bind(newUserId, name, email, null, new Date(now).getTime(), new Date(now).getTime())
+                        .run();
+
+                    const createdUserResult = await env.OBCF_D1.prepare(
+                        `SELECT id, name, email, image FROM users WHERE id = ?`,
+                    )
+                        .bind(newUserId)
+                        .all();
+
+                    const createdUser = createdUserResult?.results?.[0];
+                    const newUser = createdUser
+                        ? new User({ entity: 'users', data: createdUser as any })
+                        : await User.find(newUserId);
+
+                    const accountId = crypto.randomUUID();
+                    await env.OBCF_D1.prepare(
+                        `INSERT INTO accounts (id, user_id, type, provider, provider_account_id, access_token, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                    )
+                        .bind(
+                            accountId,
+                            newUserId,
+                            'credentials',
+                            'credentials',
+                            email,
+                            passwordHash,
+                            new Date(now).getTime(),
+                            new Date(now).getTime(),
+                        )
+                        .run();
+
                     let attributionResult;
                     if (body.referralCode) {
                         attributionResult = await processReferralAttribution({
-                            newUserId,
+                            newUserId: newUser.get('id'),
                             referralCode: body.referralCode,
                         });
                     }
 
+                    const organizationName = name ? `${name}'s Workspace` : 'Personal Workspace';
+                    const baseSlug =
+                        organizationName
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]+/g, '-')
+                            .replace(/^-|-$/g, '') || 'personal-workspace';
+                    const organizationSlug = `${baseSlug}-${newUserId.slice(0, 6)}`;
+                    const organizationId = crypto.randomUUID();
+                    await env.OBCF_D1.prepare(
+                        `INSERT INTO organizations (id, name, slug, owner_id, plan, status, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                    )
+                        .bind(
+                            organizationId,
+                            organizationName,
+                            organizationSlug,
+                            newUserId,
+                            'free',
+                            'active',
+                            new Date(now).getTime(),
+                            new Date(now).getTime(),
+                        )
+                        .run();
+
+                    await env.OBCF_D1.prepare(
+                        `INSERT INTO organization_members (user_id, organization_id, role, status, joined_at)
+                        VALUES (?, ?, ?, ?, ?)`,
+                    )
+                        .bind(newUserId, organizationId, 'owner', 'active', new Date(now).getTime())
+                        .run();
+
+                    await Role.ensureDefaultRoles();
+                    const ownerRole = await Role.findByName('admin');
+                    if (ownerRole?.get('id')) {
+                        await env.OBCF_D1.prepare(
+                            `INSERT INTO user_roles (user_id, role_id, organization_id, assigned_by, assigned_at)
+                            VALUES (?, ?, ?, ?, ?)`,
+                        )
+                            .bind(newUserId, ownerRole.get('id'), organizationId, newUserId, new Date(now).getTime())
+                            .run();
+                    }
+
+                    const session = {
+                        user: {
+                            id: newUser.get('id'),
+                            email,
+                            name,
+                            image: newUser.get('image') || null,
+                            emailVerified: null,
+                            organizationId,
+                        },
+                        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    };
+
                     return jsonResponse({
                         success: true,
-                        user: newUser.toJson(),
+                        session,
                         referralAttribution: attributionResult || null,
                     });
                 } catch (error) {
@@ -1292,11 +1387,76 @@ export default {
                         });
                     }
                 }
-                const response = await handleAuthRequest(authRequest, env as any);
-                Object.entries(authCorsHeaders).forEach(([key, value]) => {
-                    response.headers.set(key, value);
+
+                const response = await handleAuthRequest(authRequest, env as any, {
+                    authorize: async ({ email, password }) => {
+                        const normalizedEmail = email.trim().toLowerCase();
+                        const accountRow = await env.OBCF_D1.prepare(
+                            `SELECT user_id, access_token FROM accounts WHERE provider = ? AND provider_account_id = ? LIMIT 1`,
+                        )
+                            .bind('credentials', normalizedEmail)
+                            .first<{ user_id: string; access_token: string | null }>();
+
+                        if (!accountRow?.user_id || !accountRow.access_token) {
+                            return null;
+                        }
+
+                        if (!(await verifyPassword(password, accountRow.access_token))) {
+                            return null;
+                        }
+
+                        const userRow = await env.OBCF_D1.prepare(
+                            `SELECT id, email, name, image FROM users WHERE id = ? LIMIT 1`,
+                        )
+                            .bind(accountRow.user_id)
+                            .first<{ id: string; email: string; name?: string | null; image?: string | null }>();
+
+                        if (!userRow) {
+                            return null;
+                        }
+
+                        const organizationMembership = await env.OBCF_D1.prepare(
+                            `SELECT organization_id FROM organization_members WHERE user_id = ? LIMIT 1`,
+                        )
+                            .bind(userRow.id)
+                            .first<{ organization_id?: string }>();
+
+                        return {
+                            id: userRow.id,
+                            email: userRow.email,
+                            name: userRow.name,
+                            image: userRow.image,
+                            organizationId: organizationMembership?.organization_id || null,
+                        };
+                    },
+                    authConfig: {
+                        callbacks: {
+                            async jwt({ token, user }) {
+                                if (user) {
+                                    token.id = user.id;
+                                    token.email = user.email;
+                                    token.name = user.name;
+                                    token.organizationId = (user as any).organizationId || null;
+                                }
+                                return token;
+                            },
+                            async session({ session, token }) {
+                                if (session.user) {
+                                    session.user.id = token.id as string;
+                                    session.user.email = token.email as string;
+                                    session.user.name = token.name as string;
+                                    (session.user as any).organizationId = (token as any).organizationId || null;
+                                }
+                                return session;
+                            },
+                        },
+                    },
                 });
-                return response;
+                const authResponse = new Response(response.body, response);
+                Object.entries(authCorsHeaders).forEach(([key, value]) => {
+                    authResponse.headers.set(key, value);
+                });
+                return authResponse;
             }
 
             // ============================================================

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from '@tanstack/react-router';
 import { RegisterForm, type RegisterFormData } from '@ottabase/auth/components';
 import { useSession } from '@/lib/auth';
+import { signInWithCredentials } from '@/lib/auth-api';
+import { api, isApiError } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@ottabase/ui-shadcn';
 import { ArrowLeft } from 'lucide-react';
 import { getStoredReferralCode, getReferralExpiryInfo } from '@/lib/referrals';
@@ -30,48 +32,47 @@ export function RegisterPage() {
         setError(undefined);
 
         try {
-            // TODO: Implement actual registration when Auth.js is setup
-            console.log('Registering user:', data);
-
-            // Simulated API call
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-
-            // Demo-only: simulated "email already exists" check.
-            // This runs in development builds to mimic backend validation.
-            // In production, real uniqueness checks must be performed on the server.
-            if (import.meta.env?.DEV) {
-                const simulatedExistingEmails = ['existing@example.com'];
-                if (simulatedExistingEmails.includes(data.email)) {
-                    throw new Error('An account with this email already exists');
-                }
-            }
-
-            // Simulated successful registration
-            const userId = Math.random().toString(36).substring(7);
-            const mockSession = {
-                user: {
-                    id: userId,
+            const response = await api<{
+                success: boolean;
+                session?: {
+                    user: {
+                        id: string;
+                        email: string;
+                        name?: string | null;
+                        image?: string | null;
+                        emailVerified?: string | null;
+                    };
+                    expires: string;
+                };
+            }>('/api/auth/register', {
+                method: 'POST',
+                body: {
                     email: data.email,
+                    password: data.password,
                     name: data.name,
+                    referralCode: referralCode || undefined,
                 },
-                expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            };
+            });
 
-            // Handle referral attribution if there's a stored referral code
-            if (referralCode) {
-                // In a real implementation, this would be handled server-side during user creation
-                // For demo purposes, we'll just log it
-                console.log('User registered with referral code:', referralCode);
-                console.log('TODO: Attribute user', userId, 'to referrer with code:', referralCode);
-
-                // In production, the server would:
-                // 1. Look up the referrer by referralUsername
-                // 2. Set the new user's referredById field
-                // 3. Update ReferralTracking records from pending to completed
+            if (!response.success || !response.session) {
+                throw new Error('Registration failed');
             }
 
-            // Log them in immediately after registration
-            login(mockSession);
+            const loginResult = await signInWithCredentials(
+                { email: data.email, password: data.password },
+                { redirect: false },
+            );
+
+            if (!loginResult.success) {
+                throw new Error(loginResult.error || 'Registration completed, but sign-in failed');
+            }
+
+            if (loginResult.url) {
+                window.location.href = loginResult.url;
+                return;
+            }
+
+            login(loginResult.session || response.session);
             setSuccess(true);
 
             // Redirect to dashboard after a brief success message
@@ -79,7 +80,8 @@ export function RegisterPage() {
                 navigate({ to: '/dashboard' });
             }, 1500);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Registration failed');
+            const message = isApiError(err) ? err.message : err instanceof Error ? err.message : 'Registration failed';
+            setError(message);
             setIsLoading(false);
         }
     };
@@ -150,7 +152,7 @@ export function RegisterPage() {
                     <CardHeader>
                         <CardTitle className="text-sm">Demo Info</CardTitle>
                         <CardDescription className="text-xs">
-                            This is a demo implementation with simulated registration
+                            Registration creates a real user via Auth.js + D1
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="text-xs space-y-2">
@@ -160,7 +162,7 @@ export function RegisterPage() {
                         <p>
                             <strong>Registration:</strong> Creates account and logs you in automatically
                         </p>
-                        <p className="text-muted-foreground">In production, you'd send a verification email</p>
+                        <p className="text-muted-foreground">Email verification can be enabled via Auth.js providers</p>
                     </CardContent>
                 </Card>
             </div>
