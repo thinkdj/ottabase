@@ -103,7 +103,9 @@ export function useSession(options?: UseSessionOptions) {
         let mounted = true;
 
         async function syncSession() {
-            setIsLoading(true);
+            // Only show loading when we don't already have a session (avoids flash on protected routes)
+            const hasSession = session !== null && session.expires && new Date(session.expires) > new Date();
+            if (!hasSession) setIsLoading(true);
             try {
                 const backendSession = await getAuthSession({
                     baseUrl: options?.baseUrl,
@@ -120,9 +122,8 @@ export function useSession(options?: UseSessionOptions) {
             } catch (error) {
                 console.error('Failed to sync session:', error);
             } finally {
-                if (mounted) {
-                    setIsLoading(false);
-                }
+                // Always clear loading so the global atom is never stuck (e.g. after unmount/cleanup)
+                setIsLoading(false);
             }
         }
 
@@ -147,17 +148,15 @@ export function useSession(options?: UseSessionOptions) {
      * Sign out and clear session
      */
     const logout = useCallback(async () => {
+        // Clear local session first so UI updates immediately (header, etc.)
+        setSession(null);
         try {
-            // Sign out from backend
             await authSignOut({
                 redirectTo: '/login',
                 clientOptions: { baseUrl: options?.baseUrl },
             });
         } catch (error) {
             console.error('Failed to sign out:', error);
-        } finally {
-            // Clear local session regardless
-            setSession(null);
         }
     }, [options?.baseUrl, setSession]);
 

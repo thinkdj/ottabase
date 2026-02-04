@@ -112,12 +112,15 @@ export function LoginPage() {
                 return;
             }
 
-            // Update local session state
+            if (result.url) {
+                window.location.href = result.url;
+                return;
+            }
+
             if (result.session) {
                 login(result.session);
             }
 
-            // Navigate to dashboard
             navigate({ to: '/dashboard' });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Login failed');

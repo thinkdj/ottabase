@@ -1275,7 +1275,24 @@ export default {
             // Handles all Auth.js routes: /api/auth/signin, /api/auth/signout,
             // /api/auth/session, /api/auth/callback/*, etc.
             if (url.pathname.startsWith('/api/auth/')) {
-                const response = await handleAuthRequest(request, env as any);
+                let authRequest: Request = request;
+                if (request.method === 'POST' && url.pathname === '/api/auth/signout') {
+                    const cloned = request.clone();
+                    let bodyText: string;
+                    try {
+                        bodyText = await cloned.text();
+                    } catch {
+                        bodyText = '';
+                    }
+                    if (bodyText.trim() === '') {
+                        authRequest = new Request(request.url, {
+                            method: 'POST',
+                            headers: request.headers,
+                            body: '{}',
+                        });
+                    }
+                }
+                const response = await handleAuthRequest(authRequest, env as any);
                 Object.entries(authCorsHeaders).forEach(([key, value]) => {
                     response.headers.set(key, value);
                 });

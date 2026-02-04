@@ -77,6 +77,7 @@ export async function signInWithCredentials(
                 'Content-Type': 'application/json',
             },
             credentials: 'include',
+            redirect: 'manual',
             body: JSON.stringify({
                 ...credentials,
                 csrfToken,
@@ -85,7 +86,7 @@ export async function signInWithCredentials(
             }),
         });
 
-        if (!response.ok) {
+        if (!response.ok && response.status !== 302) {
             const error = await response.json().catch(() => ({ error: 'Authentication failed' }));
             return {
                 success: false,
@@ -93,11 +94,22 @@ export async function signInWithCredentials(
             };
         }
 
-        const data = await response.json();
-
         if (options?.redirect) {
             return { success: true };
         }
+
+        if (response.status === 302) {
+            const location = response.headers.get('Location');
+            return {
+                success: true,
+                session: undefined,
+                url: location || options?.redirectTo || '/dashboard',
+            };
+        }
+
+        try {
+            await response.json();
+        } catch {}
 
         const session = await getSession(options?.clientOptions);
 
@@ -205,6 +217,7 @@ export async function getSession(options?: AuthClientOptions): Promise<AuthSessi
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
         });
 
         if (!response.ok) {
@@ -226,6 +239,7 @@ export async function getSession(options?: AuthClientOptions): Promise<AuthSessi
 
 /**
  * Sign out the current user
+ * Auth.js requires a CSRF token in the POST body for signout.
  */
 export async function signOut(options?: {
     redirectTo?: string;
@@ -234,6 +248,8 @@ export async function signOut(options?: {
     const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
 
     try {
+        const csrfToken = await getCsrfToken(options?.clientOptions);
+
         const params = new URLSearchParams();
         if (options?.redirectTo) {
             params.set('callbackUrl', options.redirectTo);
@@ -244,6 +260,8 @@ export async function signOut(options?: {
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
+            body: JSON.stringify({ csrfToken: csrfToken ?? undefined }),
         });
 
         if (!response.ok) {
