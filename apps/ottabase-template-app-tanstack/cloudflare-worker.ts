@@ -1254,13 +1254,13 @@ export default {
 
                     const passwordHash = await hashPassword(body.password);
                     const newUserId = crypto.randomUUID();
-                    const now = new Date().toISOString();
+                    const now = Date.now();
 
                     await env.OBCF_D1.prepare(
                         `INSERT INTO users (id, name, email, image, created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?)`,
                     )
-                        .bind(newUserId, name, email, null, new Date(now).getTime(), new Date(now).getTime())
+                        .bind(newUserId, name, email, null, now, now)
                         .run();
 
                     const createdUserResult = await env.OBCF_D1.prepare(
@@ -1279,16 +1279,7 @@ export default {
                         `INSERT INTO accounts (id, user_id, type, provider, provider_account_id, access_token, created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
                     )
-                        .bind(
-                            accountId,
-                            newUserId,
-                            'credentials',
-                            'credentials',
-                            email,
-                            passwordHash,
-                            new Date(now).getTime(),
-                            new Date(now).getTime(),
-                        )
+                        .bind(accountId, newUserId, 'credentials', 'credentials', email, passwordHash, now, now)
                         .run();
 
                     let attributionResult;
@@ -1311,33 +1302,24 @@ export default {
                         `INSERT INTO organizations (id, name, slug, owner_id, plan, status, created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
                     )
-                        .bind(
-                            organizationId,
-                            organizationName,
-                            organizationSlug,
-                            newUserId,
-                            'free',
-                            'active',
-                            new Date(now).getTime(),
-                            new Date(now).getTime(),
-                        )
+                        .bind(organizationId, organizationName, organizationSlug, newUserId, 'free', 'active', now, now)
                         .run();
 
                     await env.OBCF_D1.prepare(
                         `INSERT INTO organization_members (user_id, organization_id, role, status, joined_at)
                         VALUES (?, ?, ?, ?, ?)`,
                     )
-                        .bind(newUserId, organizationId, 'owner', 'active', new Date(now).getTime())
+                        .bind(newUserId, organizationId, 'owner', 'active', now)
                         .run();
 
                     await Role.ensureDefaultRoles();
-                    const ownerRole = await Role.findByName('admin');
-                    if (ownerRole?.get('id')) {
+                    const adminRole = await Role.findByName('admin');
+                    if (adminRole?.get('id')) {
                         await env.OBCF_D1.prepare(
                             `INSERT INTO user_roles (user_id, role_id, organization_id, assigned_by, assigned_at)
                             VALUES (?, ?, ?, ?, ?)`,
                         )
-                            .bind(newUserId, ownerRole.get('id'), organizationId, newUserId, new Date(now).getTime())
+                            .bind(newUserId, adminRole.get('id'), organizationId, newUserId, now)
                             .run();
                     }
 
