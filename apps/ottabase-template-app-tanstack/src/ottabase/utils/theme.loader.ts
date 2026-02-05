@@ -1,137 +1,185 @@
 import { CURSOR_SVG_REGISTRY } from '../config/cursors.registry';
-import { ThemeConfig } from '../config/theme.types';
+import type { ThemeConfig } from '../config/theme.types';
 import artisanTheme from '../config/themes/artisan.json';
 import crispTheme from '../config/themes/crisp.json';
 import defaultTheme from '../config/themes/default.json';
 import funkyTheme from '../config/themes/funky.json';
+import midnightTheme from '../config/themes/midnight.json';
 import neoTheme from '../config/themes/neo.json';
+import roseTheme from '../config/themes/rose.json';
+import verdantTheme from '../config/themes/verdant.json';
 
-// Registry of available themes
+// ---------------------------------------------------------------------------
+// Theme catalogue – every bundled theme is registered here
+// ---------------------------------------------------------------------------
 const themes: Record<string, ThemeConfig> = {
     default: defaultTheme as ThemeConfig,
     neo: neoTheme as ThemeConfig,
     crisp: crispTheme as ThemeConfig,
     funky: funkyTheme as ThemeConfig,
     artisan: artisanTheme as ThemeConfig,
+    midnight: midnightTheme as ThemeConfig,
+    rose: roseTheme as ThemeConfig,
+    verdant: verdantTheme as ThemeConfig,
 };
 
-export const getAvailableThemes = () => Object.keys(themes);
+/** Returns list of all registered theme identifiers */
+export const getAvailableThemes = (): string[] => Object.keys(themes);
 
+/** Resolves a theme by name with fallback to default */
 export const getTheme = (themeName: string): ThemeConfig => {
-    return themes[themeName] || themes['default'];
+    return themes[themeName] ?? themes['default'];
 };
+
+// ---------------------------------------------------------------------------
+// Helpers — font injection, CSS variable writes, cursor processing
+// ---------------------------------------------------------------------------
+
+/** Set of font URLs already injected to avoid duplicate <link> tags */
+const injectedFontUrls = new Set<string>();
 
 const injectFont = (url: string) => {
-    if (!document.querySelector(`link[href="${url}"]`)) {
-        const link = document.createElement('link');
-        link.href = url;
-        link.rel = 'stylesheet';
-        document.head.appendChild(link);
+    if (injectedFontUrls.has(url)) return;
+    if (document.querySelector(`link[href="${url}"]`)) {
+        injectedFontUrls.add(url);
+        return;
     }
+    const linkEl = document.createElement('link');
+    linkEl.href = url;
+    linkEl.rel = 'stylesheet';
+    document.head.appendChild(linkEl);
+    injectedFontUrls.add(url);
 };
 
-const setCSSVariable = (property: string, value: string) => {
-    document.documentElement.style.setProperty(property, value);
-};
+const rootStyle = () => document.documentElement.style;
+const setVar = (prop: string, val: string) => rootStyle().setProperty(prop, val);
 
-/**
- * Converts SVG string to data URI for cursor usage
- */
-const svgToDataUri = (svg: string): string => {
+/** Encode an SVG string into a CSS-safe data-URI cursor value */
+const svgToCursorUri = (svg: string): string => {
     const encoded = encodeURIComponent(svg.trim());
     return `url("data:image/svg+xml;utf8,${encoded}"), auto`;
 };
 
 /**
- * Converts cursor value to CSS-compatible format
- * Supports: CSS keywords, URLs, registry references, and inline SVG
+ * Resolves a cursor config value to a CSS cursor declaration.
+ * Accepts plain CSS keywords, registry refs (`registry:<key>`),
+ * inline SVG (`svg:<markup>`), or raw URLs.
  */
-const processCursorValue = (value: string): string => {
+const resolveCursor = (value: string): string => {
     if (!value) return 'auto';
 
-    // CSS keyword (auto, pointer, text, etc.)
-    if (!value.includes(':') && !value.includes('(')) {
-        return value;
-    }
+    // Plain CSS keyword (auto, pointer, text …)
+    if (!value.includes(':') && !value.includes('(')) return value;
 
-    // Registry reference: "registry:dot"
+    // Registry lookup
     if (value.startsWith('registry:')) {
-        const key = value.substring(9);
-        const svg = CURSOR_SVG_REGISTRY[key];
-        if (svg) {
-            return svgToDataUri(svg);
-        }
-        console.warn(`Cursor registry key not found: ${key}`);
+        const registryKey = value.slice(9);
+        const svgMarkup = CURSOR_SVG_REGISTRY[registryKey];
+        if (svgMarkup) return svgToCursorUri(svgMarkup);
+        if (import.meta.env.DEV) console.warn(`[theme] Cursor registry miss: "${registryKey}"`);
         return 'auto';
     }
 
-    // SVG inline: "svg:<svg>...</svg>"
-    if (value.startsWith('svg:')) {
-        const svg = value.substring(4);
-        return svgToDataUri(svg);
-    }
+    // Inline SVG
+    if (value.startsWith('svg:')) return svgToCursorUri(value.slice(4));
 
-    // URL: "url(...)" or raw URL
-    if (value.startsWith('url(') || value.startsWith('http')) {
-        return value.startsWith('url(') ? value : `url(${value}), auto`;
-    }
+    // Explicit url() or bare http(s) reference
+    if (value.startsWith('url(')) return value;
+    if (value.startsWith('http')) return `url(${value}), auto`;
 
     return value;
 };
 
+// ---------------------------------------------------------------------------
+// Default fallback values for shadow & motion tokens
+// ---------------------------------------------------------------------------
+const SHADOW_DEFAULTS = {
+    xs: '0 1px 2px 0 rgb(0 0 0 / 0.04)',
+    sm: '0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08)',
+    md: '0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.08)',
+    lg: '0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08)',
+    xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+};
+
+const MOTION_DEFAULTS = {
+    durationFast: '100ms',
+    durationNormal: '200ms',
+    durationSlow: '400ms',
+    easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    easingEnter: 'cubic-bezier(0, 0, 0.2, 1)',
+    easingExit: 'cubic-bezier(0.4, 0, 1, 1)',
+};
+
+const CURSOR_DEFAULTS: Record<string, string> = {
+    default: 'auto',
+    pointer: 'pointer',
+    text: 'text',
+};
+
+// ---------------------------------------------------------------------------
+// Main apply function
+// ---------------------------------------------------------------------------
+
+/**
+ * Applies a named theme + mode to the document root.
+ *
+ * Handles: typography (font injection + CSS vars), colour tokens,
+ * border-radius, spacing, shadow elevations, motion presets, and cursors.
+ */
 export const applyTheme = (themeName: string, mode: 'light' | 'dark' = 'light') => {
     const theme = getTheme(themeName);
-    console.log(`Applying theme: ${themeName}`, theme);
 
-    // 1. Apply Typography
-    if (theme.typography.heading.url) {
-        injectFont(theme.typography.heading.url);
+    if (import.meta.env.DEV) {
+        console.log(`[theme] Applying "${themeName}" in ${mode} mode`);
     }
-    if (theme.typography.body.url && theme.typography.body.url !== theme.typography.heading.url) {
-        injectFont(theme.typography.body.url);
-    }
-    if (theme.typography.handwriting.url) {
-        injectFont(theme.typography.handwriting.url);
-    }
-    setCSSVariable('--font-heading', theme.typography.heading.fontFamily);
-    setCSSVariable('--font-body', theme.typography.body.fontFamily);
-    setCSSVariable('--font-handwriting', theme.typography.handwriting.fontFamily);
 
-    // 2. Apply Colors
-    const colors = theme.colors[mode];
-    Object.entries(colors).forEach(([key, value]) => {
-        // Convert HSL values if they are stored as "H S L" or just allow raw values
-        // Assuming config has "H S% L%" or similar that matches Tailwind expectation
-        // Tailwind usually expects just the numbers if using withOpacity protocol,
-        // but here we are simplistic. We will assume the config has the full value
-        // OR we standardize on "H S% L%" for easier tailwind integration.
-        // Let's assume the config provides valid CSS color values or properly formatted HSL channels.
-        // For specific tailwind compatibility with <alpha-value>, having just channels is best.
-        setCSSVariable(`--${key}`, value);
-    });
+    // -- Typography ----------------------------------------------------------
+    const { heading, body, handwriting } = theme.typography;
+    const fontUrls = new Set([heading.url, body.url, handwriting.url].filter(Boolean) as string[]);
+    fontUrls.forEach(injectFont);
 
-    // 3. Apply Radius
+    setVar('--font-heading', heading.fontFamily);
+    setVar('--font-body', body.fontFamily);
+    setVar('--font-handwriting', handwriting.fontFamily);
+
+    // -- Colour tokens -------------------------------------------------------
+    const palette = theme.colors[mode];
+    for (const [token, hslValue] of Object.entries(palette)) {
+        setVar(`--${token}`, hslValue);
+    }
+
+    // -- Border radius -------------------------------------------------------
     if (theme.radius) {
-        setCSSVariable('--radius', theme.radius);
+        setVar('--radius', theme.radius);
     }
 
-    // 4. Apply Spacing (if any custom spacing overrides exist)
+    // -- Spacing overrides ---------------------------------------------------
     if (theme.spacing) {
-        Object.entries(theme.spacing).forEach(([key, value]) => {
-            setCSSVariable(`--spacing-${key}`, value);
-        });
+        for (const [key, val] of Object.entries(theme.spacing)) {
+            setVar(`--spacing-${key}`, val);
+        }
     }
 
-    // 5. Apply Appearance (Cursors)
-    if (theme.appearance?.cursors) {
-        Object.entries(theme.appearance.cursors).forEach(([state, value]) => {
-            const cssValue = processCursorValue(value);
-            setCSSVariable(`--cursor-${state}`, cssValue);
-        });
-    } else {
-        // Set defaults if no cursors defined
-        setCSSVariable('--cursor-default', 'auto');
-        setCSSVariable('--cursor-pointer', 'pointer');
-        setCSSVariable('--cursor-text', 'text');
+    // -- Shadow elevation scale ----------------------------------------------
+    const shadows = { ...SHADOW_DEFAULTS, ...theme.shadows };
+    for (const [level, val] of Object.entries(shadows)) {
+        setVar(`--shadow-${level}`, val);
+    }
+
+    // -- Motion / transition presets -----------------------------------------
+    const motion = { ...MOTION_DEFAULTS, ...theme.motion };
+    setVar('--duration-fast', motion.durationFast);
+    setVar('--duration-normal', motion.durationNormal);
+    setVar('--duration-slow', motion.durationSlow);
+    setVar('--ease', motion.easing);
+    setVar('--ease-enter', motion.easingEnter);
+    setVar('--ease-exit', motion.easingExit);
+
+    // -- Cursors -------------------------------------------------------------
+    const cursorMap = theme.appearance?.cursors ?? CURSOR_DEFAULTS;
+    for (const [state, raw] of Object.entries(cursorMap)) {
+        if (raw !== undefined) {
+            setVar(`--cursor-${state}`, resolveCursor(raw));
+        }
     }
 };
