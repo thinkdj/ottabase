@@ -55,5 +55,13 @@
             "input": "145 15% 20%",
             "ring": "142 70% 55%"
         }
+    },
+    "appearance": {
+        "cursors": {
+            "default": "registry:dot",
+            "pointer": "registry:hand-pointer",
+            "text": "text",
+            "crosshair": "registry:crosshair"
+        }
     }
 }

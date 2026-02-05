@@ -55,5 +55,12 @@
             "input": "20 16% 24%",
             "ring": "344 70% 58%"
         }
+    },
+    "appearance": {
+        "cursors": {
+            "default": "registry:arrow-retro",
+            "pointer": "registry:hand-pointer",
+            "text": "text"
+        }
     }
 }

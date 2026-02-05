@@ -1,9 +1,10 @@
+import { CURSOR_SVG_REGISTRY } from '../config/cursors.registry';
 import { ThemeConfig } from '../config/theme.types';
-import defaultTheme from '../config/themes/default.json';
-import neoTheme from '../config/themes/neo.json';
-import crispTheme from '../config/themes/crisp.json';
-import funkyTheme from '../config/themes/funky.json';
 import artisanTheme from '../config/themes/artisan.json';
+import crispTheme from '../config/themes/crisp.json';
+import defaultTheme from '../config/themes/default.json';
+import funkyTheme from '../config/themes/funky.json';
+import neoTheme from '../config/themes/neo.json';
 
 // Registry of available themes
 const themes: Record<string, ThemeConfig> = {
@@ -31,6 +32,51 @@ const injectFont = (url: string) => {
 
 const setCSSVariable = (property: string, value: string) => {
     document.documentElement.style.setProperty(property, value);
+};
+
+/**
+ * Converts SVG string to data URI for cursor usage
+ */
+const svgToDataUri = (svg: string): string => {
+    const encoded = encodeURIComponent(svg.trim());
+    return `url("data:image/svg+xml;utf8,${encoded}"), auto`;
+};
+
+/**
+ * Converts cursor value to CSS-compatible format
+ * Supports: CSS keywords, URLs, registry references, and inline SVG
+ */
+const processCursorValue = (value: string): string => {
+    if (!value) return 'auto';
+
+    // CSS keyword (auto, pointer, text, etc.)
+    if (!value.includes(':') && !value.includes('(')) {
+        return value;
+    }
+
+    // Registry reference: "registry:dot"
+    if (value.startsWith('registry:')) {
+        const key = value.substring(9);
+        const svg = CURSOR_SVG_REGISTRY[key];
+        if (svg) {
+            return svgToDataUri(svg);
+        }
+        console.warn(`Cursor registry key not found: ${key}`);
+        return 'auto';
+    }
+
+    // SVG inline: "svg:<svg>...</svg>"
+    if (value.startsWith('svg:')) {
+        const svg = value.substring(4);
+        return svgToDataUri(svg);
+    }
+
+    // URL: "url(...)" or raw URL
+    if (value.startsWith('url(') || value.startsWith('http')) {
+        return value.startsWith('url(') ? value : `url(${value}), auto`;
+    }
+
+    return value;
 };
 
 export const applyTheme = (themeName: string, mode: 'light' | 'dark' = 'light') => {
@@ -74,5 +120,18 @@ export const applyTheme = (themeName: string, mode: 'light' | 'dark' = 'light') 
         Object.entries(theme.spacing).forEach(([key, value]) => {
             setCSSVariable(`--spacing-${key}`, value);
         });
+    }
+
+    // 5. Apply Appearance (Cursors)
+    if (theme.appearance?.cursors) {
+        Object.entries(theme.appearance.cursors).forEach(([state, value]) => {
+            const cssValue = processCursorValue(value);
+            setCSSVariable(`--cursor-${state}`, cssValue);
+        });
+    } else {
+        // Set defaults if no cursors defined
+        setCSSVariable('--cursor-default', 'auto');
+        setCSSVariable('--cursor-pointer', 'pointer');
+        setCSSVariable('--cursor-text', 'text');
     }
 };
