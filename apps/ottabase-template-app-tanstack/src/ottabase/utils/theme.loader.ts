@@ -178,8 +178,6 @@ export const applyTheme = (themeName: string, mode: 'light' | 'dark' = 'light') 
     // -- Cursors -------------------------------------------------------------
     const cursorMap = theme.appearance?.cursors ?? CURSOR_DEFAULTS;
     for (const [state, raw] of Object.entries(cursorMap)) {
-        if (raw !== undefined) {
-            setVar(`--cursor-${state}`, resolveCursor(raw));
-        }
+        setVar(`--cursor-${state}`, resolveCursor(raw));
     }
 };
