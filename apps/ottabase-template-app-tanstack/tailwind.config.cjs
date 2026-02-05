@@ -1,5 +1,14 @@
 const sharedPreset = require('@ottabase/ui-tailwind/tailwind.base.cjs');
 
+/**
+ * TanStack template app – Tailwind config
+ *
+ * Inherits all design-token colours, shadows, motion, and fonts
+ * from the shared preset (@ottabase/ui-tailwind).
+ *
+ * Only app-specific overrides (content paths, theme-aware spacing)
+ * are declared here.
+ */
 module.exports = {
     presets: [sharedPreset],
     content: [
@@ -15,43 +24,7 @@ module.exports = {
     ],
     theme: {
         extend: {
-            fontFamily: {
-                sans: ['var(--font-body)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-                heading: ['var(--font-heading)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-                handwriting: ['var(--font-handwriting)', 'cursive'],
-            },
-            colors: {
-                border: 'hsl(var(--border) / <alpha-value>)',
-                input: 'hsl(var(--input) / <alpha-value>)',
-                ring: 'hsl(var(--ring) / <alpha-value>)',
-                background: 'hsl(var(--background) / <alpha-value>)',
-                foreground: 'hsl(var(--foreground) / <alpha-value>)',
-                primary: {
-                    DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
-                    foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
-                },
-                secondary: {
-                    DEFAULT: 'hsl(var(--secondary) / <alpha-value>)',
-                    foreground: 'hsl(var(--secondary-foreground) / <alpha-value>)',
-                },
-                destructive: {
-                    DEFAULT: 'hsl(var(--destructive) / <alpha-value>)',
-                    foreground: 'hsl(var(--destructive-foreground) / <alpha-value>)',
-                },
-                muted: {
-                    DEFAULT: 'hsl(var(--muted) / <alpha-value>)',
-                    foreground: 'hsl(var(--muted-foreground) / <alpha-value>)',
-                },
-                accent: {
-                    DEFAULT: 'hsl(var(--accent) / <alpha-value>)',
-                    foreground: 'hsl(var(--accent-foreground) / <alpha-value>)',
-                },
-            },
-            borderRadius: {
-                lg: 'var(--radius)',
-                md: 'calc(var(--radius) - 2px)',
-                sm: 'calc(var(--radius) - 4px)',
-            },
+            /* Theme-aware spacing mapped from theme.loader CSS vars */
             spacing: {
                 'theme-section': 'var(--spacing-section)',
                 'theme-card': 'var(--spacing-card)',
