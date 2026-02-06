@@ -25,6 +25,13 @@ export function AdminIndexPage() {
             disabled: false,
         },
         {
+            title: 'Theme Generator',
+            description: 'Generate color palettes and check accessibility contrast.',
+            href: '/admin/theme-generator',
+            icon: Palette,
+            disabled: false,
+        },
+        {
             title: 'Blog Management',
             description: 'Create and manage blog posts, changelogs, and documentation.',
             href: '/admin/blog',

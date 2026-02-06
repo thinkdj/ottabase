@@ -3,15 +3,7 @@ import { api, isApiError } from '@/lib/api';
 import { BrandLayout } from '@/ottabase/components/BrandLayout';
 import { APP_META } from '@/ottabase/config/app.config';
 import { Button, Toaster } from '@ottabase/ui-shadcn';
-import {
-    Link,
-    Outlet,
-    RootRoute,
-    Route,
-    Router,
-    createBrowserHistory,
-    lazyRouteComponent,
-} from '@tanstack/react-router';
+import { Link, RootRoute, Route, Router, createBrowserHistory, lazyRouteComponent } from '@tanstack/react-router';
 import { useState } from 'react';
 
 function RootLayout() {
@@ -458,6 +450,16 @@ const adminBrandEngineRoute = new Route({
     ),
 });
 
+const adminThemeGeneratorRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/theme-generator',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/ThemeGeneratorPage').then((m) => ({
+            default: m.ThemeGeneratorPage,
+        })),
+    ),
+});
+
 // Admin Referrals route
 const adminReferralsRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -747,6 +749,7 @@ const routeTree = rootRoute.addChildren([
     adminBlogEditRoute,
     adminBlogStudioRoute,
     adminDbRoute,
+    adminThemeGeneratorRoute,
     adminRBACRoute,
     adminRBACRolesRoute,
     adminRBACPermissionsRoute,

@@ -4,45 +4,48 @@
 
 // ── Types ──────────────────────────────────────────────────────────────────
 export type {
-    TokenTypography,
-    TokenColors,
-    TokenShadows,
-    TokenMotion,
-    TokenCursors,
-    TokenSpacing,
-    TokenAliases,
     DesignTokens,
+    TokenAliases,
+    TokenColors,
+    TokenCursors,
+    TokenMotion,
+    TokenShadows,
+    TokenSpacing,
+    TokenTypography,
 } from './tokens';
 
-export type { HeaderVariant, NavigationVariant, ContentWidth, Density, LayoutConfig } from './layout';
+export type { ContentWidth, Density, HeaderVariant, LayoutConfig, NavigationVariant } from './layout';
 
-export type { BrandTheme } from './theme';
-export type { ResolvedBrandTheme, ResolveOptions } from './resolver';
 export type { LegacyThemeConfig } from './adapter';
+export type { ResolveOptions, ResolvedBrandTheme } from './resolver';
+export type { BrandTheme } from './theme';
 
 // ── Constants / Defaults ───────────────────────────────────────────────────
-export { DEFAULT_LAYOUT } from './layout';
 export {
-    DEFAULT_COLORS_LIGHT,
     DEFAULT_COLORS_DARK,
-    DEFAULT_SHADOWS,
-    DEFAULT_MOTION,
+    DEFAULT_COLORS_LIGHT,
     DEFAULT_CURSORS,
+    DEFAULT_MOTION,
+    DEFAULT_SHADOWS,
     DEFAULT_SPACING,
 } from './defaults';
+export { DEFAULT_LAYOUT } from './layout';
 
 // ── Core functions ─────────────────────────────────────────────────────────
-export { resolveTheme, deepMerge, resolveAliases } from './resolver';
-export { buildCSSVarMap, injectCSSVars, injectFont, applyBrandTheme } from './css-runtime';
+export { createTokenAccessor, getToken } from './accessors';
+export { calculateContrastRatio, generatePalette, generateSemanticDefaults, hexToHsl } from './colors';
+export type { SemanticPalette } from './colors';
+export { applyBrandTheme, buildCSSVarMap, injectCSSVars, injectFont } from './css-runtime';
+export { deepMerge, resolveAliases, resolveTheme } from './resolver';
 
 // ── Registry ───────────────────────────────────────────────────────────────
 export {
-    registerThemes,
-    registerTheme,
+    clearThemeRegistry,
+    getRegisteredThemeNames,
     getThemeByName,
     getThemeOrDefault,
-    getRegisteredThemeNames,
-    clearThemeRegistry,
+    registerTheme,
+    registerThemes,
 } from './registry';
 
 // ── Legacy adapter ─────────────────────────────────────────────────────────
