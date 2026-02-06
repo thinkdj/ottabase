@@ -2,7 +2,7 @@
 // BrandEngine – Default token values
 // ---------------------------------------------------------------------------
 
-import type { TokenColors, TokenShadows, TokenMotion, TokenCursors, TokenSpacing } from './tokens';
+import type { TokenColors, TokenCursors, TokenMotion, TokenShadows, TokenSpacing } from './tokens';
 
 /** Default light-mode colour palette */
 export const DEFAULT_COLORS_LIGHT: TokenColors = {
@@ -28,7 +28,7 @@ export const DEFAULT_COLORS_LIGHT: TokenColors = {
     'sidebar-background': '210 40% 97%',
     'sidebar-foreground': '222.2 47.4% 11.2%',
     'sidebar-border': '214.3 31.8% 91.4%',
-    'sidebar-accent': '221.2 83.2% 53.3% / 0.08',
+    'sidebar-accent': '221.2 83.2% 53.3%',
     'sidebar-accent-foreground': '221.2 83.2% 53.3%',
     'sidebar-ring': '221.2 83.2% 53.3%',
     success: '150 60% 40%',
@@ -68,7 +68,7 @@ export const DEFAULT_COLORS_DARK: TokenColors = {
     'sidebar-background': '222.2 70% 7%',
     'sidebar-foreground': '215 20.2% 65.1%',
     'sidebar-border': '217.2 32.6% 17.5%',
-    'sidebar-accent': '217.2 91.2% 59.8% / 0.1',
+    'sidebar-accent': '217.2 91.2% 59.8%',
     'sidebar-accent-foreground': '217.2 91.2% 59.8%',
     'sidebar-ring': '217.2 91.2% 59.8%',
     success: '154 56% 48%',

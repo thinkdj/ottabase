@@ -12,9 +12,9 @@
 // The `applyBrandTheme` convenience function targets `document.documentElement`.
 // ---------------------------------------------------------------------------
 
+import type { LayoutConfig } from './layout';
 import type { ResolvedBrandTheme } from './resolver';
 import type { TokenColors } from './tokens';
-import type { LayoutConfig } from './layout';
 
 // ---------------------------------------------------------------------------
 // Pure token → CSS-var map builder (no DOM dependency)
@@ -116,10 +116,16 @@ const injectedFontUrls = new Set<string>();
 export function injectFont(url: string): void {
     if (typeof document === 'undefined') return; // SSR guard
     if (injectedFontUrls.has(url)) return;
-    if (document.querySelector(`link[href="${url}"]`)) {
-        injectedFontUrls.add(url);
-        return;
+
+    // Check if the font is already in the DOM (iterating to avoid unsafe selector)
+    const links = document.getElementsByTagName('link');
+    for (let i = 0; i < links.length; i++) {
+        if (links[i].href === url && links[i].rel === 'stylesheet') {
+            injectedFontUrls.add(url);
+            return;
+        }
     }
+
     const linkEl = document.createElement('link');
     linkEl.href = url;
     linkEl.rel = 'stylesheet';

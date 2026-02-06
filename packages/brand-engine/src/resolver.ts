@@ -10,18 +10,18 @@
 //   • White-label / multi-tenant support
 // ---------------------------------------------------------------------------
 
-import type { BrandTheme } from './theme';
-import type { DesignTokens, TokenAliases, TokenColors } from './tokens';
-import type { LayoutConfig } from './layout';
-import { DEFAULT_LAYOUT } from './layout';
 import {
-    DEFAULT_COLORS_LIGHT,
     DEFAULT_COLORS_DARK,
-    DEFAULT_SHADOWS,
-    DEFAULT_MOTION,
+    DEFAULT_COLORS_LIGHT,
     DEFAULT_CURSORS,
+    DEFAULT_MOTION,
+    DEFAULT_SHADOWS,
     DEFAULT_SPACING,
 } from './defaults';
+import type { LayoutConfig } from './layout';
+import { DEFAULT_LAYOUT } from './layout';
+import type { BrandTheme } from './theme';
+import type { DesignTokens, TokenAliases, TokenColors } from './tokens';
 
 // ---------------------------------------------------------------------------
 // Deep-merge utility
@@ -59,8 +59,8 @@ export function deepMerge<T extends Record<string, unknown>>(target: T, source: 
 
 /**
  * Resolves aliases within a colour palette.
- * If a token value matches a key in `aliases`, replace it with the aliased
- * token's value from the same palette.
+ * If a token alias key exists, it creates a new property with that key,
+ * pointing to the value of the target token.
  */
 export function resolveAliases(palette: TokenColors, aliases?: TokenAliases): TokenColors {
     if (!aliases || Object.keys(aliases).length === 0) return palette;
@@ -83,11 +83,11 @@ export interface ResolvedBrandTheme {
     name: string;
     colors: TokenColors;
     typography: DesignTokens['typography'];
-    spacing: DesignTokens['spacing'];
+    spacing: NonNullable<DesignTokens['spacing']>;
     radius: string;
     shadows: Required<NonNullable<DesignTokens['shadow']>>;
     motion: Required<NonNullable<DesignTokens['motion']>>;
-    cursors: BrandTheme['cursors'];
+    cursors: NonNullable<BrandTheme['cursors']>;
     layout: LayoutConfig;
 }
 
@@ -134,7 +134,7 @@ export function resolveTheme(options: ResolveOptions): ResolvedBrandTheme {
     const shadows = { ...DEFAULT_SHADOWS, ...merged.tokens.shadow };
     const motion = { ...DEFAULT_MOTION, ...merged.tokens.motion };
     const cursors = merged.cursors ?? DEFAULT_CURSORS;
-    const layout = merged.layout ?? DEFAULT_LAYOUT;
+    const layout = { ...DEFAULT_LAYOUT, ...merged.layout };
 
     return {
         name: merged.name,
