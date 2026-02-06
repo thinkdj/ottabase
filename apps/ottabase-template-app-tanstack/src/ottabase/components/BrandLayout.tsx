@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage, Button } from '@ottabase/ui-shadcn
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { LogIn, LogOut, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { LayoutConfig } from '@ottabase/brand-engine';
 
 // ---------------------------------------------------------------------------
@@ -149,40 +150,44 @@ function DrawerNav() {
                 <Menu className="h-5 w-5" />
             </Button>
 
-            {open && (
-                <>
-                    <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setOpen(false)} />
-                    <div className="fixed inset-y-0 left-0 w-64 bg-sidebar-background border-r z-50 flex flex-col animate-in slide-in-from-left duration-200">
-                        <div className="flex items-center justify-between p-4 border-b">
-                            <span className="font-semibold text-sm">{APP_META.appName}</span>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 px-0" onClick={() => setOpen(false)}>
-                                <X className="h-4 w-4" />
-                            </Button>
+            {/* Portal to document.body so the overlay is not clipped by the
+                sticky header's backdrop-blur stacking context */}
+            {open &&
+                createPortal(
+                    <>
+                        <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setOpen(false)} />
+                        <div className="fixed inset-y-0 left-0 w-64 bg-sidebar-background border-r z-50 flex flex-col animate-in slide-in-from-left duration-200">
+                            <div className="flex items-center justify-between p-4 border-b">
+                                <span className="font-semibold text-sm">{APP_META.appName}</span>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 px-0" onClick={() => setOpen(false)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <nav className="flex flex-col gap-0.5 p-3 overflow-y-auto flex-1">
+                                {NAV_LINKS.filter((l) => !l.authRequired || isAuthenticated).map((link) => {
+                                    const isActive =
+                                        location.pathname === link.to ||
+                                        (link.to !== '/' && location.pathname.startsWith(link.to));
+                                    return (
+                                        <Link
+                                            key={link.to}
+                                            to={link.to}
+                                            className={`px-3 py-2 text-sm rounded-md transition-colors ${
+                                                isActive
+                                                    ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                                                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                                            }`}
+                                            onClick={() => setOpen(false)}
+                                        >
+                                            {link.label}
+                                        </Link>
+                                    );
+                                })}
+                            </nav>
                         </div>
-                        <nav className="flex flex-col gap-0.5 p-3 overflow-y-auto flex-1">
-                            {NAV_LINKS.filter((l) => !l.authRequired || isAuthenticated).map((link) => {
-                                const isActive =
-                                    location.pathname === link.to ||
-                                    (link.to !== '/' && location.pathname.startsWith(link.to));
-                                return (
-                                    <Link
-                                        key={link.to}
-                                        to={link.to}
-                                        className={`px-3 py-2 text-sm rounded-md transition-colors ${
-                                            isActive
-                                                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                                                : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                                        }`}
-                                        onClick={() => setOpen(false)}
-                                    >
-                                        {link.label}
-                                    </Link>
-                                );
-                            })}
-                        </nav>
-                    </div>
-                </>
-            )}
+                    </>,
+                    document.body,
+                )}
         </>
     );
 }

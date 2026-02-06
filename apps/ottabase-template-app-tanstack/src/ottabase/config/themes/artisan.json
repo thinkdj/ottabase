@@ -122,8 +122,8 @@
     },
     "appearance": {
         "cursors": {
-            "default": "registry:arrow-retro",
-            "pointer": "registry:hand-pointer",
+            "default": "registry:arrow-crimson",
+            "pointer": "registry:hand-crimson",
             "text": "text"
         }
     }

@@ -122,8 +122,8 @@
     },
     "appearance": {
         "cursors": {
-            "default": "registry:dot",
-            "pointer": "registry:hand-pointer",
+            "default": "registry:arrow-emerald",
+            "pointer": "registry:hand-emerald",
             "text": "text",
             "crosshair": "registry:crosshair"
         }
