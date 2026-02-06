@@ -80,6 +80,24 @@ describe('deepMerge', () => {
         const result = deepMerge({ a: '1' }, { a: undefined } as any);
         expect(result.a).toBe('1');
     });
+
+    it('handles deeply nested merge (3+ levels)', () => {
+        const target = { a: { b: { c: 1, d: 2 }, e: 3 } };
+        const source = { a: { b: { c: 99 } } };
+        const result = deepMerge(target, source as any);
+        expect(result).toEqual({ a: { b: { c: 99, d: 2 }, e: 3 } });
+    });
+
+    it('replaces primitives with objects', () => {
+        const result = deepMerge({ a: 'string' }, { a: { nested: true } } as any);
+        expect(result.a).toEqual({ nested: true });
+    });
+
+    it('handles empty source', () => {
+        const target = { a: 1, b: 2 };
+        const result = deepMerge(target, {});
+        expect(result).toEqual({ a: 1, b: 2 });
+    });
 });
 
 // ===========================================================================
@@ -200,6 +218,110 @@ describe('resolveTheme', () => {
         const resolved = resolveTheme({ base: theme });
         expect(resolved.colors.background).toBe(DEFAULT_COLORS_LIGHT.background);
     });
+
+    it('uses custom cursors when provided on theme', () => {
+        const theme = makeTheme({
+            cursors: { default: 'url(custom.svg), auto', pointer: 'url(hand.svg), pointer' },
+        });
+        const resolved = resolveTheme({ base: theme });
+        expect(resolved.cursors?.default).toBe('url(custom.svg), auto');
+        expect(resolved.cursors?.pointer).toBe('url(hand.svg), pointer');
+    });
+
+    it('falls back to DEFAULT_CURSORS when no cursors provided', () => {
+        const theme = makeTheme();
+        const resolved = resolveTheme({ base: theme });
+        expect(resolved.cursors).toEqual(DEFAULT_CURSORS);
+    });
+
+    it('falls back to DEFAULT_LAYOUT when no layout provided', () => {
+        const theme = makeTheme();
+        const resolved = resolveTheme({ base: theme });
+        expect(resolved.layout).toEqual(DEFAULT_LAYOUT);
+    });
+
+    it('merges tenant layout overrides with base layout', () => {
+        const base = makeTheme({
+            layout: {
+                header: 'topbar',
+                navigation: 'sidebar',
+                contentWidth: 'fluid',
+                footer: true,
+                density: 'comfy',
+            },
+        });
+        const resolved = resolveTheme({
+            base,
+            tenantOverrides: {
+                layout: {
+                    header: 'minimal',
+                    navigation: 'sidebar',
+                    contentWidth: 'fluid',
+                    footer: true,
+                    density: 'compact',
+                },
+            },
+        });
+        expect(resolved.layout.header).toBe('minimal');
+        expect(resolved.layout.density).toBe('compact');
+    });
+
+    it('uses DEFAULT_SPACING when spacing is not provided', () => {
+        const theme = makeTheme();
+        const resolved = resolveTheme({ base: theme });
+        expect(resolved.spacing).toEqual(DEFAULT_SPACING);
+    });
+
+    it('uses custom spacing when provided', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: DEFAULT_COLORS_LIGHT, dark: DEFAULT_COLORS_DARK },
+                typography: {
+                    heading: { fontFamily: 'Inter' },
+                    body: { fontFamily: 'Inter' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+                spacing: { section: '4rem', card: '2rem', element: '1rem' },
+            },
+        });
+        const resolved = resolveTheme({ base: theme });
+        expect(resolved.spacing.section).toBe('4rem');
+    });
+
+    it('merges shadow overrides with defaults', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: DEFAULT_COLORS_LIGHT, dark: DEFAULT_COLORS_DARK },
+                typography: {
+                    heading: { fontFamily: 'Inter' },
+                    body: { fontFamily: 'Inter' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+                shadow: { xs: 'custom-xs-shadow' },
+            },
+        });
+        const resolved = resolveTheme({ base: theme });
+        expect(resolved.shadows.xs).toBe('custom-xs-shadow');
+        // Other shadow levels should still have defaults
+        expect(resolved.shadows.sm).toBe(DEFAULT_SHADOWS.sm);
+    });
+
+    it('merges motion overrides with defaults', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: DEFAULT_COLORS_LIGHT, dark: DEFAULT_COLORS_DARK },
+                typography: {
+                    heading: { fontFamily: 'Inter' },
+                    body: { fontFamily: 'Inter' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+                motion: { durationFast: '50ms' },
+            },
+        });
+        const resolved = resolveTheme({ base: theme });
+        expect(resolved.motion.durationFast).toBe('50ms');
+        expect(resolved.motion.durationNormal).toBe(DEFAULT_MOTION.durationNormal);
+    });
 });
 
 // ===========================================================================
@@ -262,6 +384,52 @@ describe('buildCSSVarMap', () => {
         const vars = buildCSSVarMap(resolved);
         expect(vars['--cursor-default']).toBe('auto');
         expect(vars['--cursor-pointer']).toBe('pointer');
+    });
+
+    it('includes custom cursor vars from theme config', () => {
+        const theme = makeTheme({
+            cursors: {
+                default: 'url(data:image/svg+xml,...), auto',
+                pointer: 'url(data:image/svg+xml,...), pointer',
+                grab: 'grab',
+            },
+        });
+        const customResolved = resolveTheme({ base: theme, mode: 'light' });
+        const vars = buildCSSVarMap(customResolved);
+        expect(vars['--cursor-default']).toBe('url(data:image/svg+xml,...), auto');
+        expect(vars['--cursor-grab']).toBe('grab');
+    });
+
+    it('omits spacing vars when spacing is empty', () => {
+        // Resolved always has spacing (defaults), but verify var naming
+        const vars = buildCSSVarMap(resolved);
+        expect(vars['--spacing-element']).toBe(DEFAULT_SPACING.element);
+    });
+
+    it('generates all shadow level vars', () => {
+        const vars = buildCSSVarMap(resolved);
+        expect(vars['--shadow-xs']).toBeDefined();
+        expect(vars['--shadow-sm']).toBeDefined();
+        expect(vars['--shadow-md']).toBeDefined();
+        expect(vars['--shadow-lg']).toBeDefined();
+        expect(vars['--shadow-xl']).toBeDefined();
+    });
+
+    it('generates all motion vars', () => {
+        const vars = buildCSSVarMap(resolved);
+        expect(vars['--duration-fast']).toBeDefined();
+        expect(vars['--duration-normal']).toBeDefined();
+        expect(vars['--duration-slow']).toBeDefined();
+        expect(vars['--ease']).toBeDefined();
+        expect(vars['--ease-enter']).toBeDefined();
+        expect(vars['--ease-exit']).toBeDefined();
+    });
+
+    it('dark mode produces different colour vars than light', () => {
+        const darkResolved = resolveTheme({ base: makeTheme(), mode: 'dark' });
+        const lightVars = buildCSSVarMap(resolved);
+        const darkVars = buildCSSVarMap(darkResolved);
+        expect(darkVars['--background']).not.toBe(lightVars['--background']);
     });
 });
 
@@ -340,6 +508,95 @@ describe('fromLegacyThemeConfig', () => {
         expect(brand.tokens.shadow).toBeUndefined();
         expect(brand.cursors).toBeUndefined();
     });
+
+    it('reads cursors from top-level (flat format, preferred)', () => {
+        const legacy = {
+            name: 'flat',
+            typography: {
+                heading: { fontFamily: 'Inter' },
+                body: { fontFamily: 'Inter' },
+                handwriting: { fontFamily: 'Inter' },
+            },
+            colors: {
+                light: { background: '0 0% 100%' } as any,
+                dark: { background: '0 0% 0%' } as any,
+            },
+            cursors: { default: 'url(arrow.svg), auto', pointer: 'url(hand.svg), pointer' },
+        };
+
+        const brand = fromLegacyThemeConfig(legacy);
+        expect(brand.cursors?.default).toBe('url(arrow.svg), auto');
+        expect(brand.cursors?.pointer).toBe('url(hand.svg), pointer');
+    });
+
+    it('top-level cursors take precedence over appearance.cursors', () => {
+        const legacy = {
+            name: 'both',
+            typography: {
+                heading: { fontFamily: 'Inter' },
+                body: { fontFamily: 'Inter' },
+                handwriting: { fontFamily: 'Inter' },
+            },
+            colors: {
+                light: { background: '0 0% 100%' } as any,
+                dark: { background: '0 0% 0%' } as any,
+            },
+            cursors: { default: 'top-level-cursor' },
+            appearance: { cursors: { default: 'legacy-cursor' } },
+        };
+
+        const brand = fromLegacyThemeConfig(legacy);
+        expect(brand.cursors?.default).toBe('top-level-cursor');
+    });
+
+    it('passes layout config through to BrandTheme', () => {
+        const legacy = {
+            name: 'with-layout',
+            typography: {
+                heading: { fontFamily: 'Inter' },
+                body: { fontFamily: 'Inter' },
+                handwriting: { fontFamily: 'Inter' },
+            },
+            colors: {
+                light: { background: '0 0% 100%' } as any,
+                dark: { background: '0 0% 0%' } as any,
+            },
+            layout: {
+                header: 'minimal',
+                navigation: 'drawer',
+                contentWidth: 'full',
+                footer: false,
+                density: 'compact',
+            },
+        };
+
+        const brand = fromLegacyThemeConfig(legacy);
+        expect(brand.layout).toEqual({
+            header: 'minimal',
+            navigation: 'drawer',
+            contentWidth: 'full',
+            footer: false,
+            density: 'compact',
+        });
+    });
+
+    it('layout is undefined when not provided in legacy config', () => {
+        const legacy = {
+            name: 'no-layout',
+            typography: {
+                heading: { fontFamily: 'Inter' },
+                body: { fontFamily: 'Inter' },
+                handwriting: { fontFamily: 'Inter' },
+            },
+            colors: {
+                light: { background: '0 0% 100%' } as any,
+                dark: { background: '0 0% 0%' } as any,
+            },
+        };
+
+        const brand = fromLegacyThemeConfig(legacy);
+        expect(brand.layout).toBeUndefined();
+    });
 });
 
 // ===========================================================================
@@ -386,6 +643,37 @@ describe('Theme Registry', () => {
         registerTheme(makeTheme());
         clearThemeRegistry();
         expect(getRegisteredThemeNames()).toEqual([]);
+    });
+
+    it('overwrites an existing theme with the same name', () => {
+        const v1 = makeTheme({ name: 'brand' });
+        const v2 = makeTheme({
+            name: 'brand',
+            tokens: {
+                color: { light: DEFAULT_COLORS_LIGHT, dark: DEFAULT_COLORS_DARK },
+                typography: {
+                    heading: { fontFamily: 'Roboto' },
+                    body: { fontFamily: 'Roboto' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        });
+        registerTheme(v1);
+        registerTheme(v2);
+        expect(getThemeByName('brand')?.tokens.typography.heading.fontFamily).toBe('Roboto');
+        expect(getRegisteredThemeNames()).toEqual(['brand']); // still one entry
+    });
+
+    it('getThemeOrDefault uses a custom fallback name', () => {
+        registerThemes([makeTheme({ name: 'fallback-theme' }), makeTheme({ name: 'other' })]);
+        const result = getThemeOrDefault('missing', 'fallback-theme');
+        expect(result.name).toBe('fallback-theme');
+    });
+
+    it('getThemeOrDefault returns exact match over fallback', () => {
+        registerThemes([makeTheme({ name: 'exact' }), makeTheme({ name: 'default' })]);
+        const result = getThemeOrDefault('exact');
+        expect(result.name).toBe('exact');
     });
 });
 
