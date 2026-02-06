@@ -113,6 +113,13 @@
             "chart-5": "16 72% 62%"
         }
     },
+    "layout": {
+        "header": "topbar",
+        "navigation": "sidebar",
+        "contentWidth": "fluid",
+        "footer": false,
+        "density": "compact"
+    },
     "appearance": {
         "cursors": {
             "default": "auto",

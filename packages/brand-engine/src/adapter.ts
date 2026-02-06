@@ -8,6 +8,7 @@
 
 import type { BrandTheme } from './theme';
 import type { TokenCursors } from './tokens';
+import type { LayoutConfig } from './layout';
 
 /**
  * Shape of the legacy ThemeConfig JSON that exists in
@@ -37,6 +38,13 @@ export interface LegacyThemeConfig {
         easingEnter?: string;
         easingExit?: string;
     };
+    layout?: {
+        header?: string;
+        navigation?: string;
+        contentWidth?: string;
+        footer?: boolean;
+        density?: string;
+    };
     appearance?: {
         cursors?: Record<string, string>;
     };
@@ -61,6 +69,7 @@ export function fromLegacyThemeConfig(legacy: LegacyThemeConfig): BrandTheme {
             shadow: legacy.shadows as BrandTheme['tokens']['shadow'],
             motion: legacy.motion,
         },
+        layout: legacy.layout as LayoutConfig | undefined,
         cursors: legacy.appearance?.cursors as TokenCursors | undefined,
     };
 }

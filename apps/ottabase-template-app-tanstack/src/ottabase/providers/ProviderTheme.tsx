@@ -1,14 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTheme as useNextTheme } from 'next-themes';
-import type { BrandTheme, ResolvedBrandTheme } from '@ottabase/brand-engine';
+import type { BrandTheme, LayoutConfig, ResolvedBrandTheme } from '@ottabase/brand-engine';
 import { ThemeProviderContext } from './ThemeContext';
 import { applyTheme, getTheme } from '../utils/theme.loader';
+
+const LAYOUT_OVERRIDES_KEY = 'ottabase-layout-overrides';
 
 type ThemeProviderProps = {
     children: React.ReactNode;
     defaultTheme?: string;
     storageKey?: string;
 };
+
+function loadLayoutOverrides(): Partial<LayoutConfig> {
+    try {
+        const stored = localStorage.getItem(LAYOUT_OVERRIDES_KEY);
+        return stored ? JSON.parse(stored) : {};
+    } catch {
+        return {};
+    }
+}
+
+function mergeLayout(base: LayoutConfig | undefined | null, overrides: Partial<LayoutConfig>): LayoutConfig | null {
+    if (!base) return null;
+    if (Object.keys(overrides).length === 0) return base;
+    return { ...base, ...overrides };
+}
 
 export function ThemeProvider({
     children,
@@ -24,6 +41,7 @@ export function ThemeProvider({
 
     const [config, setConfig] = useState<BrandTheme>(getTheme(theme));
     const [resolved, setResolved] = useState<ResolvedBrandTheme | null>(null);
+    const [layoutOverrides, setLayoutOverridesState] = useState<Partial<LayoutConfig>>(loadLayoutOverrides);
 
     useEffect(() => {
         // Apply the active theme configuration whenever theme or mode changes
@@ -38,18 +56,43 @@ export function ThemeProvider({
         setResolved(resolvedThemeResult);
     }, [theme, resolvedTheme]);
 
-    const setTheme = (newTheme: string) => {
-        localStorage.setItem(`${storageKey}-name`, newTheme);
-        setThemeState(newTheme);
-    };
+    const setTheme = useCallback(
+        (newTheme: string) => {
+            localStorage.setItem(`${storageKey}-name`, newTheme);
+            setThemeState(newTheme);
+        },
+        [storageKey],
+    );
 
-    const value = {
-        theme,
-        setTheme,
-        config,
-        resolved,
-        layout: resolved?.layout ?? null,
-    };
+    const setLayoutOverrides = useCallback((overrides: Partial<LayoutConfig>) => {
+        setLayoutOverridesState(overrides);
+        try {
+            localStorage.setItem(LAYOUT_OVERRIDES_KEY, JSON.stringify(overrides));
+        } catch {
+            // storage full – silent fail
+        }
+    }, []);
+
+    const resetLayoutOverrides = useCallback(() => {
+        setLayoutOverridesState({});
+        localStorage.removeItem(LAYOUT_OVERRIDES_KEY);
+    }, []);
+
+    const layout = useMemo(() => mergeLayout(resolved?.layout, layoutOverrides), [resolved?.layout, layoutOverrides]);
+
+    const value = useMemo(
+        () => ({
+            theme,
+            setTheme,
+            config,
+            resolved,
+            layout,
+            layoutOverrides,
+            setLayoutOverrides,
+            resetLayoutOverrides,
+        }),
+        [theme, setTheme, config, resolved, layout, layoutOverrides, setLayoutOverrides, resetLayoutOverrides],
+    );
 
     return <ThemeProviderContext.Provider value={value}>{children}</ThemeProviderContext.Provider>;
 }
