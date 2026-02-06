@@ -7,13 +7,13 @@ import { ThemeSwitcher } from '@/ottabase/components/ThemeSwitcher';
 import { APP_META } from '@/ottabase/config/app.config';
 import { i18nConfig } from '@/ottabase/config/i18n.config';
 import { useTheme } from '@/ottabase/providers/ThemeContext';
+import type { LayoutConfig } from '@ottabase/brand-engine';
 import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
 import { Avatar, AvatarFallback, AvatarImage, Button } from '@ottabase/ui-shadcn';
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { LogIn, LogOut, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { LayoutConfig } from '@ottabase/brand-engine';
 
 // ---------------------------------------------------------------------------
 // Nav link definitions (shared across all layout variants)
@@ -128,9 +128,7 @@ function ControlsSection() {
             <ThemeSwitcher />
             <DarkModeToggle type="button" title="Toggle dark/light mode" />
             <LanguageSwitcher languages={i18nConfig.enabledLanguages} showLabel={false} />
-            {isAuthenticated && (
-                <OrganizationSwitcher currentOrgId={currentOrgId} onOrgChange={setCurrentOrgId} />
-            )}
+            {isAuthenticated && <OrganizationSwitcher currentOrgId={currentOrgId} onOrgChange={setCurrentOrgId} />}
         </div>
     );
 }
@@ -156,10 +154,15 @@ function DrawerNav() {
                 createPortal(
                     <>
                         <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setOpen(false)} />
-                        <div className="fixed inset-y-0 left-0 w-64 bg-sidebar-background border-r z-50 flex flex-col animate-in slide-in-from-left duration-200">
+                        <div className="fixed inset-y-0 left-0 w-64 bg-sidebar border-r z-50 flex flex-col animate-in slide-in-from-left duration-200">
                             <div className="flex items-center justify-between p-4 border-b">
                                 <span className="font-semibold text-sm">{APP_META.appName}</span>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 px-0" onClick={() => setOpen(false)}>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 px-0"
+                                    onClick={() => setOpen(false)}
+                                >
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -202,12 +205,11 @@ function SidebarNav() {
     const links = NAV_LINKS.filter((l) => !l.authRequired || isAuthenticated);
 
     return (
-        <aside className="w-full border-b bg-sidebar-background md:w-56 md:shrink-0 md:border-b-0 md:border-r md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:overflow-y-auto">
+        <aside className="w-full border-b bg-sidebar md:w-56 md:shrink-0 md:border-b-0 md:border-r md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:overflow-y-auto">
             <nav className="flex gap-1 p-2 overflow-x-auto md:flex-col md:gap-0.5 md:p-3 md:overflow-x-visible">
                 {links.map((link) => {
                     const isActive =
-                        location.pathname === link.to ||
-                        (link.to !== '/' && location.pathname.startsWith(link.to));
+                        location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
                     return (
                         <Link
                             key={link.to}
@@ -336,9 +338,7 @@ export function BrandLayout() {
             {header === 'topbar' && (
                 <TopbarHeader showNav={navInHeader} containerClass={cwClass} leading={drawerTrigger} />
             )}
-            {header === 'sidebar' && (
-                <TopbarHeader showNav={false} containerClass="w-full" leading={drawerTrigger} />
-            )}
+            {header === 'sidebar' && <TopbarHeader showNav={false} containerClass="w-full" leading={drawerTrigger} />}
             {header === 'minimal' && <MinimalHeader containerClass={cwClass} leading={drawerTrigger} />}
             {/* header === 'none' renders nothing above the content */}
             {header === 'none' && hasDrawer && (
