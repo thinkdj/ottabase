@@ -12,6 +12,7 @@ import {
 } from '@/ottabase/providers';
 import { LanguageManager } from '@/ottabase/providers/LanguageManager';
 import { ThemeProvider } from '@/ottabase/providers/ProviderTheme';
+import { ScaleManager } from '@/ottabase/providers/ScaleManager';
 import { SidebarStateManager } from '@/ottabase/providers/SidebarStateManager';
 import { ThemeManager } from '@/ottabase/providers/ThemeManager';
 import { ZoomManager } from '@/ottabase/providers/ZoomManager';
@@ -72,6 +73,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                                     <ThemeProvider>
                                         <ThemeManager />
                                         <ZoomManager />
+                                        <ScaleManager />
                                         <SidebarStateManager />
                                         <ShadcnProviders enableThemeProvider={false} enableToaster>
                                             <SpotlightProvider

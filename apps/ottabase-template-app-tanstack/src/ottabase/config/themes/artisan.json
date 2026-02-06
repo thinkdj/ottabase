@@ -120,11 +120,9 @@
         "footer": true,
         "density": "comfy"
     },
-    "appearance": {
-        "cursors": {
-            "default": "registry:arrow-crimson",
-            "pointer": "registry:hand-crimson",
-            "text": "text"
-        }
+    "cursors": {
+        "default": "registry:arrow-crimson",
+        "pointer": "registry:hand-crimson",
+        "text": "text"
     }
 }

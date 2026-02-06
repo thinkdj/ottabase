@@ -120,12 +120,10 @@
         "footer": true,
         "density": "comfy"
     },
-    "appearance": {
-        "cursors": {
-            "default": "registry:arrow-emerald",
-            "pointer": "registry:hand-emerald",
-            "text": "text",
-            "crosshair": "registry:crosshair"
-        }
+    "cursors": {
+        "default": "registry:arrow-emerald",
+        "pointer": "registry:hand-emerald",
+        "text": "text",
+        "crosshair": "registry:crosshair"
     }
 }
