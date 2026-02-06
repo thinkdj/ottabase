@@ -4,7 +4,19 @@
  */
 
 // Export types
-export type { AppState, AppStateConfig, BaseUser, Theme, ThemeInfo, SidebarState } from './types';
+export type {
+    AppState,
+    AppStateConfig,
+    BaseUser,
+    ContentWidth,
+    Density,
+    HeaderVariant,
+    LayoutConfig,
+    NavigationVariant,
+    Theme,
+    ThemeInfo,
+    SidebarState,
+} from './types';
 
 // Export main function
 export { createAppState } from './createAppState';
