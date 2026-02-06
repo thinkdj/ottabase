@@ -10,8 +10,14 @@ export interface ThemeProviderState {
     config: BrandTheme;
     /** Fully resolved theme (tokens + layout + defaults applied) */
     resolved: ResolvedBrandTheme | null;
-    /** Active layout configuration (shorthand for resolved.layout) */
+    /** Active layout configuration (merged: theme defaults + admin overrides) */
     layout: LayoutConfig | null;
+    /** Admin layout overrides (partial, persisted to localStorage) */
+    layoutOverrides: Partial<LayoutConfig>;
+    /** Set admin layout overrides – merged on top of theme layout */
+    setLayoutOverrides: (overrides: Partial<LayoutConfig>) => void;
+    /** Reset layout overrides back to theme defaults */
+    resetLayoutOverrides: () => void;
 }
 
 const initialState: ThemeProviderState = {
@@ -20,6 +26,9 @@ const initialState: ThemeProviderState = {
     config: {} as BrandTheme,
     resolved: null,
     layout: null,
+    layoutOverrides: {},
+    setLayoutOverrides: () => null,
+    resetLayoutOverrides: () => null,
 };
 
 export const ThemeProviderContext = createContext<ThemeProviderState>(initialState);

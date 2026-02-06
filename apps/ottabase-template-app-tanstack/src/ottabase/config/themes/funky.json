@@ -113,12 +113,17 @@
             "chart-5": "24 74% 58%"
         }
     },
-    "appearance": {
-        "cursors": {
-            "default": "registry:dot",
-            "pointer": "registry:hand-pointer",
-            "text": "text",
-            "crosshair": "registry:crosshair"
-        }
+    "layout": {
+        "header": "topbar",
+        "navigation": "drawer",
+        "contentWidth": "full",
+        "footer": true,
+        "density": "comfy"
+    },
+    "cursors": {
+        "default": "registry:arrow-emerald",
+        "pointer": "registry:hand-emerald",
+        "text": "text",
+        "crosshair": "registry:crosshair"
     }
 }

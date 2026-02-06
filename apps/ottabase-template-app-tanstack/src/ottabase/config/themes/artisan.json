@@ -113,11 +113,16 @@
             "chart-5": "280 44% 54%"
         }
     },
-    "appearance": {
-        "cursors": {
-            "default": "registry:arrow-retro",
-            "pointer": "registry:hand-pointer",
-            "text": "text"
-        }
+    "layout": {
+        "header": "topbar",
+        "navigation": "sidebar",
+        "contentWidth": "fixed",
+        "footer": true,
+        "density": "comfy"
+    },
+    "cursors": {
+        "default": "registry:arrow-crimson",
+        "pointer": "registry:hand-crimson",
+        "text": "text"
     }
 }

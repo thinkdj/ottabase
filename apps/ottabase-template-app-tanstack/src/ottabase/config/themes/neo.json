@@ -113,11 +113,16 @@
             "chart-5": "14 72% 62%"
         }
     },
-    "appearance": {
-        "cursors": {
-            "default": "auto",
-            "pointer": "pointer",
-            "text": "text"
-        }
+    "layout": {
+        "header": "topbar",
+        "navigation": "sidebar",
+        "contentWidth": "fluid",
+        "footer": true,
+        "density": "comfy"
+    },
+    "cursors": {
+        "default": "auto",
+        "pointer": "pointer",
+        "text": "text"
     }
 }

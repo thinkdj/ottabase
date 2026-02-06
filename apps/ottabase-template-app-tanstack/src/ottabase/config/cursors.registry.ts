@@ -1,61 +1,106 @@
 /**
  * Cursor SVG Registry
  *
- * Reusable SVG cursor templates that can be referenced in theme configurations.
- * These SVGs are converted to data URIs at runtime for use with CSS cursor property.
+ * Modern, clean SVG cursor templates referenced in theme configurations.
+ * Converted to data URIs at runtime for use with CSS cursor property.
+ *
+ * Design principles:
+ *   - Classic arrow / hand shapes — no dots, rings, or gimmicks
+ *   - Theme accent colours baked into the SVG fill
+ *   - White outline for contrast on any background
  */
 
 export const CURSOR_SVG_REGISTRY: Record<string, string> = {
+    // ── Modern arrow cursors (colour-accented) ──────────────────────────
+
     /**
-     * Simple dot cursor - minimal and clean
+     * Modern arrow – crimson / artisan palette
+     * A classic pointer arrow with warm crimson fill and white border.
      */
-    dot: `<svg width="12" height="12" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="6" cy="6" r="5" fill="currentColor" stroke="white" stroke-width="1"/>
+    'arrow-crimson': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 2l2 18 5-5 4 7 2.5-1.5-4-7h7L3 2z" fill="#a8325a" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
     </svg>`,
 
     /**
-     * Ring cursor - hollow circle for non-intrusive presence
+     * Modern arrow – emerald / funky palette
      */
-    ring: `<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
+    'arrow-emerald': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 2l2 18 5-5 4 7 2.5-1.5-4-7h7L3 2z" fill="#2d9d5c" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
     </svg>`,
 
     /**
-     * Crosshair cursor - precision targeting
+     * Modern arrow – violet / midnight palette
      */
-    crosshair: `<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <line x1="12" y1="0" x2="12" y2="24" stroke="currentColor" stroke-width="1"/>
-        <line x1="0" y1="12" x2="24" y2="12" stroke="currentColor" stroke-width="1"/>
-        <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1"/>
+    'arrow-violet': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 2l2 18 5-5 4 7 2.5-1.5-4-7h7L3 2z" fill="#7c5cbf" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
     </svg>`,
 
     /**
-     * Retro arrow cursor - classic computing aesthetic
+     * Modern arrow – black classic
      */
-    'arrow-retro': `<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-        <path d="M0 0 L0 16 L6 10 L10 18 L12 17 L8 9 L16 9 Z" fill="black" stroke="white" stroke-width="1"/>
+    'arrow-classic': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 2l2 18 5-5 4 7 2.5-1.5-4-7h7L3 2z" fill="#1a1a1a" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+    </svg>`,
+
+    // ── Hand pointer cursors (colour-accented) ──────────────────────────
+
+    /**
+     * Pointing hand – crimson accent
+     */
+    'hand-crimson': `<svg width="24" height="28" viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 1c1.1 0 2 .9 2 2v9h1.5c.83 0 1.5.67 1.5 1.5V14h1.5c.83 0 1.5.67 1.5 1.5V16h1c.83 0 1.5.67 1.5 1.5V22c0 3.31-2.69 6-6 6H11c-2.12 0-4.07-1.12-5.15-2.94l-3.38-5.7a1.5 1.5 0 0 1 2.06-2.06L7 19V3c0-1.1.9-2 2-2h1z" fill="#a8325a" stroke="white" stroke-width="1.2" stroke-linejoin="round"/>
     </svg>`,
 
     /**
-     * Hand pointer cursor - interactive element indicator
+     * Pointing hand – emerald accent
      */
-    'hand-pointer': `<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M10 2a2 2 0 0 1 2 2v7h3l-5 6-5-6h3V4a2 2 0 0 1 2-2z" fill="currentColor" stroke="white" stroke-width="0.5"/>
+    'hand-emerald': `<svg width="24" height="28" viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 1c1.1 0 2 .9 2 2v9h1.5c.83 0 1.5.67 1.5 1.5V14h1.5c.83 0 1.5.67 1.5 1.5V16h1c.83 0 1.5.67 1.5 1.5V22c0 3.31-2.69 6-6 6H11c-2.12 0-4.07-1.12-5.15-2.94l-3.38-5.7a1.5 1.5 0 0 1 2.06-2.06L7 19V3c0-1.1.9-2 2-2h1z" fill="#2d9d5c" stroke="white" stroke-width="1.2" stroke-linejoin="round"/>
     </svg>`,
 
     /**
-     * Plus/add cursor - creation actions
+     * Pointing hand – classic black
      */
-    plus: `<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-        <line x1="10" y1="2" x2="10" y2="18" stroke="currentColor" stroke-width="2"/>
-        <line x1="2" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="2"/>
+    'hand-classic': `<svg width="24" height="28" viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 1c1.1 0 2 .9 2 2v9h1.5c.83 0 1.5.67 1.5 1.5V14h1.5c.83 0 1.5.67 1.5 1.5V16h1c.83 0 1.5.67 1.5 1.5V22c0 3.31-2.69 6-6 6H11c-2.12 0-4.07-1.12-5.15-2.94l-3.38-5.7a1.5 1.5 0 0 1 2.06-2.06L7 19V3c0-1.1.9-2 2-2h1z" fill="#1a1a1a" stroke="white" stroke-width="1.2" stroke-linejoin="round"/>
+    </svg>`,
+
+    // ── Crosshair (cleaned up) ──────────────────────────────────────────
+
+    /**
+     * Precision crosshair – thin, modern
+     */
+    crosshair: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <line x1="12" y1="2" x2="12" y2="10" stroke="#1a1a1a" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="12" y1="14" x2="12" y2="22" stroke="#1a1a1a" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="2" y1="12" x2="10" y2="12" stroke="#1a1a1a" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="14" y1="12" x2="22" y2="12" stroke="#1a1a1a" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="12" cy="12" r="3" fill="none" stroke="#1a1a1a" stroke-width="1.2"/>
+    </svg>`,
+
+    // ── Text cursor ─────────────────────────────────────────────────────
+
+    /**
+     * I-beam text cursor
+     */
+    'text-beam': `<svg width="16" height="24" viewBox="0 0 16 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 2h8M4 22h8M8 2v20" stroke="#1a1a1a" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>`,
+
+    // ── Legacy keys (kept for backward compat, point to new cursors) ────
+
+    /**
+     * @deprecated Use arrow-crimson or arrow-emerald instead
+     */
+    'arrow-retro': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 2l2 18 5-5 4 7 2.5-1.5-4-7h7L3 2z" fill="#1a1a1a" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
     </svg>`,
 
     /**
-     * Sparkle cursor - creative/magical actions
+     * @deprecated Use hand-crimson or hand-emerald instead
      */
-    sparkle: `<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 0l2 7h7l-5.5 4.5L18 19l-6-4.5L6 19l2.5-7.5L3 7h7z" fill="currentColor" stroke="white" stroke-width="0.5"/>
+    'hand-pointer': `<svg width="24" height="28" viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 1c1.1 0 2 .9 2 2v9h1.5c.83 0 1.5.67 1.5 1.5V14h1.5c.83 0 1.5.67 1.5 1.5V16h1c.83 0 1.5.67 1.5 1.5V22c0 3.31-2.69 6-6 6H11c-2.12 0-4.07-1.12-5.15-2.94l-3.38-5.7a1.5 1.5 0 0 1 2.06-2.06L7 19V3c0-1.1.9-2 2-2h1z" fill="#1a1a1a" stroke="white" stroke-width="1.2" stroke-linejoin="round"/>
     </svg>`,
 };
 

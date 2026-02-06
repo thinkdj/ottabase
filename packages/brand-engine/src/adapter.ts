@@ -1,19 +1,22 @@
 // ---------------------------------------------------------------------------
-// BrandEngine – Legacy ThemeConfig adapter
+// BrandEngine – Theme JSON adapter
 //
-// Converts the existing per-app ThemeConfig JSON format into a BrandTheme
-// so that the 8 bundled themes (default, neo, crisp, …) work seamlessly
-// with the new engine without requiring immediate migration of the JSON files.
+// Converts the per-app ThemeConfig JSON format into a BrandTheme.
+// Supports both the current flat format (cursors at top level) and the
+// legacy nested format (appearance.cursors) for backward compatibility.
 // ---------------------------------------------------------------------------
 
 import type { BrandTheme } from './theme';
 import type { TokenCursors } from './tokens';
+import type { LayoutConfig } from './layout';
 
 /**
- * Shape of the legacy ThemeConfig JSON that exists in
- * app-level config/themes directories.
+ * Shape of a theme JSON file.
  *
- * Kept intentionally as an interface so callers can cast as LegacyThemeConfig.
+ * All theme-related config lives at the top level:
+ *   name, typography, colors, spacing, radius, shadows, motion, layout, cursors
+ *
+ * The legacy `appearance.cursors` nesting is still accepted for backward compat.
  */
 export interface LegacyThemeConfig {
     name: string;
@@ -37,15 +40,24 @@ export interface LegacyThemeConfig {
         easingEnter?: string;
         easingExit?: string;
     };
+    layout?: {
+        header?: string;
+        navigation?: string;
+        contentWidth?: string;
+        footer?: boolean;
+        density?: string;
+    };
+    /** Top-level cursors (preferred) */
+    cursors?: Record<string, string>;
+    /** @deprecated Use top-level `cursors` instead */
     appearance?: {
         cursors?: Record<string, string>;
     };
 }
 
 /**
- * Converts a legacy `ThemeConfig` JSON into a `BrandTheme`.
- * All fields are mapped 1-to-1; layout defaults to `undefined` (resolver
- * supplies defaults).
+ * Converts a theme JSON into a `BrandTheme`.
+ * Reads cursors from top-level `cursors` first, falls back to `appearance.cursors`.
  */
 export function fromLegacyThemeConfig(legacy: LegacyThemeConfig): BrandTheme {
     return {
@@ -61,6 +73,7 @@ export function fromLegacyThemeConfig(legacy: LegacyThemeConfig): BrandTheme {
             shadow: legacy.shadows as BrandTheme['tokens']['shadow'],
             motion: legacy.motion,
         },
-        cursors: legacy.appearance?.cursors as TokenCursors | undefined,
+        layout: legacy.layout as LayoutConfig | undefined,
+        cursors: (legacy.cursors ?? legacy.appearance?.cursors) as TokenCursors | undefined,
     };
 }
