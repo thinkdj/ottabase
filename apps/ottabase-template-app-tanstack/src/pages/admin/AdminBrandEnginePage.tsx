@@ -1,12 +1,6 @@
 import { useTheme } from '@/ottabase/providers/ThemeContext';
 import { getAvailableThemes } from '@/ottabase/utils/theme.loader';
-import type {
-    ContentWidth,
-    Density,
-    HeaderVariant,
-    LayoutConfig,
-    NavigationVariant,
-} from '@ottabase/brand-engine';
+import type { ContentWidth, Density, HeaderVariant, LayoutConfig, NavigationVariant } from '@ottabase/brand-engine';
 import {
     Badge,
     Button,
@@ -18,19 +12,7 @@ import {
     Label,
     Separator,
 } from '@ottabase/ui-shadcn';
-import {
-    Check,
-    Columns3,
-    Layout,
-    Monitor,
-    Moon,
-    Paintbrush,
-    PanelLeft,
-    RotateCcw,
-    Sidebar,
-    Sun,
-    Type,
-} from 'lucide-react';
+import { Check, Columns3, Layout, Monitor, Moon, Paintbrush, RotateCcw, Sun, Type } from 'lucide-react';
 import { useTheme as useNextTheme } from 'next-themes';
 
 // ---------------------------------------------------------------------------
@@ -66,9 +48,7 @@ function OptionSelector<T extends string>({ label, description, options, value, 
                         {opt.description && (
                             <span className="block text-xs text-muted-foreground mt-0.5">{opt.description}</span>
                         )}
-                        {value === opt.value && (
-                            <Check className="absolute top-2 right-2 h-3.5 w-3.5 text-primary" />
-                        )}
+                        {value === opt.value && <Check className="absolute top-2 right-2 h-3.5 w-3.5 text-primary" />}
                     </button>
                 ))}
             </div>
@@ -202,7 +182,10 @@ export function AdminBrandEnginePage() {
                             <Paintbrush className="h-4 w-4" />
                             Theme
                         </CardTitle>
-                        <CardDescription>Select a bundled theme. Each theme includes its own color palette, typography, spacing, and default layout.</CardDescription>
+                        <CardDescription>
+                            Select a bundled theme. Each theme includes its own color palette, typography, spacing, and
+                            default layout.
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -247,11 +230,7 @@ export function AdminBrandEnginePage() {
                                     <Moon className="h-4 w-4 mr-1.5" />
                                     Dark
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setMode('system')}
-                                >
+                                <Button variant="outline" size="sm" onClick={() => setMode('system')}>
                                     <Monitor className="h-4 w-4 mr-1.5" />
                                     System
                                 </Button>
@@ -368,7 +347,8 @@ export function AdminBrandEnginePage() {
                                         className="text-base"
                                         style={{ fontFamily: resolved.typography.body.fontFamily }}
                                     >
-                                        {resolved.typography.body.fontFamily} – The quick brown fox jumps over the lazy dog.
+                                        {resolved.typography.body.fontFamily} – The quick brown fox jumps over the lazy
+                                        dog.
                                     </p>
                                 </div>
                                 <div className="space-y-1">

@@ -153,8 +153,17 @@ function DrawerNav() {
             {open &&
                 createPortal(
                     <>
-                        <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setOpen(false)} />
-                        <div className="fixed inset-y-0 left-0 w-64 bg-sidebar border-r z-50 flex flex-col animate-in slide-in-from-left duration-200">
+                        <div
+                            className="fixed inset-0 bg-black/40 z-50"
+                            onClick={() => setOpen(false)}
+                            role="presentation"
+                        />
+                        <div
+                            className="fixed inset-y-0 left-0 w-64 bg-sidebar border-r z-50 flex flex-col animate-in slide-in-from-left duration-200"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="Navigation Menu"
+                        >
                             <div className="flex items-center justify-between p-4 border-b">
                                 <span className="font-semibold text-sm">{APP_META.appName}</span>
                                 <Button
@@ -162,6 +171,7 @@ function DrawerNav() {
                                     size="sm"
                                     className="h-8 w-8 px-0"
                                     onClick={() => setOpen(false)}
+                                    aria-label="Close menu"
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
@@ -338,7 +348,7 @@ export function BrandLayout() {
             {header === 'topbar' && (
                 <TopbarHeader showNav={navInHeader} containerClass={cwClass} leading={drawerTrigger} />
             )}
-            {header === 'sidebar' && <TopbarHeader showNav={false} containerClass="w-full" leading={drawerTrigger} />}
+            {header === 'sidebar' && <TopbarHeader showNav={false} containerClass={cwClass} leading={drawerTrigger} />}
             {header === 'minimal' && <MinimalHeader containerClass={cwClass} leading={drawerTrigger} />}
             {/* header === 'none' renders nothing above the content */}
             {header === 'none' && hasDrawer && (

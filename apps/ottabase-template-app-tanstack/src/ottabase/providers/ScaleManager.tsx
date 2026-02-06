@@ -10,9 +10,9 @@
  *
  * Also persists the scale to localStorage so it survives page reloads.
  */
-import { useEffect } from 'react';
-import { useAtom } from 'jotai';
 import { scaleAtom } from '@/ottabase/state/appState';
+import { useAtom } from 'jotai';
+import { useEffect } from 'react';
 
 const SCALE_STORAGE_KEY = 'ottabase-ui-scale';
 
@@ -32,7 +32,7 @@ export function ScaleManager(): null {
         } catch {
             // storage unavailable
         }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [setScale]);
 
     // Apply scale to document root and persist
     useEffect(() => {

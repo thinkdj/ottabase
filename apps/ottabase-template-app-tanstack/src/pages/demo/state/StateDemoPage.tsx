@@ -122,8 +122,8 @@ export function StateDemoPage() {
                     <CardTitle>🎭 Theme Info</CardTitle>
                     <CardDescription>
                         Uses: <code className="bg-muted px-1 rounded">themeInfoAtom</code> (theme name),{' '}
-                        <code className="bg-muted px-1 rounded">themeAtom</code> (mode). Theme name is managed
-                        by BrandEngine, mode by next-themes. Both sync to Jotai atoms.
+                        <code className="bg-muted px-1 rounded">themeAtom</code> (mode). Theme name is managed by
+                        BrandEngine, mode by next-themes. Both sync to Jotai atoms.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

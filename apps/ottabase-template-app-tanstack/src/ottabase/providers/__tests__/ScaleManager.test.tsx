@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act } from '@testing-library/react';
-import { Provider, createStore, atom } from 'jotai';
-import React from 'react';
+import { act, render } from '@testing-library/react';
+import { Provider, createStore } from 'jotai';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Mock the scaleAtom module before importing ScaleManager

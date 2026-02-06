@@ -87,9 +87,9 @@ module.exports = {
             },
 
             spacing: {
-                'section': 'var(--spacing-section)',
-                'card': 'var(--spacing-card)',
-                'element': 'var(--spacing-element)',
+                section: 'var(--spacing-section)',
+                card: 'var(--spacing-card)',
+                element: 'var(--spacing-element)',
             },
 
             transitionDuration: {
@@ -119,9 +119,5 @@ module.exports = {
             },
         },
     },
-    plugins: [
-        require('@tailwindcss/forms'),
-        require('@tailwindcss/typography'),
-        require('tailwindcss-animate'),
-    ],
+    plugins: [require('@tailwindcss/forms'), require('@tailwindcss/typography'), require('tailwindcss-animate')],
 };
