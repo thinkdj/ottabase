@@ -6,9 +6,29 @@
 // Theme type
 export type Theme = 'light' | 'dark';
 
+/** Layout header variants */
+export type HeaderVariant = 'minimal' | 'sidebar' | 'topbar' | 'none';
+/** Layout navigation placement */
+export type NavigationVariant = 'sidebar' | 'topbar' | 'drawer';
+/** Content width strategy */
+export type ContentWidth = 'fixed' | 'fluid' | 'full';
+/** UI density */
+export type Density = 'compact' | 'comfy';
+
+/** Layout configuration stored per theme/tenant */
+export interface LayoutConfig {
+    header: HeaderVariant;
+    navigation: NavigationVariant;
+    contentWidth: ContentWidth;
+    footer: boolean;
+    density: Density;
+}
+
 // Theme details type
 export interface ThemeInfo {
     name: string; // e.g., "default", "neo", "crisp", "funky"
+    /** Active layout configuration (provided by BrandEngine resolver) */
+    layout?: LayoutConfig;
 }
 
 // Sidebar state type

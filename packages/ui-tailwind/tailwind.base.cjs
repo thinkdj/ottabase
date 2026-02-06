@@ -86,6 +86,12 @@ module.exports = {
                 xl: 'var(--shadow-xl)',
             },
 
+            spacing: {
+                'section': 'var(--spacing-section)',
+                'card': 'var(--spacing-card)',
+                'element': 'var(--spacing-element)',
+            },
+
             transitionDuration: {
                 fast: 'var(--duration-fast)',
                 normal: 'var(--duration-normal)',

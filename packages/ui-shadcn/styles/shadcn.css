@@ -92,6 +92,18 @@
         --ease: cubic-bezier(0.4, 0, 0.2, 1);
         --ease-enter: cubic-bezier(0, 0, 0.2, 1);
         --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+        /* ── Layout tokens (BrandEngine defaults) ────────────────── */
+        --layout-header: topbar;
+        --layout-navigation: sidebar;
+        --layout-content-width: fluid;
+        --layout-footer: 1;
+        --layout-density: comfy;
+
+        /* ── Spacing tokens ──────────────────────────────────────── */
+        --spacing-section: 2rem;
+        --spacing-card: 1.5rem;
+        --spacing-element: 0.5rem;
     }
 
     .dark {

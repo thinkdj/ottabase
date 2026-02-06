@@ -29,6 +29,7 @@
         "@mantine/notifications": "catalog:",
         "@ottabase/api": "workspace:*",
         "@ottabase/auth": "workspace:*",
+        "@ottabase/brand-engine": "workspace:*",
         "@ottabase/cf": "workspace:*",
         "@ottabase/cf-realtime": "workspace:*",
         "@ottabase/config": "workspace:*",

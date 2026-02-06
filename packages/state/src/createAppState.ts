@@ -92,4 +92,16 @@ export function createAppState<TUser extends BaseUser = BaseUser>(config: AppSta
 }
 
 // Re-export types
-export type { AppState, AppStateConfig, BaseUser, SidebarState, Theme, ThemeInfo } from './types';
+export type {
+    AppState,
+    AppStateConfig,
+    BaseUser,
+    ContentWidth,
+    Density,
+    HeaderVariant,
+    LayoutConfig,
+    NavigationVariant,
+    SidebarState,
+    Theme,
+    ThemeInfo,
+} from './types';

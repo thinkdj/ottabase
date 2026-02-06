@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTheme as useNextTheme } from 'next-themes';
+import type { BrandTheme, ResolvedBrandTheme } from '@ottabase/brand-engine';
 import { ThemeProviderContext } from './ThemeContext';
 import { applyTheme, getTheme } from '../utils/theme.loader';
-import { ThemeConfig } from '../config/theme.types';
 
 type ThemeProviderProps = {
     children: React.ReactNode;
@@ -22,7 +22,8 @@ export function ThemeProvider({
         return localStorage.getItem(`${storageKey}-name`) || defaultTheme;
     });
 
-    const [config, setConfig] = useState<ThemeConfig>(getTheme(theme));
+    const [config, setConfig] = useState<BrandTheme>(getTheme(theme));
+    const [resolved, setResolved] = useState<ResolvedBrandTheme | null>(null);
 
     useEffect(() => {
         // Apply the active theme configuration whenever theme or mode changes
@@ -32,8 +33,9 @@ export function ThemeProvider({
             console.log(`[ProviderTheme] Updating theme: ${theme} | mode: ${mode} (resolved: ${resolvedTheme})`);
         }
 
-        applyTheme(theme, mode);
+        const resolvedThemeResult = applyTheme(theme, mode);
         setConfig(getTheme(theme));
+        setResolved(resolvedThemeResult);
     }, [theme, resolvedTheme]);
 
     const setTheme = (newTheme: string) => {
@@ -45,6 +47,8 @@ export function ThemeProvider({
         theme,
         setTheme,
         config,
+        resolved,
+        layout: resolved?.layout ?? null,
     };
 
     return <ThemeProviderContext.Provider value={value}>{children}</ThemeProviderContext.Provider>;
