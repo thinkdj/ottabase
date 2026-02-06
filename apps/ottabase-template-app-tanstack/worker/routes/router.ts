@@ -35,6 +35,7 @@ import {
     handleReferralUsernameUpdate,
 } from './referrals';
 import { handleDemo, handleDemoError, handleAuditLogs } from './demo';
+import { handleFlagById, handleFlagsCreate, handleFlagsEvaluate, handleFlagsList, handleFlagToggle } from './flags';
 import {
     handleCloudflareImages,
     handleCloudflareKV,
@@ -213,6 +214,15 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleCloudflareR2(context);
     }
 
+    // Feature flags
+    if (route === '/api/flags/evaluate') {
+        return handleFlagsEvaluate(context);
+    }
+
+    if (route === '/api/flags') {
+        return handleFlagsList(context);
+    }
+
     if (route === '/api/admin/db/tables') {
         return handleAdminDbTables(context);
     }
@@ -266,6 +276,16 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
 
     if (route === '/api/shortlinks') {
         return handleShortlinksCreate(context);
+    }
+
+    // Feature flags
+    if (route === '/api/flags') {
+        return handleFlagsCreate(context);
+    }
+
+    const flagToggleMatch = route.match(/^\/api\/flags\/([^/]+)\/toggle$/);
+    if (flagToggleMatch) {
+        return handleFlagToggle(context, flagToggleMatch[1]);
     }
 
     if (route === '/api/referrals/track') {
@@ -323,6 +343,11 @@ async function handlePatchRoutes(context: ApiRouteContext): Promise<Response | n
         return handleUserProfile(context);
     }
 
+    const flagPatchMatch = route.match(/^\/api\/flags\/([^/]+)$/);
+    if (flagPatchMatch) {
+        return handleFlagById(context, flagPatchMatch[1], 'PATCH');
+    }
+
     const shortlinkMatch = route.match(/^\/api\/shortlinks\/(.+)$/);
     if (shortlinkMatch) {
         return handleShortlinkById(context, shortlinkMatch[1], 'PATCH');
@@ -338,6 +363,11 @@ async function handlePatchRoutes(context: ApiRouteContext): Promise<Response | n
 
 async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | null> {
     const { route, url } = context;
+
+    const flagDeleteMatch = route.match(/^\/api\/flags\/([^/]+)$/);
+    if (flagDeleteMatch) {
+        return handleFlagById(context, flagDeleteMatch[1], 'DELETE');
+    }
 
     const shortlinkMatch = route.match(/^\/api\/shortlinks\/(.+)$/);
     if (shortlinkMatch) {

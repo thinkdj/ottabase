@@ -25,6 +25,7 @@ import {
 } from '@ottabase/ottablog';
 import { ReferralTracking } from '@ottabase/referrals';
 import { Shortlink } from '@ottabase/shortlinks';
+import { FeatureFlag } from '@ottabase/flags';
 import { Todo } from '../../ottabase/models/Todo';
 import type { CloudflareEnv } from '../cloudflare-env';
 import { readJson } from './utils';
@@ -99,6 +100,7 @@ export function initDbConnection(env: CloudflareEnv): void {
         // Package models
         Shortlink,
         ReferralTracking,
+        FeatureFlag,
         // App models
         Todo,
     ]);

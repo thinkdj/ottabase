@@ -34,6 +34,7 @@
         "@ottabase/config": "workspace:*",
         "@ottabase/db": "workspace:*",
         "@ottabase/email": "workspace:*",
+        "@ottabase/flags": "workspace:*",
         "@ottabase/forms": "workspace:*",
         "@ottabase/i18n": "workspace:*",
         "@ottabase/ottaeditor": "workspace:*",

@@ -808,6 +808,16 @@ const adminSecurityRLSRoute = new Route({
     ),
 });
 
+const adminFlagsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/flags',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminFlagsPage').then((m) => ({
+            default: m.AdminFlagsPage,
+        })),
+    ),
+});
+
 demoLayoutRoute.addChildren([
     demoIndexRoute,
     demoMantineRoute,
@@ -861,6 +871,7 @@ const routeTree = rootRoute.addChildren([
     adminRBACPermissionsRoute,
     adminAuditRoute,
     adminSecurityRLSRoute,
+    adminFlagsRoute,
     adminUsersRoute,
     adminUserRBACRoute,
     blogListRoute,

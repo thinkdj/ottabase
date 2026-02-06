@@ -1,0 +1,15 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "outDir": "dist",
+        "rootDir": "src",
+        "baseUrl": ".",
+        "paths": {},
+        "skipLibCheck": true,
+        "lib": ["esnext", "dom", "dom.iterable"],
+        "jsx": "react-jsx",
+        "types": ["@cloudflare/workers-types"]
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+}

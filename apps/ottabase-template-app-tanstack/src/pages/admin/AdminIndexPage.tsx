@@ -6,6 +6,7 @@ import {
     Clock,
     Database,
     FileText,
+    Flag,
     Layers,
     Palette,
     Shield,
@@ -91,6 +92,13 @@ export function AdminIndexPage() {
             description: 'Monitor background job queues, view processing stats, and manage failed jobs.',
             href: '/admin/queues',
             icon: Layers,
+            disabled: false,
+        },
+        {
+            title: 'Feature Flags',
+            description: 'Gate features by plan, org, user, or percentage rollout. Toggle without redeployment.',
+            href: '/admin/flags',
+            icon: Flag,
             disabled: false,
         },
         {

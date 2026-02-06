@@ -1,0 +1,35 @@
+{
+    "name": "@ottabase/flags",
+    "version": "0.0.1",
+    "description": "Feature flags with plan-based gating, percentage rollouts, and KV caching for Cloudflare edge",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./react": {
+            "types": "./src/react.tsx",
+            "default": "./src/react.tsx"
+        }
+    },
+    "scripts": {
+        "clean": "rm -rf .turbo node_modules",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "peerDependencies": {
+        "drizzle-orm": "catalog:",
+        "react": "catalog:"
+    },
+    "dependencies": {
+        "@ottabase/ottaorm": "workspace:*"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "@types/react": "catalog:",
+        "drizzle-orm": "catalog:",
+        "react": "catalog:",
+        "typescript": "catalog:"
+    }
+}
