@@ -30,9 +30,10 @@ export function buildCSSVarMap(theme: ResolvedBrandTheme): Record<string, string
     const vars: Record<string, string> = {};
 
     // -- Typography ----------------------------------------------------------
-    vars['--font-heading'] = theme.typography.heading.fontFamily;
-    vars['--font-body'] = theme.typography.body.fontFamily;
-    vars['--font-handwriting'] = theme.typography.handwriting.fontFamily;
+    // -- Typography ----------------------------------------------------------
+    vars['--font-heading'] = `"${theme.typography.heading.fontFamily}", sans-serif`;
+    vars['--font-body'] = `"${theme.typography.body.fontFamily}", sans-serif`;
+    vars['--font-handwriting'] = `"${theme.typography.handwriting.fontFamily}", cursive`;
 
     // -- Colour tokens -------------------------------------------------------
     for (const [token, hslValue] of Object.entries(theme.colors as TokenColors)) {

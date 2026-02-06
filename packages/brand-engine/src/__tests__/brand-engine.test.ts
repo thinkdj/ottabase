@@ -1,27 +1,27 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { BrandTheme, ResolvedBrandTheme, TokenColors } from '../index';
 import {
+    buildCSSVarMap,
+    clearThemeRegistry,
     // Types tested indirectly through functions
     deepMerge,
-    resolveAliases,
-    resolveTheme,
-    buildCSSVarMap,
-    injectCSSVars,
+    DEFAULT_COLORS_DARK,
+    DEFAULT_COLORS_LIGHT,
+    DEFAULT_CURSORS,
+    DEFAULT_LAYOUT,
+    DEFAULT_MOTION,
+    DEFAULT_SHADOWS,
+    DEFAULT_SPACING,
     fromLegacyThemeConfig,
-    registerTheme,
-    registerThemes,
+    getRegisteredThemeNames,
     getThemeByName,
     getThemeOrDefault,
-    getRegisteredThemeNames,
-    clearThemeRegistry,
-    DEFAULT_COLORS_LIGHT,
-    DEFAULT_COLORS_DARK,
-    DEFAULT_SHADOWS,
-    DEFAULT_MOTION,
-    DEFAULT_CURSORS,
-    DEFAULT_SPACING,
-    DEFAULT_LAYOUT,
+    injectCSSVars,
+    registerTheme,
+    registerThemes,
+    resolveAliases,
+    resolveTheme,
 } from '../index';
-import type { BrandTheme, TokenColors, ResolvedBrandTheme } from '../index';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -337,9 +337,9 @@ describe('buildCSSVarMap', () => {
 
     it('includes typography vars', () => {
         const vars = buildCSSVarMap(resolved);
-        expect(vars['--font-heading']).toBe('Inter');
-        expect(vars['--font-body']).toBe('Inter');
-        expect(vars['--font-handwriting']).toBe('Caveat');
+        expect(vars['--font-heading']).toBe('"Inter", sans-serif');
+        expect(vars['--font-body']).toBe('"Inter", sans-serif');
+        expect(vars['--font-handwriting']).toBe('"Caveat", cursive');
     });
 
     it('includes colour tokens as --<token>', () => {

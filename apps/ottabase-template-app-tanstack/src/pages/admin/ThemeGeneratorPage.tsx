@@ -110,13 +110,38 @@ export function ThemeGeneratorPage() {
                                         placeholder="222 47% 11%"
                                         className="w-40 font-mono"
                                     />
+                                    <Button onClick={handleGeneratePalette}>
+                                        <RefreshCw className="mr-2 h-4 w-4" /> Generate
+                                    </Button>
                                 </div>
                                 <p className="text-[10px] text-muted-foreground">Pick a color or enter HSL</p>
                             </div>
-                            <Button onClick={handleGeneratePalette}>
-                                <RefreshCw className="mr-2 h-4 w-4" /> Generate
-                            </Button>
                         </div>
+
+                        <Separator />
+
+                        {/* Scale Palette */}
+                        {palette && (
+                            <div className="space-y-4">
+                                <h3 className="font-semibold">generated-palette (50-950)</h3>
+                                <div className="grid grid-cols-11 gap-1">
+                                    {Object.entries(palette).map(([step, hex]) => (
+                                        <div key={step} className="space-y-1 text-center group">
+                                            <div
+                                                className="h-12 w-full rounded shadow-sm border cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-ring transition-all"
+                                                style={{ backgroundColor: hex }}
+                                                onClick={() => navigator.clipboard.writeText(hex)}
+                                                title="Click to copy Hex"
+                                            />
+                                            <div className="text-[10px] text-muted-foreground font-mono">{step}</div>
+                                            <div className="hidden group-hover:block text-[10px] font-mono absolute bg-popover p-1 rounded border shadow-md z-10 w-max -ml-2">
+                                                {hex}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <Separator />
 
@@ -155,31 +180,6 @@ export function ThemeGeneratorPage() {
                                                 }
                                                 className="h-6 text-[10px] font-mono"
                                             />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        <Separator />
-
-                        {/* Scale Palette */}
-                        {palette && (
-                            <div className="space-y-4">
-                                <h3 className="font-semibold">generated-palette (50-950)</h3>
-                                <div className="grid grid-cols-11 gap-1">
-                                    {Object.entries(palette).map(([step, hex]) => (
-                                        <div key={step} className="space-y-1 text-center group">
-                                            <div
-                                                className="h-12 w-full rounded shadow-sm border cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-ring transition-all"
-                                                style={{ backgroundColor: hex }}
-                                                onClick={() => navigator.clipboard.writeText(hex)}
-                                                title="Click to copy Hex"
-                                            />
-                                            <div className="text-[10px] text-muted-foreground font-mono">{step}</div>
-                                            <div className="hidden group-hover:block text-[10px] font-mono absolute bg-popover p-1 rounded border shadow-md z-10 w-max -ml-2">
-                                                {hex}
-                                            </div>
                                         </div>
                                     ))}
                                 </div>
