@@ -28,7 +28,14 @@ export function getThemeByName(name: string): BrandTheme | undefined {
 
 /** Retrieve a theme by name with fallback to a named default (or first registered). */
 export function getThemeOrDefault(name: string, fallbackName = 'default'): BrandTheme {
-    return registry.get(name) ?? registry.get(fallbackName) ?? [...registry.values()][0]!;
+    const theme = registry.get(name) ?? registry.get(fallbackName) ?? [...registry.values()][0];
+    if (!theme) {
+        throw new Error(
+            `[BrandEngine] No theme found for "${name}" and no fallback registered. ` +
+                'Call registerThemes() before using getThemeOrDefault().',
+        );
+    }
+    return theme;
 }
 
 /** List all registered theme names. */

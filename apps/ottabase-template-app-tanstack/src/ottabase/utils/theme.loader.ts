@@ -1,5 +1,6 @@
 import {
     type BrandTheme,
+    type LegacyThemeConfig,
     type ResolvedBrandTheme,
     fromLegacyThemeConfig,
     resolveTheme,
@@ -23,7 +24,7 @@ import verdantTheme from '../config/themes/verdant.json';
 // ---------------------------------------------------------------------------
 // Convert legacy JSON themes to BrandTheme and register in the BrandEngine
 // ---------------------------------------------------------------------------
-const legacyThemes = [
+const legacyThemes: LegacyThemeConfig[] = [
     defaultTheme,
     neoTheme,
     crispTheme,
@@ -32,9 +33,9 @@ const legacyThemes = [
     midnightTheme,
     roseTheme,
     verdantTheme,
-];
+] as LegacyThemeConfig[];
 
-const brandThemes: BrandTheme[] = legacyThemes.map((t) => fromLegacyThemeConfig(t as any));
+const brandThemes: BrandTheme[] = legacyThemes.map((t) => fromLegacyThemeConfig(t));
 registerThemes(brandThemes);
 
 // ---------------------------------------------------------------------------

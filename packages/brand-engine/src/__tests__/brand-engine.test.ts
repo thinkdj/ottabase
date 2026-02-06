@@ -374,6 +374,10 @@ describe('Theme Registry', () => {
         expect(result.name).toBe('first');
     });
 
+    it('getThemeOrDefault throws when registry is empty', () => {
+        expect(() => getThemeOrDefault('missing')).toThrow(/No theme found for "missing"/);
+    });
+
     it('getThemeByName returns undefined for unregistered name', () => {
         expect(getThemeByName('nope')).toBeUndefined();
     });
