@@ -2,8 +2,8 @@
 // @ottabase/ottaorm - Permission Model
 // ============================================================
 
-import { BaseModel, IModelConstructorParams, ModelFields, type PackageType } from '../base/BaseModel';
-import { permissionsTable, type NewPermissionType, type PermissionType } from './Permission.schema';
+import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { permissionsTable } from './Permission.schema';
 
 export { permissionsTable, type NewPermissionType, type PermissionType } from './Permission.schema';
 
@@ -145,11 +145,6 @@ export class Permission extends BaseModel {
             },
         },
     };
-
-    constructor(data: { [key: string]: any }) {
-        const params: IModelConstructorParams = { entity: Permission.entity, data };
-        super(params);
-    }
 
     // ============================================================
     // HELPER METHODS

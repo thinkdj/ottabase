@@ -3,10 +3,10 @@
 // DB-driven cron scheduler (like Laravel's scheduler)
 // ============================================================
 
-import { BaseModel, IModelConstructorParams, ModelFields, type PackageType } from '../base/BaseModel';
-import { type NewScheduledTaskType, type ScheduledTaskType, scheduledTasksTable } from './ScheduledTask.schema';
+import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { scheduledTasksTable } from './ScheduledTask.schema';
 
-export { type NewScheduledTaskType, type ScheduledTaskType, scheduledTasksTable } from './ScheduledTask.schema';
+export { scheduledTasksTable, type NewScheduledTaskType, type ScheduledTaskType } from './ScheduledTask.schema';
 
 /**
  * ScheduledTask model for DB-driven cron scheduler
@@ -193,11 +193,6 @@ export class ScheduledTask extends BaseModel {
             tableConfig: { visible: true },
         },
     };
-
-    constructor(data: { [key: string]: any }) {
-        const params: IModelConstructorParams = { entity: ScheduledTask.entity, data };
-        super(params);
-    }
 
     // ============================================================
     // QUERY HELPERS

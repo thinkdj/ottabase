@@ -2,8 +2,8 @@
 // @ottabase/ottaorm - Account Model (NextAuth)
 // ============================================================
 
-import { BaseModel, IModelConstructorParams, ModelFields, type PackageType } from '../base/BaseModel';
-import { accountsTable, type AccountType, type NewAccountType } from './Account.schema';
+import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { accountsTable } from './Account.schema';
 
 export { accountsTable, type AccountType, type NewAccountType } from './Account.schema';
 
@@ -112,11 +112,6 @@ export class Account extends BaseModel {
             },
         },
     };
-
-    constructor(data: { [key: string]: any }) {
-        const params: IModelConstructorParams = { entity: Account.entity, data };
-        super(params);
-    }
 
     // ============================================================
     // RELATIONSHIPS

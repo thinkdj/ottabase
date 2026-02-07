@@ -2,8 +2,8 @@
 // @ottabase/ottaorm - Tag Model
 // ============================================================
 
-import { BaseModel, IModelConstructorParams, ModelFields, type PackageType } from '../base/BaseModel';
-import { tagsTable, type NewTagType, type TagType } from './Tag.schema';
+import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { tagsTable } from './Tag.schema';
 
 export { tagsTable, type NewTagType, type TagType } from './Tag.schema';
 
@@ -154,11 +154,6 @@ export class Tag extends BaseModel {
             },
         },
     };
-
-    constructor(data: { [key: string]: any }) {
-        const params: IModelConstructorParams = { entity: Tag.entity, data };
-        super(params);
-    }
 
     // ============================================================
     // HELPER METHODS

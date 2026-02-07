@@ -2,7 +2,7 @@
 // @ottabase/ottaorm - Log Model (MongoDB Example)
 // ============================================================
 
-import { IMongoModelConstructorParams, ModelFields, MongoBaseModel, type PackageType } from '../base/MongoBaseModel';
+import { ModelFields, MongoBaseModel, type PackageType } from '../base/MongoBaseModel';
 
 /**
  * Log model - MongoDB example
@@ -163,11 +163,6 @@ export class Log extends MongoBaseModel {
             },
         },
     };
-
-    constructor(data: { [key: string]: any }) {
-        const params: IMongoModelConstructorParams = { entity: Log.entity, data };
-        super(params);
-    }
 
     // ============================================================
     // CUSTOM METHODS

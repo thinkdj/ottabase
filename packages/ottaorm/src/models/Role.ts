@@ -2,8 +2,8 @@
 // @ottabase/ottaorm - Role Model
 // ============================================================
 
-import { BaseModel, IModelConstructorParams, ModelFields, type PackageType } from '../base/BaseModel';
-import { rolesTable, type NewRoleType, type RoleType } from './Role.schema';
+import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { rolesTable } from './Role.schema';
 
 export { rolesTable, type NewRoleType, type RoleType } from './Role.schema';
 
@@ -127,11 +127,6 @@ export class Role extends BaseModel {
             },
         },
     };
-
-    constructor(data: { [key: string]: any }) {
-        const params: IModelConstructorParams = { entity: Role.entity, data };
-        super(params);
-    }
 
     // ============================================================
     // HELPER METHODS

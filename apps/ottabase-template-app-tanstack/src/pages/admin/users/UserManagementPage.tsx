@@ -47,9 +47,14 @@ export function UserManagementPage() {
     const { data: allUsers = [], isLoading } = useQuery({
         queryKey: ['admin', 'users'],
         queryFn: async () => {
-            const response = await api<{ data: Array<{ entity: string; data: User }> }>('/api/admin/users');
-            // Extract the actual user data from the nested structure
-            return response.data.map((item) => item.data);
+            const response = await api<{
+                data: Array<User | { entity: string; data: User }>;
+            }>('/api/admin/users');
+
+            // Support both flat and nested payloads while filtering out invalid entries.
+            return response.data
+                .map((item) => ('data' in item ? item.data : item))
+                .filter((user): user is User => !!user && typeof user.id === 'string');
         },
         staleTime: 2 * 60 * 1000,
     });
@@ -205,7 +210,7 @@ export function UserManagementPage() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="sm" asChild>
-                                                <Link to={`/admin/users/${user.id}`}>View</Link>
+                                                <Link to={`/admin/users/${user.id}/rbac`}>View</Link>
                                             </Button>
                                         </TableCell>
                                     </TableRow>

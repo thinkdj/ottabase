@@ -2,8 +2,8 @@
 // @ottabase/ottaorm - UserRole Model
 // ============================================================
 
-import { BaseModel, IModelConstructorParams, ModelFields, type PackageType } from '../base/BaseModel';
-import { userRolesTable, type NewUserRoleType, type UserRoleType } from './UserRole.schema';
+import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { userRolesTable } from './UserRole.schema';
 
 export { userRolesTable, type NewUserRoleType, type UserRoleType } from './UserRole.schema';
 
@@ -145,11 +145,6 @@ export class UserRole extends BaseModel {
             },
         },
     };
-
-    constructor(data: { [key: string]: any }) {
-        const params: IModelConstructorParams = { entity: UserRole.entity, data };
-        super(params);
-    }
 
     // ============================================================
     // RELATIONSHIPS

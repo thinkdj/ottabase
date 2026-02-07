@@ -2,10 +2,10 @@
 // @ottabase/ottaorm - AuditLog Model
 // ============================================================
 
-import { BaseModel, IModelConstructorParams, ModelFields, type PackageType } from '../base/BaseModel';
-import { auditLogsTable, type NewAuditLogType, type AuditLogType } from './AuditLog.schema';
+import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { auditLogsTable } from './AuditLog.schema';
 
-export { auditLogsTable, type NewAuditLogType, type AuditLogType } from './AuditLog.schema';
+export { auditLogsTable, type AuditLogType, type NewAuditLogType } from './AuditLog.schema';
 
 /**
  * AuditLog model for tracking all system actions
@@ -205,11 +205,6 @@ export class AuditLog extends BaseModel {
             },
         },
     };
-
-    constructor(data: { [key: string]: any }) {
-        const params: IModelConstructorParams = { entity: AuditLog.entity, data };
-        super(params);
-    }
 
     // ============================================================
     // RELATIONSHIPS

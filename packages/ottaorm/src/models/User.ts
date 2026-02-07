@@ -2,8 +2,8 @@
 // @ottabase/ottaorm - User Model
 // ============================================================
 
-import { BaseModel, IModelConstructorParams, ModelFields, type PackageType } from '../base/BaseModel';
-import { usersTable, type NewUserType, type UserType } from './User.schema';
+import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { usersTable } from './User.schema';
 
 export { usersTable, type NewUserType, type UserType } from './User.schema';
 
@@ -194,11 +194,6 @@ export class User extends BaseModel {
             },
         },
     };
-
-    constructor(data: { [key: string]: any }) {
-        const params: IModelConstructorParams = { entity: User.entity, data };
-        super(params);
-    }
 
     // ============================================================
     // RELATIONSHIPS
