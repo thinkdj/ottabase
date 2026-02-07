@@ -7,7 +7,7 @@ import { readJson, getClientIpAddress } from '../lib/utils';
 import { getSession } from '@ottabase/auth/backend';
 import { getAuthOptions } from '../lib/auth-utils';
 import { ReferralTracking } from '@ottabase/referrals';
-import { User } from '@ottabase/ottaorm/models';
+import { AuditLog, User } from '@ottabase/ottaorm/models';
 import type { CloudflareEnv } from '../../cloudflare-env';
 
 export interface ReferralRouteContext {
@@ -55,6 +55,14 @@ export async function handleReferralTrack(context: ReferralRouteContext): Promis
         referer: body.referer || request.headers.get('Referer') || null,
         meta: body.meta || {},
     });
+
+    AuditLog.log({
+        action: 'create',
+        resourceType: 'referral_tracking',
+        resourceId: tracking.get('id') as string,
+        changes: { referralCode: body.referralCode, referrerId: referrer.get('id') },
+        metadata: { ipAddress },
+    }).catch(() => {});
 
     return jsonResponse({
         success: true,
@@ -165,8 +173,18 @@ export async function handleReferralUsernameUpdate(context: ReferralRouteContext
         return errorResponse('User not found', 404);
     }
 
+    const oldUsername = user.get('referralUsername') as string | null;
     user.set('referralUsername', body.referralUsername);
     await user.save();
+
+    AuditLog.log({
+        userId,
+        userEmail: (session?.user as any)?.email,
+        action: 'update',
+        resourceType: 'referral_username',
+        resourceId: userId,
+        changes: { before: { referralUsername: oldUsername }, after: { referralUsername: body.referralUsername } },
+    }).catch(() => {});
 
     return jsonResponse({
         success: true,

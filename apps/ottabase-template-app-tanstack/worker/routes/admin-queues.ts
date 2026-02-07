@@ -1,7 +1,27 @@
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { registerConnection } from '@ottabase/ottaorm';
 import { createKVClient } from '@ottabase/cf/kv';
+import { AuditLog } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
+import { getSession } from '@ottabase/auth/backend';
+import { getAuthOptions } from '../lib/auth-utils';
 import type { CloudflareEnv } from '../../cloudflare-env';
+
+async function getSessionUser(request: Request, env: CloudflareEnv) {
+    const session = await getSession(request, env as any, getAuthOptions(env));
+    return {
+        userId: session?.user?.id ?? undefined,
+        userEmail: (session?.user as any)?.email ?? undefined,
+        organizationId: request.headers.get('x-organization-id') || session?.user?.organizationId || undefined,
+    };
+}
+
+function ensureD1ForAudit(env: CloudflareEnv) {
+    if (env.OBCF_D1) {
+        registerConnection('default', createD1Driver(env.OBCF_D1));
+    }
+}
 import {
     deleteDLQJob,
     getDLQJob,
@@ -118,6 +138,18 @@ export async function handleAdminQueuesResetStats(context: AdminQueuesContext): 
         }),
     );
 
+    ensureD1ForAudit(env);
+    const { userId, userEmail, organizationId } = await getSessionUser(context.request, env);
+    AuditLog.log({
+        userId,
+        userEmail,
+        organizationId,
+        action: 'reset',
+        resourceType: 'queue_stats',
+        resourceId: 'queue:stats',
+        metadata: { action: 'reset_stats' },
+    }).catch(() => {});
+
     return jsonResponse({ success: true, message: 'Stats reset' });
 }
 
@@ -130,11 +162,37 @@ export async function handleAdminQueuesDLQList(context: AdminQueuesContext): Pro
 
 export async function handleAdminQueuesDLQRetryAll(context: AdminQueuesContext): Promise<Response> {
     const result = await retryAllDLQJobs(context.env);
+
+    ensureD1ForAudit(context.env);
+    const { userId, userEmail, organizationId } = await getSessionUser(context.request, context.env);
+    AuditLog.log({
+        userId,
+        userEmail,
+        organizationId,
+        action: 'retry',
+        resourceType: 'queue_dlq',
+        resourceId: 'all',
+        metadata: { action: 'retry_all_dlq' },
+    }).catch(() => {});
+
     return jsonResponse(result);
 }
 
 export async function handleAdminQueuesDLQPurge(context: AdminQueuesContext): Promise<Response> {
     const deleted = await purgeDLQ(context.env);
+
+    ensureD1ForAudit(context.env);
+    const { userId, userEmail, organizationId } = await getSessionUser(context.request, context.env);
+    AuditLog.log({
+        userId,
+        userEmail,
+        organizationId,
+        action: 'purge',
+        resourceType: 'queue_dlq',
+        resourceId: 'all',
+        metadata: { action: 'purge_dlq', deleted },
+    }).catch(() => {});
+
     return jsonResponse({ success: true, deleted });
 }
 
@@ -153,6 +211,18 @@ export async function handleAdminQueuesDLQJob(context: AdminQueuesContext, jobId
         if (!deleted) {
             return errorResponse('Job not found', 404, { code: 'NOT_FOUND' });
         }
+
+        ensureD1ForAudit(env);
+        const { userId, userEmail, organizationId } = await getSessionUser(request, env);
+        AuditLog.log({
+            userId,
+            userEmail,
+            organizationId,
+            action: 'delete',
+            resourceType: 'queue_dlq_job',
+            resourceId: jobId,
+        }).catch(() => {});
+
         return jsonResponse({ success: true });
     }
 
@@ -166,5 +236,17 @@ export async function handleAdminQueuesDLQRetryJob(context: AdminQueuesContext, 
             code: 'RETRY_FAILED',
         });
     }
+
+    ensureD1ForAudit(context.env);
+    const { userId, userEmail, organizationId } = await getSessionUser(context.request, context.env);
+    AuditLog.log({
+        userId,
+        userEmail,
+        organizationId,
+        action: 'retry',
+        resourceType: 'queue_dlq_job',
+        resourceId: jobId,
+    }).catch(() => {});
+
     return jsonResponse({ success: true, message: 'Job re-queued' });
 }

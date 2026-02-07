@@ -1,11 +1,22 @@
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
-import { verifyPassword } from '@ottabase/auth/backend';
+import { getSession, verifyPassword } from '@ottabase/auth/backend';
+import { AuditLog } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
+import { getAuthOptions } from '../lib/auth-utils';
 import { readJson } from '../lib/utils';
 import { OttablogPlugin, OttablogTheme, StudioManager, Post } from '@ottabase/ottablog';
 import type { CloudflareEnv } from '../../cloudflare-env';
+
+async function getSessionUser(request: Request, env: CloudflareEnv) {
+    const session = await getSession(request, env as any, getAuthOptions(env));
+    return {
+        userId: session?.user?.id ?? undefined,
+        userEmail: (session?.user as any)?.email ?? undefined,
+        organizationId: request.headers.get('x-organization-id') || session?.user?.organizationId || undefined,
+    };
+}
 
 export interface BlogRouteContext {
     request: Request;
@@ -90,6 +101,19 @@ export async function handleBlogStudioActivateTheme(context: BlogRouteContext): 
     if (themeRow) {
         await themeRow.activate({ appId: appId ?? undefined });
     }
+
+    const { userId, userEmail, organizationId } = await getSessionUser(request, env);
+    AuditLog.log({
+        userId,
+        userEmail,
+        organizationId,
+        action: 'update',
+        resourceType: 'blog_theme',
+        resourceId: themeId,
+        changes: { activated: themeId },
+        metadata: { action: 'activate_theme' },
+    }).catch(() => {});
+
     return jsonResponse({ success: true });
 }
 
@@ -120,6 +144,19 @@ export async function handleBlogStudioPluginEnable(context: BlogRouteContext): P
         pluginRow.set('enabled', enabled);
         await pluginRow.save();
     }
+
+    const { userId, userEmail, organizationId } = await getSessionUser(request, env);
+    AuditLog.log({
+        userId,
+        userEmail,
+        organizationId,
+        action: 'update',
+        resourceType: 'blog_plugin',
+        resourceId: pluginId,
+        changes: { enabled },
+        metadata: { action: 'plugin_enable' },
+    }).catch(() => {});
+
     return jsonResponse({ success: true });
 }
 
@@ -144,6 +181,19 @@ export async function handleBlogStudioPluginConfig(context: BlogRouteContext): P
     }
 
     await pluginRow.updateConfig(config ?? {});
+
+    const { userId, userEmail, organizationId } = await getSessionUser(request, env);
+    AuditLog.log({
+        userId,
+        userEmail,
+        organizationId,
+        action: 'update',
+        resourceType: 'blog_plugin',
+        resourceId: pluginId,
+        changes: { config: config ?? {} },
+        metadata: { action: 'plugin_config' },
+    }).catch(() => {});
+
     return jsonResponse({ success: true });
 }
 

@@ -2,7 +2,7 @@ import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { getSession, handleAuthRequest, hashPassword, verifyPassword } from '@ottabase/auth/backend';
 import { getLoginConfig } from '@ottabase/auth/components';
 import { registerConnection } from '@ottabase/ottaorm';
-import { Organization, OrganizationMember, Role, User, VerificationToken } from '@ottabase/ottaorm/models';
+import { AuditLog, Organization, OrganizationMember, Role, User, VerificationToken } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { isEmail } from '@ottabase/utils/string';
@@ -156,6 +156,15 @@ export async function handleVerifyEmail(context: AuthRouteContext): Promise<Resp
     if (user) {
         user.set('emailVerified', new Date());
         await user.save();
+
+        AuditLog.log({
+            userId: user.get('id') as string,
+            userEmail: email,
+            action: 'verify_email',
+            resourceType: 'user',
+            resourceId: user.get('id') as string,
+            metadata: { email },
+        }).catch(() => {});
     }
 
     await VerificationToken.deleteByIdentifierAndToken(identifier, token);
@@ -316,6 +325,15 @@ export async function handlePasswordResetConfirm(context: AuthRouteContext): Pro
     user.set('passwordHash', passwordHash);
     await user.save();
 
+    AuditLog.log({
+        userId: user.get('id') as string,
+        userEmail: email,
+        action: 'password_reset',
+        resourceType: 'user',
+        resourceId: user.get('id') as string,
+        metadata: { email, ip },
+    }).catch(() => {});
+
     await VerificationToken.deleteByIdentifierAndToken(identifier, token);
 
     if (env.OBCF_KV) {
@@ -402,6 +420,15 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
         }
 
         const updated = await User.update(userId, updates);
+
+        AuditLog.log({
+            userId,
+            userEmail: (session?.user as any)?.email,
+            action: 'update',
+            resourceType: 'user_profile',
+            resourceId: userId,
+            changes: { before: {}, after: updates },
+        }).catch(() => {});
 
         if (env.OBCF_KV) {
             try {
@@ -609,6 +636,16 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
             (userJson as any).organizationRole = organizationRole;
             (userJson as any).role = assignedRole;
         }
+
+        AuditLog.log({
+            userId: newUserId,
+            userEmail: email,
+            action: 'register',
+            resourceType: 'user',
+            resourceId: newUserId,
+            changes: { email, name: name || null, organizationId, assignedRole },
+            metadata: { ip, referralCode: body.referralCode || null },
+        }).catch(() => {});
 
         const response = jsonResponse({
             success: true,

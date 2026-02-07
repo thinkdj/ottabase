@@ -1,11 +1,23 @@
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
 import { Shortlink, buildRedirectResponse } from '@ottabase/shortlinks';
+import { AuditLog } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
+import { getSession } from '@ottabase/auth/backend';
+import { getAuthOptions } from '../lib/auth-utils';
 import { readJson } from '../lib/utils';
 import type { CloudflareEnv } from '../../cloudflare-env';
+
+async function getSessionUser(request: Request, env: CloudflareEnv) {
+    const session = await getSession(request, env as any, getAuthOptions(env));
+    return {
+        userId: session?.user?.id ?? undefined,
+        userEmail: (session?.user as any)?.email ?? undefined,
+        organizationId: request.headers.get('x-organization-id') || session?.user?.organizationId || undefined,
+    };
+}
 
 export interface ShortlinkContext {
     request: Request;
@@ -84,6 +96,17 @@ export async function handleShortlinksCreate(context: ShortlinkContext): Promise
             expiryDate: body.expiryDate ? new Date(body.expiryDate) : null,
         });
 
+        const { userId, userEmail, organizationId } = await getSessionUser(request, env);
+        AuditLog.log({
+            userId,
+            userEmail,
+            organizationId,
+            action: 'create',
+            resourceType: 'shortlink',
+            resourceId: shortlink.get('id') as string,
+            changes: { shortCode: body.shortCode, fullUrl: body.fullUrl, type: body.type || 'redirect' },
+        }).catch(() => {});
+
         return jsonResponse({
             success: true,
             data: shortlink.toJson(),
@@ -140,6 +163,19 @@ export async function handleShortlinkById(
 
         try {
             await shortlink.save();
+
+            const { userId, userEmail, organizationId } = await getSessionUser(request, env);
+            AuditLog.log({
+                userId,
+                userEmail,
+                organizationId,
+                action: 'update',
+                resourceType: 'shortlink',
+                resourceId: id,
+                changes: { before: {}, after: body },
+                metadata: { shortCode: shortlink.get('shortCode') },
+            }).catch(() => {});
+
             return jsonResponse({
                 success: true,
                 data: shortlink.toJson(),
@@ -156,7 +192,20 @@ export async function handleShortlinkById(
         return errorResponse('Shortlink not found', 404);
     }
 
+    const shortCode = shortlink.get('shortCode') as string;
     await Shortlink.delete(id);
+
+    const { userId, userEmail, organizationId } = await getSessionUser(request, env);
+    AuditLog.log({
+        userId,
+        userEmail,
+        organizationId,
+        action: 'delete',
+        resourceType: 'shortlink',
+        resourceId: id,
+        metadata: { shortCode },
+    }).catch(() => {});
+
     return jsonResponse({
         success: true,
         message: 'Shortlink deleted successfully',

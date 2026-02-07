@@ -1,7 +1,21 @@
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { registerConnection } from '@ottabase/ottaorm';
+import { AuditLog } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { parsePaginationParams } from '@ottabase/utils/pagination';
+import { getSession } from '@ottabase/auth/backend';
+import { getAuthOptions } from '../lib/auth-utils';
 import type { CloudflareEnv } from '../../cloudflare-env';
+
+async function getSessionUser(request: Request, env: CloudflareEnv) {
+    const session = await getSession(request, env as any, getAuthOptions(env));
+    return {
+        userId: session?.user?.id ?? undefined,
+        userEmail: (session?.user as any)?.email ?? undefined,
+        organizationId: request.headers.get('x-organization-id') || session?.user?.organizationId || undefined,
+    };
+}
 
 export interface AdminDbContext {
     request: Request;
@@ -67,7 +81,7 @@ export async function handleAdminDbTableData(context: AdminDbContext): Promise<R
 }
 
 export async function handleAdminDbTableDelete(context: AdminDbContext): Promise<Response> {
-    const { env, tableName } = context;
+    const { request, env, tableName } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500);
     }
@@ -84,6 +98,18 @@ export async function handleAdminDbTableDelete(context: AdminDbContext): Promise
 
         await env.OBCF_D1.prepare(`DROP TABLE "${name}"`).run();
 
+        registerConnection('default', createD1Driver(env.OBCF_D1));
+        const { userId, userEmail, organizationId } = await getSessionUser(request, env);
+        AuditLog.log({
+            userId,
+            userEmail,
+            organizationId,
+            action: 'delete',
+            resourceType: 'database_table',
+            resourceId: name,
+            metadata: { tableName: name, action: 'drop_table' },
+        }).catch(() => {});
+
         return jsonResponse({
             success: true,
             message: `Table ${name} dropped successfully`,
@@ -98,7 +124,7 @@ export async function handleAdminDbRowDelete(
     rowId: string,
     pkField: string,
 ): Promise<Response> {
-    const { env, tableName } = context;
+    const { request, env, tableName } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500);
     }
@@ -115,6 +141,18 @@ export async function handleAdminDbRowDelete(
 
         const query = `DELETE FROM "${name}" WHERE "${pkField}" = ?`;
         await env.OBCF_D1.prepare(query).bind(rowId).run();
+
+        registerConnection('default', createD1Driver(env.OBCF_D1));
+        const { userId, userEmail, organizationId } = await getSessionUser(request, env);
+        AuditLog.log({
+            userId,
+            userEmail,
+            organizationId,
+            action: 'delete',
+            resourceType: 'database_row',
+            resourceId: rowId,
+            metadata: { tableName: name, pkField, rowId },
+        }).catch(() => {});
 
         return jsonResponse({
             success: true,

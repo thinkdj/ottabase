@@ -1,9 +1,20 @@
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
+import { getSession } from '@ottabase/auth/backend';
+import { getAuthOptions } from '../lib/auth-utils';
 import { readJson } from '../lib/utils';
 import { initAdminCron } from '../lib/db-utils';
-import { ScheduledTask } from '@ottabase/ottaorm/models';
+import { AuditLog, ScheduledTask } from '@ottabase/ottaorm/models';
 import type { CloudflareEnv } from '../../cloudflare-env';
+
+async function getSessionUser(request: Request, env: CloudflareEnv) {
+    const session = await getSession(request, env as any, getAuthOptions(env));
+    return {
+        userId: session?.user?.id ?? undefined,
+        userEmail: (session?.user as any)?.email ?? undefined,
+        organizationId: request.headers.get('x-organization-id') || session?.user?.organizationId || undefined,
+    };
+}
 
 export interface AdminCronContext {
     request: Request;
@@ -72,6 +83,17 @@ export async function handleAdminCronCreate(context: AdminCronContext): Promise<
             isActive: body.isActive ?? true,
         });
 
+        const { userId, userEmail, organizationId } = await getSessionUser(request, env);
+        AuditLog.log({
+            userId,
+            userEmail,
+            organizationId,
+            action: 'create',
+            resourceType: 'scheduled_task',
+            resourceId: newTask.get('id') as string,
+            changes: { name: body.name, schedule: body.schedule, task: body.task },
+        }).catch(() => {});
+
         return jsonResponse(newTask.toJson(), 201);
     } catch (error) {
         return errorResponse(error instanceof Error ? error.message : 'Failed to create task', 400, {
@@ -98,12 +120,38 @@ export async function handleCronTask(
     }
 
     if (action === 'toggle' && request.method === 'POST') {
+        const wasBefore = task.get('isActive');
         await task.toggle();
+
+        const { userId, userEmail, organizationId } = await getSessionUser(request, env);
+        AuditLog.log({
+            userId,
+            userEmail,
+            organizationId,
+            action: 'update',
+            resourceType: 'scheduled_task',
+            resourceId: cleanId,
+            changes: { before: { isActive: wasBefore }, after: { isActive: task.get('isActive') } },
+            metadata: { name: task.get('name'), action: 'toggle' },
+        }).catch(() => {});
+
         return jsonResponse({ success: true, task: task.toJson() });
     }
 
     if (action === 'run' && request.method === 'POST') {
         await task.markRunning();
+
+        const { userId, userEmail, organizationId } = await getSessionUser(request, env);
+        AuditLog.log({
+            userId,
+            userEmail,
+            organizationId,
+            action: 'execute',
+            resourceType: 'scheduled_task',
+            resourceId: cleanId,
+            metadata: { name: task.get('name'), action: 'manual_run' },
+        }).catch(() => {});
+
         return jsonResponse({
             success: true,
             message: 'Task execution started',
@@ -112,7 +160,20 @@ export async function handleCronTask(
     }
 
     if (!action && request.method === 'DELETE') {
+        const taskName = task.get('name') as string;
         await ScheduledTask.delete(cleanId);
+
+        const { userId, userEmail, organizationId } = await getSessionUser(request, env);
+        AuditLog.log({
+            userId,
+            userEmail,
+            organizationId,
+            action: 'delete',
+            resourceType: 'scheduled_task',
+            resourceId: cleanId,
+            metadata: { name: taskName },
+        }).catch(() => {});
+
         return jsonResponse({ success: true, message: 'Task deleted' });
     }
 

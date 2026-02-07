@@ -4,6 +4,7 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { getSession, hashPassword } from '@ottabase/auth/backend';
 import { getAuthOptions } from '../lib/auth-utils';
 import { parseCrudRequest, executeSecureCrudRequest, registerConnection } from '@ottabase/ottaorm';
+import { AuditLog } from '@ottabase/ottaorm/models';
 import { getSecurityContext } from '../lib/auth-utils';
 import { Post } from '@ottabase/ottablog';
 import type { CloudflareEnv } from '../../cloudflare-env';
@@ -72,6 +73,20 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     }
 
     const result = await executeSecureCrudRequest(crudRequest, securityContext);
+
+    if (result.success && ['POST', 'PATCH', 'DELETE'].includes(crudRequest.method)) {
+        const userId = session?.user?.id;
+        const userEmail = (session?.user as any)?.email;
+        const actionMap: Record<string, string> = { POST: 'create', PATCH: 'update', DELETE: 'delete' };
+        AuditLog.log({
+            userId,
+            userEmail,
+            action: actionMap[crudRequest.method] || crudRequest.method.toLowerCase(),
+            resourceType: `crud:${crudRequest.model}`,
+            resourceId: crudRequest.id || (result.data as any)?.id || undefined,
+            metadata: { model: crudRequest.model, method: crudRequest.method },
+        }).catch(() => {});
+    }
 
     if (!result.success) {
         console.error(`[CRUD Error] ${crudRequest.method} ${crudRequest.model}:`, {
