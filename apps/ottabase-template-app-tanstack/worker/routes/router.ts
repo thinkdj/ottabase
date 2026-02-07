@@ -35,7 +35,14 @@ import {
     handleReferralUsernameUpdate,
 } from './referrals';
 import { handleDemo, handleDemoError, handleAuditLogs } from './demo';
-import { handleFlagById, handleFlagsCreate, handleFlagsEvaluate, handleFlagsList, handleFlagToggle } from './flags';
+import {
+    handleFlagById,
+    handleFlagsAuditLog,
+    handleFlagsCreate,
+    handleFlagsEvaluate,
+    handleFlagsList,
+    handleFlagToggle,
+} from './flags';
 import {
     handleCloudflareImages,
     handleCloudflareKV,
@@ -217,6 +224,10 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
     // Feature flags
     if (route === '/api/flags/evaluate') {
         return handleFlagsEvaluate(context);
+    }
+
+    if (route === '/api/flags/audit') {
+        return handleFlagsAuditLog(context);
     }
 
     if (route === '/api/flags') {

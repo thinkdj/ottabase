@@ -23,7 +23,7 @@ import {
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { api, isApiError } from '@/lib/api';
-import { ArrowLeft, Flag, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Clock, Flag, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
 interface FeatureFlagItem {
     id: string;
@@ -46,6 +46,18 @@ interface FlagsListResponse {
     total: number;
     page: number;
     perPage: number;
+}
+
+interface AuditLogItem {
+    id: string;
+    userId: string | null;
+    userEmail: string | null;
+    action: string;
+    resourceType: string;
+    resourceId: string | null;
+    changes: string | null;
+    metadata: string | null;
+    createdAt: string;
 }
 
 const EMPTY_FORM = {
@@ -74,6 +86,11 @@ export function AdminFlagsPage() {
     });
 
     const flags = flagsData?.data ?? [];
+
+    const { data: auditData } = useQuery({
+        queryKey: ['admin', 'flags', 'audit'],
+        queryFn: () => api<{ data: AuditLogItem[] }>('/api/flags/audit'),
+    });
 
     const validateRules = (text: string): boolean => {
         if (!text.trim() || text.trim() === '{}') {
@@ -479,8 +496,91 @@ function BillingPage() {
 }`}
                         </pre>
                     </div>
+                    <div>
+                        <p className="text-sm font-medium mb-1">Dev/QA Overrides</p>
+                        <pre className="rounded bg-muted p-3 text-xs overflow-auto">
+                            {`// URL param override (great for QA testing)
+https://app.example.com/?flags=billing.invoices:true,ai.assist:false
+
+// Dev tools panel (floating toggle UI)
+import { FlagDevTools } from "@ottabase/flags/react";
+{import.meta.env.DEV && <FlagDevTools />}`}
+                        </pre>
+                    </div>
                 </CardContent>
             </Card>
+
+            {/* Audit Trail */}
+            {auditData?.data && auditData.data.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base">Recent Changes</CardTitle>
+                        <CardDescription>Audit trail of flag modifications</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                            {auditData.data.slice(0, 20).map((log) => {
+                                let changes: Record<string, unknown> | null = null;
+                                let meta: Record<string, unknown> | null = null;
+                                try {
+                                    if (log.changes) changes = JSON.parse(log.changes);
+                                } catch {}
+                                try {
+                                    if (log.metadata) meta = JSON.parse(log.metadata);
+                                } catch {}
+
+                                const flagKey = (meta?.key as string) || log.resourceId || '?';
+                                const actionLabel =
+                                    log.action === 'create'
+                                        ? 'Created'
+                                        : log.action === 'delete'
+                                          ? 'Deleted'
+                                          : meta?.action === 'toggle'
+                                            ? 'Toggled'
+                                            : 'Updated';
+
+                                return (
+                                    <div
+                                        key={log.id}
+                                        className="flex items-center gap-3 rounded border px-3 py-2 text-sm"
+                                    >
+                                        <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                        <span className="text-muted-foreground">
+                                            {new Date(log.createdAt).toLocaleString()}
+                                        </span>
+                                        <Badge
+                                            variant={
+                                                log.action === 'delete'
+                                                    ? 'destructive'
+                                                    : log.action === 'create'
+                                                      ? 'default'
+                                                      : 'secondary'
+                                            }
+                                        >
+                                            {actionLabel}
+                                        </Badge>
+                                        <code className="text-xs">{flagKey}</code>
+                                        {changes?.after &&
+                                            typeof changes.after === 'object' &&
+                                            'enabled' in (changes.after as Record<string, unknown>) && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {(changes.after as Record<string, unknown>).enabled
+                                                        ? 'enabled'
+                                                        : 'disabled'}
+                                                </span>
+                                            )}
+                                        {log.userEmail && (
+                                            <span className="ml-auto text-xs text-muted-foreground">
+                                                {log.userEmail}
+                                            </span>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Delete Confirmation */}
             <AlertDialog open={deleteDialog !== null} onOpenChange={(open) => !open && setDeleteDialog(null)}>
