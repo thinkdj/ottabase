@@ -40,52 +40,70 @@ import {
 import { Shield, Building2, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useRBACToast } from '@/hooks/useToast';
 import { useOrganizations } from '@/hooks/useRBAC';
-import type { MemberRole, BadgeVariant } from '@/types/rbac';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { TableSkeleton } from '@/components/LoadingSkeletons';
+import type { MemberRole, BadgeVariant, OrganizationMemberRecord } from '@/types/rbac';
+
+interface UserRecord {
+    id: string;
+    name: string | null;
+    email: string;
+    image: string | null;
+}
 
 interface UserOrganization {
     id: string;
     organizationId: string;
     organizationName: string;
     role: MemberRole;
-    joinedAt: Date;
+    joinedAt: string;
 }
 
 export function UserRBACPage() {
     const { userId } = useParams({ from: '/admin/users/$userId/rbac' });
     const toast = useRBACToast();
+    const queryClient = useQueryClient();
     const { data: orgs = [] } = useOrganizations();
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedOrg, setSelectedOrg] = useState('');
     const [selectedRole, setSelectedRole] = useState<MemberRole>('member');
-    const [isAdding, setIsAdding] = useState(false);
 
-    // TODO: Replace with actual API call
-    const mockUser = {
-        id: userId,
-        name: 'John Doe',
-        email: 'john@example.com',
-        image: null,
-    };
-
-    const mockUserOrgs: UserOrganization[] = [
-        {
-            id: 'member-1',
-            organizationId: 'org-1',
-            organizationName: 'Acme Corp',
-            role: 'admin',
-            joinedAt: new Date('2024-01-15'),
+    // Fetch user details
+    const { data: user, isLoading: isUserLoading } = useQuery({
+        queryKey: ['admin', 'users', userId],
+        queryFn: async () => {
+            const response = await api<{ data: UserRecord }>(`/api/admin/users/${userId}`);
+            return response.data;
         },
-        {
-            id: 'member-2',
-            organizationId: 'org-2',
-            organizationName: 'Tech Startup',
-            role: 'member',
-            joinedAt: new Date('2024-02-20'),
-        },
-    ];
+        enabled: !!userId,
+    });
 
-    const availableOrgs = orgs.filter((org) => !mockUserOrgs.some((uo) => uo.organizationId === org.id));
+    // Fetch user's organization memberships
+    const { data: userOrgs = [], isLoading: isOrgsLoading } = useQuery({
+        queryKey: ['admin', 'users', userId, 'memberships'],
+        queryFn: async () => {
+            const response = await api<{ data: OrganizationMemberRecord[] }>(
+                `/api/ottaorm/organization_members?where=${encodeURIComponent(JSON.stringify({ userId }))}`,
+            );
+            return response.data.map((m) => {
+                const org = orgs.find((o) => o.id === m.organizationId);
+                return {
+                    id: m.id || `${m.userId}-${m.organizationId}`,
+                    organizationId: m.organizationId,
+                    organizationName: org?.name || m.organizationId,
+                    role: m.role,
+                    joinedAt: m.joinedAt || '',
+                } satisfies UserOrganization;
+            });
+        },
+        enabled: !!userId && orgs.length > 0,
+    });
+
+    const isLoading = isUserLoading || isOrgsLoading;
+
+    const availableOrgs = orgs.filter((org) => !userOrgs.some((uo) => uo.organizationId === org.id));
 
     const getRoleBadgeVariant = (role: MemberRole): BadgeVariant => {
         switch (role) {
@@ -98,56 +116,95 @@ export function UserRBACPage() {
         }
     };
 
-    const handleAddToOrg = async () => {
-        if (!selectedOrg) {
-            toast.error('Validation error', 'Please select an organization');
-            return;
-        }
-
-        setIsAdding(true);
-        try {
-            // TODO: Implement API call
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Mutation: add user to organization
+    const addToOrg = useMutation({
+        mutationFn: async ({ orgId, role }: { orgId: string; role: MemberRole }) => {
+            const response = await api<{ data: OrganizationMemberRecord }>('/api/ottaorm/organization_members', {
+                method: 'POST',
+                body: JSON.stringify({
+                    userId,
+                    organizationId: orgId,
+                    role,
+                    status: 'active',
+                    joinedAt: new Date().toISOString(),
+                }),
+            });
+            return response.data;
+        },
+        onSuccess: () => {
             toast.rbac.memberInvited();
             setIsDialogOpen(false);
             setSelectedOrg('');
             setSelectedRole('member');
-        } catch (error) {
+            queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId, 'memberships'] });
+        },
+        onError: () => {
             toast.error('Failed to add', 'Could not add user to organization');
-        } finally {
-            setIsAdding(false);
-        }
-    };
+        },
+    });
 
-    const handleRemove = async (membershipId: string, orgName: string) => {
-        if (!confirm(`Remove user from ${orgName}?`)) return;
-
-        try {
-            // TODO: Implement API call
-            await new Promise((resolve) => setTimeout(resolve, 500));
+    // Mutation: remove user from organization
+    const removeMember = useMutation({
+        mutationFn: async (membershipId: string) => {
+            await api(`/api/ottaorm/organization_members/${membershipId}`, {
+                method: 'DELETE',
+            });
+        },
+        onSuccess: () => {
             toast.rbac.memberRemoved();
-        } catch (error) {
+            queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId, 'memberships'] });
+        },
+        onError: () => {
             toast.error('Failed to remove', 'Could not remove user from organization');
-        }
-    };
+        },
+    });
 
-    const handleRoleChange = async (membershipId: string, newRole: MemberRole) => {
-        try {
-            // TODO: Implement API call
-            await new Promise((resolve) => setTimeout(resolve, 500));
+    // Mutation: update member role
+    const updateRole = useMutation({
+        mutationFn: async ({ membershipId, role }: { membershipId: string; role: MemberRole }) => {
+            const response = await api<{ data: OrganizationMemberRecord }>(
+                `/api/ottaorm/organization_members/${membershipId}`,
+                {
+                    method: 'PATCH',
+                    body: JSON.stringify({ role }),
+                },
+            );
+            return response.data;
+        },
+        onSuccess: () => {
             toast.rbac.memberUpdated();
-        } catch (error) {
+            queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId, 'memberships'] });
+        },
+        onError: () => {
             toast.error('Failed to update', 'Could not update role');
+        },
+    });
+
+    const handleAddToOrg = () => {
+        if (!selectedOrg) {
+            toast.error('Validation error', 'Please select an organization');
+            return;
         }
+        addToOrg.mutate({ orgId: selectedOrg, role: selectedRole });
     };
 
-    const userInitials = mockUser.name
-        ? mockUser.name
+    const handleRemove = (membershipId: string, orgName: string) => {
+        if (!confirm(`Remove user from ${orgName}?`)) return;
+        removeMember.mutate(membershipId);
+    };
+
+    const handleRoleChange = (membershipId: string, newRole: MemberRole) => {
+        updateRole.mutate({ membershipId, role: newRole });
+    };
+
+    const displayUser = user || { id: userId, name: null, email: '', image: null };
+    const userInitials = displayUser.name
+        ? displayUser.name
               .split(' ')
               .map((n) => n[0])
               .join('')
               .toUpperCase()
-        : mockUser.email[0].toUpperCase();
+        : (displayUser.email?.[0] || '?').toUpperCase();
 
     return (
         <div className="space-y-6">
@@ -173,17 +230,23 @@ export function UserRBACPage() {
                     <CardTitle>User Profile</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex items-center gap-4">
-                        <Avatar className="h-16 w-16">
-                            <AvatarImage src={mockUser.image || undefined} />
-                            <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <h3 className="font-semibold text-lg">{mockUser.name}</h3>
-                            <p className="text-sm text-muted-foreground">{mockUser.email}</p>
-                            <code className="text-xs bg-muted px-2 py-1 rounded mt-1 inline-block">{mockUser.id}</code>
+                    {isUserLoading ? (
+                        <TableSkeleton rows={1} columns={3} />
+                    ) : (
+                        <div className="flex items-center gap-4">
+                            <Avatar className="h-16 w-16">
+                                <AvatarImage src={displayUser.image || undefined} />
+                                <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <h3 className="font-semibold text-lg">{displayUser.name || 'No name'}</h3>
+                                <p className="text-sm text-muted-foreground">{displayUser.email}</p>
+                                <code className="text-xs bg-muted px-2 py-1 rounded mt-1 inline-block">
+                                    {displayUser.id}
+                                </code>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -255,10 +318,10 @@ export function UserRBACPage() {
 
                                     <Button
                                         onClick={handleAddToOrg}
-                                        disabled={isAdding || !selectedOrg}
+                                        disabled={addToOrg.isPending || !selectedOrg}
                                         className="w-full"
                                     >
-                                        {isAdding ? (
+                                        {addToOrg.isPending ? (
                                             <>
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                                 Adding...
@@ -273,7 +336,9 @@ export function UserRBACPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {mockUserOrgs.length === 0 ? (
+                    {isLoading ? (
+                        <TableSkeleton rows={3} columns={4} />
+                    ) : userOrgs.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                             User is not a member of any organizations
                         </div>
@@ -288,7 +353,7 @@ export function UserRBACPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {mockUserOrgs.map((membership) => (
+                                {userOrgs.map((membership) => (
                                     <TableRow key={membership.id}>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
@@ -322,13 +387,17 @@ export function UserRBACPage() {
                                             </Select>
                                         </TableCell>
                                         <TableCell className="text-sm text-muted-foreground">
-                                            {new Date(membership.joinedAt).toLocaleDateString()}
+                                            {membership.joinedAt
+                                                ? new Date(membership.joinedAt).toLocaleDateString()
+                                                : '-'}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                onClick={() => handleRemove(membership.id, membership.organizationName)}
+                                                onClick={() =>
+                                                    handleRemove(membership.id, membership.organizationName)
+                                                }
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>

@@ -23,15 +23,18 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
             filter: (context) => {
                 // Organizations don't have organizationId - they ARE the organization
                 // Users should see organizations they own OR are members of
-                // For now, filter by ownerId if userId is present
-                // Note: This doesn't include organizations where user is a member (not owner)
-                // For full membership filtering, use organization_members table in app logic
                 if (!context.userId) {
-                    // No userId = no access (return null to deny)
                     return null;
                 }
-                // Filter by ownerId - user can see organizations they own
-                // TODO: Also include organizations where user is a member via organization_members
+
+                // When memberOrganizationIds is populated (by the upstream security
+                // context builder), use it to return all orgs the user can access.
+                // This list already includes both owned and member orgs.
+                if (context.memberOrganizationIds && context.memberOrganizationIds.length > 0) {
+                    return { id: context.memberOrganizationIds };
+                }
+
+                // Fallback: filter by ownerId only (membership info not available)
                 return { ownerId: context.userId };
             },
         },

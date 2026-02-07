@@ -65,6 +65,7 @@ import {
     handleAdminDbTableDelete,
     handleAdminDbTables,
 } from './admin-db';
+import { handleAdminUsers, handleAdminUserById } from './admin-users';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { errorResponse } from '@ottabase/utils/http-errors';
 
@@ -211,6 +212,15 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
 
     if (route === '/api/cloudflare/r2') {
         return handleCloudflareR2(context);
+    }
+
+    if (route === '/api/admin/users') {
+        return handleAdminUsers(context);
+    }
+
+    const adminUserMatch = route.match(/^\/api\/admin\/users\/([^/]+)$/);
+    if (adminUserMatch) {
+        return handleAdminUserById(context, adminUserMatch[1]);
     }
 
     if (route === '/api/admin/db/tables') {

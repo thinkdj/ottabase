@@ -5,7 +5,7 @@
  * GitHub-like minimal UI with dark mode support
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
     Avatar,
     AvatarFallback,
@@ -28,56 +28,39 @@ import {
 import { Users, Search, Mail, Calendar, Shield } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import { TableSkeleton } from '@/components/LoadingSkeletons';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
 interface User {
     id: string;
     name: string | null;
     email: string;
-    emailVerified: Date | null;
+    emailVerified: string | null;
     image: string | null;
-    createdAt: Date;
-    role: 'admin' | 'user';
+    createdAt: string;
+    role?: 'admin' | 'user';
 }
 
 export function UserManagementPage() {
     const [searchTerm, setSearchTerm] = useState('');
-    const [isLoading] = useState(false);
 
-    // TODO: Replace with actual API call
-    const mockUsers: User[] = [
-        {
-            id: 'user-1',
-            name: 'John Doe',
-            email: 'john@example.com',
-            emailVerified: new Date('2024-01-15'),
-            image: null,
-            createdAt: new Date('2024-01-15'),
-            role: 'admin',
+    const { data: allUsers = [], isLoading } = useQuery({
+        queryKey: ['admin', 'users'],
+        queryFn: async () => {
+            const response = await api<{ data: User[] }>('/api/admin/users');
+            return response.data;
         },
-        {
-            id: 'user-2',
-            name: 'Jane Smith',
-            email: 'jane@example.com',
-            emailVerified: new Date('2024-02-20'),
-            image: null,
-            createdAt: new Date('2024-02-20'),
-            role: 'user',
-        },
-        {
-            id: 'user-3',
-            name: null,
-            email: 'bob@example.com',
-            emailVerified: null,
-            image: null,
-            createdAt: new Date('2024-03-10'),
-            role: 'user',
-        },
-    ];
+        staleTime: 2 * 60 * 1000,
+    });
 
-    const users = mockUsers.filter(
-        (user) =>
-            user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchTerm.toLowerCase()),
+    const users = useMemo(
+        () =>
+            allUsers.filter(
+                (user) =>
+                    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    user.email.toLowerCase().includes(searchTerm.toLowerCase()),
+            ),
+        [allUsers, searchTerm],
     );
 
     const getUserInitials = (user: User) => {
@@ -113,26 +96,26 @@ export function UserManagementPage() {
                 <Card>
                     <CardHeader className="pb-2">
                         <CardDescription>Total Users</CardDescription>
-                        <CardTitle className="text-2xl">{mockUsers.length}</CardTitle>
+                        <CardTitle className="text-2xl">{allUsers.length}</CardTitle>
                     </CardHeader>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
                         <CardDescription>Admins</CardDescription>
-                        <CardTitle className="text-2xl">{mockUsers.filter((u) => u.role === 'admin').length}</CardTitle>
+                        <CardTitle className="text-2xl">{allUsers.filter((u) => u.role === 'admin').length}</CardTitle>
                     </CardHeader>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
                         <CardDescription>Verified</CardDescription>
-                        <CardTitle className="text-2xl">{mockUsers.filter((u) => u.emailVerified).length}</CardTitle>
+                        <CardTitle className="text-2xl">{allUsers.filter((u) => u.emailVerified).length}</CardTitle>
                     </CardHeader>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
                         <CardDescription>This Month</CardDescription>
                         <CardTitle className="text-2xl">
-                            {mockUsers.filter((u) => new Date(u.createdAt).getMonth() === new Date().getMonth()).length}
+                            {allUsers.filter((u) => new Date(u.createdAt).getMonth() === new Date().getMonth()).length}
                         </CardTitle>
                     </CardHeader>
                 </Card>
