@@ -1,6 +1,3 @@
-// IMP TODO: SimpleImage and rendering does similar function. Unify and use only advancedImageTool in future
-// Missing functionality: better menu items with text like simple image, Paste support,
-
 import './AdvancedImageTool.css';
 import { Icons } from './iconUtils';
 import { AdvancedImageData, UploadResponse } from './types';
@@ -20,7 +17,7 @@ export default class AdvancedImageTool {
 
     static get toolbox() {
         return {
-            title: 'Advanced Image',
+            title: 'Image',
             icon: Icons.image,
         };
     }

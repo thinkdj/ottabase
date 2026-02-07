@@ -92,18 +92,33 @@ registerEmailTemplate({
 });
 ```
 
-## Cloudflare Provider (Stub)
+## Cloudflare Provider
 
-Cloudflare email sending support is intentionally pluggable until a default edge-safe option is chosen. Use the stub
-with a custom transport:
+### MailChannels (recommended for Workers)
+
+Use MailChannels transactional API for zero-dependency email from Cloudflare Workers:
+
+```ts
+import { createMailChannelsMailer } from '@ottabase/email/providers/cloudflare';
+
+const mailer = createMailChannelsMailer({
+    dkimDomain: 'example.com',
+    dkimSelector: 'mailchannels',
+    dkimPrivateKey: env.DKIM_PRIVATE_KEY,
+});
+```
+
+### Custom transport
+
+For other providers, use the pluggable wrapper:
 
 ```ts
 import { createCloudflareMailer } from '@ottabase/email/providers/cloudflare';
 
 const mailer = createCloudflareMailer({
     send: async (message) => {
-        // TODO: implement Cloudflare-native send
-        return { id: 'queued' };
+        await myProvider.send(message);
+        return { id: 'sent' };
     },
 });
 ```

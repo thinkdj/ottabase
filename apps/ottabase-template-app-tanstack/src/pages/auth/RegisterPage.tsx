@@ -163,8 +163,7 @@ export function RegisterPage() {
                                 showTermsCheckbox
                                 termsText="I agree to the Terms of Service and Privacy Policy"
                                 onTermsClick={() => {
-                                    // TODO: Open terms modal or navigate to terms page
-                                    console.log('Show terms');
+                                    window.open('/terms', '_blank');
                                 }}
                             />
                         )}
