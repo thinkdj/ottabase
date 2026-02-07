@@ -5,7 +5,8 @@
  * GitHub-like minimal UI with dark mode support
  */
 
-import { useMemo, useState } from 'react';
+import { TableSkeleton } from '@/components/LoadingSkeletons';
+import { api } from '@/lib/api';
 import {
     Avatar,
     AvatarFallback,
@@ -25,16 +26,15 @@ import {
     TableHeader,
     TableRow,
 } from '@ottabase/ui-shadcn';
-import { Users, Search, Mail, Calendar, Shield } from 'lucide-react';
-import { Link } from '@tanstack/react-router';
-import { TableSkeleton } from '@/components/LoadingSkeletons';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { Link } from '@tanstack/react-router';
+import { Calendar, Mail, Search, Shield, Users } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 interface User {
     id: string;
     name: string | null;
-    email: string;
+    email: string | null;
     emailVerified: string | null;
     image: string | null;
     createdAt: string;
@@ -47,8 +47,9 @@ export function UserManagementPage() {
     const { data: allUsers = [], isLoading } = useQuery({
         queryKey: ['admin', 'users'],
         queryFn: async () => {
-            const response = await api<{ data: User[] }>('/api/admin/users');
-            return response.data;
+            const response = await api<{ data: Array<{ entity: string; data: User }> }>('/api/admin/users');
+            // Extract the actual user data from the nested structure
+            return response.data.map((item) => item.data);
         },
         staleTime: 2 * 60 * 1000,
     });
@@ -58,7 +59,7 @@ export function UserManagementPage() {
             allUsers.filter(
                 (user) =>
                     user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    user.email.toLowerCase().includes(searchTerm.toLowerCase()),
+                    user.email?.toLowerCase().includes(searchTerm.toLowerCase()),
             ),
         [allUsers, searchTerm],
     );
@@ -72,7 +73,7 @@ export function UserManagementPage() {
                 .join('')
                 .toUpperCase();
         }
-        return user.email[0].toUpperCase();
+        return user.email?.[0]?.toUpperCase() || '?';
     };
 
     return (
@@ -174,7 +175,7 @@ export function UserManagementPage() {
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <Mail className="h-4 w-4 text-muted-foreground" />
-                                                {user.email}
+                                                {user.email || 'No email'}
                                             </div>
                                         </TableCell>
                                         <TableCell>
