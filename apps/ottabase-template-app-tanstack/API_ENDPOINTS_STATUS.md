@@ -58,6 +58,24 @@ The following endpoints should work automatically via the generic CRUD API:
     - Status: ✅ **Should work** (generic delete endpoint)
     - Used by: OrganizationMembersPage (remove member)
 
+## ✅ Custom Admin Endpoints (Implemented)
+
+### Admin Users
+
+These endpoints bypass the disabled `/api/ottaorm/users` CRUD and provide admin-level user management:
+
+- **GET** `/api/admin/users`
+    - Status: ✅ **Implemented**
+    - Used by: UserManagementPage (list all users)
+    - Auth: Requires authenticated session
+    - Response: `{ data: User[] }`
+
+- **GET** `/api/admin/users/:id`
+    - Status: ✅ **Implemented**
+    - Used by: UserRBACPage (user details + memberships)
+    - Auth: Requires authenticated session
+    - Response: `{ data: { ...User, memberships: OrganizationMember[] } }`
+
 ## ⚠️ Endpoints Requiring Custom Implementation
 
 ### RBAC Roles

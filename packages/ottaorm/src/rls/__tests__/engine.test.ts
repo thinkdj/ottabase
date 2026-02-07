@@ -141,6 +141,48 @@ describe('RLS Engine', () => {
             expect(() => engine.applyReadFilter('orgs', ctx)).toThrow(RLSError);
         });
 
+        it('custom level: filter can return array value for inArray matching', () => {
+            engine.register({
+                model: 'orgs',
+                policy: {
+                    level: 'custom',
+                    filter: (context) => {
+                        if (context.memberOrganizationIds && context.memberOrganizationIds.length > 0) {
+                            return { id: context.memberOrganizationIds };
+                        }
+                        return context.userId ? { ownerId: context.userId } : null;
+                    },
+                },
+            });
+
+            // With memberOrganizationIds → returns array filter
+            const ctx: SecurityContext = {
+                userId: 'u1',
+                memberOrganizationIds: ['org-1', 'org-2', 'org-3'],
+            };
+            const filter = engine.applyReadFilter('orgs', ctx);
+            expect(filter).toEqual({ id: ['org-1', 'org-2', 'org-3'] });
+        });
+
+        it('custom level: falls back to ownerId when memberOrganizationIds is empty', () => {
+            engine.register({
+                model: 'orgs',
+                policy: {
+                    level: 'custom',
+                    filter: (context) => {
+                        if (context.memberOrganizationIds && context.memberOrganizationIds.length > 0) {
+                            return { id: context.memberOrganizationIds };
+                        }
+                        return context.userId ? { ownerId: context.userId } : null;
+                    },
+                },
+            });
+
+            const ctx: SecurityContext = { userId: 'u1' };
+            const filter = engine.applyReadFilter('orgs', ctx);
+            expect(filter).toEqual({ ownerId: 'u1' });
+        });
+
         it('throws when no policy defined for model', () => {
             const ctx: SecurityContext = { userId: 'u1', organizationId: 'org-1' };
             expect(() => engine.applyReadFilter('unknown_model', ctx)).toThrow(RLSError);
