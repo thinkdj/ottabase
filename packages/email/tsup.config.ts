@@ -9,6 +9,7 @@ export default defineConfig({
         'src/providers/resend.ts',
         'src/providers/cloudflare.ts',
         'src/providers/nodemailer.ts',
+        'src/providers/ses.ts',
     ],
     format: ['cjs', 'esm'],
     dts: {
