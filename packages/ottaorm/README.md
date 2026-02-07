@@ -749,12 +749,96 @@ export async function getTenantContext(userId: string, orgSlug: string) {
 
 For complete RBAC integration with these models, see the [@ottabase/rbac](../rbac/README.md) package.
 
+## Row-Level Security (RLS)
+
+OttaORM includes a built-in RLS engine that enforces data isolation at the query level. Policies are defined per-model
+and applied automatically by the secure CRUD handler.
+
+### Policy Levels
+
+| Level    | Description                              | Filter field     |
+| -------- | ---------------------------------------- | ---------------- |
+| `tenant` | Scoped to an organization                | `organizationId` |
+| `user`   | Scoped to the authenticated user         | `userId`         |
+| `app`    | Scoped to an application context         | `appId`          |
+| `public` | No filter applied (read-only by default) | —                |
+| `custom` | Fully custom filter function             | —                |
+
+### Quick Setup
+
+```typescript
+import { RLSPolicies, type ModelRLSConfig } from '@ottabase/ottaorm';
+
+const policies: ModelRLSConfig[] = [
+    { model: 'posts', policy: RLSPolicies.TenantScoped(false) },
+    { model: 'todos', policy: RLSPolicies.UserScoped() },
+    { model: 'audit_logs', policy: { ...RLSPolicies.TenantScoped(true), readOnly: true } },
+    { model: 'config', policy: RLSPolicies.AdminOnly() },
+];
+```
+
+### Organization Membership Filter
+
+The built-in `organizations` policy supports both ownership and membership. When the `SecurityContext` includes
+`memberOrganizationIds`, the filter returns all orgs the user can access (owned + member). Otherwise it falls back to
+`ownerId` only:
+
+```typescript
+// SecurityContext populated by your auth middleware:
+const context: SecurityContext = {
+    userId: 'user-123',
+    organizationId: 'org-1',
+    memberOrganizationIds: ['org-1', 'org-2', 'org-3'], // owned + member orgs
+};
+
+// The organizations RLS filter will return:
+// { id: ['org-1', 'org-2', 'org-3'] }   ← inArray query
+```
+
+### Array Filters (IN queries)
+
+`buildWhereConditions` supports array values, translating them to `inArray()` queries:
+
+```typescript
+// In a custom RLS filter:
+filter: (context) => ({
+    id: context.memberOrganizationIds, // → WHERE id IN ('org-1', 'org-2', ...)
+});
+```
+
+### SecurityContext
+
+The security context is passed to all RLS operations:
+
+```typescript
+interface SecurityContext {
+    userId?: string;
+    organizationId?: string | null;
+    appId?: string;
+    roles?: string[];
+    permissions?: string[];
+    memberOrganizationIds?: string[]; // orgs the user can access
+}
+```
+
+### Audit Integration
+
+RLS violations are automatically logged to the `audit_logs` table via the `AuditLog` model. Use `getRecentViolations()`
+to query stored violations for monitoring dashboards:
+
+```typescript
+import { getRecentViolations } from '@ottabase/ottaorm';
+
+const violations = await getRecentViolations(50);
+```
+
 ## Architecture
 
 ```
 @ottabase/ottaorm (CORE)
 ├── User, Tag, Account (Models)
 ├── Auto-migration system
+├── RLS engine & policies
 └── Base model & utilities
 
 @ottabase/ottablog (CONTENT)

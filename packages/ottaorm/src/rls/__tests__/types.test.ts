@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RLSPolicies } from '../types';
+import type { SecurityContext } from '../types';
 
 describe('RLSPolicies', () => {
     it('TenantScoped returns policy with level tenant and field organizationId', () => {
@@ -64,5 +65,21 @@ describe('RLSPolicies', () => {
             organizationId: 'org-1',
             userId: 'u1',
         });
+    });
+});
+
+describe('SecurityContext', () => {
+    it('supports memberOrganizationIds field', () => {
+        const ctx: SecurityContext = {
+            userId: 'u1',
+            organizationId: 'org-1',
+            memberOrganizationIds: ['org-1', 'org-2', 'org-3'],
+        };
+        expect(ctx.memberOrganizationIds).toEqual(['org-1', 'org-2', 'org-3']);
+    });
+
+    it('memberOrganizationIds is optional', () => {
+        const ctx: SecurityContext = { userId: 'u1' };
+        expect(ctx.memberOrganizationIds).toBeUndefined();
     });
 });
