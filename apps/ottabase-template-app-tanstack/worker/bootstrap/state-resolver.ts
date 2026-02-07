@@ -68,9 +68,7 @@ async function readDBState(env: CloudflareEnv): Promise<{ state: PlatformState |
     if (!env.OBCF_D1) return { state: null, tableExists: false };
 
     try {
-        const result = await env.OBCF_D1.prepare(
-            `SELECT value FROM ${META_TABLE} WHERE key = ?`,
-        )
+        const result = await env.OBCF_D1.prepare(`SELECT value FROM ${META_TABLE} WHERE key = ?`)
             .bind(META_PLATFORM_STATE_KEY)
             .all();
 
@@ -131,6 +129,20 @@ export async function ensureMetaTable(env: CloudflareEnv): Promise<void> {
  */
 export async function resolvePlatformState(env: CloudflareEnv): Promise<PlatformStateResult> {
     const bindings = probeBindings(env);
+
+    // -------------------------------------------------------
+    // 0. SKIP BOOTSTRAP in test environments
+    // -------------------------------------------------------
+    const environment = (env as any).ENVIRONMENT;
+    if (environment === 'test') {
+        return {
+            state: 'READY',
+            source: 'env',
+            panic: false,
+            reason: 'Bootstrap skipped in test environment',
+            bindings,
+        };
+    }
 
     // -------------------------------------------------------
     // 1. ENV LOCK — overrides everything

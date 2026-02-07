@@ -3,14 +3,28 @@
 // ============================================================
 //
 // Handles all /__bootstrap__/* requests:
-//   GET  /__bootstrap__              → Wizard UI (HTML)
-//   GET  /__bootstrap__/api/status   → Current platform state + binding probe
-//   POST /__bootstrap__/api/init     → Run schema creation + migrations
-//   POST /__bootstrap__/api/finalize → Mark platform READY
+//   GET  /__bootstrap__                  → Wizard UI (HTML)
+//   GET  /__bootstrap__/api/status       → Current platform state + binding probe
+//   POST /__bootstrap__/api/init         → Run schema creation + migrations
+//   POST /__bootstrap__/api/seed         → Seed RBAC roles + permissions
+//   POST /__bootstrap__/api/create-owner → Create first admin/owner account
+//   POST /__bootstrap__/api/finalize     → Mark platform READY
 // ============================================================
 
-import { autoInit, runMigrations, coreMigrations } from '@ottabase/ottaorm';
+import {
+    autoInit,
+    runMigrations,
+    coreMigrations,
+    registerConnection,
+    clearConnection,
+    Role,
+    User,
+    Organization,
+    OrganizationMember,
+} from '@ottabase/ottaorm';
+import { hashPassword } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { makeSlug } from '@ottabase/utils/url';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
@@ -25,70 +39,68 @@ interface BootstrapContext {
     platformState: PlatformStateResult;
 }
 
+/** Register a D1 connection for ORM model operations */
+function ensureOrmConnection(env: CloudflareEnv): void {
+    if (!env.OBCF_D1) return;
+    try {
+        clearConnection('default');
+    } catch {
+        /* ignore if no connection */
+    }
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+}
+
+function jsonResp(data: unknown, status = 200): Response {
+    return new Response(JSON.stringify(data), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+    });
+}
+
 /**
  * Handle all /__bootstrap__/* requests.
  * Always returns a Response (wizard page, API response, or 404).
  */
 export async function handleBootstrapRoute(context: BootstrapContext): Promise<Response> {
-    const { url, platformState } = context;
+    const { url } = context;
     const path = url.pathname;
 
     // API routes
-    if (path === '/__bootstrap__/api/status') {
-        return handleStatus(context);
-    }
-    if (path === '/__bootstrap__/api/init') {
-        return handleInit(context);
-    }
-    if (path === '/__bootstrap__/api/finalize') {
-        return handleFinalize(context);
-    }
+    if (path === '/__bootstrap__/api/status') return handleStatus(context);
+    if (path === '/__bootstrap__/api/init') return handleInit(context);
+    if (path === '/__bootstrap__/api/seed') return handleSeed(context);
+    if (path === '/__bootstrap__/api/create-owner') return handleCreateOwner(context);
+    if (path === '/__bootstrap__/api/finalize') return handleFinalize(context);
 
     // Wizard HTML page — serve for any /__bootstrap__* GET
     if (context.request.method === 'GET') {
         return serveWizardPage(context);
     }
 
-    return new Response(JSON.stringify({ error: 'Not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonResp({ error: 'Not found' }, 404);
 }
 
 /**
  * Intercept all non-bootstrap requests when platform is not READY.
  * Returns a redirect/error Response, or null if the platform is ready.
  */
-export function interceptIfNotReady(
-    request: Request,
-    url: URL,
-    platformState: PlatformStateResult,
-): Response | null {
+export function interceptIfNotReady(request: Request, url: URL, platformState: PlatformStateResult): Response | null {
     const path = url.pathname;
 
     // Always allow bootstrap routes through
-    if (path.startsWith('/__bootstrap__')) {
-        return null;
-    }
+    if (path.startsWith('/__bootstrap__')) return null;
 
     // Allow health check through always
-    if (path === '/api/health') {
-        return null;
-    }
+    if (path === '/api/health') return null;
 
     // Platform is READY and not in panic → let request through
-    if (platformState.state === 'READY' && !platformState.panic) {
-        return null;
-    }
+    if (platformState.state === 'READY' && !platformState.panic) return null;
 
     // Panic mode (KV=READY but DB dead)
     if (platformState.panic) {
         return new Response(renderMaintenancePage(platformState), {
             status: 503,
-            headers: {
-                'Content-Type': 'text/html;charset=UTF-8',
-                'Retry-After': '30',
-            },
+            headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '30' },
         });
     }
 
@@ -96,10 +108,7 @@ export function interceptIfNotReady(
     if (platformState.source === 'env') {
         return new Response(renderLockedPage(platformState), {
             status: 503,
-            headers: {
-                'Content-Type': 'text/html;charset=UTF-8',
-                'Retry-After': '60',
-            },
+            headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '60' },
         });
     }
 
@@ -112,22 +121,17 @@ export function interceptIfNotReady(
     }
 
     // UNINITIALIZED or BOOTSTRAPPING → redirect to wizard
-    const isApiRequest =
-        path.startsWith('/api/') ||
-        request.headers.get('Accept')?.includes('application/json');
+    const isApiRequest = path.startsWith('/api/') || request.headers.get('Accept')?.includes('application/json');
 
     if (isApiRequest) {
-        return new Response(
-            JSON.stringify({
+        return jsonResp(
+            {
                 error: 'Platform not initialized',
                 code: 'PLATFORM_NOT_READY',
                 state: platformState.state,
                 setup_url: '/__bootstrap__',
-            }),
-            {
-                status: 503,
-                headers: { 'Content-Type': 'application/json' },
             },
+            503,
         );
     }
 
@@ -139,44 +143,92 @@ export function interceptIfNotReady(
 // Route handlers
 // ============================================================
 
-function handleStatus(context: BootstrapContext): Response {
+/**
+ * GET /__bootstrap__/api/status
+ * Returns current platform state, bindings, table inventory, and env config hints.
+ */
+async function handleStatus(context: BootstrapContext): Response {
     const { platformState, env } = context;
     const bindings = probeBindings(env);
 
-    return new Response(
-        JSON.stringify({
-            state: platformState.state,
-            source: platformState.source,
-            panic: platformState.panic,
-            reason: platformState.reason,
-            bindings,
-            timestamp: new Date().toISOString(),
-        }),
-        {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-        },
-    );
+    // Check for important env vars
+    const envConfig = {
+        authSecret: !!(env as any).AUTH_SECRET,
+        migrationSecret: !!(env as any).MIGRATION_SECRET,
+        bootstrapOwnerSecret: !!(env as any).BOOTSTRAP_OWNER_SECRET,
+        emailProvider:
+            !!(env as any).EMAIL_RESEND_API_KEY || !!(env as any).AWS_ACCESS_KEY_ID || !!(env as any).EMAIL_SERVER,
+        environment: (env as any).ENVIRONMENT || 'unknown',
+    };
+
+    // Count tables if DB available
+    let tableCount = 0;
+    let tables: string[] = [];
+    if (env.OBCF_D1) {
+        try {
+            const result = await env.OBCF_D1.prepare(
+                `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'`,
+            ).all();
+            tables = (result.results || []).map((r: any) => r.name as string);
+            tableCount = tables.length;
+        } catch {
+            /* DB not accessible */
+        }
+    }
+
+    // Check user count
+    let userCount = 0;
+    if (env.OBCF_D1 && tables.includes('users')) {
+        try {
+            const row = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
+            userCount = Number(row?.count ?? 0);
+        } catch {
+            /* table may not exist */
+        }
+    }
+
+    // Check role count
+    let roleCount = 0;
+    if (env.OBCF_D1 && tables.includes('roles')) {
+        try {
+            const row = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM roles').first<any>();
+            roleCount = Number(row?.count ?? 0);
+        } catch {
+            /* table may not exist */
+        }
+    }
+
+    return jsonResp({
+        state: platformState.state,
+        source: platformState.source,
+        panic: platformState.panic,
+        reason: platformState.reason,
+        bindings,
+        envConfig,
+        database: { tableCount, tables, userCount, roleCount },
+        timestamp: new Date().toISOString(),
+    });
 }
 
+/**
+ * POST /__bootstrap__/api/init
+ * Step 1: Create schema tables + run all migrations.
+ */
 async function handleInit(context: BootstrapContext): Promise<Response> {
     const { env, request } = context;
 
     if (request.method !== 'POST') {
-        return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-            status: 405,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return jsonResp({ error: 'Method not allowed' }, 405);
     }
 
     if (!env.OBCF_D1) {
-        return new Response(
-            JSON.stringify({
+        return jsonResp(
+            {
                 error: 'D1 database binding not available',
                 code: 'MISSING_BINDING',
-                hint: 'Configure OBCF_D1 in your wrangler.toml/jsonc',
-            }),
-            { status: 503, headers: { 'Content-Type': 'application/json' } },
+                hint: 'Configure OBCF_D1 in your wrangler.jsonc',
+            },
+            503,
         );
     }
 
@@ -186,7 +238,7 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
         await writeDBState(env, 'BOOTSTRAPPING');
         await writeKVState(env, 'BOOTSTRAPPING');
 
-        // 2. Run ottaorm autoInit (creates all tables + runs migrations)
+        // 2. Run ottaorm autoInit (creates all tables from Drizzle schemas)
         const driver = createD1Driver(env.OBCF_D1);
         const allSchemas = getAllSchemas();
         const initResult = await autoInit({
@@ -196,61 +248,251 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
             verbose: true,
         });
 
-        // 3. Run the .sql file migrations (RBAC, multi-tenant)
-        //    These are handled by the customMigrations in appMigrations already,
-        //    but we also run the core SQL migrations from ottaorm
-        const sqlMigrationResults = await runCoreSQLMigrations(env);
+        // 3. Run core SQL migrations (users, sessions, accounts, RBAC, multi-tenant)
+        const sqlResult = await runCoreSQLMigrations(env);
 
-        return new Response(
-            JSON.stringify({
-                success: initResult.success,
-                message: initResult.message,
-                autoInit: initResult.details,
-                sqlMigrations: sqlMigrationResults,
-                timestamp: new Date().toISOString(),
-            }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } },
-        );
+        return jsonResp({
+            success: initResult.success,
+            message: initResult.message,
+            autoInit: initResult.details,
+            sqlMigrations: sqlResult,
+            timestamp: new Date().toISOString(),
+        });
     } catch (error: any) {
-        return new Response(
-            JSON.stringify({
-                success: false,
-                error: error.message,
-                code: 'INIT_FAILED',
-            }),
-            { status: 500, headers: { 'Content-Type': 'application/json' } },
-        );
+        return jsonResp({ success: false, error: error.message, code: 'INIT_FAILED' }, 500);
     }
 }
 
+/**
+ * POST /__bootstrap__/api/seed
+ * Step 2: Seed RBAC roles and permissions using ORM models.
+ */
+async function handleSeed(context: BootstrapContext): Promise<Response> {
+    const { env, request } = context;
+
+    if (request.method !== 'POST') {
+        return jsonResp({ error: 'Method not allowed' }, 405);
+    }
+
+    if (!env.OBCF_D1) {
+        return jsonResp({ error: 'D1 database binding not available' }, 503);
+    }
+
+    try {
+        ensureOrmConnection(env);
+
+        // Seed default roles (owner, admin, editor, viewer, member)
+        const createdRoles = await Role.ensureDefaultRoles();
+        const roleNames = createdRoles.map((r: any) => r.get('name') as string);
+
+        // Count existing roles for reporting
+        const allRolesResult = await env.OBCF_D1.prepare('SELECT name FROM roles').all();
+        const existingRoles = (allRolesResult.results || []).map((r: any) => r.name as string);
+
+        // Seed default organization if it doesn't exist
+        let defaultOrgCreated = false;
+        try {
+            const existing = await env.OBCF_D1.prepare(
+                `SELECT id FROM organizations WHERE id = 'default-org' LIMIT 1`,
+            ).first<any>();
+            if (!existing) {
+                const now = Date.now();
+                await env.OBCF_D1.prepare(
+                    `INSERT INTO organizations (id, name, slug, plan, status, created_at, updated_at)
+                     VALUES ('default-org', 'Default Organization', 'default', 'free', 'active', ?, ?)`,
+                )
+                    .bind(now, now)
+                    .run();
+                defaultOrgCreated = true;
+            }
+        } catch {
+            /* organizations table may not exist if SQL migration hasn't run */
+        }
+
+        return jsonResp({
+            success: true,
+            roles: { created: roleNames, existing: existingRoles },
+            defaultOrganization: defaultOrgCreated ? 'created' : 'already exists',
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error: any) {
+        return jsonResp({ success: false, error: error.message, code: 'SEED_FAILED' }, 500);
+    }
+}
+
+/**
+ * POST /__bootstrap__/api/create-owner
+ * Step 3: Create the first admin/owner account.
+ * Body: { email: string, password: string, name?: string }
+ */
+async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
+    const { env, request } = context;
+
+    if (request.method !== 'POST') {
+        return jsonResp({ error: 'Method not allowed' }, 405);
+    }
+
+    if (!env.OBCF_D1) {
+        return jsonResp({ error: 'D1 database binding not available' }, 503);
+    }
+
+    let body: { email?: string; password?: string; name?: string };
+    try {
+        body = await request.json();
+    } catch {
+        return jsonResp({ error: 'Invalid JSON body' }, 400);
+    }
+
+    const email = (body.email || '').trim().toLowerCase();
+    const password = body.password || '';
+    const name = (body.name || '').trim();
+
+    // Validate
+    const errors: Record<string, string> = {};
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errors.email = 'Valid email address required';
+    }
+    if (!password || password.length < 8) {
+        errors.password = 'Password must be at least 8 characters';
+    }
+    if (Object.keys(errors).length > 0) {
+        return jsonResp({ success: false, errors, code: 'VALIDATION_ERROR' }, 400);
+    }
+
+    try {
+        ensureOrmConnection(env);
+
+        // Check if users already exist
+        const countRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
+        const userCount = Number(countRow?.count ?? 0);
+
+        if (userCount > 0) {
+            return jsonResp(
+                {
+                    success: false,
+                    error: 'An account already exists. The owner account can only be created during first-time setup.',
+                    code: 'OWNER_EXISTS',
+                },
+                409,
+            );
+        }
+
+        // Create user with hashed password
+        const passwordHash = await hashPassword(password);
+        const newUser = await User.create({
+            email,
+            name: name || null,
+            emailVerified: new Date(), // Auto-verify owner
+            passwordHash,
+        });
+
+        const userId = newUser.get('id') as string;
+
+        // Ensure roles exist and assign owner role
+        await Role.ensureDefaultRoles();
+        const ownerRole = await Role.findByName('owner');
+
+        if (ownerRole) {
+            await newUser.assignRole(ownerRole.get('id') as string, 'system');
+        }
+
+        // Create personal organization
+        let organizationId: string | null = null;
+        try {
+            const orgName = `${name || email.split('@')[0]}'s Workspace`;
+            const slug = makeSlug(orgName) || `org-${userId.slice(0, 8)}`;
+
+            const org = await Organization.create({
+                name: orgName,
+                slug,
+                ownerId: userId,
+            });
+            organizationId = org.get('id') as string;
+
+            await OrganizationMember.create({
+                userId,
+                organizationId,
+                role: 'owner',
+                status: 'active',
+            });
+        } catch (error) {
+            // Organization creation is non-fatal
+            console.warn('Organization creation during bootstrap:', error);
+        }
+
+        return jsonResp({
+            success: true,
+            user: {
+                id: userId,
+                email,
+                name: name || null,
+                role: 'owner',
+            },
+            organizationId,
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error: any) {
+        if (error.message?.toLowerCase().includes('unique')) {
+            return jsonResp({ success: false, error: 'Email already in use', code: 'EMAIL_EXISTS' }, 409);
+        }
+        return jsonResp({ success: false, error: error.message, code: 'CREATE_OWNER_FAILED' }, 500);
+    }
+}
+
+/**
+ * POST /__bootstrap__/api/finalize
+ * Step 4: Verify everything, mark platform READY.
+ */
 async function handleFinalize(context: BootstrapContext): Promise<Response> {
     const { env, request } = context;
 
     if (request.method !== 'POST') {
-        return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-            status: 405,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return jsonResp({ error: 'Method not allowed' }, 405);
     }
 
     if (!env.OBCF_D1) {
-        return new Response(
-            JSON.stringify({ error: 'D1 database binding not available' }),
-            { status: 503, headers: { 'Content-Type': 'application/json' } },
-        );
+        return jsonResp({ error: 'D1 database binding not available' }, 503);
     }
 
     try {
         // Verify tables actually exist before marking READY
         const tableCheck = await verifyCoreTables(env);
         if (!tableCheck.ok) {
-            return new Response(
-                JSON.stringify({
+            return jsonResp(
+                {
                     success: false,
                     error: 'Core tables missing — run initialization first',
                     missing: tableCheck.missing,
-                }),
-                { status: 400, headers: { 'Content-Type': 'application/json' } },
+                },
+                400,
+            );
+        }
+
+        // Verify at least one user exists
+        const userRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
+        const userCount = Number(userRow?.count ?? 0);
+        if (userCount === 0) {
+            return jsonResp(
+                {
+                    success: false,
+                    error: 'No admin account found — create an owner account first',
+                    code: 'NO_OWNER',
+                },
+                400,
+            );
+        }
+
+        // Verify roles are seeded
+        const roleRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM roles').first<any>();
+        const roleCount = Number(roleRow?.count ?? 0);
+        if (roleCount === 0) {
+            return jsonResp(
+                {
+                    success: false,
+                    error: 'No roles found — run RBAC seed first',
+                    code: 'NO_ROLES',
+                },
+                400,
             );
         }
 
@@ -258,31 +500,24 @@ async function handleFinalize(context: BootstrapContext): Promise<Response> {
         await writeDBState(env, 'READY');
         await writeKVState(env, 'READY');
 
-        return new Response(
-            JSON.stringify({
-                success: true,
-                state: 'READY',
-                message: 'Platform is now ready. Redirecting to application.',
-                timestamp: new Date().toISOString(),
-            }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } },
-        );
+        return jsonResp({
+            success: true,
+            state: 'READY',
+            message: 'Platform is now ready.',
+            summary: {
+                tables: tableCheck.found.length,
+                users: userCount,
+                roles: roleCount,
+            },
+            timestamp: new Date().toISOString(),
+        });
     } catch (error: any) {
-        return new Response(
-            JSON.stringify({
-                success: false,
-                error: error.message,
-                code: 'FINALIZE_FAILED',
-            }),
-            { status: 500, headers: { 'Content-Type': 'application/json' } },
-        );
+        return jsonResp({ success: false, error: error.message, code: 'FINALIZE_FAILED' }, 500);
     }
 }
 
 function serveWizardPage(context: BootstrapContext): Response {
-    const { platformState } = context;
-
-    return new Response(renderWizardPage(platformState), {
+    return new Response(renderWizardPage(context.platformState), {
         status: 200,
         headers: {
             'Content-Type': 'text/html;charset=UTF-8',
@@ -295,17 +530,13 @@ function serveWizardPage(context: BootstrapContext): Response {
 // Helpers
 // ============================================================
 
-/**
- * Run the core SQL migrations from ottaorm (RBAC, multi-tenant system)
- */
-async function runCoreSQLMigrations(env: CloudflareEnv): Promise<{ executed: string[]; skipped: string[]; errors: string[] }> {
+async function runCoreSQLMigrations(
+    env: CloudflareEnv,
+): Promise<{ executed: string[]; skipped: string[]; errors: string[] }> {
     const executed: string[] = [];
     const skipped: string[] = [];
     const errors: string[] = [];
 
-    // The SQL migration files are loaded as part of the coreMigrations
-    // in the ottaorm package. The autoInit call above handles the schema-based
-    // migrations. Here we specifically run the migration-tracked SQL files.
     try {
         const driver = createD1Driver(env.OBCF_D1!);
         const result = await runMigrations(driver, coreMigrations);
@@ -318,22 +549,17 @@ async function runCoreSQLMigrations(env: CloudflareEnv): Promise<{ executed: str
     return { executed, skipped, errors };
 }
 
-/**
- * Verify that critical tables exist in D1
- */
 async function verifyCoreTables(env: CloudflareEnv): Promise<{ ok: boolean; missing: string[]; found: string[] }> {
-    const requiredTables = ['users', 'sessions', 'accounts', 'roles', '_ottabase_meta'];
+    const requiredTables = ['users', 'sessions', 'accounts', 'roles', '_ottabase_meta', '_ottabase_migrations'];
     const found: string[] = [];
     const missing: string[] = [];
 
     try {
-        const result = await env.OBCF_D1!.prepare(
-            `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`,
-        ).all();
+        const result = await env
+            .OBCF_D1!.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`)
+            .all();
 
-        const existingTables = new Set(
-            (result.results || []).map((row: any) => row.name as string),
-        );
+        const existingTables = new Set((result.results || []).map((row: any) => row.name as string));
 
         for (const table of requiredTables) {
             if (existingTables.has(table)) {

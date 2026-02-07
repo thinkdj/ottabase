@@ -54,247 +54,97 @@ function baseLayout(title: string, body: string): string {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 2rem;
+    padding: 2rem 1rem;
     line-height: 1.6;
   }
-  .container {
-    max-width: 680px;
-    width: 100%;
-  }
-  .logo {
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: var(--text);
-    margin-bottom: 0.25rem;
-  }
+  .container { max-width: 680px; width: 100%; }
+  .header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem; }
+  .logo { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
   .logo span { color: var(--accent-light); }
-  .subtitle {
-    color: var(--text-muted);
-    font-size: 0.875rem;
-    margin-bottom: 2rem;
-  }
-  .card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.75rem;
-    margin-bottom: 1rem;
-  }
-  .card h2 {
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-  }
-  .card p {
-    color: var(--text-muted);
-    font-size: 0.875rem;
-    margin-bottom: 1rem;
-  }
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
+  .version { font-size: 0.7rem; color: var(--text-dim); background: var(--bg-card); padding: 0.125rem 0.5rem; border-radius: 9999px; border: 1px solid var(--border); }
+  .subtitle { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 2rem; }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; }
+  .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; }
+  .card p { color: var(--text-muted); font-size: 0.8125rem; margin-bottom: 0.75rem; }
+  .card h3 { font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted); }
+  .badge { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.2rem 0.625rem; border-radius: 9999px; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
   .badge-success { background: var(--success-bg); color: var(--success); }
   .badge-warning { background: var(--warning-bg); color: var(--warning); }
   .badge-error { background: var(--error-bg); color: var(--error); }
   .badge-muted { background: rgba(161, 161, 170, 0.1); color: var(--text-muted); }
-  .dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    display: inline-block;
-  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
   .dot-success { background: var(--success); }
   .dot-warning { background: var(--warning); }
   .dot-error { background: var(--error); }
   .dot-muted { background: var(--text-dim); }
-  .binding-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-    margin: 1rem 0;
-  }
-  .binding-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 0.8125rem;
-    font-family: var(--font-mono);
-  }
-  .binding-item.ok { border-color: rgba(34, 197, 94, 0.3); }
-  .binding-item.missing { border-color: rgba(239, 68, 68, 0.3); opacity: 0.7; }
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: var(--radius-sm);
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    font-family: var(--font);
-    width: 100%;
-  }
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  .btn-primary {
-    background: var(--accent);
-    color: white;
-  }
-  .btn-primary:hover:not(:disabled) {
-    background: var(--accent-light);
-    box-shadow: 0 0 20px var(--accent-glow);
-  }
-  .btn-outline {
-    background: transparent;
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
-  .btn-outline:hover:not(:disabled) {
-    background: var(--bg-card-hover);
-    border-color: var(--border-accent);
-  }
-  .step-list {
-    list-style: none;
-    padding: 0;
-    margin: 1rem 0;
-  }
-  .step-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 0.875rem;
-  }
-  .step-item:last-child { border-bottom: none; }
-  .step-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-  .step-pending .step-icon { background: rgba(161, 161, 170, 0.1); color: var(--text-dim); }
-  .step-running .step-icon { background: var(--accent-glow); color: var(--accent-light); animation: pulse 1.5s infinite; }
-  .step-done .step-icon { background: var(--success-bg); color: var(--success); }
-  .step-error .step-icon { background: var(--error-bg); color: var(--error); }
-  .step-label { flex: 1; }
-  .step-status { font-size: 0.75rem; color: var(--text-dim); }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  .spinner {
-    width: 16px; height: 16px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent-light);
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-    display: inline-block;
-  }
-  .log-area {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 1rem;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    max-height: 200px;
-    overflow-y: auto;
-    margin-top: 1rem;
-    display: none;
-  }
+  .binding-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.375rem; margin: 0.75rem 0; }
+  .binding-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.625rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.75rem; font-family: var(--font-mono); }
+  .binding-item.ok { border-color: rgba(34, 197, 94, 0.25); }
+  .binding-item.missing { border-color: rgba(239, 68, 68, 0.25); opacity: 0.65; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.625rem 1.25rem; border: none; border-radius: var(--radius-sm); font-size: 0.8125rem; font-weight: 600; cursor: pointer; transition: all 0.15s ease; font-family: var(--font); width: 100%; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-light); box-shadow: 0 0 24px var(--accent-glow); }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-outline:hover:not(:disabled) { background: var(--bg-card-hover); border-color: var(--border-accent); }
+  .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
+
+  /* Steps */
+  .steps { display: flex; gap: 0; margin-bottom: 1.5rem; position: relative; }
+  .step-tab { flex: 1; text-align: center; padding: 0.75rem 0.25rem; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); border-bottom: 2px solid var(--border); cursor: default; transition: all 0.2s; }
+  .step-tab.active { color: var(--accent-light); border-bottom-color: var(--accent-light); }
+  .step-tab.done { color: var(--success); border-bottom-color: var(--success); }
+  .step-tab.error { color: var(--error); border-bottom-color: var(--error); }
+  .step-panel { display: none; }
+  .step-panel.active { display: block; }
+
+  /* Forms */
+  .form-group { margin-bottom: 0.75rem; }
+  .form-label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem; }
+  .form-input { width: 100%; padding: 0.5rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 0.8125rem; font-family: var(--font); outline: none; transition: border-color 0.15s; }
+  .form-input:focus { border-color: var(--accent-light); }
+  .form-input::placeholder { color: var(--text-dim); }
+  .form-hint { font-size: 0.6875rem; color: var(--text-dim); margin-top: 0.25rem; }
+  .form-error { font-size: 0.6875rem; color: var(--error); margin-top: 0.25rem; }
+
+  /* Misc */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent-light); border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
+  .log-area { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem; font-family: var(--font-mono); font-size: 0.6875rem; color: var(--text-muted); max-height: 180px; overflow-y: auto; margin-top: 0.75rem; display: none; }
   .log-area.visible { display: block; }
-  .log-line { padding: 0.125rem 0; }
-  .log-line.log-success { color: var(--success); }
-  .log-line.log-error { color: var(--error); }
-  .log-line.log-info { color: var(--accent-light); }
-  .footer {
-    margin-top: 2rem;
-    text-align: center;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-  }
+  .log-line { padding: 0.0625rem 0; }
+  .log-success { color: var(--success); }
+  .log-error { color: var(--error); }
+  .log-info { color: var(--accent-light); }
+  .alert { padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.8125rem; margin-bottom: 0.75rem; }
+  .alert-error { background: var(--error-bg); border: 1px solid rgba(239, 68, 68, 0.25); color: var(--error); }
+  .alert-warning { background: var(--warning-bg); border: 1px solid rgba(234, 179, 8, 0.25); color: var(--warning); }
+  .alert-success { background: var(--success-bg); border: 1px solid rgba(34, 197, 94, 0.25); color: var(--success); }
+  pre.code-block { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem; font-family: var(--font-mono); font-size: 0.75rem; overflow-x: auto; margin: 0.5rem 0; color: var(--text-muted); white-space: pre; }
+  .progress-bar { width: 100%; height: 3px; background: var(--border); border-radius: 2px; margin: 1rem 0 0.5rem; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent-light); border-radius: 2px; transition: width 0.3s ease; width: 0%; }
+  .env-table { width: 100%; font-size: 0.75rem; border-collapse: collapse; }
+  .env-table td { padding: 0.375rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .env-table td:first-child { font-family: var(--font-mono); color: var(--accent-light); white-space: nowrap; width: 1%; }
+  .env-table td:last-child { color: var(--text-dim); }
+  .footer { margin-top: 2rem; text-align: center; font-size: 0.6875rem; color: var(--text-dim); }
   .footer a { color: var(--accent-light); text-decoration: none; }
   .footer a:hover { text-decoration: underline; }
-  .alert {
-    padding: 1rem 1.25rem;
-    border-radius: var(--radius-sm);
-    font-size: 0.875rem;
-    margin-bottom: 1rem;
-  }
-  .alert-error {
-    background: var(--error-bg);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: var(--error);
-  }
-  .alert-warning {
-    background: var(--warning-bg);
-    border: 1px solid rgba(234, 179, 8, 0.3);
-    color: var(--warning);
-  }
-  pre.code-block {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 1rem;
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
-    overflow-x: auto;
-    margin: 0.75rem 0;
-    color: var(--text-muted);
-    white-space: pre;
-  }
-  .progress-bar {
-    width: 100%;
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    margin: 1rem 0;
-    overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%;
-    background: var(--accent-light);
-    border-radius: 2px;
-    transition: width 0.3s ease;
-    width: 0%;
-  }
+  .check-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; font-size: 0.8125rem; }
+  .check-icon { font-size: 0.875rem; width: 1.25rem; text-align: center; }
+  .check-ok { color: var(--success); }
+  .check-fail { color: var(--error); }
+  .check-warn { color: var(--warning); }
 </style>
 </head>
 <body>
 <div class="container">
-  <div class="logo"><span>&#9670;</span> ${BRAND}</div>
-  ${body}
-  <div class="footer">
-    ${BRAND} Platform &middot; <a href="https://ottabase.com">Documentation</a>
+  <div class="header">
+    <div class="logo"><span>&#9670;</span> ${BRAND}</div>
+    <span class="version">Setup Wizard</span>
   </div>
+  ${body}
+  <div class="footer">${BRAND} &middot; Edge-first application framework</div>
 </div>
 </body>
 </html>`;
@@ -307,276 +157,389 @@ function baseLayout(title: string, body: string): string {
 export function renderWizardPage(state: PlatformStateResult): string {
     const bindingsHtml = Object.entries(state.bindings)
         .map(([name, ok]) => {
-            const bindingName = BINDING_LABELS[name] || name;
-            const cssClass = ok ? 'ok' : 'missing';
-            const dotClass = ok ? 'dot-success' : 'dot-error';
-            const statusText = ok ? 'Connected' : 'Not configured';
-            return `<div class="binding-item ${cssClass}"><span class="dot ${dotClass}"></span>${bindingName}<span style="margin-left:auto;font-size:0.7rem;color:var(--text-dim)">${statusText}</span></div>`;
+            const label = BINDING_LABELS[name] || name;
+            return `<div class="binding-item ${ok ? 'ok' : 'missing'}"><span class="dot ${ok ? 'dot-success' : 'dot-error'}"></span>${label}<span style="margin-left:auto;font-size:0.625rem;color:var(--text-dim)">${ok ? 'OK' : 'Missing'}</span></div>`;
         })
         .join('\n');
 
-    const stateClass =
-        state.state === 'READY'
-            ? 'badge-success'
-            : state.state === 'BOOTSTRAPPING'
-              ? 'badge-warning'
-              : 'badge-muted';
+    const isReady = state.state === 'READY';
 
     return baseLayout(
         'Setup',
         `
-  <p class="subtitle">First-time setup wizard</p>
+  <p class="subtitle">Set up your platform in a few steps</p>
 
-  <div class="card">
-    <h2>Platform Status</h2>
-    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem">
-      <span class="badge ${stateClass}">
-        <span class="dot ${state.state === 'READY' ? 'dot-success' : state.state === 'BOOTSTRAPPING' ? 'dot-warning' : 'dot-muted'}"></span>
-        ${state.state}
-      </span>
-      <span style="font-size:0.75rem;color:var(--text-dim)">${escapeHtml(state.reason)}</span>
+  <!-- Step tabs -->
+  <div class="steps" id="step-tabs">
+    <div class="step-tab active" data-step="0">1. Database</div>
+    <div class="step-tab" data-step="1">2. RBAC</div>
+    <div class="step-tab" data-step="2">3. Admin</div>
+    <div class="step-tab" data-step="3">4. Config</div>
+    <div class="step-tab" data-step="4">5. Launch</div>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+
+  <!-- STEP 0: Bindings + DB Init -->
+  <div class="step-panel active" id="panel-0">
+    <div class="card">
+      <h2>Cloudflare Bindings</h2>
+      <p>These are the Cloudflare resources attached to your worker.</p>
+      <div class="binding-grid">${bindingsHtml}</div>
+      ${
+          !state.bindings.d1
+              ? `
+        <div class="alert alert-error">
+          <strong>D1 Database is required.</strong> Add OBCF_D1 to your wrangler.jsonc and redeploy.
+        </div>
+        <pre class="code-block">wrangler d1 create ottabase-db
+# Then add the database_id to wrangler.jsonc</pre>
+      `
+              : ''
+      }
+      ${!state.bindings.kv ? `<div class="alert alert-warning">KV (OBCF_KV) is recommended for state caching and session management.</div>` : ''}
     </div>
-    <p>Cloudflare Bindings</p>
-    <div class="binding-grid">
-      ${bindingsHtml}
+    <div class="card" ${!state.bindings.d1 ? 'style="opacity:0.5;pointer-events:none"' : ''}>
+      <h2>Initialize Database</h2>
+      <p>Creates all schema tables, runs core migrations (users, sessions, RBAC, organizations, audit logs, blog, shortlinks), and sets up tracking.</p>
+      <div class="log-area" id="log-init"></div>
+      <button class="btn btn-primary" id="btn-init" ${!state.bindings.d1 ? 'disabled' : ''}>Create Tables & Run Migrations</button>
     </div>
   </div>
 
-  ${!state.bindings.d1 ? `
-  <div class="alert alert-error">
-    <strong>D1 Database Required</strong><br>
-    The OBCF_D1 binding is not configured. Add the following to your <code>wrangler.jsonc</code>:
-  </div>
-  <pre class="code-block">"d1_databases": [
-  {
-    "binding": "OBCF_D1",
-    "database_name": "ottabase-db",
-    "database_id": "YOUR_D1_DATABASE_ID"
-  }
-]</pre>
-  <p style="font-size:0.8125rem;color:var(--text-dim);margin-bottom:1.5rem">
-    Create a D1 database: <code style="color:var(--accent-light)">wrangler d1 create ottabase-db</code>
-  </p>
-  ` : ''}
-
-  ${!state.bindings.kv ? `
-  <div class="alert alert-warning">
-    <strong>KV Namespace Recommended</strong><br>
-    OBCF_KV is not configured. KV is used to cache platform state for faster cold starts.
-  </div>
-  ` : ''}
-
-  <div class="card" id="setup-card">
-    <h2>Database Setup</h2>
-    <p>This will create all required tables, run migrations, and set up RBAC, audit logging, and multi-tenant support.</p>
-
-    <ul class="step-list" id="step-list">
-      <li class="step-item step-pending" data-step="meta">
-        <div class="step-icon">1</div>
-        <span class="step-label">Create platform meta table</span>
-        <span class="step-status">Waiting</span>
-      </li>
-      <li class="step-item step-pending" data-step="schema">
-        <div class="step-icon">2</div>
-        <span class="step-label">Create schema tables (users, sessions, roles...)</span>
-        <span class="step-status">Waiting</span>
-      </li>
-      <li class="step-item step-pending" data-step="migrations">
-        <div class="step-icon">3</div>
-        <span class="step-label">Run core migrations (RBAC, audit, indexes)</span>
-        <span class="step-status">Waiting</span>
-      </li>
-      <li class="step-item step-pending" data-step="finalize">
-        <div class="step-icon">4</div>
-        <span class="step-label">Finalize and mark platform ready</span>
-        <span class="step-status">Waiting</span>
-      </li>
-    </ul>
-
-    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-
-    <button class="btn btn-primary" id="btn-init" ${!state.bindings.d1 ? 'disabled' : ''}>
-      Initialize Database
-    </button>
-
-    <div id="btn-finalize-wrap" style="display:none;margin-top:0.75rem">
-      <button class="btn btn-primary" id="btn-finalize">
-        Finalize Setup
-      </button>
+  <!-- STEP 1: RBAC Seed -->
+  <div class="step-panel" id="panel-1">
+    <div class="card">
+      <h2>RBAC &amp; Permissions</h2>
+      <p>Seed the default roles (owner, admin, editor, viewer, member) and the default organization used for system-level operations.</p>
+      <div class="log-area" id="log-seed"></div>
+      <button class="btn btn-primary" id="btn-seed">Seed Roles &amp; Permissions</button>
     </div>
+  </div>
 
-    <div id="btn-go-wrap" style="display:none;margin-top:0.75rem">
-      <a href="/" class="btn btn-primary" style="text-decoration:none">
-        Go to Application
-      </a>
+  <!-- STEP 2: Create Owner -->
+  <div class="step-panel" id="panel-2">
+    <div class="card">
+      <h2>Create Owner Account</h2>
+      <p>This will be the platform owner with full administrative privileges. A personal workspace organization will be created automatically.</p>
+      <div class="form-group">
+        <label class="form-label" for="owner-name">Name</label>
+        <input class="form-input" id="owner-name" type="text" placeholder="Jane Doe" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="owner-email">Email <span style="color:var(--error)">*</span></label>
+        <input class="form-input" id="owner-email" type="email" placeholder="you@example.com" autocomplete="email" required>
+        <div class="form-error" id="err-email" style="display:none"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="owner-password">Password <span style="color:var(--error)">*</span></label>
+        <input class="form-input" id="owner-password" type="password" placeholder="Min 8 characters" autocomplete="new-password" required>
+        <div class="form-hint">Minimum 8 characters. Use a strong, unique password.</div>
+        <div class="form-error" id="err-password" style="display:none"></div>
+      </div>
+      <div class="log-area" id="log-owner"></div>
+      <button class="btn btn-primary" id="btn-owner">Create Owner Account</button>
     </div>
+  </div>
 
-    <div class="log-area" id="log-area"></div>
+  <!-- STEP 3: Environment Config -->
+  <div class="step-panel" id="panel-3">
+    <div class="card">
+      <h2>Environment Configuration</h2>
+      <p>These environment variables should be set in your wrangler.jsonc (under <code>vars</code>) or as Cloudflare secrets for production. Not all are required for local development.</p>
+      <h3>Authentication (Required for production)</h3>
+      <table class="env-table">
+        <tr><td>AUTH_SECRET</td><td>Session encryption key. Generate with: <code>openssl rand -base64 32</code></td></tr>
+        <tr><td>AUTH_URL</td><td>Your app's public URL (e.g. <code>https://myapp.example.com</code>)</td></tr>
+      </table>
+      <h3 style="margin-top:0.75rem">Email (Optional)</h3>
+      <table class="env-table">
+        <tr><td>EMAIL_RESEND_API_KEY</td><td>API key from <a href="https://resend.com" target="_blank" style="color:var(--accent-light)">Resend</a> (recommended)</td></tr>
+        <tr><td>EMAIL_FROM</td><td>Sender address (default: noreply@example.com)</td></tr>
+      </table>
+      <h3 style="margin-top:0.75rem">Security (Recommended)</h3>
+      <table class="env-table">
+        <tr><td>MIGRATION_SECRET</td><td>Protects the <code>/api/ottaorm/init</code> endpoint in production</td></tr>
+        <tr><td>BOOTSTRAP_OWNER_SECRET</td><td>Protects the <code>/api/admin/promote-owner</code> endpoint</td></tr>
+      </table>
+      <div class="alert alert-warning" style="margin-top:0.75rem">
+        For <strong>local development</strong>, these are optional. In <strong>production</strong>, at minimum set <code>AUTH_SECRET</code>.
+      </div>
+      <pre class="code-block">wrangler secret put AUTH_SECRET
+wrangler secret put MIGRATION_SECRET</pre>
+      <button class="btn btn-primary" id="btn-config-next" style="margin-top:0.5rem">Continue</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: Finalize -->
+  <div class="step-panel" id="panel-4">
+    <div class="card">
+      <h2>Ready to Launch</h2>
+      <p>Final verification before marking the platform as ready.</p>
+      <div id="finalize-checks" style="margin:0.75rem 0"></div>
+      <div class="log-area" id="log-finalize"></div>
+      <button class="btn btn-primary" id="btn-finalize">Launch Platform</button>
+    </div>
+    <div id="success-card" style="display:none">
+      <div class="card">
+        <div class="alert alert-success" style="margin-bottom:0.75rem">
+          <strong>Setup complete!</strong> Your platform is live and ready to go.
+        </div>
+        <a href="/" class="btn btn-primary" style="text-decoration:none">Open Application</a>
+      </div>
+    </div>
   </div>
 
   <script>
   (function() {
-    const btnInit = document.getElementById('btn-init');
-    const btnFinalize = document.getElementById('btn-finalize');
-    const btnFinalizeWrap = document.getElementById('btn-finalize-wrap');
-    const btnGoWrap = document.getElementById('btn-go-wrap');
-    const logArea = document.getElementById('log-area');
-    const progressFill = document.getElementById('progress-fill');
-    const steps = document.querySelectorAll('.step-item');
+    var currentStep = ${isReady ? 4 : 0};
+    var tabs = document.querySelectorAll('.step-tab');
+    var panels = document.querySelectorAll('.step-panel');
+    var progress = document.getElementById('progress-fill');
 
-    function log(msg, type) {
-      logArea.classList.add('visible');
-      const line = document.createElement('div');
+    function goToStep(n) {
+      currentStep = n;
+      tabs.forEach(function(t, i) {
+        t.classList.remove('active');
+        if (i < n) t.classList.add('done');
+        if (i === n) t.classList.add('active');
+      });
+      panels.forEach(function(p, i) {
+        p.classList.toggle('active', i === n);
+      });
+      progress.style.width = (n / 4 * 100) + '%';
+    }
+
+    function log(areaId, msg, type) {
+      var area = document.getElementById(areaId);
+      area.classList.add('visible');
+      var line = document.createElement('div');
       line.className = 'log-line' + (type ? ' log-' + type : '');
       line.textContent = msg;
-      logArea.appendChild(line);
-      logArea.scrollTop = logArea.scrollHeight;
+      area.appendChild(line);
+      area.scrollTop = area.scrollHeight;
     }
 
-    function setStep(stepId, status, statusText) {
-      const el = document.querySelector('[data-step="' + stepId + '"]');
-      if (!el) return;
-      el.className = 'step-item step-' + status;
-      const statusEl = el.querySelector('.step-status');
-      if (statusEl) statusEl.textContent = statusText || status;
-      if (status === 'running') {
-        el.querySelector('.step-icon').innerHTML = '<span class="spinner"></span>';
-      } else if (status === 'done') {
-        el.querySelector('.step-icon').textContent = '\\u2713';
-      } else if (status === 'error') {
-        el.querySelector('.step-icon').textContent = '\\u2717';
-      }
+    function setBtn(btn, loading, text) {
+      btn.disabled = loading;
+      btn.innerHTML = loading ? '<span class="spinner"></span> ' + text : text;
     }
 
-    function setProgress(pct) {
-      progressFill.style.width = pct + '%';
-    }
+    // --- Step 0: Init ---
+    var btnInit = document.getElementById('btn-init');
+    btnInit.addEventListener('click', function() {
+      setBtn(btnInit, true, 'Initializing...');
+      log('log-init', 'Starting database initialization...', 'info');
 
-    btnInit.addEventListener('click', async function() {
-      btnInit.disabled = true;
-      btnInit.innerHTML = '<span class="spinner"></span> Initializing...';
+      fetch('/__bootstrap__/api/init', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.success) throw new Error(data.error || 'Init failed');
 
-      log('Starting database initialization...', 'info');
-
-      // Step 1: Meta table
-      setStep('meta', 'running', 'Creating...');
-      setProgress(10);
-      log('Creating _ottabase_meta table...', 'info');
-
-      // Step 2+3: Run init (autoInit + core SQL migrations)
-      try {
-        setStep('meta', 'done', 'Done');
-        setStep('schema', 'running', 'Creating...');
-        setProgress(25);
-        log('Running autoInit (schema tables + migrations)...', 'info');
-
-        const initRes = await fetch('/__bootstrap__/api/init', { method: 'POST' });
-        const initData = await initRes.json();
-
-        if (!initRes.ok || !initData.success) {
-          throw new Error(initData.error || initData.message || 'Initialization failed');
-        }
-
-        // Log autoInit results
-        const ai = initData.autoInit;
-        if (ai) {
-          if (ai.tablesCreated && ai.tablesCreated.length > 0) {
-            log('Tables created: ' + ai.tablesCreated.join(', '), 'success');
+          var ai = data.autoInit;
+          if (ai) {
+            if (ai.tablesCreated && ai.tablesCreated.length > 0) log('log-init', 'Tables created: ' + ai.tablesCreated.join(', '), 'success');
+            if (ai.tablesSkipped && ai.tablesSkipped.length > 0) log('log-init', 'Already existed: ' + ai.tablesSkipped.join(', '), '');
+            if (ai.columnsAdded && ai.columnsAdded.length > 0) log('log-init', 'Columns added: ' + ai.columnsAdded.join(', '), 'success');
+            if (ai.customMigrationsRun && ai.customMigrationsRun.length > 0) log('log-init', 'Migrations run: ' + ai.customMigrationsRun.join(', '), 'success');
+            if (ai.errors && ai.errors.length > 0) ai.errors.forEach(function(e) { log('log-init', 'Warning: ' + e, 'error'); });
           }
-          if (ai.tablesSkipped && ai.tablesSkipped.length > 0) {
-            log('Tables already existed: ' + ai.tablesSkipped.join(', '), '');
+          var sql = data.sqlMigrations;
+          if (sql) {
+            if (sql.executed && sql.executed.length > 0) log('log-init', 'SQL migrations: ' + sql.executed.join(', '), 'success');
+            if (sql.skipped && sql.skipped.length > 0) log('log-init', 'SQL skipped: ' + sql.skipped.join(', '), '');
+            if (sql.errors && sql.errors.length > 0) sql.errors.forEach(function(e) { log('log-init', 'SQL error: ' + e, 'error'); });
           }
-          if (ai.columnsAdded && ai.columnsAdded.length > 0) {
-            log('Columns added: ' + ai.columnsAdded.join(', '), 'success');
-          }
-          if (ai.customMigrationsRun && ai.customMigrationsRun.length > 0) {
-            log('Custom migrations: ' + ai.customMigrationsRun.join(', '), 'success');
-          }
-          if (ai.errors && ai.errors.length > 0) {
-            ai.errors.forEach(function(e) { log('Warning: ' + e, 'error'); });
-          }
-        }
-
-        setStep('schema', 'done', 'Done');
-        setProgress(50);
-
-        // Log SQL migration results
-        setStep('migrations', 'running', 'Running...');
-        setProgress(65);
-        const sql = initData.sqlMigrations;
-        if (sql) {
-          if (sql.executed && sql.executed.length > 0) {
-            log('SQL migrations executed: ' + sql.executed.join(', '), 'success');
-          }
-          if (sql.skipped && sql.skipped.length > 0) {
-            log('SQL migrations skipped: ' + sql.skipped.join(', '), '');
-          }
-          if (sql.errors && sql.errors.length > 0) {
-            sql.errors.forEach(function(e) { log('SQL error: ' + e, 'error'); });
-          }
-        }
-
-        setStep('migrations', 'done', 'Done');
-        setProgress(80);
-        log('Database initialization complete.', 'success');
-
-        // Show finalize button
-        setStep('finalize', 'pending', 'Ready');
-        btnFinalizeWrap.style.display = 'block';
-        btnInit.innerHTML = 'Initialization Complete';
-
-      } catch (err) {
-        log('Error: ' + err.message, 'error');
-        setStep('schema', 'error', 'Failed');
-        btnInit.innerHTML = 'Retry Initialization';
-        btnInit.disabled = false;
-      }
+          log('log-init', 'Database initialization complete.', 'success');
+          setBtn(btnInit, false, 'Done');
+          btnInit.disabled = true;
+          setTimeout(function() { goToStep(1); }, 600);
+        })
+        .catch(function(err) {
+          log('log-init', 'Error: ' + err.message, 'error');
+          setBtn(btnInit, false, 'Retry');
+          tabs[0].classList.add('error');
+        });
     });
 
-    btnFinalize.addEventListener('click', async function() {
-      btnFinalize.disabled = true;
-      btnFinalize.innerHTML = '<span class="spinner"></span> Finalizing...';
-      setStep('finalize', 'running', 'Finalizing...');
-      setProgress(90);
-      log('Verifying core tables and finalizing...', 'info');
+    // --- Step 1: Seed ---
+    var btnSeed = document.getElementById('btn-seed');
+    btnSeed.addEventListener('click', function() {
+      setBtn(btnSeed, true, 'Seeding...');
+      log('log-seed', 'Seeding RBAC roles and default organization...', 'info');
 
-      try {
-        const res = await fetch('/__bootstrap__/api/finalize', { method: 'POST' });
-        const data = await res.json();
+      fetch('/__bootstrap__/api/seed', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.success) throw new Error(data.error || 'Seed failed');
 
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Finalization failed');
-        }
-
-        setStep('finalize', 'done', 'Done');
-        setProgress(100);
-        log('Platform state set to READY.', 'success');
-        log('Setup complete! Redirecting...', 'success');
-
-        btnFinalizeWrap.style.display = 'none';
-        btnGoWrap.style.display = 'block';
-
-        // Auto-redirect after 2 seconds
-        setTimeout(function() { window.location.href = '/'; }, 2000);
-      } catch (err) {
-        log('Finalize error: ' + err.message, 'error');
-        setStep('finalize', 'error', 'Failed');
-        btnFinalize.innerHTML = 'Retry Finalize';
-        btnFinalize.disabled = false;
-      }
+          if (data.roles) {
+            if (data.roles.created && data.roles.created.length > 0) log('log-seed', 'Roles created: ' + data.roles.created.join(', '), 'success');
+            if (data.roles.existing) log('log-seed', 'All roles: ' + data.roles.existing.join(', '), '');
+          }
+          log('log-seed', 'Default org: ' + (data.defaultOrganization || 'done'), 'success');
+          log('log-seed', 'RBAC setup complete.', 'success');
+          setBtn(btnSeed, false, 'Done');
+          btnSeed.disabled = true;
+          setTimeout(function() { goToStep(2); }, 600);
+        })
+        .catch(function(err) {
+          log('log-seed', 'Error: ' + err.message, 'error');
+          setBtn(btnSeed, false, 'Retry');
+          tabs[1].classList.add('error');
+        });
     });
 
-    // Auto-refresh status on load
-    ${state.state === 'READY' ? `
-    setStep('meta', 'done', 'Done');
-    setStep('schema', 'done', 'Done');
-    setStep('migrations', 'done', 'Done');
-    setStep('finalize', 'done', 'Done');
-    setProgress(100);
-    btnInit.style.display = 'none';
-    btnGoWrap.style.display = 'block';
-    log('Platform is already initialized and ready.', 'success');
-    ` : ''}
+    // --- Step 2: Create Owner ---
+    var btnOwner = document.getElementById('btn-owner');
+    var nameInput = document.getElementById('owner-name');
+    var emailInput = document.getElementById('owner-email');
+    var passInput = document.getElementById('owner-password');
+    var errEmail = document.getElementById('err-email');
+    var errPass = document.getElementById('err-password');
+
+    btnOwner.addEventListener('click', function() {
+      errEmail.style.display = 'none';
+      errPass.style.display = 'none';
+
+      var email = emailInput.value.trim();
+      var password = passInput.value;
+      var name = nameInput.value.trim();
+
+      if (!email || email.indexOf('@') < 1) {
+        errEmail.textContent = 'Enter a valid email address';
+        errEmail.style.display = 'block';
+        return;
+      }
+      if (!password || password.length < 8) {
+        errPass.textContent = 'Password must be at least 8 characters';
+        errPass.style.display = 'block';
+        return;
+      }
+
+      setBtn(btnOwner, true, 'Creating...');
+      log('log-owner', 'Creating owner account: ' + email, 'info');
+
+      fetch('/__bootstrap__/api/create-owner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, password: password, name: name })
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.success) {
+            if (data.errors) {
+              if (data.errors.email) { errEmail.textContent = data.errors.email; errEmail.style.display = 'block'; }
+              if (data.errors.password) { errPass.textContent = data.errors.password; errPass.style.display = 'block'; }
+            }
+            throw new Error(data.error || 'Account creation failed');
+          }
+
+          log('log-owner', 'Owner account created: ' + data.user.email + ' (role: ' + data.user.role + ')', 'success');
+          if (data.organizationId) log('log-owner', 'Workspace created: ' + data.organizationId, 'success');
+          setBtn(btnOwner, false, 'Done');
+          btnOwner.disabled = true;
+          emailInput.disabled = true;
+          passInput.disabled = true;
+          nameInput.disabled = true;
+          setTimeout(function() { goToStep(3); }, 600);
+        })
+        .catch(function(err) {
+          log('log-owner', 'Error: ' + err.message, 'error');
+          setBtn(btnOwner, false, 'Retry');
+          tabs[2].classList.add('error');
+        });
+    });
+
+    // --- Step 3: Config (just a continue button) ---
+    document.getElementById('btn-config-next').addEventListener('click', function() {
+      goToStep(4);
+    });
+
+    // --- Step 4: Finalize ---
+    var btnFinalize = document.getElementById('btn-finalize');
+    var checksEl = document.getElementById('finalize-checks');
+    var successCard = document.getElementById('success-card');
+
+    function runChecks() {
+      checksEl.innerHTML = '<div style="color:var(--text-dim);font-size:0.8125rem"><span class="spinner"></span> Running pre-flight checks...</div>';
+      fetch('/__bootstrap__/api/status')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var db = data.database || {};
+          var env = data.envConfig || {};
+          var html = '';
+
+          function check(ok, label) {
+            return '<div class="check-row"><span class="check-icon ' + (ok ? 'check-ok' : 'check-fail') + '">' + (ok ? '\\u2713' : '\\u2717') + '</span><span>' + label + '</span></div>';
+          }
+          function warn(ok, label) {
+            return '<div class="check-row"><span class="check-icon ' + (ok ? 'check-ok' : 'check-warn') + '">' + (ok ? '\\u2713' : '!') + '</span><span>' + label + '</span></div>';
+          }
+
+          html += check(db.tableCount > 5, db.tableCount + ' tables created');
+          html += check(db.roleCount >= 5, db.roleCount + ' roles seeded');
+          html += check(db.userCount > 0, db.userCount + ' user(s) registered');
+          html += warn(env.authSecret, 'AUTH_SECRET ' + (env.authSecret ? 'configured' : 'not set (needed for production)'));
+          html += warn(env.emailProvider, 'Email provider ' + (env.emailProvider ? 'configured' : 'not configured (optional)'));
+          html += check(data.bindings.d1, 'D1 database connected');
+          html += warn(data.bindings.kv, 'KV namespace ' + (data.bindings.kv ? 'connected' : 'not configured'));
+
+          checksEl.innerHTML = html;
+
+          var canFinalize = db.tableCount > 0 && db.userCount > 0 && db.roleCount > 0;
+          btnFinalize.disabled = !canFinalize;
+        })
+        .catch(function() {
+          checksEl.innerHTML = '<div class="alert alert-error">Failed to fetch status</div>';
+        });
+    }
+
+    btnFinalize.addEventListener('click', function() {
+      setBtn(btnFinalize, true, 'Launching...');
+      log('log-finalize', 'Verifying and finalizing...', 'info');
+
+      fetch('/__bootstrap__/api/finalize', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.success) throw new Error(data.error || 'Finalize failed');
+          log('log-finalize', 'Platform state: READY', 'success');
+          if (data.summary) log('log-finalize', 'Summary: ' + data.summary.tables + ' tables, ' + data.summary.users + ' users, ' + data.summary.roles + ' roles', 'success');
+          setBtn(btnFinalize, false, 'Done');
+          btnFinalize.disabled = true;
+          successCard.style.display = 'block';
+          progress.style.width = '100%';
+          tabs[4].classList.add('done');
+        })
+        .catch(function(err) {
+          log('log-finalize', 'Error: ' + err.message, 'error');
+          setBtn(btnFinalize, false, 'Retry');
+          tabs[4].classList.add('error');
+        });
+    });
+
+    // On load: if already READY, skip to end
+    ${
+        isReady
+            ? `
+    goToStep(4);
+    tabs.forEach(function(t) { t.classList.add('done'); });
+    progress.style.width = '100%';
+    checksEl.innerHTML = '<div class="alert alert-success">Platform is already initialized and running.</div>';
+    btnFinalize.style.display = 'none';
+    successCard.style.display = 'block';
+    `
+            : `
+    // Auto-run preflight when reaching step 4
+    var observer = new MutationObserver(function() {
+      if (document.getElementById('panel-4').classList.contains('active')) {
+        runChecks();
+        observer.disconnect();
+      }
+    });
+    panels.forEach(function(p) { observer.observe(p, { attributes: true, attributeFilter: ['class'] }); });
+    `
+    }
   })();
   </script>
   `,
@@ -595,15 +558,10 @@ export function renderMaintenancePage(state: PlatformStateResult): string {
   <div class="card">
     <h2>Database Unreachable</h2>
     <div class="alert alert-error">
-      <strong>Service Degraded</strong><br>
-      The KV cache indicates the platform was previously running, but the D1 database probe has failed.
-      This usually indicates a temporary Cloudflare issue or a misconfigured binding.
+      <strong>Service Degraded</strong> &mdash; The KV cache reports the platform was running, but the D1 database is not responding.
     </div>
     <p>${escapeHtml(state.reason)}</p>
-    <p style="margin-top:1rem;font-size:0.8125rem;color:var(--text-dim)">
-      The platform will automatically recover when D1 becomes reachable again.
-      This page will refresh automatically.
-    </p>
+    <p style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-dim)">This page auto-refreshes every 15 seconds.</p>
   </div>
   <script>setTimeout(function(){ location.reload(); }, 15000);</script>
   `,
@@ -622,13 +580,10 @@ export function renderLockedPage(state: PlatformStateResult): string {
   <div class="card">
     <h2>Administrative Lock Active</h2>
     <div class="alert alert-warning">
-      <strong>Platform Halted</strong><br>
-      The environment variable <code>OTTABASE_LOCKED</code> is set. All requests are being blocked.
+      <strong>Platform Halted</strong> &mdash; The <code>OTTABASE_LOCKED</code> environment variable is set.
     </div>
-    <p>To unlock the platform, remove the <code>OTTABASE_LOCKED</code> environment variable
-    from your wrangler configuration or Cloudflare dashboard, then redeploy.</p>
-    <pre class="code-block"># In wrangler.jsonc → vars:
-# Remove or set to "false":
+    <p>Remove the variable from wrangler.jsonc or your Cloudflare dashboard, then redeploy.</p>
+    <pre class="code-block"># Remove or set to "false":
 "OTTABASE_LOCKED": "false"</pre>
   </div>
   `,
@@ -636,12 +591,12 @@ export function renderLockedPage(state: PlatformStateResult): string {
 }
 
 // ============================================================
-// Bindings error page — missing critical bindings
+// Bindings error page
 // ============================================================
 
 export function renderBindingsErrorPage(state: PlatformStateResult): string {
-    const missingBindings = Object.entries(state.bindings)
-        .filter(([_, ok]) => !ok)
+    const missing = Object.entries(state.bindings)
+        .filter(([, ok]) => !ok)
         .map(([name]) => BINDING_LABELS[name] || name);
 
     return baseLayout(
@@ -650,32 +605,20 @@ export function renderBindingsErrorPage(state: PlatformStateResult): string {
   <p class="subtitle">Cloudflare bindings not configured</p>
   <div class="card">
     <h2>Missing Bindings</h2>
-    <div class="alert alert-error">
-      <strong>Required Configuration Missing</strong><br>
-      The following Cloudflare bindings need to be configured in your <code>wrangler.jsonc</code>
-      before ${BRAND} can start:
-    </div>
-    <ul style="margin:1rem 0;padding-left:1.5rem">
-      ${missingBindings.map((b) => `<li style="color:var(--error);margin-bottom:0.25rem">${escapeHtml(b)}</li>`).join('\n')}
+    <div class="alert alert-error"><strong>Required configuration missing</strong></div>
+    <ul style="margin:0.75rem 0 0.75rem 1.5rem;font-size:0.8125rem">
+      ${missing.map((b) => `<li style="color:var(--error);margin-bottom:0.25rem">${escapeHtml(b)}</li>`).join('\n')}
     </ul>
-    <p>Minimum required binding:</p>
-    <pre class="code-block">// wrangler.jsonc
-{
-  "d1_databases": [{
-    "binding": "OBCF_D1",
-    "database_name": "ottabase-db",
-    "database_id": "YOUR_ID"
-  }],
-  "kv_namespaces": [{
-    "binding": "OBCF_KV",
-    "id": "YOUR_ID"
-  }]
-}</pre>
-    <p style="font-size:0.8125rem;color:var(--text-dim)">
-      Create resources with:<br>
-      <code style="color:var(--accent-light)">wrangler d1 create ottabase-db</code><br>
-      <code style="color:var(--accent-light)">wrangler kv namespace create OBCF_KV</code>
-    </p>
+    <pre class="code-block">// wrangler.jsonc — minimum required bindings:
+"d1_databases": [{
+  "binding": "OBCF_D1",
+  "database_name": "ottabase-db",
+  "database_id": "YOUR_ID"   // wrangler d1 create ottabase-db
+}],
+"kv_namespaces": [{
+  "binding": "OBCF_KV",
+  "id": "YOUR_ID"            // wrangler kv namespace create OBCF_KV
+}]</pre>
   </div>
   `,
     );
@@ -686,17 +629,13 @@ export function renderBindingsErrorPage(state: PlatformStateResult): string {
 // ============================================================
 
 const BINDING_LABELS: Record<string, string> = {
-    d1: 'OBCF_D1 (D1 Database)',
-    kv: 'OBCF_KV (KV Namespace)',
-    r2: 'OBCF_R2 (R2 Bucket)',
+    d1: 'OBCF_D1 (D1)',
+    kv: 'OBCF_KV (KV)',
+    r2: 'OBCF_R2 (R2)',
     queue: 'OBCF_QUEUE (Queue)',
-    assets: 'OBCF_ASSETS (Static Assets)',
+    assets: 'OBCF_ASSETS (Assets)',
 };
 
 function escapeHtml(str: string): string {
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
