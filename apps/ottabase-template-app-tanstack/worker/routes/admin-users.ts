@@ -1,28 +1,15 @@
-import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { OrganizationMember, User } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { getSession } from '@ottabase/auth/backend';
-import { getAuthOptions } from '../lib/auth-utils';
-import { registerConnection } from '@ottabase/ottaorm';
-import { User, OrganizationMember } from '@ottabase/ottaorm/models';
+import { requireAdminAccess } from '../lib/admin-guard';
 import type { ApiRouteContext } from './router';
 
 /**
  * GET /api/admin/users - List all users (admin only)
  */
 export async function handleAdminUsers(context: ApiRouteContext): Promise<Response> {
-    const { request, env, url } = context;
-
-    if (!env.OBCF_D1) {
-        return errorResponse('D1 database binding not configured', 500, { code: 'CONFIG_ERROR' });
-    }
-
-    registerConnection('default', createD1Driver(env.OBCF_D1));
-
-    const session = await getSession(request, env as any, getAuthOptions(env));
-    if (!session?.user?.id) {
-        return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
-    }
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
 
     const users = await User.all({ orderBy: 'createdAt', orderDirection: 'desc' });
 
@@ -35,18 +22,8 @@ export async function handleAdminUsers(context: ApiRouteContext): Promise<Respon
  * GET /api/admin/users/:id - Get a single user by ID (admin only)
  */
 export async function handleAdminUserById(context: ApiRouteContext, userId: string): Promise<Response> {
-    const { request, env } = context;
-
-    if (!env.OBCF_D1) {
-        return errorResponse('D1 database binding not configured', 500, { code: 'CONFIG_ERROR' });
-    }
-
-    registerConnection('default', createD1Driver(env.OBCF_D1));
-
-    const session = await getSession(request, env as any, getAuthOptions(env));
-    if (!session?.user?.id) {
-        return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
-    }
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
 
     const user = await User.find(userId);
     if (!user) {

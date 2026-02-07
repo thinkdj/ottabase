@@ -2,9 +2,9 @@
 // @ottabase/rbac - Unified App Context (Tenant > App > User)
 // ============================================================
 
+import logger from '@ottabase/logger';
 import type { User } from '@ottabase/ottaorm/models';
 import type { RBACCache } from './cache';
-import logger from '@ottabase/logger';
 
 /**
  * Unified application context
@@ -12,10 +12,10 @@ import logger from '@ottabase/logger';
  */
 export interface AppContext {
     // Tenant dimension (top level)
-    organizationId: string;
+    organizationId: string | null;
     organizationName?: string;
     organizationSlug?: string;
-    tenantId: string; // Alias for organizationId
+    tenantId: string | null; // Alias for organizationId
 
     // App dimension (second level)
     appId: string;
@@ -47,7 +47,7 @@ export interface AppContext {
  */
 export interface BuildAppContextOptions {
     // Required
-    organizationId: string;
+    organizationId?: string | null;
     appId: string;
 
     // Optional user
@@ -99,10 +99,10 @@ export async function buildAppContext(options: BuildAppContextOptions): Promise<
 
     // Basic context without RBAC
     const context: AppContext = {
-        organizationId,
+        organizationId: organizationId ?? null,
         organizationName,
         organizationSlug,
-        tenantId: organizationId, // Alias
+        tenantId: organizationId ?? null, // Alias
         appId,
         appName,
         user: user || null,
@@ -125,7 +125,7 @@ export async function buildAppContext(options: BuildAppContextOptions): Promise<
             // Get user roles (scoped by organization and optionally app)
             const roles = await user.roles({
                 cache,
-                organizationId,
+                organizationId: organizationId ?? undefined,
                 // Note: We don't filter by appId here to get all roles
                 // Roles with specific appId will be filtered during permission checks
             });
@@ -135,7 +135,7 @@ export async function buildAppContext(options: BuildAppContextOptions): Promise<
             // Get user permissions (scoped by organization)
             const permissions = await user.getPermissions({
                 cache,
-                organizationId,
+                organizationId: organizationId ?? undefined,
             });
 
             context.permissions = permissions;
@@ -328,7 +328,7 @@ export function createAuditData(
 ): {
     userId?: string;
     userEmail?: string;
-    organizationId: string;
+    organizationId: string | null;
     appId: string;
     action: string;
     resourceType: string;

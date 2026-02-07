@@ -1,18 +1,16 @@
+import { ScheduledTask } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { readJson } from '../lib/utils';
+import { requireAdminAccess } from '../lib/admin-guard';
 import { initAdminCron } from '../lib/db-utils';
-import { ScheduledTask } from '@ottabase/ottaorm/models';
-import type { CloudflareEnv } from '../../cloudflare-env';
+import { readJson } from '../lib/utils';
+import type { ApiRouteContext } from './router';
 
-export interface AdminCronContext {
-    request: Request;
-    env: CloudflareEnv;
-}
+export async function handleAdminCronList(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
 
-export async function handleAdminCronList(context: AdminCronContext): Promise<Response> {
-    const { env } = context;
-    const initErr = initAdminCron(env);
+    const initErr = initAdminCron(context.env);
     if (initErr) return initErr;
 
     const tasks = await ScheduledTask.all();
@@ -40,7 +38,10 @@ export async function handleAdminCronList(context: AdminCronContext): Promise<Re
     });
 }
 
-export async function handleAdminCronCreate(context: AdminCronContext): Promise<Response> {
+export async function handleAdminCronCreate(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { request, env } = context;
     const initErr = initAdminCron(env);
     if (initErr) return initErr;
@@ -81,10 +82,13 @@ export async function handleAdminCronCreate(context: AdminCronContext): Promise<
 }
 
 export async function handleCronTask(
-    context: AdminCronContext,
+    context: ApiRouteContext,
     taskId: string,
     action: 'toggle' | 'run' | null,
 ): Promise<Response | null> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, request } = context;
     const initErr = initAdminCron(env);
     if (initErr) return initErr;

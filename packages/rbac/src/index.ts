@@ -3,39 +3,45 @@
 // ============================================================
 
 // Types
-export type { RBACContext, RBACCheckOptions, PermissionCheckResult } from './types';
 export { RBACError } from './types';
+export type { PermissionCheckResult, RBACCheckOptions, RBACContext } from './types';
 
 // Utils
 export {
     createRBACContext,
+    formatPermission,
+    getAllowedActions,
     hasPermission,
     hasRole,
     isAdmin,
-    getAllowedActions,
-    formatPermission,
     parsePermission,
 } from './utils';
 
 // Middleware
-export { withRBAC, requirePermission, requireRole, checkPermission, checkRole } from './middleware';
+export { checkPermission, checkRole, requirePermission, requireRole, withRBAC } from './middleware';
 
 // Context (React)
 export type { RBACContextValue } from './context';
 
 // Cache
+export { RBACCache, clearRBACCache, getRBACCache, initRBACCache } from './cache';
 export type { RBACCacheConfig } from './cache';
-export { RBACCache, initRBACCache, getRBACCache, clearRBACCache } from './cache';
 
 // App Context (Unified Tenant > App > User hierarchy)
-export type { AppContext, BuildAppContextOptions, ExtractOrgOptions, ExtractAppOptions } from './app-context';
 export {
     buildAppContext,
-    extractOrganizationId,
-    extractAppId,
     hasPermission as contextHasPermission,
-    hasAnyRole,
-    hasAllRoles,
-    isOwnerOrAdmin,
     createAuditData,
+    extractAppId,
+    extractOrganizationId,
+    hasAllRoles,
+    hasAnyRole,
+    isOwnerOrAdmin,
 } from './app-context';
+export type { AppContext, BuildAppContextOptions, ExtractAppOptions, ExtractOrgOptions } from './app-context';
+
+// Request context + admin guard
+export { assertAdmin, requireAdminAccess } from './admin-guard';
+export type { AdminScope, AssertAdminOptions } from './admin-guard';
+export { SYSTEM_ORGANIZATION_ID, getRequestContext } from './request-context';
+export type { GetRequestContextOptions, RequestContext } from './request-context';

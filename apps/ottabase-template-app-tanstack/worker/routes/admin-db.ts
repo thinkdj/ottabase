@@ -1,16 +1,15 @@
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { parsePaginationParams } from '@ottabase/utils/pagination';
-import type { CloudflareEnv } from '../../cloudflare-env';
+import { requireAdminAccess } from '../lib/admin-guard';
+import type { ApiRouteContext } from './router';
 
-export interface AdminDbContext {
-    request: Request;
-    env: CloudflareEnv;
-    url: URL;
-    tableName?: string;
-}
+export type AdminDbContext = ApiRouteContext & { tableName?: string };
 
 export async function handleAdminDbTables(context: AdminDbContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500);
@@ -30,6 +29,9 @@ export async function handleAdminDbTables(context: AdminDbContext): Promise<Resp
 }
 
 export async function handleAdminDbTableData(context: AdminDbContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, url, tableName } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500);
@@ -67,6 +69,9 @@ export async function handleAdminDbTableData(context: AdminDbContext): Promise<R
 }
 
 export async function handleAdminDbTableDelete(context: AdminDbContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, tableName } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500);
@@ -98,6 +103,9 @@ export async function handleAdminDbRowDelete(
     rowId: string,
     pkField: string,
 ): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+
     const { env, tableName } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500);

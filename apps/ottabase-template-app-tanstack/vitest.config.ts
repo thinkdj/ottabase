@@ -39,6 +39,8 @@ export default defineConfig({
             '@ottabase/auth/backend': path.resolve(__dirname, '../../packages/auth/src/backend-handler'),
             '@ottabase/utils/http-response': path.resolve(__dirname, '../../packages/utils/src/http-response'),
             '@ottabase/utils/http-errors': path.resolve(__dirname, '../../packages/utils/src/http-errors'),
+            '@ottabase/rbac/admin-guard': path.resolve(__dirname, '../../packages/rbac/src/admin-guard.ts'),
+            '@ottabase/rbac/request-context': path.resolve(__dirname, '../../packages/rbac/src/request-context.ts'),
         },
     },
 });

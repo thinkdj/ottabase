@@ -1,49 +1,14 @@
+import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import {
-    handleAuthConfig,
-    handleVerifyEmail,
-    handleVerifyEmailResend,
-    handlePasswordResetConfirm,
-    handlePasswordResetRequest,
-    handleUserProfile,
-    handleAuthRegister,
-    handleAuthJsRequest,
-} from './auth';
-import { handleEmailProviders, handleEmailTest } from './email';
+import type { CloudflareEnv } from '../../cloudflare-env';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import {
-    handleBlogStudioActivateTheme,
-    handleBlogStudioPluginConfig,
-    handleBlogStudioPluginEnable,
-    handleBlogStudioState,
-    handleBlogPostBySlug,
-    handleBlogPostUnlock,
-    handleBlogPostsList,
-} from './blog';
-import { handleOttaormCrud } from './ottaorm-crud';
-import {
-    handleShortlinkById,
-    handleShortlinkExplicitGo,
-    handleShortlinksCreate,
-    handleShortlinksList,
-} from './shortlinks';
-import {
-    handleReferralStats,
-    handleReferralTrackingList,
-    handleReferralTrack,
-    handleReferralUser,
-    handleReferralUsernameUpdate,
-} from './referrals';
-import { handleDemo, handleDemoError, handleAuditLogs } from './demo';
-import {
-    handleCloudflareImages,
-    handleCloudflareKV,
-    handleCloudflareR2,
-    handleUpload,
-    handleUploadFile,
-} from './cloudflare-storage';
-import { handleD1Init, handleD1TodoById, handleD1Todos } from './cloudflare-d1';
-import { handleCloudflareQueue } from './cloudflare-queue';
+    handleAdminDbRowDelete,
+    handleAdminDbTableData,
+    handleAdminDbTableDelete,
+    handleAdminDbTables,
+} from './admin-db';
+import { handleAdminPromoteOwner } from './admin-owner';
 import {
     handleAdminQueuesDLQJob,
     handleAdminQueuesDLQList,
@@ -56,24 +21,60 @@ import {
     handleAdminQueuesProcessed,
     handleAdminQueuesResetStats,
 } from './admin-queues';
+import {
+    handleAdminRoleCreate,
+    handleAdminRoleDelete,
+    handleAdminRoleUpdate,
+    handleAdminRolesList,
+} from './admin-roles';
+import { handleAdminUserById, handleAdminUsers } from './admin-users';
+import {
+    handleAuthConfig,
+    handleAuthJsRequest,
+    handleAuthRegister,
+    handlePasswordResetConfirm,
+    handlePasswordResetRequest,
+    handleUserProfile,
+    handleVerifyEmail,
+    handleVerifyEmailResend,
+} from './auth';
+import {
+    handleBlogPostBySlug,
+    handleBlogPostUnlock,
+    handleBlogPostsList,
+    handleBlogStudioActivateTheme,
+    handleBlogStudioPluginConfig,
+    handleBlogStudioPluginEnable,
+    handleBlogStudioState,
+} from './blog';
+import { handleD1Init, handleD1TodoById, handleD1Todos } from './cloudflare-d1';
+import { handleCloudflareQueue } from './cloudflare-queue';
 import { handleRateLimiting } from './cloudflare-rate';
 import { handleRealtimeBroadcast, handleRealtimeStats, handleRealtimeWebsocket } from './cloudflare-realtime';
+import {
+    handleCloudflareImages,
+    handleCloudflareKV,
+    handleCloudflareR2,
+    handleUpload,
+    handleUploadFile,
+} from './cloudflare-storage';
+import { handleAuditLogs, handleDemo, handleDemoError } from './demo';
+import { handleEmailProviders, handleEmailTest } from './email';
+import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
 import {
-    handleAdminDbRowDelete,
-    handleAdminDbTableData,
-    handleAdminDbTableDelete,
-    handleAdminDbTables,
-} from './admin-db';
-import { handleAdminUsers, handleAdminUserById } from './admin-users';
+    handleReferralStats,
+    handleReferralTrack,
+    handleReferralTrackingList,
+    handleReferralUser,
+    handleReferralUsernameUpdate,
+} from './referrals';
 import {
-    handleAdminRolesList,
-    handleAdminRoleCreate,
-    handleAdminRoleUpdate,
-    handleAdminRoleDelete,
-} from './admin-roles';
-import type { CloudflareEnv } from '../../cloudflare-env';
-import { errorResponse } from '@ottabase/utils/http-errors';
+    handleShortlinkById,
+    handleShortlinkExplicitGo,
+    handleShortlinksCreate,
+    handleShortlinksList,
+} from './shortlinks';
 
 export interface ApiRouteContext {
     request: Request;
@@ -266,6 +267,10 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
 
     if (route === '/api/admin/cron') {
         return handleAdminCronCreate(context);
+    }
+
+    if (route === '/api/admin/owner/promote') {
+        return handleAdminPromoteOwner(context);
     }
 
     if (route === '/api/blog/studio/theme/activate') {

@@ -51,6 +51,8 @@ export default defineConfig(({ command }) => ({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            '@ottabase/rbac/admin-guard': path.resolve(__dirname, '../../packages/rbac/src/admin-guard.ts'),
+            '@ottabase/rbac/request-context': path.resolve(__dirname, '../../packages/rbac/src/request-context.ts'),
             // Stub @sentry/node in browser build so Vite never bundles it (it uses node:inspector).
             // Logger's SentryTransport will catch and try @sentry/browser or show optional warning.
             '@sentry/node': path.resolve(__dirname, './src/stubs/sentry-node-stub.ts'),

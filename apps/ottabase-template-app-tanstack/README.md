@@ -84,7 +84,22 @@ EMAIL_FROM=noreply@yourdomain.com
 AUTH_DISABLE_CREDENTIALS=false
 AUTH_REQUIRE_EMAIL_VERIFIED=false
 AUTH_SESSION_MAX_AGE=2592000
+
+# RBAC bootstrap toggles
+ALLOW_NULL_TENANT=true            # allow system-scope (single-founder) admin
+MULTI_TENANT_ENABLED=true         # create personal org on first user (default true)
+BOOTSTRAP_OWNER_SECRET=supersecret-token
 ```
+
+### First-user + admin guard
+
+- First successful sign-in when `users.count() === 1` auto-creates a system-scoped `owner` role (organizationId:
+  `system`).
+- If `MULTI_TENANT_ENABLED` is true (default), a personal org is created for that first user and linked as owner.
+- Set `ALLOW_NULL_TENANT=true` to run in single-founder mode (no org required; system scope is used by default).
+- Manual recovery: `POST /api/admin/owner/promote` with header `x-bootstrap-secret: $BOOTSTRAP_OWNER_SECRET` and body
+  `{ "userId": "..." }` or `{ "email": "..." }` to grant the system owner role.
+- Admin APIs now require system-scope owner/admin (org admins remain scoped to their orgs only).
 
 ## Database Setup
 

@@ -3,7 +3,7 @@ import { createAuthConfig } from '../backend-handler';
 
 function createMockD1() {
     const prepare = vi.fn((sql: string) => {
-        const bind = (...args: any[]) => {
+        const base = (() => {
             if (sql.includes('FROM organization_members')) {
                 return {
                     first: vi.fn(async () => ({ organizationId: 'org-1' })),
@@ -26,14 +26,22 @@ function createMockD1() {
                     run: vi.fn(async () => ({ success: true })),
                 };
             }
-            return {
-                first: vi.fn(async () => null),
-                all: vi.fn(async () => ({ results: [] })),
-                run: vi.fn(async () => ({ success: true })),
-            };
+            if (sql.toLowerCase().includes('select count(*) as count from users')) {
+                return {
+                    first: vi.fn(async () => ({ count: 1 })),
+                };
+            }
+            return {};
+        })();
+
+        const stub = {
+            first: vi.fn(async () => null),
+            all: vi.fn(async () => ({ results: [] })),
+            run: vi.fn(async () => ({ success: true })),
+            ...base,
         };
 
-        return { bind };
+        return { ...stub, bind: vi.fn(() => stub) };
     });
 
     return { prepare };

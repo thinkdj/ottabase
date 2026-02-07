@@ -16,6 +16,7 @@
 
 import { Auth, type AuthConfig } from '@auth/core';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
+import { bootstrapFirstUser, parseBooleanFlag, SYSTEM_ORGANIZATION_ID } from './bootstrap';
 import { createOttabaseAuthConfig } from './config';
 import type { ProviderEnv } from './providers';
 import {
@@ -181,6 +182,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
         options?.sessionMaxAge ??
         (Number.isFinite(envSessionMaxAge) && envSessionMaxAge > 0 ? envSessionMaxAge : undefined);
     const sessionStrategy = options?.sessionStrategy ?? 'jwt';
+    const allowNullTenant = parseBooleanFlag((env as any).ALLOW_NULL_TENANT);
 
     if (!env.OBCF_D1) {
         throw new Error('OBCF_D1 database binding is required for authentication');
@@ -296,6 +298,8 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                         }
                     }
 
+                    await bootstrapFirstUser(env, user as any);
+
                     return true;
                 },
                 async redirect({ url, baseUrl }) {
@@ -368,6 +372,23 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                             }
                         } catch (error) {
                             console.warn('Failed to load organization membership for auth:', error);
+                        }
+
+                        if (!organizationId && allowNullTenant) {
+                            try {
+                                const systemRole = await d1
+                                    .prepare(
+                                        `SELECT 1 FROM user_roles WHERE user_id = ? AND organization_id = ? LIMIT 1`,
+                                    )
+                                    .bind(userId, SYSTEM_ORGANIZATION_ID)
+                                    .first<any>();
+
+                                if (systemRole) {
+                                    organizationId = SYSTEM_ORGANIZATION_ID;
+                                }
+                            } catch (error) {
+                                console.warn('Failed to detect system-scope roles for auth:', error);
+                            }
                         }
 
                         if (organizationId) {

@@ -207,6 +207,12 @@ export class Role extends BaseModel {
     static async ensureDefaultRoles() {
         const defaultRoles = [
             {
+                name: 'owner',
+                description: 'System owner (all permissions)',
+                permissions: JSON.stringify(['*:*']),
+                isSystem: true,
+            },
+            {
                 name: 'admin',
                 description: 'Full system access',
                 permissions: JSON.stringify(['*:*']),
