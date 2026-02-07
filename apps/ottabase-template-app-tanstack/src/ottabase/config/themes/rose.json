@@ -1,0 +1,128 @@
+{
+    "name": "rose",
+    "typography": {
+        "heading": {
+            "fontFamily": "Fraunces",
+            "url": "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap"
+        },
+        "body": {
+            "fontFamily": "Nunito Sans",
+            "url": "https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+        },
+        "handwriting": {
+            "fontFamily": "Dancing Script",
+            "url": "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap"
+        }
+    },
+    "radius": "0.75rem",
+    "spacing": {
+        "section": "2.5rem",
+        "card": "1.5rem",
+        "element": "0.5rem"
+    },
+    "shadows": {
+        "xs": "0 1px 2px rgb(140 70 90 / 0.05)",
+        "sm": "0 2px 4px rgb(140 70 90 / 0.07)",
+        "md": "0 5px 10px -2px rgb(140 70 90 / 0.09)",
+        "lg": "0 10px 20px -4px rgb(140 70 90 / 0.11)",
+        "xl": "0 20px 36px -6px rgb(140 70 90 / 0.14)"
+    },
+    "motion": {
+        "durationFast": "110ms",
+        "durationNormal": "220ms",
+        "durationSlow": "440ms",
+        "easing": "cubic-bezier(0.33, 0.6, 0.1, 1)",
+        "easingEnter": "cubic-bezier(0.05, 0.7, 0.1, 1)",
+        "easingExit": "cubic-bezier(0.3, 0, 0.8, 0.15)"
+    },
+    "colors": {
+        "light": {
+            "background": "348 30% 98%",
+            "foreground": "348 28% 12%",
+            "primary": "340 65% 52%",
+            "primary-foreground": "0 0% 100%",
+            "secondary": "342 22% 93%",
+            "secondary-foreground": "348 28% 16%",
+            "muted": "342 20% 94%",
+            "muted-foreground": "344 10% 46%",
+            "accent": "340 65% 52%",
+            "accent-foreground": "340 65% 46%",
+            "destructive": "6 72% 54%",
+            "destructive-foreground": "0 0% 100%",
+            "border": "342 18% 90%",
+            "input": "342 18% 90%",
+            "ring": "340 65% 52%",
+            "card": "0 0% 100%",
+            "card-foreground": "348 28% 12%",
+            "popover": "0 0% 100%",
+            "popover-foreground": "348 28% 12%",
+            "sidebar-background": "346 24% 96%",
+            "sidebar-foreground": "348 22% 20%",
+            "sidebar-border": "342 18% 90%",
+            "sidebar-accent": "340 65% 52%",
+            "sidebar-accent-foreground": "340 65% 46%",
+            "sidebar-ring": "340 65% 52%",
+            "success": "152 56% 38%",
+            "success-foreground": "0 0% 100%",
+            "warning": "34 84% 48%",
+            "warning-foreground": "26 52% 14%",
+            "info": "210 72% 50%",
+            "info-foreground": "0 0% 100%",
+            "chart-1": "340 65% 52%",
+            "chart-2": "268 48% 56%",
+            "chart-3": "34 84% 48%",
+            "chart-4": "152 56% 38%",
+            "chart-5": "210 72% 50%"
+        },
+        "dark": {
+            "background": "348 30% 7%",
+            "foreground": "344 18% 88%",
+            "primary": "340 60% 62%",
+            "primary-foreground": "348 30% 7%",
+            "secondary": "346 18% 14%",
+            "secondary-foreground": "344 18% 88%",
+            "muted": "346 18% 14%",
+            "muted-foreground": "344 12% 56%",
+            "accent": "340 60% 62% / 0.13",
+            "accent-foreground": "340 60% 68%",
+            "destructive": "6 64% 44%",
+            "destructive-foreground": "344 18% 92%",
+            "border": "346 16% 18%",
+            "input": "346 16% 18%",
+            "ring": "340 60% 62%",
+            "card": "348 26% 10%",
+            "card-foreground": "344 18% 88%",
+            "popover": "348 26% 10%",
+            "popover-foreground": "344 18% 88%",
+            "sidebar-background": "348 28% 8%",
+            "sidebar-foreground": "344 14% 68%",
+            "sidebar-border": "346 16% 16%",
+            "sidebar-accent": "340 60% 62% / 0.11",
+            "sidebar-accent-foreground": "340 60% 68%",
+            "sidebar-ring": "340 60% 62%",
+            "success": "152 50% 46%",
+            "success-foreground": "348 30% 7%",
+            "warning": "38 80% 54%",
+            "warning-foreground": "348 30% 7%",
+            "info": "214 68% 56%",
+            "info-foreground": "348 30% 7%",
+            "chart-1": "340 60% 62%",
+            "chart-2": "272 44% 62%",
+            "chart-3": "38 80% 54%",
+            "chart-4": "156 50% 46%",
+            "chart-5": "214 68% 56%"
+        }
+    },
+    "layout": {
+        "header": "minimal",
+        "navigation": "topbar",
+        "contentWidth": "fixed",
+        "footer": true,
+        "density": "comfy"
+    },
+    "cursors": {
+        "default": "auto",
+        "pointer": "pointer",
+        "text": "text"
+    }
+}

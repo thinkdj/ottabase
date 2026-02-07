@@ -20,6 +20,21 @@
         "card": "1.5rem",
         "element": "0.5rem"
     },
+    "shadows": {
+        "xs": "0 1px 2px rgb(0 0 0 / 0.04)",
+        "sm": "0 1px 3px rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07)",
+        "md": "0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07)",
+        "lg": "0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07)",
+        "xl": "0 20px 25px -5px rgb(0 0 0 / 0.09), 0 8px 10px -6px rgb(0 0 0 / 0.09)"
+    },
+    "motion": {
+        "durationFast": "100ms",
+        "durationNormal": "200ms",
+        "durationSlow": "400ms",
+        "easing": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "easingEnter": "cubic-bezier(0, 0, 0.2, 1)",
+        "easingExit": "cubic-bezier(0.4, 0, 1, 1)"
+    },
     "colors": {
         "light": {
             "background": "0 0% 100%",
@@ -36,7 +51,28 @@
             "destructive-foreground": "210 40% 98%",
             "border": "214.3 31.8% 91.4%",
             "input": "214.3 31.8% 91.4%",
-            "ring": "221.2 83.2% 53.3%"
+            "ring": "221.2 83.2% 53.3%",
+            "card": "0 0% 100%",
+            "card-foreground": "222.2 84% 4.9%",
+            "popover": "0 0% 100%",
+            "popover-foreground": "222.2 84% 4.9%",
+            "sidebar-background": "210 40% 97%",
+            "sidebar-foreground": "222.2 47.4% 11.2%",
+            "sidebar-border": "214.3 31.8% 91.4%",
+            "sidebar-accent": "221.2 83.2% 53.3%",
+            "sidebar-accent-foreground": "221.2 83.2% 53.3%",
+            "sidebar-ring": "221.2 83.2% 53.3%",
+            "success": "150 60% 40%",
+            "success-foreground": "0 0% 100%",
+            "warning": "36 86% 50%",
+            "warning-foreground": "26 54% 14%",
+            "info": "206 78% 52%",
+            "info-foreground": "0 0% 100%",
+            "chart-1": "221.2 83.2% 53.3%",
+            "chart-2": "150 60% 40%",
+            "chart-3": "36 86% 50%",
+            "chart-4": "280 56% 52%",
+            "chart-5": "14 78% 54%"
         },
         "dark": {
             "background": "222.2 84% 4.9%",
@@ -53,7 +89,40 @@
             "destructive-foreground": "210 40% 98%",
             "border": "217.2 32.6% 17.5%",
             "input": "217.2 32.6% 17.5%",
-            "ring": "224.3 76.3% 48%"
+            "ring": "224.3 76.3% 48%",
+            "card": "222.2 84% 4.9%",
+            "card-foreground": "210 40% 98%",
+            "popover": "222.2 84% 4.9%",
+            "popover-foreground": "210 40% 98%",
+            "sidebar-background": "222.2 70% 7%",
+            "sidebar-foreground": "215 20.2% 65.1%",
+            "sidebar-border": "217.2 32.6% 17.5%",
+            "sidebar-accent": "217.2 91.2% 59.8%",
+            "sidebar-accent-foreground": "217.2 91.2% 59.8%",
+            "sidebar-ring": "217.2 91.2% 59.8%",
+            "success": "154 56% 48%",
+            "success-foreground": "222.2 84% 4.9%",
+            "warning": "40 82% 56%",
+            "warning-foreground": "222.2 84% 4.9%",
+            "info": "210 74% 58%",
+            "info-foreground": "222.2 84% 4.9%",
+            "chart-1": "217.2 91.2% 59.8%",
+            "chart-2": "154 56% 48%",
+            "chart-3": "40 82% 56%",
+            "chart-4": "284 52% 58%",
+            "chart-5": "18 74% 60%"
         }
+    },
+    "layout": {
+        "header": "topbar",
+        "navigation": "topbar",
+        "contentWidth": "fixed",
+        "footer": true,
+        "density": "comfy"
+    },
+    "cursors": {
+        "default": "auto",
+        "pointer": "pointer",
+        "text": "text"
     }
 }

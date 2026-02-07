@@ -7,6 +7,7 @@ import {
     Database,
     FileText,
     Layers,
+    Layout,
     Palette,
     Shield,
     ShieldCheck,
@@ -16,6 +17,20 @@ import {
 
 export function AdminIndexPage() {
     const adminLinks = [
+        {
+            title: 'BrandEngine',
+            description: 'Theme, layout, typography, and design token configuration with real-time preview.',
+            href: '/admin/brand-engine',
+            icon: Layout,
+            disabled: false,
+        },
+        {
+            title: 'Theme Generator',
+            description: 'Generate color palettes and check accessibility contrast.',
+            href: '/admin/theme-generator',
+            icon: Palette,
+            disabled: false,
+        },
         {
             title: 'Blog Management',
             description: 'Create and manage blog posts, changelogs, and documentation.',

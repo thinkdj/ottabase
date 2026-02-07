@@ -20,6 +20,21 @@
         "card": "2rem",
         "element": "0.75rem"
     },
+    "shadows": {
+        "xs": "0 1px 2px rgb(0 0 0 / 0.03)",
+        "sm": "0 2px 6px rgb(0 0 0 / 0.05)",
+        "md": "0 6px 12px -2px rgb(0 0 0 / 0.06)",
+        "lg": "0 12px 20px -4px rgb(0 0 0 / 0.08)",
+        "xl": "0 24px 36px -8px rgb(0 0 0 / 0.1)"
+    },
+    "motion": {
+        "durationFast": "80ms",
+        "durationNormal": "180ms",
+        "durationSlow": "350ms",
+        "easing": "cubic-bezier(0.25, 0.75, 0.1, 1)",
+        "easingEnter": "cubic-bezier(0.05, 0.6, 0.2, 1)",
+        "easingExit": "cubic-bezier(0.35, 0, 0.9, 0.3)"
+    },
     "colors": {
         "light": {
             "background": "220 33% 98%",
@@ -36,7 +51,28 @@
             "destructive-foreground": "0 0% 100%",
             "border": "220 13% 91%",
             "input": "220 13% 91%",
-            "ring": "217 91% 60%"
+            "ring": "217 91% 60%",
+            "card": "0 0% 100%",
+            "card-foreground": "224 71% 4%",
+            "popover": "0 0% 100%",
+            "popover-foreground": "224 71% 4%",
+            "sidebar-background": "220 25% 96%",
+            "sidebar-foreground": "224 50% 14%",
+            "sidebar-border": "220 13% 91%",
+            "sidebar-accent": "217 91% 60%",
+            "sidebar-accent-foreground": "217 91% 54%",
+            "sidebar-ring": "217 91% 60%",
+            "success": "146 62% 42%",
+            "success-foreground": "0 0% 100%",
+            "warning": "38 88% 52%",
+            "warning-foreground": "24 50% 12%",
+            "info": "200 80% 50%",
+            "info-foreground": "0 0% 100%",
+            "chart-1": "217 91% 60%",
+            "chart-2": "146 62% 42%",
+            "chart-3": "38 88% 52%",
+            "chart-4": "316 56% 54%",
+            "chart-5": "10 76% 56%"
         },
         "dark": {
             "background": "224 71% 4%",
@@ -53,7 +89,40 @@
             "destructive-foreground": "213 31% 91%",
             "border": "216 34% 17%",
             "input": "216 34% 17%",
-            "ring": "217 91% 60%"
+            "ring": "217 91% 60%",
+            "card": "224 60% 7%",
+            "card-foreground": "213 31% 91%",
+            "popover": "224 60% 7%",
+            "popover-foreground": "213 31% 91%",
+            "sidebar-background": "224 66% 5%",
+            "sidebar-foreground": "215 20% 65%",
+            "sidebar-border": "216 34% 17%",
+            "sidebar-accent": "217 91% 60%",
+            "sidebar-accent-foreground": "217 91% 60%",
+            "sidebar-ring": "217 91% 60%",
+            "success": "150 58% 50%",
+            "success-foreground": "224 71% 4%",
+            "warning": "42 84% 56%",
+            "warning-foreground": "224 71% 4%",
+            "info": "204 76% 56%",
+            "info-foreground": "224 71% 4%",
+            "chart-1": "217 91% 60%",
+            "chart-2": "150 58% 50%",
+            "chart-3": "42 84% 56%",
+            "chart-4": "320 52% 60%",
+            "chart-5": "14 72% 62%"
         }
+    },
+    "layout": {
+        "header": "topbar",
+        "navigation": "sidebar",
+        "contentWidth": "fluid",
+        "footer": true,
+        "density": "comfy"
+    },
+    "cursors": {
+        "default": "auto",
+        "pointer": "pointer",
+        "text": "text"
     }
 }

@@ -1,146 +1,17 @@
-import { LanguageSwitcher } from '@/components/LanguageSwitcher';
-import { OrganizationSwitcher } from '@/components/OrganizationSwitcher';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { ReferralTracker } from '@/components/ReferralTracker';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { api, isApiError } from '@/lib/api';
-import { useSession } from '@/lib/auth';
-import { ThemeSwitcher } from '@/ottabase/components/ThemeSwitcher';
+import { BrandLayout } from '@/ottabase/components/BrandLayout';
 import { APP_META } from '@/ottabase/config/app.config';
-import { i18nConfig } from '@/ottabase/config/i18n.config';
-import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
-import { Avatar, AvatarFallback, AvatarImage, Button, Toaster } from '@ottabase/ui-shadcn';
-import {
-    Link,
-    Outlet,
-    RootRoute,
-    Route,
-    Router,
-    createBrowserHistory,
-    lazyRouteComponent,
-    useLocation,
-    useNavigate,
-} from '@tanstack/react-router';
-import { LogIn, LogOut } from 'lucide-react';
+import { Button, Toaster } from '@ottabase/ui-shadcn';
+import { Link, RootRoute, Route, Router, createBrowserHistory, lazyRouteComponent } from '@tanstack/react-router';
 import { useState } from 'react';
 
 function RootLayout() {
-    const { isAuthenticated, user, logout } = useSession();
-    const navigate = useNavigate();
-    const location = useLocation();
-
-    const [currentOrgId, setCurrentOrgId] = useLocalStorage<string>('currentOrgId');
-
-    const handleOrgChange = (orgId: string) => {
-        setCurrentOrgId(orgId);
-    };
-
-    const handleLogout = () => {
-        logout();
-        navigate({ to: '/' });
-    };
-
-    const userInitials =
-        user?.name && user.name.trim().length > 0
-            ? user.name
-                  .split(' ')
-                  .filter((n) => n.length > 0)
-                  .map((n) => n[0])
-                  .join('')
-                  .toUpperCase()
-            : user?.email && user.email.length > 0
-              ? user.email[0].toUpperCase()
-              : '?';
-
-    // Check if we should use the wide layout
-    const isWideLayout = location.pathname.startsWith('/demo');
-    const containerClass = isWideLayout ? 'max-w-[1400px]' : 'max-w-5xl';
-
     return (
-        <div className="min-h-screen bg-background font-sans">
+        <>
             <Toaster />
-            <ReferralTracker />
-            <header className="border-b">
-                <div className={`mx-auto flex items-center justify-between px-4 py-3 ${containerClass}`}>
-                    <div className="flex items-center gap-2">
-                        <Link to="/" className="font-semibold">
-                            {APP_META.appName}
-                        </Link>
-                        <span className="text-xs text-muted-foreground">TanStack</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <Button asChild variant="ghost" size="sm">
-                            <Link to="/">Home</Link>
-                        </Button>
-                        <Button asChild variant="ghost" size="sm">
-                            <Link to="/blog">Blog</Link>
-                        </Button>
-                        <Button asChild variant="ghost" size="sm">
-                            <Link to="/demo">Demo</Link>
-                        </Button>
-                        <Button asChild variant="ghost" size="sm">
-                            <Link to="/shortlinks">Links</Link>
-                        </Button>
-                        <Button asChild variant="ghost" size="sm">
-                            <Link to="/admin">Admin Pages</Link>
-                        </Button>
-
-                        {isAuthenticated && (
-                            <>
-                                <Button asChild variant="ghost" size="sm">
-                                    <Link to="/dashboard">Dashboard</Link>
-                                </Button>
-                                <Button asChild variant="ghost" size="sm">
-                                    <Link to="/referrals">Referrals</Link>
-                                </Button>
-                            </>
-                        )}
-
-                        <ThemeSwitcher />
-                        <DarkModeToggle type="button" title="Toggle dark/light mode" />
-                        <LanguageSwitcher languages={i18nConfig.enabledLanguages} showLabel={false} />
-
-                        {isAuthenticated && (
-                            <OrganizationSwitcher currentOrgId={currentOrgId} onOrgChange={handleOrgChange} />
-                        )}
-
-                        {isAuthenticated ? (
-                            <div className="flex items-center gap-2 ml-2 pl-2 border-l">
-                                <Button asChild variant="ghost" size="sm">
-                                    <Link to="/profile" className="flex items-center gap-2">
-                                        <Avatar className="h-6 w-6">
-                                            {user?.image && <AvatarImage src={user.image} />}
-                                            <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
-                                        </Avatar>
-                                        {user?.name || user?.email}
-                                    </Link>
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={handleLogout} title="Logout">
-                                    <LogOut className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2 ml-2">
-                                <Button asChild variant="ghost" size="sm">
-                                    <Link to="/register">Sign up</Link>
-                                </Button>
-                                <Button asChild variant="default" size="sm">
-                                    <Link to="/login" className="flex items-center gap-2">
-                                        <LogIn className="h-4 w-4" />
-                                        Login
-                                    </Link>
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </header>
-
-            <main className={`mx-auto px-4 py-10 ${containerClass}`}>
-                <Outlet />
-            </main>
-        </div>
+            <BrandLayout />
+        </>
     );
 }
 
@@ -568,6 +439,27 @@ const adminRoute = new Route({
     ),
 });
 
+// Admin BrandEngine route
+const adminBrandEngineRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/brand-engine',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminBrandEnginePage').then((m) => ({
+            default: m.AdminBrandEnginePage,
+        })),
+    ),
+});
+
+const adminThemeGeneratorRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/theme-generator',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/ThemeGeneratorPage').then((m) => ({
+            default: m.ThemeGeneratorPage,
+        })),
+    ),
+});
+
 // Admin Referrals route
 const adminReferralsRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -848,6 +740,7 @@ const routeTree = rootRoute.addChildren([
     migrationStatusRoute,
     referralsRoute,
     adminRoute,
+    adminBrandEngineRoute,
     adminReferralsRoute,
     adminQueueRoute,
     adminCronRoute,
@@ -856,6 +749,7 @@ const routeTree = rootRoute.addChildren([
     adminBlogEditRoute,
     adminBlogStudioRoute,
     adminDbRoute,
+    adminThemeGeneratorRoute,
     adminRBACRoute,
     adminRBACRolesRoute,
     adminRBACPermissionsRoute,

@@ -15,16 +15,19 @@ import {
     type AppUser,
     type SidebarState,
 } from '@/ottabase/state/appState';
+import { useTheme as useBrandTheme } from '@/ottabase/providers/ThemeContext';
+import { getAvailableThemes } from '@/ottabase/utils/theme.loader';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { useAtom, useAtomValue } from 'jotai';
+import { useTheme as useNextTheme } from 'next-themes';
 
 export function StateDemoPage() {
     // Full state
     const appState = useAtomValue(appStateAtom);
 
     // Individual atoms
-    const [theme, setTheme] = useAtom(themeAtom);
+    const theme = useAtomValue(themeAtom);
     const themeInfo = useAtomValue(themeInfoAtom);
     const [user, setUser] = useAtom(userAtom);
     const [isAuthenticated, setIsAuthenticated] = useAtom(isAuthenticatedAtom);
@@ -33,8 +36,13 @@ export function StateDemoPage() {
     const zoom = useAtomValue(zoomAtom);
     const [isLoading, setIsLoading] = useAtom(isLoadingAtom);
 
-    // Demo actions
-    const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
+    // next-themes is the source of truth for light/dark mode
+    const { setTheme: setMode } = useNextTheme();
+    const toggleTheme = () => setMode(theme === 'light' ? 'dark' : 'light');
+
+    // BrandEngine is the source of truth for theme name
+    const { theme: brandThemeName, setTheme: setBrandTheme } = useBrandTheme();
+    const availableThemes = getAvailableThemes();
 
     const simulateLogin = () => {
         const mockUser: AppUser = {
@@ -114,7 +122,8 @@ export function StateDemoPage() {
                     <CardTitle>🎭 Theme Info</CardTitle>
                     <CardDescription>
                         Uses: <code className="bg-muted px-1 rounded">themeInfoAtom</code> (theme name),{' '}
-                        <code className="bg-muted px-1 rounded">themeAtom</code> (mode)
+                        <code className="bg-muted px-1 rounded">themeAtom</code> (mode). Theme name is managed by
+                        BrandEngine, mode by next-themes. Both sync to Jotai atoms.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -124,11 +133,24 @@ export function StateDemoPage() {
                                 Theme Name: <Badge variant="outline">{themeInfo.name}</Badge>
                             </span>
                         </div>
+                        <div className="flex flex-wrap gap-1.5">
+                            {availableThemes.map((t) => (
+                                <Button
+                                    key={t}
+                                    size="sm"
+                                    variant={brandThemeName === t ? 'default' : 'outline'}
+                                    className="capitalize"
+                                    onClick={() => setBrandTheme(t)}
+                                >
+                                    {t}
+                                </Button>
+                            ))}
+                        </div>
                         <div className="flex items-center gap-4">
                             <span className="text-muted-foreground">
                                 Mode: <Badge variant="outline">{theme}</Badge>
                             </span>
-                            <span className="text-sm text-muted-foreground">(synced from themeAtom)</span>
+                            <span className="text-sm text-muted-foreground">(synced via useThemeManager)</span>
                         </div>
                         <div className="bg-muted p-4 rounded-lg text-sm font-mono">
                             {JSON.stringify({ name: themeInfo.name, mode: theme }, null, 2)}
@@ -284,7 +306,9 @@ export function StateDemoPage() {
                 <CardHeader>
                     <CardTitle>🔍 UI Scale</CardTitle>
                     <CardDescription>
-                        Uses: <code className="bg-muted px-1 rounded">scaleAtom</code> - UI magnification factor
+                        Uses: <code className="bg-muted px-1 rounded">scaleAtom</code> - Sets{' '}
+                        <code className="bg-muted px-1 rounded">document.documentElement.style.fontSize</code> so all
+                        rem-based sizing scales proportionally. Persisted to localStorage.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

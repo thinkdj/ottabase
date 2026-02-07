@@ -2,38 +2,108 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Ottabase Design Tokens
+ *
+ * All colour values use space-separated HSL channels so Tailwind can
+ * inject an alpha via the  `/ <alpha-value>` syntax.
+ * The theme loader (theme.loader.ts) overrides these at runtime when
+ * a user selects a different theme or toggles light/dark mode.
+ */
+
 @layer base {
     :root {
+        /* ── Core surface & text ─────────────────────────────────── */
         --background: 0 0% 100%;
         --foreground: 222.2 84% 4.9%;
 
+        /* ── Muted / subdued surfaces ────────────────────────────── */
         --muted: 210 40% 96.1%;
         --muted-foreground: 215.4 16.3% 46.9%;
 
+        /* ── Popover layer ───────────────────────────────────────── */
         --popover: 0 0% 100%;
         --popover-foreground: 222.2 84% 4.9%;
 
+        /* ── Card layer ──────────────────────────────────────────── */
         --card: 0 0% 100%;
         --card-foreground: 222.2 84% 4.9%;
 
+        /* ── Borders & form inputs ───────────────────────────────── */
         --border: 214.3 31.8% 91.4%;
         --input: 214.3 31.8% 91.4%;
 
+        /* ── Primary brand colour ────────────────────────────────── */
         --primary: 222.2 47.4% 11.2%;
         --primary-foreground: 210 40% 98%;
 
+        /* ── Secondary brand colour ──────────────────────────────── */
         --secondary: 210 40% 96.1%;
         --secondary-foreground: 222.2 47.4% 11.2%;
 
+        /* ── Accent (highlights, hover) ──────────────────────────── */
         --accent: 210 40% 96.1%;
         --accent-foreground: 222.2 47.4% 11.2%;
 
+        /* ── Destructive / danger ────────────────────────────────── */
         --destructive: 0 84.2% 60.2%;
         --destructive-foreground: 210 40% 98%;
 
+        /* ── Focus ring ──────────────────────────────────────────── */
         --ring: 215 20.2% 65.1%;
 
+        /* ── Radius base ─────────────────────────────────────────── */
         --radius: 0.5rem;
+
+        /* ── Semantic status colours ─────────────────────────────── */
+        --success: 150 60% 40%;
+        --success-foreground: 0 0% 100%;
+        --warning: 36 86% 50%;
+        --warning-foreground: 26 54% 14%;
+        --info: 206 78% 52%;
+        --info-foreground: 0 0% 100%;
+
+        /* ── Sidebar chrome ──────────────────────────────────────── */
+        --sidebar-background: 210 40% 97%;
+        --sidebar-foreground: 222.2 47.4% 11.2%;
+        --sidebar-border: 214.3 31.8% 91.4%;
+        --sidebar-accent: 221.2 83.2% 53.3%;
+        --sidebar-accent-foreground: 221.2 83.2% 53.3%;
+        --sidebar-ring: 221.2 83.2% 53.3%;
+
+        /* ── Data-viz palette (5 slots) ──────────────────────────── */
+        --chart-1: 221.2 83.2% 53.3%;
+        --chart-2: 150 60% 40%;
+        --chart-3: 36 86% 50%;
+        --chart-4: 280 56% 52%;
+        --chart-5: 14 78% 54%;
+
+        /* ── Shadow elevation scale ──────────────────────────────── */
+        --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+        --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.09), 0 8px 10px -6px rgb(0 0 0 / 0.09);
+
+        /* ── Motion / transition presets ─────────────────────────── */
+        --duration-fast: 100ms;
+        --duration-normal: 200ms;
+        --duration-slow: 400ms;
+        --ease: cubic-bezier(0.4, 0, 0.2, 1);
+        --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+        --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+        /* ── Layout tokens (BrandEngine defaults) ────────────────── */
+        --layout-header: topbar;
+        --layout-navigation: sidebar;
+        --layout-content-width: fluid;
+        --layout-footer: 1;
+        --layout-density: comfy;
+
+        /* ── Spacing tokens ──────────────────────────────────────── */
+        --spacing-section: 2rem;
+        --spacing-card: 1.5rem;
+        --spacing-element: 0.5rem;
     }
 
     .dark {
@@ -65,6 +135,26 @@
         --destructive-foreground: 210 40% 98%;
 
         --ring: 215 20.2% 65.1%;
+
+        --success: 154 56% 48%;
+        --success-foreground: 222.2 84% 4.9%;
+        --warning: 40 82% 56%;
+        --warning-foreground: 222.2 84% 4.9%;
+        --info: 210 74% 58%;
+        --info-foreground: 222.2 84% 4.9%;
+
+        --sidebar-background: 222.2 70% 7%;
+        --sidebar-foreground: 215 20.2% 65.1%;
+        --sidebar-border: 217.2 32.6% 17.5%;
+        --sidebar-accent: 217.2 91.2% 59.8%;
+        --sidebar-accent-foreground: 217.2 91.2% 59.8%;
+        --sidebar-ring: 217.2 91.2% 59.8%;
+
+        --chart-1: 217.2 91.2% 59.8%;
+        --chart-2: 154 56% 48%;
+        --chart-3: 40 82% 56%;
+        --chart-4: 284 52% 58%;
+        --chart-5: 18 74% 60%;
     }
 }
 

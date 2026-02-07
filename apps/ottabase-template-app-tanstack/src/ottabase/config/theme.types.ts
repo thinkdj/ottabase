@@ -1,37 +1,15 @@
-export interface ThemeTypography {
-    fontFamily: string;
-    url?: string;
-}
-
-export interface ThemeColors {
-    background: string;
-    foreground: string;
-    primary: string;
-    'primary-foreground': string;
-    secondary: string;
-    'secondary-foreground': string;
-    muted: string;
-    'muted-foreground': string;
-    accent: string;
-    'accent-foreground': string;
-    destructive: string;
-    'destructive-foreground': string;
-    border: string;
-    input: string;
-    ring: string;
-}
-
-export interface ThemeConfig {
-    name: string;
-    typography: {
-        heading: ThemeTypography;
-        body: ThemeTypography;
-        handwriting: ThemeTypography;
-    };
-    colors: {
-        light: ThemeColors;
-        dark: ThemeColors;
-    };
-    spacing?: Record<string, string>; // e.g., { sm: "0.5rem" }
-    radius?: string;
-}
+/**
+ * @deprecated – Use types from `@ottabase/brand-engine` directly.
+ *
+ * This file re-exports BrandEngine types under the original names
+ * so that any remaining consumers continue to work.
+ */
+export type {
+    BrandTheme,
+    TokenColors as ThemeColors,
+    LegacyThemeConfig as ThemeConfig,
+    TokenCursors as ThemeCursors,
+    TokenMotion as ThemeMotion,
+    TokenShadows as ThemeShadows,
+    TokenTypography as ThemeTypography,
+} from '@ottabase/brand-engine';

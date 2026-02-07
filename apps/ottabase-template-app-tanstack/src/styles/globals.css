@@ -4,3 +4,108 @@
 @import '@ottabase/ui-shadcn/styles.css';
 
 /* App-specific styles */
+
+@layer base {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        font-family: var(--font-heading);
+    }
+}
+
+/* ===========================
+   Cursor Variables & Bindings
+   =========================== */
+
+:root {
+    /* Cursor variables - defaults (overridden by theme loader) */
+    --cursor-default: auto;
+    --cursor-pointer: pointer;
+    --cursor-text: text;
+    --cursor-grab: grab;
+    --cursor-grabbing: grabbing;
+    --cursor-not-allowed: not-allowed;
+    --cursor-help: help;
+    --cursor-wait: wait;
+    --cursor-crosshair: crosshair;
+    --cursor-move: move;
+}
+
+/* Apply cursors to appropriate elements */
+body {
+    cursor: var(--cursor-default);
+}
+
+/* Interactive elements */
+a,
+button,
+[role='button'],
+[role='link'],
+summary,
+.clickable {
+    cursor: var(--cursor-pointer);
+}
+
+/* Text input elements */
+input[type='text'],
+input[type='email'],
+input[type='search'],
+input[type='password'],
+input[type='url'],
+input[type='tel'],
+input[type='number'],
+textarea,
+[contenteditable='true'] {
+    cursor: var(--cursor-text);
+}
+
+/* Draggable elements */
+[draggable='true'],
+.draggable {
+    cursor: var(--cursor-grab);
+}
+
+[draggable='true']:active,
+.draggable:active {
+    cursor: var(--cursor-grabbing);
+}
+
+/* Disabled elements */
+[disabled],
+.disabled,
+[aria-disabled='true'],
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+    cursor: var(--cursor-not-allowed);
+}
+
+/* Help/tooltip elements */
+[title],
+.has-tooltip,
+abbr,
+[aria-describedby] {
+    cursor: var(--cursor-help);
+}
+
+/* Loading states */
+.loading,
+[aria-busy='true'] {
+    cursor: var(--cursor-wait);
+}
+
+/* Precision/crosshair elements */
+.crosshair,
+canvas.interactive {
+    cursor: var(--cursor-crosshair);
+}
+
+/* Movable elements */
+.movable,
+[data-movable='true'] {
+    cursor: var(--cursor-move);
+}
