@@ -1,13 +1,19 @@
 /**
  * RLS Security Violation Logger
  *
- * Logs security violations for monitoring and audit
+ * Logs security violations for monitoring and audit.
+ * Integrates with @ottabase/ottaorm AuditLog model
+ * to persist violations to the audit_logs D1 table.
  */
 
 import type { RLSViolation } from './types';
+import { AuditLog } from '../models/AuditLog';
 
 // Type declaration for process (may not exist in all environments)
 declare const process: { env?: { NODE_ENV?: string } } | undefined;
+
+/** Resource type used for RLS violation audit entries */
+const RLS_RESOURCE_TYPE = 'rls_security';
 
 /**
  * Log security violation
@@ -46,24 +52,59 @@ export function logSecurityViolation(violation: RLSViolation): void {
 
     // Store in audit log for compliance
     // This is async, but we don't await to avoid blocking the request
-    storeAuditLog(logEntry).catch((err) => {
+    storeAuditLog(violation).catch((err) => {
         console.error('Failed to store RLS violation audit log:', err);
     });
 }
 
 /**
- * Store audit log (implementation depends on your audit system)
+ * Store RLS violation in the audit_logs table via the AuditLog model.
  */
-async function storeAuditLog(logEntry: any): Promise<void> {
-    // TODO: Integrate with @ottabase/audit package
-    // For now, just log to console
-    // In production, write to D1 audit_logs table
+async function storeAuditLog(violation: RLSViolation): Promise<void> {
+    await AuditLog.log({
+        userId: violation.context.userId,
+        organizationId: violation.context.organizationId || undefined,
+        action: 'security_violation',
+        resourceType: RLS_RESOURCE_TYPE,
+        resourceId: violation.model,
+        status: 'failure',
+        errorMessage: `RLS ${violation.type} on model "${violation.model}"`,
+        metadata: {
+            violationType: violation.type,
+            attemptedAccess: violation.attemptedAccess,
+            appId: violation.context.appId,
+            roles: violation.context.roles,
+            permissions: violation.context.permissions,
+        },
+    });
 }
 
 /**
- * Get recent violations (for monitoring dashboard)
+ * Get recent violations (for monitoring dashboard).
+ * Queries the audit_logs table for entries with resourceType 'rls_security'.
  */
 export async function getRecentViolations(limit = 100): Promise<RLSViolation[]> {
-    // TODO: Fetch from audit logs
-    return [];
+    const logs = await AuditLog.where({
+        resourceType: RLS_RESOURCE_TYPE,
+        action: 'security_violation',
+    });
+
+    return logs.slice(0, limit).map((log) => {
+        const metadata = log.getMetadata();
+        return {
+            type: metadata.violationType || 'unauthorized_access',
+            model: log.get('resourceId') || 'unknown',
+            context: {
+                userId: log.get('userId') || undefined,
+                organizationId: log.get('organizationId') || undefined,
+                appId: metadata.appId || undefined,
+                roles: metadata.roles || undefined,
+                permissions: metadata.permissions || undefined,
+            },
+            attemptedAccess: metadata.attemptedAccess,
+            timestamp: log.get('createdAt') instanceof Date
+                ? log.get('createdAt').getTime()
+                : Date.now(),
+        };
+    });
 }
