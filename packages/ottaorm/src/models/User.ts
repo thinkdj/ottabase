@@ -534,9 +534,9 @@ export class User extends BaseModel {
     }
 
     /**
-     * Check if user is an admin
+     * Check if user is an admin (includes system owner)
      */
     async isAdmin(): Promise<boolean> {
-        return this.hasRole('admin');
+        return this.hasAnyRole(['admin', 'owner']);
     }
 }

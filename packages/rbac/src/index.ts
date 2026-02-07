@@ -39,3 +39,11 @@ export {
     isOwnerOrAdmin,
     createAuditData,
 } from './app-context';
+
+// Request Context (Worker request → unified auth + RBAC context)
+export type { RequestContext, RequestContextEnv, GetRequestContextOptions } from './request-context';
+export { getRequestContext, SYSTEM_ORG_ID } from './request-context';
+
+// Admin Guard (route-level admin access enforcement)
+export type { AdminScope, AssertAdminOptions, AdminResult } from './admin-guard';
+export { assertAdmin, requireAdminAccess, AdminAccessError } from './admin-guard';

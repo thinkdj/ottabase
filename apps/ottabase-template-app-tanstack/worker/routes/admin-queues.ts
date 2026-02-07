@@ -1,6 +1,7 @@
 import { createKVClient } from '@ottabase/cf/kv';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
+import { requireAdminRoute } from '../lib/admin-utils';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import {
     deleteDLQJob,
@@ -21,8 +22,10 @@ export interface AdminQueuesContext {
 }
 
 export async function handleAdminQueuesOverview(context: AdminQueuesContext): Promise<Response> {
-    const { env } = context;
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
 
+    const { env } = context;
     const stats = await getQueueStats(env);
     let pendingCount = 0;
     if (env.OBCF_KV) {
@@ -50,18 +53,27 @@ export async function handleAdminQueuesOverview(context: AdminQueuesContext): Pr
 }
 
 export async function handleAdminQueuesProcessed(context: AdminQueuesContext): Promise<Response> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const limit = Math.min(parseInt(context.url.searchParams.get('limit') || '50'), 100);
     const jobs = await getRecentProcessedJobs(context.env, limit);
     return jsonResponse({ jobs });
 }
 
 export async function handleAdminQueuesFailed(context: AdminQueuesContext): Promise<Response> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const limit = Math.min(parseInt(context.url.searchParams.get('limit') || '50'), 100);
     const jobs = await getFailedJobs(context.env, limit);
     return jsonResponse({ jobs });
 }
 
 export async function handleAdminQueuesPending(context: AdminQueuesContext): Promise<Response> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const { env, url } = context;
     if (!env.OBCF_KV) {
         return errorResponse('KV binding not configured', 500, {
@@ -82,10 +94,10 @@ export async function handleAdminQueuesPending(context: AdminQueuesContext): Pro
 
     const jobs: any[] = [];
     for (const key of listResult.data.keys) {
-        const result = await kv.get(key.name);
-        if (result.success && result.data) {
+        const kvResult = await kv.get(key.name);
+        if (kvResult.success && kvResult.data) {
             try {
-                const message = JSON.parse(result.data as string);
+                const message = JSON.parse(kvResult.data as string);
                 jobs.push({ key: key.name, ...message });
             } catch {
                 // ignore
@@ -98,6 +110,9 @@ export async function handleAdminQueuesPending(context: AdminQueuesContext): Pro
 }
 
 export async function handleAdminQueuesResetStats(context: AdminQueuesContext): Promise<Response> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const { env } = context;
     if (!env.OBCF_KV) {
         return errorResponse('KV binding not configured', 500, {
@@ -122,23 +137,35 @@ export async function handleAdminQueuesResetStats(context: AdminQueuesContext): 
 }
 
 export async function handleAdminQueuesDLQList(context: AdminQueuesContext): Promise<Response> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const limit = Math.min(parseInt(context.url.searchParams.get('limit') || '50'), 100);
     const cursor = context.url.searchParams.get('cursor') || undefined;
-    const result = await getDLQJobs(context.env, limit, cursor);
-    return jsonResponse(result);
+    const dlqResult = await getDLQJobs(context.env, limit, cursor);
+    return jsonResponse(dlqResult);
 }
 
 export async function handleAdminQueuesDLQRetryAll(context: AdminQueuesContext): Promise<Response> {
-    const result = await retryAllDLQJobs(context.env);
-    return jsonResponse(result);
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
+    const retryResult = await retryAllDLQJobs(context.env);
+    return jsonResponse(retryResult);
 }
 
 export async function handleAdminQueuesDLQPurge(context: AdminQueuesContext): Promise<Response> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const deleted = await purgeDLQ(context.env);
     return jsonResponse({ success: true, deleted });
 }
 
 export async function handleAdminQueuesDLQJob(context: AdminQueuesContext, jobId: string): Promise<Response> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const { request, env } = context;
     if (request.method === 'GET') {
         const job = await getDLQJob(env, jobId);
@@ -160,9 +187,12 @@ export async function handleAdminQueuesDLQJob(context: AdminQueuesContext, jobId
 }
 
 export async function handleAdminQueuesDLQRetryJob(context: AdminQueuesContext, jobId: string): Promise<Response> {
-    const result = await retryDLQJob(context.env, jobId);
-    if (!result.success) {
-        return errorResponse(result.error || 'Retry failed', 400, {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
+    const retryResult = await retryDLQJob(context.env, jobId);
+    if (!retryResult.success) {
+        return errorResponse(retryResult.error || 'Retry failed', 400, {
             code: 'RETRY_FAILED',
         });
     }

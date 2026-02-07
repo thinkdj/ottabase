@@ -1,6 +1,7 @@
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { parsePaginationParams } from '@ottabase/utils/pagination';
+import { requireAdminRoute } from '../lib/admin-utils';
 import type { CloudflareEnv } from '../../cloudflare-env';
 
 export interface AdminDbContext {
@@ -11,18 +12,21 @@ export interface AdminDbContext {
 }
 
 export async function handleAdminDbTables(context: AdminDbContext): Promise<Response> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const { env } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500);
     }
 
     try {
-        const result = await env.OBCF_D1.prepare(
+        const dbResult = await env.OBCF_D1.prepare(
             `SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name`,
         ).all();
 
         return jsonResponse({
-            tables: result.results.map((r: any) => r.name),
+            tables: dbResult.results.map((r: any) => r.name),
         });
     } catch (e) {
         return errorResponse(e instanceof Error ? e.message : 'Failed to list tables', 500);
@@ -30,6 +34,9 @@ export async function handleAdminDbTables(context: AdminDbContext): Promise<Resp
 }
 
 export async function handleAdminDbTableData(context: AdminDbContext): Promise<Response> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const { env, url, tableName } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500);
@@ -67,6 +74,9 @@ export async function handleAdminDbTableData(context: AdminDbContext): Promise<R
 }
 
 export async function handleAdminDbTableDelete(context: AdminDbContext): Promise<Response> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const { env, tableName } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500);
@@ -98,6 +108,9 @@ export async function handleAdminDbRowDelete(
     rowId: string,
     pkField: string,
 ): Promise<Response> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const { env, tableName } = context;
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500);

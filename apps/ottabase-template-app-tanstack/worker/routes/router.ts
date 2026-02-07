@@ -72,6 +72,7 @@ import {
     handleAdminRoleUpdate,
     handleAdminRoleDelete,
 } from './admin-roles';
+import { handlePromoteOwner, handleBootstrapStatus } from './admin-bootstrap';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { errorResponse } from '@ottabase/utils/http-errors';
 
@@ -326,6 +327,14 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
 
     if (route === '/api/admin/roles') {
         return handleAdminRoleCreate(context);
+    }
+
+    if (route === '/api/admin/bootstrap/promote-owner') {
+        return handlePromoteOwner(context);
+    }
+
+    if (route === '/api/admin/bootstrap/status') {
+        return handleBootstrapStatus(context);
     }
 
     if (route === '/api/ottaorm/init') {

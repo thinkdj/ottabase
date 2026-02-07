@@ -24,6 +24,7 @@ import {
     createNodemailerProvider,
     createResendProvider,
 } from './providers';
+import { bootstrapFirstUser } from './bootstrap';
 
 /**
  * Environment interface for auth handler
@@ -296,6 +297,16 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                         }
                     }
 
+                    // First-user bootstrap: auto-assign system owner role
+                    try {
+                        await bootstrapFirstUser(user.id, env.OBCF_D1, {
+                            userEmail: user.email ?? undefined,
+                            userName: user.name ?? undefined,
+                        });
+                    } catch (error) {
+                        console.warn('First-user bootstrap check failed (non-fatal):', error);
+                    }
+
                     return true;
                 },
                 async redirect({ url, baseUrl }) {
@@ -343,13 +354,38 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                     async function loadUserContext(userId: string) {
                         const d1 = env.OBCF_D1;
                         if (!d1) {
-                            return { organizationId: null, roles: [], permissions: [] };
+                            return { organizationId: null, roles: [], permissions: [], systemRoles: [], systemPermissions: [] };
                         }
 
                         let organizationId: string | null = null;
-                        let roles: string[] = [];
-                        let permissions: string[] = [];
+                        const rolesSet = new Set<string>();
+                        const permissionsSet = new Set<string>();
                         let createdAt: string | null = null;
+
+                        // Always load system-scoped roles first (organization_id = 'system')
+                        try {
+                            const systemResult = await d1
+                                .prepare(
+                                    `SELECT r.name as name, r.permissions as permissions
+                                     FROM user_roles ur
+                                     JOIN roles r ON r.id = ur.role_id
+                                     WHERE ur.user_id = ? AND ur.organization_id = 'system'`,
+                                )
+                                .bind(userId)
+                                .all<any>();
+
+                            for (const row of systemResult?.results || []) {
+                                if (row.name) rolesSet.add(String(row.name));
+                                try {
+                                    const parsed = row.permissions ? JSON.parse(String(row.permissions)) : [];
+                                    if (Array.isArray(parsed)) {
+                                        parsed.forEach((perm: string) => permissionsSet.add(String(perm)));
+                                    }
+                                } catch { /* ignore */ }
+                            }
+                        } catch {
+                            // user_roles table may not exist yet
+                        }
 
                         try {
                             const membership = await d1
@@ -370,6 +406,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                             console.warn('Failed to load organization membership for auth:', error);
                         }
 
+                        // Load org-scoped roles and merge with system roles
                         if (organizationId) {
                             try {
                                 const roleResult = await d1
@@ -382,20 +419,15 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                                     .bind(userId, organizationId)
                                     .all<any>();
 
-                                roles = (roleResult?.results || []).map((row: any) => String(row.name)).filter(Boolean);
-
-                                const permissionsSet = new Set<string>();
                                 for (const row of roleResult?.results || []) {
+                                    if (row.name) rolesSet.add(String(row.name));
                                     try {
                                         const parsed = row.permissions ? JSON.parse(String(row.permissions)) : [];
                                         if (Array.isArray(parsed)) {
-                                            parsed.forEach((perm) => permissionsSet.add(String(perm)));
+                                            parsed.forEach((perm: string) => permissionsSet.add(String(perm)));
                                         }
-                                    } catch {
-                                        // ignore bad permissions
-                                    }
+                                    } catch { /* ignore */ }
                                 }
-                                permissions = Array.from(permissionsSet);
                             } catch (error) {
                                 console.warn('Failed to load user roles for auth:', error);
                             }
@@ -418,7 +450,12 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                             console.warn('Failed to load user profile for auth:', error);
                         }
 
-                        return { organizationId, roles, permissions, createdAt };
+                        return {
+                            organizationId,
+                            roles: Array.from(rolesSet),
+                            permissions: Array.from(permissionsSet),
+                            createdAt,
+                        };
                     }
 
                     async function refreshProfileIfNeeded(userId: string) {

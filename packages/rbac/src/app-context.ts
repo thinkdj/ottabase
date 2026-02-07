@@ -12,10 +12,11 @@ import logger from '@ottabase/logger';
  */
 export interface AppContext {
     // Tenant dimension (top level)
-    organizationId: string;
+    // Nullable to support system scope / single-founder mode (no org)
+    organizationId: string | null;
     organizationName?: string;
     organizationSlug?: string;
-    tenantId: string; // Alias for organizationId
+    tenantId: string | null; // Alias for organizationId
 
     // App dimension (second level)
     appId: string;
@@ -46,8 +47,8 @@ export interface AppContext {
  * Options for building app context
  */
 export interface BuildAppContextOptions {
-    // Required
-    organizationId: string;
+    // Required (nullable for system scope / single-founder mode)
+    organizationId: string | null;
     appId: string;
 
     // Optional user
@@ -122,10 +123,13 @@ export async function buildAppContext(options: BuildAppContextOptions): Promise<
     // Load RBAC if user is authenticated
     if (context.userId && user) {
         try {
+            // Convert null → undefined for OttaORM methods that expect string | undefined
+            const orgIdForQuery = organizationId ?? undefined;
+
             // Get user roles (scoped by organization and optionally app)
             const roles = await user.roles({
                 cache,
-                organizationId,
+                organizationId: orgIdForQuery,
                 // Note: We don't filter by appId here to get all roles
                 // Roles with specific appId will be filtered during permission checks
             });
@@ -135,7 +139,7 @@ export async function buildAppContext(options: BuildAppContextOptions): Promise<
             // Get user permissions (scoped by organization)
             const permissions = await user.getPermissions({
                 cache,
-                organizationId,
+                organizationId: orgIdForQuery,
             });
 
             context.permissions = permissions;
@@ -328,7 +332,7 @@ export function createAuditData(
 ): {
     userId?: string;
     userEmail?: string;
-    organizationId: string;
+    organizationId: string | null;
     appId: string;
     action: string;
     resourceType: string;

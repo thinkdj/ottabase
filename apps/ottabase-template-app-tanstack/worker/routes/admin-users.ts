@@ -1,28 +1,15 @@
-import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { getSession } from '@ottabase/auth/backend';
-import { getAuthOptions } from '../lib/auth-utils';
-import { registerConnection } from '@ottabase/ottaorm';
 import { User, OrganizationMember } from '@ottabase/ottaorm/models';
+import { requireAdminRoute } from '../lib/admin-utils';
 import type { ApiRouteContext } from './router';
 
 /**
- * GET /api/admin/users - List all users (admin only)
+ * GET /api/admin/users - List all users (system admin only)
  */
 export async function handleAdminUsers(context: ApiRouteContext): Promise<Response> {
-    const { request, env, url } = context;
-
-    if (!env.OBCF_D1) {
-        return errorResponse('D1 database binding not configured', 500, { code: 'CONFIG_ERROR' });
-    }
-
-    registerConnection('default', createD1Driver(env.OBCF_D1));
-
-    const session = await getSession(request, env as any, getAuthOptions(env));
-    if (!session?.user?.id) {
-        return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
-    }
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
 
     const users = await User.all({ orderBy: 'createdAt', orderDirection: 'desc' });
 
@@ -32,21 +19,11 @@ export async function handleAdminUsers(context: ApiRouteContext): Promise<Respon
 }
 
 /**
- * GET /api/admin/users/:id - Get a single user by ID (admin only)
+ * GET /api/admin/users/:id - Get a single user by ID (system admin only)
  */
 export async function handleAdminUserById(context: ApiRouteContext, userId: string): Promise<Response> {
-    const { request, env } = context;
-
-    if (!env.OBCF_D1) {
-        return errorResponse('D1 database binding not configured', 500, { code: 'CONFIG_ERROR' });
-    }
-
-    registerConnection('default', createD1Driver(env.OBCF_D1));
-
-    const session = await getSession(request, env as any, getAuthOptions(env));
-    if (!session?.user?.id) {
-        return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
-    }
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
 
     const user = await User.find(userId);
     if (!user) {

@@ -116,6 +116,11 @@ export {
 export { useSession, type Session, type User, type UseSessionOptions } from './react-hooks';
 
 // ============================================================
+// BOOTSTRAP (First-User Setup)
+// ============================================================
+export { bootstrapFirstUser } from './bootstrap';
+
+// ============================================================
 // TYPE DEFINITIONS
 // ============================================================
 export type { AuthConfig } from './types';

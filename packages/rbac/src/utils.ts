@@ -200,10 +200,10 @@ function checkPermissionMatch(userPermissions: string[], requiredPermission: str
 }
 
 /**
- * Check if user is admin
+ * Check if user is admin (includes system owner)
  */
 export function isAdmin(context: RBACContext): boolean {
-    return context.roles.includes('admin') || context.permissions.includes('*:*');
+    return context.roles.includes('admin') || context.roles.includes('owner') || context.permissions.includes('*:*');
 }
 
 /**

@@ -3,6 +3,7 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { readJson } from '../lib/utils';
 import { initAdminCron } from '../lib/db-utils';
 import { ScheduledTask } from '@ottabase/ottaorm/models';
+import { requireAdminRoute } from '../lib/admin-utils';
 import type { CloudflareEnv } from '../../cloudflare-env';
 
 export interface AdminCronContext {
@@ -11,6 +12,9 @@ export interface AdminCronContext {
 }
 
 export async function handleAdminCronList(context: AdminCronContext): Promise<Response> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const { env } = context;
     const initErr = initAdminCron(env);
     if (initErr) return initErr;
@@ -41,6 +45,9 @@ export async function handleAdminCronList(context: AdminCronContext): Promise<Re
 }
 
 export async function handleAdminCronCreate(context: AdminCronContext): Promise<Response> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const { request, env } = context;
     const initErr = initAdminCron(env);
     if (initErr) return initErr;
@@ -85,6 +92,9 @@ export async function handleCronTask(
     taskId: string,
     action: 'toggle' | 'run' | null,
 ): Promise<Response | null> {
+    const result = await requireAdminRoute(context, 'system');
+    if (result instanceof Response) return result;
+
     const { env, request } = context;
     const initErr = initAdminCron(env);
     if (initErr) return initErr;

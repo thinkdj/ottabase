@@ -55,6 +55,11 @@
             "types": "./dist/react-hooks.d.ts",
             "import": "./dist/react-hooks.mjs",
             "require": "./dist/react-hooks.js"
+        },
+        "./bootstrap": {
+            "types": "./dist/bootstrap.d.ts",
+            "import": "./dist/bootstrap.mjs",
+            "require": "./dist/bootstrap.js"
         }
     },
     "files": [
