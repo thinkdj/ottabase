@@ -1,7 +1,7 @@
 import { createResendMailer, createSESMailer } from '@ottabase/email';
 import { CreateAuthConfigOptions } from '@ottabase/auth/backend';
 import { SecurityContext } from '@ottabase/ottaorm';
-import { Account, VerificationToken } from '@ottabase/ottaorm/models';
+import { Account, Organization, OrganizationMember, VerificationToken } from '@ottabase/ottaorm/models';
 import { createSecureToken } from './utils';
 import type { CloudflareEnv } from '../cloudflare-env';
 
@@ -126,12 +126,41 @@ export async function getSecurityContext(request: Request, session: any | null):
     const roles = session?.user?.roles as string[] | undefined;
     const permissions = session?.user?.permissions as string[] | undefined;
 
+    // Collect all organization IDs the user can access (owned + member)
+    let memberOrganizationIds: string[] | undefined;
+    if (userId) {
+        try {
+            const orgIds = new Set<string>();
+
+            // Orgs where user is an active member
+            const memberships = await OrganizationMember.where({ userId, status: 'active' });
+            for (const m of memberships) {
+                const oid = m.get('organizationId') as string | undefined;
+                if (oid) orgIds.add(oid);
+            }
+
+            // Orgs owned by the user
+            const owned = await Organization.where({ ownerId: userId });
+            for (const o of owned) {
+                const oid = o.get('id') as string | undefined;
+                if (oid) orgIds.add(oid);
+            }
+
+            if (orgIds.size > 0) {
+                memberOrganizationIds = Array.from(orgIds);
+            }
+        } catch {
+            // If tables don't exist yet (e.g. before migrations), silently skip
+        }
+    }
+
     return {
         userId,
         organizationId,
         appId,
         roles,
         permissions,
+        memberOrganizationIds,
     };
 }
 

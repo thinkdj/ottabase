@@ -12,6 +12,8 @@ export interface SecurityContext {
     appId?: string;
     roles?: string[];
     permissions?: string[];
+    /** Organization IDs where the user is an active member (populated upstream). */
+    memberOrganizationIds?: string[];
 }
 
 export interface RLSPolicy {

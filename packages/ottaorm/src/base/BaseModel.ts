@@ -337,6 +337,13 @@ export class BaseModel extends AbstractBaseModel {
                 continue; // Skip null values
             }
 
+            if (Array.isArray(value)) {
+                if (value.length > 0) {
+                    conditions.push(inArray(column, value));
+                }
+                continue;
+            }
+
             conditions.push(eq(column, value));
         }
 
