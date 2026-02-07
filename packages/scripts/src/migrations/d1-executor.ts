@@ -306,10 +306,71 @@ export function getWranglerVersion(): string | null {
 // MIGRATION STATUS
 // ============================================================
 
+interface AppliedMigration {
+    migration_name: string;
+    finished_at: string | null;
+}
+
+/**
+ * Query D1 database using wrangler and return parsed JSON results.
+ * Uses `wrangler d1 execute --command --json` to run an inline SQL query.
+ */
+function queryD1(database: string, sql: string, cwd: string, remote: boolean): Promise<AppliedMigration[]> {
+    return new Promise((resolve, reject) => {
+        const args = ['d1', 'execute', database, '--command', sql, '--json'];
+        if (remote) {
+            args.push('--remote');
+        }
+
+        const child = spawn('wrangler', args, {
+            cwd,
+            stdio: 'pipe',
+            shell: true,
+        });
+
+        let output = '';
+        let errorOutput = '';
+
+        child.stdout?.on('data', (data) => {
+            output += data.toString();
+        });
+
+        child.stderr?.on('data', (data) => {
+            errorOutput += data.toString();
+        });
+
+        child.on('error', (error) => {
+            reject(new Error(`Failed to query D1: ${error.message}`));
+        });
+
+        child.on('close', (code) => {
+            if (code !== 0) {
+                // Table may not exist yet — this is not a fatal error
+                resolve([]);
+                return;
+            }
+
+            try {
+                // wrangler d1 execute --json returns an array of result sets
+                // e.g. [{ results: [...], success: true, ... }]
+                const parsed = JSON.parse(output);
+                const results = Array.isArray(parsed) && parsed.length > 0 ? parsed[0].results ?? [] : [];
+                resolve(results);
+            } catch {
+                // If JSON parsing fails, return empty (table may not exist)
+                resolve([]);
+            }
+        });
+    });
+}
+
 /**
  * Get list of migration files from prisma/migrations directory
  */
-export function getMigrationFiles(cwd: string): MigrationStatus[] {
+export function getMigrationFiles(
+    cwd: string,
+    appliedMigrations?: Map<string, Date | undefined>,
+): MigrationStatus[] {
     const migrationsDir = path.join(cwd, 'prisma/migrations');
 
     if (!existsSync(migrationsDir)) {
@@ -323,30 +384,40 @@ export function getMigrationFiles(cwd: string): MigrationStatus[] {
         .filter((entry: any) => entry.isDirectory())
         .map((entry: any) => {
             const migrationPath = path.join(migrationsDir, entry.name);
-            const sqlPath = path.join(migrationPath, 'migration.sql');
+            const isApplied = appliedMigrations?.has(entry.name) ?? false;
+            const appliedAt = appliedMigrations?.get(entry.name);
 
             return {
                 name: entry.name,
                 path: migrationPath,
-                applied: false, // TODO: Track applied migrations
-                appliedAt: undefined,
+                applied: isApplied,
+                appliedAt,
             };
         })
         .sort((a: MigrationStatus, b: MigrationStatus) => a.name.localeCompare(b.name));
 }
 
 /**
- * Get migration status from D1 database
- * Note: This requires a _prisma_migrations table to exist
+ * Get migration status from D1 database.
+ * Queries the _prisma_migrations table to determine which local
+ * migrations have already been applied.
  */
 export async function getD1MigrationStatus(database: string, cwd: string, remote = false): Promise<MigrationStatus[]> {
-    // Get local migration files
-    const localMigrations = getMigrationFiles(cwd);
+    // Query D1 for applied migrations from the _prisma_migrations table
+    const appliedRows = await queryD1(
+        database,
+        'SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY finished_at ASC',
+        cwd,
+        remote,
+    );
 
-    // TODO: Query D1 for applied migrations
-    // This would require executing a query like:
-    // SELECT migration_name, finished_at FROM _prisma_migrations
-    // For now, return local migrations with applied=false
+    // Build a lookup map: migration name -> applied date
+    const appliedMap = new Map<string, Date | undefined>();
+    for (const row of appliedRows) {
+        const appliedAt = row.finished_at ? new Date(row.finished_at) : undefined;
+        appliedMap.set(row.migration_name, appliedAt);
+    }
 
-    return localMigrations;
+    // Get local migration files with applied status merged in
+    return getMigrationFiles(cwd, appliedMap);
 }
