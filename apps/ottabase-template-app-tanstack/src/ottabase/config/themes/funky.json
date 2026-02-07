@@ -59,7 +59,7 @@
             "sidebar-background": "142 24% 96%",
             "sidebar-foreground": "145 10% 24%",
             "sidebar-border": "145 10% 80%",
-            "sidebar-accent": "142 70% 45% / 0.1",
+            "sidebar-accent": "142 70% 45%",
             "sidebar-accent-foreground": "142 70% 40%",
             "sidebar-ring": "142 70% 45%",
             "success": "160 66% 38%",
