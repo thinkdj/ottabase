@@ -421,8 +421,8 @@ export abstract class AbstractBaseModel {
                 case 'date':
                 case 'datetime':
                     let dateValue = value;
-                    // Handle numeric strings (e.g., "1770548966233.0")
-                    if (typeof value === 'string' && /^-?\d+\.?\d*$/.test(value)) {
+                    const isNumericString = typeof value === 'string' && /^-?\d+\.?\d*$/.test(value);
+                    if (isNumericString) {
                         dateValue = parseFloat(value);
                     }
                     const date = new Date(dateValue);

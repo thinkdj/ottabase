@@ -120,7 +120,8 @@ async function defaultCredentialsAuthorize(
         return null;
     }
 
-    if (options?.requireVerifiedEmail && !result.email_verified) {
+    const emailVerifiedMs = result.email_verified ? Number(result.email_verified) : null;
+    if (options?.requireVerifiedEmail && !emailVerifiedMs) {
         return null;
     }
 
@@ -129,7 +130,7 @@ async function defaultCredentialsAuthorize(
         email: result.email,
         name: result.name ?? undefined,
         image: result.image ?? undefined,
-        emailVerified: result.email_verified ? Number(result.email_verified) : null,
+        emailVerified: emailVerifiedMs,
     };
 }
 
