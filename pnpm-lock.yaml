@@ -1055,6 +1055,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
 
   packages/hello-world:
     devDependencies:
@@ -1260,6 +1263,9 @@ importers:
       '@ottabase/db':
         specifier: workspace:*
         version: link:../db
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'

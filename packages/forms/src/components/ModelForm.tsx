@@ -2,11 +2,14 @@
 // @ottabase/forms - ModelForm Component
 // ============================================================
 // Auto-generated create/edit form from model metadata
+// Uses Zod schemas (from field metadata) for real-time validation
+// Supports standalone use via action prop (POST/PATCH to endpoint)
 // ============================================================
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { clsx } from 'clsx';
-import { Loader2, Save, X } from 'lucide-react';
+import { Loader2, Save, X, AlertCircle } from 'lucide-react';
+import { validateField } from '@ottabase/ottaorm';
 import { FormField } from './FormField';
 import type { ModelFormProps, ModelFieldDescriptor } from '../types';
 
@@ -21,6 +24,23 @@ interface FieldEntry {
 
 /**
  * ModelForm - Auto-generated form for creating/editing model records
+ *
+ * Features:
+ * - Auto-generated fields from model metadata
+ * - Real-time Zod validation (on blur per field, on submit for all)
+ * - Standalone mode: set `action` prop to POST/PATCH directly to an endpoint
+ * - Works with ModelCrud or independently
+ *
+ * @example Standalone usage
+ * ```tsx
+ * <ModelForm
+ *   config={userConfig}
+ *   mode="create"
+ *   action="/api/ottaorm/users"
+ *   onSuccess={(user) => router.push(`/users/${user.id}`)}
+ *   onError={(err) => toast.error(err.message)}
+ * />
+ * ```
  */
 export function ModelForm<T extends Record<string, unknown>>({
     config,
@@ -31,6 +51,10 @@ export function ModelForm<T extends Record<string, unknown>>({
     isLoading = false,
     className,
     apiBasePath = '/api/ottaorm',
+    action,
+    method,
+    onSuccess,
+    onError,
 }: ModelFormProps<T>) {
     // Initialize form data with defaults for create, or initialData for edit
     const [formData, setFormData] = useState<Partial<T>>(() => {
@@ -48,7 +72,9 @@ export function ModelForm<T extends Record<string, unknown>>({
     });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const touchedRef = useRef<Set<string>>(new Set());
 
     // Get visible form fields sorted by order
     const visibleFields = useMemo(() => {
@@ -83,79 +109,153 @@ export function ModelForm<T extends Record<string, unknown>>({
         return fields.sort((a, b) => a.order - b.order);
     }, [config.fields, mode]);
 
-    // Handle field value change
-    const handleChange = useCallback((key: string, value: unknown) => {
-        setFormData((prev) => ({ ...prev, [key]: value }));
-        // Clear error when field is modified
-        setErrors((prev) => {
-            if (prev[key]) {
+    // Validate a single field using Zod (via ottaorm validateField)
+    const validateSingleField = useCallback(
+        (key: string, value: unknown): string | null => {
+            const field = config.fields[key];
+            if (!field) return null;
+            return validateField(field, value);
+        },
+        [config.fields],
+    );
+
+    // Handle field blur - validate the field
+    const handleBlur = useCallback(
+        (key: string) => {
+            touchedRef.current.add(key);
+            const value = formData[key as keyof T];
+            const error = validateSingleField(key, value);
+            setErrors((prev) => {
+                if (error) return { ...prev, [key]: error };
                 const { [key]: _, ...rest } = prev;
                 return rest;
-            }
-            return prev;
-        });
-    }, []);
+            });
+        },
+        [formData, validateSingleField],
+    );
 
-    // Validate form
-    const validate = useCallback((): boolean => {
+    // Handle field value change
+    const handleChange = useCallback(
+        (key: string, value: unknown) => {
+            setFormData((prev) => ({ ...prev, [key]: value }));
+            setSubmitError(null);
+            // If field was touched (blurred before), validate on change too
+            if (touchedRef.current.has(key)) {
+                const error = validateSingleField(key, value);
+                setErrors((prev) => {
+                    if (error) return { ...prev, [key]: error };
+                    const { [key]: _, ...rest } = prev;
+                    return rest;
+                });
+            }
+        },
+        [validateSingleField],
+    );
+
+    // Validate all fields using Zod schema from config
+    const validateAll = useCallback((): boolean => {
+        const schema = mode === 'create' ? config.zodCreateSchema : config.zodUpdateSchema;
+
+        if (schema) {
+            // Use the pre-built Zod schema
+            const result = schema.safeParse(formData);
+            if (!result.success) {
+                const fieldErrors = result.error.flatten().fieldErrors;
+                const newErrors: Record<string, string> = {};
+                for (const [key, messages] of Object.entries(fieldErrors)) {
+                    if (messages && messages.length > 0) {
+                        newErrors[key] = messages[0];
+                    }
+                }
+                setErrors(newErrors);
+                // Mark all fields as touched
+                for (const { key } of visibleFields) {
+                    touchedRef.current.add(key);
+                }
+                return false;
+            }
+            setErrors({});
+            return true;
+        }
+
+        // Fallback: validate each field individually
         const newErrors: Record<string, string> = {};
-
         for (const { key, field } of visibleFields) {
+            if (field.editable === false) continue;
             const value = formData[key as keyof T];
-            const rules = field.validation?.rules;
-
-            if (rules) {
-                // Simple required validation
-                if (rules.includes('required')) {
-                    if (value === undefined || value === null || value === '') {
-                        const label = field.uiConfig?.label || key;
-                        newErrors[key] = field.validation?.messages?.required || `${label} is required`;
-                    }
-                }
-
-                // Email validation
-                if (rules.includes('email') && value) {
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!emailRegex.test(String(value))) {
-                        newErrors[key] = field.validation?.messages?.email || 'Invalid email format';
-                    }
-                }
-
-                // URL validation
-                if (rules.includes('url') && value) {
-                    try {
-                        new URL(String(value));
-                    } catch {
-                        newErrors[key] = field.validation?.messages?.url || 'Invalid URL format';
-                    }
-                }
-            }
+            const error = validateField(field, value);
+            if (error) newErrors[key] = error;
         }
 
         setErrors(newErrors);
+        for (const { key } of visibleFields) {
+            touchedRef.current.add(key);
+        }
         return Object.keys(newErrors).length === 0;
-    }, [visibleFields, formData]);
+    }, [mode, config.zodCreateSchema, config.zodUpdateSchema, formData, visibleFields]);
+
+    // Build submit data (filter out readonly and non-editable fields)
+    const buildSubmitData = useCallback((): Partial<T> => {
+        const submitData: Record<string, unknown> = {};
+        for (const { key, field } of visibleFields) {
+            if (field.editable !== false || (mode === 'create' && !field.primaryKey)) {
+                const value = formData[key as keyof T];
+                if (value !== undefined) {
+                    submitData[key] = value;
+                }
+            }
+        }
+        return submitData as Partial<T>;
+    }, [visibleFields, formData, mode]);
+
+    // Handle standalone action submit (POST/PATCH to endpoint)
+    const submitToAction = useCallback(
+        async (data: Partial<T>) => {
+            if (!action) return;
+
+            const httpMethod = method || (mode === 'create' ? 'POST' : 'PATCH');
+            const fetchFn = config.fetchFn || fetch;
+
+            const response = await fetchFn(action, {
+                method: httpMethod,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+
+            if (!response.ok) {
+                const body = await response.json().catch(() => ({ error: response.statusText }));
+                throw new Error(body.error || body.message || `Request failed: ${response.status}`);
+            }
+
+            const result = await response.json();
+            return result;
+        },
+        [action, method, mode, config.fetchFn],
+    );
 
     // Handle form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSubmitError(null);
 
-        if (!validate()) return;
+        if (!validateAll()) return;
 
         setIsSubmitting(true);
         try {
-            // Filter out readonly and non-editable fields for submission
-            const submitData: Partial<T> = {};
-            for (const { key, field } of visibleFields) {
-                if (field.editable !== false || (mode === 'create' && !field.primaryKey)) {
-                    const value = formData[key as keyof T];
-                    if (value !== undefined) {
-                        (submitData as Record<string, unknown>)[key] = value;
-                    }
-                }
-            }
+            const submitData = buildSubmitData();
 
-            await onSubmit(submitData);
+            if (action) {
+                // Standalone mode: submit to action endpoint
+                const result = await submitToAction(submitData);
+                onSuccess?.(result);
+            } else if (onSubmit) {
+                // Callback mode: call onSubmit handler
+                await onSubmit(submitData);
+            }
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            setSubmitError(error.message);
+            onError?.(error);
         } finally {
             setIsSubmitting(false);
         }
@@ -166,7 +266,7 @@ export function ModelForm<T extends Record<string, unknown>>({
     const loading = isLoading || isSubmitting;
 
     return (
-        <form onSubmit={handleSubmit} className={clsx('space-y-6', className)}>
+        <form onSubmit={handleSubmit} className={clsx('space-y-6', className)} noValidate>
             {/* Header */}
             <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
@@ -182,6 +282,14 @@ export function ModelForm<T extends Record<string, unknown>>({
                 )}
             </div>
 
+            {/* Submit Error Banner */}
+            {submitError && (
+                <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>{submitError}</span>
+                </div>
+            )}
+
             {/* Form Fields */}
             <div className="space-y-4">
                 {visibleFields.map(({ key, field }) => (
@@ -191,6 +299,7 @@ export function ModelForm<T extends Record<string, unknown>>({
                         label={field.uiConfig?.label || capitalize(key)}
                         value={formData[key as keyof T]}
                         onChange={(value) => handleChange(key, value)}
+                        onBlur={() => handleBlur(key)}
                         field={field}
                         error={errors[key]}
                         disabled={loading || field.formConfig?.fieldType === 'readonly'}

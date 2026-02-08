@@ -26,6 +26,7 @@ export function FormField({
     disabled = false,
     className,
     apiBasePath = '/api/ottaorm',
+    onBlur,
 }: FormFieldProps) {
     const formConfig = field.formConfig || {};
     const uiConfig = field.uiConfig || {};
@@ -292,7 +293,7 @@ export function FormField({
     }
 
     return (
-        <div className={clsx('space-y-1.5', className)}>
+        <div className={clsx('space-y-1.5', className)} onBlur={onBlur}>
             {/* Label */}
             {fieldType !== 'boolean' && (
                 <label htmlFor={name} className="block text-sm font-medium text-gray-700 dark:text-gray-300">

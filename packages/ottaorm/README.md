@@ -5,6 +5,7 @@ An ORM for Cloudflare D1 and SQLite. Fat model pattern with all logic in one pla
 ## Features
 
 - **Fat Models** - All metadata, validation, relationships in model class
+- **Zod Validation** - Auto-generated Zod schemas from field metadata, validates in create/update
 - **Eloquent-like API** - `Model.find()`, `Model.where()`, `Model.create()`
 - **Automated Migrations** - Auto-creates tables from Models, no CLI needed
 - **Type-Safe** - Full TypeScript support with Drizzle ORM
@@ -242,6 +243,45 @@ export default {
     },
 };
 ```
+
+## Zod Validation
+
+Models auto-generate Zod schemas from field metadata. Validation runs automatically in `create()` and `update()`, and
+can be used client-side via `@ottabase/forms`.
+
+### Automatic (in create/update)
+
+```typescript
+// Throws if validation fails
+const user = await User.create({ name: '', email: 'bad' });
+// → Error('Validation failed: Name is required')
+```
+
+### Manual
+
+```typescript
+// Get Zod schema
+const schema = User.getZodSchema('create'); // or 'update'
+const result = schema.safeParse(data);
+
+// Validate with flat error map
+const { success, errors } = User.validate({ name: 'John', email: 'bad' }, 'create');
+// → { success: false, errors: { email: 'Invalid email format' } }
+```
+
+### Schema Builder
+
+```typescript
+import { buildZodSchema, validateField } from '@ottabase/ottaorm';
+
+// Build from any field metadata
+const schema = buildZodSchema(fields, 'create');
+
+// Validate a single field
+const error = validateField(field, value); // null if valid
+```
+
+**Supported rules**: `required`, `email`, `url`, `min:N`, `max:N` (defined in `field.validation.rules`)
 
 ## Fat Model Pattern
 

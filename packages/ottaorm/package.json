@@ -54,7 +54,8 @@
     "author": "",
     "license": "MIT",
     "dependencies": {
-        "@ottabase/db": "workspace:*"
+        "@ottabase/db": "workspace:*",
+        "zod": "catalog:"
     },
     "peerDependencies": {
         "@cloudflare/workers-types": "catalog:",

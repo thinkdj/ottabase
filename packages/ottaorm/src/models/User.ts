@@ -76,6 +76,12 @@ export class User extends BaseModel {
             tableConfig: {
                 visible: true,
             },
+            validation: {
+                rules: 'required',
+                messages: {
+                    required: 'Name is required',
+                },
+            },
         },
         email: {
             type: 'string',

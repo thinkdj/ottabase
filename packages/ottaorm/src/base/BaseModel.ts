@@ -389,13 +389,22 @@ export class BaseModel extends AbstractBaseModel {
     }
 
     /**
-     * Create a new record
+     * Create a new record (validates against Zod schema if fields are defined)
      */
     static async create<T extends typeof BaseModel>(
         this: T,
         data: Record<string, any>,
         driver?: DbDriver,
     ): Promise<InstanceType<T>> {
+        // Validate before create if fields are defined
+        if (Object.keys(this.fields).length > 0) {
+            const result = this.validate(data, 'create');
+            if (!result.success) {
+                const firstError = Object.values(result.errors)[0] || 'Validation failed';
+                throw new Error(`Validation failed: ${firstError}`);
+            }
+        }
+
         const db = this.getDriver(driver).getDb();
         const table = this.getTable();
 
@@ -425,7 +434,7 @@ export class BaseModel extends AbstractBaseModel {
     }
 
     /**
-     * Update a record by primary key
+     * Update a record by primary key (validates against Zod schema if fields are defined)
      */
     static async update<T extends typeof BaseModel>(
         this: T,
@@ -433,6 +442,15 @@ export class BaseModel extends AbstractBaseModel {
         data: Record<string, any>,
         driver?: DbDriver,
     ): Promise<InstanceType<T>> {
+        // Validate before update if fields are defined
+        if (Object.keys(this.fields).length > 0) {
+            const result = this.validate(data, 'update');
+            if (!result.success) {
+                const firstError = Object.values(result.errors)[0] || 'Validation failed';
+                throw new Error(`Validation failed: ${firstError}`);
+            }
+        }
+
         const db = this.getDriver(driver).getDb();
         const table = this.getTable();
         const pkColumn = (table as any)[this.primaryKey];

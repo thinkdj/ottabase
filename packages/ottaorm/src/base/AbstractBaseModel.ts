@@ -5,6 +5,8 @@
 // Extracted from BaseModel to support multi-database patterns
 // ============================================================
 
+import type { z } from 'zod';
+
 export type ModelFieldType =
     | 'string'
     | 'number'
@@ -293,6 +295,32 @@ export abstract class AbstractBaseModel {
             defaultSortDirection: this.defaultSortDirection,
             hidden: this.hidden,
         };
+    }
+
+    /**
+     * Get Zod validation schema for this model
+     * Built automatically from field metadata - no manual schema needed
+     */
+    static getZodSchema(mode: 'create' | 'update' = 'create'): z.ZodObject<any> {
+        const { buildZodSchema } = require('../validation');
+        return buildZodSchema(this.fields, mode, this.writable);
+    }
+
+    /**
+     * Validate data against this model's schema
+     * Returns { success, errors, data } - flat error map for easy form integration
+     */
+    static validate(
+        data: Record<string, unknown>,
+        mode: 'create' | 'update' = 'create',
+    ): {
+        success: boolean;
+        errors: Record<string, string>;
+        data?: Record<string, unknown>;
+    } {
+        const { validateWithSchema } = require('../validation');
+        const schema = this.getZodSchema(mode);
+        return validateWithSchema(schema, data);
     }
 
     /**

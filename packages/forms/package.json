@@ -35,7 +35,8 @@
         "@ottabase/ottaorm": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "react": "catalog:",
-        "react-dom": "catalog:"
+        "react-dom": "catalog:",
+        "zod": "catalog:"
     },
     "devDependencies": {
         "@ottabase/ottaorm": "workspace:*",
@@ -45,6 +46,7 @@
         "eslint": "catalog:",
         "rimraf": "catalog:",
         "tsup": "catalog:",
-        "typescript": "catalog:"
+        "typescript": "catalog:",
+        "zod": "catalog:"
     }
 }

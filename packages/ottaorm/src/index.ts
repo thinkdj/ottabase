@@ -63,6 +63,10 @@ export type {
     RelationshipConfig,
 } from './base';
 
+// Validation (Zod schema builder from field metadata)
+export { buildZodSchema, validateField, validateWithSchema } from './validation';
+export type { ValidationResult } from './validation';
+
 /**
  * Core models (SQL only - Edge-safe)
  *

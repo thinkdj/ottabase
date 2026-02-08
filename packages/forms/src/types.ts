@@ -5,6 +5,7 @@
 // ============================================================
 
 import type React from 'react';
+import type { z } from 'zod';
 
 // Re-export types from OttaORM for convenience
 export type { ModelFieldType, ModelFieldDescriptor, ModelFields, RelationshipConfig } from '@ottabase/ottaorm';
@@ -54,6 +55,8 @@ export interface FormFieldProps {
     className?: string;
     /** API base path for relationship fetches */
     apiBasePath?: string;
+    /** Blur handler for real-time validation */
+    onBlur?: () => void;
 }
 
 /**
@@ -80,6 +83,10 @@ export interface ModelConfig<T = Record<string, unknown>> {
     searchFields?: string[];
     /** Custom fetch function */
     fetchFn?: typeof fetch;
+    /** Pre-built Zod schema for create mode (auto-generated from fields) */
+    zodCreateSchema?: z.ZodObject<any>;
+    /** Pre-built Zod schema for update mode (auto-generated from fields) */
+    zodUpdateSchema?: z.ZodObject<any>;
 }
 
 /**
@@ -177,8 +184,8 @@ export interface ModelFormProps<T = Record<string, unknown>> {
     mode: 'create' | 'edit';
     /** Initial form data (for edit mode) */
     initialData?: Partial<T>;
-    /** Submit handler */
-    onSubmit: (data: Partial<T>) => void | Promise<void>;
+    /** Submit handler - called with validated data. If not provided, uses action endpoint. */
+    onSubmit?: (data: Partial<T>) => void | Promise<void>;
     /** Cancel handler */
     onCancel?: () => void;
     /** Loading state */
@@ -187,6 +194,18 @@ export interface ModelFormProps<T = Record<string, unknown>> {
     className?: string;
     /** API base path for relationship fetches */
     apiBasePath?: string;
+    /**
+     * Standalone action endpoint. When set, form POSTs/PATCHes directly to this URL.
+     * Overrides onSubmit. Useful for standalone forms without ModelCrud.
+     * @example "/api/ottaorm/users"
+     */
+    action?: string;
+    /** HTTP method override for standalone action (defaults to POST for create, PATCH for edit) */
+    method?: 'POST' | 'PUT' | 'PATCH';
+    /** Callback after successful standalone action submit */
+    onSuccess?: (result: T) => void;
+    /** Callback on standalone action error */
+    onError?: (error: Error) => void;
 }
 
 /**

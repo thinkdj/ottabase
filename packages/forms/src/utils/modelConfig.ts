@@ -4,6 +4,7 @@
 // Utilities for extracting configuration from OttaORM models
 // ============================================================
 
+import { buildZodSchema } from '@ottabase/ottaorm';
 import type { ModelConfig, ModelFields } from '../types';
 
 // Alias for clarity
@@ -34,10 +35,17 @@ export interface OttaModelClass {
         defaultSort?: string;
         defaultSortDirection?: 'asc' | 'desc';
     };
+    // Writable allowlists
+    writable?: {
+        create?: string[];
+        update?: string[];
+    };
 }
 
 /**
  * Extract ModelConfig from an OttaORM model class
+ *
+ * Automatically builds Zod schemas from field metadata for validation.
  *
  * @example
  * ```typescript
@@ -68,24 +76,41 @@ export function createModelConfig<T = Record<string, unknown>>(
         defaultSortDirection: model.defaultSortDirection,
     };
 
+    const fields = modelConfig.fields as FormFields;
+    const writable = (model as any).writable;
+
+    // Build Zod schemas from field metadata
+    let zodCreateSchema = options?.zodCreateSchema;
+    let zodUpdateSchema = options?.zodUpdateSchema;
+    try {
+        if (!zodCreateSchema) zodCreateSchema = buildZodSchema(fields, 'create', writable);
+        if (!zodUpdateSchema) zodUpdateSchema = buildZodSchema(fields, 'update', writable);
+    } catch {
+        // Schema building is best-effort - forms still work without it
+    }
+
     // Priority: options override > model config > derived defaults
     return {
         entity: modelConfig.entity,
         primaryKey: modelConfig.primaryKey,
-        fields: modelConfig.fields as FormFields,
+        fields,
         displayName: options?.displayName || modelConfig.displayName || capitalize(singularize(modelConfig.entity)),
         displayNamePlural:
             options?.displayNamePlural || modelConfig.displayNamePlural || capitalize(modelConfig.entity),
         apiPath: options?.apiPath,
         defaultSort: options?.defaultSort || modelConfig.defaultSort,
         defaultSortDirection: options?.defaultSortDirection || modelConfig.defaultSortDirection,
-        searchFields: options?.searchFields || getSearchableFields(modelConfig.fields as FormFields),
+        searchFields: options?.searchFields || getSearchableFields(fields),
         fetchFn: options?.fetchFn,
+        zodCreateSchema,
+        zodUpdateSchema,
     };
 }
 
 /**
  * Create ModelConfig from a plain object (for custom configurations)
+ *
+ * Automatically builds Zod schemas from field metadata.
  *
  * @example
  * ```typescript
@@ -103,6 +128,16 @@ export function createModelConfig<T = Record<string, unknown>>(
 export function defineModelConfig<T = Record<string, unknown>>(
     config: Partial<ModelConfig<T>> & { entity: string; fields: FormFields },
 ): ModelConfig<T> {
+    // Build Zod schemas from field metadata
+    let zodCreateSchema = config.zodCreateSchema;
+    let zodUpdateSchema = config.zodUpdateSchema;
+    try {
+        if (!zodCreateSchema) zodCreateSchema = buildZodSchema(config.fields, 'create');
+        if (!zodUpdateSchema) zodUpdateSchema = buildZodSchema(config.fields, 'update');
+    } catch {
+        // Schema building is best-effort
+    }
+
     return {
         entity: config.entity,
         primaryKey: config.primaryKey || 'id',
@@ -114,6 +149,8 @@ export function defineModelConfig<T = Record<string, unknown>>(
         defaultSortDirection: config.defaultSortDirection,
         searchFields: config.searchFields || getSearchableFields(config.fields),
         fetchFn: config.fetchFn,
+        zodCreateSchema,
+        zodUpdateSchema,
     };
 }
 
