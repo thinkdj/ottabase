@@ -58,12 +58,60 @@ function jsonResp(data: unknown, status = 200): Response {
 }
 
 /**
+ * Check if the provided bootstrap secret is valid.
+ * Accepts secret from 'X-Bootstrap-Secret' header or '?secret=' URL query parameter.
+ */
+function isValidSecret(context: BootstrapContext): boolean {
+    const { env, request, url } = context;
+    const expectedSecret = (env as any).BOOTSTRAP_OWNER_SECRET;
+
+    // If no secret is configured, allow in non-production
+    if (!expectedSecret) {
+        return (env as any).ENVIRONMENT !== 'production';
+    }
+
+    const headerSecret = request.headers.get('X-Bootstrap-Secret');
+    const querySecret = url.searchParams.get('secret');
+
+    return headerSecret === expectedSecret || querySecret === expectedSecret;
+}
+
+/**
  * Handle all /__bootstrap__/* requests.
  * Always returns a Response (wizard page, API response, or 404).
  */
 export async function handleBootstrapRoute(context: BootstrapContext): Promise<Response> {
-    const { url } = context;
+    const { url, platformState } = context;
     const path = url.pathname;
+    const isApiRequest = path.startsWith('/__bootstrap__/api/');
+
+    // 1. Check for LOCKED state
+    if (platformState.source === 'env') {
+        if (context.request.method === 'GET' && !isApiRequest) {
+            return new Response(renderLockedPage(platformState), {
+                status: 503,
+                headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '60' },
+            });
+        }
+        if (isApiRequest) {
+            return jsonResp(
+                { error: 'Platform restricted via environment configuration', code: 'PLATFORM_LOCKED' },
+                503,
+            );
+        }
+    }
+
+    // 2. Security Check for API and Wizard (POST/GET)
+    if (!isValidSecret(context)) {
+        if (isApiRequest) {
+            return jsonResp({ error: 'Unauthorized: Valid bootstrap secret required', code: 'UNAUTHORIZED' }, 401);
+        }
+        // For HTML page in production without secret, show 401 or redirect?
+        // Let's return a simple 401 for GET wizard page if secret is required and missing
+        if ((context.env as any).ENVIRONMENT === 'production') {
+            return new Response('Unauthorized: Valid bootstrap secret required (?secret=xxx)', { status: 401 });
+        }
+    }
 
     // API routes
     if (path === '/__bootstrap__/api/status') return handleStatus(context);
@@ -147,7 +195,7 @@ export function interceptIfNotReady(request: Request, url: URL, platformState: P
  * GET /__bootstrap__/api/status
  * Returns current platform state, bindings, table inventory, and env config hints.
  */
-async function handleStatus(context: BootstrapContext): Response {
+async function handleStatus(context: BootstrapContext): Promise<Response> {
     const { platformState, env } = context;
     const bindings = probeBindings(env);
 
@@ -364,7 +412,6 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         errors.email = 'Valid email address required';
     }
-    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$&*])(?=.*[0-9].*[0-9])(?=.*[a-z].*[a-z].*[a-z]).{8,}$/;
     // Let's use a standard strong password regex: Min 8, 1 Uppercase, 1 Special.
     const strongPasswordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
 

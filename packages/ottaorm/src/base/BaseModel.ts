@@ -363,16 +363,18 @@ export class BaseModel extends AbstractBaseModel {
 
                 const value = prepared[key];
 
-                if (value instanceof Date) {
-                    if (castType === 'date' || castType === 'datetime') {
-                        prepared[key] = value.toISOString();
+                // For date/datetime casts, ensure we end up with a Date object.
+                if (castType === 'date' || castType === 'datetime') {
+                    if (value instanceof Date) {
+                        // Already a Date; leave as-is for Drizzle to handle.
+                        continue;
                     }
-                } else if (typeof value === 'string') {
-                    // Start by checking if it's already a valid ISO string or needs partial normalization
-                    const date = new Date(value);
-                    if (!isNaN(date.getTime())) {
-                        if (castType === 'date' || castType === 'datetime') {
-                            prepared[key] = date.toISOString();
+
+                    if (typeof value === 'string') {
+                        // Try to parse string into a Date and keep it as a Date object.
+                        const date = new Date(value);
+                        if (!isNaN(date.getTime())) {
+                            prepared[key] = date;
                         }
                     }
                 }

@@ -82,7 +82,7 @@ async function readDBState(env: CloudflareEnv): Promise<{ state: PlatformState |
         return { state: null, tableExists: true };
     } catch (e: any) {
         // Table doesn't exist → UNINITIALIZED
-        if (e.message?.includes('no such table') || e.message?.includes('D1_ERROR')) {
+        if (typeof e?.message === 'string' && e.message.includes('no such table')) {
             return { state: null, tableExists: false };
         }
         throw e;
