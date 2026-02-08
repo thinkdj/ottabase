@@ -3,7 +3,7 @@
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
-import { sessionsTable, type NewSessionType, type SessionType } from './Session.schema';
+import { sessionsTable } from './Session.schema';
 
 export { sessionsTable, type NewSessionType, type SessionType } from './Session.schema';
 
@@ -62,9 +62,9 @@ export class Session extends BaseModel {
             },
         },
         expires: {
-            type: 'string',
+            type: 'datetime',
             editable: true,
-            uiConfig: { label: 'Expires', description: 'ISO 8601 date string' },
+            uiConfig: { label: 'Expires', description: 'Unix timestamp (ms)' },
             validation: {
                 rules: 'required',
             },
@@ -99,7 +99,7 @@ export class Session extends BaseModel {
      * Delete expired sessions
      */
     static async deleteExpired(): Promise<number> {
-        const now = new Date().toISOString();
+        const now = Date.now();
         const driver = this.getDriver();
         const db = driver.getDb();
         const result = await db.run(`DELETE FROM ${this.entity} WHERE expires < ?`, now);

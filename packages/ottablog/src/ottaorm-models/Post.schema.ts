@@ -1,7 +1,6 @@
 /**
  * Post table schema - main content storage
  */
-import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const postsTable = sqliteTable(
@@ -117,13 +116,13 @@ export const postsTable = sqliteTable(
         viewCount: integer('view_count').notNull().default(0),
 
         // Scheduled publish date (for scheduled posts)
-        publishAt: integer('publish_at', { mode: 'timestamp' }),
+        publishAt: integer('publish_at'),
 
         // Actual publish date (editorial/display date)
-        publishedAt: integer('published_at', { mode: 'timestamp' }),
+        publishedAt: integer('published_at'),
 
         // When post was actually made live (system timestamp)
-        postedAt: integer('posted_at', { mode: 'timestamp' }),
+        postedAt: integer('posted_at'),
 
         // App identifier for multi-app database sharing
         appId: text('app_id'),
@@ -132,14 +131,14 @@ export const postsTable = sqliteTable(
         maxVersionsToKeep: integer('max_versions_to_keep'),
 
         // Timestamps
-        createdAt: integer('created_at', { mode: 'timestamp' })
+        createdAt: integer('created_at')
             .notNull()
-            .default(sql`(unixepoch())`),
+            .$defaultFn(() => Date.now()),
 
-        updatedAt: integer('updated_at', { mode: 'timestamp' })
+        updatedAt: integer('updated_at')
             .notNull()
-            .default(sql`(unixepoch())`)
-            .$onUpdate(() => new Date()),
+            .$defaultFn(() => Date.now())
+            .$onUpdateFn(() => Date.now()),
     },
     (table) => [
         // Unique slug per appId

@@ -3,19 +3,19 @@
  * Create and dispatch jobs to queues using adapters
  */
 
+import { createCloudflareAdapter } from './adapters/cloudflare';
+import type { QueueAdapter } from './adapters/types';
 import type {
-    QueuedJob,
+    DedupeStore,
     DispatchOptions,
-    QueueConfig,
-    QueueResult,
     JobMeta,
     JobPriority,
     PriorityQueues,
-    DedupeStore,
     Queue,
+    QueueConfig,
+    QueuedJob,
+    QueueResult,
 } from './types';
-import type { QueueAdapter } from './adapters/types';
-import { createCloudflareAdapter } from './adapters/cloudflare';
 
 /**
  * Generate a unique job ID
@@ -30,7 +30,7 @@ function generateJobId(): string {
 export function createJob<T = unknown>(type: string, payload: T, options?: DispatchOptions): QueuedJob<T> {
     const meta: JobMeta = {
         id: generateJobId(),
-        dispatchedAt: new Date().toISOString(),
+        dispatchedAt: Date.now(),
         attempts: 0,
     };
 

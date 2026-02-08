@@ -13,8 +13,8 @@ import {
     ModelFieldDescriptor,
     ModelFieldType,
     ModelFields,
-    PaginationResult,
     PackageType,
+    PaginationResult,
 } from './AbstractBaseModel';
 
 export interface IModelConstructorParams {
@@ -23,7 +23,7 @@ export interface IModelConstructorParams {
 }
 
 // Re-export types
-export type { ModelFieldDescriptor, ModelFieldType, ModelFields, PaginationResult, PackageType };
+export type { ModelFieldDescriptor, ModelFieldType, ModelFields, PackageType, PaginationResult };
 
 /**
  * Type guard to check if a connection is a SQL driver
@@ -359,18 +359,27 @@ export class BaseModel extends AbstractBaseModel {
 
         if (this.casts) {
             for (const [key, castType] of Object.entries(this.casts)) {
-                if (
-                    (castType === 'date' || castType === 'datetime') &&
-                    prepared[key] !== undefined &&
-                    prepared[key] !== null
-                ) {
-                    const value = prepared[key];
-                    // Convert string dates to Date objects
+                if (prepared[key] === undefined || prepared[key] === null) continue;
+
+                const value = prepared[key];
+
+                // For date/datetime casts, convert to Unix timestamp for SQLite
+                if (castType === 'date' || castType === 'datetime') {
+                    if (value instanceof Date) {
+                        // Convert Date to Unix timestamp (milliseconds)
+                        prepared[key] = value.getTime();
+                        continue;
+                    }
+
                     if (typeof value === 'string') {
+                        // Parse string to Date and convert to timestamp
                         const date = new Date(value);
                         if (!isNaN(date.getTime())) {
-                            prepared[key] = date;
+                            prepared[key] = date.getTime();
                         }
+                    } else if (typeof value === 'number') {
+                        // Already a timestamp, leave as-is
+                        continue;
                     }
                 }
             }
@@ -430,6 +439,11 @@ export class BaseModel extends AbstractBaseModel {
 
         if (!pkColumn) {
             throw new Error(`Primary key column ${this.primaryKey} not found`);
+        }
+
+        // Auto-add updatedAt if model has it in casts and value not provided
+        if (this.casts && this.casts.updatedAt && data.updatedAt === undefined) {
+            data.updatedAt = Date.now();
         }
 
         // Prepare data for database (convert string dates, etc.)

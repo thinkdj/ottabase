@@ -7,6 +7,8 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 // Resolve __dirname in ESM
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const BYPASS_PATHS = ['/api', '/shortlinks/go', '/__bootstrap__'];
+
 /**
  * SPA fallback plugin – ensures that any non‑API request that expects HTML
  * serves `index.html`. This enables proper client‑side routing on page reloads
@@ -18,8 +20,8 @@ function spaFallback(): Plugin {
         configureServer(server) {
             server.middlewares.use((req, res, next) => {
                 const url = req.url || '';
-                // Bypass API and Redirect routes
-                if (url.startsWith('/api') || url.startsWith('/shortlinks/go')) return next();
+                // Bypass API, Bootstrap, and Redirect routes
+                if (BYPASS_PATHS.some((p) => url.startsWith(p))) return next();
                 // Strip query/fragment and check for a file extension
                 const pathname = url.split(/[?#]/)[0];
                 const isFile = pathname.includes('.');
@@ -110,18 +112,16 @@ export default defineConfig(({ command }) => ({
         port: parseInt(process.env.PORT_FE || '3003'),
         strictPort: true,
         // Proxy API calls to the backend worker
-        proxy: {
-            '/api': {
-                target: `http://127.0.0.1:${process.env.PORT_BE || 3004}`,
-                changeOrigin: true,
-                secure: false,
-            },
-            '/shortlinks/go': {
-                target: `http://127.0.0.1:${process.env.PORT_BE || 3004}`,
-                changeOrigin: true,
-                secure: false,
-            },
-        },
+        proxy: Object.fromEntries(
+            BYPASS_PATHS.map((p) => [
+                p,
+                {
+                    target: `http://127.0.0.1:${process.env.PORT_BE || 3004}`,
+                    changeOrigin: true,
+                    secure: false,
+                },
+            ]),
+        ),
         // Harden the dev server – disallow serving files outside the project root
         fs: { strict: true },
     },

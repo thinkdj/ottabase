@@ -59,7 +59,7 @@ export class Log extends MongoBaseModel {
     };
 
     static defaults = {
-        timestamp: () => new Date(),
+        timestamp: () => Date.now(),
         level: 'info',
     };
 
@@ -280,7 +280,7 @@ export class Log extends MongoBaseModel {
      */
     static async recent(options?: { hours?: number; level?: string; limit?: number }) {
         const hours = options?.hours || 24;
-        const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+        const cutoff = Date.now() - hours * 60 * 60 * 1000;
 
         const where: any = {
             timestamp: { $gte: cutoff },

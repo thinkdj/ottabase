@@ -3,7 +3,7 @@
  * Core types for the queue system
  */
 
-import type { Queue, MessageBatch, Message } from '@cloudflare/workers-types';
+import type { Message, MessageBatch, Queue } from '@cloudflare/workers-types';
 
 /**
  * Job priority levels
@@ -39,7 +39,7 @@ export interface JobMeta {
     /** Unique job ID (auto-generated if not provided) */
     id?: string;
     /** When the job was dispatched */
-    dispatchedAt?: string;
+    dispatchedAt?: string | number;
     /** Number of retry attempts */
     attempts?: number;
     /** Maximum retry attempts before failing */
@@ -161,4 +161,4 @@ export interface ProcessorOptions<E = unknown> {
 }
 
 // Re-export Cloudflare types for convenience
-export type { Queue, MessageBatch, Message };
+export type { Message, MessageBatch, Queue };

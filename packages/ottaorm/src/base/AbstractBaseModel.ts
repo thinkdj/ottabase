@@ -420,7 +420,12 @@ export abstract class AbstractBaseModel {
                     return Boolean(value);
                 case 'date':
                 case 'datetime':
-                    const date = new Date(value);
+                    let dateValue = value;
+                    // Handle numeric strings (e.g., "1770548966233.0")
+                    if (typeof value === 'string' && /^-?\d+\.?\d*$/.test(value)) {
+                        dateValue = parseFloat(value);
+                    }
+                    const date = new Date(dateValue);
                     if (isNaN(date.getTime())) {
                         throw new Error(`Invalid date value for ${key}`);
                     }

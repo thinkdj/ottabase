@@ -26,9 +26,9 @@ export const scheduledTasksTable = sqliteTable('scheduled_tasks', {
     // Timezone for schedule evaluation (default: UTC)
     timezone: text('timezone').default('UTC'),
     // Last run timestamp
-    lastRunAt: integer('last_run_at', { mode: 'timestamp' }),
+    lastRunAt: integer('last_run_at'),
     // Next scheduled run timestamp
-    nextRunAt: integer('next_run_at', { mode: 'timestamp' }),
+    nextRunAt: integer('next_run_at'),
     // Last run status: "success" | "failed" | "running" | null
     lastStatus: text('last_status'),
     // Last error message if failed
@@ -39,12 +39,12 @@ export const scheduledTasksTable = sqliteTable('scheduled_tasks', {
     failCount: integer('fail_count').notNull().default(0),
     // App identifier for multi-app database sharing (nullable, opt-in)
     appId: text('app_id'),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
         .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
-        .$onUpdateFn(() => new Date())
+    updatedAt: integer('updated_at')
+        .$defaultFn(() => Date.now())
+        .$onUpdateFn(() => Date.now())
         .notNull(),
 });
 

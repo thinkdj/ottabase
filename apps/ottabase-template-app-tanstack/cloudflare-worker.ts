@@ -4,6 +4,7 @@ import { queueHandler } from './ottabase/queue';
 import { initDbConnection } from './worker/lib/db-utils';
 import { handleShortlinkFallback } from './worker/routes/shortlinks';
 import { resolveApiRoute } from './worker/routes/router';
+import { resolvePlatformState, handleBootstrapRoute, interceptIfNotReady } from './worker/bootstrap';
 import type { CloudflareEnv } from './cloudflare-env';
 
 export { RealtimeActor };
@@ -32,11 +33,36 @@ function isHtmlRequest(request: Request): boolean {
 export default {
     async fetch(request: Request, env: CloudflareEnv): Promise<Response> {
         try {
+            const url = new URL(request.url);
+            const normalizedPathname = normalizePath(url.pathname);
+
+            // -------------------------------------------------------
+            // Bootstrap gate — resolve platform state before anything
+            // -------------------------------------------------------
+            const platformState = await resolvePlatformState(env);
+
+            // Handle /__bootstrap__/* routes
+            if (normalizedPathname.startsWith('/__bootstrap__')) {
+                return await handleBootstrapRoute({
+                    request,
+                    env,
+                    url,
+                    platformState,
+                });
+            }
+
+            // Block non-bootstrap requests if platform is not READY
+            const intercepted = interceptIfNotReady(request, url, platformState);
+            if (intercepted) {
+                return intercepted;
+            }
+
+            // -------------------------------------------------------
+            // Normal request flow — platform is READY
+            // -------------------------------------------------------
             initDbConnection(env);
 
-            const url = new URL(request.url);
             const origin = request.headers.get('Origin') || '*';
-            const normalizedPathname = normalizePath(url.pathname);
             const route = normalizedPathname;
             const method = request.method;
             const corsHeaders = {

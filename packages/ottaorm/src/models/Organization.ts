@@ -2,9 +2,9 @@
 // @ottabase/ottaorm - Organization (Tenant) model
 // ============================================================
 
-import { eq, and, sql } from 'drizzle-orm';
-import { BaseModel, type PackageType, type ModelFields } from '../base/BaseModel';
-import { organizationsTable, type OrganizationType, type NewOrganizationType } from './Organization.schema';
+import { eq, sql } from 'drizzle-orm';
+import { BaseModel, type ModelFields, type PackageType } from '../base/BaseModel';
+import { organizationsTable, type NewOrganizationType, type OrganizationType } from './Organization.schema';
 import { organizationMembersTable } from './OrganizationMember.schema';
 
 /**
@@ -243,7 +243,7 @@ export class Organization extends BaseModel {
         driver?: any,
     ): Promise<InstanceType<T>> {
         // Update updatedAt timestamp
-        data.updatedAt = new Date();
+        data.updatedAt = Date.now();
 
         // Call parent update method
         return (await super.update.call(this, id, data, driver)) as InstanceType<T>;
@@ -332,4 +332,4 @@ export class Organization extends BaseModel {
     }
 }
 
-export { organizationsTable, type OrganizationType, type NewOrganizationType };
+export { organizationsTable, type NewOrganizationType, type OrganizationType };

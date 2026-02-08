@@ -1,7 +1,6 @@
 /**
  * PostTagLink table schema - junction table for Post <-> PostTag many-to-many
  */
-import { sql } from 'drizzle-orm';
 import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { postsTable } from './Post.schema';
 import { postTagsTable } from './PostTag.schema';
@@ -18,9 +17,9 @@ export const postTagLinksTable = sqliteTable(
             .references(() => postTagsTable.id, { onDelete: 'cascade' }),
 
         // When the tag was added to the post
-        createdAt: integer('created_at', { mode: 'timestamp' })
+        createdAt: integer('created_at')
             .notNull()
-            .default(sql`(unixepoch())`),
+            .$defaultFn(() => Date.now()),
     },
     (table) => [
         // Composite primary key prevents duplicate tag assignments

@@ -1,0 +1,654 @@
+// ============================================================
+// Ottabase Bootstrap - API Routes & Wizard Pages
+// ============================================================
+//
+// Handles all /__bootstrap__/* requests:
+//   GET  /__bootstrap__                  → Wizard UI (HTML)
+//   GET  /__bootstrap__/api/status       → Current platform state + binding probe
+//   POST /__bootstrap__/api/init         → Run schema creation + migrations
+//   POST /__bootstrap__/api/seed         → Seed RBAC roles + permissions
+//   POST /__bootstrap__/api/create-owner → Create first admin/owner account
+//   POST /__bootstrap__/api/finalize     → Mark platform READY
+// ============================================================
+
+import { hashPassword } from '@ottabase/auth/backend';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import {
+    autoInit,
+    clearConnection,
+    coreMigrations,
+    Organization,
+    OrganizationMember,
+    registerConnection,
+    Role,
+    runMigrations,
+    User,
+} from '@ottabase/ottaorm';
+import { makeSlug } from '@ottabase/utils/url';
+import type { CloudflareEnv } from '../../cloudflare-env';
+import { getAllSchemas } from '../../ottabase/db/schemas-helper';
+import { appMigrations } from '../../ottabase/migrations';
+import { renderBindingsErrorPage, renderLockedPage, renderMaintenancePage, renderWizardPage } from './pages';
+import { ensureMetaTable, probeBindings, writeDBState, writeKVState } from './state-resolver';
+import type { PlatformStateResult } from './types';
+
+interface BootstrapContext {
+    request: Request;
+    env: CloudflareEnv;
+    url: URL;
+    platformState: PlatformStateResult;
+}
+
+/** Register a D1 connection for ORM model operations */
+function ensureOrmConnection(env: CloudflareEnv): void {
+    if (!env.OBCF_D1) return;
+    try {
+        clearConnection('default');
+    } catch {
+        /* ignore if no connection */
+    }
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+}
+
+function jsonResp(data: unknown, status = 200): Response {
+    return new Response(JSON.stringify(data), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+    });
+}
+
+/**
+ * Check if the provided bootstrap secret is valid.
+ * For API requests, only X-Bootstrap-Secret header is accepted.
+ * For the main wizard page (GET), the ?secret= query parameter is also allowed.
+ */
+function isValidSecret(context: BootstrapContext, allowQuery = false): boolean {
+    const { env, request, url } = context;
+    const expectedSecret = (env as any).BOOTSTRAP_OWNER_SECRET;
+
+    // If no secret is configured, allow in non-production
+    if (!expectedSecret) {
+        return (env as any).ENVIRONMENT !== 'production';
+    }
+
+    const headerSecret = request.headers.get('X-Bootstrap-Secret');
+    if (headerSecret === expectedSecret) return true;
+
+    if (allowQuery) {
+        const querySecret = url.searchParams.get('secret');
+        if (querySecret === expectedSecret) return true;
+    }
+
+    return false;
+}
+
+/**
+ * Handle all /__bootstrap__/* requests.
+ * Always returns a Response (wizard page, API response, or 404).
+ */
+export async function handleBootstrapRoute(context: BootstrapContext): Promise<Response> {
+    const { url, platformState } = context;
+    const path = url.pathname;
+    const isApiRequest = path.startsWith('/__bootstrap__/api/');
+
+    // 1. Check for LOCKED state
+    if (platformState.source === 'env') {
+        if (context.request.method === 'GET' && !isApiRequest) {
+            return new Response(renderLockedPage(platformState), {
+                status: 503,
+                headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '60' },
+            });
+        }
+        if (isApiRequest) {
+            return jsonResp(
+                { error: 'Platform restricted via environment configuration', code: 'PLATFORM_LOCKED' },
+                503,
+            );
+        }
+    }
+
+    // 2. Security Check for API and Wizard (POST/GET)
+    // Only allow query param for the GET wizard page
+    const allowQuery = !isApiRequest && context.request.method === 'GET';
+    if (!isValidSecret(context, allowQuery)) {
+        if (isApiRequest) {
+            return jsonResp(
+                {
+                    error: 'Unauthorized: Valid bootstrap secret required in X-Bootstrap-Secret header',
+                    code: 'UNAUTHORIZED',
+                },
+                401,
+            );
+        }
+        // For HTML page in production without secret, show 401
+        if ((context.env as any).ENVIRONMENT === 'production') {
+            return new Response('Unauthorized: Valid bootstrap secret required (?secret=xxx)', { status: 401 });
+        }
+    }
+
+    // API routes
+    if (path === '/__bootstrap__/api/status') return handleStatus(context);
+    if (path === '/__bootstrap__/api/init') return handleInit(context);
+    if (path === '/__bootstrap__/api/seed') return handleSeed(context);
+    if (path === '/__bootstrap__/api/create-owner') return handleCreateOwner(context);
+    if (path === '/__bootstrap__/api/finalize') return handleFinalize(context);
+
+    // Wizard HTML page — serve for any /__bootstrap__* GET
+    if (context.request.method === 'GET') {
+        return serveWizardPage(context);
+    }
+
+    return jsonResp({ error: 'Not found' }, 404);
+}
+
+/**
+ * Intercept all non-bootstrap requests when platform is not READY.
+ * Returns a redirect/error Response, or null if the platform is ready.
+ */
+export function interceptIfNotReady(request: Request, url: URL, platformState: PlatformStateResult): Response | null {
+    const path = url.pathname;
+
+    // Always allow bootstrap routes through
+    if (path.startsWith('/__bootstrap__')) return null;
+
+    // Allow health check through always
+    if (path === '/api/health') return null;
+
+    // Platform is READY and not in panic → let request through
+    if (platformState.state === 'READY' && !platformState.panic) return null;
+
+    // Panic mode (KV=READY but DB dead)
+    if (platformState.panic) {
+        return new Response(renderMaintenancePage(platformState), {
+            status: 503,
+            headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '30' },
+        });
+    }
+
+    // ENV locked
+    if (platformState.source === 'env') {
+        return new Response(renderLockedPage(platformState), {
+            status: 503,
+            headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '60' },
+        });
+    }
+
+    // Missing critical bindings (no D1)
+    if (!platformState.bindings.d1) {
+        return new Response(renderBindingsErrorPage(platformState), {
+            status: 503,
+            headers: { 'Content-Type': 'text/html;charset=UTF-8' },
+        });
+    }
+
+    // UNINITIALIZED or BOOTSTRAPPING → redirect to wizard
+    const isApiRequest = path.startsWith('/api/') || request.headers.get('Accept')?.includes('application/json');
+
+    if (isApiRequest) {
+        return jsonResp(
+            {
+                error: 'Platform not initialized',
+                code: 'PLATFORM_NOT_READY',
+                state: platformState.state,
+                setup_url: '/__bootstrap__',
+            },
+            503,
+        );
+    }
+
+    // HTML request → redirect to bootstrap wizard
+    return Response.redirect(new URL('/__bootstrap__', url.origin).toString(), 302);
+}
+
+// ============================================================
+// Route handlers
+// ============================================================
+
+/**
+ * GET /__bootstrap__/api/status
+ * Returns current platform state, bindings, table inventory, and env config hints.
+ */
+async function handleStatus(context: BootstrapContext): Promise<Response> {
+    const { platformState, env } = context;
+    const bindings = probeBindings(env);
+
+    // Check for important env vars
+    const envConfig = {
+        authSecret: !!(env as any).AUTH_SECRET,
+        migrationSecret: !!(env as any).MIGRATION_SECRET,
+        bootstrapOwnerSecret: !!(env as any).BOOTSTRAP_OWNER_SECRET,
+        emailProvider:
+            !!(env as any).EMAIL_RESEND_API_KEY || !!(env as any).AWS_ACCESS_KEY_ID || !!(env as any).EMAIL_SERVER,
+        environment: (env as any).ENVIRONMENT || 'unknown',
+    };
+
+    // Count tables if DB available
+    let tableCount = 0;
+    let tables: string[] = [];
+    if (env.OBCF_D1) {
+        try {
+            const result = await env.OBCF_D1.prepare(
+                `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'`,
+            ).all();
+            tables = (result.results || []).map((r: any) => r.name as string);
+            tableCount = tables.length;
+        } catch {
+            /* DB not accessible */
+        }
+    }
+
+    // Check user count
+    let userCount = 0;
+    if (env.OBCF_D1 && tables.includes('users')) {
+        try {
+            const row = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
+            userCount = Number(row?.count ?? 0);
+        } catch {
+            /* table may not exist */
+        }
+    }
+
+    // Check role count
+    let roleCount = 0;
+    if (env.OBCF_D1 && tables.includes('roles')) {
+        try {
+            const row = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM roles').first<any>();
+            roleCount = Number(row?.count ?? 0);
+        } catch {
+            /* table may not exist */
+        }
+    }
+
+    // Environment check
+    const isDev = (env as any).ENVIRONMENT === 'development';
+    const isReady = platformState.state === 'READY';
+
+    // If READY and NOT dev, return minimal info to prevent leakage
+    if (isReady && !isDev) {
+        return jsonResp({
+            state: platformState.state,
+            timestamp: new Date().toISOString(),
+        });
+    }
+
+    return jsonResp({
+        state: platformState.state,
+        source: platformState.source,
+        panic: platformState.panic,
+        reason: platformState.reason,
+        bindings,
+        envConfig,
+        database: { tableCount, tables, userCount, roleCount },
+        timestamp: new Date().toISOString(),
+    });
+}
+
+/**
+ * POST /__bootstrap__/api/init
+ * Step 1: Create schema tables + run all migrations.
+ */
+async function handleInit(context: BootstrapContext): Promise<Response> {
+    const { env, request } = context;
+
+    if (request.method !== 'POST') {
+        return jsonResp({ error: 'Method not allowed' }, 405);
+    }
+
+    if (!env.OBCF_D1) {
+        return jsonResp(
+            {
+                error: 'D1 database binding not available',
+                code: 'MISSING_BINDING',
+                hint: 'Configure OBCF_D1 in your wrangler.jsonc',
+            },
+            503,
+        );
+    }
+
+    try {
+        // 1. Create the meta table and mark BOOTSTRAPPING
+        await ensureMetaTable(env);
+        await writeDBState(env, 'BOOTSTRAPPING');
+        await writeKVState(env, 'BOOTSTRAPPING');
+
+        // 2. Run ottaorm autoInit (creates all tables from Drizzle schemas)
+        const driver = createD1Driver(env.OBCF_D1);
+        const allSchemas = getAllSchemas();
+        const initResult = await autoInit({
+            driver,
+            schema: allSchemas,
+            customMigrations: appMigrations,
+            verbose: true,
+        });
+
+        // 3. Run core SQL migrations (users, sessions, accounts, RBAC, multi-tenant)
+        const sqlResult = await runCoreSQLMigrations(env);
+
+        return jsonResp({
+            success: initResult.success,
+            message: initResult.message,
+            autoInit: initResult.details,
+            sqlMigrations: sqlResult,
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error: any) {
+        return jsonResp({ success: false, error: error.message, code: 'INIT_FAILED' }, 500);
+    }
+}
+
+/**
+ * POST /__bootstrap__/api/seed
+ * Step 2: Seed RBAC roles and permissions using ORM models.
+ */
+async function handleSeed(context: BootstrapContext): Promise<Response> {
+    const { env, request } = context;
+
+    if (request.method !== 'POST') {
+        return jsonResp({ error: 'Method not allowed' }, 405);
+    }
+
+    if (!env.OBCF_D1) {
+        return jsonResp({ error: 'D1 database binding not available' }, 503);
+    }
+
+    try {
+        ensureOrmConnection(env);
+
+        // Seed default roles (owner, admin, editor, viewer, member)
+        const createdRoles = await Role.ensureDefaultRoles();
+        const roleNames = createdRoles.map((r: any) => r.get('name') as string);
+
+        // Count existing roles for reporting
+        const allRolesResult = await env.OBCF_D1.prepare('SELECT name FROM roles').all();
+        const existingRoles = (allRolesResult.results || []).map((r: any) => r.name as string);
+
+        // Seed default organization if it doesn't exist
+        let defaultOrgCreated = false;
+        try {
+            const existing = await env.OBCF_D1.prepare(
+                `SELECT id FROM organizations WHERE id = 'default-org' LIMIT 1`,
+            ).first<any>();
+            if (!existing) {
+                const now = Date.now();
+                await env.OBCF_D1.prepare(
+                    `INSERT INTO organizations (id, name, slug, plan, status, created_at, updated_at)
+                     VALUES ('default-org', 'Default Organization', 'default', 'free', 'active', ?, ?)`,
+                )
+                    .bind(now, now)
+                    .run();
+                defaultOrgCreated = true;
+            }
+        } catch {
+            /* organizations table may not exist if SQL migration hasn't run */
+        }
+
+        return jsonResp({
+            success: true,
+            roles: { created: roleNames, existing: existingRoles },
+            defaultOrganization: defaultOrgCreated ? 'created' : 'already exists',
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error: any) {
+        return jsonResp({ success: false, error: error.message, code: 'SEED_FAILED' }, 500);
+    }
+}
+
+/**
+ * POST /__bootstrap__/api/create-owner
+ * Step 3: Create the first admin/owner account.
+ * Body: { email: string, password: string, name?: string }
+ */
+async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
+    const { env, request } = context;
+
+    if (request.method !== 'POST') {
+        return jsonResp({ error: 'Method not allowed' }, 405);
+    }
+
+    if (!env.OBCF_D1) {
+        return jsonResp({ error: 'D1 database binding not available' }, 503);
+    }
+
+    let body: { email?: string; password?: string; name?: string };
+    try {
+        body = await request.json();
+    } catch {
+        return jsonResp({ error: 'Invalid JSON body' }, 400);
+    }
+
+    const email = (body.email || '').trim().toLowerCase();
+    const password = body.password || '';
+    const name = (body.name || '').trim();
+
+    // Validate
+    const errors: Record<string, string> = {};
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errors.email = 'Valid email address required';
+    }
+    // Let's use a standard strong password regex: Min 8, 1 Uppercase, 1 Special.
+    const strongPasswordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+
+    if (!password || !strongPasswordRegex.test(password)) {
+        errors.password =
+            'Password must be at least 8 characters and contain at least one uppercase letter and one special character.';
+    }
+    if (Object.keys(errors).length > 0) {
+        return jsonResp({ success: false, errors, code: 'VALIDATION_ERROR' }, 400);
+    }
+
+    try {
+        ensureOrmConnection(env);
+
+        // Check if users already exist
+        const countRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
+        const userCount = Number(countRow?.count ?? 0);
+
+        if (userCount > 0) {
+            return jsonResp(
+                {
+                    success: false,
+                    error: 'An account already exists. The owner account can only be created during first-time setup.',
+                    code: 'OWNER_EXISTS',
+                },
+                409,
+            );
+        }
+
+        // Create user with hashed password
+        const passwordHash = await hashPassword(password);
+        const newUser = await User.create({
+            email,
+            name: name || null,
+            emailVerified: Date.now(), // Auto-verify owner
+            passwordHash,
+        });
+
+        const userId = newUser.get('id') as string;
+
+        // Create personal organization
+        let organizationId: string | null = null;
+        try {
+            const orgName = `${name || email.split('@')[0]}'s Workspace`;
+            const slug = makeSlug(orgName) || `org-${userId.slice(0, 8)}`;
+
+            const org = await Organization.create({
+                name: orgName,
+                slug,
+                ownerId: userId,
+            });
+            organizationId = org.get('id') as string;
+
+            await OrganizationMember.create({
+                userId,
+                organizationId,
+                role: 'owner',
+                status: 'active',
+            });
+
+            // Ensure roles exist and assign owner role to the new organization
+            await Role.ensureDefaultRoles();
+            const ownerRole = await Role.findByName('owner');
+
+            if (ownerRole) {
+                // assignRole(roleId, assignedBy, organizationId)
+                await newUser.assignRole(ownerRole.get('id') as string, 'system', organizationId);
+            }
+        } catch (error) {
+            // Organization creation is non-fatal but highly recommended
+            console.warn('Organization creation during bootstrap:', error);
+        }
+
+        return jsonResp({
+            success: true,
+            user: {
+                id: userId,
+                email,
+                name: name || null,
+                role: 'owner',
+            },
+            organizationId,
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error: any) {
+        if (error.message?.toLowerCase().includes('unique')) {
+            return jsonResp({ success: false, error: 'Email already in use', code: 'EMAIL_EXISTS' }, 409);
+        }
+        return jsonResp({ success: false, error: error.message, code: 'CREATE_OWNER_FAILED' }, 500);
+    }
+}
+
+/**
+ * POST /__bootstrap__/api/finalize
+ * Step 4: Verify everything, mark platform READY.
+ */
+async function handleFinalize(context: BootstrapContext): Promise<Response> {
+    const { env, request } = context;
+
+    if (request.method !== 'POST') {
+        return jsonResp({ error: 'Method not allowed' }, 405);
+    }
+
+    if (!env.OBCF_D1) {
+        return jsonResp({ error: 'D1 database binding not available' }, 503);
+    }
+
+    try {
+        // Verify tables actually exist before marking READY
+        const tableCheck = await verifyCoreTables(env);
+        if (!tableCheck.ok) {
+            return jsonResp(
+                {
+                    success: false,
+                    error: 'Core tables missing — run initialization first',
+                    missing: tableCheck.missing,
+                },
+                400,
+            );
+        }
+
+        // Verify at least one user exists
+        const userRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
+        const userCount = Number(userRow?.count ?? 0);
+        if (userCount === 0) {
+            return jsonResp(
+                {
+                    success: false,
+                    error: 'No admin account found — create an owner account first',
+                    code: 'NO_OWNER',
+                },
+                400,
+            );
+        }
+
+        // Verify roles are seeded
+        const roleRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM roles').first<any>();
+        const roleCount = Number(roleRow?.count ?? 0);
+        if (roleCount === 0) {
+            return jsonResp(
+                {
+                    success: false,
+                    error: 'No roles found — run RBAC seed first',
+                    code: 'NO_ROLES',
+                },
+                400,
+            );
+        }
+
+        // Mark platform as READY in both DB and KV
+        await writeDBState(env, 'READY');
+        await writeKVState(env, 'READY');
+
+        return jsonResp({
+            success: true,
+            state: 'READY',
+            message: 'Platform is now ready.',
+            summary: {
+                tables: tableCheck.found.length,
+                users: userCount,
+                roles: roleCount,
+            },
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error: any) {
+        return jsonResp({ success: false, error: error.message, code: 'FINALIZE_FAILED' }, 500);
+    }
+}
+
+function serveWizardPage(context: BootstrapContext): Response {
+    return new Response(renderWizardPage(context.platformState), {
+        status: 200,
+        headers: {
+            'Content-Type': 'text/html;charset=UTF-8',
+            'Cache-Control': 'no-store',
+        },
+    });
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+
+async function runCoreSQLMigrations(
+    env: CloudflareEnv,
+): Promise<{ executed: string[]; skipped: string[]; errors: string[] }> {
+    const executed: string[] = [];
+    const skipped: string[] = [];
+    const errors: string[] = [];
+
+    try {
+        const driver = createD1Driver(env.OBCF_D1!);
+        const result = await runMigrations(driver, coreMigrations);
+        executed.push(...result.executed);
+        skipped.push(...result.skipped);
+    } catch (error: any) {
+        errors.push(`Core SQL migrations: ${error.message}`);
+    }
+
+    return { executed, skipped, errors };
+}
+
+async function verifyCoreTables(env: CloudflareEnv): Promise<{ ok: boolean; missing: string[]; found: string[] }> {
+    const requiredTables = ['users', 'sessions', 'accounts', 'roles', '_ottabase_meta', '_ottabase_migrations'];
+    const found: string[] = [];
+    const missing: string[] = [];
+
+    try {
+        const result = await env
+            .OBCF_D1!.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`)
+            .all();
+
+        const existingTables = new Set((result.results || []).map((row: any) => row.name as string));
+
+        for (const table of requiredTables) {
+            if (existingTables.has(table)) {
+                found.push(table);
+            } else {
+                missing.push(table);
+            }
+        }
+    } catch {
+        return { ok: false, missing: requiredTables, found: [] };
+    }
+
+    return { ok: missing.length === 0, missing, found };
+}

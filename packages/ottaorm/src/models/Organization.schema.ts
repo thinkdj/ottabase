@@ -19,12 +19,12 @@ export const organizationsTable = sqliteTable('organizations', {
     status: text('status').default('active'), // active, suspended, cancelled
     settings: text('settings', { mode: 'json' }).$type<Record<string, any>>(),
     metadata: text('metadata', { mode: 'json' }).$type<Record<string, any>>(),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
         .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
-        .$onUpdateFn(() => new Date())
+    updatedAt: integer('updated_at')
+        .$defaultFn(() => Date.now())
+        .$onUpdateFn(() => Date.now())
         .notNull(),
 });
 
