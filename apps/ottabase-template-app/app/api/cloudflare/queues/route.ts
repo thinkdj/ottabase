@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { createQueuesClient } from '@ottabase/cf/queues';
 import { createKVClient } from '@ottabase/cf/kv';
+import { createQueuesClient } from '@ottabase/cf/queues';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
                             key,
                             JSON.stringify({
                                 ...batch[i],
-                                sentAt: new Date().toISOString(),
+                                sentAt: Date.now(),
                                 type: 'batch',
                             }),
                             { expirationTtl: 3600 },
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
                         key,
                         JSON.stringify({
                             ...message,
-                            sentAt: new Date().toISOString(),
+                            sentAt: Date.now(),
                             type: 'single',
                         }),
                         { expirationTtl: 3600 },
@@ -146,7 +146,7 @@ export async function GET() {
         }
 
         // Sort by sentAt descending
-        messages.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+        messages.sort((a, b) => Number(b.sentAt) - Number(a.sentAt));
 
         return NextResponse.json({ messages });
     } catch (error) {

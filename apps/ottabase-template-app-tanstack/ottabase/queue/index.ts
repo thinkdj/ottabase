@@ -5,15 +5,15 @@
  * Add your job handlers here to process queue messages.
  */
 
-import { createRegistry, createQueueHandler, dispatch, type QueuedJob } from '@ottabase/queue';
 import { createKVClient } from '@ottabase/cf/kv';
+import { createQueueHandler, createRegistry, dispatch, type QueuedJob } from '@ottabase/queue';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import {
-    sendEmailHandler,
-    processOrderHandler,
-    generateReportHandler,
-    syncDataHandler,
     batchTaskHandler,
+    generateReportHandler,
+    processOrderHandler,
+    sendEmailHandler,
+    syncDataHandler,
 } from './handlers';
 
 // KV keys for queue stats
@@ -35,7 +35,7 @@ export interface QueueStats {
     totalFailed: number;
     totalDLQ: number;
     byJobType: Record<string, { dispatched: number; processed: number; failed: number }>;
-    lastUpdated: string;
+    lastUpdated: number;
 }
 
 /**
@@ -45,7 +45,7 @@ export interface ProcessedJob {
     id: string;
     type: string;
     status: 'completed' | 'failed';
-    processedAt: string;
+    processedAt: number;
     duration?: number;
     error?: string;
     attempts: number;
@@ -59,7 +59,7 @@ export interface DLQJob {
     type: string;
     payload: unknown;
     error: string;
-    failedAt: string;
+    failedAt: number;
     attempts: number;
     originalMeta?: Record<string, unknown>;
 }
@@ -84,7 +84,7 @@ export async function getQueueStats(env: CloudflareEnv): Promise<QueueStats> {
         totalFailed: 0,
         totalDLQ: 0,
         byJobType: {},
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: Date.now(),
     };
 
     if (!env.OBCF_KV) {
@@ -116,7 +116,7 @@ async function updateStats(env: CloudflareEnv, update: (stats: QueueStats) => vo
     const kv = createKVClient({ namespace: env.OBCF_KV as any });
     const stats = await getQueueStats(env);
     update(stats);
-    stats.lastUpdated = new Date().toISOString();
+    stats.lastUpdated = Date.now();
     await kv.put(STATS_KEY, JSON.stringify(stats));
 }
 
@@ -161,7 +161,7 @@ async function storeDLQJob(env: CloudflareEnv, job: QueuedJob, error: Error): Pr
         type: job.type,
         payload: job.payload,
         error: error.message,
-        failedAt: new Date().toISOString(),
+        failedAt: Date.now(),
         attempts: job.meta?.attempts || 1,
         originalMeta: job.meta,
     };
@@ -201,7 +201,7 @@ export async function getRecentProcessedJobs(env: CloudflareEnv, limit = 50): Pr
     }
 
     // Sort by processedAt desc
-    return jobs.sort((a, b) => new Date(b.processedAt).getTime() - new Date(a.processedAt).getTime()).slice(0, limit);
+    return jobs.sort((a, b) => b.processedAt - a.processedAt).slice(0, limit);
 }
 
 /**
@@ -227,7 +227,7 @@ export async function getFailedJobs(env: CloudflareEnv, limit = 50): Promise<Pro
         }
     }
 
-    return jobs.sort((a, b) => new Date(b.processedAt).getTime() - new Date(a.processedAt).getTime());
+    return jobs.sort((a, b) => b.processedAt - a.processedAt);
 }
 
 // ============================================================================
@@ -490,7 +490,7 @@ export function createAppQueueHandler() {
                     id: jobId,
                     type: job.type,
                     status: 'completed',
-                    processedAt: new Date().toISOString(),
+                    processedAt: Date.now(),
                     duration,
                     attempts: job.meta?.attempts || 1,
                 });
@@ -519,7 +519,7 @@ export function createAppQueueHandler() {
                     id: jobId,
                     type: job.type,
                     status: 'failed',
-                    processedAt: new Date().toISOString(),
+                    processedAt: Date.now(),
                     duration,
                     error: error.message,
                     attempts: job.meta?.attempts || 1,

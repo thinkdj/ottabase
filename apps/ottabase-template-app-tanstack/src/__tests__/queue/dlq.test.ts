@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock types for testing
 interface MockKVNamespace {
@@ -21,7 +21,7 @@ interface DLQJob {
     type: string;
     payload: unknown;
     error: string;
-    failedAt: string;
+    failedAt: number;
     attempts: number;
 }
 
@@ -38,7 +38,7 @@ async function storeDLQJob(
         type: job.type,
         payload: job.payload,
         error: error.message,
-        failedAt: new Date().toISOString(),
+        failedAt: Date.now(),
         attempts: job.meta?.attempts || 1,
     };
 

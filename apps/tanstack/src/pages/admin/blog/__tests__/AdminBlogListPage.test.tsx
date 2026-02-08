@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminBlogListPage } from '../AdminBlogListPage';
 
 // Mock the hooks
@@ -43,8 +43,8 @@ describe('AdminBlogListPage - Pagination', () => {
         excerpt: `Excerpt ${i + 1}`,
         contentType: 'blog',
         status: 'published',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
     }));
 
     const mockCategories = [

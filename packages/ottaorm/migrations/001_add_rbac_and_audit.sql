@@ -77,8 +77,8 @@ INSERT OR IGNORE INTO roles (id, name, description, permissions, is_system, crea
         'Full system access',
         '["*:*"]',
         1,
-        unixepoch(),
-        unixepoch()
+        (unixepoch() * 1000),
+        (unixepoch() * 1000)
     ),
     (
         '00000000-0000-0000-0000-000000000002',
@@ -86,8 +86,8 @@ INSERT OR IGNORE INTO roles (id, name, description, permissions, is_system, crea
         'Can create and edit content',
         '["*:read","*:create","*:update"]',
         1,
-        unixepoch(),
-        unixepoch()
+        (unixepoch() * 1000),
+        (unixepoch() * 1000)
     ),
     (
         '00000000-0000-0000-0000-000000000003',
@@ -95,28 +95,28 @@ INSERT OR IGNORE INTO roles (id, name, description, permissions, is_system, crea
         'Read-only access',
         '["*:read"]',
         1,
-        unixepoch(),
-        unixepoch()
+        (unixepoch() * 1000),
+        (unixepoch() * 1000)
     );
 
 -- Insert default permissions
 INSERT OR IGNORE INTO permissions (id, name, description, resource, action, created_at, updated_at) VALUES
     -- User permissions
-    (hex(randomblob(16)), 'users:read', 'Read users', 'users', 'read', unixepoch(), unixepoch()),
-    (hex(randomblob(16)), 'users:create', 'Create users', 'users', 'create', unixepoch(), unixepoch()),
-    (hex(randomblob(16)), 'users:update', 'Update users', 'users', 'update', unixepoch(), unixepoch()),
-    (hex(randomblob(16)), 'users:delete', 'Delete users', 'users', 'delete', unixepoch(), unixepoch()),
+    (hex(randomblob(16)), 'users:read', 'Read users', 'users', 'read', (unixepoch() * 1000), (unixepoch() * 1000)),
+    (hex(randomblob(16)), 'users:create', 'Create users', 'users', 'create', (unixepoch() * 1000), (unixepoch() * 1000)),
+    (hex(randomblob(16)), 'users:update', 'Update users', 'users', 'update', (unixepoch() * 1000), (unixepoch() * 1000)),
+    (hex(randomblob(16)), 'users:delete', 'Delete users', 'users', 'delete', (unixepoch() * 1000), (unixepoch() * 1000)),
     -- Role permissions
-    (hex(randomblob(16)), 'roles:read', 'Read roles', 'roles', 'read', unixepoch(), unixepoch()),
-    (hex(randomblob(16)), 'roles:create', 'Create roles', 'roles', 'create', unixepoch(), unixepoch()),
-    (hex(randomblob(16)), 'roles:update', 'Update roles', 'roles', 'update', unixepoch(), unixepoch()),
-    (hex(randomblob(16)), 'roles:delete', 'Delete roles', 'roles', 'delete', unixepoch(), unixepoch()),
+    (hex(randomblob(16)), 'roles:read', 'Read roles', 'roles', 'read', (unixepoch() * 1000), (unixepoch() * 1000)),
+    (hex(randomblob(16)), 'roles:create', 'Create roles', 'roles', 'create', (unixepoch() * 1000), (unixepoch() * 1000)),
+    (hex(randomblob(16)), 'roles:update', 'Update roles', 'roles', 'update', (unixepoch() * 1000), (unixepoch() * 1000)),
+    (hex(randomblob(16)), 'roles:delete', 'Delete roles', 'roles', 'delete', (unixepoch() * 1000), (unixepoch() * 1000)),
     -- Audit log permissions
-    (hex(randomblob(16)), 'audit:read', 'Read audit logs', 'audit', 'read', unixepoch(), unixepoch()),
-    (hex(randomblob(16)), 'audit:export', 'Export audit logs', 'audit', 'export', unixepoch(), unixepoch()),
+    (hex(randomblob(16)), 'audit:read', 'Read audit logs', 'audit', 'read', (unixepoch() * 1000), (unixepoch() * 1000)),
+    (hex(randomblob(16)), 'audit:export', 'Export audit logs', 'audit', 'export', (unixepoch() * 1000), (unixepoch() * 1000)),
     -- Wildcard permissions
-    (hex(randomblob(16)), '*:*', 'All permissions', '*', '*', unixepoch(), unixepoch()),
-    (hex(randomblob(16)), '*:read', 'Read all resources', '*', 'read', unixepoch(), unixepoch());
+    (hex(randomblob(16)), '*:*', 'All permissions', '*', '*', (unixepoch() * 1000), (unixepoch() * 1000)),
+    (hex(randomblob(16)), '*:read', 'Read all resources', '*', 'read', (unixepoch() * 1000), (unixepoch() * 1000));
 
 -- ============================================================
 -- Migration complete

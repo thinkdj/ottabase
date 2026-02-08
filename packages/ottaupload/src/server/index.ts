@@ -4,13 +4,13 @@
 
 import type { R2Client } from '@ottabase/cf';
 import type {
-    UploadServerOptions,
-    FileMetadata,
-    UploadResponse,
     CloudflareImagesConfig,
     CloudflareImagesResponse,
+    FileMetadata,
+    UploadResponse,
+    UploadServerOptions,
 } from '../types';
-import { validateFileSize, validateFileType, generateFileKey, formatFileSize } from '../validation';
+import { formatFileSize, generateFileKey, validateFileSize, validateFileType } from '../validation';
 
 /**
  * Upload a file to R2 storage
@@ -48,7 +48,7 @@ export async function uploadFileToR2(
             customMetadata: {
                 originalName: file.name,
                 size: file.size.toString(),
-                uploadedAt: new Date().toISOString(),
+                uploadedAt: String(Date.now()),
             },
         });
 
@@ -189,7 +189,7 @@ export function createFileMetadata(key: string, file: File, url: string, userId?
         size: file.size,
         contentType: file.type,
         url,
-        uploadedAt: new Date(),
+        uploadedAt: Date.now(),
         userId,
     };
 }

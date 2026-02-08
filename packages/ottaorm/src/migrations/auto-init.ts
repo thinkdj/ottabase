@@ -90,7 +90,7 @@ export async function autoInit(config: AutoInitConfig): Promise<{
         tablesSkipped: string[];
         errors: string[];
     };
-    timestamp: string;
+    timestamp: number;
 }> {
     const { driver, schema, customMigrations = [], verbose = true } = config;
 
@@ -124,7 +124,7 @@ export async function autoInit(config: AutoInitConfig): Promise<{
                 tablesSkipped: [],
                 errors: [message],
             },
-            timestamp: new Date().toISOString(),
+            timestamp: Date.now(),
         };
     }
 
@@ -160,7 +160,7 @@ export async function autoInit(config: AutoInitConfig): Promise<{
             ...result.details,
             tablesDetected: schemaKeys,
         },
-        timestamp: new Date().toISOString(),
+        timestamp: Date.now(),
     };
 }
 

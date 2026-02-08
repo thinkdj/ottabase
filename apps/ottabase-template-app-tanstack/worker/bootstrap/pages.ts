@@ -208,7 +208,7 @@ export function renderWizardPage(state: PlatformStateResult): string {
     </div>
     <div class="card" ${!state.bindings.d1 ? 'style="opacity:0.5;pointer-events:none"' : ''}>
       <h2>Initialize Database</h2>
-      <p>Creates all schema tables, runs core migrations (users, sessions, RBAC, organizations, audit logs, blog, shortlinks), and sets up tracking.</p>
+      <p>Creates all schema tables and runs core auth and content migrations (users, accounts, sessions, verification tokens, authenticators, posts, tags), and sets up tracking.</p>
       <div class="log-area" id="log-init"></div>
       <button class="btn btn-primary" id="btn-init" ${!state.bindings.d1 ? 'disabled' : ''}>Create Tables & Run Migrations</button>
 
@@ -292,7 +292,7 @@ export function renderWizardPage(state: PlatformStateResult): string {
       </div>
       <pre class="code-block">wrangler secret put AUTH_SECRET
 wrangler secret put MIGRATION_SECRET</pre>
-      
+
       <div class="nav-buttons">
         <button class="btn btn-outline btn-sm" id="btn-prev-3">Previous</button>
         <button class="btn btn-primary btn-sm" id="btn-next-3">Next &rarr;</button>
@@ -308,10 +308,10 @@ wrangler secret put MIGRATION_SECRET</pre>
       <div id="finalize-checks" style="margin:0.75rem 0"></div>
       <div class="log-area" id="log-finalize"></div>
       <button class="btn btn-primary" id="btn-finalize">Launch Platform</button>
-      
+
       <div class="nav-buttons">
         <button class="btn btn-outline btn-sm" id="btn-prev-4">Previous</button>
-        <div style="width:1px"></div> 
+        <div style="width:1px"></div>
       </div>
     </div>
     <div id="success-card" style="display:none">
@@ -412,24 +412,24 @@ wrangler secret put MIGRATION_SECRET</pre>
       var btn = document.getElementById(id);
       if (btn) btn.onclick = function() { goToStep(step); };
     }
-    
+
     bindNav('btn-next-0', 1);
-    
+
     bindNav('btn-prev-1', 0);
     bindNav('btn-next-1', 2);
-    
+
     bindNav('btn-prev-2', 1);
     bindNav('btn-next-2', 3);
-    
+
     bindNav('btn-prev-3', 2);
     bindNav('btn-next-3', 4);
-    
+
     bindNav('btn-prev-4', 3);
 
     // --- Step 0: Init ---
     var btnInit = document.getElementById('btn-init');
     var btnNext0 = document.getElementById('btn-next-0');
-    
+
     btnInit.addEventListener('click', function() {
       setBtn(btnInit, true, 'Initializing...');
       log('log-init', 'Starting database initialization...', 'info');
@@ -456,7 +456,7 @@ wrangler secret put MIGRATION_SECRET</pre>
           log('log-init', 'Database initialization complete.', 'success');
           setBtn(btnInit, false, 'Done');
           btnInit.disabled = true;
-          
+
           // Enable Next & Start Timer
           btnNext0.disabled = false;
           startAutoAdvance(1);
@@ -471,7 +471,7 @@ wrangler secret put MIGRATION_SECRET</pre>
     // --- Step 1: Seed ---
     var btnSeed = document.getElementById('btn-seed');
     var btnNext1 = document.getElementById('btn-next-1');
-    
+
     btnSeed.addEventListener('click', function() {
       setBtn(btnSeed, true, 'Seeding...');
       log('log-seed', 'Seeding RBAC roles and default organization...', 'info');
@@ -489,7 +489,7 @@ wrangler secret put MIGRATION_SECRET</pre>
           log('log-seed', 'RBAC setup complete.', 'success');
           setBtn(btnSeed, false, 'Done');
           btnSeed.disabled = true;
-          
+
           btnNext1.disabled = false;
           startAutoAdvance(2);
         })
@@ -554,7 +554,7 @@ wrangler secret put MIGRATION_SECRET</pre>
           emailInput.disabled = true;
           passInput.disabled = true;
           nameInput.disabled = true;
-          
+
           btnNext2.disabled = false;
           startAutoAdvance(3);
         })
@@ -653,10 +653,10 @@ wrangler secret put MIGRATION_SECRET</pre>
            goToStep(4);
            // visual polish: mark previous steps as done
            tabs.forEach(function(t, i) { if (i < 4) t.classList.add('done'); });
-           
+
            // Only run checks if we have the data, otherwise show simple message
            if (data.database) {
-               runChecks(); 
+               runChecks();
            } else {
                // Minimal ready state (prod)
                checksEl.innerHTML = '<div class="alert alert-success">Platform is initialized and running.</div>';

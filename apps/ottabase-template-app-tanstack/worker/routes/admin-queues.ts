@@ -102,7 +102,7 @@ export async function handleAdminQueuesPending(context: AdminQueuesContext): Pro
         }
     }
 
-    jobs.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+    jobs.sort((a, b) => Number(b.sentAt) - Number(a.sentAt));
     return jsonResponse({ jobs });
 }
 
@@ -126,7 +126,7 @@ export async function handleAdminQueuesResetStats(context: AdminQueuesContext): 
             totalFailed: 0,
             totalDLQ: 0,
             byJobType: {},
-            lastUpdated: new Date().toISOString(),
+            lastUpdated: Date.now(),
         }),
     );
 

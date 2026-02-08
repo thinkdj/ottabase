@@ -6,10 +6,10 @@
  */
 
 import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { extractRequestContext, logCreate } from '@ottabase/audit/utils';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection, User } from '@ottabase/ottaorm';
 import { withRBAC } from '@ottabase/rbac/middleware';
-import { logCreate, extractRequestContext } from '@ottabase/audit/utils';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -52,8 +52,8 @@ export const POST = withRBAC(
                 id: crypto.randomUUID(),
                 name: name || null,
                 email,
-                createdAt: new Date(),
-                updatedAt: new Date(),
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
             });
 
             // Audit log the creation

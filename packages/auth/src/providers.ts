@@ -412,7 +412,8 @@ export function createResendProvider(
         from,
         async sendVerificationRequest({ identifier, url, expires }) {
             const appName = options?.appName || 'Ottabase';
-            const expiresAt = expires ? expires.toISOString() : '';
+            const expiresAtMs = expires ? expires.getTime() : null;
+            const expiresAt = expiresAtMs ? String(expiresAtMs) : '';
             const subject = options?.subject || `Sign in to ${appName}`;
 
             const content: TemplateContent = options?.content || {

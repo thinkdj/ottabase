@@ -1,7 +1,10 @@
+import { ApiErrorDisplay } from '@/components/ErrorBoundary';
+import { TableSkeleton } from '@/components/LoadingSkeletons';
+import { useInviteMember, useOrganizationMembers, useRemoveMember, useUpdateMemberRole } from '@/hooks/useRBAC';
+import { useRBACToast } from '@/hooks/useToast';
 import { isApiError } from '@/lib/api';
-import type { OrganizationMemberRecord, BadgeVariant, MemberRole } from '@/types/rbac';
+import type { BadgeVariant, MemberRole, OrganizationMemberRecord } from '@/types/rbac';
 import {
-    Badge,
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -10,6 +13,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    Badge,
     Button,
     Card,
     CardContent,
@@ -32,14 +36,10 @@ import {
     TableHeader,
     TableRow,
 } from '@ottabase/ui-shadcn';
+import { Link, useParams } from '@tanstack/react-router';
 import { Edit, Trash2, UserPlus } from 'lucide-react';
 import { useState } from 'react';
-import { useParams, Link } from '@tanstack/react-router';
 import { InviteMemberForm, type InviteMemberFormData } from './components/InviteMemberForm';
-import { ApiErrorDisplay } from '@/components/ErrorBoundary';
-import { TableSkeleton } from '@/components/LoadingSkeletons';
-import { useRBACToast } from '@/hooks/useToast';
-import { useOrganizationMembers, useInviteMember, useUpdateMemberRole, useRemoveMember } from '@/hooks/useRBAC';
 
 export function OrganizationMembersPage() {
     const toast = useRBACToast();
@@ -110,7 +110,7 @@ export function OrganizationMembersPage() {
                 await inviteMutation.mutateAsync({
                     ...data,
                     organizationId,
-                    invitedAt: new Date().toISOString(),
+                    invitedAt: Date.now(),
                 });
                 toast.rbac.memberInvited();
             }

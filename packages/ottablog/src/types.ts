@@ -229,7 +229,7 @@ export function extractExcerpt(content: EditorJSData, maxLength = 160): string {
  * @param options - Intl.DateTimeFormatOptions for custom formatting
  * @returns Formatted date string
  */
-export function formatDate(date: Date | string | null, options?: Intl.DateTimeFormatOptions): string {
+export function formatDate(date: Date | string | number | null, options?: Intl.DateTimeFormatOptions): string {
     if (!date) return '—';
 
     const defaultOptions: Intl.DateTimeFormatOptions = {
@@ -238,7 +238,7 @@ export function formatDate(date: Date | string | null, options?: Intl.DateTimeFo
         day: 'numeric',
     };
 
-    const d = typeof date === 'string' ? new Date(date) : date;
+    const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
     return d.toLocaleDateString('en-US', options || defaultOptions);
 }
 
@@ -247,7 +247,7 @@ export function formatDate(date: Date | string | null, options?: Intl.DateTimeFo
  * @param date - Date object or ISO string
  * @returns Short formatted date string
  */
-export function formatShortDate(date: Date | string | null): string {
+export function formatShortDate(date: Date | string | number | null): string {
     return formatDate(date, {
         year: 'numeric',
         month: 'short',

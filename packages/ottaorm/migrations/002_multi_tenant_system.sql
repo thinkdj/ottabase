@@ -156,8 +156,8 @@ VALUES (
     'default',
     'free',
     'active',
-    unixepoch(),
-    unixepoch()
+    (unixepoch() * 1000),
+    (unixepoch() * 1000)
 );
 
 -- ============================================================

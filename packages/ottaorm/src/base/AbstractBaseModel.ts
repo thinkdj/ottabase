@@ -319,7 +319,7 @@ export abstract class AbstractBaseModel {
      * ```typescript
      * static defaults = {
      *   status: 'active',
-     *   createdAt: () => new Date()
+     *   createdAt: () => Date.now()
      * }
      * ```
      */
@@ -467,6 +467,8 @@ export abstract class AbstractBaseModel {
         const staticHidden = Array.isArray(ctor.hidden) ? ctor.hidden : [];
         const hiddenSet = new Set([...this.hidden, ...staticHidden]);
 
+        const normalizeValue = (value: any): any => (value instanceof Date ? value.getTime() : value);
+
         // Guard against drivers returning snake_case keys (e.g., password_hash)
         for (const hiddenKey of hiddenSet) {
             const snake = toSnakeCase(hiddenKey);
@@ -478,7 +480,7 @@ export abstract class AbstractBaseModel {
         // Copy non-hidden attributes
         for (const key in this.attributes) {
             if (!hiddenSet.has(key)) {
-                visibleAttributes[key] = this.attributes[key];
+                visibleAttributes[key] = normalizeValue(this.attributes[key]);
             }
         }
 
@@ -486,7 +488,7 @@ export abstract class AbstractBaseModel {
         for (const appendKey of this.appends) {
             const accessorMethod = `get${appendKey.charAt(0).toUpperCase()}${appendKey.slice(1)}`;
             if (typeof (this as any)[accessorMethod] === 'function') {
-                visibleAttributes[appendKey] = (this as any)[accessorMethod]();
+                visibleAttributes[appendKey] = normalizeValue((this as any)[accessorMethod]());
             }
         }
 

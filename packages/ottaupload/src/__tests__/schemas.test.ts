@@ -62,7 +62,7 @@ describe('Zod Schemas', () => {
                 size: 1024,
                 contentType: 'text/plain',
                 url: 'https://example.com/files/test.txt',
-                uploadedAt: new Date(),
+                uploadedAt: Date.now(),
                 userId: 'user-789',
             };
 
@@ -74,7 +74,7 @@ describe('Zod Schemas', () => {
             expect(result.size).toBe(1024);
             expect(result.contentType).toBe('text/plain');
             expect(result.url).toBe('https://example.com/files/test.txt');
-            expect(result.uploadedAt).toBeInstanceOf(Date);
+            expect(Number.isFinite(result.uploadedAt)).toBe(true);
             expect(result.userId).toBe('user-789');
         });
 
@@ -86,7 +86,7 @@ describe('Zod Schemas', () => {
                 size: 1024,
                 contentType: 'text/plain',
                 url: 'https://example.com/files/test.txt',
-                uploadedAt: new Date(),
+                uploadedAt: Date.now(),
             };
 
             const result = fileMetadataSchema.parse(metadata);
@@ -102,7 +102,7 @@ describe('Zod Schemas', () => {
                 size: 0,
                 contentType: 'text/plain',
                 url: 'https://example.com/test.txt',
-                uploadedAt: new Date(),
+                uploadedAt: Date.now(),
             };
 
             expect(() => fileMetadataSchema.parse(metadata)).toThrow();
@@ -116,7 +116,7 @@ describe('Zod Schemas', () => {
                 size: 1024,
                 contentType: 'text/plain',
                 url: 'not-a-url',
-                uploadedAt: new Date(),
+                uploadedAt: Date.now(),
             };
 
             expect(() => fileMetadataSchema.parse(metadata)).toThrow();

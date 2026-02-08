@@ -133,7 +133,7 @@ export interface FileMetadata {
     size: number;
     contentType: string;
     url: string;
-    uploadedAt: Date;
+    uploadedAt: number;
     userId?: string;
 }
 

@@ -33,13 +33,13 @@ export async function createVerificationToken(
     env: CloudflareEnv,
     identifier: string,
     ttlSeconds: number,
-): Promise<{ token: string; expiresAt: string }> {
+): Promise<{ token: string; expiresAt: number }> {
     if (!env.OBCF_D1) {
         throw new Error('D1 database binding not configured');
     }
 
     const token = createSecureToken(32);
-    const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
+    const expiresAt = Date.now() + ttlSeconds * 1000;
 
     try {
         await env.OBCF_D1.prepare(`DELETE FROM verification_tokens WHERE identifier = ?`).bind(identifier).run();
@@ -166,14 +166,14 @@ export async function getSecurityContext(request: Request, session: any | null):
 
 export async function getUserLinkedAccounts(
     userId: string,
-): Promise<Array<{ provider: string; type: string; createdAt: string | null }>> {
+): Promise<Array<{ provider: string; type: string; createdAt: number | null }>> {
     const accounts = await Account.forUser(userId);
     return accounts.map((account) => {
         const json = account.toJson();
         return {
             provider: json.provider ?? 'unknown',
             type: json.type ?? 'oauth',
-            createdAt: json.createdAt ? new Date(json.createdAt).toISOString() : null,
+            createdAt: json.createdAt ? new Date(json.createdAt).getTime() : null,
         };
     });
 }

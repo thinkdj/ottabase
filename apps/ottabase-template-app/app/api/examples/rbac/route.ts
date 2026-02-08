@@ -88,8 +88,8 @@ export const POST = withRBAC(
                 id: crypto.randomUUID(),
                 name: name || null,
                 email,
-                createdAt: new Date(),
-                updatedAt: new Date(),
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
             });
 
             return NextResponse.json({

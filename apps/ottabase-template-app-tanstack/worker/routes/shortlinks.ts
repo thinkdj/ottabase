@@ -4,8 +4,8 @@ import { Shortlink, buildRedirectResponse } from '@ottabase/shortlinks';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
-import { readJson } from '../lib/utils';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { readJson } from '../lib/utils';
 
 export interface ShortlinkContext {
     request: Request;
@@ -76,12 +76,13 @@ export async function handleShortlinksCreate(context: ShortlinkContext): Promise
     }
 
     try {
+        const expiryDate = body.expiryDate ? new Date(body.expiryDate).getTime() : null;
         const shortlink = await Shortlink.create({
             fullUrl: body.fullUrl,
             shortCode: body.shortCode,
             type: body.type || 'redirect',
             appId: body.appId || 'default',
-            expiryDate: body.expiryDate ? new Date(body.expiryDate) : null,
+            expiryDate: Number.isNaN(expiryDate) ? null : expiryDate,
         });
 
         return jsonResponse({
@@ -135,7 +136,8 @@ export async function handleShortlinkById(
         if (body.fullUrl) shortlink.set('fullUrl', body.fullUrl);
         if (body.type) shortlink.set('type', body.type);
         if (body.expiryDate !== undefined) {
-            shortlink.set('expiryDate', body.expiryDate ? new Date(body.expiryDate) : null);
+            const expiryDate = body.expiryDate ? new Date(body.expiryDate).getTime() : null;
+            shortlink.set('expiryDate', Number.isNaN(expiryDate) ? null : expiryDate);
         }
 
         try {

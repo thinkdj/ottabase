@@ -24,8 +24,8 @@ describe('Shortlink Model', () => {
                     expiryDate: null,
                     clicks: 0,
                     lastClickedAt: null,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
                 },
             } as any),
         );
@@ -54,8 +54,8 @@ describe('Shortlink Model', () => {
                     expiryDate: null,
                     clicks: 0,
                     lastClickedAt: null,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
                 },
             } as any),
         );
@@ -69,7 +69,7 @@ describe('Shortlink Model', () => {
         const link = new Shortlink({
             entity: Shortlink.entity,
             data: {
-                expiryDate: new Date(Date.now() - 1000),
+                expiryDate: Date.now() - 1000,
             },
         } as any);
         expect(link.isExpired()).toBe(true);
@@ -77,7 +77,7 @@ describe('Shortlink Model', () => {
         const futureLink = new Shortlink({
             entity: Shortlink.entity,
             data: {
-                expiryDate: new Date(Date.now() + 10000),
+                expiryDate: Date.now() + 10000,
             },
         } as any);
         expect(futureLink.isExpired()).toBe(false);

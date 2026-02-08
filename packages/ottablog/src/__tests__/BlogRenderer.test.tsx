@@ -1,5 +1,5 @@
+import { render, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
 import { BlogRenderer } from '../components/BlogRenderer';
 import type { BlogPost } from '../types';
 
@@ -17,8 +17,8 @@ const createMockPost = (overrides?: Partial<BlogPost>): BlogPost => ({
     status: 'published',
     authorId: 'author-1',
     authorName: 'Test Author',
-    createdAt: new Date('2024-01-15'),
-    updatedAt: new Date('2024-01-15'),
+    createdAt: Date.parse('2024-01-15T00:00:00Z'),
+    updatedAt: Date.parse('2024-01-15T00:00:00Z'),
     ...overrides,
 });
 

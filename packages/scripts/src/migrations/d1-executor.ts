@@ -354,7 +354,7 @@ function queryD1(database: string, sql: string, cwd: string, remote: boolean): P
                 // wrangler d1 execute --json returns an array of result sets
                 // e.g. [{ results: [...], success: true, ... }]
                 const parsed = JSON.parse(output);
-                const results = Array.isArray(parsed) && parsed.length > 0 ? parsed[0].results ?? [] : [];
+                const results = Array.isArray(parsed) && parsed.length > 0 ? (parsed[0].results ?? []) : [];
                 resolve(results);
             } catch {
                 // If JSON parsing fails, return empty (table may not exist)
@@ -367,10 +367,7 @@ function queryD1(database: string, sql: string, cwd: string, remote: boolean): P
 /**
  * Get list of migration files from prisma/migrations directory
  */
-export function getMigrationFiles(
-    cwd: string,
-    appliedMigrations?: Map<string, Date | undefined>,
-): MigrationStatus[] {
+export function getMigrationFiles(cwd: string, appliedMigrations?: Map<string, Date | undefined>): MigrationStatus[] {
     const migrationsDir = path.join(cwd, 'prisma/migrations');
 
     if (!existsSync(migrationsDir)) {

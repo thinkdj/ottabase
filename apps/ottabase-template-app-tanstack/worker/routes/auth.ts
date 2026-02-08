@@ -1,20 +1,19 @@
-import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { getSession, handleAuthRequest, hashPassword, verifyPassword } from '@ottabase/auth/backend';
+import { getSession, handleAuthRequest, hashPassword } from '@ottabase/auth/backend';
 import { getLoginConfig } from '@ottabase/auth/components';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { sendTemplatedEmail } from '@ottabase/email';
 import { registerConnection } from '@ottabase/ottaorm';
 import { Organization, OrganizationMember, Role, User, VerificationToken } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { isEmail } from '@ottabase/utils/string';
 import { isValidUrl, makeSlug } from '@ottabase/utils/url';
-import { sendTemplatedEmail } from '@ottabase/email';
-import type { TemplateContent, TemplateVariables } from '@ottabase/email';
-import { readJson, normalizeEmail, isStrongPassword, getClientIpAddress } from '../lib/utils';
-import { enforceRateLimit } from '../lib/rate-limiting';
-import { getAuthOptions, resolveMailer, createVerificationToken, getUserLinkedAccounts } from '../lib/auth-utils';
-import { registerAppEmailTemplates } from '../../src/email/templates';
-import { processReferralAttribution } from '../../ottabase/helpers/referral-attribution';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { processReferralAttribution } from '../../ottabase/helpers/referral-attribution';
+import { registerAppEmailTemplates } from '../../src/email/templates';
+import { createVerificationToken, getAuthOptions, getUserLinkedAccounts, resolveMailer } from '../lib/auth-utils';
+import { enforceRateLimit } from '../lib/rate-limiting';
+import { getClientIpAddress, isStrongPassword, normalizeEmail, readJson } from '../lib/utils';
 
 export interface AuthRouteContext {
     request: Request;
@@ -142,8 +141,8 @@ export async function handleVerifyEmail(context: AuthRouteContext): Promise<Resp
         );
     }
 
-    const expiresAt = new Date(String(verification.get('expires')));
-    if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
+    const expiresAt = Number(verification.get('expires'));
+    if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) {
         await VerificationToken.deleteByIdentifierAndToken(identifier, token);
         return withAuthCors(
             errorResponse('Verification token is invalid or expired', 400, {
@@ -154,7 +153,7 @@ export async function handleVerifyEmail(context: AuthRouteContext): Promise<Resp
 
     const user = await User.first({ email });
     if (user) {
-        user.set('emailVerified', new Date());
+        user.set('emailVerified', Date.now());
         await user.save();
     }
 
@@ -293,8 +292,8 @@ export async function handlePasswordResetConfirm(context: AuthRouteContext): Pro
         );
     }
 
-    const expiresAt = new Date(String(verification.get('expires')));
-    if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
+    const expiresAt = Number(verification.get('expires'));
+    if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) {
         await VerificationToken.deleteByIdentifierAndToken(identifier, token);
         return withAuthCors(
             errorResponse('Reset token is invalid or expired', 400, {

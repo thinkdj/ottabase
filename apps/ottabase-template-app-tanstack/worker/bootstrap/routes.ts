@@ -92,7 +92,7 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
     const isApiRequest = path.startsWith('/__bootstrap__/api/');
 
     // 1. Check for LOCKED state
-    if (platformState.source === 'env') {
+    if (platformState.source === 'env' && platformState.state !== 'READY') {
         if (context.request.method === 'GET' && !isApiRequest) {
             return new Response(renderLockedPage(platformState), {
                 status: 503,
@@ -166,7 +166,7 @@ export function interceptIfNotReady(request: Request, url: URL, platformState: P
     }
 
     // ENV locked
-    if (platformState.source === 'env') {
+    if (platformState.source === 'env' && platformState.state !== 'READY') {
         return new Response(renderLockedPage(platformState), {
             status: 503,
             headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '60' },
@@ -267,7 +267,7 @@ async function handleStatus(context: BootstrapContext): Promise<Response> {
     if (isReady && !isDev) {
         return jsonResp({
             state: platformState.state,
-            timestamp: new Date().toISOString(),
+            timestamp: Date.now(),
         });
     }
 
@@ -279,7 +279,7 @@ async function handleStatus(context: BootstrapContext): Promise<Response> {
         bindings,
         envConfig,
         database: { tableCount, tables, userCount, roleCount },
-        timestamp: new Date().toISOString(),
+        timestamp: Date.now(),
     });
 }
 
@@ -329,7 +329,7 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
             message: initResult.message,
             autoInit: initResult.details,
             sqlMigrations: sqlResult,
-            timestamp: new Date().toISOString(),
+            timestamp: Date.now(),
         });
     } catch (error: any) {
         return jsonResp({ success: false, error: error.message, code: 'INIT_FAILED' }, 500);
@@ -386,7 +386,7 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
             success: true,
             roles: { created: roleNames, existing: existingRoles },
             defaultOrganization: defaultOrgCreated ? 'created' : 'already exists',
-            timestamp: new Date().toISOString(),
+            timestamp: Date.now(),
         });
     } catch (error: any) {
         return jsonResp({ success: false, error: error.message, code: 'SEED_FAILED' }, 500);
@@ -507,7 +507,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 role: 'owner',
             },
             organizationId,
-            timestamp: new Date().toISOString(),
+            timestamp: Date.now(),
         });
     } catch (error: any) {
         if (error.message?.toLowerCase().includes('unique')) {
@@ -583,11 +583,11 @@ async function handleFinalize(context: BootstrapContext): Promise<Response> {
             state: 'READY',
             message: 'Platform is now ready.',
             summary: {
-                tables: tableCheck.found.length,
+                tables: tableCheck.totalTables,
                 users: userCount,
                 roles: roleCount,
             },
-            timestamp: new Date().toISOString(),
+            timestamp: Date.now(),
         });
     } catch (error: any) {
         return jsonResp({ success: false, error: error.message, code: 'FINALIZE_FAILED' }, 500);
@@ -627,10 +627,30 @@ async function runCoreSQLMigrations(
     return { executed, skipped, errors };
 }
 
-async function verifyCoreTables(env: CloudflareEnv): Promise<{ ok: boolean; missing: string[]; found: string[] }> {
-    const requiredTables = ['users', 'sessions', 'accounts', 'roles', '_ottabase_meta', '_ottabase_migrations'];
+async function verifyCoreTables(
+    env: CloudflareEnv,
+): Promise<{ ok: boolean; missing: string[]; found: string[]; totalTables: number }> {
+    const requiredTables = [
+        '_ottabase_meta',
+        '_ottabase_migrations',
+        'users',
+        'accounts',
+        'sessions',
+        'verification_tokens',
+        'authenticators',
+        'posts',
+        'tags',
+        'post_tags',
+        'roles',
+        'permissions',
+        'user_roles',
+        'audit_logs',
+        'organizations',
+        'organization_members',
+    ];
     const found: string[] = [];
     const missing: string[] = [];
+    let totalTables = 0;
 
     try {
         const result = await env
@@ -638,6 +658,7 @@ async function verifyCoreTables(env: CloudflareEnv): Promise<{ ok: boolean; miss
             .all();
 
         const existingTables = new Set((result.results || []).map((row: any) => row.name as string));
+        totalTables = existingTables.size;
 
         for (const table of requiredTables) {
             if (existingTables.has(table)) {
@@ -647,8 +668,8 @@ async function verifyCoreTables(env: CloudflareEnv): Promise<{ ok: boolean; miss
             }
         }
     } catch {
-        return { ok: false, missing: requiredTables, found: [] };
+        return { ok: false, missing: requiredTables, found: [], totalTables: 0 };
     }
 
-    return { ok: missing.length === 0, missing, found };
+    return { ok: missing.length === 0, missing, found, totalTables };
 }

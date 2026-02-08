@@ -71,8 +71,8 @@ export async function handleD1Todos(context: D1RouteContext): Promise<Response> 
             id: crypto.randomUUID(),
             title: title.trim(),
             completed: false,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
         });
 
         return jsonResponse({

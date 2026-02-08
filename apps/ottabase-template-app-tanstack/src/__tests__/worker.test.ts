@@ -65,11 +65,15 @@ describe('Cloudflare Worker API', () => {
         let accountForUserSpy: ReturnType<typeof vi.spyOn>;
 
         beforeEach(() => {
-            accountForUserSpy = vi
-                .spyOn(Account, 'forUser')
-                .mockResolvedValue([
-                    { toJson: () => ({ provider: 'google', type: 'oauth', createdAt: '2026-01-01T00:00:00Z' }) } as any,
-                ]);
+            accountForUserSpy = vi.spyOn(Account, 'forUser').mockResolvedValue([
+                {
+                    toJson: () => ({
+                        provider: 'google',
+                        type: 'oauth',
+                        createdAt: Date.parse('2026-01-01T00:00:00Z'),
+                    }),
+                } as any,
+            ]);
         });
 
         afterEach(() => {
@@ -170,8 +174,8 @@ describe('Cloudflare Worker API', () => {
                     expiryDate: null,
                     clicks: 0,
                     lastClickedAt: null,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
                 },
             } as any);
             const createSpy = vi.spyOn(Shortlink, 'create').mockResolvedValue(shortlinkResult);
@@ -196,8 +200,8 @@ describe('Cloudflare Worker API', () => {
                 clicks: 0,
                 expiryDate: null,
                 lastClickedAt: null,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
             };
 
             const shortlinkResult = new Shortlink({

@@ -101,7 +101,7 @@ export const processOrderHandler: JobHandler<ProcessOrderPayload, CloudflareEnv>
         status: 'processed',
         userId,
         itemCount: items?.length || 0,
-        processedAt: new Date().toISOString(),
+        processedAt: Date.now(),
     };
 
     if (ctx.env.OBCF_KV) {
@@ -129,7 +129,7 @@ export const generateReportHandler: JobHandler<GenerateReportPayload, Cloudflare
     console.log(`[Queue:generate-report] Generating ${reportType} report`);
 
     const report = JSON.stringify(
-        { reportType, generatedBy: userId || 'system', generatedAt: new Date().toISOString(), params },
+        { reportType, generatedBy: userId || 'system', generatedAt: Date.now(), params },
         null,
         2,
     );
@@ -165,7 +165,7 @@ export const syncDataHandler: JobHandler<SyncDataPayload, CloudflareEnv> = async
         status: 'completed',
         entityType,
         count: entityIds?.length || 0,
-        syncedAt: new Date().toISOString(),
+        syncedAt: Date.now(),
     };
 
     if (ctx.env.OBCF_KV) {

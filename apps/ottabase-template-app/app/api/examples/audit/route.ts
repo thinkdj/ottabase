@@ -5,10 +5,10 @@
  */
 
 import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { withAudit } from '@ottabase/audit/middleware';
+import { extractRequestContext, logCreate, logDelete, logUpdate } from '@ottabase/audit/utils';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection, User } from '@ottabase/ottaorm';
-import { withAudit } from '@ottabase/audit/middleware';
-import { logCreate, logUpdate, logDelete, extractRequestContext } from '@ottabase/audit/utils';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -80,8 +80,8 @@ export const POST = withAudit(
                 id: crypto.randomUUID(),
                 name: name || null,
                 email,
-                createdAt: new Date(),
-                updatedAt: new Date(),
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
             });
 
             // Manual audit logging with more details

@@ -6,8 +6,8 @@
 
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { registerConnection } from '@ottabase/ottaorm';
 import { Post } from '@ottabase/ottablog';
+import { registerConnection } from '@ottabase/ottaorm';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -75,8 +75,8 @@ export async function POST(request: NextRequest) {
             content: content || null,
             published: false,
             authorId,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
         });
 
         return NextResponse.json({

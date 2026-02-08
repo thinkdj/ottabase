@@ -39,7 +39,7 @@ export interface AuthSession {
         image?: string | null;
         [key: string]: any;
     };
-    expires: string;
+    expires: number;
 }
 
 /**

@@ -4,10 +4,9 @@
 // Demonstrates: Tenant > App > User (RBAC) hierarchy
 // ============================================================
 
-import { User, Organization, OrganizationMember, Role, Permission, UserRole, AuditLog } from '../src/models';
-import { buildAppContext, hasPermission, createAuditData } from '@ottabase/rbac';
-import { initRBACCache } from '@ottabase/rbac';
-import { logCreate, logUpdate } from '@ottabase/audit';
+import { logCreate } from '@ottabase/audit';
+import { buildAppContext, createAuditData, hasPermission, initRBACCache } from '@ottabase/rbac';
+import { AuditLog, Organization, OrganizationMember, Permission, Role, User } from '../src/models';
 
 /**
  * Complete SaaS flow demonstration
@@ -301,7 +300,7 @@ async function main() {
             status: 'failure',
             errorMessage: 'Insufficient permissions',
             ipAddress: '192.168.1.2',
-            createdAt: new Date(),
+            createdAt: Date.now(),
         });
     }
 

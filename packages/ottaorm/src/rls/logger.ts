@@ -6,8 +6,8 @@
  * to persist violations to the audit_logs D1 table.
  */
 
-import type { RLSViolation } from './types';
 import { AuditLog } from '../models/AuditLog';
+import type { RLSViolation } from './types';
 
 // Type declaration for process (may not exist in all environments)
 declare const process: { env?: { NODE_ENV?: string } } | undefined;
@@ -26,7 +26,7 @@ export function logSecurityViolation(violation: RLSViolation): void {
         violation: {
             type: violation.type,
             model: violation.model,
-            timestamp: new Date(violation.timestamp).toISOString(),
+            timestamp: violation.timestamp,
             context: {
                 userId: violation.context.userId || 'anonymous',
                 organizationId: violation.context.organizationId || null,
@@ -102,9 +102,7 @@ export async function getRecentViolations(limit = 100): Promise<RLSViolation[]> 
                 permissions: metadata.permissions || undefined,
             },
             attemptedAccess: metadata.attemptedAccess,
-            timestamp: log.get('createdAt') instanceof Date
-                ? log.get('createdAt').getTime()
-                : Date.now(),
+            timestamp: log.get('createdAt') instanceof Date ? log.get('createdAt').getTime() : Date.now(),
         };
     });
 }

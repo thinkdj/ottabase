@@ -638,7 +638,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                 isProtected,
                 passwordHint: passwordHint || undefined,
                 ...(isProtected && password.trim() ? { password: password.trim() } : {}),
-                publishedAt: publishNow && !publishedAt ? new Date().toISOString() : publishedAt || undefined,
+                publishedAt: publishNow && !publishedAt ? Date.now() : publishedAt || undefined,
                 seriesId: seriesId || undefined,
                 seriesOrder: seriesOrder || undefined,
                 maxVersionsToKeep: maxVersionsToKeep || undefined,

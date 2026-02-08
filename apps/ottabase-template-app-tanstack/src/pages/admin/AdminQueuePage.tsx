@@ -38,7 +38,7 @@ interface QueueStats {
     totalFailed: number;
     totalDLQ: number;
     byJobType: Record<string, { dispatched: number; processed: number; failed: number }>;
-    lastUpdated: string;
+    lastUpdated: number;
 }
 
 interface QueueOverview {
@@ -52,7 +52,7 @@ interface ProcessedJob {
     id: string;
     type: string;
     status: 'completed' | 'failed';
-    processedAt: string;
+    processedAt: number;
     duration?: number;
     error?: string;
     attempts: number;
@@ -63,7 +63,7 @@ interface PendingJob {
     action?: string;
     userId?: string;
     data?: unknown;
-    sentAt: string;
+    sentAt: number;
     type: 'single' | 'batch';
 }
 
@@ -72,7 +72,7 @@ interface DLQJob {
     type: string;
     payload: unknown;
     error: string;
-    failedAt: string;
+    failedAt: number;
     attempts: number;
 }
 

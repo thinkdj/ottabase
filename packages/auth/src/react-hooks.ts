@@ -28,7 +28,7 @@ export interface User {
     email: string;
     name?: string | null;
     image?: string | null;
-    emailVerified?: Date | string | null;
+    emailVerified?: number | null;
     role?: string;
     organizationId?: string | null;
     roles?: string[];
@@ -64,8 +64,8 @@ const isAuthenticatedAtom = atom((get: Getter) => {
     if (!session) return false;
 
     // Check if session is expired
-    const expiresAt = new Date(session.expires);
-    return expiresAt > new Date();
+    const expiresAt = Number(session.expires);
+    return Number.isFinite(expiresAt) && expiresAt > Date.now();
 });
 
 /**

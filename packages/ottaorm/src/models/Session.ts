@@ -64,7 +64,7 @@ export class Session extends BaseModel {
         expires: {
             type: 'datetime',
             editable: true,
-            uiConfig: { label: 'Expires', description: 'Unix timestamp (ms)' },
+            uiConfig: { label: 'Expires', description: 'Date/time' },
             validation: {
                 rules: 'required',
             },

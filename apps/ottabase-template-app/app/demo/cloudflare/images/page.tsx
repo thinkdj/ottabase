@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
   const result = await images.upload(file, {
     metadata: {
       originalName: file.name,
-      uploadedAt: new Date().toISOString()
+      uploadedAt: Date.now()
     }
   });
 

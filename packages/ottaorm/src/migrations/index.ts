@@ -214,7 +214,7 @@ export const coreMigrations: Migration[] = [
           id TEXT PRIMARY KEY,
           name TEXT,
           email TEXT NOT NULL UNIQUE,
-          email_verified TEXT,
+                    email_verified INTEGER,
           image TEXT,
           password_hash TEXT,
           created_at INTEGER NOT NULL,
@@ -318,7 +318,7 @@ export const coreMigrations: Migration[] = [
           id TEXT PRIMARY KEY,
           session_token TEXT NOT NULL UNIQUE,
           user_id TEXT NOT NULL,
-          expires TEXT NOT NULL,
+                    expires INTEGER NOT NULL,
           created_at INTEGER NOT NULL,
           updated_at INTEGER NOT NULL
         )
@@ -339,7 +339,7 @@ export const coreMigrations: Migration[] = [
         CREATE TABLE IF NOT EXISTS verification_tokens (
           identifier TEXT NOT NULL,
           token TEXT NOT NULL,
-          expires TEXT NOT NULL,
+                    expires INTEGER NOT NULL,
           PRIMARY KEY (identifier, token)
         )
       `);
@@ -375,6 +375,313 @@ export const coreMigrations: Migration[] = [
             await db.execute(`DROP INDEX IF EXISTS idx_authenticators_credential_id`);
             await db.execute(`DROP INDEX IF EXISTS idx_authenticators_user_id`);
             await db.execute(`DROP TABLE IF EXISTS authenticators`);
+        },
+    },
+    {
+        name: '009_add_rbac_and_audit',
+        up: async (db) => {
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS roles (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
+                    description TEXT,
+                    permissions TEXT NOT NULL DEFAULT '[]',
+                    is_system INTEGER DEFAULT 0 NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS permissions (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
+                    description TEXT,
+                    resource TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS user_roles (
+                    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    role_id TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+                    organization_id TEXT,
+                    assigned_at INTEGER NOT NULL,
+                    assigned_by TEXT,
+                    PRIMARY KEY (user_id, role_id)
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+                    user_email TEXT,
+                    organization_id TEXT,
+                    action TEXT NOT NULL,
+                    resource_type TEXT NOT NULL,
+                    resource_id TEXT,
+                    changes TEXT,
+                    metadata TEXT,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    status TEXT DEFAULT 'success' NOT NULL,
+                    error_message TEXT,
+                    created_at INTEGER NOT NULL
+                )
+            `);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name)`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_permissions_name ON permissions(name)`);
+            await db.execute(
+                `CREATE INDEX IF NOT EXISTS idx_permissions_resource_action ON permissions(resource, action)`,
+            );
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id)`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_user_roles_role_id ON user_roles(role_id)`);
+            await db.execute(
+                `CREATE INDEX IF NOT EXISTS idx_user_roles_organization_id ON user_roles(organization_id)`,
+            );
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)`);
+            await db.execute(
+                `CREATE INDEX IF NOT EXISTS idx_audit_logs_organization_id ON audit_logs(organization_id)`,
+            );
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_resource_type ON audit_logs(resource_type)`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_resource_id ON audit_logs(resource_id)`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC)`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_status ON audit_logs(status)`);
+            await db.execute(`
+                INSERT OR IGNORE INTO roles (id, name, description, permissions, is_system, created_at, updated_at) VALUES
+                    (
+                        '00000000-0000-0000-0000-000000000001',
+                        'admin',
+                        'Full system access',
+                        '["*:*"]',
+                        1,
+                        (unixepoch() * 1000),
+                        (unixepoch() * 1000)
+                    ),
+                    (
+                        '00000000-0000-0000-0000-000000000002',
+                        'editor',
+                        'Can create and edit content',
+                        '["*:read","*:create","*:update"]',
+                        1,
+                        (unixepoch() * 1000),
+                        (unixepoch() * 1000)
+                    ),
+                    (
+                        '00000000-0000-0000-0000-000000000003',
+                        'viewer',
+                        'Read-only access',
+                        '["*:read"]',
+                        1,
+                        (unixepoch() * 1000),
+                        (unixepoch() * 1000)
+                    )
+            `);
+            await db.execute(`
+                INSERT OR IGNORE INTO permissions (id, name, description, resource, action, created_at, updated_at) VALUES
+                    (hex(randomblob(16)), 'users:read', 'Read users', 'users', 'read', (unixepoch() * 1000), (unixepoch() * 1000)),
+                    (hex(randomblob(16)), 'users:create', 'Create users', 'users', 'create', (unixepoch() * 1000), (unixepoch() * 1000)),
+                    (hex(randomblob(16)), 'users:update', 'Update users', 'users', 'update', (unixepoch() * 1000), (unixepoch() * 1000)),
+                    (hex(randomblob(16)), 'users:delete', 'Delete users', 'users', 'delete', (unixepoch() * 1000), (unixepoch() * 1000)),
+                    (hex(randomblob(16)), 'roles:read', 'Read roles', 'roles', 'read', (unixepoch() * 1000), (unixepoch() * 1000)),
+                    (hex(randomblob(16)), 'roles:create', 'Create roles', 'roles', 'create', (unixepoch() * 1000), (unixepoch() * 1000)),
+                    (hex(randomblob(16)), 'roles:update', 'Update roles', 'roles', 'update', (unixepoch() * 1000), (unixepoch() * 1000)),
+                    (hex(randomblob(16)), 'roles:delete', 'Delete roles', 'roles', 'delete', (unixepoch() * 1000), (unixepoch() * 1000)),
+                    (hex(randomblob(16)), 'audit:read', 'Read audit logs', 'audit', 'read', (unixepoch() * 1000), (unixepoch() * 1000)),
+                    (hex(randomblob(16)), 'audit:export', 'Export audit logs', 'audit', 'export', (unixepoch() * 1000), (unixepoch() * 1000)),
+                    (hex(randomblob(16)), '*:*', 'All permissions', '*', '*', (unixepoch() * 1000), (unixepoch() * 1000)),
+                    (hex(randomblob(16)), '*:read', 'Read all resources', '*', 'read', (unixepoch() * 1000), (unixepoch() * 1000))
+            `);
+        },
+        down: async (db) => {
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_status`);
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_action`);
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_created_at`);
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_resource_id`);
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_resource_type`);
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_organization_id`);
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_user_id`);
+            await db.execute(`DROP INDEX IF EXISTS idx_user_roles_organization_id`);
+            await db.execute(`DROP INDEX IF EXISTS idx_user_roles_role_id`);
+            await db.execute(`DROP INDEX IF EXISTS idx_user_roles_user_id`);
+            await db.execute(`DROP INDEX IF EXISTS idx_permissions_resource_action`);
+            await db.execute(`DROP INDEX IF EXISTS idx_permissions_name`);
+            await db.execute(`DROP INDEX IF EXISTS idx_roles_name`);
+            await db.execute(`DROP TABLE IF EXISTS audit_logs`);
+            await db.execute(`DROP TABLE IF EXISTS user_roles`);
+            await db.execute(`DROP TABLE IF EXISTS permissions`);
+            await db.execute(`DROP TABLE IF EXISTS roles`);
+        },
+    },
+    {
+        name: '010_multi_tenant_system',
+        up: async (db) => {
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS organizations (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    slug TEXT NOT NULL UNIQUE,
+                    owner_id TEXT,
+                    plan TEXT DEFAULT 'free',
+                    status TEXT DEFAULT 'active',
+                    settings TEXT,
+                    metadata TEXT,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                )
+            `);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_organizations_slug ON organizations(slug)`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_organizations_owner_id ON organizations(owner_id)`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_organizations_status ON organizations(status)`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_organizations_plan ON organizations(plan)`);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS organization_members (
+                    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+                    role TEXT NOT NULL DEFAULT 'member',
+                    status TEXT NOT NULL DEFAULT 'active',
+                    invited_by TEXT,
+                    invited_at INTEGER,
+                    joined_at INTEGER NOT NULL,
+                    metadata TEXT,
+                    PRIMARY KEY (user_id, organization_id)
+                )
+            `);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_org_members_user_id ON organization_members(user_id)`);
+            await db.execute(
+                `CREATE INDEX IF NOT EXISTS idx_org_members_organization_id ON organization_members(organization_id)`,
+            );
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_org_members_role ON organization_members(role)`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_org_members_status ON organization_members(status)`);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS user_roles_new (
+                    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    role_id TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+                    organization_id TEXT NOT NULL,
+                    app_id TEXT,
+                    assigned_at INTEGER NOT NULL,
+                    assigned_by TEXT,
+                    PRIMARY KEY (user_id, role_id, organization_id)
+                )
+            `);
+            await db.execute(`
+                INSERT INTO user_roles_new (user_id, role_id, organization_id, app_id, assigned_at, assigned_by)
+                SELECT
+                    user_id,
+                    role_id,
+                    COALESCE(organization_id, 'default-org'),
+                    NULL as app_id,
+                    assigned_at,
+                    assigned_by
+                FROM user_roles
+                WHERE EXISTS (SELECT 1 FROM sqlite_master WHERE type='table' AND name='user_roles')
+            `);
+            await db.execute(`DROP TABLE IF EXISTS user_roles`);
+            await db.execute(`ALTER TABLE user_roles_new RENAME TO user_roles`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id)`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_user_roles_role_id ON user_roles(role_id)`);
+            await db.execute(
+                `CREATE INDEX IF NOT EXISTS idx_user_roles_organization_id ON user_roles(organization_id)`,
+            );
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_user_roles_app_id ON user_roles(app_id)`);
+            await db.execute(
+                `CREATE INDEX IF NOT EXISTS idx_user_roles_user_org ON user_roles(user_id, organization_id)`,
+            );
+            await db.execute(
+                `CREATE INDEX IF NOT EXISTS idx_user_roles_user_org_app ON user_roles(user_id, organization_id, app_id)`,
+            );
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS audit_logs_new (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+                    user_email TEXT,
+                    organization_id TEXT,
+                    app_id TEXT,
+                    action TEXT NOT NULL,
+                    resource_type TEXT NOT NULL,
+                    resource_id TEXT,
+                    changes TEXT,
+                    metadata TEXT,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    status TEXT NOT NULL DEFAULT 'success',
+                    error_message TEXT,
+                    created_at INTEGER NOT NULL
+                )
+            `);
+            await db.execute(`
+                INSERT INTO audit_logs_new (
+                    id, user_id, user_email, organization_id, app_id, action, resource_type,
+                    resource_id, changes, metadata, ip_address, user_agent, status, error_message, created_at
+                )
+                SELECT
+                    id, user_id, user_email, organization_id,
+                    NULL as app_id,
+                    action, resource_type, resource_id, changes, metadata,
+                    ip_address, user_agent, status, error_message, created_at
+                FROM audit_logs
+                WHERE EXISTS (SELECT 1 FROM sqlite_master WHERE type='table' AND name='audit_logs')
+            `);
+            await db.execute(`DROP TABLE IF EXISTS audit_logs`);
+            await db.execute(`ALTER TABLE audit_logs_new RENAME TO audit_logs`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)`);
+            await db.execute(
+                `CREATE INDEX IF NOT EXISTS idx_audit_logs_organization_id ON audit_logs(organization_id)`,
+            );
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_app_id ON audit_logs(app_id)`);
+            await db.execute(
+                `CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource_type, resource_id)`,
+            );
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)`);
+            await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at)`);
+            await db.execute(
+                `CREATE INDEX IF NOT EXISTS idx_audit_logs_org_created ON audit_logs(organization_id, created_at)`,
+            );
+            await db.execute(
+                `CREATE INDEX IF NOT EXISTS idx_audit_logs_user_org ON audit_logs(user_id, organization_id)`,
+            );
+            await db.execute(`
+                INSERT OR IGNORE INTO organizations (id, name, slug, plan, status, created_at, updated_at)
+                VALUES (
+                    'default-org',
+                    'Default Organization',
+                    'default',
+                    'free',
+                    'active',
+                    (unixepoch() * 1000),
+                    (unixepoch() * 1000)
+                )
+            `);
+        },
+        down: async (db) => {
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_user_org`);
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_org_created`);
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_created_at`);
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_action`);
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_resource`);
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_app_id`);
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_organization_id`);
+            await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_user_id`);
+            await db.execute(`DROP TABLE IF EXISTS audit_logs`);
+            await db.execute(`DROP INDEX IF EXISTS idx_user_roles_user_org_app`);
+            await db.execute(`DROP INDEX IF EXISTS idx_user_roles_user_org`);
+            await db.execute(`DROP INDEX IF EXISTS idx_user_roles_app_id`);
+            await db.execute(`DROP INDEX IF EXISTS idx_user_roles_organization_id`);
+            await db.execute(`DROP INDEX IF EXISTS idx_user_roles_role_id`);
+            await db.execute(`DROP INDEX IF EXISTS idx_user_roles_user_id`);
+            await db.execute(`DROP TABLE IF EXISTS user_roles`);
+            await db.execute(`DROP INDEX IF EXISTS idx_org_members_status`);
+            await db.execute(`DROP INDEX IF EXISTS idx_org_members_role`);
+            await db.execute(`DROP INDEX IF EXISTS idx_org_members_organization_id`);
+            await db.execute(`DROP INDEX IF EXISTS idx_org_members_user_id`);
+            await db.execute(`DROP TABLE IF EXISTS organization_members`);
+            await db.execute(`DROP INDEX IF EXISTS idx_organizations_plan`);
+            await db.execute(`DROP INDEX IF EXISTS idx_organizations_status`);
+            await db.execute(`DROP INDEX IF EXISTS idx_organizations_owner_id`);
+            await db.execute(`DROP INDEX IF EXISTS idx_organizations_slug`);
+            await db.execute(`DROP TABLE IF EXISTS organizations`);
         },
     },
 ];

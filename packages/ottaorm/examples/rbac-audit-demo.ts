@@ -12,10 +12,9 @@
  * 6. Multi-tenant support
  */
 
-import { User, Role, Permission, UserRole, AuditLog } from '../src/models';
-import { initRBACCache, createRBACContext } from '@ottabase/rbac';
-import { log as auditLog, logCreate, logUpdate, logDelete } from '@ottabase/audit';
-import { registerConnection } from '../src/context';
+import { log as auditLog, logCreate, logDelete, logUpdate } from '@ottabase/audit';
+import { initRBACCache } from '@ottabase/rbac';
+import { AuditLog, Permission, Role, User } from '../src/models';
 
 // ============================================================
 // STEP 1: Setup (Run once)
@@ -45,8 +44,8 @@ async function createRolesAndPermissions() {
         description: 'Full system access',
         permissions: JSON.stringify(['*:*']),
         isSystem: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
     });
     console.log('✓ Created admin role');
 
@@ -57,8 +56,8 @@ async function createRolesAndPermissions() {
         description: 'Can create and edit content',
         permissions: JSON.stringify(['*:read', '*:create', '*:update']),
         isSystem: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
     });
     console.log('✓ Created editor role');
 
@@ -77,8 +76,8 @@ async function createRolesAndPermissions() {
             description: perm.description,
             resource: perm.resource,
             action: perm.action,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
         });
         console.log(`✓ Created permission: ${perm.name}`);
     }
@@ -98,8 +97,8 @@ async function createUsersAndAssignRoles(adminRole: any, editorRole: any) {
         id: crypto.randomUUID(),
         name: 'Admin User',
         email: 'admin@example.com',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
     });
     console.log('✓ Created admin user');
 
@@ -112,8 +111,8 @@ async function createUsersAndAssignRoles(adminRole: any, editorRole: any) {
         id: crypto.randomUUID(),
         name: 'Editor User',
         email: 'editor@example.com',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
     });
     console.log('✓ Created editor user');
 
@@ -205,8 +204,8 @@ async function performActionsWithAudit(adminUser: any, editorUser: any) {
         id: crypto.randomUUID(),
         name: 'New User',
         email: 'newuser@example.com',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
     });
 
     await logCreate(

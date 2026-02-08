@@ -172,7 +172,7 @@ export async function resolvePlatformState(env: CloudflareEnv): Promise<Platform
     }
 
     // -------------------------------------------------------
-    // 3. Try KV fast path
+    // 3. Read KV cache (used for panic checks)
     // -------------------------------------------------------
     const kvState = await readKVState(env);
 

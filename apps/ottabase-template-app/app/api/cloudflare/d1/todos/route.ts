@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
+import { NextRequest, NextResponse } from 'next/server';
 import { Todo } from '../../../../../ottabase/models/Todo';
 
 export const runtime = 'edge';
@@ -63,8 +63,8 @@ export async function POST(request: NextRequest) {
             id: crypto.randomUUID(),
             title: title.trim(),
             completed: false,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
         });
 
         return NextResponse.json({

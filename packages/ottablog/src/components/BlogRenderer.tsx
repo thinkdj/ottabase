@@ -30,8 +30,8 @@ export interface BlogPostData {
     readingTimeMinutes?: number | null;
     wordCount?: number | null;
     isFeatured?: boolean;
-    publishedAt?: Date | string | null;
-    createdAt?: Date | string | null;
+    publishedAt?: Date | string | number | null;
+    createdAt?: Date | string | number | null;
     // Series info
     seriesId?: string | null;
     seriesOrder?: number | null;
@@ -63,7 +63,7 @@ export interface BlogRendererProps {
     /** Custom class name for the content area */
     contentClassName?: string;
     /** Custom date formatter */
-    formatDate?: (date: Date | string) => string;
+    formatDate?: (date: Date | string | number) => string;
     /** Render custom header above the title */
     renderHeader?: () => React.ReactNode;
     /** Render custom footer below the content */

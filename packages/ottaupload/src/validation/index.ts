@@ -76,7 +76,7 @@ export const fileMetadataSchema = z.object({
     size: z.number().positive(),
     contentType: z.string(),
     url: z.string().url(),
-    uploadedAt: z.date(),
+    uploadedAt: z.number(),
     userId: z.string().optional(),
 });
 

@@ -19,7 +19,7 @@ export interface OttabaseSession extends Session {
         name?: string | null;
         email?: string | null;
         image?: string | null;
-        emailVerified?: Date | null;
+        emailVerified?: number | null;
         organizationId?: string | null;
         roles?: string[];
         permissions?: string[];
@@ -140,7 +140,7 @@ export interface SessionData {
         name?: string | null;
         email?: string | null;
         image?: string | null;
-        emailVerified?: Date | null;
+        emailVerified?: number | null;
         organizationId?: string | null;
         roles?: string[];
         permissions?: string[];

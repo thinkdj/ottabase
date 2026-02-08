@@ -330,8 +330,8 @@ export function createTaskRepository<
             const task = await Model.find(id);
             if (task) {
                 task.set('lastStatus', 'success');
-                task.set('lastRunAt', new Date());
-                task.set('nextRunAt', nextRunAt);
+                task.set('lastRunAt', Date.now());
+                task.set('nextRunAt', nextRunAt.getTime());
                 task.set('lastError', null);
                 task.set('runCount', (task.get('runCount') as number) + 1);
                 await task.save();
@@ -342,8 +342,8 @@ export function createTaskRepository<
             const task = await Model.find(id);
             if (task) {
                 task.set('lastStatus', 'failed');
-                task.set('lastRunAt', new Date());
-                task.set('nextRunAt', nextRunAt);
+                task.set('lastRunAt', Date.now());
+                task.set('nextRunAt', nextRunAt.getTime());
                 task.set('lastError', error);
                 task.set('runCount', (task.get('runCount') as number) + 1);
                 task.set('failCount', (task.get('failCount') as number) + 1);

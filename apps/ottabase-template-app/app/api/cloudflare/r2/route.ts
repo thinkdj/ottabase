@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
             },
             customMetadata: {
                 originalName: file.name,
-                uploadedAt: new Date().toISOString(),
+                uploadedAt: String(Date.now()),
             },
         });
 

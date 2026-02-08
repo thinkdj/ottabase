@@ -126,7 +126,7 @@ export function UserRBACPage() {
                     organizationId: orgId,
                     role,
                     status: 'active',
-                    joinedAt: new Date().toISOString(),
+                    joinedAt: Date.now(),
                 }),
             });
             return response.data;
@@ -395,9 +395,7 @@ export function UserRBACPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                onClick={() =>
-                                                    handleRemove(membership.id, membership.organizationName)
-                                                }
+                                                onClick={() => handleRemove(membership.id, membership.organizationName)}
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>

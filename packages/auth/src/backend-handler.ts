@@ -129,7 +129,7 @@ async function defaultCredentialsAuthorize(
         email: result.email,
         name: result.name ?? undefined,
         image: result.image ?? undefined,
-        emailVerified: result.email_verified ? new Date(Number(result.email_verified)) : null,
+        emailVerified: result.email_verified ? Number(result.email_verified) : null,
     };
 }
 
@@ -353,7 +353,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                         let organizationId: string | null = null;
                         let roles: string[] = [];
                         let permissions: string[] = [];
-                        let createdAt: string | null = null;
+                        let createdAt: number | null = null;
 
                         try {
                             const membership = await d1
@@ -433,7 +433,8 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                                 .bind(userId)
                                 .first<any>();
                             if (profile?.createdAt) {
-                                createdAt = String(profile.createdAt);
+                                const parsed = Number(profile.createdAt);
+                                createdAt = Number.isFinite(parsed) ? parsed : null;
                             }
                         } catch (error) {
                             console.warn('Failed to load user profile for auth:', error);
@@ -467,11 +468,12 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                                 if (dbUser.image !== undefined) {
                                     token.image = dbUser.image;
                                 }
-                                token.emailVerified = dbUser.emailVerified
-                                    ? new Date(Number(dbUser.emailVerified)).toISOString()
-                                    : null;
+                                token.emailVerified = dbUser.emailVerified ? Number(dbUser.emailVerified) : null;
                                 if (dbUser.createdAt) {
-                                    token.createdAt = String(dbUser.createdAt);
+                                    const createdAtValue = Number(dbUser.createdAt);
+                                    if (Number.isFinite(createdAtValue)) {
+                                        token.createdAt = createdAtValue;
+                                    }
                                 }
                                 (token as any).profileVersion = version;
                             }
@@ -486,11 +488,17 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                         token.name = user.name;
                         token.image = (user as any).image ?? token.image;
                         const emailVerified = (user as any).emailVerified;
-                        token.emailVerified = emailVerified
-                            ? emailVerified instanceof Date
-                                ? emailVerified.toISOString()
-                                : String(emailVerified)
-                            : null;
+                        if (emailVerified) {
+                            const emailVerifiedValue =
+                                emailVerified instanceof Date
+                                    ? emailVerified.getTime()
+                                    : typeof emailVerified === 'number'
+                                      ? emailVerified
+                                      : new Date(String(emailVerified)).getTime();
+                            token.emailVerified = Number.isFinite(emailVerifiedValue) ? emailVerifiedValue : null;
+                        } else {
+                            token.emailVerified = null;
+                        }
 
                         const providedOrgId = (user as any).organizationId;
                         const providedRoles = (user as any).roles;
@@ -558,11 +566,13 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                             session.user.image = token.image as string;
                         }
                         if (token.emailVerified) {
-                            session.user.emailVerified = new Date(
-                                typeof token.emailVerified === 'string' && /^\d+$/.test(token.emailVerified)
-                                    ? Number(token.emailVerified)
-                                    : (token.emailVerified as string),
-                            );
+                            const emailVerified =
+                                typeof token.emailVerified === 'number'
+                                    ? token.emailVerified
+                                    : new Date(token.emailVerified as string).getTime();
+                            if (Number.isFinite(emailVerified)) {
+                                session.user.emailVerified = emailVerified as any;
+                            }
                         }
                         if (token.organizationId) {
                             (session.user as any).organizationId = token.organizationId as string;
@@ -575,6 +585,13 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                         }
                         if (token.createdAt) {
                             (session.user as any).createdAt = token.createdAt;
+                        }
+                    }
+                    if (session.expires) {
+                        const expiresMs =
+                            typeof session.expires === 'number' ? session.expires : new Date(session.expires).getTime();
+                        if (Number.isFinite(expiresMs)) {
+                            (session as any).expires = expiresMs;
                         }
                     }
                     return session;

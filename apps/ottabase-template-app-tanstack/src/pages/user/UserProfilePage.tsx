@@ -6,9 +6,9 @@
  */
 
 import { useRBACToast } from '@/hooks/useToast';
+import { api } from '@/lib/api';
 import { useSession } from '@/lib/auth';
 import { requestEmailVerification } from '@/lib/auth-api';
-import { api } from '@/lib/api';
 import {
     Avatar,
     AvatarFallback,
@@ -30,7 +30,7 @@ import { useCallback, useEffect, useState } from 'react';
 interface LinkedAccountRecord {
     provider: string;
     type: string;
-    createdAt?: string | null;
+    createdAt?: number | null;
 }
 
 export function UserProfilePage() {

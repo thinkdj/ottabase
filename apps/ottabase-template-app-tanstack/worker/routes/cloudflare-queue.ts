@@ -51,7 +51,7 @@ export async function handleCloudflareQueue(context: CloudflareQueueContext): Pr
                         JSON.stringify({
                             action: body.type,
                             data: body.payload,
-                            sentAt: new Date().toISOString(),
+                            sentAt: Date.now(),
                             type: 'single',
                         }),
                         { expirationTtl: 3600 },
@@ -92,7 +92,7 @@ export async function handleCloudflareQueue(context: CloudflareQueueContext): Pr
                             key,
                             JSON.stringify({
                                 ...(body.batch[i] as any),
-                                sentAt: new Date().toISOString(),
+                                sentAt: Date.now(),
                                 type: 'batch',
                             }),
                             { expirationTtl: 3600 },
@@ -146,7 +146,7 @@ export async function handleCloudflareQueue(context: CloudflareQueueContext): Pr
                         key,
                         JSON.stringify({
                             ...(msg as any),
-                            sentAt: new Date().toISOString(),
+                            sentAt: Date.now(),
                             type: 'single',
                         }),
                         { expirationTtl: 3600 },
@@ -193,7 +193,7 @@ export async function handleCloudflareQueue(context: CloudflareQueueContext): Pr
             }
         }
 
-        messages.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+        messages.sort((a, b) => Number(b.sentAt) - Number(a.sentAt));
 
         return jsonResponse({ messages });
     }

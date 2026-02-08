@@ -18,7 +18,7 @@ describe('Server Utilities', () => {
             expect(metadata.contentType).toBe('text/plain');
             expect(metadata.url).toBe(url);
             expect(metadata.userId).toBe(userId);
-            expect(metadata.uploadedAt).toBeInstanceOf(Date);
+            expect(Number.isFinite(metadata.uploadedAt)).toBe(true);
         });
 
         it('should create metadata without userId', () => {

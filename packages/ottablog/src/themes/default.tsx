@@ -4,12 +4,10 @@
  * Clean, modern default theme with dark mode support
  */
 
-import React from 'react';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
+import type { EditorJSData } from '../types';
 import { formatDate as defaultFormatDate } from '../types';
 import type { Theme } from './types';
-import type { BlogPostData, BlogRendererProps } from '../components/BlogRenderer';
-import type { EditorJSData } from '../types';
 
 /**
  * Default Theme - Modern, clean design with dark mode
@@ -86,7 +84,9 @@ export const defaultTheme: Theme = {
                     {post.publishedAt && (
                         <time
                             dateTime={
-                                typeof post.publishedAt === 'string' ? post.publishedAt : post.publishedAt.toISOString()
+                                typeof post.publishedAt === 'string'
+                                    ? post.publishedAt
+                                    : new Date(post.publishedAt).toISOString()
                             }
                         >
                             {formatDate(post.publishedAt)}
