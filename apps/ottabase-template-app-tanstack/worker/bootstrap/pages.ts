@@ -167,6 +167,13 @@ export function renderWizardPage(state: PlatformStateResult): string {
     return baseLayout(
         'Setup',
         `
+  <style>
+    .nav-buttons { display: flex; align-items: center; justify-content: space-between; margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+    .timer-area { font-size: 0.75rem; color: var(--text-dim); text-align: center; margin-top: 0.75rem; height: 1.25rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .btn-link { background: none; border: none; padding: 0; color: var(--text-muted); cursor: pointer; font-size: 0.75rem; text-decoration: underline; }
+    .btn-link:hover { color: var(--text); }
+  </style>
+
   <p class="subtitle">Set up your platform in a few steps</p>
 
   <!-- Step tabs -->
@@ -204,6 +211,12 @@ export function renderWizardPage(state: PlatformStateResult): string {
       <p>Creates all schema tables, runs core migrations (users, sessions, RBAC, organizations, audit logs, blog, shortlinks), and sets up tracking.</p>
       <div class="log-area" id="log-init"></div>
       <button class="btn btn-primary" id="btn-init" ${!state.bindings.d1 ? 'disabled' : ''}>Create Tables & Run Migrations</button>
+
+      <div class="timer-area" id="timer-0"></div>
+      <div class="nav-buttons">
+        <button class="btn btn-outline btn-sm" disabled style="opacity:0">Previous</button>
+        <button class="btn btn-outline btn-sm" id="btn-next-0" disabled>Next &rarr;</button>
+      </div>
     </div>
   </div>
 
@@ -214,6 +227,12 @@ export function renderWizardPage(state: PlatformStateResult): string {
       <p>Seed the default roles (owner, admin, editor, viewer, member) and the default organization used for system-level operations.</p>
       <div class="log-area" id="log-seed"></div>
       <button class="btn btn-primary" id="btn-seed">Seed Roles &amp; Permissions</button>
+
+      <div class="timer-area" id="timer-1"></div>
+      <div class="nav-buttons">
+        <button class="btn btn-outline btn-sm" id="btn-prev-1">Previous</button>
+        <button class="btn btn-outline btn-sm" id="btn-next-1" disabled>Next &rarr;</button>
+      </div>
     </div>
   </div>
 
@@ -239,6 +258,12 @@ export function renderWizardPage(state: PlatformStateResult): string {
       </div>
       <div class="log-area" id="log-owner"></div>
       <button class="btn btn-primary" id="btn-owner">Create Owner Account</button>
+
+      <div class="timer-area" id="timer-2"></div>
+      <div class="nav-buttons">
+        <button class="btn btn-outline btn-sm" id="btn-prev-2">Previous</button>
+        <button class="btn btn-outline btn-sm" id="btn-next-2" disabled>Next &rarr;</button>
+      </div>
     </div>
   </div>
 
@@ -267,7 +292,11 @@ export function renderWizardPage(state: PlatformStateResult): string {
       </div>
       <pre class="code-block">wrangler secret put AUTH_SECRET
 wrangler secret put MIGRATION_SECRET</pre>
-      <button class="btn btn-primary" id="btn-config-next" style="margin-top:0.5rem">Continue</button>
+      
+      <div class="nav-buttons">
+        <button class="btn btn-outline btn-sm" id="btn-prev-3">Previous</button>
+        <button class="btn btn-primary btn-sm" id="btn-next-3">Next &rarr;</button>
+      </div>
     </div>
   </div>
 
@@ -279,6 +308,11 @@ wrangler secret put MIGRATION_SECRET</pre>
       <div id="finalize-checks" style="margin:0.75rem 0"></div>
       <div class="log-area" id="log-finalize"></div>
       <button class="btn btn-primary" id="btn-finalize">Launch Platform</button>
+      
+      <div class="nav-buttons">
+        <button class="btn btn-outline btn-sm" id="btn-prev-4">Previous</button>
+        <div style="width:1px"></div> 
+      </div>
     </div>
     <div id="success-card" style="display:none">
       <div class="card">
@@ -296,11 +330,49 @@ wrangler secret put MIGRATION_SECRET</pre>
     var tabs = document.querySelectorAll('.step-tab');
     var panels = document.querySelectorAll('.step-panel');
     var progress = document.getElementById('progress-fill');
+    var autoAdvanceTimer = null;
+
+    function clearTimer() {
+      if (autoAdvanceTimer) {
+        clearInterval(autoAdvanceTimer);
+        autoAdvanceTimer = null;
+      }
+      var timerEls = document.querySelectorAll('.timer-area');
+      for (var i = 0; i < timerEls.length; i++) {
+        timerEls[i].innerHTML = '';
+      }
+    }
+
+    // Expose cancel globally for inline onclick
+    window.cancelAutoAdvance = function() {
+      clearTimer();
+    };
+
+    function startAutoAdvance(nextStep) {
+      clearTimer();
+      var seconds = 30;
+      var timerEl = document.getElementById('timer-' + (nextStep - 1));
+      if (!timerEl) return;
+
+      function update() {
+        if (seconds <= 0) {
+          clearTimer();
+          goToStep(nextStep);
+          return;
+        }
+        timerEl.innerHTML = 'Auto-advancing in ' + seconds + 's&hellip; <button class="btn-link" onclick="window.cancelAutoAdvance()">Cancel</button>';
+        seconds--;
+      }
+      update();
+      autoAdvanceTimer = setInterval(update, 1000);
+    }
 
     function goToStep(n) {
+      clearTimer(); // User interaction stops any timer
       currentStep = n;
       tabs.forEach(function(t, i) {
         t.classList.remove('active');
+        // Mark previous steps as done if we're ahead of them
         if (i < n) t.classList.add('done');
         if (i === n) t.classList.add('active');
       });
@@ -318,6 +390,8 @@ wrangler secret put MIGRATION_SECRET</pre>
       line.textContent = msg;
       area.appendChild(line);
       area.scrollTop = area.scrollHeight;
+      // Ensure we see the latest log
+      setTimeout(function() { area.scrollTop = area.scrollHeight; }, 10);
     }
 
     function setBtn(btn, loading, text) {
@@ -325,8 +399,29 @@ wrangler secret put MIGRATION_SECRET</pre>
       btn.innerHTML = loading ? '<span class="spinner"></span> ' + text : text;
     }
 
+    // Navigation Buttons
+    function bindNav(id, step) {
+      var btn = document.getElementById(id);
+      if (btn) btn.onclick = function() { goToStep(step); };
+    }
+    
+    bindNav('btn-next-0', 1);
+    
+    bindNav('btn-prev-1', 0);
+    bindNav('btn-next-1', 2);
+    
+    bindNav('btn-prev-2', 1);
+    bindNav('btn-next-2', 3);
+    
+    bindNav('btn-prev-3', 2);
+    bindNav('btn-next-3', 4);
+    
+    bindNav('btn-prev-4', 3);
+
     // --- Step 0: Init ---
     var btnInit = document.getElementById('btn-init');
+    var btnNext0 = document.getElementById('btn-next-0');
+    
     btnInit.addEventListener('click', function() {
       setBtn(btnInit, true, 'Initializing...');
       log('log-init', 'Starting database initialization...', 'info');
@@ -353,7 +448,10 @@ wrangler secret put MIGRATION_SECRET</pre>
           log('log-init', 'Database initialization complete.', 'success');
           setBtn(btnInit, false, 'Done');
           btnInit.disabled = true;
-          setTimeout(function() { goToStep(1); }, 600);
+          
+          // Enable Next & Start Timer
+          btnNext0.disabled = false;
+          startAutoAdvance(1);
         })
         .catch(function(err) {
           log('log-init', 'Error: ' + err.message, 'error');
@@ -364,6 +462,8 @@ wrangler secret put MIGRATION_SECRET</pre>
 
     // --- Step 1: Seed ---
     var btnSeed = document.getElementById('btn-seed');
+    var btnNext1 = document.getElementById('btn-next-1');
+    
     btnSeed.addEventListener('click', function() {
       setBtn(btnSeed, true, 'Seeding...');
       log('log-seed', 'Seeding RBAC roles and default organization...', 'info');
@@ -381,7 +481,9 @@ wrangler secret put MIGRATION_SECRET</pre>
           log('log-seed', 'RBAC setup complete.', 'success');
           setBtn(btnSeed, false, 'Done');
           btnSeed.disabled = true;
-          setTimeout(function() { goToStep(2); }, 600);
+          
+          btnNext1.disabled = false;
+          startAutoAdvance(2);
         })
         .catch(function(err) {
           log('log-seed', 'Error: ' + err.message, 'error');
@@ -392,6 +494,7 @@ wrangler secret put MIGRATION_SECRET</pre>
 
     // --- Step 2: Create Owner ---
     var btnOwner = document.getElementById('btn-owner');
+    var btnNext2 = document.getElementById('btn-next-2');
     var nameInput = document.getElementById('owner-name');
     var emailInput = document.getElementById('owner-email');
     var passInput = document.getElementById('owner-password');
@@ -442,7 +545,9 @@ wrangler secret put MIGRATION_SECRET</pre>
           emailInput.disabled = true;
           passInput.disabled = true;
           nameInput.disabled = true;
-          setTimeout(function() { goToStep(3); }, 600);
+          
+          btnNext2.disabled = false;
+          startAutoAdvance(3);
         })
         .catch(function(err) {
           log('log-owner', 'Error: ' + err.message, 'error');
@@ -451,10 +556,8 @@ wrangler secret put MIGRATION_SECRET</pre>
         });
     });
 
-    // --- Step 3: Config (just a continue button) ---
-    document.getElementById('btn-config-next').addEventListener('click', function() {
-      goToStep(4);
-    });
+    // --- Step 3: Config ---
+    // (Handled by manual nav buttons now)
 
     // --- Step 4: Finalize ---
     var btnFinalize = document.getElementById('btn-finalize');

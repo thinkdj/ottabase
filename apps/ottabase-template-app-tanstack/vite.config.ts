@@ -18,8 +18,9 @@ function spaFallback(): Plugin {
         configureServer(server) {
             server.middlewares.use((req, res, next) => {
                 const url = req.url || '';
-                // Bypass API and Redirect routes
-                if (url.startsWith('/api') || url.startsWith('/shortlinks/go')) return next();
+                // Bypass API, Bootstrap, and Redirect routes
+                if (url.startsWith('/api') || url.startsWith('/__bootstrap__') || url.startsWith('/shortlinks/go'))
+                    return next();
                 // Strip query/fragment and check for a file extension
                 const pathname = url.split(/[?#]/)[0];
                 const isFile = pathname.includes('.');
@@ -112,6 +113,11 @@ export default defineConfig(({ command }) => ({
         // Proxy API calls to the backend worker
         proxy: {
             '/api': {
+                target: `http://127.0.0.1:${process.env.PORT_BE || 3004}`,
+                changeOrigin: true,
+                secure: false,
+            },
+            '/__bootstrap__': {
                 target: `http://127.0.0.1:${process.env.PORT_BE || 3004}`,
                 changeOrigin: true,
                 secure: false,
