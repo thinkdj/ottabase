@@ -11,26 +11,26 @@
 //   POST /__bootstrap__/api/finalize     → Mark platform READY
 // ============================================================
 
-import {
-    autoInit,
-    runMigrations,
-    coreMigrations,
-    registerConnection,
-    clearConnection,
-    Role,
-    User,
-    Organization,
-    OrganizationMember,
-} from '@ottabase/ottaorm';
 import { hashPassword } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import {
+    autoInit,
+    clearConnection,
+    coreMigrations,
+    Organization,
+    OrganizationMember,
+    registerConnection,
+    Role,
+    runMigrations,
+    User,
+} from '@ottabase/ottaorm';
 import { makeSlug } from '@ottabase/utils/url';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
-import { probeBindings, writeDBState, writeKVState, ensureMetaTable } from './state-resolver';
+import { renderBindingsErrorPage, renderLockedPage, renderMaintenancePage, renderWizardPage } from './pages';
+import { ensureMetaTable, probeBindings, writeDBState, writeKVState } from './state-resolver';
 import type { PlatformStateResult } from './types';
-import { renderWizardPage, renderMaintenancePage, renderLockedPage, renderBindingsErrorPage } from './pages';
 
 interface BootstrapContext {
     request: Request;
@@ -198,6 +198,18 @@ async function handleStatus(context: BootstrapContext): Response {
         }
     }
 
+    // Environment check
+    const isDev = (env as any).ENVIRONMENT === 'development';
+    const isReady = platformState.state === 'READY';
+
+    // If READY and NOT dev, return minimal info to prevent leakage
+    if (isReady && !isDev) {
+        return jsonResp({
+            state: platformState.state,
+            timestamp: new Date().toISOString(),
+        });
+    }
+
     return jsonResp({
         state: platformState.state,
         source: platformState.source,
@@ -352,8 +364,13 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         errors.email = 'Valid email address required';
     }
-    if (!password || password.length < 8) {
-        errors.password = 'Password must be at least 8 characters';
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$&*])(?=.*[0-9].*[0-9])(?=.*[a-z].*[a-z].*[a-z]).{8,}$/;
+    // Let's use a standard strong password regex: Min 8, 1 Uppercase, 1 Special.
+    const strongPasswordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+
+    if (!password || !strongPasswordRegex.test(password)) {
+        errors.password =
+            'Password must be at least 8 characters and contain at least one uppercase letter and one special character.';
     }
     if (Object.keys(errors).length > 0) {
         return jsonResp({ success: false, errors, code: 'VALIDATION_ERROR' }, 400);
@@ -382,19 +399,11 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         const newUser = await User.create({
             email,
             name: name || null,
-            emailVerified: new Date(), // Auto-verify owner
+            emailVerified: new Date().toISOString(), // Auto-verify owner
             passwordHash,
         });
 
         const userId = newUser.get('id') as string;
-
-        // Ensure roles exist and assign owner role
-        await Role.ensureDefaultRoles();
-        const ownerRole = await Role.findByName('owner');
-
-        if (ownerRole) {
-            await newUser.assignRole(ownerRole.get('id') as string, 'system');
-        }
 
         // Create personal organization
         let organizationId: string | null = null;
@@ -415,8 +424,17 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 role: 'owner',
                 status: 'active',
             });
+
+            // Ensure roles exist and assign owner role to the new organization
+            await Role.ensureDefaultRoles();
+            const ownerRole = await Role.findByName('owner');
+
+            if (ownerRole) {
+                // assignRole(roleId, assignedBy, organizationId)
+                await newUser.assignRole(ownerRole.get('id') as string, 'system', organizationId);
+            }
         } catch (error) {
-            // Organization creation is non-fatal
+            // Organization creation is non-fatal but highly recommended
             console.warn('Organization creation during bootstrap:', error);
         }
 

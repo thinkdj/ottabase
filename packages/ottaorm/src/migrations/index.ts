@@ -80,7 +80,22 @@ export async function runMigrations(
     driver: DbDriver,
     migrations: Migration[],
 ): Promise<{ executed: string[]; skipped: string[] }> {
-    const db = driver.getDb();
+    // Create an adapter that assumes D1-like response structure but returns array
+    // This bridges the gap between raw SQL execution and what migrations expect
+    const db = {
+        execute: async (sql: string) => {
+            const result = await driver.executeRaw(sql);
+            // Handle D1 response { results: [], ... }
+            if (result && typeof result === 'object' && 'results' in result && Array.isArray(result.results)) {
+                return result.results;
+            }
+            // Handle standard array response
+            if (Array.isArray(result)) {
+                return result;
+            }
+            return [];
+        },
+    };
 
     // Ensure migrations table exists
     await createMigrationsTable(db);
@@ -129,7 +144,20 @@ export async function rollbackMigrations(
     migrations: Migration[],
     options?: { steps?: number }, // Number of migrations to rollback (default: all)
 ): Promise<{ rolledBack: string[] }> {
-    const db = driver.getDb();
+    // Same adapter as runMigrations
+    const db = {
+        execute: async (sql: string) => {
+            const result = await driver.executeRaw(sql);
+            if (result && typeof result === 'object' && 'results' in result && Array.isArray(result.results)) {
+                return result.results;
+            }
+            if (Array.isArray(result)) {
+                return result;
+            }
+            return [];
+        },
+    };
+
     const rolledBack: string[] = [];
 
     // Get all executed migrations

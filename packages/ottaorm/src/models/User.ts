@@ -42,8 +42,6 @@ export class User extends BaseModel {
     static defaultSortDirection = 'desc' as const;
 
     static casts = {
-        createdAt: 'date' as const,
-        updatedAt: 'date' as const,
         emailVerified: 'date' as const,
     };
 

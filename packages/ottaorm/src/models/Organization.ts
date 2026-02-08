@@ -2,9 +2,9 @@
 // @ottabase/ottaorm - Organization (Tenant) model
 // ============================================================
 
-import { eq, and, sql } from 'drizzle-orm';
-import { BaseModel, type PackageType, type ModelFields } from '../base/BaseModel';
-import { organizationsTable, type OrganizationType, type NewOrganizationType } from './Organization.schema';
+import { eq, sql } from 'drizzle-orm';
+import { BaseModel, type ModelFields, type PackageType } from '../base/BaseModel';
+import { organizationsTable, type NewOrganizationType, type OrganizationType } from './Organization.schema';
 import { organizationMembersTable } from './OrganizationMember.schema';
 
 /**
@@ -26,8 +26,6 @@ export class Organization extends BaseModel {
     static defaultSortDirection = 'desc' as const;
 
     static casts = {
-        createdAt: 'date' as const,
-        updatedAt: 'date' as const,
         settings: 'json' as const,
         metadata: 'json' as const,
     };
@@ -332,4 +330,4 @@ export class Organization extends BaseModel {
     }
 }
 
-export { organizationsTable, type OrganizationType, type NewOrganizationType };
+export { organizationsTable, type NewOrganizationType, type OrganizationType };

@@ -13,8 +13,8 @@ import {
     ModelFieldDescriptor,
     ModelFieldType,
     ModelFields,
-    PaginationResult,
     PackageType,
+    PaginationResult,
 } from './AbstractBaseModel';
 
 export interface IModelConstructorParams {
@@ -23,7 +23,7 @@ export interface IModelConstructorParams {
 }
 
 // Re-export types
-export type { ModelFieldDescriptor, ModelFieldType, ModelFields, PaginationResult, PackageType };
+export type { ModelFieldDescriptor, ModelFieldType, ModelFields, PackageType, PaginationResult };
 
 /**
  * Type guard to check if a connection is a SQL driver
@@ -359,17 +359,20 @@ export class BaseModel extends AbstractBaseModel {
 
         if (this.casts) {
             for (const [key, castType] of Object.entries(this.casts)) {
-                if (
-                    (castType === 'date' || castType === 'datetime') &&
-                    prepared[key] !== undefined &&
-                    prepared[key] !== null
-                ) {
-                    const value = prepared[key];
-                    // Convert string dates to Date objects
-                    if (typeof value === 'string') {
-                        const date = new Date(value);
-                        if (!isNaN(date.getTime())) {
-                            prepared[key] = date;
+                if (prepared[key] === undefined || prepared[key] === null) continue;
+
+                const value = prepared[key];
+
+                if (value instanceof Date) {
+                    if (castType === 'date' || castType === 'datetime') {
+                        prepared[key] = value.toISOString();
+                    }
+                } else if (typeof value === 'string') {
+                    // Start by checking if it's already a valid ISO string or needs partial normalization
+                    const date = new Date(value);
+                    if (!isNaN(date.getTime())) {
+                        if (castType === 'date' || castType === 'datetime') {
+                            prepared[key] = date.toISOString();
                         }
                     }
                 }

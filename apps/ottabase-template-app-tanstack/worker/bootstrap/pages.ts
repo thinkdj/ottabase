@@ -514,8 +514,9 @@ wrangler secret put MIGRATION_SECRET</pre>
         errEmail.style.display = 'block';
         return;
       }
-      if (!password || password.length < 8) {
-        errPass.textContent = 'Password must be at least 8 characters';
+      var strongPasswordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+      if (!password || !strongPasswordRegex.test(password)) {
+        errPass.textContent = 'Password must be at least 8 characters and contain at least one uppercase letter and one special character.';
         errPass.style.display = 'block';
         return;
       }
@@ -621,7 +622,7 @@ wrangler secret put MIGRATION_SECRET</pre>
         });
     });
 
-    // On load: if already READY, skip to end
+    // On load: Check status and auto-advance if ready
     ${
         isReady
             ? `
@@ -633,11 +634,35 @@ wrangler secret put MIGRATION_SECRET</pre>
     successCard.style.display = 'block';
     `
             : `
-    // Auto-run preflight when reaching step 4
+    // Check status on load to see if we can jump to the end
+    fetch('/__bootstrap__/api/status')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var db = data.database || {};
+        // If we have tables, users, and roles OR if the backend explicitly says READY (minimal response)
+        // we are effectively ready to launch.
+        if (data.state === 'READY' || (db.tableCount > 0 && db.userCount > 0 && db.roleCount > 0)) {
+           goToStep(4);
+           // visual polish: mark previous steps as done
+           tabs.forEach(function(t, i) { if (i < 4) t.classList.add('done'); });
+           
+           // Only run checks if we have the data, otherwise show simple message
+           if (data.database) {
+               runChecks(); 
+           } else {
+               // Minimal ready state (prod)
+               checksEl.innerHTML = '<div class="alert alert-success">Platform is initialized and running.</div>';
+               btnFinalize.style.display = 'none';
+               successCard.style.display = 'block';
+           }
+        }
+      })
+      .catch(function() { /* ignore errors on auto-check */ });
+
+    // Auto-run preflight when reaching step 4 manually
     var observer = new MutationObserver(function() {
       if (document.getElementById('panel-4').classList.contains('active')) {
         runChecks();
-        observer.disconnect();
       }
     });
     panels.forEach(function(p) { observer.observe(p, { attributes: true, attributeFilter: ['class'] }); });
