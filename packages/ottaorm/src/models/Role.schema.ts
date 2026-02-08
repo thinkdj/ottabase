@@ -24,12 +24,12 @@ export const rolesTable = sqliteTable('roles', {
     isSystem: integer('is_system', { mode: 'boolean' })
         .$defaultFn(() => false)
         .notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
         .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
-        .$onUpdateFn(() => new Date())
+    updatedAt: integer('updated_at')
+        .$defaultFn(() => Date.now())
+        .$onUpdateFn(() => Date.now())
         .notNull(),
 });
 

@@ -459,7 +459,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         const newUser = await User.create({
             email,
             name: name || null,
-            emailVerified: new Date().toISOString(), // Auto-verify owner
+            emailVerified: Date.now(), // Auto-verify owner
             passwordHash,
         });
 

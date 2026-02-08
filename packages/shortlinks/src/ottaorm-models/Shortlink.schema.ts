@@ -2,7 +2,6 @@
 // Shortlink table schema
 // ============================================================
 
-import { sql } from 'drizzle-orm';
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
@@ -29,7 +28,7 @@ export const shortlinksTable = sqliteTable('shortlinks', {
     appId: text('app_id'),
 
     // Optional expiry timestamp
-    expiryDate: integer('expiry_date', { mode: 'timestamp' }),
+    expiryDate: integer('expiry_date'),
 
     // Interstitial redirect settings
     interstitialEnabled: integer('interstitial_enabled', {
@@ -41,17 +40,17 @@ export const shortlinksTable = sqliteTable('shortlinks', {
 
     // Analytics
     clicks: integer('clicks').notNull().default(0),
-    lastClickedAt: integer('last_clicked_at', { mode: 'timestamp' }),
+    lastClickedAt: integer('last_clicked_at'),
 
     // Metadata
-    createdAt: integer('created_at', { mode: 'timestamp' })
+    createdAt: integer('created_at')
         .notNull()
-        .default(sql`(unixepoch())`),
+        .$defaultFn(() => Date.now()),
 
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
+    updatedAt: integer('updated_at')
         .notNull()
-        .default(sql`(unixepoch())`)
-        .$onUpdate(() => new Date()),
+        .$defaultFn(() => Date.now())
+        .$onUpdateFn(() => Date.now()),
 });
 
 export type ShortlinkRecord = typeof shortlinksTable.$inferSelect;

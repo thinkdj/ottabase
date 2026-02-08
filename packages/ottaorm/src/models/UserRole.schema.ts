@@ -2,9 +2,9 @@
 // @ottabase/ottaorm - UserRole junction table schema
 // ============================================================
 
-import { integer, sqliteTable, text, primaryKey } from 'drizzle-orm/sqlite-core';
-import { usersTable } from './User.schema';
+import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { rolesTable } from './Role.schema';
+import { usersTable } from './User.schema';
 
 /**
  * UserRole junction table for many-to-many relationship
@@ -27,8 +27,8 @@ export const userRolesTable = sqliteTable(
         organizationId: text('organization_id').notNull(),
         // App scoping (OPTIONAL - null means role applies to all apps)
         appId: text('app_id'),
-        assignedAt: integer('assigned_at', { mode: 'timestamp' })
-            .$defaultFn(() => new Date())
+        assignedAt: integer('assigned_at')
+            .$defaultFn(() => Date.now())
             .notNull(),
         assignedBy: text('assigned_by'),
     },

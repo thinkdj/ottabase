@@ -2,7 +2,7 @@
 // @ottabase/ottaorm - VerificationToken table schema for Auth.js
 // ============================================================
 
-import { primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
  * VerificationToken table schema for Auth.js
@@ -13,7 +13,7 @@ export const verificationTokensTable = sqliteTable(
     {
         identifier: text('identifier').notNull(), // email or other identifier
         token: text('token').notNull(),
-        expires: text('expires').notNull(), // ISO 8601 date string
+        expires: integer('expires').notNull(), // Unix timestamp (ms)
         // App identifier for multi-app database sharing (nullable, opt-in)
         appId: text('app_id'),
     },

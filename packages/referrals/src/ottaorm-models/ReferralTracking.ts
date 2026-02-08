@@ -2,12 +2,8 @@
 // ReferralTracking Model (Fat Model)
 // ============================================================
 
-import { BaseModel, ModelFields, type PackageType, User } from '@ottabase/ottaorm';
-import {
-    referralTrackingTable,
-    type ReferralTrackingInsert,
-    type ReferralTrackingRecord,
-} from './ReferralTracking.schema';
+import { BaseModel, ModelFields, User, type PackageType } from '@ottabase/ottaorm';
+import { referralTrackingTable } from './ReferralTracking.schema';
 
 export {
     referralTrackingTable,
@@ -243,7 +239,7 @@ export class ReferralTracking extends BaseModel {
     async markCompleted(referredUserId: string) {
         this.set('status', 'completed');
         this.set('referredUserId', referredUserId);
-        this.set('conversionAt', new Date());
+        this.set('conversionAt', Date.now());
         return this.save();
     }
 

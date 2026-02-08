@@ -209,11 +209,11 @@ export class ScheduledTask extends BaseModel {
      * Get tasks that are due to run (nextRunAt <= now and active)
      */
     static async due() {
-        const now = new Date();
+        const now = Date.now();
         const tasks = await this.where({ isActive: true });
         return tasks.filter((task) => {
             const nextRun = task.get('nextRunAt') as Date | null;
-            return nextRun && nextRun <= now;
+            return nextRun && nextRun.getTime() <= now;
         });
     }
 
@@ -254,7 +254,7 @@ export class ScheduledTask extends BaseModel {
      */
     async markCompleted(nextRunAt: Date) {
         this.set('lastStatus', 'success');
-        this.set('lastRunAt', new Date());
+        this.set('lastRunAt', Date.now());
         this.set('nextRunAt', nextRunAt);
         this.set('lastError', null);
         this.set('runCount', (this.get('runCount') as number) + 1);
@@ -266,7 +266,7 @@ export class ScheduledTask extends BaseModel {
      */
     async markFailed(error: string, nextRunAt: Date) {
         this.set('lastStatus', 'failed');
-        this.set('lastRunAt', new Date());
+        this.set('lastRunAt', Date.now());
         this.set('nextRunAt', nextRunAt);
         this.set('lastError', error);
         this.set('runCount', (this.get('runCount') as number) + 1);

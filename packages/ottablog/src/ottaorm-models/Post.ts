@@ -740,7 +740,7 @@ export class Post extends BaseModel {
      * Publish the post immediately
      */
     async publish() {
-        const now = new Date();
+        const now = Date.now();
         this.set('status', 'published');
         this.set('publishedAt', this.get('publishedAt') || now);
         this.set('postedAt', now);

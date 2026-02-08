@@ -129,7 +129,7 @@ async function defaultCredentialsAuthorize(
         email: result.email,
         name: result.name ?? undefined,
         image: result.image ?? undefined,
-        emailVerified: result.email_verified ? new Date(result.email_verified) : null,
+        emailVerified: result.email_verified ? new Date(Number(result.email_verified)) : null,
     };
 }
 
@@ -291,7 +291,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                             await env.OBCF_D1.prepare(
                                 `UPDATE users SET email_verified = ? WHERE id = ? AND (email_verified IS NULL OR email_verified = '')`,
                             )
-                                .bind(new Date().toISOString(), user.id)
+                                .bind(Date.now(), user.id)
                                 .run();
                         } catch (error) {
                             console.warn('Failed to auto-verify OAuth user email:', error);
@@ -468,7 +468,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                                     token.image = dbUser.image;
                                 }
                                 token.emailVerified = dbUser.emailVerified
-                                    ? new Date(dbUser.emailVerified).toISOString()
+                                    ? new Date(Number(dbUser.emailVerified)).toISOString()
                                     : null;
                                 if (dbUser.createdAt) {
                                     token.createdAt = String(dbUser.createdAt);
@@ -558,7 +558,11 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                             session.user.image = token.image as string;
                         }
                         if (token.emailVerified) {
-                            session.user.emailVerified = new Date(token.emailVerified as string);
+                            session.user.emailVerified = new Date(
+                                typeof token.emailVerified === 'string' && /^\d+$/.test(token.emailVerified)
+                                    ? Number(token.emailVerified)
+                                    : (token.emailVerified as string),
+                            );
                         }
                         if (token.organizationId) {
                             (session.user as any).organizationId = token.organizationId as string;

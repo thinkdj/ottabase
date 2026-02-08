@@ -2,9 +2,9 @@
 // @ottabase/ottaorm - OrganizationMember junction table schema
 // ============================================================
 
-import { integer, sqliteTable, text, primaryKey } from 'drizzle-orm/sqlite-core';
-import { usersTable } from './User.schema';
+import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { organizationsTable } from './Organization.schema';
+import { usersTable } from './User.schema';
 
 /**
  * OrganizationMember junction table
@@ -22,9 +22,9 @@ export const organizationMembersTable = sqliteTable(
         role: text('role').notNull().default('member'), // owner, admin, member
         status: text('status').notNull().default('active'), // active, invited, suspended
         invitedBy: text('invited_by'),
-        invitedAt: integer('invited_at', { mode: 'timestamp' }),
-        joinedAt: integer('joined_at', { mode: 'timestamp' })
-            .$defaultFn(() => new Date())
+        invitedAt: integer('invited_at'),
+        joinedAt: integer('joined_at')
+            .$defaultFn(() => Date.now())
             .notNull(),
         metadata: text('metadata', { mode: 'json' }).$type<Record<string, any>>(),
     },

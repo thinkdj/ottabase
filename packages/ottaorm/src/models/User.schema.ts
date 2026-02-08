@@ -13,7 +13,7 @@ export const usersTable = sqliteTable('users', {
         .$defaultFn(() => crypto.randomUUID()),
     name: text('name'),
     email: text('email').notNull().unique(),
-    emailVerified: text('email_verified'),
+    emailVerified: integer('email_verified'),
     image: text('image'),
     passwordHash: text('password_hash'),
     // Referral fields
@@ -21,12 +21,12 @@ export const usersTable = sqliteTable('users', {
     referredById: text('referred_by_id'),
     // App identifier for multi-app database sharing (nullable, opt-in)
     appId: text('app_id'),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
         .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
-        .$onUpdateFn(() => new Date())
+    updatedAt: integer('updated_at')
+        .$defaultFn(() => Date.now())
+        .$onUpdateFn(() => Date.now())
         .notNull(),
 });
 

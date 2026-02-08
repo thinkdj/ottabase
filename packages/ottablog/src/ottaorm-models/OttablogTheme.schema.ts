@@ -1,7 +1,6 @@
 /**
  * OttablogTheme table schema - theme registry and state
  */
-import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const ottablogThemesTable = sqliteTable(
@@ -32,14 +31,14 @@ export const ottablogThemesTable = sqliteTable(
         appId: text('app_id'),
 
         // Timestamps
-        createdAt: integer('created_at', { mode: 'timestamp' })
+        createdAt: integer('created_at')
             .notNull()
-            .default(sql`(unixepoch())`),
+            .$defaultFn(() => Date.now()),
 
-        updatedAt: integer('updated_at', { mode: 'timestamp' })
+        updatedAt: integer('updated_at')
             .notNull()
-            .default(sql`(unixepoch())`)
-            .$onUpdate(() => new Date()),
+            .$defaultFn(() => Date.now())
+            .$onUpdateFn(() => Date.now()),
     },
     (table) => [
         // Unique theme per appId

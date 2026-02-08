@@ -6,7 +6,7 @@ import { BaseModel, ModelFields, PackageType } from '@ottabase/ottaorm';
 import { renderExpiredShortlinkPage } from '../pages/expired';
 import { renderShortlinkInterstitialPage } from '../pages/interstitial';
 import { ShortlinkTypes } from '../types';
-import { shortlinksTable, type NewShortlinkRecord, type ShortlinkRecord } from './Shortlink.schema';
+import { shortlinksTable } from './Shortlink.schema';
 
 export { shortlinksTable, type NewShortlinkRecord, type ShortlinkRecord } from './Shortlink.schema';
 
@@ -114,8 +114,8 @@ export class Shortlink extends BaseModel {
                 visible: true,
                 fieldType: 'select',
                 options: Object.values(ShortlinkTypes).map((type) => ({
-                    label: type.charAt(0).toUpperCase() + type.slice(1),
-                    value: type,
+                    name: type.charAt(0).toUpperCase() + type.slice(1),
+                    id: type,
                 })),
             },
             tableConfig: {
@@ -289,7 +289,7 @@ export class Shortlink extends BaseModel {
     async trackClick() {
         const currentClicks = this.get('clicks') || 0;
         this.set('clicks', currentClicks + 1);
-        this.set('lastClickedAt', new Date());
+        this.set('lastClickedAt', Date.now());
         return this.save();
     }
 

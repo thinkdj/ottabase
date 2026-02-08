@@ -2,15 +2,15 @@
 // @ottabase/ottaorm - OrganizationMember model
 // ============================================================
 
-import { eq, and, sql } from 'drizzle-orm';
-import { BaseModel, type PackageType, type ModelFields } from '../base/BaseModel';
+import { and, eq, sql } from 'drizzle-orm';
+import { BaseModel, type ModelFields, type PackageType } from '../base/BaseModel';
+import { organizationsTable } from './Organization.schema';
 import {
     organizationMembersTable,
-    type OrganizationMemberType,
     type NewOrganizationMemberType,
+    type OrganizationMemberType,
 } from './OrganizationMember.schema';
 import { usersTable } from './User.schema';
-import { organizationsTable } from './Organization.schema';
 
 /**
  * OrganizationMember model
@@ -157,7 +157,7 @@ export class OrganizationMember extends BaseModel {
             .insert(organizationMembersTable)
             .values({
                 ...data,
-                joinedAt: data.joinedAt || new Date(),
+                joinedAt: data.joinedAt || Date.now(),
             })
             .returning();
 
@@ -412,4 +412,4 @@ export class OrganizationMember extends BaseModel {
     }
 }
 
-export { organizationMembersTable, type OrganizationMemberType, type NewOrganizationMemberType };
+export { organizationMembersTable, type NewOrganizationMemberType, type OrganizationMemberType };

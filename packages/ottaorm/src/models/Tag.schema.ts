@@ -15,12 +15,12 @@ export const tagsTable = sqliteTable('tags', {
     slug: text('slug').notNull().unique(),
     // App identifier for multi-app database sharing (nullable, opt-in)
     appId: text('app_id'),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
         .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
-        .$onUpdateFn(() => new Date())
+    updatedAt: integer('updated_at')
+        .$defaultFn(() => Date.now())
+        .$onUpdateFn(() => Date.now())
         .notNull(),
 });
 

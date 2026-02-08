@@ -26,6 +26,8 @@ export class Organization extends BaseModel {
     static defaultSortDirection = 'desc' as const;
 
     static casts = {
+        createdAt: 'date' as const,
+        updatedAt: 'date' as const,
         settings: 'json' as const,
         metadata: 'json' as const,
     };
@@ -241,7 +243,7 @@ export class Organization extends BaseModel {
         driver?: any,
     ): Promise<InstanceType<T>> {
         // Update updatedAt timestamp
-        data.updatedAt = new Date();
+        data.updatedAt = Date.now();
 
         // Call parent update method
         return (await super.update.call(this, id, data, driver)) as InstanceType<T>;

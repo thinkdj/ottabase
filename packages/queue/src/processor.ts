@@ -3,21 +3,20 @@
  * Process queue messages and route to registered handlers
  */
 
-import type {
-    QueuedJob,
-    JobHandler,
-    JobContext,
-    RegisteredHandler,
-    HandlerOptions,
-    ProcessorOptions,
-    MessageBatch,
-    Message,
-    ChainedJob,
-    Queue,
-    PriorityQueues,
-} from './types';
-import type { QueueMessage, QueueMessageBatch } from './adapters/types';
 import { createCloudflareAdapter } from './adapters/cloudflare';
+import type { QueueMessage, QueueMessageBatch } from './adapters/types';
+import type {
+    ChainedJob,
+    HandlerOptions,
+    JobContext,
+    JobHandler,
+    Message,
+    MessageBatch,
+    ProcessorOptions,
+    Queue,
+    QueuedJob,
+    RegisteredHandler,
+} from './types';
 
 /**
  * Job handler registry
@@ -204,7 +203,7 @@ export class QueueProcessor<E = unknown> {
                     payload: chainedJob.payload,
                     meta: {
                         id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
-                        dispatchedAt: new Date().toISOString(),
+                        dispatchedAt: Date.now(),
                         attempts: 0,
                     },
                 };

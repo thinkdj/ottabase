@@ -1,7 +1,6 @@
 /**
  * PostTag table schema - blog-specific tags with color and type support
  */
-import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const postTagsTable = sqliteTable(
@@ -27,9 +26,9 @@ export const postTagsTable = sqliteTable(
         type: text('type').notNull().default('post'),
 
         // Timestamps
-        createdAt: integer('created_at', { mode: 'timestamp' })
+        createdAt: integer('created_at')
             .notNull()
-            .default(sql`(unixepoch())`),
+            .$defaultFn(() => Date.now()),
     },
     (table) => [
         // Lookup by slug with type filtering

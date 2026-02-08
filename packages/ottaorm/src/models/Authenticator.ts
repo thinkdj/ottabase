@@ -3,7 +3,7 @@
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
-import { authenticatorsTable, type AuthenticatorType, type NewAuthenticatorType } from './Authenticator.schema';
+import { authenticatorsTable } from './Authenticator.schema';
 
 export { authenticatorsTable, type AuthenticatorType, type NewAuthenticatorType } from './Authenticator.schema';
 
@@ -142,7 +142,7 @@ export class Authenticator extends BaseModel {
     async updateCounter(newCounter: number): Promise<void> {
         const instance = this as any;
         instance.attributes.counter = newCounter;
-        instance.attributes.updatedAt = new Date();
+        instance.attributes.updatedAt = Date.now();
         await this.save();
     }
 }

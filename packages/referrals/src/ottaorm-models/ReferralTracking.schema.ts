@@ -48,10 +48,10 @@ export const referralTrackingTable = sqliteTable(
         }>(),
 
         // Timestamps
-        createdAt: integer('created_at', { mode: 'timestamp' })
+        createdAt: integer('created_at')
             .notNull()
-            .$defaultFn(() => new Date()),
-        conversionAt: integer('conversion_at', { mode: 'timestamp' }),
+            .$defaultFn(() => Date.now()),
+        conversionAt: integer('conversion_at'),
 
         // App identifier for multi-app database sharing (nullable, opt-in)
         appId: text('app_id'),

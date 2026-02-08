@@ -363,19 +363,23 @@ export class BaseModel extends AbstractBaseModel {
 
                 const value = prepared[key];
 
-                // For date/datetime casts, ensure we end up with a Date object.
+                // For date/datetime casts, convert to Unix timestamp for SQLite
                 if (castType === 'date' || castType === 'datetime') {
                     if (value instanceof Date) {
-                        // Already a Date; leave as-is for Drizzle to handle.
+                        // Convert Date to Unix timestamp (milliseconds)
+                        prepared[key] = value.getTime();
                         continue;
                     }
 
                     if (typeof value === 'string') {
-                        // Try to parse string into a Date and keep it as a Date object.
+                        // Parse string to Date and convert to timestamp
                         const date = new Date(value);
                         if (!isNaN(date.getTime())) {
-                            prepared[key] = date;
+                            prepared[key] = date.getTime();
                         }
+                    } else if (typeof value === 'number') {
+                        // Already a timestamp, leave as-is
+                        continue;
                     }
                 }
             }
@@ -435,6 +439,11 @@ export class BaseModel extends AbstractBaseModel {
 
         if (!pkColumn) {
             throw new Error(`Primary key column ${this.primaryKey} not found`);
+        }
+
+        // Auto-add updatedAt if model has it in casts and value not provided
+        if (this.casts && this.casts.updatedAt && data.updatedAt === undefined) {
+            data.updatedAt = Date.now();
         }
 
         // Prepare data for database (convert string dates, etc.)

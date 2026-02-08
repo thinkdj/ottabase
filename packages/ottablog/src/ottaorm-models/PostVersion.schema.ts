@@ -1,7 +1,6 @@
 /**
  * PostVersion table schema - content versioning history
  */
-import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { postsTable } from './Post.schema';
 
@@ -61,9 +60,9 @@ export const postVersionsTable = sqliteTable(
         changeNote: text('change_note'),
 
         // When this version was created
-        createdAt: integer('created_at', { mode: 'timestamp' })
+        createdAt: integer('created_at')
             .notNull()
-            .default(sql`(unixepoch())`),
+            .$defaultFn(() => Date.now()),
     },
     (table) => [
         // Get versions for a post in order: postId + versionNumber (DESC)

@@ -112,8 +112,8 @@ export async function seedRoles(): Promise<void> {
             description: roleData.description,
             permissions: JSON.stringify(roleData.permissions),
             isSystem: roleData.isSystem,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
         });
 
         console.log(`  ✓ Created role: ${roleData.name}`);
@@ -143,8 +143,8 @@ export async function seedPermissions(): Promise<void> {
             description: permData.description,
             resource: permData.resource,
             action: permData.action,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
         });
 
         console.log(`  ✓ Created permission: ${permData.name}`);

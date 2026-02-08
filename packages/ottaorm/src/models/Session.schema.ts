@@ -13,15 +13,15 @@ export const sessionsTable = sqliteTable('sessions', {
         .$defaultFn(() => crypto.randomUUID()),
     sessionToken: text('session_token').notNull().unique(),
     userId: text('user_id').notNull(),
-    expires: text('expires').notNull(), // ISO 8601 date string
+    expires: integer('expires').notNull(), // Unix timestamp (ms)
     // App identifier for multi-app database sharing (nullable, opt-in)
     appId: text('app_id'),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
         .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
-        .$onUpdateFn(() => new Date())
+    updatedAt: integer('updated_at')
+        .$defaultFn(() => Date.now())
+        .$onUpdateFn(() => Date.now())
         .notNull(),
 });
 
