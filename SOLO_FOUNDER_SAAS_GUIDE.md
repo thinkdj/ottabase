@@ -33,15 +33,14 @@ cd ottabase
 # 2. Install dependencies
 pnpm install
 
-# 3. Run migrations
-sqlite3 dev.db < packages/ottaorm/migrations/001_add_rbac_and_audit.sql
-sqlite3 dev.db < packages/ottaorm/migrations/002_multi_tenant_system.sql
-
-# 4. Seed database (optional)
-pnpm --filter @ottabase/ottaorm seed
-
-# 5. Start development
+# 3. Start development
 pnpm dev
+
+# 4. Initialize database
+curl -X POST http://localhost:3004/api/ottaorm/init
+
+# 5. Seed database (optional)
+pnpm --filter @ottabase/ottaorm seed
 ```
 
 **You now have:**
@@ -219,14 +218,10 @@ const userLogs = await AuditLog.getByUserInOrganization(user.id, 'org-acme', 50)
 
 ## Setup from Scratch
 
-### Step 1: Run Migrations
+### Step 1: Initialize Database
 
 ```bash
-# Migration 1: RBAC and Audit
-sqlite3 your-app.db < packages/ottaorm/migrations/001_add_rbac_and_audit.sql
-
-# Migration 2: Multi-tenant system
-sqlite3 your-app.db < packages/ottaorm/migrations/002_multi_tenant_system.sql
+curl -X POST http://localhost:3004/api/ottaorm/init
 ```
 
 **What you get:**
@@ -335,11 +330,12 @@ export const postsTable = sqliteTable('posts', {
     content: text('content').notNull(),
     authorId: text('author_id').notNull(),
     status: text('status').default('draft'),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
         .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
+    updatedAt: integer('updated_at')
+        .$defaultFn(() => Date.now())
+        .$onUpdateFn(() => Date.now())
         .notNull(),
 });
 ```
@@ -507,7 +503,7 @@ async function inviteUserToOrganization(email: string, organizationId: string, i
         role: 'member',
         status: 'invited',
         invitedBy: invitedById,
-        invitedAt: new Date(),
+        invitedAt: Date.now(),
     });
 
     // 4. Send invitation email
@@ -693,7 +689,7 @@ const postLogs = await AuditLog.getByResourceInOrganization('post', post.id, 'or
 const recentDeletes = await AuditLog.where({
     organizationId: 'org-acme',
     action: 'delete',
-    createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+    createdAt: { $gte: Date.now() - 7 * 24 * 60 * 60 * 1000 },
 });
 ```
 

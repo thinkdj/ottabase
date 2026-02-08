@@ -189,11 +189,11 @@ wrangler d1 migrations list ottabase-db --remote
 CREATE TABLE IF NOT EXISTS _prisma_migrations (
   id TEXT PRIMARY KEY,
   checksum TEXT NOT NULL,
-  finished_at DATETIME,
+  finished_at INTEGER,
   migration_name TEXT NOT NULL,
   logs TEXT,
-  rolled_back_at DATETIME,
-  started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  rolled_back_at INTEGER,
+  started_at INTEGER DEFAULT (unixepoch() * 1000),
   applied_steps_count INTEGER DEFAULT 0
 );
 ```
@@ -511,7 +511,7 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   emailVerified Boolean   @default(false)  // ✅ New field
-  createdAt     DateTime  @default(now())
+  createdAt     BigInt    // Set in app with Date.now()
 }
 ```
 

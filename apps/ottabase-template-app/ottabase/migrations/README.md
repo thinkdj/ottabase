@@ -23,8 +23,8 @@ export const projectsTable = sqliteTable('projects', {
         .$defaultFn(() => crypto.randomUUID()),
     name: text('name').notNull(),
     description: text('description'),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
         .notNull(),
 });
 
@@ -78,7 +78,7 @@ export const projectsTable = sqliteTable('projects', {
     id: text('id').primaryKey(),
     name: text('name').notNull(),
     status: text('status').default('active').notNull(), // NEW FIELD!
-    createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+    createdAt: integer('created_at').$defaultFn(() => Date.now()),
 });
 ```
 

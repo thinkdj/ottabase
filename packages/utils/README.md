@@ -219,7 +219,7 @@ Core principles:
 #### UTC Conversion (For Database Storage)
 
 - **`toUTC(date: DateInput, timezone?: Timezone): Date | null`** - Convert any date to UTC for storage
-- **`nowUTC(): Date`** - Get current date/time in UTC (for new records)
+- **`nowUTC(): Date`** - Get current date/time in UTC (Date object for display/formatting; use `Date.now()` for storage)
 - **`parseInTimezone(dateStr: string, timezone?: Timezone): Date | null`** - Parse user input to UTC
 
 #### User Display (From Database)
@@ -349,14 +349,7 @@ console.log(getLatestCommitHash()); // "a1b2c3d"
 console.log(isGitRepository()); // true
 
 // Timezone utilities
-import {
-    toUTC,
-    fromUTC,
-    formatInUserTimezone,
-    setTimezoneConfig,
-    nowUTC,
-    getCommonTimezones,
-} from '@ottabase/utils/timezone';
+import { toUTC, fromUTC, formatInUserTimezone, setTimezoneConfig, getCommonTimezones } from '@ottabase/utils/timezone';
 
 // Configure user's timezone (e.g., from user profile)
 setTimezoneConfig({ userTimezone: 'America/New_York' });
@@ -364,23 +357,24 @@ setTimezoneConfig({ userTimezone: 'America/New_York' });
 // SAVING TO DATABASE: Convert user input to UTC
 const userInput = '2024-01-15T14:30:00'; // User enters in their timezone
 const utcDate = toUTC(userInput); // Convert to UTC
-// Save utcDate to database
+// Save utcDate?.getTime() to database
 
 // DISPLAYING FROM DATABASE: Convert UTC to user's timezone
-const dbDate = new Date('2024-01-15T19:30:00Z'); // UTC from database
+const dbTimestamp = Date.now(); // UTC ms from database
+const dbDate = new Date(dbTimestamp);
 const userDate = fromUTC(dbDate); // Convert to user's timezone
-console.log(formatInUserTimezone(dbDate, 'PPpp')); // "Jan 15, 2024, 2:30:00 PM"
+console.log(formatInUserTimezone(dbTimestamp, 'PPpp')); // "Jan 15, 2024, 2:30:00 PM"
 
 // PRESET FORMATS: Use ready-made format presets
 import { formatShortDateTime, formatDayMonthDateTime, formatDateAtTime } from '@ottabase/utils/timezone';
-console.log(formatShortDateTime(dbDate)); // "Jan 15, 2024 2:30 PM"
-console.log(formatDayMonthDateTime(dbDate)); // "15-JAN-2024 2:30 PM"
-console.log(formatDateAtTime(dbDate)); // "Jan 15 at 2:30 PM"
+console.log(formatShortDateTime(dbTimestamp)); // "Jan 15, 2024 2:30 PM"
+console.log(formatDayMonthDateTime(dbTimestamp)); // "15-JAN-2024 2:30 PM"
+console.log(formatDateAtTime(dbTimestamp)); // "Jan 15 at 2:30 PM"
 
 // CREATE NEW RECORDS: Always use UTC
 const newRecord = {
     title: 'New Post',
-    createdAt: nowUTC(), // Current time in UTC
+    createdAt: Date.now(), // Current time in UTC (ms)
 };
 
 // TIMEZONE SELECTOR: Get list of common timezones
@@ -399,7 +393,7 @@ async function registerUser(email: string, timezone: string) {
         data: {
             email,
             timezone, // Store user's timezone preference
-            createdAt: nowUTC(), // Always UTC in database
+            createdAt: Date.now(), // Always UTC in database (ms)
         },
     });
 }
@@ -413,7 +407,7 @@ async function createPost(userId: string, scheduledTime: string) {
             userId,
             // Convert scheduled time from user's timezone to UTC
             scheduledAt: toUTC(scheduledTime, user.timezone),
-            createdAt: nowUTC(),
+            createdAt: Date.now(),
         },
     });
 }

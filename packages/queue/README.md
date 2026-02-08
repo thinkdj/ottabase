@@ -204,7 +204,7 @@ async function storeToDLQ(kv: KVNamespace, job: QueuedJob, error: Error) {
             type: job.type,
             payload: job.payload,
             error: error.message,
-            failedAt: new Date().toISOString(),
+            failedAt: Date.now(),
             attempts: job.meta?.attempts || 1,
         }),
         { expirationTtl: 604800 },

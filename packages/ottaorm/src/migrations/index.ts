@@ -516,6 +516,7 @@ export const coreMigrations: Migration[] = [
         },
     },
     {
+        /** Implements: Tenant > App > User hierarchy  */
         name: '010_multi_tenant_system',
         up: async (db) => {
             await db.execute(`

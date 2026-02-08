@@ -23,14 +23,7 @@ pnpm add @ottabase/utils
 ## Quick Start
 
 ```typescript
-import {
-    toUTC,
-    fromUTC,
-    formatInUserTimezone,
-    getUserTimezone,
-    setTimezoneConfig,
-    nowUTC,
-} from '@ottabase/utils/timezone';
+import { toUTC, fromUTC, formatInUserTimezone, getUserTimezone, setTimezoneConfig } from '@ottabase/utils/timezone';
 
 // 1. Configure on app initialization
 setTimezoneConfig({ userTimezone: getUserTimezone() });
@@ -38,7 +31,7 @@ setTimezoneConfig({ userTimezone: getUserTimezone() });
 // 2. Creating records - always use UTC
 const newPost = {
     title: 'My Post',
-    createdAt: nowUTC(),
+    createdAt: Date.now(),
 };
 
 // 3. Storing user input - convert to UTC
@@ -57,7 +50,7 @@ const displayTime = formatInUserTimezone(dbDate, 'PPpp', user.timezone);
 const post = await db.post.create({
     data: {
         title: 'New Post',
-        createdAt: nowUTC(), // Current time in UTC
+        createdAt: Date.now(), // Current time in UTC (ms)
         publishedAt: toUTC(userInputDate, user.timezone), // Convert user input to UTC
     },
 });
@@ -65,7 +58,7 @@ const post = await db.post.create({
 // ❌ INCORRECT: Never store user's local time
 const post = await db.post.create({
     data: {
-        createdAt: new Date(), // Dangerous! Could be in any timezone
+        createdAt: Date.parse(userInputDate), // Ambiguous timezone
     },
 });
 ```
@@ -85,7 +78,7 @@ const displayPosts = posts.map((post) => ({
 }));
 
 // ❌ INCORRECT: Display UTC directly to user
-<p>{post.createdAt.toISOString()}</p> // Shows UTC, not user's time
+<p>{post.createdAt}</p> // Shows UTC ms, not user's time
 ```
 
 ### 3. User Input (Parse with Timezone Context)
@@ -95,7 +88,7 @@ const displayPosts = posts.map((post) => ({
 const scheduledDate = parseInTimezone(userInput, user.timezone);
 
 // ❌ INCORRECT: Parse without timezone context
-const scheduledDate = new Date(userInput); // Ambiguous timezone
+const scheduledDate = Date.parse(userInput); // Ambiguous timezone
 ```
 
 ## Common Patterns
@@ -103,14 +96,14 @@ const scheduledDate = new Date(userInput); // Ambiguous timezone
 ### Pattern 1: User Registration
 
 ```typescript
-import { nowUTC, getUserTimezone } from '@ottabase/utils/timezone';
+import { getUserTimezone } from '@ottabase/utils/timezone';
 
 async function registerUser(data: RegisterInput) {
     return db.user.create({
         data: {
             email: data.email,
             timezone: getUserTimezone(), // Store user's detected timezone
-            createdAt: nowUTC(), // Store registration time in UTC
+            createdAt: Date.now(), // Store registration time in UTC (ms)
         },
     });
 }
@@ -130,7 +123,7 @@ async function schedulePost(userId: string, data: ScheduleInput) {
             userId,
             title: data.title,
             scheduledAt: toUTC(data.scheduledAt, user.timezone), // Convert to UTC
-            createdAt: nowUTC(),
+            createdAt: Date.now(),
         },
     });
 }
@@ -139,7 +132,7 @@ async function schedulePost(userId: string, data: ScheduleInput) {
 async function getScheduledPosts(userId: string) {
     const user = await db.user.findUnique({ where: { id: userId } });
     const posts = await db.post.findMany({
-        where: { userId, scheduledAt: { gte: nowUTC() } },
+        where: { userId, scheduledAt: { gte: Date.now() } },
     });
 
     return posts.map((post) => ({
@@ -193,7 +186,7 @@ export async function GET(request: Request) {
     const formattedPosts = posts.map((post) => ({
         id: post.id,
         title: post.title,
-        createdAt: post.createdAt.toISOString(), // Keep raw UTC
+        createdAt: post.createdAt, // UTC ms timestamp
         createdAtFormatted: formatInUserTimezone(post.createdAt, 'PPpp', user.timezone),
     }));
 
@@ -256,11 +249,11 @@ const utcDate = toUTC('2024-01-15T14:30:00', 'America/New_York');
 
 #### `nowUTC(): Date`
 
-Get current date/time in UTC (for new records).
+Get current date/time in UTC (Date object for display/formatting). Use `Date.now()` when storing timestamps.
 
 ```typescript
 const now = nowUTC();
-// Store in database: { createdAt: now }
+const timestamp = now.getTime();
 ```
 
 #### `parseInTimezone(dateStr: string, timezone?: Timezone): Date | null`
@@ -326,24 +319,24 @@ import {
     formatDateAtTime,
 } from '@ottabase/utils/timezone';
 
-const dbDate = new Date('2024-01-15T19:30:00Z');
+const dbTimestamp = Date.UTC(2024, 0, 15, 19, 30, 0);
 
 // Date and Time formats
-formatShortDateTime(dbDate); // "Jan 15, 2024 2:30 PM"
-formatDayMonthDateTime(dbDate); // "15-JAN-2024 2:30 PM"
-formatLongDateTime(dbDate); // "January 15, 2024 2:30 PM"
-formatISODateTime(dbDate); // "2024-01-15 2:30 PM"
-formatCompactDateTime(dbDate); // "Mon, Jan 15, 2024 2:30 PM"
-formatDateAtTime(dbDate); // "Jan 15 at 2:30 PM"
+formatShortDateTime(dbTimestamp); // "Jan 15, 2024 2:30 PM"
+formatDayMonthDateTime(dbTimestamp); // "15-JAN-2024 2:30 PM"
+formatLongDateTime(dbTimestamp); // "January 15, 2024 2:30 PM"
+formatISODateTime(dbTimestamp); // "2024-01-15 2:30 PM"
+formatCompactDateTime(dbTimestamp); // "Mon, Jan 15, 2024 2:30 PM"
+formatDateAtTime(dbTimestamp); // "Jan 15 at 2:30 PM"
 
 // Date only formats
-formatShortDate(dbDate); // "Jan 15, 2024"
-formatSlashDate(dbDate); // "15/Jan/2024"
-formatFullDate(dbDate); // "Monday, January 15, 2024"
+formatShortDate(dbTimestamp); // "Jan 15, 2024"
+formatSlashDate(dbTimestamp); // "15/Jan/2024"
+formatFullDate(dbTimestamp); // "Monday, January 15, 2024"
 
 // Time only formats
-formatTime12Hour(dbDate); // "2:30 PM"
-formatTime24Hour(dbDate); // "14:30"
+formatTime12Hour(dbTimestamp); // "2:30 PM"
+formatTime24Hour(dbTimestamp); // "14:30"
 ```
 
 **When to use preset formats:**
@@ -390,8 +383,8 @@ getTimezoneOffsetMinutes('Asia/Tokyo'); // 540 (UTC+9)
 Check if date is in daylight saving time.
 
 ```typescript
-isDST(new Date('2024-06-15'), 'America/New_York'); // true (summer)
-isDST(new Date('2024-12-15'), 'America/New_York'); // false (winter)
+isDST(Date.UTC(2024, 5, 15), 'America/New_York'); // true (summer)
+isDST(Date.UTC(2024, 11, 15), 'America/New_York'); // false (winter)
 ```
 
 ### Advanced
@@ -408,28 +401,28 @@ convertTimezone(date, 'America/New_York', 'America/Los_Angeles');
 
 Get current time in specific timezone.
 
-## Prisma Schema Example
+## Schema Example (Numeric Timestamps)
 
 ```prisma
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  timezone  String   @default("UTC") // Store user's preferred timezone
-  createdAt DateTime @default(now()) // Always UTC
-  updatedAt DateTime @updatedAt      // Always UTC
-  posts     Post[]
+    id        String  @id @default(cuid())
+    email     String  @unique
+    timezone  String  @default("UTC") // Store user's preferred timezone
+    createdAt BigInt  // Set in app with Date.now()
+    updatedAt BigInt  // Set in app with Date.now()
+    posts     Post[]
 }
 
 model Post {
-  id          String    @id @default(cuid())
-  title       String
-  content     String?
-  scheduledAt DateTime? // Always UTC in database
-  publishedAt DateTime? // Always UTC in database
-  createdAt   DateTime  @default(now()) // Always UTC
-  updatedAt   DateTime  @updatedAt      // Always UTC
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
+    id          String   @id @default(cuid())
+    title       String
+    content     String?
+    scheduledAt BigInt? // UTC ms timestamp (Date.now)
+    publishedAt BigInt? // UTC ms timestamp (Date.now)
+    createdAt   BigInt  // Set in app with Date.now()
+    updatedAt   BigInt  // Set in app with Date.now()
+    userId      String
+    user        User    @relation(fields: [userId], references: [id])
 }
 ```
 
@@ -445,12 +438,12 @@ describe('Timezone Utilities', () => {
         const userInput = '2024-01-15T14:30:00';
         const utcDate = toUTC(userInput, 'America/New_York');
 
-        expect(utcDate?.toISOString()).toBe('2024-01-15T19:30:00.000Z');
+        expect(utcDate?.getTime()).toBe(Date.UTC(2024, 0, 15, 19, 30, 0));
     });
 
     test('formats UTC date in user timezone', () => {
-        const utcDate = new Date('2024-01-15T19:30:00Z');
-        const formatted = formatInUserTimezone(utcDate, 'PPpp', 'America/New_York');
+        const utcTimestamp = Date.UTC(2024, 0, 15, 19, 30, 0);
+        const formatted = formatInUserTimezone(utcTimestamp, 'PPpp', 'America/New_York');
 
         expect(formatted).toContain('2:30:00 PM');
         expect(formatted).toContain('Jan 15, 2024');
@@ -470,7 +463,7 @@ describe('Timezone Utilities', () => {
 1. **Always store in UTC**
 
     ```typescript
-    createdAt: nowUTC();
+    createdAt: Date.now();
     ```
 
 2. **Convert user input to UTC before storing**
@@ -504,21 +497,22 @@ describe('Timezone Utilities', () => {
 
     ```typescript
     // ❌ BAD
-    createdAt: new Date();
+    const userInput = '2024-01-15 14:30'; // No timezone
+    createdAt: Date.parse(userInput);
     ```
 
 2. **Never display UTC dates directly to users**
 
     ```typescript
     // ❌ BAD
-    <p>{post.createdAt.toISOString()}</p>
+    <p>{post.createdAt}</p>
     ```
 
 3. **Never parse dates without timezone context**
 
     ```typescript
     // ❌ BAD
-    const date = new Date(userInput);
+    const timestamp = Date.parse(userInput);
     ```
 
 4. **Never hardcode timezone offsets**
@@ -531,7 +525,7 @@ describe('Timezone Utilities', () => {
 5. **Never assume server and client are in same timezone**
     ```typescript
     // ❌ BAD
-    const now = new Date(); // Could be server or client timezone
+    const now = Date.now(); // Could be server or client timezone
     ```
 
 ## Troubleshooting
@@ -602,8 +596,9 @@ const formatted = formatInUserTimezone(utcDate, 'PPpp', 'America/New_York');
 ```typescript
 // Before (Luxon)
 import { DateTime } from 'luxon';
-const date = DateTime.fromISO(input, { zone: 'America/New_York' }).toUTC().toJSDate();
-const formatted = DateTime.fromJSDate(utcDate).setZone('America/New_York').toFormat('MMM dd, yyyy h:mm a');
+const inputTimestamp = Date.parse(input);
+const utcTimestamp = DateTime.fromMillis(inputTimestamp, { zone: 'America/New_York' }).toUTC().toMillis();
+const formatted = DateTime.fromMillis(utcTimestamp).setZone('America/New_York').toFormat('MMM dd, yyyy h:mm a');
 
 // After (@ottabase/utils/timezone)
 import { toUTC, formatInUserTimezone } from '@ottabase/utils/timezone';

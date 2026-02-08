@@ -202,8 +202,8 @@ datasource db {
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt BigInt   // Set in app with Date.now()
+  updatedAt BigInt   // Set in app with Date.now()
 }
 
 // ---- Core Schema: post ----
@@ -213,8 +213,8 @@ model Post {
   content   String?  @db.Text
   published Boolean  @default(false)
   authorId  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt BigInt   // Set in app with Date.now()
+  updatedAt BigInt   // Set in app with Date.now()
 }
 
 // ---- App Schema ----

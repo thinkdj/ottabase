@@ -356,7 +356,7 @@ Create your own formatter:
 import { createFormatter } from '@ottabase/logger/formatters';
 
 const customFormatter = createFormatter((entry) => {
-    return `[${entry.timestamp.toISOString()}] ${entry.levelName.toUpperCase()}: ${entry.message}`;
+    return `[${new Date(entry.timestamp).toUTCString()}] ${entry.levelName.toUpperCase()}: ${entry.message}`;
 });
 ```
 

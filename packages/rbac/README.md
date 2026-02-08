@@ -24,8 +24,7 @@ pnpm add @ottabase/rbac @ottabase/cf @ottabase/logger
 
 ```bash
 # Run migration (auto-applied or manual)
-sqlite3 .wrangler/state/v3/d1/*.sqlite \
-  < packages/ottaorm/migrations/001_add_rbac_and_audit.sql
+curl -X POST http://localhost:3004/api/ottaorm/init
 
 # Seed default roles
 pnpm --filter @ottabase/ottaorm seed:rbac

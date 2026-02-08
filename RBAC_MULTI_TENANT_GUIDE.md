@@ -62,8 +62,7 @@ allowNullTenant: true; // Enable in config
 
 ```bash
 # Migrations are auto-applied, or run manually:
-sqlite3 .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite \
-  < packages/ottaorm/migrations/001_add_rbac_and_audit.sql
+curl -X POST http://localhost:3004/api/ottaorm/init
 ```
 
 **Tables Created:**
@@ -185,7 +184,7 @@ const member = await OrganizationMember.create({
     role: 'admin', // 'owner' | 'admin' | 'member'
     status: 'invited', // 'invited' | 'active' | 'suspended'
     invitedBy: currentUser.id,
-    invitedAt: new Date(),
+    invitedAt: Date.now(),
 });
 
 // Update role

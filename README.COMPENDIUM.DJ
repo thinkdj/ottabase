@@ -36,3 +36,24 @@ pnpm test:coverage:apps # Apps with coverage
 pnpm test:watch # Watch mode
 pnpm test:ui # Vitest UI (interactive)
 ```
+
+
+
+
+
+==============
+Thoughts
+==============
+
+Worked on nextjs variant for 1.5 years. 
+Tweaking nuances 
+
+Then it hit me: I have AI, and so does everyone who is going to use Ottabsse.
+Nextjs' advantages are not that important anymore.
+
+Recoded the whole thing with a fresh approach in 6 months. 
+
+Total time ~2 years in the making :-< 
+
+Ah well, the best time to plant a tree was 20 years ago. The second best time is `now`.
+

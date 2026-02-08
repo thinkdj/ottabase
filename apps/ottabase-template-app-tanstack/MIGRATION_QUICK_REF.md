@@ -37,8 +37,13 @@ export const examplesTable = sqliteTable('examples', {
     id: text('id').primaryKey(),
     name: text('name').notNull(),
     description: text('description'),
-    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
+        .notNull(),
+    updatedAt: integer('updated_at')
+        .$defaultFn(() => Date.now())
+        .$onUpdateFn(() => Date.now())
+        .notNull(),
 });
 
 export class Example extends BaseModel {
@@ -73,8 +78,13 @@ export const todosTable = sqliteTable('todos', {
     userId: text('user_id'),
     // NEW COLUMN:
     priority: text('priority').default('medium'),
-    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
+        .notNull(),
+    updatedAt: integer('updated_at')
+        .$defaultFn(() => Date.now())
+        .$onUpdateFn(() => Date.now())
+        .notNull(),
 });
 ```
 

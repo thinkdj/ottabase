@@ -41,11 +41,12 @@ export const todosTable = sqliteTable('todos', {
         .$defaultFn(() => crypto.randomUUID()),
     title: text('title').notNull(),
     completed: integer('completed', { mode: 'boolean' }).default(false).notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
         .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
+    updatedAt: integer('updated_at')
+        .$defaultFn(() => Date.now())
+        .$onUpdateFn(() => Date.now())
         .notNull(),
 });
 
@@ -259,10 +260,10 @@ export const todosTable = sqliteTable('todos', {
     completed: integer('completed', { mode: 'boolean' }).default(false).notNull(),
     userId: text('user_id'),
     createdAt: integer('created_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
+        .$defaultFn(() => Date.now())
         .notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp' })
-        .$defaultFn(() => new Date())
+        .$defaultFn(() => Date.now())
         .notNull(),
 });
 
@@ -693,7 +694,7 @@ const member = await OrganizationMember.create({
     role: 'member',
     status: 'active',
     invitedBy: 'user-123',
-    joinedAt: new Date(),
+    joinedAt: Date.now(),
 });
 
 // Get all members of an organization

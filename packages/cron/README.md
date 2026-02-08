@@ -205,7 +205,7 @@ const parsed = parseCron('0 9 * * 1-5');
 // { minutes: [0], hours: [9], days: [1-31], months: [1-12], weekdays: [1,2,3,4,5] }
 
 // Check if date matches
-matchesCron('0 9 * * *', new Date()); // true/false
+matchesCron('0 9 * * *', new Date(Date.now())); // true/false
 
 // Get next occurrence
 const next = getNextRun('0 0 * * *'); // Next midnight

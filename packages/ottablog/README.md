@@ -113,7 +113,7 @@ const post = await Post.create({
         canonicalUrl: 'https://...',
     },
     authorId: 'user-123',
-    publishedAt: new Date(),
+    publishedAt: Date.now(),
     isFeatured: true,
     allowComments: true,
 });

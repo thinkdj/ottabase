@@ -649,7 +649,7 @@ const config = createOttabaseAuthConfig({
 Credentials logins use these columns on `users`:
 
 - `password_hash` - PBKDF2 hash string
-- `email_verified` - ISO timestamp (optional, used when `AUTH_REQUIRE_EMAIL_VERIFIED=true`)
+- `email_verified` - Unix timestamp (ms, optional, used when `AUTH_REQUIRE_EMAIL_VERIFIED=true`)
 
 ## API Reference
 

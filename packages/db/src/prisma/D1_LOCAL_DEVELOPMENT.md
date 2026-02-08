@@ -31,7 +31,7 @@ model Todo {
   id        Int      @id @default(autoincrement())
   title     String
   completed Boolean  @default(false)
-  createdAt DateTime @default(now())
+    createdAt BigInt   // Set in app with Date.now()
 
   @@index([createdAt])
 }

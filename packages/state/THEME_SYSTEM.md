@@ -286,7 +286,7 @@ export function useAutoTheme() {
     const setTheme = useSetAtom(themeAtom);
 
     useEffect(() => {
-        const hour = new Date().getHours();
+        const hour = new Date(Date.now()).getHours();
         const isDayTime = hour >= 6 && hour < 18;
         setTheme(isDayTime ? 'light' : 'dark');
     }, [setTheme]);

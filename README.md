@@ -72,7 +72,7 @@ export const todosTable = sqliteTable('todos', {
     title: text('title').notNull(),
     completed: integer('completed', { mode: 'boolean' }).default(false).notNull(),
     userId: text('user_id'),
-    createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+    createdAt: integer('created_at').$defaultFn(() => Date.now()),
 });
 
 export class Todo extends BaseModel {

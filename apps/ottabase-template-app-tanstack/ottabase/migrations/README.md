@@ -114,7 +114,9 @@ import { sqliteTable } from 'drizzle-orm/sqlite-core';
 export const yourTable = sqliteTable('your_table', {
     id: text('id').primaryKey(),
     name: text('name').notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
+        .notNull(),
 });
 
 export class YourModel extends BaseModel {
