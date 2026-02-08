@@ -331,6 +331,14 @@ wrangler secret put MIGRATION_SECRET</pre>
     var panels = document.querySelectorAll('.step-panel');
     var progress = document.getElementById('progress-fill');
     var autoAdvanceTimer = null;
+    var secret = new URLSearchParams(window.location.search).get('secret');
+
+    function apiFetch(url, options) {
+      options = options || {};
+      options.headers = options.headers || {};
+      if (secret) options.headers['X-Bootstrap-Secret'] = secret;
+      return fetch(url, options);
+    }
 
     function clearTimer() {
       if (autoAdvanceTimer) {
@@ -426,7 +434,7 @@ wrangler secret put MIGRATION_SECRET</pre>
       setBtn(btnInit, true, 'Initializing...');
       log('log-init', 'Starting database initialization...', 'info');
 
-      fetch('/__bootstrap__/api/init', { method: 'POST' })
+      apiFetch('/__bootstrap__/api/init', { method: 'POST' })
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (!data.success) throw new Error(data.error || 'Init failed');
@@ -468,7 +476,7 @@ wrangler secret put MIGRATION_SECRET</pre>
       setBtn(btnSeed, true, 'Seeding...');
       log('log-seed', 'Seeding RBAC roles and default organization...', 'info');
 
-      fetch('/__bootstrap__/api/seed', { method: 'POST' })
+      apiFetch('/__bootstrap__/api/seed', { method: 'POST' })
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (!data.success) throw new Error(data.error || 'Seed failed');
@@ -524,7 +532,7 @@ wrangler secret put MIGRATION_SECRET</pre>
       setBtn(btnOwner, true, 'Creating...');
       log('log-owner', 'Creating owner account: ' + email, 'info');
 
-      fetch('/__bootstrap__/api/create-owner', {
+      apiFetch('/__bootstrap__/api/create-owner', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email, password: password, name: name })
@@ -567,7 +575,7 @@ wrangler secret put MIGRATION_SECRET</pre>
 
     function runChecks() {
       checksEl.innerHTML = '<div style="color:var(--text-dim);font-size:0.8125rem"><span class="spinner"></span> Running pre-flight checks...</div>';
-      fetch('/__bootstrap__/api/status')
+      apiFetch('/__bootstrap__/api/status')
         .then(function(r) { return r.json(); })
         .then(function(data) {
           var db = data.database || {};
@@ -603,7 +611,7 @@ wrangler secret put MIGRATION_SECRET</pre>
       setBtn(btnFinalize, true, 'Launching...');
       log('log-finalize', 'Verifying and finalizing...', 'info');
 
-      fetch('/__bootstrap__/api/finalize', { method: 'POST' })
+      apiFetch('/__bootstrap__/api/finalize', { method: 'POST' })
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (!data.success) throw new Error(data.error || 'Finalize failed');
@@ -635,7 +643,7 @@ wrangler secret put MIGRATION_SECRET</pre>
     `
             : `
     // Check status on load to see if we can jump to the end
-    fetch('/__bootstrap__/api/status')
+    apiFetch('/__bootstrap__/api/status')
       .then(function(r) { return r.json(); })
       .then(function(data) {
         var db = data.database || {};

@@ -59,9 +59,10 @@ function jsonResp(data: unknown, status = 200): Response {
 
 /**
  * Check if the provided bootstrap secret is valid.
- * Accepts secret from 'X-Bootstrap-Secret' header or '?secret=' URL query parameter.
+ * For API requests, only X-Bootstrap-Secret header is accepted.
+ * For the main wizard page (GET), the ?secret= query parameter is also allowed.
  */
-function isValidSecret(context: BootstrapContext): boolean {
+function isValidSecret(context: BootstrapContext, allowQuery = false): boolean {
     const { env, request, url } = context;
     const expectedSecret = (env as any).BOOTSTRAP_OWNER_SECRET;
 
@@ -71,9 +72,14 @@ function isValidSecret(context: BootstrapContext): boolean {
     }
 
     const headerSecret = request.headers.get('X-Bootstrap-Secret');
-    const querySecret = url.searchParams.get('secret');
+    if (headerSecret === expectedSecret) return true;
 
-    return headerSecret === expectedSecret || querySecret === expectedSecret;
+    if (allowQuery) {
+        const querySecret = url.searchParams.get('secret');
+        if (querySecret === expectedSecret) return true;
+    }
+
+    return false;
 }
 
 /**
@@ -102,12 +108,19 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
     }
 
     // 2. Security Check for API and Wizard (POST/GET)
-    if (!isValidSecret(context)) {
+    // Only allow query param for the GET wizard page
+    const allowQuery = !isApiRequest && context.request.method === 'GET';
+    if (!isValidSecret(context, allowQuery)) {
         if (isApiRequest) {
-            return jsonResp({ error: 'Unauthorized: Valid bootstrap secret required', code: 'UNAUTHORIZED' }, 401);
+            return jsonResp(
+                {
+                    error: 'Unauthorized: Valid bootstrap secret required in X-Bootstrap-Secret header',
+                    code: 'UNAUTHORIZED',
+                },
+                401,
+            );
         }
-        // For HTML page in production without secret, show 401 or redirect?
-        // Let's return a simple 401 for GET wizard page if secret is required and missing
+        // For HTML page in production without secret, show 401
         if ((context.env as any).ENVIRONMENT === 'production') {
             return new Response('Unauthorized: Valid bootstrap secret required (?secret=xxx)', { status: 401 });
         }
