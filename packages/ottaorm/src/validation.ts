@@ -59,7 +59,18 @@ function parseRules(rulesStr?: string): Map<string, number | boolean> {
         if (!name) continue;
         // Skip server-only rules (unique, alpha_dash, etc. - not expressible in Zod client-side)
         if (name === 'unique' || name === 'alpha_dash') continue;
-        map.set(name, param !== undefined ? Number(param) : true);
+        
+        if (param === undefined) {
+            // Flag-style rule (e.g., "required", "email")
+            map.set(name, true);
+        } else {
+            const num = Number(param);
+            // Only store numeric rules if the parameter is a finite number
+            if (Number.isFinite(num)) {
+                map.set(name, num);
+            }
+            // If not finite (NaN/Infinity), skip adding this rule
+        }
     }
     return map;
 }

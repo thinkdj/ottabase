@@ -57,6 +57,14 @@ export function ModelForm<T extends Record<string, unknown>>({
     onError,
     serverErrors,
 }: ModelFormProps<T>) {
+    // Validate that at least one submit handler is provided
+    if (!action && !onSubmit) {
+        console.warn(
+            'ModelForm: Neither `action` nor `onSubmit` prop is provided. Form submission will be a no-op. ' +
+                'Please provide either `action` (for standalone mode) or `onSubmit` (for callback mode).',
+        );
+    }
+
     // Initialize form data with defaults for create, or initialData for edit
     const [formData, setFormData] = useState<Partial<T>>(() => {
         if (mode === 'edit') {
@@ -212,11 +220,17 @@ export function ModelForm<T extends Record<string, unknown>>({
     const buildSubmitData = useCallback((): Partial<T> => {
         const submitData: Record<string, unknown> = {};
         for (const { key, field } of visibleFields) {
-            if (field.editable !== false || (mode === 'create' && !field.primaryKey)) {
-                const value = formData[key as keyof T];
-                if (value !== undefined) {
-                    submitData[key] = value;
-                }
+            // Always exclude non-editable/readonly fields
+            if (field.editable === false) {
+                continue;
+            }
+            // On create, always exclude primary key fields
+            if (mode === 'create' && field.primaryKey) {
+                continue;
+            }
+            const value = formData[key as keyof T];
+            if (value !== undefined) {
+                submitData[key] = value;
             }
         }
         return submitData as Partial<T>;
