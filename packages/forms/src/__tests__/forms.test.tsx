@@ -244,6 +244,7 @@ describe('createModelConfig', () => {
         displayNamePlural: 'Users',
         defaultSort: 'createdAt',
         defaultSortDirection: 'desc' as const,
+        defaults: { status: 'active' },
         getFields: () => testFields,
         getModelConfig: () => ({
             entity: 'users',
@@ -253,6 +254,7 @@ describe('createModelConfig', () => {
             displayNamePlural: 'Users',
             defaultSort: 'createdAt',
             defaultSortDirection: 'desc' as const,
+            defaults: { status: 'active' },
         }),
     };
 
@@ -261,6 +263,7 @@ describe('createModelConfig', () => {
         expect(config.entity).toBe('users');
         expect(config.displayName).toBe('User');
         expect(config.fields).toBe(testFields);
+        expect(config.defaults).toEqual({ status: 'active' });
     });
 
     it('should auto-build Zod schemas', () => {
@@ -306,6 +309,7 @@ describe('defineModelConfig', () => {
         const config = defineModelConfig({
             entity: 'products',
             displayName: 'Product',
+            defaults: { status: 'active' },
             fields: {
                 id: { type: 'id', primaryKey: true },
                 name: { type: 'string', editable: true, validation: { rules: 'required' } },
@@ -315,6 +319,7 @@ describe('defineModelConfig', () => {
         expect(config.entity).toBe('products');
         expect(config.displayName).toBe('Product');
         expect(config.zodCreateSchema).toBeDefined();
+        expect(config.defaults).toEqual({ status: 'active' });
     });
 
     it('should auto-generate display name from entity', () => {

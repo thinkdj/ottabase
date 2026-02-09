@@ -2,6 +2,7 @@
 // @ottabase/ottaorm - Organization (Tenant) model
 // ============================================================
 
+import type { DbDriver } from '@ottabase/db/drizzle';
 import { eq, sql } from 'drizzle-orm';
 import { BaseModel, type ModelFields, type PackageType } from '../base/BaseModel';
 import { organizationsTable, type NewOrganizationType, type OrganizationType } from './Organization.schema';
@@ -317,18 +318,37 @@ export class Organization extends BaseModel {
     /**
      * Search organizations by name or slug
      */
-    static async search(query: string, limit: number = 20): Promise<OrganizationType[]> {
-        const db = this.getDriver().getDb();
+    static async search(query: string, limit?: number): Promise<OrganizationType[]>;
+    static async search<T extends typeof BaseModel>(
+        this: T,
+        query: string,
+        fields: string[],
+        where?: Record<string, any>,
+        options?: { orderBy?: string; orderDirection?: 'asc' | 'desc'; limit?: number; offset?: number },
+        driver?: DbDriver,
+    ): Promise<InstanceType<T>[]>;
+    static async search(
+        query: string,
+        fieldsOrLimit: string[] | number = ['name', 'slug'],
+        where?: Record<string, any>,
+        options?: { orderBy?: string; orderDirection?: 'asc' | 'desc'; limit?: number; offset?: number },
+        driver?: DbDriver,
+    ): Promise<OrganizationType[] | InstanceType<typeof BaseModel>[]> {
+        if (typeof fieldsOrLimit === 'number') {
+            const db = this.getDriver(driver).getDb();
+            const searchPattern = `%${query}%`;
+            return db
+                .select()
+                .from(organizationsTable)
+                .where(
+                    sql`${organizationsTable.name} LIKE ${searchPattern} OR ${organizationsTable.slug} LIKE ${searchPattern}`,
+                )
+                .limit(fieldsOrLimit) as unknown as Promise<OrganizationType[]>;
+        }
 
-        const searchPattern = `%${query}%`;
-
-        return db
-            .select()
-            .from(organizationsTable)
-            .where(
-                sql`${organizationsTable.name} LIKE ${searchPattern} OR ${organizationsTable.slug} LIKE ${searchPattern}`,
-            )
-            .limit(limit);
+        const fields = fieldsOrLimit;
+        const mergedOptions = options;
+        return super.search(query, fields, where, mergedOptions, driver);
     }
 }
 

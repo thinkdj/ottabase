@@ -67,6 +67,7 @@ export interface ModelFieldDescriptor {
             | 'date'
             | 'datetime'
             | 'json'
+            | 'editor'
             | 'boolean'
             | 'number'
             | 'email'
@@ -338,6 +339,17 @@ export abstract class AbstractBaseModel {
         if (keys.length === 0) return null;
 
         return keys.filter((key) => fields[key]?.editable !== false);
+    }
+
+    /**
+     * Get searchable fields for list/search operations.
+     * Defaults to fields with searchable: true.
+     */
+    static getSearchableFields(): string[] {
+        const fields = this.fields || {};
+        return Object.entries(fields)
+            .filter(([_, field]) => field.searchable)
+            .map(([key]) => key);
     }
 
     /**

@@ -418,13 +418,14 @@ const todos = await Todo.where(
 );
 
 // Pagination
-const result = await Todo.paginate({
-    page: 1,
-    perPage: 10,
+const result = await Todo.paginate(1, 10, undefined, {
     orderBy: 'createdAt',
     orderDirection: 'desc',
 });
-// result = { data: Todo[], meta: { total, page, perPage, totalPages } }
+// result = { data, total, page, perPage, totalPages, hasNextPage, hasPrevPage }
+
+// Search + pagination (uses fields marked searchable: true)
+const searched = await Todo.searchPaginate('groceries', ['title', 'notes'], 1, 10);
 ```
 
 ### Updating Records
@@ -914,14 +915,15 @@ OttaORM provides a generic CRUD endpoint that works with all registered models:
 
 ### Supported Operations
 
-| Method   | URL                                           | Description               |
-| -------- | --------------------------------------------- | ------------------------- |
-| `GET`    | `/api/ottaorm/posts`                          | List all (paginated)      |
-| `GET`    | `/api/ottaorm/posts/123`                      | Get single by ID          |
-| `GET`    | `/api/ottaorm/posts?field=slug&value=my-post` | Get single by field/value |
-| `POST`   | `/api/ottaorm/posts`                          | Create new                |
-| `PATCH`  | `/api/ottaorm/posts/123`                      | Update existing           |
-| `DELETE` | `/api/ottaorm/posts/123`                      | Delete                    |
+| Method   | URL                                           | Description                |
+| -------- | --------------------------------------------- | -------------------------- |
+| `GET`    | `/api/ottaorm/posts`                          | List all (paginated)       |
+| `GET`    | `/api/ottaorm/posts/123`                      | Get single by ID           |
+| `GET`    | `/api/ottaorm/posts?field=slug&value=my-post` | Get single by field/value  |
+| `GET`    | `/api/ottaorm/posts?search=hello`             | Search (searchable fields) |
+| `POST`   | `/api/ottaorm/posts`                          | Create new                 |
+| `PATCH`  | `/api/ottaorm/posts/123`                      | Update existing            |
+| `DELETE` | `/api/ottaorm/posts/123`                      | Delete                     |
 
 ### Find by Field/Value
 
@@ -941,6 +943,14 @@ GET /api/ottaorm/posts?field=slug&value=my-post-slug
   "title": "My Post",
   ...
 }
+```
+
+### Search
+
+Search uses fields marked `searchable: true` in model metadata and supports pagination.
+
+```bash
+GET /api/ottaorm/posts?search=hello&orderBy=createdAt&orderDirection=desc&page=1&perPage=10
 ```
 
 ### Client Hooks
@@ -971,7 +981,7 @@ function BlogDetailPage() {
 
 **Available hooks:**
 
-- `useList()` - List all records (paginated)
+- `useList()` - List all records (supports filters and pagination via endpoint)
 - `useDetail(id)` - Get by primary key
 - `useFind(field, value)` - Get by field/value
 - `useCreate()` - Create new record

@@ -222,7 +222,7 @@ describe('Cloudflare Worker API', () => {
             // Response should be the object directly, not wrapped
             expect(data.shortCode).toBe('test-code');
             expect(data.id).toBe('test-1');
-            expect(firstSpy).toHaveBeenCalledWith({ shortCode: 'test-code' });
+            expect(firstSpy).toHaveBeenCalledWith({ shortCode: 'test-code', appId: 'web' });
 
             firstSpy.mockRestore();
         });
@@ -238,7 +238,7 @@ describe('Cloudflare Worker API', () => {
             expect(resp.status).toBe(404);
             const data = (await resp.json()) as any;
             expect(data.error).toContain('not found');
-            expect(firstSpy).toHaveBeenCalledWith({ shortCode: 'non-existent' });
+            expect(firstSpy).toHaveBeenCalledWith({ shortCode: 'non-existent', appId: 'web' });
 
             firstSpy.mockRestore();
         });

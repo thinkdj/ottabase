@@ -207,6 +207,15 @@ export class RLSEngine {
     ): void {
         // For tenant-scoped models, ensure organizationId matches
         if (policy.level === 'tenant' && policy.field) {
+            if (context.organizationId === undefined && !policy.allowNullTenant) {
+                throw new RLSError(`Missing organizationId in context for ${model}`, {
+                    type: 'unauthorized_access',
+                    model,
+                    context,
+                    attemptedAccess: { operation, data },
+                });
+            }
+
             const dataOrgId = data[policy.field];
 
             // On CREATE, inject organizationId if not provided
@@ -230,6 +239,15 @@ export class RLSEngine {
 
         // For user-scoped models, ensure userId matches
         if (policy.level === 'user' && policy.field) {
+            if (!context.userId) {
+                throw new RLSError(`Missing userId in context for ${model}`, {
+                    type: 'unauthorized_access',
+                    model,
+                    context,
+                    attemptedAccess: { operation, data },
+                });
+            }
+
             const dataUserId = data[policy.field];
 
             if (operation === 'create' && dataUserId === undefined) {
@@ -241,6 +259,36 @@ export class RLSEngine {
                     `User write attempt blocked: data.${policy.field}=${dataUserId} != context.userId=${context.userId}`,
                     {
                         type: 'unauthorized_access',
+                        model,
+                        context,
+                        attemptedAccess: { operation, data },
+                    },
+                );
+            }
+        }
+
+        // For app-scoped models, ensure appId matches
+        if (policy.level === 'app' && policy.field) {
+            if (!context.appId) {
+                throw new RLSError(`Missing appId in context for ${model}`, {
+                    type: 'unauthorized_access',
+                    model,
+                    context,
+                    attemptedAccess: { operation, data },
+                });
+            }
+
+            const dataAppId = data[policy.field];
+
+            if (operation === 'create' && dataAppId === undefined) {
+                data[policy.field] = context.appId;
+            }
+
+            if (dataAppId !== undefined && dataAppId !== context.appId) {
+                throw new RLSError(
+                    `Cross-app write attempt blocked: data.${policy.field}=${dataAppId} != context.appId=${context.appId}`,
+                    {
+                        type: 'cross_tenant_write',
                         model,
                         context,
                         attemptedAccess: { operation, data },

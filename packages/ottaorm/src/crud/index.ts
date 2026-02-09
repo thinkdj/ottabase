@@ -11,6 +11,8 @@ export interface CrudRequest {
     model: string;
     id?: string;
     body?: Record<string, unknown>;
+    /** Allow additional server-controlled fields to pass writable checks */
+    allowedWritableFields?: string[];
     query?: {
         where?: Record<string, unknown>;
         orderBy?: string;
@@ -24,6 +26,7 @@ export interface CrudRequest {
         uniqueIgnoreId?: string;
         field?: string;
         value?: string;
+        search?: string;
     };
 }
 
@@ -99,7 +102,16 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
 
         // GET with ID - find single record
         if (method === 'GET' && id) {
-            const record = await Model.find(id);
+            const pk = Model.primaryKey || 'id';
+            if (query?.where && pk in query.where && String(query.where[pk]) !== String(id)) {
+                return {
+                    success: false,
+                    error: `${entityName} with id '${id}' not found`,
+                    status: 404,
+                };
+            }
+            const where = query?.where ? { ...query.where, [pk]: id } : { [pk]: id };
+            const record = await Model.first(where);
             if (!record) {
                 return {
                     success: false,
@@ -117,10 +129,26 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
         // GET without ID - list records
         if (method === 'GET') {
             const basePath = `/api/ottaorm/${entityName}`;
+            const search = query?.search?.trim();
+            const searchableFields = typeof Model.getSearchableFields === 'function' ? Model.getSearchableFields() : [];
 
             // Check for single object lookup by field/value
             if (query?.field && query?.value !== undefined) {
-                const record = await Model.first({ [query.field]: query.value });
+                if (
+                    query?.where &&
+                    query.field in query.where &&
+                    String(query.where[query.field]) !== String(query.value)
+                ) {
+                    return {
+                        success: false,
+                        error: `${entityName} with ${query.field} '${query.value}' not found`,
+                        status: 404,
+                    };
+                }
+                const where = query?.where
+                    ? { ...query.where, [query.field]: query.value }
+                    : { [query.field]: query.value };
+                const record = await Model.first(where);
                 if (!record) {
                     return {
                         success: false,
@@ -139,10 +167,16 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
             if (query?.page || query?.perPage) {
                 const page = query.page || 1;
                 const perPage = Math.min(query.perPage || 15, 100); // Cap at 100
-                const result = await Model.paginate(page, perPage, query.where, {
-                    orderBy: query.orderBy,
-                    orderDirection: query.orderDirection,
-                });
+                const result =
+                    search && searchableFields.length > 0 && typeof Model.searchPaginate === 'function'
+                        ? await Model.searchPaginate(search, searchableFields, page, perPage, query.where, {
+                              orderBy: query.orderBy,
+                              orderDirection: query.orderDirection,
+                          })
+                        : await Model.paginate(page, perPage, query.where, {
+                              orderBy: query.orderBy,
+                              orderDirection: query.orderDirection,
+                          });
 
                 const totalPages = Math.max(1, result.totalPages);
                 const currentPage = Math.min(Math.max(1, page), totalPages);
@@ -168,12 +202,20 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
             }
 
             // Regular list (non-paginated)
-            const records = await Model.where(query?.where || {}, {
-                orderBy: query?.orderBy,
-                orderDirection: query?.orderDirection,
-                limit: query?.limit,
-                offset: query?.offset,
-            });
+            const records =
+                search && searchableFields.length > 0 && typeof Model.search === 'function'
+                    ? await Model.search(search, searchableFields, query?.where, {
+                          orderBy: query?.orderBy,
+                          orderDirection: query?.orderDirection,
+                          limit: query?.limit,
+                          offset: query?.offset,
+                      })
+                    : await Model.where(query?.where || {}, {
+                          orderBy: query?.orderBy,
+                          orderDirection: query?.orderDirection,
+                          limit: query?.limit,
+                          offset: query?.offset,
+                      });
 
             const total = records.length;
 
@@ -203,7 +245,7 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
                     status: 400,
                 };
             }
-            const sanitized = sanitizeWritableBody(Model, body, 'create');
+            const sanitized = sanitizeWritableBody(Model, body, 'create', request.allowedWritableFields);
             if (!sanitized.success) {
                 return {
                     success: false,
@@ -230,7 +272,7 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
                     status: 400,
                 };
             }
-            const sanitized = sanitizeWritableBody(Model, body, 'update');
+            const sanitized = sanitizeWritableBody(Model, body, 'update', request.allowedWritableFields);
             if (!sanitized.success) {
                 return {
                     success: false,
@@ -284,6 +326,7 @@ function sanitizeWritableBody(
     Model: any,
     body: Record<string, unknown>,
     operation: 'create' | 'update',
+    extraAllowedFields?: string[],
 ): { success: true } | { success: false; error: string; fieldErrors: Record<string, string[]> } {
     if (!body) return { success: true };
 
@@ -296,6 +339,11 @@ function sanitizeWritableBody(
     }
 
     const allowed = new Set(writable);
+    if (Array.isArray(extraAllowedFields)) {
+        for (const field of extraAllowedFields) {
+            allowed.add(field);
+        }
+    }
     const blocked: string[] = [];
 
     for (const key of Object.keys(body)) {
@@ -419,6 +467,9 @@ export async function parseCrudRequest(
 
     const value = url.searchParams.get('value');
     if (value !== null) query.value = value;
+
+    const search = url.searchParams.get('search');
+    if (search !== null) query.search = search;
 
     // Parse body for POST/PATCH/PUT
     let body: Record<string, unknown> | undefined;

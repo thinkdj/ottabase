@@ -11,6 +11,7 @@ ModelCrud.
 - **Zod Validation**: Real-time client-side validation (on blur + on submit) built from field metadata.
 - **OttaORM Validation**: Server-side validation via `Model.validate()` before create/update.
 - **Standalone Forms**: Use `action` prop to POST/PATCH directly to any endpoint.
+- **Model Defaults**: Respects `static defaults` from OttaORM models in create forms.
 - **OttaSelect**: Relationship fields use `@ottabase/ottaselect` for single/multi-select.
 - **JSON Editor**: JSON fields use `json-edit-react` with tabbed edit/tree view.
 - **Type-safe**: Full TypeScript, seamlessly integrates with OttaORM types.
@@ -125,6 +126,9 @@ const config = createModelConfig(User, {
 });
 ```
 
+`createModelConfig` pulls model defaults from `static defaults` and `uiConfig.defaultValue` and applies them to create
+forms.
+
 ### Manual (`defineModelConfig`)
 
 ```typescript
@@ -170,6 +174,7 @@ const config = defineModelConfig({
 | `file`        | File upload with drag/drop      |
 | `image`       | Image upload with preview       |
 | `json`        | JSON editor (edit + tree view)  |
+| `editor`      | JSON editor (EditorJS format)   |
 | `hidden`      | Hidden input                    |
 | `readonly`    | Read-only display               |
 

@@ -195,6 +195,59 @@ describe('OttaORM field/value find functionality', () => {
 
             firstSpy.mockRestore();
         });
+
+        it('should merge query.where into field/value lookup', async () => {
+            const mockRecord = new TestModel({
+                entity: 'tests',
+                data: { id: 'test-1', slug: 'test-slug', appId: 'app-1' },
+            } as any);
+
+            const firstSpy = vi.spyOn(TestModel, 'first').mockResolvedValue(mockRecord);
+            vi.spyOn(mockRecord, 'toJson').mockReturnValue({
+                id: 'test-1',
+                slug: 'test-slug',
+                appId: 'app-1',
+            });
+
+            registerModel(TestModel);
+
+            const result = await handleCrud({
+                method: 'GET',
+                model: 'tests',
+                query: {
+                    field: 'slug',
+                    value: 'test-slug',
+                    where: { appId: 'app-1' },
+                },
+            });
+
+            expect(result.success).toBe(true);
+            expect(firstSpy).toHaveBeenCalledWith({ appId: 'app-1', slug: 'test-slug' });
+
+            firstSpy.mockRestore();
+        });
+
+        it('should return 404 when query.where conflicts with field/value', async () => {
+            const firstSpy = vi.spyOn(TestModel, 'first');
+
+            registerModel(TestModel);
+
+            const result = await handleCrud({
+                method: 'GET',
+                model: 'tests',
+                query: {
+                    field: 'slug',
+                    value: 'test-slug',
+                    where: { slug: 'other' },
+                },
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.status).toBe(404);
+            expect(firstSpy).not.toHaveBeenCalled();
+
+            firstSpy.mockRestore();
+        });
     });
 
     describe('parseCrudRequest - field/value query params', () => {
@@ -252,6 +305,15 @@ describe('OttaORM field/value find functionality', () => {
             expect(parsed?.query?.value).toBe('test-slug');
             expect(parsed?.query?.orderBy).toBe('createdAt');
             expect(parsed?.query?.orderDirection).toBe('desc');
+        });
+
+        it('should parse search query parameter', async () => {
+            const url = new URL('http://localhost/api/ottaorm/tests?search=hello');
+
+            const request = new Request(url.toString(), { method: 'GET' });
+            const parsed = await parseCrudRequest(request, url, '/api/ottaorm');
+
+            expect(parsed?.query?.search).toBe('hello');
         });
     });
 });

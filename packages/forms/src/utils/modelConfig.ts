@@ -94,6 +94,7 @@ export function createModelConfig<T = Record<string, unknown>>(
         entity: modelConfig.entity,
         primaryKey: modelConfig.primaryKey,
         fields,
+        defaults: modelConfig.defaults,
         displayName: options?.displayName || modelConfig.displayName || capitalize(singularize(modelConfig.entity)),
         displayNamePlural:
             options?.displayNamePlural || modelConfig.displayNamePlural || capitalize(modelConfig.entity),
@@ -142,6 +143,7 @@ export function defineModelConfig<T = Record<string, unknown>>(
         entity: config.entity,
         primaryKey: config.primaryKey || 'id',
         fields: config.fields,
+        defaults: config.defaults,
         displayName: config.displayName || capitalize(singularize(config.entity)),
         displayNamePlural: config.displayNamePlural || capitalize(config.entity),
         apiPath: config.apiPath,

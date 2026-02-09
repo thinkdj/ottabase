@@ -55,7 +55,7 @@ export function FormField({
         return typeof value === 'object' && value.constructor === Object;
     }, [value]);
 
-    // Use JSON editor when field is explicitly 'json' or when value is an object (basic JSON edit instead of [Object])
+    // Use JSON editor when field is explicitly 'json' or when value is an object
     const useJsonEditor = fieldType === 'json' || (isObjectValue && fieldType !== 'readonly');
 
     const renderField = () => {
@@ -74,6 +74,18 @@ export function FormField({
         }
 
         switch (fieldType) {
+            case 'editor':
+                return (
+                    <JsonField
+                        name={name}
+                        value={value}
+                        onChange={onChange}
+                        disabled={disabled}
+                        placeholder={placeholder || '{}'}
+                        rows={formConfig.rows || 10}
+                        className={clsx(baseInputClasses, 'font-mono text-sm resize-y min-h-[220px]')}
+                    />
+                );
             case 'textarea':
                 return (
                     <textarea
@@ -169,7 +181,14 @@ export function FormField({
                             id={name}
                             name={name}
                             value={formatDateValue(value)}
-                            onChange={(e) => onChange(e.target.value ? new Date(e.target.value) : null)}
+                            onChange={(e) => {
+                                if (!e.target.value) {
+                                    onChange(null);
+                                    return;
+                                }
+                                const [year, month, day] = e.target.value.split('-').map((v) => Number(v));
+                                onChange(new Date(year, (month || 1) - 1, day || 1));
+                            }}
                             disabled={disabled}
                             className={baseInputClasses}
                         />
@@ -899,7 +918,10 @@ function formatDateValue(value: unknown): string {
     if (!value) return '';
     const date = value instanceof Date ? value : new Date(value as string);
     if (isNaN(date.getTime())) return '';
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 /**
@@ -909,7 +931,12 @@ function formatDateTimeValue(value: unknown): string {
     if (!value) return '';
     const date = value instanceof Date ? value : new Date(value as string);
     if (isNaN(date.getTime())) return '';
-    return date.toISOString().slice(0, 16);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 /**

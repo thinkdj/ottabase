@@ -64,6 +64,13 @@ export function ModelForm<T extends Record<string, unknown>>({
         }
         // Apply defaults for create mode
         const defaults: Record<string, unknown> = {};
+
+        if (config.defaults) {
+            for (const [key, value] of Object.entries(config.defaults)) {
+                defaults[key] = typeof value === 'function' ? value() : value;
+            }
+        }
+
         for (const [key, field] of Object.entries(config.fields)) {
             if (field.uiConfig?.defaultValue !== undefined) {
                 defaults[key] = field.uiConfig.defaultValue;

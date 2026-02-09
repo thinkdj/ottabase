@@ -4,6 +4,7 @@
  * OttaORM model for blog posts using @ottabase/ottablog schema.
  * Supports multiple content types, SEO, hero images, and OttaEditor content.
  */
+import type { DbDriver } from '@ottabase/db/drizzle';
 import { BaseModel, ModelFields, type IModelConstructorParams, type PackageType } from '@ottabase/ottaorm';
 import {
     calculateReadingTime,
@@ -695,6 +696,20 @@ export class Post extends BaseModel {
 
         const results = await this.where(query);
         return results.length > 0 ? (results[0] as Post) : null;
+    }
+
+    /**
+     * Search posts using BaseModel search (supports RLS + searchable fields)
+     */
+    static async search<T extends typeof BaseModel>(
+        this: T,
+        query: string,
+        fields: string[],
+        where?: Record<string, any>,
+        options?: { orderBy?: string; orderDirection?: 'asc' | 'desc'; limit?: number; offset?: number },
+        driver?: DbDriver,
+    ): Promise<InstanceType<T>[]> {
+        return super.search(query, fields, where, options, driver);
     }
 
     /**

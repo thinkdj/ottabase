@@ -30,6 +30,7 @@ export type FormFieldType =
     | 'file'
     | 'image'
     | 'json'
+    | 'editor'
     | 'hidden'
     | 'readonly';
 
@@ -73,6 +74,8 @@ export interface ModelConfig<T = Record<string, unknown>> {
     primaryKey?: string;
     /** Field metadata */
     fields: import('@ottabase/ottaorm').ModelFields;
+    /** Model defaults (used for create forms) */
+    defaults?: Record<string, unknown>;
     /** API base path */
     apiPath?: string;
     /** Default sort field */

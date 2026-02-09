@@ -30,6 +30,20 @@ export class Shortlink extends BaseModel {
         interstitialSeconds: 'number' as const,
     };
 
+    static writable = {
+        create: [
+            'fullUrl',
+            'shortCode',
+            'type',
+            'expiryDate',
+            'interstitialEnabled',
+            'interstitialSeconds',
+            // Allow server-set appId for app-scoped RLS
+            'appId',
+        ],
+        update: ['fullUrl', 'shortCode', 'type', 'expiryDate', 'interstitialEnabled', 'interstitialSeconds'],
+    };
+
     protected static defaults = {
         type: ShortlinkTypes.REDIRECT,
         clicks: 0,

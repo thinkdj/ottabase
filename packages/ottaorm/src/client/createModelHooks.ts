@@ -75,6 +75,54 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
         return [];
     }
 
+    function normalizePaginatedResponse(result: any, entity: string): PaginationResult<T> {
+        // Already in PaginationResult shape
+        if (result && typeof result === 'object' && 'data' in result && 'total' in result && 'page' in result) {
+            return result as PaginationResult<T>;
+        }
+
+        // Handle CRUD response: { data: [...], pagination: {...} }
+        if (result && typeof result === 'object' && 'data' in result && 'pagination' in result) {
+            const obj = result as { data?: T[]; pagination?: any };
+            const items = Array.isArray(obj.data) ? obj.data : [];
+            const pagination = obj.pagination || {};
+            const total = pagination.total ?? items.length;
+            const page = pagination.page ?? 1;
+            const perPage = pagination.perPage ?? items.length;
+            const totalPages = pagination.totalPages ?? Math.max(1, Math.ceil(total / perPage));
+            return {
+                data: items,
+                total,
+                page,
+                perPage,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1,
+            };
+        }
+
+        // Wrapped response: { data: { data: [...], pagination: {...} } }
+        if (result && typeof result === 'object') {
+            const obj = result as Record<string, unknown>;
+            const inner = obj.data;
+            if (inner && typeof inner === 'object' && 'data' in (inner as any)) {
+                return normalizePaginatedResponse(inner, entity);
+            }
+        }
+
+        // Fallback to list normalization
+        const list = normalizeListResponse(result, entity);
+        return {
+            data: list,
+            total: list.length,
+            page: 1,
+            perPage: list.length,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPrevPage: false,
+        };
+    }
+
     // ============================================================
     // API Fetcher Factory - Creates fetchers that use API client
     // ============================================================
@@ -197,7 +245,8 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
 
             // Use API client if available
             if (apiClient) {
-                return await apiClient<PaginationResult<T>>(url);
+                const result = await apiClient<any>(url);
+                return normalizePaginatedResponse(result, entityName);
             }
 
             // Fallback to raw fetch
@@ -207,7 +256,8 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
                 throw new Error(error.error || `Failed to fetch ${entityName}`);
             }
 
-            return response.json() as Promise<PaginationResult<T>>;
+            const result = await response.json();
+            return normalizePaginatedResponse(result, entityName);
         }
 
         async function createItem(data: Partial<T>): Promise<T> {
