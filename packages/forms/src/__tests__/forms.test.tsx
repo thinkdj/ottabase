@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildZodSchema, validateField, validateWithSchema } from '@ottabase/ottaorm';
+import { buildZodSchema, validateField, validateWithSchema, ValidationError } from '@ottabase/ottaorm';
 import type { ModelFieldDescriptor, ModelFields } from '@ottabase/ottaorm';
 import { createModelConfig, defineModelConfig } from '../utils/modelConfig';
 
@@ -341,5 +341,43 @@ describe('defineModelConfig', () => {
 
         const result2 = config.zodCreateSchema!.safeParse({ title: 'My todo' });
         expect(result2.success).toBe(true);
+    });
+});
+
+// ============================================================
+// ValidationError Tests
+// ============================================================
+
+describe('ValidationError', () => {
+    it('should be an instance of Error', () => {
+        const err = new ValidationError({ email: 'Already exists' });
+        expect(err).toBeInstanceOf(Error);
+        expect(err.name).toBe('ValidationError');
+    });
+
+    it('should contain field errors', () => {
+        const fieldErrors = { email: 'Already exists', name: 'Too short' };
+        const err = new ValidationError(fieldErrors);
+        expect(err.fieldErrors).toEqual(fieldErrors);
+    });
+
+    it('should set message from first field error', () => {
+        const err = new ValidationError({ email: 'Email already exists' });
+        expect(err.message).toBe('Validation failed: Email already exists');
+    });
+
+    it('should be catchable and field errors extractable (server error mapping pattern)', () => {
+        // Simulates what API routes do: catch ValidationError, return fieldErrors as JSON
+        try {
+            throw new ValidationError({ email: 'Taken', name: 'Required' });
+        } catch (error: unknown) {
+            if (error instanceof ValidationError) {
+                // API route would return json({ error: error.message, errors: error.fieldErrors }, 422)
+                expect(error.fieldErrors.email).toBe('Taken');
+                expect(error.fieldErrors.name).toBe('Required');
+            } else {
+                throw new Error('Should have been caught as ValidationError');
+            }
+        }
     });
 });

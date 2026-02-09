@@ -68,6 +68,9 @@ export function ModelCrud<T extends Record<string, unknown>>({
     // Delete confirmation state
     const [deleteConfirm, setDeleteConfirm] = useState<T | null>(null);
 
+    // Server-side field validation errors (from create/update mutations)
+    const [serverFieldErrors, setServerFieldErrors] = useState<Record<string, string>>({});
+
     // Build query key
     const listQueryKey = [config.entity, 'list', { page, perPage, sortField, sortDirection, searchQuery }];
     const detailQueryKey = [config.entity, 'detail', selectedRecordId];
@@ -148,23 +151,43 @@ export function ModelCrud<T extends Record<string, unknown>>({
         enabled: (viewMode === 'detail' || viewMode === 'edit') && !!selectedRecordId,
     });
 
+    // Helper: parse server field errors from API responses
+    // Supports { errors: { field: "msg" } } and OttaORM { fieldErrors: { field: ["msg"] } }
+    const parseServerErrors = (body: Record<string, unknown>) => {
+        const fieldErrors = body.errors || body.fieldErrors;
+        if (fieldErrors && typeof fieldErrors === 'object' && !Array.isArray(fieldErrors)) {
+            const parsed: Record<string, string> = {};
+            for (const [key, val] of Object.entries(fieldErrors as Record<string, unknown>)) {
+                parsed[key] = Array.isArray(val) ? val[0] : String(val);
+            }
+            if (Object.keys(parsed).length > 0) {
+                setServerFieldErrors(parsed);
+                return parsed;
+            }
+        }
+        return null;
+    };
+
     // Create mutation
     const createMutation = useMutation<T, Error, Partial<T>>({
         mutationFn: async (data) => {
+            setServerFieldErrors({});
             const response = await fetchFn(apiPath, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
             });
             if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                throw new Error(error.error || error.message || 'Failed to create record');
+                const body = await response.json().catch(() => ({}));
+                parseServerErrors(body);
+                throw new Error(body.error || body.message || 'Failed to create record');
             }
             const result = await response.json();
             const singularEntity = singularize(config.entity);
             return result[singularEntity] || result.data || result;
         },
         onSuccess: (record) => {
+            setServerFieldErrors({});
             queryClient.invalidateQueries({ queryKey: [config.entity] });
             setViewMode('detail');
             setSelectedRecordId(record[primaryKey] as string | number);
@@ -175,20 +198,23 @@ export function ModelCrud<T extends Record<string, unknown>>({
     // Update mutation
     const updateMutation = useMutation<T, Error, Partial<T>>({
         mutationFn: async (data) => {
+            setServerFieldErrors({});
             const response = await fetchFn(`${apiPath}/${selectedRecordId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
             });
             if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                throw new Error(error.error || error.message || 'Failed to update record');
+                const body = await response.json().catch(() => ({}));
+                parseServerErrors(body);
+                throw new Error(body.error || body.message || 'Failed to update record');
             }
             const result = await response.json();
             const singularEntity = singularize(config.entity);
             return result[singularEntity] || result.data || result;
         },
         onSuccess: (record) => {
+            setServerFieldErrors({});
             queryClient.invalidateQueries({ queryKey: [config.entity] });
             setViewMode('detail');
             onUpdate?.(record);
@@ -244,10 +270,12 @@ export function ModelCrud<T extends Record<string, unknown>>({
 
     const handleCreate = useCallback(() => {
         setSelectedRecordId(null);
+        setServerFieldErrors({});
         setViewMode('create');
     }, []);
 
     const handleBack = useCallback(() => {
+        setServerFieldErrors({});
         setViewMode('list');
         setSelectedRecordId(null);
     }, []);
@@ -313,6 +341,7 @@ export function ModelCrud<T extends Record<string, unknown>>({
                     onCancel={handleBack}
                     isLoading={createMutation.isPending}
                     apiBasePath={apiBasePath}
+                    serverErrors={serverFieldErrors}
                 />
             )}
 
@@ -326,6 +355,7 @@ export function ModelCrud<T extends Record<string, unknown>>({
                     onCancel={() => setViewMode('detail')}
                     isLoading={updateMutation.isPending}
                     apiBasePath={apiBasePath}
+                    serverErrors={serverFieldErrors}
                 />
             )}
 

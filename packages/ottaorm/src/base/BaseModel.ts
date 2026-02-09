@@ -400,8 +400,8 @@ export class BaseModel extends AbstractBaseModel {
         if (Object.keys(this.fields).length > 0) {
             const result = this.validate(data, 'create');
             if (!result.success) {
-                const firstError = Object.values(result.errors)[0] || 'Validation failed';
-                throw new Error(`Validation failed: ${firstError}`);
+                const { ValidationError } = require('../validation');
+                throw new ValidationError(result.errors);
             }
         }
 
@@ -446,8 +446,8 @@ export class BaseModel extends AbstractBaseModel {
         if (Object.keys(this.fields).length > 0) {
             const result = this.validate(data, 'update');
             if (!result.success) {
-                const firstError = Object.values(result.errors)[0] || 'Validation failed';
-                throw new Error(`Validation failed: ${firstError}`);
+                const { ValidationError } = require('../validation');
+                throw new ValidationError(result.errors);
             }
         }
 

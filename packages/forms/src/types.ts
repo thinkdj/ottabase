@@ -206,6 +206,12 @@ export interface ModelFormProps<T = Record<string, unknown>> {
     onSuccess?: (result: T) => void;
     /** Callback on standalone action error */
     onError?: (error: Error) => void;
+    /**
+     * External server errors to display inline on fields.
+     * Pass from parent (e.g., ModelCrud mutation errors) for server-side validation display.
+     * Format: { fieldName: "error message" }
+     */
+    serverErrors?: Record<string, string>;
 }
 
 /**

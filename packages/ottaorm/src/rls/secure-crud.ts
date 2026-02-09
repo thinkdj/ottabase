@@ -122,6 +122,24 @@ export async function executeSecureCrudRequest(
             };
         }
 
+        // Handle ValidationError from BaseModel.create/update
+        // Returns field-level errors for forms to display inline
+        if (error && typeof error === 'object' && 'fieldErrors' in error && (error as any).name === 'ValidationError') {
+            const raw = (error as any).fieldErrors as Record<string, string>;
+            const fieldErrors: Record<string, string[]> = {};
+            for (const [k, v] of Object.entries(raw)) {
+                fieldErrors[k] = [v];
+            }
+            return {
+                success: false,
+                error: (error as Error).message,
+                code: 'VALIDATION_ERROR',
+                fieldErrors,
+                hint: `Validation failed for ${model}`,
+                status: 422,
+            };
+        }
+
         const message = error instanceof Error ? error.message : 'Unknown error';
         const stack = error instanceof Error ? error.stack : undefined;
         console.error(`[executeSecureCrudRequest] Error for ${model}:`, {

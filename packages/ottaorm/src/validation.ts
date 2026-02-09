@@ -18,6 +18,35 @@ export interface ValidationResult {
 }
 
 /**
+ * Structured validation error thrown by BaseModel.create/update
+ * Contains field-level errors for API routes to return as { errors: { field: "msg" } }
+ *
+ * @example API route usage:
+ * ```typescript
+ * try {
+ *   const user = await User.create(data);
+ *   return json(user, 201);
+ * } catch (err) {
+ *   if (err instanceof ValidationError) {
+ *     return json({ error: err.message, errors: err.fieldErrors }, 422);
+ *   }
+ *   throw err;
+ * }
+ * ```
+ */
+export class ValidationError extends Error {
+    /** Field-level errors: { fieldName: "error message" } */
+    readonly fieldErrors: Record<string, string>;
+
+    constructor(fieldErrors: Record<string, string>) {
+        const firstError = Object.values(fieldErrors)[0] || 'Validation failed';
+        super(`Validation failed: ${firstError}`);
+        this.name = 'ValidationError';
+        this.fieldErrors = fieldErrors;
+    }
+}
+
+/**
  * Parse pipe-separated validation rules string into a Map
  * e.g., "required|email|min:8|max:100" → Map { required: true, email: true, min: 8, max: 100 }
  */

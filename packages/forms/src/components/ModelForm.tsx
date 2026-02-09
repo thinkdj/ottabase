@@ -55,6 +55,7 @@ export function ModelForm<T extends Record<string, unknown>>({
     method,
     onSuccess,
     onError,
+    serverErrors,
 }: ModelFormProps<T>) {
     // Initialize form data with defaults for create, or initialData for edit
     const [formData, setFormData] = useState<Partial<T>>(() => {
@@ -75,6 +76,12 @@ export function ModelForm<T extends Record<string, unknown>>({
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const touchedRef = useRef<Set<string>>(new Set());
+
+    // Merge external server errors into displayed errors
+    const displayErrors = useMemo(() => {
+        if (!serverErrors || Object.keys(serverErrors).length === 0) return errors;
+        return { ...errors, ...serverErrors };
+    }, [errors, serverErrors]);
 
     // Get visible form fields sorted by order
     const visibleFields = useMemo(() => {
@@ -209,6 +216,7 @@ export function ModelForm<T extends Record<string, unknown>>({
     }, [visibleFields, formData, mode]);
 
     // Handle standalone action submit (POST/PATCH to endpoint)
+    // Parses server-side field errors from 422 responses (e.g. { errors: { email: "already exists" } })
     const submitToAction = useCallback(
         async (data: Partial<T>) => {
             if (!action) return;
@@ -224,6 +232,25 @@ export function ModelForm<T extends Record<string, unknown>>({
 
             if (!response.ok) {
                 const body = await response.json().catch(() => ({ error: response.statusText }));
+
+                // Parse server-side field errors (422 validation errors)
+                // Supports: { errors: { field: "msg" } }, { errors: { field: ["msg"] } },
+                // or OttaORM format: { fieldErrors: { field: ["msg"] } }
+                const fieldErrors = body.errors || body.fieldErrors;
+                if (fieldErrors && typeof fieldErrors === 'object' && !Array.isArray(fieldErrors)) {
+                    const serverFieldErrors: Record<string, string> = {};
+                    for (const [key, val] of Object.entries(fieldErrors)) {
+                        serverFieldErrors[key] = Array.isArray(val) ? val[0] : String(val);
+                    }
+                    if (Object.keys(serverFieldErrors).length > 0) {
+                        setErrors((prev) => ({ ...prev, ...serverFieldErrors }));
+                        // Mark those fields as touched so they show errors
+                        for (const key of Object.keys(serverFieldErrors)) {
+                            touchedRef.current.add(key);
+                        }
+                    }
+                }
+
                 throw new Error(body.error || body.message || `Request failed: ${response.status}`);
             }
 
@@ -301,7 +328,7 @@ export function ModelForm<T extends Record<string, unknown>>({
                         onChange={(value) => handleChange(key, value)}
                         onBlur={() => handleBlur(key)}
                         field={field}
-                        error={errors[key]}
+                        error={displayErrors[key]}
                         disabled={loading || field.formConfig?.fieldType === 'readonly'}
                         apiBasePath={apiBasePath}
                     />

@@ -64,7 +64,7 @@ export type {
 } from './base';
 
 // Validation (Zod schema builder from field metadata)
-export { buildZodSchema, validateField, validateWithSchema } from './validation';
+export { buildZodSchema, validateField, validateWithSchema, ValidationError } from './validation';
 export type { ValidationResult } from './validation';
 
 /**
