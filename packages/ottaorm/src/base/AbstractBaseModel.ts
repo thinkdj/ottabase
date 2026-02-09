@@ -6,6 +6,7 @@
 // ============================================================
 
 import type { z } from 'zod';
+import { buildZodSchema, validateWithSchema } from '../validation';
 
 export type ModelFieldType =
     | 'string'
@@ -302,7 +303,6 @@ export abstract class AbstractBaseModel {
      * Built automatically from field metadata - no manual schema needed
      */
     static getZodSchema(mode: 'create' | 'update' = 'create'): z.ZodObject<any> {
-        const { buildZodSchema } = require('../validation');
         return buildZodSchema(this.fields, mode, this.writable);
     }
 
@@ -318,7 +318,6 @@ export abstract class AbstractBaseModel {
         errors: Record<string, string>;
         data?: Record<string, unknown>;
     } {
-        const { validateWithSchema } = require('../validation');
         const schema = this.getZodSchema(mode);
         return validateWithSchema(schema, data);
     }
