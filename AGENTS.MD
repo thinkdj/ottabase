@@ -1,8 +1,9 @@
+<INSTRUCTIONS>
 # Agents & Architecture
 
 Monorepo using **pnpm workspaces** + **Turborepo**. TanStack Router + Vite app with Cloudflare Workers deployment.
 
-## 🤖 AI Guidelines (MUST FOLLOW)
+## AI Guidelines (MUST FOLLOW)
 
 1. **OttaORM First**: All data models MUST inherit from `BaseModel`. Do not write raw SQL or vanilla Drizzle queries
    unless absolutely necessary for performance. Logic belongs in the Model class, not in "Controllers" or "Services".
@@ -126,10 +127,10 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 
 **Capabilities:**
 
-- ✅ Create new tables
-- ✅ Add columns to existing tables
-- ⚠️ New NOT NULL columns need DEFAULT values
-- ❌ Cannot rename/drop columns (use custom migration)
+- Create new tables
+- Add columns to existing tables
+- New NOT NULL columns need DEFAULT values
+- Cannot rename/drop columns (use custom migration)
 
 ### Client Hooks
 
@@ -334,9 +335,9 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 
 Add to catalog when:
 
-- ✅ Used by 2+ packages/apps (react, typescript, drizzle-orm)
-- ✅ Core framework libraries (mantine, tanstack, jotai)
-- ✅ Shared tooling (tsup, vitest, eslint)
+- Used by 2+ packages/apps (react, typescript, drizzle-orm)
+- Core framework libraries (mantine, tanstack, jotai)
+- Shared tooling (tsup, vitest, eslint)
 
 ```yaml
 # pnpm-workspace.yaml
@@ -356,9 +357,9 @@ Then reference in package.json:
 
 Add locally when:
 
-- ✅ Package-specific utility (e.g., `editorjs` only in `ottaeditor`)
-- ✅ App-specific tool not needed elsewhere
-- ✅ Experimental/testing before promoting to catalog
+- Package-specific utility (e.g., `editorjs` only in `ottaeditor`)
+- App-specific tool not needed elsewhere
+- Experimental/testing before promoting to catalog
 
 ```bash
 # Add to specific package
@@ -416,13 +417,13 @@ pnpm install
 
 ## Anti-Patterns
 
-❌ Circular deps between packages  
-❌ Direct file imports across package boundaries  
-❌ Framework-specific code in generic packages  
-❌ Package-specific lock files  
-❌ Implicit dependencies  
-❌ Missing type definitions  
-❌ Models without `static entity` and `static table`
+- Circular deps between packages
+- Direct file imports across package boundaries
+- Framework-specific code in generic packages
+- Package-specific lock files
+- Implicit dependencies
+- Missing type definitions
+- Models without `static entity` and `static table`
 
 ## Commands Reference
 
@@ -448,6 +449,4 @@ pnpm storybook
 
 Install recommended extensions in `.vscode/extensions.json` for Prettier format-on-save.
 
----
-
-🕊️
+</INSTRUCTIONS>
