@@ -245,6 +245,13 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
                     status: 400,
                 };
             }
+            if (typeof body !== 'object' || Array.isArray(body)) {
+                return {
+                    success: false,
+                    error: 'Request body must be an object',
+                    status: 400,
+                };
+            }
             const sanitized = sanitizeWritableBody(Model, body, 'create', request.allowedWritableFields);
             if (!sanitized.success) {
                 return {
@@ -269,6 +276,13 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
                 return {
                     success: false,
                     error: 'Request body is required',
+                    status: 400,
+                };
+            }
+            if (typeof body !== 'object' || Array.isArray(body)) {
+                return {
+                    success: false,
+                    error: 'Request body must be an object',
                     status: 400,
                 };
             }
@@ -475,7 +489,16 @@ export async function parseCrudRequest(
     let body: Record<string, unknown> | undefined;
     if (request.method === 'POST' || request.method === 'PATCH' || request.method === 'PUT') {
         try {
-            body = (await request.json()) as Record<string, unknown>;
+            const parsed = await request.json();
+            if (typeof parsed === 'string') {
+                try {
+                    body = JSON.parse(parsed) as Record<string, unknown>;
+                } catch {
+                    body = parsed as unknown as Record<string, unknown>;
+                }
+            } else {
+                body = parsed as Record<string, unknown>;
+            }
         } catch {
             body = {};
         }

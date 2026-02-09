@@ -42,6 +42,7 @@ export function OrganizationsPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOrg, setEditingOrg] = useState<OrganizationRecord | null>(null);
     const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
+    const [formKey, setFormKey] = useState(0);
 
     // TanStack Query hooks
     const { data: organizations = [], isLoading, error, refetch } = useOrganizations();
@@ -51,11 +52,13 @@ export function OrganizationsPage() {
 
     const handleCreate = () => {
         setEditingOrg(null);
+        setFormKey((key) => key + 1);
         setIsDialogOpen(true);
     };
 
     const handleEdit = (org: OrganizationRecord) => {
         setEditingOrg(org);
+        setFormKey((key) => key + 1);
         setIsDialogOpen(true);
     };
 
@@ -220,6 +223,7 @@ export function OrganizationsPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <OrganizationForm
+                        key={formKey}
                         organization={editingOrg as any}
                         onSubmit={handleSubmit}
                         onCancel={() => setIsDialogOpen(false)}

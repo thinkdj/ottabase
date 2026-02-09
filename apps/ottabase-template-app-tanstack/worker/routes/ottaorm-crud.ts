@@ -6,6 +6,7 @@ import { getAuthOptions } from '../lib/auth-utils';
 import { parseCrudRequest, executeSecureCrudRequest, registerConnection } from '@ottabase/ottaorm';
 import { getSecurityContext } from '../lib/auth-utils';
 import { Post } from '@ottabase/ottablog';
+import { OrganizationMember } from '@ottabase/ottaorm/models';
 import type { CloudflareEnv } from '../../cloudflare-env';
 
 export interface OttaormCrudContext {
@@ -80,6 +81,21 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         (crudRequest.body as any).appId = securityContext.appId ?? (crudRequest.body as any).appId ?? 'web';
     }
 
+    if (crudRequest.model === 'organizations' && crudRequest.body && crudRequest.method === 'POST') {
+        const userId = session?.user?.id;
+        if (!userId) {
+            return errorResponse('Authentication required', 401, { code: 'UNAUTHENTICATED' });
+        }
+
+        (crudRequest.body as any).ownerId = userId;
+        if ((crudRequest.body as any).status === undefined) {
+            (crudRequest.body as any).status = 'active';
+        }
+        if ((crudRequest.body as any).plan === undefined) {
+            (crudRequest.body as any).plan = 'free';
+        }
+    }
+
     const result = await executeSecureCrudRequest(crudRequest, securityContext);
 
     if (!result.success) {
@@ -97,6 +113,29 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
             messages: result.messages,
             fieldErrors: result.fieldErrors,
         });
+    }
+
+    if (crudRequest.model === 'organizations' && crudRequest.method === 'POST') {
+        const userId = session?.user?.id;
+        const data = result.data as any;
+        const orgId = data?.id;
+        if (userId && orgId) {
+            try {
+                await OrganizationMember.create({
+                    userId,
+                    organizationId: orgId,
+                    role: 'owner',
+                    status: 'active',
+                    invitedBy: userId,
+                    joinedAt: Date.now(),
+                } as any);
+            } catch (err) {
+                return errorResponse('Failed to create organization membership', 500, {
+                    code: 'ORG_MEMBER_CREATE_FAILED',
+                    details: err instanceof Error ? err.message : 'Unknown error',
+                });
+            }
+        }
     }
 
     return jsonResponse(result.data, result.status);
