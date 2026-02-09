@@ -325,6 +325,16 @@ const demoEmailRoute = new Route({
     ),
 });
 
+const demoNotificationsRoute = new Route({
+    getParentRoute: () => demoLayoutRoute,
+    path: 'notifications',
+    component: lazyRouteComponent(() =>
+        import('@/pages/demo/notifications/DemoNotificationsPage').then((m) => ({
+            default: m.DemoNotificationsPage,
+        })),
+    ),
+});
+
 const demoLoggerRoute = new Route({
     getParentRoute: () => demoLayoutRoute,
     path: 'logger',
@@ -489,6 +499,17 @@ const adminCronRoute = new Route({
     component: lazyRouteComponent(() =>
         import('@/pages/admin/AdminCronPage').then((m) => ({
             default: m.AdminCronPage,
+        })),
+    ),
+});
+
+// Admin Notifications route
+const adminNotificationsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/notifications',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminNotificationsPage').then((m) => ({
+            default: m.AdminNotificationsPage,
         })),
     ),
 });
@@ -752,6 +773,7 @@ demoLayoutRoute.addChildren([
     demoStateRoute,
     demoRendererRoute,
     demoEmailRoute,
+    demoNotificationsRoute,
 ]);
 
 const routeTree = rootRoute.addChildren([
@@ -770,6 +792,7 @@ const routeTree = rootRoute.addChildren([
     adminReferralsRoute,
     adminQueueRoute,
     adminCronRoute,
+    adminNotificationsRoute,
     adminBlogRoute,
     adminBlogNewRoute,
     adminBlogEditRoute,

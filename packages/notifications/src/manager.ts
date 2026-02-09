@@ -186,13 +186,10 @@ export class NotificationManager {
         }
 
         try {
-            // Dispatch to queue
-            await this.queue.dispatch({
-                name: this.config.queueName!,
-                payload: {
-                    notification,
-                    channels,
-                },
+            // Dispatch to queue with correct API
+            await this.queue.dispatch(this.config.queueName!, {
+                notification,
+                channels,
             });
 
             return [
@@ -251,6 +248,13 @@ export class NotificationManager {
             critical: 'urgent',
         };
         return map[severity] || 'normal';
+    }
+
+    /**
+     * Send notification via specific channels (public method for queue handler)
+     */
+    async sendViaChannels(notification: Notification, channels: NotificationChannel[]): Promise<SendResult[]> {
+        return this.sendSync(notification, channels);
     }
 
     /**

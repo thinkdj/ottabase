@@ -14,7 +14,9 @@ export default defineConfig({
         '@ottabase/cf',
         '@ottabase/email',
         '@ottabase/cf-realtime',
+        '@ottabase/cf-realtime/server',
         '@ottabase/queue',
         '@ottabase/ottaorm',
+        '@ottabase/ottaorm/base',
     ],
 });

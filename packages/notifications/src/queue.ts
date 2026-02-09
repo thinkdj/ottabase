@@ -28,33 +28,21 @@ export interface NotificationJob {
  * ```
  */
 export function createNotificationQueueHandler(manager: NotificationManager) {
-    return async (message: { body: NotificationJob }) => {
-        const { notification, channels } = message.body;
+    return async (job: { payload: NotificationJob }) => {
+        const { notification, channels } = job.payload;
 
-        // Send notification through each channel
-        for (const channelName of channels) {
-            const channel = (manager as any).channels.get(channelName);
-            if (!channel) {
-                console.warn(`Channel ${channelName} not registered`);
-                continue;
+        // Use public method to send via channels
+        try {
+            const results = await (manager as any).sendViaChannels(notification, channels);
+            // Check if any sends failed
+            const hasFailures = results.some((r: any) => !r.success);
+            if (hasFailures) {
+                // Throw to trigger queue retry
+                throw new Error('Failed to send notification via one or more channels');
             }
-
-            // Check if channel is available
-            const available = await channel.isAvailable();
-            if (!available) {
-                console.warn(`Channel ${channelName} not available`);
-                continue;
-            }
-
-            // Send notification
-            try {
-                const result = await channel.send(notification);
-                if (!result.success) {
-                    console.error(`Failed to send notification via ${channelName}:`, result.error);
-                }
-            } catch (error) {
-                console.error(`Error sending notification via ${channelName}:`, error);
-            }
+        } catch (error) {
+            console.error('Error in notification queue handler:', error);
+            throw error; // Propagate to allow queue retry
         }
     };
 }

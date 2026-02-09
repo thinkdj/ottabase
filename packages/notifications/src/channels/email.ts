@@ -57,25 +57,39 @@ export class EmailChannel implements NotificationChannelHandler {
             const from = this.config.from;
             const replyTo = this.config.replyTo;
 
-            // Build email content
+            // Helper to escape HTML
+            const escapeHtml = (text: string) => {
+                return text
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            };
+
+            // Build email content with escaped values
             let html = `
-        <h2>${payload.title}</h2>
-        <p>${payload.message}</p>
+        <h2>${escapeHtml(payload.title)}</h2>
+        <p>${escapeHtml(payload.message)}</p>
       `;
 
             if (payload.actionUrl && payload.actionText) {
-                html += `
+                // Validate URL scheme
+                const url = payload.actionUrl.trim();
+                if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) {
+                    html += `
           <p>
-            <a href="${payload.actionUrl}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
-              ${payload.actionText}
+            <a href="${escapeHtml(url)}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
+              ${escapeHtml(payload.actionText)}
             </a>
           </p>
         `;
+                }
             }
 
             // Add metadata if present
             if (payload.metadata) {
-                html += `<hr><small>Metadata: ${JSON.stringify(payload.metadata)}</small>`;
+                html += `<hr><small>Metadata: ${escapeHtml(JSON.stringify(payload.metadata))}</small>`;
             }
 
             const result = await this.config.mailer.send({

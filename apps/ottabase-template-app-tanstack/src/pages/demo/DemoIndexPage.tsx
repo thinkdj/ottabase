@@ -189,6 +189,21 @@ export function DemoIndexPage() {
                         </Button>
                     </CardContent>
                 </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Notifications</CardTitle>
+                        <CardDescription>
+                            Multi-channel notification system with email, WebSocket, and system alerts via
+                            @ottabase/notifications
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild variant="outline" className="w-full">
+                            <Link to="/demo/notifications">View Notifications Demo</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
 
             <div className="mt-2 rounded-lg border bg-muted/50 p-6">

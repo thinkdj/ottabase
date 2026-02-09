@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@otta
 import { Link } from '@tanstack/react-router';
 import {
     Activity,
+    Bell,
     Building2,
     Clock,
     Database,
@@ -114,6 +115,13 @@ export function AdminIndexPage() {
             description: 'Manage DB-driven cron jobs, view run history, and schedule new tasks.',
             href: '/admin/cron',
             icon: Clock,
+            disabled: false,
+        },
+        {
+            title: 'Notifications',
+            description: 'Send notifications to users and broadcast system alerts to administrators.',
+            href: '/admin/notifications',
+            icon: Bell,
             disabled: false,
         },
         {
