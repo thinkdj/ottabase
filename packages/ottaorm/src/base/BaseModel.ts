@@ -416,18 +416,21 @@ export class BaseModel extends AbstractBaseModel {
         driver?: DbDriver,
     ): Promise<InstanceType<T>> {
         // Validate before create if fields are defined
+        let validatedData = data;
         if (Object.keys(this.fields).length > 0) {
             const result = this.validate(data, 'create');
             if (!result.success) {
                 throw new ValidationError(result.errors);
             }
+            // Use the validated/coerced data from Zod (guaranteed to exist when success=true)
+            validatedData = result.data!;
         }
 
         const db = this.getDriver(driver).getDb();
         const table = this.getTable();
 
         // Merge with defaults and prepare for database
-        const createData = this.prepareForDatabase({ ...this.defaults, ...data });
+        const createData = this.prepareForDatabase({ ...this.defaults, ...validatedData });
 
         // Cloudflare Workers (workerd) disallows random generation in module/global scope,
         // so model schemas avoid crypto.randomUUID() defaults. Generate ids at runtime.
@@ -461,11 +464,14 @@ export class BaseModel extends AbstractBaseModel {
         driver?: DbDriver,
     ): Promise<InstanceType<T>> {
         // Validate before update if fields are defined
+        let validatedData = data;
         if (Object.keys(this.fields).length > 0) {
             const result = this.validate(data, 'update');
             if (!result.success) {
                 throw new ValidationError(result.errors);
             }
+            // Use the validated/coerced data from Zod (guaranteed to exist when success=true)
+            validatedData = result.data!;
         }
 
         const db = this.getDriver(driver).getDb();
@@ -477,12 +483,12 @@ export class BaseModel extends AbstractBaseModel {
         }
 
         // Auto-add updatedAt if model has it in casts and value not provided
-        if (this.casts && this.casts.updatedAt && data.updatedAt === undefined) {
-            data.updatedAt = Date.now();
+        if (this.casts && this.casts.updatedAt && validatedData.updatedAt === undefined) {
+            validatedData.updatedAt = Date.now();
         }
 
         // Prepare data for database (convert string dates, etc.)
-        const updateData = this.prepareForDatabase(data);
+        const updateData = this.prepareForDatabase(validatedData);
 
         const result = await db.update(table).set(updateData).where(eq(pkColumn, id)).returning();
 
@@ -530,7 +536,7 @@ export class BaseModel extends AbstractBaseModel {
         }
 
         const results = await query;
-        return results[0]?.count ?? 0;
+        return Number(results[0]?.count ?? 0);
     }
 
     /**
@@ -627,8 +633,8 @@ export class BaseModel extends AbstractBaseModel {
         }
 
         const [data, countResult] = await Promise.all([dataQuery, countQuery]);
-        const total = countResult[0]?.count ?? 0;
-        const totalPages = Math.ceil(total / perPage);
+        const total = Number(countResult[0]?.count ?? 0);
+        const totalPages = Math.max(1, Math.ceil(total / perPage));
 
         return {
             data: data.map((row: any) => new this({ entity: this.entity, data: row }) as InstanceType<T>),

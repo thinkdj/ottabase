@@ -92,16 +92,76 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
             }
 
             const limit = url.searchParams.get('limit');
-            if (limit) query.limit = parseInt(limit, 10);
+            if (limit) {
+                const parsedLimit = parseInt(limit, 10);
+                if (!Number.isFinite(parsedLimit)) {
+                    return new Response(
+                        JSON.stringify({
+                            error: 'Invalid query parameter',
+                            message: 'limit must be a valid integer',
+                        }),
+                        {
+                            status: 400,
+                            headers: { 'Content-Type': 'application/json' },
+                        },
+                    );
+                }
+                query.limit = parsedLimit;
+            }
 
             const offset = url.searchParams.get('offset');
-            if (offset) query.offset = parseInt(offset, 10);
+            if (offset) {
+                const parsedOffset = parseInt(offset, 10);
+                if (!Number.isFinite(parsedOffset)) {
+                    return new Response(
+                        JSON.stringify({
+                            error: 'Invalid query parameter',
+                            message: 'offset must be a valid integer',
+                        }),
+                        {
+                            status: 400,
+                            headers: { 'Content-Type': 'application/json' },
+                        },
+                    );
+                }
+                query.offset = parsedOffset;
+            }
 
             const page = url.searchParams.get('page');
-            if (page) query.page = parseInt(page, 10);
+            if (page) {
+                const parsedPage = parseInt(page, 10);
+                if (!Number.isFinite(parsedPage)) {
+                    return new Response(
+                        JSON.stringify({
+                            error: 'Invalid query parameter',
+                            message: 'page must be a valid integer',
+                        }),
+                        {
+                            status: 400,
+                            headers: { 'Content-Type': 'application/json' },
+                        },
+                    );
+                }
+                query.page = parsedPage;
+            }
 
             const perPage = url.searchParams.get('perPage') || url.searchParams.get('per_page');
-            if (perPage) query.perPage = parseInt(perPage, 10);
+            if (perPage) {
+                const parsedPerPage = parseInt(perPage, 10);
+                if (!Number.isFinite(parsedPerPage)) {
+                    return new Response(
+                        JSON.stringify({
+                            error: 'Invalid query parameter',
+                            message: 'perPage must be a valid integer',
+                        }),
+                        {
+                            status: 400,
+                            headers: { 'Content-Type': 'application/json' },
+                        },
+                    );
+                }
+                query.perPage = parsedPerPage;
+            }
 
             const uniqueField = url.searchParams.get('uniqueField');
             if (uniqueField) query.uniqueField = uniqueField;

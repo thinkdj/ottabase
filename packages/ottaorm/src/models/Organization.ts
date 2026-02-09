@@ -327,13 +327,14 @@ export class Organization extends BaseModel {
         options?: { orderBy?: string; orderDirection?: 'asc' | 'desc'; limit?: number; offset?: number },
         driver?: DbDriver,
     ): Promise<InstanceType<T>[]>;
-    static async search(
+    static async search<T extends typeof BaseModel>(
+        this: T,
         query: string,
         fieldsOrLimit: string[] | number = ['name', 'slug'],
         where?: Record<string, any>,
         options?: { orderBy?: string; orderDirection?: 'asc' | 'desc'; limit?: number; offset?: number },
         driver?: DbDriver,
-    ): Promise<OrganizationType[] | InstanceType<typeof BaseModel>[]> {
+    ): Promise<OrganizationType[] | InstanceType<T>[]> {
         if (typeof fieldsOrLimit === 'number') {
             const db = this.getDriver(driver).getDb();
             const searchPattern = `%${query}%`;
@@ -348,7 +349,7 @@ export class Organization extends BaseModel {
 
         const fields = fieldsOrLimit;
         const mergedOptions = options;
-        return super.search(query, fields, where, mergedOptions, driver);
+        return super.search(query, fields, where, mergedOptions, driver) as Promise<InstanceType<T>[]>;
     }
 }
 

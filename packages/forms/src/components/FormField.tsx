@@ -187,7 +187,8 @@ export function FormField({
                                     return;
                                 }
                                 const [year, month, day] = e.target.value.split('-').map((v) => Number(v));
-                                onChange(new Date(year, (month || 1) - 1, day || 1));
+                                const utcMillis = Date.UTC(year, (month || 1) - 1, day || 1);
+                                onChange(new Date(utcMillis));
                             }}
                             disabled={disabled}
                             className={baseInputClasses}
@@ -918,9 +919,9 @@ function formatDateValue(value: unknown): string {
     if (!value) return '';
     const date = value instanceof Date ? value : new Date(value as string);
     if (isNaN(date.getTime())) return '';
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
 
