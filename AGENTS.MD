@@ -449,4 +449,41 @@ pnpm storybook
 
 Install recommended extensions in `.vscode/extensions.json` for Prettier format-on-save.
 
+### IMPORTANT NOTES FOR CODING AGENTS
+
+- Do not make stray .MD files after a task (like SUMMARY.MD)
+- Add comments in code snippets to explain what they do, especially for complex logic.
+- `README.MD`s should be concise, and with examples. Don't be too verbose. Keep text sharply focused on the task at
+  hand, and avoid unnecessary background information, tangents or noise. Do not add Possible Issues or Troubleshooting
+  sections unless they are directly relevant to the task.
+- Use consistent formatting and indentation in code snippets (check `.prettierrc`).
+- Make tests for new features, modify existing ones if needed, and ensure they pass before marking a task as complete.
+- When adding new packages, ensure they follow the same structure and conventions as existing ones for consistency.
+- UI must follow minimal design, and use components from `@ottabase/ui-shadcn` where possible to maintain a cohesive
+  look and feel across the app. If a new Component that requires design is to be made, add tailwind classes in the
+  component, and avoid adding new CSS files unless absolutely necessary.
+- New UI created should feel native to the app, and not like a separate module. Design like GitHub's or Notion's pages -
+  simple, clean, and functional.
+- Golden Rule throughout the repo: KISS, DRY, SIMPLEST SOLUTIONS, and always think about the developer experience for
+  future maintainers (including yourself in 6 months).
+- When writing code snippets in documentation, ensure they are complete and can be copy-pasted without modification.
+  Include necessary imports and context.
+
+### CI / PR Checklist
+
+- **CI:** Run `pnpm build:pkg && pnpm test --filter=@ottabase/ottaorm` before opening a PR.
+- **Checks:** Ensure `pnpm lint` and `pnpm type-check` pass locally or in CI.
+- **Formatting:** Ensure Prettier formatting is applied; enforce via pre-commit hooks (`husky` + `lint-staged`).
+- **PR Description:** Add a short summary, list affected packages, testing notes, and any required migration steps.
+
+### Maintainers / Contacts
+
+- **Maintainer:** @thinkdj: architecture questions & exceptions.
+- **Escalation:** Open an issue with the `architecture` label or ping the `#dev-ops` channel for urgent infra problems.
+
+### Formatting / Pre-commit
+
+- **Format command:** `pnpm -w prettier:check` (or `pnpm -w prettier:fix` to fix).
+- **Pre-commit:** We recommend `husky` + `lint-staged` to run format and basic lint on staged files.
+
 </INSTRUCTIONS>
