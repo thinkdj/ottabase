@@ -82,10 +82,13 @@ export class NotificationModel extends BaseModel {
         },
         userId: {
             type: 'string',
-            editable: false,
+            editable: true,
             searchable: true,
             uiConfig: {
                 label: 'User ID',
+            },
+            formConfig: {
+                visible: false,
             },
             tableConfig: {
                 visible: true,
@@ -93,10 +96,13 @@ export class NotificationModel extends BaseModel {
         },
         userEmail: {
             type: 'string',
-            editable: false,
+            editable: true,
             searchable: true,
             uiConfig: {
                 label: 'Email',
+            },
+            formConfig: {
+                visible: false,
             },
             tableConfig: {
                 visible: true,
@@ -104,21 +110,28 @@ export class NotificationModel extends BaseModel {
         },
         title: {
             type: 'string',
-            editable: false,
+            editable: true,
             searchable: true,
             uiConfig: {
                 label: 'Title',
+            },
+            formConfig: {
+                visible: false,
             },
             tableConfig: {
                 visible: true,
             },
         },
         message: {
-            type: 'text',
-            editable: false,
+            type: 'string',
+            editable: true,
             searchable: true,
             uiConfig: {
                 label: 'Message',
+            },
+            formConfig: {
+                visible: false,
+                fieldType: 'textarea',
             },
             tableConfig: {
                 visible: true,
@@ -126,9 +139,12 @@ export class NotificationModel extends BaseModel {
         },
         category: {
             type: 'string',
-            editable: false,
+            editable: true,
             uiConfig: {
                 label: 'Category',
+            },
+            formConfig: {
+                visible: false,
             },
             tableConfig: {
                 visible: true,
@@ -146,9 +162,12 @@ export class NotificationModel extends BaseModel {
         },
         priority: {
             type: 'string',
-            editable: false,
+            editable: true,
             uiConfig: {
                 label: 'Priority',
+            },
+            formConfig: {
+                visible: false,
             },
             tableConfig: {
                 visible: true,
@@ -156,9 +175,12 @@ export class NotificationModel extends BaseModel {
         },
         channels: {
             type: 'string',
-            editable: false,
+            editable: true,
             uiConfig: {
                 label: 'Channels',
+            },
+            formConfig: {
+                visible: false,
             },
         },
         createdAt: {
@@ -197,30 +219,27 @@ export class NotificationModel extends BaseModel {
      * Mark notification as sent
      */
     async markAsSent(): Promise<void> {
-        await this.update({
-            status: 'sent',
-            sentAt: Date.now(),
-        });
+        this.set('status', 'sent');
+        this.set('sentAt', Date.now());
+        await this.save();
     }
 
     /**
      * Mark notification as read
      */
     async markAsRead(): Promise<void> {
-        await this.update({
-            status: 'read',
-            readAt: Date.now(),
-        });
+        this.set('status', 'read');
+        this.set('readAt', Date.now());
+        await this.save();
     }
 
     /**
      * Mark notification as failed
      */
     async markAsFailed(error: string): Promise<void> {
-        await this.update({
-            status: 'failed',
-            error,
-        });
+        this.set('status', 'failed');
+        this.set('error', error);
+        await this.save();
     }
 
     /**
@@ -243,17 +262,18 @@ export class NotificationModel extends BaseModel {
      * Get unread notifications for a user
      */
     static async getUnread(userId: string): Promise<NotificationModel[]> {
-        return this.find({
+        const notifications = await this.where({
             userId,
-            status: 'pending',
         });
+
+        return notifications.filter((notification) => !notification.isRead());
     }
 
     /**
      * Get notifications by category
      */
     static async getByCategory(userId: string, category: string): Promise<NotificationModel[]> {
-        return this.find({
+        return this.where({
             userId,
             category,
         });

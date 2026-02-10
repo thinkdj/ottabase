@@ -199,16 +199,16 @@ const enabled = prefs.isCategoryEnabled('security'); // true
 ### Notification Model
 
 ```typescript
-import { Notification } from '@ottabase/notifications/models';
+import { NotificationModel } from '@ottabase/notifications/models';
 
 // Find user's notifications
-const notifications = await Notification.find({ userId: '123' });
+const notifications = await NotificationModel.find({ userId: '123' });
 
 // Get unread notifications
-const unread = await Notification.getUnread('123');
+const unread = await NotificationModel.getUnread('123');
 
 // Get by category
-const security = await Notification.getByCategory('123', 'security');
+const security = await NotificationModel.getByCategory('123', 'security');
 
 // Mark as read
 await notification.markAsRead();

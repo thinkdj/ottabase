@@ -33,9 +33,9 @@ export function createNotificationQueueHandler(manager: NotificationManager) {
 
         // Use public method to send via channels
         try {
-            const results = await (manager as any).sendViaChannels(notification, channels);
+            const results = await manager.sendViaChannels(notification, channels);
             // Check if any sends failed
-            const hasFailures = results.some((r: any) => !r.success);
+            const hasFailures = results.some((r) => !r.success);
             if (hasFailures) {
                 // Throw to trigger queue retry
                 throw new Error('Failed to send notification via one or more channels');

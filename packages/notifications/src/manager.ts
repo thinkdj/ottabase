@@ -92,7 +92,15 @@ export class NotificationManager {
         const channels = this.determineChannels(notification);
 
         // Handle async delivery
-        if (notification.options?.async && this.queue) {
+        if (notification.options?.async) {
+            if (!this.queue) {
+                return [
+                    {
+                        success: false,
+                        error: 'Queue not configured for async notifications',
+                    },
+                ];
+            }
             return this.sendAsync(notification, channels);
         }
 
