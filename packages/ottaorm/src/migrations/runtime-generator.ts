@@ -59,14 +59,25 @@ export interface RuntimeMigrationConfig {
      * Enable verbose logging
      */
     verbose?: boolean;
+    /**
+     * Whether destructive operations (drops/renames) are allowed.
+     * Default: false
+     */
+    allowDestructive?: boolean;
+
+    /**
+     * Optional rename mapping for tables. Example:
+     * { posts: { old_col_name: 'new_col_name' } }
+     */
+    renameMap?: Record<string, Record<string, string>>;
 }
 
 /**
  * Generate CREATE TABLE SQL from Drizzle table definition
  */
-function generateCreateTableSQL(table: SQLiteTable): string {
+function generateCreateTableSQL(table: SQLiteTable, overrideName?: string): string {
     const config = getTableConfig(table);
-    const tableName = config.name;
+    const tableName = overrideName ?? config.name;
     const columns = config.columns;
 
     const columnDefs = columns.map((col) => {
@@ -214,7 +225,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
     tablesSkipped: string[];
     errors: string[];
 }> {
-    const { driver, tables, customMigrations = [], verbose = false } = config;
+    const { driver, tables, customMigrations = [], verbose = false, allowDestructive = false, renameMap = {} } = config;
 
     const result = {
         tablesCreated: [] as string[],
@@ -300,6 +311,90 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
                         console.error(`❌ ${errorMsg}`);
                     }
                 }
+                // Check for removed columns (columns present in DB but not in model)
+                const desiredColumns = new Set(getTableConfig(table).columns.map((c) => c.name));
+                const removedColumns = Array.from(existingColumns).filter((c) => !desiredColumns.has(c));
+
+                if (removedColumns.length > 0) {
+                    if (!allowDestructive) {
+                        const msg = `⚠️  Detected removed columns on ${tableName}: ${removedColumns.join(', ')} (skipped - destructive ops disabled)`;
+                        console.warn(msg);
+                        result.errors.push(msg);
+                    } else {
+                        if (verbose) {
+                            console.log(
+                                `\n🗑️  Destructive changes detected for ${tableName}: ${removedColumns.join(', ')}`,
+                            );
+                        }
+
+                        // Recreate table strategy: create a new table, copy intersecting columns (respecting renameMap), drop old, rename new
+                        const tableRenameMap = renameMap[tableName] || {};
+
+                        const recreateSQLs: string[] = [];
+
+                        // 1) CREATE new table with desired schema
+                        const newTableName = `${tableName}__new`;
+                        const createSQL = generateCreateTableSQL(table, newTableName);
+                        recreateSQLs.push(createSQL);
+
+                        // 2) INSERT INTO new (...) SELECT ... FROM old
+                        const config = getTableConfig(table);
+                        const desiredCols = config.columns.map((c) => c.name);
+
+                        const selectExprs = desiredCols.map((colName) => {
+                            // If old column was renamed to new name
+                            const mappedOld = Object.keys(tableRenameMap).find(
+                                (old) => tableRenameMap[old] === colName,
+                            );
+                            if (mappedOld && existingColumns.has(mappedOld)) {
+                                return `${quoteIdentifier(mappedOld)} AS ${quoteIdentifier(colName)}`;
+                            }
+
+                            if (existingColumns.has(colName)) {
+                                return `${quoteIdentifier(colName)}`;
+                            }
+
+                            // Fallback to default value or NULL
+                            const col = config.columns.find((c) => c.name === colName);
+                            if (col && col.default !== undefined && col.default !== null) {
+                                if (typeof col.default === 'string') {
+                                    return `'${col.default.replace(/'/g, "''")}' AS ${quoteIdentifier(colName)}`;
+                                }
+                                if (typeof col.default === 'number' || typeof col.default === 'boolean') {
+                                    return `${col.default} AS ${quoteIdentifier(colName)}`;
+                                }
+                            }
+
+                            return `NULL AS ${quoteIdentifier(colName)}`;
+                        });
+
+                        recreateSQLs.push(
+                            `INSERT INTO ${quoteIdentifier(newTableName)} (${desiredCols.map(quoteIdentifier).join(', ')}) SELECT ${selectExprs.join(', ')} FROM ${quoteIdentifier(
+                                tableName,
+                            )}`,
+                        );
+
+                        // 3) DROP old table
+                        recreateSQLs.push(`DROP TABLE ${quoteIdentifier(tableName)}`);
+
+                        // 4) RENAME new -> original
+                        recreateSQLs.push(
+                            `ALTER TABLE ${quoteIdentifier(newTableName)} RENAME TO ${quoteIdentifier(tableName)}`,
+                        );
+
+                        // Execute recreate statements
+                        for (const sql of recreateSQLs) {
+                            if (verbose) console.log(sql);
+                            try {
+                                await driver.executeRaw(sql);
+                            } catch (error: any) {
+                                const errorMsg = `Failed destructive migration on ${tableName}: ${error.message}`;
+                                result.errors.push(errorMsg);
+                                console.error(`❌ ${errorMsg}`);
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -372,6 +467,7 @@ export async function runAutoMigrations(
         name: string;
         up: (db: DbDriver) => Promise<void>;
     }>,
+    options?: { allowDestructive?: boolean; renameMap?: Record<string, Record<string, string>> },
 ): Promise<{
     success: boolean;
     message: string;
@@ -389,6 +485,8 @@ export async function runAutoMigrations(
         tables,
         customMigrations,
         verbose: true,
+        allowDestructive: options?.allowDestructive,
+        renameMap: options?.renameMap,
     });
 
     const { tablesCreated, columnsAdded, customMigrationsRun, errors } = result;
