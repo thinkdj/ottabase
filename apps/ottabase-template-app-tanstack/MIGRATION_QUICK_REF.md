@@ -312,7 +312,7 @@ The OttaORM migration system:
 3. **`index.ts`** - Core migrations and migration runner
     - Location: `packages/ottaorm/src/migrations/index.ts`
     - Contains: 10 core migrations for essential tables
-    - Functions: `runMigrations()`, `rollbackMigrations()
+    - Functions: `runMigrations()`, `rollbackMigrations()`
 
 **TanStack/Cloudflare Worker App:**
 
