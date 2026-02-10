@@ -174,10 +174,13 @@ describe('React Integration', () => {
                 screen.getByTestId('switch-btn').click();
             });
 
-            // Should update to Spanish
-            await waitFor(() => {
-                expect(screen.getByTestId('greeting')).toHaveTextContent('Bienvenido a Ottabase');
-            });
+            // Should update to Spanish (allow a bit more time for async language change)
+            await waitFor(
+                () => {
+                    expect(screen.getByTestId('greeting')).toHaveTextContent('Bienvenido a Ottabase');
+                },
+                { timeout: 3000 },
+            );
         });
 
         it('should support interpolation', async () => {

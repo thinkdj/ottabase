@@ -2,9 +2,9 @@
 // @ottabase/notifications - Manager Tests
 // ============================================================
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotificationManager } from '../manager';
-import type { NotificationChannelHandler, Notification, SendResult } from '../types';
+import type { Notification, NotificationChannelHandler, SendResult } from '../types';
 
 // Mock email channel
 class MockEmailChannel implements NotificationChannelHandler {
@@ -364,8 +364,14 @@ describe('NotificationManager', () => {
                 },
             };
 
-            // Should throw to allow queue retry
-            await expect(handler(job)).rejects.toThrow('Failed to send notification');
+            // Suppress console.error for this test only (expected error)
+            const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            try {
+                // Should throw to allow queue retry
+                await expect(handler(job)).rejects.toThrow('Failed to send notification');
+            } finally {
+                spy.mockRestore();
+            }
         });
     });
 });
