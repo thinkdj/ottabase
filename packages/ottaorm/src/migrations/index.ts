@@ -41,8 +41,10 @@ async function createMigrationsTable(db: any): Promise<void> {
  */
 async function hasMigrationRun(db: any, name: string): Promise<boolean> {
     try {
+        // Escape single quotes to prevent SQL injection
+        const safeName = name.replace(/'/g, "''");
         const result = await db.execute(`
-      SELECT 1 FROM _ottabase_migrations WHERE name = '${name}' LIMIT 1
+      SELECT 1 FROM _ottabase_migrations WHERE name = '${safeName}' LIMIT 1
     `);
         return result.length > 0;
     } catch {
@@ -55,9 +57,12 @@ async function hasMigrationRun(db: any, name: string): Promise<boolean> {
  */
 async function recordMigration(db: any, name: string, driverType: string = 'd1-drizzle'): Promise<void> {
     const now = Date.now();
+    // Escape single quotes to prevent SQL injection
+    const safeName = name.replace(/'/g, "''");
+    const safeDriverType = driverType.replace(/'/g, "''");
     await db.execute(`
     INSERT INTO _ottabase_migrations (name, executed_at, driver_type)
-    VALUES ('${name}', ${now}, '${driverType}')
+    VALUES ('${safeName}', ${now}, '${safeDriverType}')
   `);
 }
 
@@ -187,7 +192,9 @@ export async function rollbackMigrations(
         try {
             console.log(`⚡ Rolling back: ${migrationName}`);
             await migration.down(db);
-            await db.execute(`DELETE FROM _ottabase_migrations WHERE name = '${migrationName}'`);
+            // Escape single quotes to prevent SQL injection
+            const safeMigrationName = migrationName.replace(/'/g, "''");
+            await db.execute(`DELETE FROM _ottabase_migrations WHERE name = '${safeMigrationName}'`);
             rolledBack.push(migrationName);
             console.log(`✅ Rolled back: ${migrationName}`);
         } catch (error) {
