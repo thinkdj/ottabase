@@ -90,7 +90,7 @@ export class NotificationPreference extends BaseModel {
             },
             formConfig: {
                 visible: true,
-                fieldType: 'checkbox',
+                fieldType: 'boolean',
             },
             tableConfig: {
                 visible: true,
@@ -105,7 +105,7 @@ export class NotificationPreference extends BaseModel {
             },
             formConfig: {
                 visible: true,
-                fieldType: 'checkbox',
+                fieldType: 'boolean',
             },
             tableConfig: {
                 visible: true,
@@ -120,7 +120,7 @@ export class NotificationPreference extends BaseModel {
             },
             formConfig: {
                 visible: true,
-                fieldType: 'checkbox',
+                fieldType: 'boolean',
             },
             tableConfig: {
                 visible: true,

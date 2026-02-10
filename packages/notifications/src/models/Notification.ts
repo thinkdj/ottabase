@@ -123,7 +123,7 @@ export class NotificationModel extends BaseModel {
             },
         },
         message: {
-            type: 'text',
+            type: 'string',
             editable: true,
             searchable: true,
             uiConfig: {
@@ -131,6 +131,7 @@ export class NotificationModel extends BaseModel {
             },
             formConfig: {
                 visible: false,
+                fieldType: 'textarea',
             },
             tableConfig: {
                 visible: true,
@@ -261,7 +262,7 @@ export class NotificationModel extends BaseModel {
      * Get unread notifications for a user
      */
     static async getUnread(userId: string): Promise<NotificationModel[]> {
-        const notifications = await this.find({
+        const notifications = await this.where({
             userId,
         });
 
@@ -272,7 +273,7 @@ export class NotificationModel extends BaseModel {
      * Get notifications by category
      */
     static async getByCategory(userId: string, category: string): Promise<NotificationModel[]> {
-        return this.find({
+        return this.where({
             userId,
             category,
         });
