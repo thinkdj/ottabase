@@ -300,25 +300,25 @@ The OttaORM migration system:
 ### Core Components
 
 1. **`auto-init.ts`** - Main API for automatic database initialization
-    - Location: `/home/user/ottabase/packages/ottaorm/src/migrations/auto-init.ts`
+    - Location: `packages/ottaorm/src/migrations/auto-init.ts`
     - Function: `autoInit(config)` - Single function to initialize entire database
     - Validates schema, runs auto-migrations, executes custom migrations
 
 2. **`runtime-generator.ts`** - Runtime schema comparison and migration generation
-    - Location: `/home/user/ottabase/packages/ottaorm/src/migrations/runtime-generator.ts`
+    - Location: `packages/ottaorm/src/migrations/runtime-generator.ts`
     - Functions: `autoMigrate()`, `runAutoMigrations()`
     - Handles: Table creation, column addition, destructive operations
 
 3. **`index.ts`** - Core migrations and migration runner
-    - Location: `/home/user/ottabase/packages/ottaorm/src/migrations/index.ts`
+    - Location: `packages/ottaorm/src/migrations/index.ts`
     - Contains: 10 core migrations for essential tables
     - Functions: `runMigrations()`, `rollbackMigrations()
 
 **TanStack/Cloudflare Worker App:**
 
-- Route: `/home/user/ottabase/apps/ottabase-template-app-tanstack/worker/routes/ottaorm-init.ts`
+- Route: `apps/ottabase-template-app-tanstack/worker/routes/ottaorm-init.ts`
 - Uses: `getAllSchemas()` helper to combine core + app + package tables
-- Helper: `/home/user/ottabase/apps/ottabase-template-app-tanstack/ottabase/db/schemas-helper.ts`
+- Helper: `apps/ottabase-template-app-tanstack/ottabase/db/schemas-helper.ts`
 
 ---
 
