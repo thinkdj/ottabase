@@ -73,6 +73,22 @@ export class D1Driver extends BaseDbDriver {
             throw error;
         }
     }
+
+    /**
+     * Execute multiple SQL statements as a batch/transaction
+     * Uses D1's native batch API for atomicity
+     */
+    async executeBatch(sqls: string[]): Promise<any> {
+        this.log(`Executing batch of ${sqls.length} statements`, 'query');
+
+        try {
+            const statements = sqls.map((sql) => this.d1Binding.prepare(sql));
+            return await this.d1Binding.batch(statements);
+        } catch (error) {
+            this.log(`Batch query error: ${error instanceof Error ? error.message : String(error)}`, 'error');
+            throw error;
+        }
+    }
 }
 
 /**

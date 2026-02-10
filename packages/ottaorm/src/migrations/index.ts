@@ -39,14 +39,18 @@ async function createMigrationsTable(db: any): Promise<void> {
 /**
  * Check if migration has been run
  */
-async function hasMigrationRun(db: any, name: string): Promise<boolean> {
+async function hasMigrationRun(driver: DbDriver, name: string): Promise<boolean> {
     try {
-        // Escape single quotes to prevent SQL injection
-        const safeName = name.replace(/'/g, "''");
-        const result = await db.execute(`
-      SELECT 1 FROM _ottabase_migrations WHERE name = '${safeName}' LIMIT 1
-    `);
-        return result.length > 0;
+        const result = await driver.executeRaw(`SELECT 1 FROM _ottabase_migrations WHERE name = ? LIMIT 1`, [name]);
+        // Handle D1 response { results: [], ... }
+        if (result && typeof result === 'object' && 'results' in result && Array.isArray(result.results)) {
+            return result.results.length > 0;
+        }
+        // Handle standard array response
+        if (Array.isArray(result)) {
+            return result.length > 0;
+        }
+        return false;
     } catch {
         return false;
     }
@@ -55,15 +59,13 @@ async function hasMigrationRun(db: any, name: string): Promise<boolean> {
 /**
  * Record migration as run
  */
-async function recordMigration(db: any, name: string, driverType: string = 'd1-drizzle'): Promise<void> {
+async function recordMigration(driver: DbDriver, name: string, driverType: string = 'd1-drizzle'): Promise<void> {
     const now = Date.now();
-    // Escape single quotes to prevent SQL injection
-    const safeName = name.replace(/'/g, "''");
-    const safeDriverType = driverType.replace(/'/g, "''");
-    await db.execute(`
-    INSERT INTO _ottabase_migrations (name, executed_at, driver_type)
-    VALUES ('${safeName}', ${now}, '${safeDriverType}')
-  `);
+    await driver.executeRaw(`INSERT INTO _ottabase_migrations (name, executed_at, driver_type) VALUES (?, ?, ?)`, [
+        name,
+        now,
+        driverType,
+    ]);
 }
 
 /**
@@ -111,7 +113,7 @@ export async function runMigrations(
     console.log(`🔄 Running migrations...`);
 
     for (const migration of migrations) {
-        const hasRun = await hasMigrationRun(db, migration.name);
+        const hasRun = await hasMigrationRun(driver, migration.name);
 
         if (hasRun) {
             console.log(`⏭️  Skipping: ${migration.name} (already run)`);
@@ -122,7 +124,7 @@ export async function runMigrations(
         try {
             console.log(`⚡ Executing: ${migration.name}`);
             await migration.up(db);
-            await recordMigration(db, migration.name);
+            await recordMigration(driver, migration.name);
             executed.push(migration.name);
             console.log(`✅ Completed: ${migration.name}`);
         } catch (error) {
@@ -192,9 +194,7 @@ export async function rollbackMigrations(
         try {
             console.log(`⚡ Rolling back: ${migrationName}`);
             await migration.down(db);
-            // Escape single quotes to prevent SQL injection
-            const safeMigrationName = migrationName.replace(/'/g, "''");
-            await db.execute(`DELETE FROM _ottabase_migrations WHERE name = '${safeMigrationName}'`);
+            await driver.executeRaw(`DELETE FROM _ottabase_migrations WHERE name = ?`, [migrationName]);
             rolledBack.push(migrationName);
             console.log(`✅ Rolled back: ${migrationName}`);
         } catch (error) {

@@ -332,52 +332,52 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
 
                         const recreateSQLs: string[] = [];
 
-                        // 1) CREATE new table with desired schema
+                        // 0) DROP any pre-existing __new table from a previous failed run
                         const newTableName = `${tableName}__new`;
+                        recreateSQLs.push(`DROP TABLE IF EXISTS ${quoteIdentifier(newTableName)}`);
+
+                        // 1) CREATE new table with desired schema
                         const createSQL = generateCreateTableSQL(table, newTableName);
                         recreateSQLs.push(createSQL);
 
                         // 2) INSERT INTO new (...) SELECT ... FROM old
+                        // Only insert columns that can be mapped from the existing table (including renames).
+                        // New columns without a source are omitted so that SQLite applies column defaults.
                         const config = getTableConfig(table);
-                        const desiredCols = config.columns.map((c) => c.name);
 
-                        const selectExprs = desiredCols.map((colName) => {
+                        const insertCols: string[] = [];
+                        const selectExprs: string[] = [];
+
+                        for (const col of config.columns) {
+                            const colName = col.name;
+
                             // If old column was renamed to new name
                             const mappedOld = Object.keys(tableRenameMap).find(
                                 (old) => tableRenameMap[old] === colName,
                             );
                             if (mappedOld && existingColumns.has(mappedOld)) {
-                                return `${quoteIdentifier(mappedOld)} AS ${quoteIdentifier(colName)}`;
+                                insertCols.push(colName);
+                                selectExprs.push(`${quoteIdentifier(mappedOld)} AS ${quoteIdentifier(colName)}`);
+                                continue;
                             }
 
+                            // If column exists with the same name in the old table, copy it directly
                             if (existingColumns.has(colName)) {
-                                return `${quoteIdentifier(colName)}`;
+                                insertCols.push(colName);
+                                selectExprs.push(`${quoteIdentifier(colName)}`);
+                                continue;
                             }
 
-                            // Fallback to default value or NULL
-                            const col = config.columns.find((c) => c.name === colName);
-                            if (col && col.default !== undefined && col.default !== null) {
-                                if (typeof col.default === 'string') {
-                                    const escapedDefault = escapeSQLString(col.default);
-                                    return `'${escapedDefault}' AS ${quoteIdentifier(colName)}`;
-                                }
-                                if (typeof col.default === 'number') {
-                                    return `${col.default} AS ${quoteIdentifier(colName)}`;
-                                }
-                                if (typeof col.default === 'boolean') {
-                                    const numericBoolDefault = col.default ? 1 : 0;
-                                    return `${numericBoolDefault} AS ${quoteIdentifier(colName)}`;
-                                }
-                            }
+                            // Column does not exist in the old table; omit it from INSERT so SQLite defaults apply.
+                        }
 
-                            return `NULL AS ${quoteIdentifier(colName)}`;
-                        });
-
-                        recreateSQLs.push(
-                            `INSERT INTO ${quoteIdentifier(newTableName)} (${desiredCols.map(quoteIdentifier).join(', ')}) SELECT ${selectExprs.join(', ')} FROM ${quoteIdentifier(
-                                tableName,
-                            )}`,
-                        );
+                        if (insertCols.length > 0) {
+                            recreateSQLs.push(
+                                `INSERT INTO ${quoteIdentifier(newTableName)} (${insertCols
+                                    .map(quoteIdentifier)
+                                    .join(', ')}) SELECT ${selectExprs.join(', ')} FROM ${quoteIdentifier(tableName)}`,
+                            );
+                        }
 
                         // 3) DROP old table
                         recreateSQLs.push(`DROP TABLE ${quoteIdentifier(tableName)}`);
@@ -387,16 +387,30 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
                             `ALTER TABLE ${quoteIdentifier(newTableName)} RENAME TO ${quoteIdentifier(tableName)}`,
                         );
 
-                        // Execute recreate statements
-                        for (const sql of recreateSQLs) {
-                            if (verbose) console.log(sql);
-                            try {
-                                await driver.executeRaw(sql);
-                            } catch (error: any) {
-                                const errorMsg = `Failed destructive migration on ${tableName}: ${error.message}`;
-                                result.errors.push(errorMsg);
-                                console.error(`❌ ${errorMsg}`);
+                        // Execute recreate statements as a batch/transaction
+                        if (verbose) {
+                            console.log('Executing destructive migration as batch:');
+                            recreateSQLs.forEach((sql) => console.log(`  ${sql}`));
+                        }
+
+                        try {
+                            if (driver.executeBatch) {
+                                // Use batch for atomicity
+                                await driver.executeBatch(recreateSQLs);
+                            } else {
+                                // Fallback: execute one by one (less safe)
+                                console.warn(
+                                    '⚠️  Driver does not support executeBatch; running statements sequentially (not atomic)',
+                                );
+                                for (const sql of recreateSQLs) {
+                                    await driver.executeRaw(sql);
+                                }
                             }
+                            if (verbose) console.log(`✅ Successfully recreated table ${tableName}`);
+                        } catch (error: any) {
+                            const errorMsg = `Failed destructive migration on ${tableName}: ${error.message}`;
+                            result.errors.push(errorMsg);
+                            console.error(`❌ ${errorMsg}`);
                         }
                     }
                 }

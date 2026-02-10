@@ -52,8 +52,9 @@ export async function handleOttaormInit(context: OttaormInitContext): Promise<Re
         customMigrations: appMigrations,
         verbose: true,
         // Allow destructive migrations only when explicitly enabled via env
-        allowDestructive: (env.MIGRATION_ALLOW_DESTRUCTIVE === '1' ||
-            env.MIGRATION_ALLOW_DESTRUCTIVE === 'true') as any,
+        allowDestructive:
+            env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === '1' ||
+            env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === 'true',
     });
 
     return jsonResponse(result);
