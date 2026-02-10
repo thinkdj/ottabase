@@ -358,10 +358,15 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
                             const col = config.columns.find((c) => c.name === colName);
                             if (col && col.default !== undefined && col.default !== null) {
                                 if (typeof col.default === 'string') {
-                                    return `'${col.default.replace(/'/g, "''")}' AS ${quoteIdentifier(colName)}`;
+                                    const escapedDefault = escapeSQLString(col.default);
+                                    return `'${escapedDefault}' AS ${quoteIdentifier(colName)}`;
                                 }
-                                if (typeof col.default === 'number' || typeof col.default === 'boolean') {
+                                if (typeof col.default === 'number') {
                                     return `${col.default} AS ${quoteIdentifier(colName)}`;
+                                }
+                                if (typeof col.default === 'boolean') {
+                                    const numericBoolDefault = col.default ? 1 : 0;
+                                    return `${numericBoolDefault} AS ${quoteIdentifier(colName)}`;
                                 }
                             }
 
