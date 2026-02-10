@@ -230,4 +230,142 @@ describe('NotificationManager', () => {
             expect(result.error).toContain('System channel not registered');
         });
     });
+
+    describe('async queue notifications', () => {
+        it('should dispatch notification to queue when async option is enabled', async () => {
+            const dispatchedJobs: any[] = [];
+            const mockQueue = {
+                async dispatch(queueName: string, payload: any, options?: any) {
+                    dispatchedJobs.push({ queueName, payload, options });
+                },
+            };
+
+            manager.setQueue(mockQueue);
+
+            const results = await manager.notify({
+                recipient: {
+                    userId: '123',
+                    email: 'user@test.com',
+                },
+                payload: {
+                    title: 'Async Test',
+                    message: 'This should be queued',
+                },
+                options: {
+                    async: true,
+                },
+            });
+
+            expect(results).toHaveLength(1);
+            expect(results[0].success).toBe(true);
+            expect(results[0].metadata?.async).toBe(true);
+            expect(dispatchedJobs).toHaveLength(1);
+            expect(dispatchedJobs[0].queueName).toBe('notifications');
+            expect(dispatchedJobs[0].payload.notification).toBeDefined();
+            expect(dispatchedJobs[0].payload.channels).toEqual(['email']);
+        });
+
+        it('should return error when async is enabled but queue is not configured', async () => {
+            const results = await manager.notify({
+                recipient: {
+                    userId: '123',
+                    email: 'user@test.com',
+                },
+                payload: {
+                    title: 'Async Test',
+                    message: 'This should fail',
+                },
+                options: {
+                    async: true,
+                },
+            });
+
+            expect(results).toHaveLength(1);
+            expect(results[0].success).toBe(false);
+            expect(results[0].error).toContain('Queue not configured');
+        });
+    });
+
+    describe('queue handler integration', () => {
+        it('should process queued notifications via queue handler', async () => {
+            const { createNotificationQueueHandler } = await import('../queue');
+
+            const handler = createNotificationQueueHandler(manager);
+
+            const job = {
+                payload: {
+                    notification: {
+                        id: 'test-123',
+                        recipient: {
+                            userId: '123',
+                            email: 'user@test.com',
+                        },
+                        payload: {
+                            title: 'Queue Test',
+                            message: 'Processed from queue',
+                        },
+                        options: {
+                            priority: 'normal' as const,
+                        },
+                        status: 'pending' as const,
+                        createdAt: new Date(),
+                    },
+                    channels: ['email' as const, 'websocket' as const],
+                },
+            };
+
+            await handler(job);
+
+            expect(emailChannel.sentNotifications).toHaveLength(1);
+            expect(wsChannel.sentNotifications).toHaveLength(1);
+            expect(emailChannel.sentNotifications[0].payload.title).toBe('Queue Test');
+        });
+
+        it('should throw error when channel send fails to trigger retry', async () => {
+            const { createNotificationQueueHandler } = await import('../queue');
+
+            // Create a failing channel
+            const failingChannel = {
+                name: 'failing' as const,
+                async send(): Promise<SendResult> {
+                    return {
+                        success: false,
+                        error: 'Intentional failure',
+                    };
+                },
+                async isAvailable() {
+                    return true;
+                },
+            };
+
+            manager.registerChannel(failingChannel);
+
+            const handler = createNotificationQueueHandler(manager);
+
+            const job = {
+                payload: {
+                    notification: {
+                        id: 'test-456',
+                        recipient: {
+                            userId: '123',
+                            email: 'user@test.com',
+                        },
+                        payload: {
+                            title: 'Fail Test',
+                            message: 'This will fail',
+                        },
+                        options: {
+                            priority: 'normal' as const,
+                        },
+                        status: 'pending' as const,
+                        createdAt: new Date(),
+                    },
+                    channels: ['failing' as const],
+                },
+            };
+
+            // Should throw to allow queue retry
+            await expect(handler(job)).rejects.toThrow('Failed to send notification');
+        });
+    });
 });

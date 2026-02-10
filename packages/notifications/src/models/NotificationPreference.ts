@@ -68,11 +68,14 @@ export class NotificationPreference extends BaseModel {
         },
         userId: {
             type: 'string',
-            editable: false,
+            editable: true,
             searchable: true,
             unique: true,
             uiConfig: {
                 label: 'User ID',
+            },
+            formConfig: {
+                visible: false,
             },
             tableConfig: {
                 visible: true,
@@ -198,9 +201,8 @@ export class NotificationPreference extends BaseModel {
 
         parsed[category] = enabled;
 
-        await this.update({
-            categoryPreferences: JSON.stringify(parsed),
-        });
+        this.set('categoryPreferences', JSON.stringify(parsed));
+        await this.save();
     }
 
     /**

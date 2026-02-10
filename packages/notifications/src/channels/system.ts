@@ -10,7 +10,11 @@ import type { Notification, NotificationChannelHandler, SendResult, SystemNotifi
 export interface SystemChannelConfig {
     /** Admin user IDs to notify */
     adminUserIds: string[];
-    /** Admin emails to notify */
+    /**
+     * Admin emails to notify
+     * Note: This is for reference only. To send emails to admins,
+     * configure an EmailChannel and use the custom handler.
+     */
     adminEmails?: string[];
     /** Custom handler for system notifications */
     handler?: (notification: SystemNotification) => Promise<void>;

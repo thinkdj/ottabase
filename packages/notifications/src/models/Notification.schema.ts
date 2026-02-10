@@ -10,7 +10,7 @@ import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 export const notificationsTable = sqliteTable('notifications', {
     id: text('id')
         .primaryKey()
-        .$defaultFn(() => `ntf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`),
+        .$defaultFn(() => `ntf_${crypto.randomUUID()}`),
 
     // Recipient
     userId: text('user_id').notNull(),
