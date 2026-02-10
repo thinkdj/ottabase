@@ -24,6 +24,12 @@ export interface DbDriver {
     executeRaw(sql: string, params?: unknown[]): Promise<any>;
 
     /**
+     * Execute multiple SQL statements as a batch/transaction
+     * All statements succeed or all fail (atomicity)
+     */
+    executeBatch?(sqls: string[]): Promise<any>;
+
+    /**
      * Get the underlying Drizzle database instance
      */
     getDb(): any;

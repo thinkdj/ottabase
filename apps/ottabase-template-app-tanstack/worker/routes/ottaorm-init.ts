@@ -1,10 +1,10 @@
-import { autoInit, getAllModelsMetadata } from '@ottabase/ottaorm';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { autoInit, getAllModelsMetadata } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { appMigrations } from '../../ottabase/migrations';
-import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { getAllSchemas } from '../../ottabase/db/schemas-helper';
+import { appMigrations } from '../../ottabase/migrations';
 import { checkMigrationAuth } from '../lib/db-utils';
 
 export interface OttaormInitContext {
@@ -51,6 +51,10 @@ export async function handleOttaormInit(context: OttaormInitContext): Promise<Re
         schema: allSchemas,
         customMigrations: appMigrations,
         verbose: true,
+        // Allow destructive migrations only when explicitly enabled via env
+        allowDestructive:
+            env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === '1' ||
+            env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === 'true',
     });
 
     return jsonResponse(result);

@@ -53,6 +53,16 @@ export interface AutoInitConfig {
      * Default: true
      */
     verbose?: boolean;
+    /**
+     * Allow destructive migrations (drops/renames). Default: false.
+     */
+    allowDestructive?: boolean;
+
+    /**
+     * Optional rename mapping for tables. Example:
+     * { posts: { old_col_name: 'new_col_name' } }
+     */
+    renameMap?: Record<string, Record<string, string>>;
 }
 
 /**
@@ -92,7 +102,7 @@ export async function autoInit(config: AutoInitConfig): Promise<{
     };
     timestamp: number;
 }> {
-    const { driver, schema, customMigrations = [], verbose = true } = config;
+    const { driver, schema, customMigrations = [], verbose = true, allowDestructive = false, renameMap = {} } = config;
 
     // Basic runtime validation of the schema object to avoid crashes
     const isObject = schema !== null && typeof schema === 'object' && !Array.isArray(schema);
@@ -136,7 +146,10 @@ export async function autoInit(config: AutoInitConfig): Promise<{
 
     // Run auto-migrations
     // Pass schemaKeys to runAutoMigrations so it can include them in its result
-    const result = await runAutoMigrations(driver, schema, customMigrations);
+    const result = await runAutoMigrations(driver, schema, customMigrations, {
+        allowDestructive,
+        renameMap,
+    });
 
     if (verbose) {
         console.log('\n✅ Auto-Init Complete!\n');

@@ -319,6 +319,10 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
             schema: allSchemas,
             customMigrations: appMigrations,
             verbose: true,
+            // Allow destructive migrations only when explicitly enabled via env
+            allowDestructive:
+                env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === '1' ||
+                env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === 'true',
         });
 
         // 3. Run core SQL migrations (users, sessions, accounts, RBAC, multi-tenant)

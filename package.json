@@ -64,6 +64,7 @@
         "next-themes": "catalog:",
         "pnpm": "10.27.0",
         "postcss-loader": "catalog:",
+        "prettier": "catalog:",
         "rimraf": "catalog:",
         "storybook": "catalog:",
         "style-loader": "catalog:",

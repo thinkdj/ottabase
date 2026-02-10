@@ -59,14 +59,25 @@ export interface RuntimeMigrationConfig {
      * Enable verbose logging
      */
     verbose?: boolean;
+    /**
+     * Whether destructive operations (drops/renames) are allowed.
+     * Default: false
+     */
+    allowDestructive?: boolean;
+
+    /**
+     * Optional rename mapping for tables. Example:
+     * { posts: { old_col_name: 'new_col_name' } }
+     */
+    renameMap?: Record<string, Record<string, string>>;
 }
 
 /**
  * Generate CREATE TABLE SQL from Drizzle table definition
  */
-function generateCreateTableSQL(table: SQLiteTable): string {
+function generateCreateTableSQL(table: SQLiteTable, overrideName?: string): string {
     const config = getTableConfig(table);
-    const tableName = config.name;
+    const tableName = overrideName ?? config.name;
     const columns = config.columns;
 
     const columnDefs = columns.map((col) => {
@@ -214,7 +225,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
     tablesSkipped: string[];
     errors: string[];
 }> {
-    const { driver, tables, customMigrations = [], verbose = false } = config;
+    const { driver, tables, customMigrations = [], verbose = false, allowDestructive = false, renameMap = {} } = config;
 
     const result = {
         tablesCreated: [] as string[],
@@ -300,6 +311,109 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
                         console.error(`❌ ${errorMsg}`);
                     }
                 }
+                // Check for removed columns (columns present in DB but not in model)
+                const desiredColumns = new Set(getTableConfig(table).columns.map((c) => c.name));
+                const removedColumns = Array.from(existingColumns).filter((c) => !desiredColumns.has(c));
+
+                if (removedColumns.length > 0) {
+                    if (!allowDestructive) {
+                        const msg = `⚠️  Detected removed columns on ${tableName}: ${removedColumns.join(', ')} (skipped - destructive ops disabled)`;
+                        console.warn(msg);
+                        result.errors.push(msg);
+                    } else {
+                        if (verbose) {
+                            console.log(
+                                `\n🗑️  Destructive changes detected for ${tableName}: ${removedColumns.join(', ')}`,
+                            );
+                        }
+
+                        // Recreate table strategy: create a new table, copy intersecting columns (respecting renameMap), drop old, rename new
+                        const tableRenameMap = renameMap[tableName] || {};
+
+                        const recreateSQLs: string[] = [];
+
+                        // 0) DROP any pre-existing __new table from a previous failed run
+                        const newTableName = `${tableName}__new`;
+                        recreateSQLs.push(`DROP TABLE IF EXISTS ${quoteIdentifier(newTableName)}`);
+
+                        // 1) CREATE new table with desired schema
+                        const createSQL = generateCreateTableSQL(table, newTableName);
+                        recreateSQLs.push(createSQL);
+
+                        // 2) INSERT INTO new (...) SELECT ... FROM old
+                        // Only insert columns that can be mapped from the existing table (including renames).
+                        // New columns without a source are omitted so that SQLite applies column defaults.
+                        const config = getTableConfig(table);
+
+                        const insertCols: string[] = [];
+                        const selectExprs: string[] = [];
+
+                        for (const col of config.columns) {
+                            const colName = col.name;
+
+                            // If old column was renamed to new name
+                            const mappedOld = Object.keys(tableRenameMap).find(
+                                (old) => tableRenameMap[old] === colName,
+                            );
+                            if (mappedOld && existingColumns.has(mappedOld)) {
+                                insertCols.push(colName);
+                                selectExprs.push(`${quoteIdentifier(mappedOld)} AS ${quoteIdentifier(colName)}`);
+                                continue;
+                            }
+
+                            // If column exists with the same name in the old table, copy it directly
+                            if (existingColumns.has(colName)) {
+                                insertCols.push(colName);
+                                selectExprs.push(`${quoteIdentifier(colName)}`);
+                                continue;
+                            }
+
+                            // Column does not exist in the old table; omit it from INSERT so SQLite defaults apply.
+                        }
+
+                        if (insertCols.length > 0) {
+                            recreateSQLs.push(
+                                `INSERT INTO ${quoteIdentifier(newTableName)} (${insertCols
+                                    .map(quoteIdentifier)
+                                    .join(', ')}) SELECT ${selectExprs.join(', ')} FROM ${quoteIdentifier(tableName)}`,
+                            );
+                        }
+
+                        // 3) DROP old table
+                        recreateSQLs.push(`DROP TABLE ${quoteIdentifier(tableName)}`);
+
+                        // 4) RENAME new -> original
+                        recreateSQLs.push(
+                            `ALTER TABLE ${quoteIdentifier(newTableName)} RENAME TO ${quoteIdentifier(tableName)}`,
+                        );
+
+                        // Execute recreate statements as a batch/transaction
+                        if (verbose) {
+                            console.log('Executing destructive migration as batch:');
+                            recreateSQLs.forEach((sql) => console.log(`  ${sql}`));
+                        }
+
+                        try {
+                            if (driver.executeBatch) {
+                                // Use batch for atomicity
+                                await driver.executeBatch(recreateSQLs);
+                            } else {
+                                // Fallback: execute one by one (less safe)
+                                console.warn(
+                                    '⚠️  Driver does not support executeBatch; running statements sequentially (not atomic)',
+                                );
+                                for (const sql of recreateSQLs) {
+                                    await driver.executeRaw(sql);
+                                }
+                            }
+                            if (verbose) console.log(`✅ Successfully recreated table ${tableName}`);
+                        } catch (error: any) {
+                            const errorMsg = `Failed destructive migration on ${tableName}: ${error.message}`;
+                            result.errors.push(errorMsg);
+                            console.error(`❌ ${errorMsg}`);
+                        }
+                    }
+                }
             }
         }
 
@@ -372,6 +486,7 @@ export async function runAutoMigrations(
         name: string;
         up: (db: DbDriver) => Promise<void>;
     }>,
+    options?: { allowDestructive?: boolean; renameMap?: Record<string, Record<string, string>> },
 ): Promise<{
     success: boolean;
     message: string;
@@ -389,6 +504,8 @@ export async function runAutoMigrations(
         tables,
         customMigrations,
         verbose: true,
+        allowDestructive: options?.allowDestructive,
+        renameMap: options?.renameMap,
     });
 
     const { tablesCreated, columnsAdded, customMigrationsRun, errors } = result;
