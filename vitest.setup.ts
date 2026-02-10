@@ -43,7 +43,7 @@ global.ResizeObserver = class ResizeObserver {
 
 // Suppress console errors in tests (optional - remove if you want to see them)
 const originalError = console.error;
-beforeAll(() => {
+beforeAll(async () => {
     console.error = (...args: any[]) => {
         if (
             typeof args[0] === 'string' &&
@@ -54,6 +54,16 @@ beforeAll(() => {
         }
         originalError.call(console, ...args);
     };
+
+    // Mock AuditLog.create to avoid DB driver calls during unit tests
+    try {
+        const AuditLogModule = await import('./packages/ottaorm/src/models/AuditLog');
+        if (AuditLogModule?.AuditLog && typeof AuditLogModule.AuditLog.create === 'function') {
+            vi.spyOn(AuditLogModule.AuditLog, 'create').mockResolvedValue({} as any);
+        }
+    } catch (e) {
+        // ignore if module not present in this environment
+    }
 });
 
 afterAll(() => {
