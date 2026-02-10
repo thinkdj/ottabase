@@ -31,6 +31,7 @@
         "test:watch": "turbo test -- --watch",
         "test:ui": "turbo test -- --ui",
         "format": "prettier --write .",
+        "git:normalize": "(git add --renormalize .) && (git update-index --refresh)",
         "prepare": "husky",
         "lint-staged": "lint-staged",
         "storybook": "storybook dev -p 6006",
