@@ -8,28 +8,28 @@ Add finishing touches, optimizations, and extended features like Email Branding 
 
 ### 1. Email Branding
 
-- [ ] Create `packages/brand-engine/src/email/brand-email.ts`
-- [ ] Implement `applyBrandToEmail(html, config)`
-- [ ] Replace placeholders like `{{brandName}}`, `{{logoUrl}}`, `{{primaryColor}}` in email templates
+- [x] Create `packages/brand-engine/src/email/brand-email.ts`
+- [x] Implement `applyBrandToEmail(html, config)`
+- [x] Replace placeholders like `{{brandName}}`, `{{logoUrl}}`, `{{primaryColor}}` in email templates
 
 ### 2. Favicon Generation
 
-- [ ] Enhance Logo Upload API to auto-generate favicons (ico, png) from uploaded icon if possible (using CF Images or
-      similar tool)
+- [x] Add `getFaviconUrl(config)` helper (icon URL suitable as favicon)
+- [ ] Future: CF Images to auto-generate favicon.ico, apple-touch-icon from icon upload
 
 ### 3. Audit Log Integration
 
-- [ ] Integrate with `@ottabase/audit` in API handlers
-- [ ] Log:
+- [x] Integrate with `@ottabase/audit` in API handlers
+- [x] Log:
     - `brand.update`
     - `brand.apply` (BrandBox activity)
     - `brand.logo.upload`
 
 ### 4. Documentation
 
-- [ ] Write a `README.md` for `@ottabase/brand-engine` usage
-- [ ] Document API endpoints
-- [ ] Document how to create new Layout Components in apps
+- [x] Write a `README.md` for `@ottabase/brand-engine` usage
+- [x] Document API endpoints
+- [x] Document how to create new Layout Components in apps
 
 ## References
 

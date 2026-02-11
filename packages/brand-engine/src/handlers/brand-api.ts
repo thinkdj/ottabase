@@ -8,6 +8,7 @@ import { resolveBrandConfig } from '../persistence/resolveBrandConfig';
 import { BrandSettings } from '../persistence/BrandSettings.model';
 import { createBrandCache } from '../persistence/cache';
 import { createBrandAssets, type LogoType } from '../persistence/assets';
+import { logBrandAudit } from './audit-helper';
 import type { D1Database, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { errorResponse } from '@ottabase/utils/http-errors';
@@ -98,6 +99,8 @@ export async function handleUpdateBrand(
     await settings.save();
     await cache.invalidate(organizationId, appId);
 
+    await logBrandAudit('brand.update', request, { organizationId, appId, fields: Object.keys(body) });
+
     return jsonResponse({ success: true }, 200);
 }
 
@@ -140,6 +143,8 @@ export async function handleUploadLogo(
         await cache.invalidate(organizationId, appId);
     }
 
+    await logBrandAudit('brand.logo.upload', request, { organizationId, appId, logoType, key });
+
     return jsonResponse(
         {
             key,
@@ -148,6 +153,9 @@ export async function handleUploadLogo(
         200,
     );
 }
+
+// Re-export layout handlers for single entry point
+export { handleGetLayouts, handlePutLayout, handleGetMappings, handlePutMappings } from './layout-api';
 
 // Re-export theme variant handlers for single entry point
 export {

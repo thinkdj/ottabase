@@ -6,6 +6,7 @@
 
 import { BrandBox } from '../persistence/BrandBox.model';
 import { createBrandCache } from '../persistence/cache';
+import { logBrandAudit } from './audit-helper';
 import type { BrandApiEnv } from './brand-api';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { errorResponse } from '@ottabase/utils/http-errors';
@@ -236,6 +237,8 @@ export async function handleApplyBrandBox(
     await box.snapshot();
     await box.activate();
     await cache.invalidate(organizationId, appId);
+
+    await logBrandAudit('brand.apply', request, { organizationId, appId, brandBoxId });
 
     return jsonResponse({ success: true, brandBoxId }, 200);
 }

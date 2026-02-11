@@ -56,3 +56,7 @@ export { fromLegacyThemeConfig } from './adapter';
 export { pathPatternToRegex, resolveLayoutForPath } from './layouts/resolver';
 export { HOMEPAGE_LAYOUT, APP_SHELL_LAYOUT, DOCS_LAYOUT, MINIMAL_LAYOUT, LAYOUT_PRESETS } from './layouts/presets';
 export type { LayoutComponentKey, LayoutPreset } from './layouts/presets';
+
+// ── Email & favicon ───────────────────────────────────────────────────────
+export { applyBrandToEmail } from './email/brand-email';
+export { getFaviconUrl } from './favicon';

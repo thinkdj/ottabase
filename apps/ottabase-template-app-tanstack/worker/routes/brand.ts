@@ -4,11 +4,21 @@
 
 import {
     handleGetBrand,
+    handleUpdateBrand,
+    handleUploadLogo,
+    handleGetLayouts,
+    handlePutLayout,
+    handleGetMappings,
+    handlePutMappings,
     handleGetThemeVariants,
     handleCreateThemeVariant,
     handleUpdateThemeVariant,
     handleDeleteThemeVariant,
     handleApplyBrandBox,
+    handleGetLayouts,
+    handlePutLayout,
+    handleGetMappings,
+    handlePutMappings,
 } from '@ottabase/brand-engine/handlers';
 import type { ApiRouteContext } from './router';
 import type { CloudflareEnv } from '../cloudflare-env';
@@ -35,8 +45,36 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
         return handleGetBrand(request, envBrand, orgId, appId);
     }
 
+    if (route === '/api/brand' && method === 'PUT') {
+        return handleUpdateBrand(request, envBrand, orgId, appId);
+    }
+
     if (route === '/api/brand/apply' && method === 'POST') {
         return handleApplyBrandBox(request, envBrand, orgId, appId);
+    }
+
+    const logoMatch = route.match(/^\/api\/brand\/logo\/(logo|logo-dark|icon|og-image|email-logo)$/);
+    if (logoMatch && method === 'POST') {
+        return handleUploadLogo(
+            request,
+            envBrand,
+            orgId,
+            appId,
+            logoMatch[1] as 'logo' | 'logo-dark' | 'icon' | 'og-image' | 'email-logo',
+        );
+    }
+
+    if (route === '/api/brand/layouts' && method === 'GET') {
+        return handleGetLayouts(request, envBrand, orgId, appId);
+    }
+    if (route === '/api/brand/layouts' && method === 'PUT') {
+        return handlePutLayout(request, envBrand, orgId, appId);
+    }
+    if (route === '/api/brand/mappings' && method === 'GET') {
+        return handleGetMappings(request, envBrand, orgId, appId);
+    }
+    if (route === '/api/brand/mappings' && method === 'PUT') {
+        return handlePutMappings(request, envBrand, orgId, appId);
     }
 
     if (route === '/api/brand/themes' && method === 'GET') {

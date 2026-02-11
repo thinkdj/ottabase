@@ -10,7 +10,7 @@ able to store brand settings in D1, cache them in KV, upload logos to R2, and fe
 ### 1. Database Schema (D1)
 
 - [x] Create `packages/brand-engine/src/persistence/schema.ts`
-- [ ] Define `brandSettingsTable` with fields:
+- [x] Define `brandSettingsTable` with fields:
     - `id`, `organizationId`, `appId`
     - `brandName`, `tagline`
     - `logoKey`, `logoDarkKey`, `iconKey`, `ogImageKey`, `emailLogoKey`
@@ -24,7 +24,7 @@ able to store brand settings in D1, cache them in KV, upload logos to R2, and fe
 ### 2. OttaORM Model
 
 - [x] Create `packages/brand-engine/src/persistence/BrandSettings.model.ts`
-- [ ] Implement `BrandSettings` class extending `BaseModel`
+- [x] Implement `BrandSettings` class extending `BaseModel`
 - [x] Add `resolve(orgId, appId, userId)` static method (Draft -> App -> Org -> Default)
 - [x] Add `getOrCreateDefault()` method
 - [x] Add `createDraft()`, `publish()` methods
@@ -35,7 +35,7 @@ able to store brand settings in D1, cache them in KV, upload logos to R2, and fe
 ### 3. KV Caching Layer
 
 - [x] Create `packages/brand-engine/src/persistence/cache.ts`
-- [ ] Implement `createBrandCache(kv)`
+- [x] Implement `createBrandCache(kv)`
 - [x] `get(orgId, appId, previewBoxId)`
 - [x] `set(orgId, appId, config, previewBoxId)`
 - [x] `invalidate(orgId, appId)`
@@ -43,7 +43,7 @@ able to store brand settings in D1, cache them in KV, upload logos to R2, and fe
 ### 4. R2 Asset Management
 
 - [x] Create `packages/brand-engine/src/persistence/assets.ts`
-- [ ] Implement `createBrandAssets(bucket, publicUrl)`
+- [x] Implement `createBrandAssets(bucket, publicUrl)`
 - [x] `uploadLogo(file, filename, type)`
 - [x] `deleteLogo(key)`
 - [x] `getPublicUrl(key)`

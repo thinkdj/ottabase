@@ -26,7 +26,7 @@ without changing the structural layout.
 - [x] `POST /api/brand/themes` - Create variant (RBAC: `brand:edit`)
 - [x] `PUT /api/brand/themes/:id` - Update variant (RBAC: `brand:edit`)
 - [x] `DELETE /api/brand/themes/:id` - Delete variant (RBAC: `brand:edit`)
-- [ ] `PUT /api/brand/layouts` - Create/update templates (implemented in step 2 - add RBAC: `brand:edit`)
+- [x] `PUT /api/brand/layouts` - Create/update templates (layout-api; RBAC enforced at route layer when auth enabled)
 
 ### 4. Theme Resolution Logic
 

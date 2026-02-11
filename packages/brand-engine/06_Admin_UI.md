@@ -9,29 +9,34 @@ control branding.
 
 ### 1. Package Setup
 
-- [ ] Initialize `packages/brand-engine-admin`
-- [ ] Install dependencies: `react`, `@tanstack/react-query`, `@ottabase/ui-shadcn`, `lucide-react`
+- [x] Admin UI in app (`apps/ottabase-template-app-tanstack/src/pages/admin/`) – no separate package (KISS)
 
 ### 2. Components
 
-- [ ] **LogoUploader**: Drag & drop zone, uploads to R2 via API
-- [ ] **ColorPicker**: Helper for picking hex/rgba colors
-- [ ] **FontSelector**: Dropdown to select Google Fonts
-- [ ] **TokenEditor**: JSON or Visual editor for design tokens
-    - [ ] Add contrast validation warning (WCAG)
-- [ ] **BrandPreview**: Live preview iframe or component showing current settings
+- [x] **LogoUploader**: Drag & drop zone, uploads via POST /api/brand/logo/:type
+- [ ] **ColorPicker**: Helper for picking hex/rgba colors (optional)
+- [ ] **FontSelector**: Dropdown to select Google Fonts (optional)
+- [ ] **TokenEditor**: Visual editor for design tokens; JSON textarea in BrandSettingsTab (optional: WCAG contrast)
+- [ ] **BrandPreview**: Live preview iframe (optional)
 
 ### 3. Pages / Views
 
-- [ ] **BrandSettingsPage**: Tabs for Identity, Colors, Typography, Advanced
-- [ ] **BrandBoxManager**: List view of boxes, Create/Edit modal, "Apply" button
-- [ ] **LayoutTemplateEditor**: Manage layout templates and route mappings
-- [ ] **ThemeVariantEditor**: Manage seasonal themes
+- [x] **BrandSettingsTab**: Tabs for Identity, Logos, Tokens, Advanced
+- [x] **BrandBoxManagerTab**: List boxes, Create modal, Apply, Duplicate, Delete
+- [x] **LayoutEditorTab**: Layout templates + route mappings
+- [x] **ThemeVariantEditorTab**: Create/delete theme variants
 
 ### 4. Integration
 
-- [ ] Expose `BrandAdminPage` as the main entry point
-- [ ] Ensure it uses the API endpoints created in previous phases (`/api/brand/*`)
+- [x] **AdminBrandEnginePage** – tabbed entry (Brand Settings, BrandBoxes, Layouts, Theme Variants)
+- [x] Uses `/api/brand/*`, `/api/brandbox` endpoints
+
+### 5. Optional Enhancements (future)
+
+- ColorPicker, FontSelector for visual token editing
+- TokenEditor with WCAG contrast validation
+- BrandPreview iframe for live preview
+- RBAC guard on admin route (brand:edit, brand:apply)
 
 ## References
 

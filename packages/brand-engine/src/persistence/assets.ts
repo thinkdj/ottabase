@@ -1,6 +1,8 @@
 // ---------------------------------------------------------------------------
 // Brand Engine – R2 asset management for logos
 // Upload logos to R2, return public URLs
+// Future: On icon upload, use Cloudflare Images to auto-generate favicon.ico,
+// apple-touch-icon.png, etc. Store in brand-assets/icon/.
 // ---------------------------------------------------------------------------
 
 import type { R2Bucket } from '@cloudflare/workers-types';
