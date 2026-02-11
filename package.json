@@ -19,6 +19,7 @@
         "lint": "turbo lint",
         "type-check": "turbo type-check",
         "clean": "turbo clean",
+        "cache:clear": "pnpm --filter @ottabase/scripts exec cache-clear",
         "test": "turbo test -- --run",
         "test:all": "turbo test --filter=./packages/* --filter=./apps/*",
         "test:packages": "turbo test --filter=./packages/*",
