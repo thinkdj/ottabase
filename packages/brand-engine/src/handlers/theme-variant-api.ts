@@ -60,6 +60,11 @@ export async function handleCreateThemeVariant(
     if (!body.name || typeof body.tokensJson !== 'string') {
         return errorResponse('name and tokensJson required', 400);
     }
+    try {
+        JSON.parse(body.tokensJson);
+    } catch {
+        return errorResponse('Invalid JSON for tokensJson', 400);
+    }
 
     const cache = createBrandCache(env.OBCF_KV);
     const variant = (await ThemeVariant.create({
@@ -117,6 +122,14 @@ export async function handleUpdateThemeVariant(
         activeUntil?: number | null;
         description?: string | null;
     };
+
+    if (body.tokensJson !== undefined) {
+        try {
+            JSON.parse(body.tokensJson);
+        } catch {
+            return errorResponse('Invalid JSON for tokensJson', 400);
+        }
+    }
 
     const cache = createBrandCache(env.OBCF_KV);
 

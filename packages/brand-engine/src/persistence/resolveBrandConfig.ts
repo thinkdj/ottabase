@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // Brand Engine – Resolve brand config (shared by API and Edge/SSR)
-// Resolution order: brandPreview → Active BrandBox → BrandSettings
+// Resolution order: brandPreview → Active preset → Default settings
 // ---------------------------------------------------------------------------
 
 import type { ResolvedBrandConfig } from './types';
@@ -13,10 +13,8 @@ export interface ResolveBrandConfigEnv {
     R2_PUBLIC_URL?: string;
 }
 import { BrandSettings } from './BrandSettings.model';
-import { BrandBox } from './BrandBox.model';
 import { ThemeVariant } from './ThemeVariant.model';
 import { brandSettingsToConfig } from './brandSettingsToConfig';
-import { brandBoxToConfig } from './brandBoxToConfig';
 import { createBrandCache } from './cache';
 import { getLayoutData } from './layoutData';
 
@@ -54,50 +52,68 @@ export async function resolveBrandConfig(
 
     // 1. Preview mode
     if (brandPreview) {
-        const box = (await BrandBox.find(brandPreview)) as InstanceType<typeof BrandBox> | null;
-        if (box) {
-            const bOrg = box.get('organizationId') as string | null;
-            const bApp = box.get('appId') as string | null;
-            if (bOrg === orgId && bApp === (appId ?? null)) {
-                const config = await brandBoxToConfig(box, r2Url, 'light');
+        const preset = (await BrandSettings.find(brandPreview)) as BrandSettings | null;
+        if (preset) {
+            const pOrg = preset.get('organizationId') as string | null;
+            const pApp = preset.get('appId') as string | null;
+            if (pOrg === orgId && pApp === (appId ?? null)) {
+                const themeVariantTokens = await resolveThemeVariantTokens(preset, themeVariantParam, orgId, appId);
+                const layoutData = await getLayoutData(orgId, appId);
+                const config = brandSettingsToConfig(preset, r2Url, 'light', layoutData, themeVariantTokens);
                 if (useCache) await cache.set(orgId, appId || null, config, brandPreview);
                 return config;
             }
         }
     }
 
-    // 2. Active BrandBox
-    const activeBox = await BrandBox.findActive(orgId, appId);
-    if (activeBox) {
-        const config = await brandBoxToConfig(activeBox, r2Url, 'light');
+    // 2. Active preset
+    const activePreset = await BrandSettings.findActive(orgId, appId);
+    if (activePreset) {
+        const themeVariantTokens = await resolveThemeVariantTokens(activePreset, themeVariantParam, orgId, appId);
+        const layoutData = await getLayoutData(orgId, appId);
+        const config = brandSettingsToConfig(activePreset, r2Url, 'light', layoutData, themeVariantTokens);
         if (useCache) await cache.set(orgId, appId || null, config);
         return config;
     }
 
-    // 3. BrandSettings fallback
+    // 3. Default settings fallback
     const settings = await BrandSettings.resolve(orgId, appId, opts.userId ?? undefined);
     if (!settings) return null;
 
-    let themeVariantTokens: Partial<import('../tokens').DesignTokens> | undefined;
-    if (themeVariantParam) {
-        if (themeVariantParam === 'active') {
-            const active = await ThemeVariant.findActiveForDate(orgId, appId);
-            if (active) themeVariantTokens = active.getTokens();
-        } else {
-            const variant = (await ThemeVariant.find(themeVariantParam)) as ThemeVariant | null;
-            if (variant) {
-                const vOrg = variant.get('organizationId') as string | null;
-                const vApp = variant.get('appId') as string | null;
-                if (vOrg === orgId && vApp === (appId ?? null)) {
-                    themeVariantTokens = variant.getTokens();
-                }
-            }
-        }
-    }
-
+    const themeVariantTokens = await resolveThemeVariantTokens(settings, themeVariantParam, orgId, appId);
     const layoutData = await getLayoutData(orgId, appId);
     const config = brandSettingsToConfig(settings, r2Url, 'light', layoutData, themeVariantTokens);
 
     if (useCache) await cache.set(orgId, appId || null, config);
     return config;
+}
+
+/** Resolve theme variant tokens from param, preset's themeVariantId, or F3 auto (findActiveForDate) */
+async function resolveThemeVariantTokens(
+    settings: BrandSettings,
+    themeVariantParam: string | undefined,
+    orgId: string | null,
+    appId: string | null,
+): Promise<Partial<import('../tokens').DesignTokens> | undefined> {
+    if (themeVariantParam) {
+        if (themeVariantParam === 'active') {
+            const active = await ThemeVariant.findActiveForDate(orgId, appId);
+            return active?.getTokens();
+        }
+        const variant = (await ThemeVariant.find(themeVariantParam)) as ThemeVariant | null;
+        if (variant) {
+            const vOrg = variant.get('organizationId') as string | null;
+            const vApp = variant.get('appId') as string | null;
+            if (vOrg === orgId && vApp === (appId ?? null)) return variant.getTokens();
+        }
+        return undefined;
+    }
+    const themeVariantId = settings.get('themeVariantId') as string | null;
+    if (themeVariantId) {
+        const variant = (await ThemeVariant.find(themeVariantId)) as ThemeVariant | null;
+        if (variant) return variant.getTokens();
+    }
+    // F3: Automatic themes - apply date-based variant when none specified
+    const activeForDate = await ThemeVariant.findActiveForDate(orgId, appId);
+    return activeForDate?.getTokens();
 }

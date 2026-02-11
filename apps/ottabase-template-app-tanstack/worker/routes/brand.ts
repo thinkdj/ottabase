@@ -15,29 +15,21 @@ import {
     handleCreateThemeVariant,
     handleUpdateThemeVariant,
     handleDeleteThemeVariant,
-    handleApplyBrandBox,
+    handleGetBrandPresets,
+    handleCreateBrandPreset,
+    handleUpdateBrandPreset,
+    handleDeleteBrandPreset,
+    handleApplyBrandPreset,
+    handleDuplicateBrandPreset,
 } from '@ottabase/brand-engine/handlers';
 import type { ApiRouteContext } from './router';
-import type { CloudflareEnv } from '../cloudflare-env';
 import { requireBrandEditAccess } from '../lib/admin-guard';
-
-const brandEnv = (env: CloudflareEnv) => ({
-    OBCF_D1: env.OBCF_D1,
-    OBCF_KV: env.OBCF_KV,
-    OBCF_R2: env.OBCF_R2,
-    R2_PUBLIC_URL: (env as CloudflareEnv & { R2_PUBLIC_URL?: string }).R2_PUBLIC_URL,
-});
-
-function getOrgApp(context: ApiRouteContext) {
-    const orgId = context.url.searchParams.get('organizationId') ?? null;
-    const appId = context.url.searchParams.get('appId') ?? null;
-    return { orgId, appId };
-}
+import { brandEnv, getOrgApp } from '../lib/brand-utils';
 
 export async function handleBrandApi(context: ApiRouteContext): Promise<Response | null> {
-    const { route, request, env, method } = context;
+    const { route, request, url, env, method } = context;
     const envBrand = brandEnv(env);
-    const { orgId, appId } = getOrgApp(context);
+    const { orgId, appId } = getOrgApp(url);
 
     if (route === '/api/brand' && method === 'GET') {
         return handleGetBrand(request, envBrand, orgId, appId);
@@ -56,7 +48,44 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
     if (route === '/api/brand/apply' && method === 'POST') {
         const guard = await requireBrandEditAccess(context, orgId, appId);
         if (guard instanceof Response) return guard;
-        return handleApplyBrandBox(request, envBrand, guard.organizationId, guard.appId);
+        return handleApplyBrandPreset(request, envBrand, guard.organizationId, guard.appId);
+    }
+
+    if (route === '/api/brand/presets' && method === 'GET') {
+        return handleGetBrandPresets(request, envBrand, orgId, appId);
+    }
+    if (route === '/api/brand/presets' && method === 'POST') {
+        const guard = await requireBrandEditAccess(context, orgId, appId);
+        if (guard instanceof Response) return guard;
+        return handleCreateBrandPreset(request, envBrand, guard.organizationId, guard.appId);
+    }
+
+    const presetDuplicateMatch = route.match(/^\/api\/brand\/presets\/([^/]+)\/duplicate$/);
+    if (presetDuplicateMatch && method === 'POST') {
+        const guard = await requireBrandEditAccess(context, orgId, appId);
+        if (guard instanceof Response) return guard;
+        return handleDuplicateBrandPreset(
+            request,
+            envBrand,
+            presetDuplicateMatch[1],
+            guard.organizationId,
+            guard.appId,
+        );
+    }
+
+    const presetByIdMatch = route.match(/^\/api\/brand\/presets\/([^/]+)$/);
+    if (presetByIdMatch) {
+        const id = presetByIdMatch[1];
+        if (method === 'PUT') {
+            const guard = await requireBrandEditAccess(context, orgId, appId);
+            if (guard instanceof Response) return guard;
+            return handleUpdateBrandPreset(request, envBrand, id, guard.organizationId, guard.appId);
+        }
+        if (method === 'DELETE') {
+            const guard = await requireBrandEditAccess(context, orgId, appId);
+            if (guard instanceof Response) return guard;
+            return handleDeleteBrandPreset(request, envBrand, id, guard.organizationId, guard.appId);
+        }
     }
 
     const logoMatch = route.match(/^\/api\/brand\/logo\/(logo|logo-dark|icon|og-image|email-logo)$/);

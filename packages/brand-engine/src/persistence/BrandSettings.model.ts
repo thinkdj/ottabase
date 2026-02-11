@@ -8,7 +8,14 @@ import { brandSettingsTable } from './schema';
 import type { BrandTheme } from '../theme';
 import type { DesignTokens } from '../tokens';
 import type { LayoutConfig } from '../layout';
-import { DEFAULT_LAYOUT } from '../layout';
+import { LayoutTemplate } from './LayoutTemplate.model';
+import { LAYOUT_PRESETS } from '../layouts/presets';
+
+export interface RouteMappingRow {
+    pathPattern: string;
+    layoutTemplateId: string;
+    priority: number;
+}
 
 export class BrandSettings extends BaseModel {
     static entity = 'brand_settings';
@@ -19,6 +26,7 @@ export class BrandSettings extends BaseModel {
 
     static casts = {
         isDraft: 'boolean' as const,
+        isActive: 'boolean' as const,
         allowDarkModeToggle: 'boolean' as const,
         hideOttabaseBranding: 'boolean' as const,
         createdAt: 'date' as const,
@@ -30,17 +38,19 @@ export class BrandSettings extends BaseModel {
     // ═══════════════════════════════════════════════════════════════════
 
     /**
-     * Resolve brand settings for an organization/app combination
-     * Follows resolution order: draft → app → org → default
+     * Resolve default brand settings (name IS NULL). Order: draft → app → org → default
      */
     static async resolve(
         organizationId: string | null,
         appId?: string | null,
         userId?: string | null,
     ): Promise<BrandSettings | null> {
-        // 1. Check for draft (user-specific preview)
+        const baseWhere = { name: null } as const;
+
+        // 1. Draft (user-specific preview)
         if (userId) {
             const draft = await this.first({
+                ...baseWhere,
                 organizationId,
                 appId: appId || null,
                 isDraft: true,
@@ -48,9 +58,10 @@ export class BrandSettings extends BaseModel {
             if (draft) return draft;
         }
 
-        // 2. Check app-level settings
-        if (appId) {
+        // 2. App-level
+        if (appId && organizationId) {
             const appSettings = await this.first({
+                ...baseWhere,
                 organizationId,
                 appId,
                 isDraft: false,
@@ -58,9 +69,10 @@ export class BrandSettings extends BaseModel {
             if (appSettings) return appSettings;
         }
 
-        // 3. Check org-level settings
+        // 3. Org-level
         if (organizationId) {
             const orgSettings = await this.first({
+                ...baseWhere,
                 organizationId,
                 appId: null,
                 isDraft: false,
@@ -68,17 +80,115 @@ export class BrandSettings extends BaseModel {
             if (orgSettings) return orgSettings;
         }
 
-        // 4. Fall back to system default
+        // 4. System default
         return this.getOrCreateDefault();
     }
 
     /**
-     * Get or create default brand settings
+     * Find active preset (isActive=true) for org/app
+     */
+    static async findActive(organizationId: string | null, appId?: string | null): Promise<BrandSettings | null> {
+        if (appId && organizationId) {
+            const appActive = await this.first({
+                organizationId,
+                appId,
+                isActive: true,
+            });
+            if (appActive) return appActive;
+        }
+        if (organizationId) {
+            const orgActive = await this.first({
+                organizationId,
+                appId: null,
+                isActive: true,
+            });
+            if (orgActive) return orgActive;
+        }
+        return this.first({
+            organizationId: null,
+            appId: null,
+            isActive: true,
+        });
+    }
+
+    /** Deactivate all presets for org/app */
+    static async deactivateAll(organizationId: string | null, appId?: string | null): Promise<void> {
+        const rows = (await this.where({
+            organizationId: organizationId ?? null,
+            appId: appId ?? null,
+        })) as BrandSettings[];
+        for (const row of rows) {
+            if (row.get('isActive')) {
+                row.set('isActive', false);
+                await row.save();
+            }
+        }
+    }
+
+    /** Activate this preset; deactivates others first */
+    async activate(): Promise<void> {
+        const orgId = this.get('organizationId') as string | null;
+        const appId = this.get('appId') as string | null;
+        await BrandSettings.deactivateAll(orgId, appId);
+        this.set('isActive', true);
+        await this.save();
+    }
+
+    /** Get route mappings from JSON or empty array */
+    getRouteMappings(): RouteMappingRow[] {
+        const raw = this.get('routeMappingsJson');
+        if (!raw || typeof raw !== 'string') return [];
+        try {
+            return JSON.parse(raw) as RouteMappingRow[];
+        } catch {
+            return [];
+        }
+    }
+
+    /** Get layout templates snapshot from JSON */
+    getLayoutTemplatesSnapshot(): Record<string, { componentKey: string; config: LayoutConfig }> {
+        const raw = this.get('layoutTemplatesSnapshotJson');
+        if (!raw || typeof raw !== 'string') return {};
+        try {
+            return JSON.parse(raw) as Record<string, { componentKey: string; config: LayoutConfig }>;
+        } catch {
+            return {};
+        }
+    }
+
+    /**
+     * Snapshot current layout templates into layoutTemplatesSnapshotJson
+     */
+    async snapshot(): Promise<void> {
+        const routeMappings = this.getRouteMappings();
+        const defaultIds = ['app-shell', 'homepage'];
+        const templateIds = [...new Set([...routeMappings.map((m) => m.layoutTemplateId), ...defaultIds])];
+        const snapshotMap: Record<string, { componentKey: string; config: LayoutConfig }> = {};
+
+        for (const [key, preset] of Object.entries(LAYOUT_PRESETS)) {
+            snapshotMap[key] = { componentKey: preset.componentKey, config: preset.config };
+        }
+        for (const id of templateIds) {
+            const template = (await LayoutTemplate.find(id)) as InstanceType<typeof LayoutTemplate> | null;
+            if (template) {
+                snapshotMap[id] = {
+                    componentKey: template.get('componentKey') as string,
+                    config: template.getConfig(),
+                };
+            }
+        }
+        this.set('layoutTemplatesSnapshotJson', JSON.stringify(snapshotMap));
+        await this.save();
+    }
+
+    /**
+     * Get or create default brand settings (name=null)
      */
     static async getOrCreateDefault(): Promise<BrandSettings> {
         const existing = await this.first({
             organizationId: null,
             appId: null,
+            name: null,
             isDraft: false,
         });
         if (existing) return existing;
@@ -86,6 +196,7 @@ export class BrandSettings extends BaseModel {
         return this.create({
             organizationId: null,
             appId: null,
+            name: null,
             brandName: 'Ottabase',
             defaultColorScheme: 'system',
             allowDarkModeToggle: true,
@@ -112,27 +223,28 @@ export class BrandSettings extends BaseModel {
     }
 
     /**
-     * Publish draft (create version snapshot, mark as published)
+     * Publish draft. Replaces existing published row to avoid duplicates (F4).
      */
     async publish(): Promise<void> {
         if (!this.get('isDraft')) {
             throw new Error('Only drafts can be published');
         }
 
-        // Find existing published version
+        const orgId = this.get('organizationId') as string | null;
+        const appId = this.get('appId') as string | null;
         const published = await BrandSettings.first({
-            organizationId: this.get('organizationId'),
-            appId: this.get('appId'),
+            organizationId: orgId,
+            appId,
+            name: null,
             isDraft: false,
         });
 
-        // Save previous version snapshot
-        if (published) {
+        if (published && published.get('id') !== this.get('id')) {
             this.set('previousVersionJson', JSON.stringify(published.toJson()));
             this.set('version', (published.get('version') || 1) + 1);
+            await published.destroy();
         }
 
-        // Mark as published
         this.set('isDraft', false);
         await this.save();
     }

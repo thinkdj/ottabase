@@ -3,7 +3,7 @@
  */
 
 const BASE = '/api/brand';
-const BOX_BASE = '/api/brandbox';
+const PRESETS_BASE = '/api/brand/presets';
 
 function brandUrl(path: string, params?: Record<string, string>) {
     const url = new URL(path, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
@@ -44,12 +44,14 @@ export const brandApi = {
     },
 };
 
-export const brandboxApi = {
+export const presetApi = {
     list: (params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(BOX_BASE, params as Record<string, string>)).then((r) => (r.ok ? r.json() : Promise.reject(r))),
+        fetch(brandUrl(PRESETS_BASE, params as Record<string, string>)).then((r) =>
+            r.ok ? r.json() : Promise.reject(r),
+        ),
 
     create: (body: Record<string, unknown>, params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(BOX_BASE, params as Record<string, string>), {
+        fetch(brandUrl(PRESETS_BASE, params as Record<string, string>), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
@@ -60,26 +62,26 @@ export const brandboxApi = {
         body: Record<string, unknown>,
         params?: { organizationId?: string | null; appId?: string | null },
     ) =>
-        fetch(brandUrl(`${BOX_BASE}/${id}`, params as Record<string, string>), {
+        fetch(brandUrl(`${PRESETS_BASE}/${id}`, params as Record<string, string>), {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         }).then((r) => (r.ok ? r.json() : Promise.reject(r))),
 
     delete: (id: string, params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BOX_BASE}/${id}`, params as Record<string, string>), { method: 'DELETE' }).then((r) =>
+        fetch(brandUrl(`${PRESETS_BASE}/${id}`, params as Record<string, string>), { method: 'DELETE' }).then((r) =>
             r.ok ? Promise.resolve() : Promise.reject(r),
         ),
 
-    apply: (brandBoxId: string, params?: { organizationId?: string | null; appId?: string | null }) =>
+    apply: (presetId: string, params?: { organizationId?: string | null; appId?: string | null }) =>
         fetch(brandUrl(`${BASE}/apply`, params as Record<string, string>), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ brandBoxId }),
+            body: JSON.stringify({ presetId }),
         }).then((r) => (r.ok ? r.json() : Promise.reject(r))),
 
     duplicate: (id: string, name?: string, params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BOX_BASE}/${id}/duplicate`, params as Record<string, string>), {
+        fetch(brandUrl(`${PRESETS_BASE}/${id}/duplicate`, params as Record<string, string>), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: name ?? undefined }),

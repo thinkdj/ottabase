@@ -87,11 +87,15 @@ export interface AssertPermissionOptions {
 export function assertBrandEditAccess(
     context: RequestContext,
     options: AssertPermissionOptions,
-): Response | { user: any; organizationId: string } {
+): Response | { user: any; organizationId: string | null } {
     if (!context.isAuthenticated || !context.user) {
         return jsonResponse('Unauthorized', 401, 'UNAUTHORIZED');
     }
+    // Allow null org for system/default brand when user has system-scope permission
     if (!options.organizationId) {
+        if (context.isSystemScope && hasPermission(context, options.permission)) {
+            return { user: context.user, organizationId: null };
+        }
         return jsonResponse('Organization context required for brand operations', 400, 'ORG_REQUIRED');
     }
     if (!hasPermission(context, options.permission)) {

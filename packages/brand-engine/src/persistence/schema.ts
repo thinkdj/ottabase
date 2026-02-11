@@ -94,6 +94,23 @@ export const brandSettingsTable = sqliteTable('brand_settings', {
     hideOttabaseBranding: integer('hide_ottabase_branding', { mode: 'boolean' }).default(false),
 
     // ═══════════════════════════════════════════════════════════════════
+    // PRESETS (name != null = named preset; name = null = default config)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /** Preset name (e.g. "Christmas 2024"); null = default for org/app */
+    name: text('name'),
+    /** Optional slug for API */
+    slug: text('slug'),
+    /** Is this the active preset for org/app? At most one per org/app */
+    isActive: integer('is_active', { mode: 'boolean' }).default(false),
+    /** Theme variant ID (links to theme_variants) */
+    themeVariantId: text('theme_variant_id'),
+    /** Route mappings (JSON) - overrides layout_data when set */
+    routeMappingsJson: text('route_mappings_json'),
+    /** Layout templates snapshot (JSON) - overrides layout_data when set */
+    layoutTemplatesSnapshotJson: text('layout_templates_snapshot_json'),
+
+    // ═══════════════════════════════════════════════════════════════════
     // METADATA
     // ═══════════════════════════════════════════════════════════════════
 
@@ -214,82 +231,3 @@ export const themeVariantsTable = sqliteTable('theme_variants', {
 
 export type ThemeVariantType = typeof themeVariantsTable.$inferSelect;
 export type NewThemeVariantType = typeof themeVariantsTable.$inferInsert;
-
-// ═══════════════════════════════════════════════════════════════════
-// BRAND BOXES
-// ═══════════════════════════════════════════════════════════════════
-
-/**
- * BrandBox - A complete, saveable brand preset
- * Combines: layout templates + route mappings + theme + logos + tokens + custom CSS
- * One-click apply to instantly affect the site
- */
-export const brandBoxesTable = sqliteTable('brand_boxes', {
-    id: text('id')
-        .primaryKey()
-        .$defaultFn(() => crypto.randomUUID()),
-    organizationId: text('organization_id'),
-    appId: text('app_id'),
-
-    /** Display name (e.g. "Default", "Christmas 2024", "Client ACME") */
-    name: text('name').notNull(),
-
-    /** Optional slug for API */
-    slug: text('slug'),
-
-    /** Is this the active BrandBox for the org/app? */
-    isActive: integer('is_active', { mode: 'boolean' }).default(false),
-
-    // ═══ Content (all optional - inherits from default if not set) ═══
-
-    /** Brand identity (name, tagline) - JSON */
-    identityJson: text('identity_json'),
-
-    /** Logo R2 keys - JSON */
-    logosJson: text('logos_json'),
-
-    /** Design tokens - JSON */
-    tokensJson: text('tokens_json'),
-
-    /** Theme variant ID (links to theme_variants) - null = use default theme */
-    themeVariantId: text('theme_variant_id'),
-
-    /** Route → Layout mappings (JSON array) - overrides default mappings */
-    routeMappingsJson: text('route_mappings_json'),
-
-    /** Layout config overrides per template (JSON) */
-    layoutOverridesJson: text('layout_overrides_json'),
-
-    /**
-     * Snapshot of layout templates at apply-time (id → { componentKey, config }).
-     * Ensures BrandBox is stable even if layout_templates change later.
-     */
-    layoutTemplatesSnapshotJson: text('layout_templates_snapshot_json'),
-
-    /** Custom CSS */
-    customCss: text('custom_css'),
-
-    /** Custom meta tags (JSON) */
-    customMetaJson: text('custom_meta_json'),
-
-    /** White-label toggle */
-    hideOttabaseBranding: integer('hide_ottabase_branding', { mode: 'boolean' }).default(false),
-
-    // ═══ Scheduling (future) ═══
-
-    /** Optional: activate from date */
-    activeFrom: integer('active_from'),
-    /** Optional: activate until date */
-    activeUntil: integer('active_until'),
-
-    createdAt: integer('created_at')
-        .$defaultFn(() => Date.now())
-        .notNull(),
-    updatedAt: integer('updated_at')
-        .$defaultFn(() => Date.now())
-        .$onUpdateFn(() => Date.now())
-        .notNull(),
-});
-
-export type BrandBoxType = typeof brandBoxesTable.$inferSelect;
-export type NewBrandBoxType = typeof brandBoxesTable.$inferInsert;

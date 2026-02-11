@@ -23,9 +23,9 @@ import {
 } from '@ottabase/ui-shadcn';
 import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
+import type { LayoutComponentKey, LayoutTemplateItem, LayoutMappingItem } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { layoutApi } from './brandApi';
-import type { LayoutComponentKey } from '@ottabase/brand-engine';
 
 const COMPONENT_KEYS: LayoutComponentKey[] = ['homepage', 'app-shell', 'docs', 'minimal'];
 
@@ -33,14 +33,14 @@ export function LayoutEditorTab() {
     const queryClient = useQueryClient();
     const { refresh } = useBrand();
 
-    const { data: templates = [], isLoading: loadingTemplates } = useQuery({
+    const { data: templates = [], isLoading: loadingTemplates } = useQuery<LayoutTemplateItem[]>({
         queryKey: ['brand', 'layouts'],
-        queryFn: () => layoutApi.getTemplates(),
+        queryFn: () => layoutApi.getTemplates() as Promise<LayoutTemplateItem[]>,
     });
 
-    const { data: mappings = [], isLoading: loadingMappings } = useQuery({
+    const { data: mappings = [], isLoading: loadingMappings } = useQuery<LayoutMappingItem[]>({
         queryKey: ['brand', 'mappings'],
-        queryFn: () => layoutApi.getMappings(),
+        queryFn: () => layoutApi.getMappings() as Promise<LayoutMappingItem[]>,
     });
 
     const putMappingsMutation = useMutation({
@@ -72,14 +72,14 @@ export function LayoutEditorTab() {
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
-                        <CreateTemplateDialog templates={templates as LayoutTemplate[]} />
-                        {(templates as LayoutTemplate[]).length === 0 ? (
+                        <CreateTemplateDialog templates={templates} />
+                        {templates.length === 0 ? (
                             <p className="text-sm text-muted-foreground py-8 text-center">
                                 No layout templates. Create one to map routes.
                             </p>
                         ) : (
                             <div className="space-y-2">
-                                {(templates as LayoutTemplate[]).map((t) => (
+                                {templates.map((t) => (
                                     <div key={t.id} className="flex items-center justify-between rounded-lg border p-4">
                                         <div>
                                             <span className="font-medium">{t.name}</span>
@@ -105,8 +105,8 @@ export function LayoutEditorTab() {
                 </CardHeader>
                 <CardContent>
                     <MappingsEditor
-                        mappings={mappings as LayoutMapping[]}
-                        templates={templates as LayoutTemplate[]}
+                        mappings={mappings}
+                        templates={templates}
                         onSave={(m) =>
                             putMappingsMutation.mutate({
                                 mappings: m.map(({ pathPattern, layoutTemplateId, priority }) => ({
@@ -124,21 +124,7 @@ export function LayoutEditorTab() {
     );
 }
 
-interface LayoutTemplate {
-    id: string;
-    name: string;
-    componentKey: string;
-    config?: object;
-}
-
-interface LayoutMapping {
-    id?: string;
-    pathPattern: string;
-    layoutTemplateId: string;
-    priority?: number;
-}
-
-function CreateTemplateDialog({ templates }: { templates: LayoutTemplate[] }) {
+function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
     const [componentKey, setComponentKey] = useState<LayoutComponentKey>('app-shell');
@@ -226,7 +212,7 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplate[] }) {
     );
 }
 
-function EditTemplateDialog({ template }: { template: LayoutTemplate }) {
+function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState(template.name);
     const [componentKey, setComponentKey] = useState<LayoutComponentKey>(template.componentKey as LayoutComponentKey);
@@ -255,7 +241,7 @@ function EditTemplateDialog({ template }: { template: LayoutTemplate }) {
 
     const putMutation = useMutation({
         mutationFn: (body: { id: string; name: string; componentKey: string; config: object }) =>
-            layoutApi.putTemplate(body),
+            layoutApi.putTemplate(body) as Promise<unknown>,
         onSuccess: () => {
             toast.success('Template updated');
             queryClient.invalidateQueries({ queryKey: ['brand', 'layouts'] });
@@ -327,15 +313,15 @@ function MappingsEditor({
     onSave,
     saving,
 }: {
-    mappings: LayoutMapping[];
-    templates: LayoutTemplate[];
-    onSave: (m: LayoutMapping[]) => void;
+    mappings: LayoutMappingItem[];
+    templates: LayoutTemplateItem[];
+    onSave: (m: LayoutMappingItem[]) => void;
     saving: boolean;
 }) {
     const [pathPattern, setPathPattern] = useState('');
     const [layoutTemplateId, setLayoutTemplateId] = useState('');
     const [priority, setPriority] = useState(0);
-    const [items, setItems] = useState<LayoutMapping[]>(mappings);
+    const [items, setItems] = useState<LayoutMappingItem[]>(mappings);
 
     useEffect(() => {
         setItems(mappings);

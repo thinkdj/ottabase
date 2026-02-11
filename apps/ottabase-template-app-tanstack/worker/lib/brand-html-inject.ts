@@ -32,6 +32,7 @@ export async function injectBrandCriticalCSS(
             organizationId: url.searchParams.get('organizationId') ?? null,
             appId: url.searchParams.get('appId') ?? null,
             brandPreview: url.searchParams.get('brandPreview') ?? undefined,
+            themeVariant: url.searchParams.get('themeVariant') ?? undefined,
         });
         if (!config?.theme) return response;
 

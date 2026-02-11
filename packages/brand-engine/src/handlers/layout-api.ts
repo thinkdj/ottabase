@@ -43,6 +43,11 @@ export async function handlePutLayout(
     appId?: string | null,
 ): Promise<Response> {
     const body = (await request.json()) as { id?: string; name: string; componentKey: string; config: object };
+    try {
+        JSON.stringify(body.config);
+    } catch {
+        return errorResponse('Invalid config object', 400);
+    }
     const cache = createBrandCache(env.OBCF_KV);
 
     let template: LayoutTemplate;

@@ -15,7 +15,6 @@ import {
     layoutTemplatesTable,
     layoutRouteMappingsTable,
     themeVariantsTable,
-    brandBoxesTable,
 } from '@ottabase/brand-engine/persistence';
 import {
     categoriesTable,
@@ -63,7 +62,6 @@ const PACKAGE_REGISTRY = {
             layoutTemplatesTable,
             layoutRouteMappingsTable,
             themeVariantsTable,
-            brandBoxesTable,
         },
         migrations: [] as Migration[],
     },

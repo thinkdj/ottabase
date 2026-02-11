@@ -55,8 +55,10 @@ export interface BrandProviderProps {
     organizationId?: string | null;
     /** App ID for app-specific branding */
     appId?: string | null;
-    /** BrandBox ID for preview mode (?brandPreview=) - preview without applying */
+    /** Preset ID for preview mode (?brandPreview=) - preview without applying */
     brandPreview?: string | null;
+    /** Theme variant ID for preview (?themeVariant=) */
+    themeVariant?: string | null;
 }
 
 export function BrandProvider({
@@ -66,6 +68,7 @@ export function BrandProvider({
     organizationId,
     appId,
     brandPreview,
+    themeVariant,
 }: BrandProviderProps) {
     const [config, setConfig] = useState<BrandConfig | null>(initialConfig ?? null);
     const [isLoading, setIsLoading] = useState(!initialConfig);
@@ -77,13 +80,18 @@ export function BrandProvider({
             const params = new URLSearchParams();
             if (organizationId) params.set('organizationId', organizationId);
             if (appId) params.set('appId', appId);
-            // Support ?brandPreview=BOX_ID from URL or prop
             const previewId =
                 brandPreview ??
                 (typeof window !== 'undefined'
                     ? new URLSearchParams(window.location.search).get('brandPreview')
                     : null);
             if (previewId) params.set('brandPreview', previewId);
+            const variantId =
+                themeVariant ??
+                (typeof window !== 'undefined'
+                    ? new URLSearchParams(window.location.search).get('themeVariant')
+                    : null);
+            if (variantId) params.set('themeVariant', variantId);
             const url = params.toString() ? `${apiEndpoint}?${params}` : apiEndpoint;
 
             const response = await fetch(url);
@@ -99,7 +107,7 @@ export function BrandProvider({
         } finally {
             setIsLoading(false);
         }
-    }, [apiEndpoint, organizationId, appId, brandPreview]);
+    }, [apiEndpoint, organizationId, appId, brandPreview, themeVariant]);
 
     useEffect(() => {
         if (!initialConfig) {

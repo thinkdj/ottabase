@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ottabase/ui-shadcn';
 import { IconBrush, IconLayout, IconBox, IconPalette } from '@tabler/icons-react';
 import { BrandSettingsTab } from './brand/BrandSettingsTab';
-import { BrandBoxManagerTab } from './brand/BrandBoxManagerTab';
+import { BrandPresetManagerTab } from './brand/BrandBoxManagerTab';
 import { LayoutEditorTab } from './brand/LayoutEditorTab';
 import { ThemeVariantEditorTab } from './brand/ThemeVariantEditorTab';
 
@@ -15,7 +15,7 @@ export function AdminBrandEnginePage() {
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">BrandEngine</h1>
                 <p className="text-muted-foreground mt-1">
-                    Manage brand settings, layouts, BrandBoxes, and theme variants. Changes apply in real-time.
+                    Manage brand settings, presets, layouts, and theme variants. Changes apply in real-time.
                 </p>
             </div>
 
@@ -25,9 +25,9 @@ export function AdminBrandEnginePage() {
                         <IconBrush className="h-4 w-4 mr-2" />
                         Brand Settings
                     </TabsTrigger>
-                    <TabsTrigger value="brandbox">
+                    <TabsTrigger value="presets">
                         <IconBox className="h-4 w-4 mr-2" />
-                        BrandBoxes
+                        Presets
                     </TabsTrigger>
                     <TabsTrigger value="layouts">
                         <IconLayout className="h-4 w-4 mr-2" />
@@ -42,8 +42,8 @@ export function AdminBrandEnginePage() {
                 <TabsContent value="settings">
                     <BrandSettingsTab />
                 </TabsContent>
-                <TabsContent value="brandbox">
-                    <BrandBoxManagerTab />
+                <TabsContent value="presets">
+                    <BrandPresetManagerTab />
                 </TabsContent>
                 <TabsContent value="layouts">
                     <LayoutEditorTab />

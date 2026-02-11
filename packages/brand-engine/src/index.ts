@@ -16,6 +16,15 @@ export type {
 
 export type { ContentWidth, Density, HeaderVariant, LayoutConfig, NavigationVariant } from './layout';
 
+export type {
+    UpdateBrandPayload,
+    BrandSettingsResponse,
+    BrandPresetItem,
+    BrandPresetCreatePayload,
+    LayoutTemplateItem,
+    LayoutMappingItem,
+} from './persistence';
+
 export type { LegacyThemeConfig } from './adapter';
 export type { ResolveOptions, ResolvedBrandTheme } from './resolver';
 export type { BrandTheme } from './theme';

@@ -67,19 +67,18 @@ export async function getLayoutData(organizationId: string | null, appId?: strin
               }))
             : DEFAULT_ROUTE_MAPPINGS;
 
-    // 2. Fetch layout templates, build map
+    // 2. Batch-load layout templates by ID
     const templateIds = [...new Set(routeMappings.map((m) => m.layoutTemplateId))];
     const layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }> = {};
 
-    // Start with presets as fallback
     for (const [key, preset] of Object.entries(LAYOUT_PRESETS)) {
         layoutTemplatesMap[key] = { componentKey: preset.componentKey, config: preset.config };
     }
 
-    // Override with DB templates
-    for (const id of templateIds) {
-        const template = await LayoutTemplate.find(id);
-        if (template) {
+    if (templateIds.length > 0) {
+        const templates = (await LayoutTemplate.whereIn('id', templateIds)) as InstanceType<typeof LayoutTemplate>[];
+        for (const template of templates) {
+            const id = template.get('id') as string;
             layoutTemplatesMap[id] = {
                 componentKey: template.get('componentKey') as string,
                 config: template.getConfig(),

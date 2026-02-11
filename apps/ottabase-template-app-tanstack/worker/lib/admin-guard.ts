@@ -8,7 +8,7 @@ import { initDbConnection } from './db-utils';
 
 export interface AdminContext {
     user: any;
-    organizationId: string;
+    organizationId: string | null;
     appId: string;
     rbac: RBACContext;
     session: any;
@@ -89,15 +89,19 @@ export async function requireBrandEditAccess(
 
     initDbConnection(env);
 
+    // When org not in URL, derive from session/header; allow system scope for default brand
+    const allowNullTenant = organizationId === null;
     const reqCtx = await getRequestContext(request, env as any, {
         getAuthOptions,
-        allowNullTenant: false,
+        allowNullTenant,
         organizationIdOverride: organizationId ?? undefined,
     });
+    const resolvedOrg = reqCtx.organizationId;
+    const orgForBrand = organizationId ?? (resolvedOrg === SYSTEM_ORGANIZATION_ID ? null : resolvedOrg);
 
     const result = assertBrandEditAccess(reqCtx, {
         permission: 'brand:edit',
-        organizationId,
+        organizationId: orgForBrand,
     });
 
     if (result instanceof Response) {

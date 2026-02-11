@@ -16,7 +16,7 @@ import {
     Input,
     Label,
 } from '@ottabase/ui-shadcn';
-import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconExternalLink, IconPlus, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { themeVariantApi } from './brandApi';
@@ -54,7 +54,7 @@ export function ThemeVariantEditorTab() {
                 <CardHeader>
                     <CardTitle>Theme variants</CardTitle>
                     <CardDescription>
-                        Seasonal or A/B themes with custom tokens. Use in BrandBoxes or apply directly.
+                        Seasonal or A/B themes with custom tokens. Use in presets or apply directly.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -75,6 +75,18 @@ export function ThemeVariantEditorTab() {
                                             )}
                                         </div>
                                         <div className="flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    const url = new URL('/', window.location.origin);
+                                                    url.searchParams.set('themeVariant', v.id);
+                                                    window.open(url.toString(), '_blank');
+                                                }}
+                                                title="Preview theme in new tab"
+                                            >
+                                                <IconExternalLink className="h-4 w-4" />
+                                            </Button>
                                             <EditVariantDialog variant={v} />
                                             <Button
                                                 size="sm"

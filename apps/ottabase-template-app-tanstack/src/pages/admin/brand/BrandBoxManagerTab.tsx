@@ -19,61 +19,62 @@ import {
 } from '@ottabase/ui-shadcn';
 import { IconCheck, IconCopy, IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
+import type { BrandPresetItem } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
-import { brandboxApi } from './brandApi';
+import { presetApi } from './brandApi';
 
-export function BrandBoxManagerTab() {
+export function BrandPresetManagerTab() {
     const queryClient = useQueryClient();
-    const { config, refresh } = useBrand();
+    const { refresh } = useBrand();
 
-    const { data: boxes = [], isLoading } = useQuery({
-        queryKey: ['brandbox', 'list'],
-        queryFn: () => brandboxApi.list(),
+    const { data: presets = [], isLoading } = useQuery<BrandPresetItem[]>({
+        queryKey: ['brand', 'presets'],
+        queryFn: () => presetApi.list() as Promise<BrandPresetItem[]>,
     });
 
     const applyMutation = useMutation({
-        mutationFn: (id: string) => brandboxApi.apply(id),
+        mutationFn: (id: string) => presetApi.apply(id),
         onSuccess: () => {
-            toast.success('BrandBox applied');
-            queryClient.invalidateQueries({ queryKey: ['brandbox'] });
+            toast.success('Preset applied');
+            queryClient.invalidateQueries({ queryKey: ['brand'] });
             refresh();
         },
         onError: () => toast.error('Failed to apply'),
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (id: string) => brandboxApi.delete(id),
+        mutationFn: (id: string) => presetApi.delete(id),
         onSuccess: () => {
-            toast.success('BrandBox deleted');
-            queryClient.invalidateQueries({ queryKey: ['brandbox'] });
+            toast.success('Preset deleted');
+            queryClient.invalidateQueries({ queryKey: ['brand'] });
             refresh();
         },
         onError: () => toast.error('Failed to delete'),
     });
 
     const duplicateMutation = useMutation({
-        mutationFn: ({ id, name }: { id: string; name?: string }) => brandboxApi.duplicate(id, name),
+        mutationFn: ({ id, name }: { id: string; name?: string }) => presetApi.duplicate(id, name),
         onSuccess: () => {
-            toast.success('BrandBox duplicated');
-            queryClient.invalidateQueries({ queryKey: ['brandbox'] });
+            toast.success('Preset duplicated');
+            queryClient.invalidateQueries({ queryKey: ['brand'] });
         },
         onError: () => toast.error('Failed to duplicate'),
     });
 
     const createMutation = useMutation({
-        mutationFn: (body: { name: string }) => brandboxApi.create({ name: body.name, snapshotFromCurrent: true }),
+        mutationFn: (body: { name: string }) => presetApi.create({ name: body.name, snapshotFromCurrent: true }),
         onSuccess: () => {
-            toast.success('BrandBox created');
-            queryClient.invalidateQueries({ queryKey: ['brandbox'] });
+            toast.success('Preset created');
+            queryClient.invalidateQueries({ queryKey: ['brand'] });
         },
         onError: () => toast.error('Failed to create'),
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, name }: { id: string; name: string }) => brandboxApi.update(id, { name }),
+        mutationFn: ({ id, name }: { id: string; name: string }) => presetApi.update(id, { name }),
         onSuccess: () => {
-            toast.success('BrandBox updated');
-            queryClient.invalidateQueries({ queryKey: ['brandbox'] });
+            toast.success('Preset updated');
+            queryClient.invalidateQueries({ queryKey: ['brand'] });
         },
         onError: () => toast.error('Failed to update'),
     });
@@ -81,7 +82,7 @@ export function BrandBoxManagerTab() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <p className="text-muted-foreground">Loading BrandBoxes...</p>
+                <p className="text-muted-foreground">Loading presets...</p>
             </div>
         );
     }
@@ -90,31 +91,31 @@ export function BrandBoxManagerTab() {
         <div className="space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>BrandBoxes</CardTitle>
+                    <CardTitle>Presets</CardTitle>
                     <CardDescription>
                         One-click presets: layout + theme + logos. Apply to instantly change the site look.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
-                        <CreateBoxDialog
-                            onCreate={(name) => createMutation.mutateAsync({ name: name })}
+                        <CreatePresetDialog
+                            onCreate={(name) => createMutation.mutateAsync({ name })}
                             loading={createMutation.isPending}
                         />
-                        {boxes.length === 0 ? (
+                        {presets.length === 0 ? (
                             <p className="text-sm text-muted-foreground py-8 text-center">
-                                No BrandBoxes yet. Create one to get started.
+                                No presets yet. Create one to get started.
                             </p>
                         ) : (
                             <div className="space-y-2">
-                                {(boxes as Array<{ id: string; name: string; isActive?: boolean }>).map((box) => (
+                                {presets.map((preset) => (
                                     <div
-                                        key={box.id}
+                                        key={preset.id}
                                         className="flex items-center justify-between rounded-lg border p-4"
                                     >
                                         <div className="flex items-center gap-2">
-                                            <span className="font-medium">{box.name}</span>
-                                            {box.isActive && (
+                                            <span className="font-medium">{preset.name}</span>
+                                            {preset.isActive && (
                                                 <Badge variant="default" className="text-xs">
                                                     <IconCheck className="h-3 w-3 mr-1" />
                                                     Active
@@ -122,24 +123,24 @@ export function BrandBoxManagerTab() {
                                             )}
                                         </div>
                                         <div className="flex gap-2">
-                                            {!box.isActive && (
+                                            {!preset.isActive && (
                                                 <Button
                                                     size="sm"
-                                                    onClick={() => applyMutation.mutate(box.id)}
+                                                    onClick={() => applyMutation.mutate(preset.id)}
                                                     disabled={applyMutation.isPending}
                                                 >
                                                     Apply
                                                 </Button>
                                             )}
-                                            <EditBoxDialog
-                                                box={box}
-                                                onSave={(name) => updateMutation.mutateAsync({ id: box.id, name })}
+                                            <EditPresetDialog
+                                                preset={preset}
+                                                onSave={(name) => updateMutation.mutateAsync({ id: preset.id, name })}
                                                 loading={updateMutation.isPending}
                                             />
                                             <Button
                                                 size="sm"
                                                 variant="outline"
-                                                onClick={() => duplicateMutation.mutate({ id: box.id })}
+                                                onClick={() => duplicateMutation.mutate({ id: preset.id })}
                                                 disabled={duplicateMutation.isPending}
                                             >
                                                 <IconCopy className="h-4 w-4" />
@@ -148,7 +149,8 @@ export function BrandBoxManagerTab() {
                                                 size="sm"
                                                 variant="destructive"
                                                 onClick={() => {
-                                                    if (confirm('Delete this BrandBox?')) deleteMutation.mutate(box.id);
+                                                    if (confirm('Delete this preset?'))
+                                                        deleteMutation.mutate(preset.id);
                                                 }}
                                                 disabled={deleteMutation.isPending}
                                             >
@@ -166,21 +168,21 @@ export function BrandBoxManagerTab() {
     );
 }
 
-function EditBoxDialog({
-    box,
+function EditPresetDialog({
+    preset,
     onSave,
     loading,
 }: {
-    box: { id: string; name: string };
+    preset: { id: string; name: string };
     onSave: (name: string) => Promise<unknown>;
     loading: boolean;
 }) {
     const [open, setOpen] = useState(false);
-    const [name, setName] = useState(box.name);
+    const [name, setName] = useState(preset.name);
 
     useEffect(() => {
-        setName(box.name);
-    }, [box.name, open]);
+        setName(preset.name);
+    }, [preset.name, open]);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -191,14 +193,14 @@ function EditBoxDialog({
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Edit BrandBox</DialogTitle>
+                    <DialogTitle>Edit Preset</DialogTitle>
                     <DialogDescription>Change the display name.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div>
-                        <Label htmlFor="editBoxName">Name</Label>
+                        <Label htmlFor="editPresetName">Name</Label>
                         <Input
-                            id="editBoxName"
+                            id="editPresetName"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g. Christmas 2024"
@@ -220,7 +222,7 @@ function EditBoxDialog({
     );
 }
 
-function CreateBoxDialog({ onCreate, loading }: { onCreate: (name: string) => Promise<unknown>; loading: boolean }) {
+function CreatePresetDialog({ onCreate, loading }: { onCreate: (name: string) => Promise<unknown>; loading: boolean }) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
 
@@ -229,21 +231,21 @@ function CreateBoxDialog({ onCreate, loading }: { onCreate: (name: string) => Pr
             <DialogTrigger asChild>
                 <Button>
                     <IconPlus className="h-4 w-4 mr-2" />
-                    New BrandBox
+                    New Preset
                 </Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Create BrandBox</DialogTitle>
+                    <DialogTitle>Create Preset</DialogTitle>
                     <DialogDescription>
                         Saves the current brand (identity, logos, tokens, layouts) as a one-click preset.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div>
-                        <Label htmlFor="boxName">Name</Label>
+                        <Label htmlFor="presetName">Name</Label>
                         <Input
-                            id="boxName"
+                            id="presetName"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g. Christmas 2024"

@@ -21,6 +21,7 @@ import {
     Switch,
 } from '@ottabase/ui-shadcn';
 import { toast } from 'sonner';
+import type { BrandSettingsResponse } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { brandApi } from './brandApi';
 import { LogoUploader } from './LogoUploader';
@@ -36,9 +37,9 @@ export function BrandSettingsTab() {
     const [defaultColorScheme, setDefaultColorScheme] = useState<'light' | 'dark' | 'system'>('system');
     const [allowDarkModeToggle, setAllowDarkModeToggle] = useState(true);
 
-    const { data: rawSettings } = useQuery({
+    const { data: rawSettings } = useQuery<BrandSettingsResponse>({
         queryKey: ['brand', 'settings'],
-        queryFn: () => brandApi.getSettings(),
+        queryFn: () => brandApi.getSettings() as Promise<BrandSettingsResponse>,
         enabled: !!config,
     });
 
