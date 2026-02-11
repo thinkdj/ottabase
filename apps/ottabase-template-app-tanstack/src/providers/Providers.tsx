@@ -11,6 +11,7 @@ import {
     ProviderNextThemes,
 } from '@/ottabase/providers';
 import { LanguageManager } from '@/ottabase/providers/LanguageManager';
+import { BrandThemeApplicator } from '@/ottabase/providers/BrandThemeApplicator';
 import { ThemeProvider } from '@/ottabase/providers/ProviderTheme';
 import { ScaleManager } from '@/ottabase/providers/ScaleManager';
 import { SidebarStateManager } from '@/ottabase/providers/SidebarStateManager';
@@ -72,6 +73,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                             >
                                 <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
                                     <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
+                                        <BrandThemeApplicator />
                                         <ThemeProvider>
                                             <ThemeManager />
                                             <ZoomManager />

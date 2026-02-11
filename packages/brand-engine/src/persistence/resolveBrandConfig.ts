@@ -23,6 +23,8 @@ export interface ResolveBrandConfigOptions {
     appId?: string | null;
     brandPreview?: string | null;
     themeVariant?: string | null;
+    /** Light/dark mode for theme resolution */
+    mode?: 'light' | 'dark';
     userId?: string | null;
     /** Skip cache (for preview/variant) */
     skipCache?: boolean;
@@ -39,6 +41,7 @@ export async function resolveBrandConfig(
     const appId = opts.appId ?? null;
     const brandPreview = opts.brandPreview ?? undefined;
     const themeVariantParam = opts.themeVariant ?? undefined;
+    const mode = opts.mode ?? 'light';
     const skipCache = opts.skipCache ?? !!(brandPreview || themeVariantParam);
     const useCache = !skipCache;
 
@@ -46,7 +49,7 @@ export async function resolveBrandConfig(
     const r2Url = env.R2_PUBLIC_URL || '';
 
     if (useCache) {
-        const cached = await cache.get(orgId, appId, brandPreview ?? undefined);
+        const cached = await cache.get(orgId, appId, brandPreview ?? undefined, mode);
         if (cached) return cached;
     }
 
@@ -59,8 +62,8 @@ export async function resolveBrandConfig(
             if (pOrg === orgId && pApp === (appId ?? null)) {
                 const themeVariantTokens = await resolveThemeVariantTokens(preset, themeVariantParam, orgId, appId);
                 const layoutData = await getLayoutData(orgId, appId);
-                const config = brandSettingsToConfig(preset, r2Url, 'light', layoutData, themeVariantTokens);
-                if (useCache) await cache.set(orgId, appId || null, config, brandPreview);
+                const config = brandSettingsToConfig(preset, r2Url, mode, layoutData, themeVariantTokens);
+                if (useCache) await cache.set(orgId, appId || null, config, brandPreview, mode);
                 return config;
             }
         }
@@ -71,8 +74,8 @@ export async function resolveBrandConfig(
     if (activePreset) {
         const themeVariantTokens = await resolveThemeVariantTokens(activePreset, themeVariantParam, orgId, appId);
         const layoutData = await getLayoutData(orgId, appId);
-        const config = brandSettingsToConfig(activePreset, r2Url, 'light', layoutData, themeVariantTokens);
-        if (useCache) await cache.set(orgId, appId || null, config);
+        const config = brandSettingsToConfig(activePreset, r2Url, mode, layoutData, themeVariantTokens);
+        if (useCache) await cache.set(orgId, appId || null, config, undefined, mode);
         return config;
     }
 
@@ -82,9 +85,9 @@ export async function resolveBrandConfig(
 
     const themeVariantTokens = await resolveThemeVariantTokens(settings, themeVariantParam, orgId, appId);
     const layoutData = await getLayoutData(orgId, appId);
-    const config = brandSettingsToConfig(settings, r2Url, 'light', layoutData, themeVariantTokens);
+    const config = brandSettingsToConfig(settings, r2Url, mode, layoutData, themeVariantTokens);
 
-    if (useCache) await cache.set(orgId, appId || null, config);
+    if (useCache) await cache.set(orgId, appId || null, config, undefined, mode);
     return config;
 }
 

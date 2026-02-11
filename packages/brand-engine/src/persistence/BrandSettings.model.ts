@@ -254,19 +254,25 @@ export class BrandSettings extends BaseModel {
     // ═══════════════════════════════════════════════════════════════════
 
     /**
-     * Convert to BrandTheme for use with brand-engine
+     * Convert to BrandTheme for use with brand-engine.
+     * tokensJson may include color, typography, spacing, radius, shadow, motion, cursors.
+     * Cursors are extracted to theme.cursors; the rest goes to tokens.
      */
     toBrandTheme(): BrandTheme {
         const tokensJson = this.get('tokensJson');
-        let tokens: Partial<DesignTokens> = {};
+        let parsed: Record<string, unknown> = {};
 
         if (tokensJson) {
             try {
-                tokens = JSON.parse(tokensJson as string);
+                parsed = JSON.parse(tokensJson as string);
             } catch {
                 // ignore parse errors
             }
         }
+
+        const { cursors: rawCursors, ...tokenRest } = parsed;
+        const tokens = tokenRest as Partial<DesignTokens>;
+        const cursors = rawCursors as BrandTheme['cursors'] | undefined;
 
         const layoutJson = this.get('layoutJson');
         let layout: Partial<LayoutConfig> | undefined;
@@ -282,6 +288,7 @@ export class BrandSettings extends BaseModel {
             name: `brand-${this.get('organizationId') || 'default'}-${this.get('appId') || 'default'}`,
             tokens: tokens as DesignTokens,
             layout: layout as LayoutConfig,
+            cursors: cursors && typeof cursors === 'object' ? cursors : undefined,
         };
     }
 

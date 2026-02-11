@@ -33,11 +33,14 @@ export async function handleGetBrand(
     userId?: string | null,
 ): Promise<Response> {
     const url = new URL(request.url);
+    const modeParam = url.searchParams.get('mode');
+    const mode = modeParam === 'dark' ? 'dark' : 'light';
     const config = await resolveBrandConfig(env, {
         organizationId: organizationId ?? url.searchParams.get('organizationId') ?? null,
         appId: appId ?? url.searchParams.get('appId') ?? null,
         brandPreview: url.searchParams.get('brandPreview') ?? undefined,
         themeVariant: url.searchParams.get('themeVariant') ?? undefined,
+        mode,
         userId,
     });
     if (!config) return errorResponse('Brand config not found', 404);
@@ -60,6 +63,7 @@ export async function handleGetBrandSettings(
         tagline: settings.get('tagline'),
         tokensJson: settings.get('tokensJson') ?? '{}',
         layoutJson: settings.get('layoutJson') ?? '{}',
+        themePresetId: settings.get('themePresetId') ?? null,
         defaultColorScheme: settings.get('defaultColorScheme') ?? 'system',
         allowDarkModeToggle: settings.get('allowDarkModeToggle') ?? true,
         customCss: settings.get('customCss') ?? '',
@@ -117,6 +121,7 @@ export async function handleUpdateBrand(
             tagline: (body.tagline as string) ?? settings.get('tagline'),
             tokensJson: (body.tokensJson as string) ?? settings.get('tokensJson'),
             layoutJson: (body.layoutJson as string) ?? settings.get('layoutJson'),
+            themePresetId: (body.themePresetId as string) ?? settings.get('themePresetId'),
             defaultColorScheme: (body.defaultColorScheme as string) ?? settings.get('defaultColorScheme'),
             allowDarkModeToggle: (body.allowDarkModeToggle as boolean) ?? settings.get('allowDarkModeToggle'),
             customCss: (body.customCss as string) ?? settings.get('customCss'),
@@ -129,6 +134,7 @@ export async function handleUpdateBrand(
         'tagline',
         'tokensJson',
         'layoutJson',
+        'themePresetId',
         'defaultColorScheme',
         'allowDarkModeToggle',
         'customCss',

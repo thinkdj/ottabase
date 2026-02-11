@@ -2,6 +2,7 @@
 // Brand Engine – Resolved config types (API response shape, KV cache)
 // ---------------------------------------------------------------------------
 
+import type { BrandTheme } from '../theme';
 import type { LayoutConfig } from '../layout';
 import type { ResolvedBrandTheme } from '../resolver';
 
@@ -17,6 +18,10 @@ export interface ResolvedBrandConfig {
         emailLogo?: string;
     };
     theme: ResolvedBrandTheme;
+    /** Base theme preset name (default, neo, artisan, etc.) – for client mode switching */
+    themeBase: string;
+    /** Raw tenant overrides from DB – for client resolveTheme with mode */
+    tenantTheme: Partial<BrandTheme>;
     defaultColorScheme: 'light' | 'dark' | 'system';
     allowDarkModeToggle: boolean;
     customCss?: string;
@@ -33,6 +38,7 @@ export interface UpdateBrandPayload {
     tagline?: string;
     tokensJson?: string | object;
     layoutJson?: string | object;
+    themePresetId?: string | null;
     defaultColorScheme?: 'light' | 'dark' | 'system';
     allowDarkModeToggle?: boolean;
     customCss?: string;
@@ -45,6 +51,7 @@ export interface BrandSettingsResponse {
     tagline?: string;
     tokensJson: string;
     layoutJson: string;
+    themePresetId: string | null;
     defaultColorScheme: 'light' | 'dark' | 'system';
     allowDarkModeToggle: boolean;
     customCss: string;

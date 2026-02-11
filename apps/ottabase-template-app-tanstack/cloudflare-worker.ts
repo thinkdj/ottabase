@@ -1,6 +1,10 @@
+import { registerBuiltInThemes } from '@ottabase/brand-engine';
 import { RealtimeActor } from '@ottabase/cf-realtime/server';
 import { errorResponse, ServiceError } from '@ottabase/utils/http-errors';
 import { queueHandler } from './ottabase/queue';
+
+// Register built-in themes so API can resolve themePresetId (default, neo, artisan, etc.)
+registerBuiltInThemes();
 import { initDbConnection } from './worker/lib/db-utils';
 import { handleShortlinkFallback } from './worker/routes/shortlinks';
 import { resolveApiRoute } from './worker/routes/router';

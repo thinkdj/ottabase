@@ -16,7 +16,6 @@ import {
     type SidebarState,
 } from '@/ottabase/state/appState';
 import { useTheme as useBrandTheme } from '@/ottabase/providers/ThemeContext';
-import { getAvailableThemes } from '@/ottabase/utils/theme.loader';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { useAtom, useAtomValue } from 'jotai';
@@ -40,9 +39,8 @@ export function StateDemoPage() {
     const { setTheme: setMode } = useNextTheme();
     const toggleTheme = () => setMode(theme === 'light' ? 'dark' : 'light');
 
-    // BrandEngine is the source of truth for theme name
-    const { theme: brandThemeName, setTheme: setBrandTheme } = useBrandTheme();
-    const availableThemes = getAvailableThemes();
+    // BrandEngine theme (admin-configured; users cannot switch)
+    const { theme: brandThemeName } = useBrandTheme();
 
     const simulateLogin = () => {
         const mockUser: AppUser = {
@@ -130,21 +128,9 @@ export function StateDemoPage() {
                     <div className="space-y-3">
                         <div className="flex items-center gap-4">
                             <span className="text-muted-foreground">
-                                Theme Name: <Badge variant="outline">{themeInfo.name}</Badge>
+                                Theme: <Badge variant="outline">{themeInfo.name}</Badge>
+                                <span className="ml-2 text-xs">(admin-configured in Brand Engine)</span>
                             </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                            {availableThemes.map((t) => (
-                                <Button
-                                    key={t}
-                                    size="sm"
-                                    variant={brandThemeName === t ? 'default' : 'outline'}
-                                    className="capitalize"
-                                    onClick={() => setBrandTheme(t)}
-                                >
-                                    {t}
-                                </Button>
-                            ))}
                         </div>
                         <div className="flex items-center gap-4">
                             <span className="text-muted-foreground">

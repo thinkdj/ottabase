@@ -17,6 +17,11 @@
             "import": "./dist/themes/index.mjs",
             "require": "./dist/themes/index.js"
         },
+        "./fonts": {
+            "types": "./dist/fonts/index.d.ts",
+            "import": "./dist/fonts/index.mjs",
+            "require": "./dist/fonts/index.js"
+        },
         "./persistence": {
             "types": "./dist/persistence/index.d.ts",
             "import": "./dist/persistence/index.mjs",
@@ -38,8 +43,8 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup src/index.ts src/themes/index.ts src/persistence/index.ts src/layouts/index.ts src/handlers/brand-api.ts src/handlers/layout-api.ts src/handlers/theme-variant-api.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/themes/index.ts src/persistence/index.ts src/layouts/index.ts src/handlers/brand-api.ts src/handlers/layout-api.ts src/handlers/theme-variant-api.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/themes/index.ts src/fonts/index.ts src/persistence/index.ts src/layouts/index.ts src/handlers/brand-api.ts src/handlers/layout-api.ts src/handlers/theme-variant-api.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/themes/index.ts src/fonts/index.ts src/persistence/index.ts src/layouts/index.ts src/handlers/brand-api.ts src/handlers/layout-api.ts src/handlers/theme-variant-api.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "lint": "eslint src --ext .ts,.tsx",
         "type-check": "tsc --noEmit",

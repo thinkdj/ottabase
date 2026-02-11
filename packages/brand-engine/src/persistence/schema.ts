@@ -51,11 +51,14 @@ export const brandSettingsTable = sqliteTable('brand_settings', {
     // DESIGN TOKENS (JSON - leverages existing brand-engine types)
     // ═══════════════════════════════════════════════════════════════════
 
-    /** Full design tokens (JSON blob) - uses DesignTokens type */
-    tokensJson: text('tokens_json'), // Partial<DesignTokens>
+    /** Full design tokens (JSON) - color, typography, spacing, radius, shadow, motion, cursors */
+    tokensJson: text('tokens_json'), // Partial<DesignTokens> + cursors
 
     /** Layout configuration (JSON) */
     layoutJson: text('layout_json'), // Partial<LayoutConfig>
+
+    /** Base theme preset name (default, neo, artisan, etc.) – admin picks one; tokensJson overrides on top */
+    themePresetId: text('theme_preset_id'), // null = use DEFAULT_BRAND_THEME
 
     // ═══════════════════════════════════════════════════════════════════
     // APPEARANCE

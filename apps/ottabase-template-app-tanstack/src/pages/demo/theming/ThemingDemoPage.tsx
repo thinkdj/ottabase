@@ -17,7 +17,7 @@ import { useTheme } from '@/ottabase/providers/ThemeContext';
 import { useTheme as useNextTheme } from 'next-themes';
 
 export function ThemingDemoPage() {
-    const { theme, setTheme, config } = useTheme();
+    const { theme, config } = useTheme();
     const { setTheme: setMode, theme: mode, resolvedTheme } = useNextTheme();
     const activeMode = resolvedTheme || mode || 'light';
 
@@ -26,28 +26,18 @@ export function ThemingDemoPage() {
             <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tight">Theming Configurator</h1>
                 <p className="text-muted-foreground">
-                    Dynamic runtime theming system demonstration. Switch themes and modes instantly.
+                    Theme is set by admin in Brand Engine. You can switch light/dark mode only.
                 </p>
             </div>
 
             <div className="grid gap-theme-card md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Theme Selection</CardTitle>
-                        <CardDescription>Choose a predefined theme.</CardDescription>
+                        <CardTitle>Active theme</CardTitle>
+                        <CardDescription>App-level preset (admin-configured).</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid gap-2">
-                        {['default', 'neo', 'crisp', 'funky'].map((t) => (
-                            <Button
-                                key={t}
-                                variant={theme === t ? 'default' : 'outline'}
-                                className="w-full justify-start capitalize"
-                                onClick={() => setTheme(t)}
-                            >
-                                {t} Theme
-                                {theme === t && <span className="ml-auto">✓</span>}
-                            </Button>
-                        ))}
+                    <CardContent>
+                        <p className="font-mono text-sm capitalize">{theme || 'default'}</p>
                     </CardContent>
                 </Card>
 
@@ -84,31 +74,33 @@ export function ThemingDemoPage() {
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Heading:</span>
                                 <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
-                                    {config.typography.heading.fontFamily}
+                                    {config?.typography?.heading?.fontFamily ?? '—'}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Body:</span>
                                 <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
-                                    {config.typography.body.fontFamily}
+                                    {config?.typography?.body?.fontFamily ?? '—'}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Cursive:</span>
                                 <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
-                                    {config.typography.handwriting.fontFamily}
+                                    {config?.typography?.handwriting?.fontFamily ?? '—'}
                                 </span>
                             </div>
                         </div>
                         <div className="flex flex-col gap-1 pt-4 border-t">
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Radius:</span>
-                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">{config.radius}</span>
+                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
+                                    {config?.radius ?? '—'}
+                                </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Spacing:</span>
                                 <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
-                                    {config.spacing?.section || 'N/A'} (Sec) / {config.spacing?.card || 'N/A'} (Card)
+                                    {config?.spacing?.section || 'N/A'} (Sec) / {config?.spacing?.card || 'N/A'} (Card)
                                 </span>
                             </div>
                         </div>
@@ -189,18 +181,20 @@ export function ThemingDemoPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {Object.entries(config.colors[activeMode as 'light' | 'dark']).map(([key, value]) => (
-                                    <div key={key} className="space-y-1.5">
-                                        <div
-                                            className="h-12 w-full rounded border ring-offset-background transition-shadow hover:ring-2 hover:ring-ring hover:ring-offset-2"
-                                            style={{ backgroundColor: `hsl(${value})` }}
-                                        />
-                                        <div className="space-y-0.5">
-                                            <p className="text-sm font-medium leading-none">{key}</p>
-                                            <p className="text-xs text-muted-foreground">{value as string}</p>
+                                {Object.entries((config?.colors ?? {})[activeMode as 'light' | 'dark'] ?? {}).map(
+                                    ([key, value]) => (
+                                        <div key={key} className="space-y-1.5">
+                                            <div
+                                                className="h-12 w-full rounded border ring-offset-background transition-shadow hover:ring-2 hover:ring-ring hover:ring-offset-2"
+                                                style={{ backgroundColor: `hsl(${value})` }}
+                                            />
+                                            <div className="space-y-0.5">
+                                                <p className="text-sm font-medium leading-none">{key}</p>
+                                                <p className="text-xs text-muted-foreground">{value as string}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ),
+                                )}
                             </div>
                         </CardContent>
                     </Card>

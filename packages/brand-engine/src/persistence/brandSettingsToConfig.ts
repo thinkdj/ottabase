@@ -8,7 +8,9 @@ import type { ResolvedBrandConfig } from './types';
 import type { LayoutData } from './layoutData';
 import type { DesignTokens } from '../tokens';
 import type { LayoutConfig } from '../layout';
+import type { BrandTheme } from '../theme';
 import { DEFAULT_BRAND_THEME } from '../defaults';
+import { getThemeByName } from '../registry';
 import { resolveTheme, deepMerge } from '../resolver';
 import { LAYOUT_PRESETS } from '../layouts/presets';
 
@@ -44,8 +46,11 @@ export function brandSettingsToConfig(
         ) as unknown as DesignTokens;
         tenantTheme = { ...tenantTheme, tokens: mergedTokens };
     }
+    const presetId = (settings.get('themePresetId') as string) || null;
+    const baseTheme: BrandTheme =
+        presetId && getThemeByName(presetId) ? getThemeByName(presetId)! : DEFAULT_BRAND_THEME;
     const theme = resolveTheme({
-        base: DEFAULT_BRAND_THEME,
+        base: baseTheme,
         tenantOverrides: tenantTheme,
         mode,
     });
@@ -85,6 +90,8 @@ export function brandSettingsToConfig(
             emailLogo: logos.emailLogo,
         },
         theme,
+        themeBase: presetId || 'default',
+        tenantTheme,
         defaultColorScheme: (settings.get('defaultColorScheme') as 'light' | 'dark' | 'system') || 'system',
         allowDarkModeToggle: (settings.get('allowDarkModeToggle') as boolean) ?? true,
         customCss: (settings.get('customCss') as string) || undefined,

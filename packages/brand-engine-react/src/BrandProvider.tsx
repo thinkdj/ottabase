@@ -26,6 +26,8 @@ export interface BrandConfig {
         emailLogo?: string;
     };
     theme: ResolvedBrandTheme;
+    themeBase: string;
+    tenantTheme: Partial<import('@ottabase/brand-engine').BrandTheme>;
     defaultColorScheme: 'light' | 'dark' | 'system';
     allowDarkModeToggle: boolean;
     customCss?: string;
@@ -116,11 +118,10 @@ export function BrandProvider({
     }, [fetchConfig, initialConfig]);
 
     useEffect(() => {
-        if (!config?.theme) return;
+        if (!config) return;
 
         if (typeof document !== 'undefined') {
-            applyBrandTheme(config.theme);
-            // Remove edge-injected #brand-critical; we now own theme via inline styles
+            // Remove edge-injected #brand-critical; app-level theme applicator owns inline styles
             const critical = document.getElementById(CRITICAL_STYLE_ID);
             if (critical) critical.remove();
         }

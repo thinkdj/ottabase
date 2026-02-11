@@ -1,15 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTheme as useNextTheme } from 'next-themes';
 import type { BrandTheme, LayoutConfig, ResolvedBrandTheme } from '@ottabase/brand-engine';
+import { getThemeOrDefault, resolveTheme } from '@ottabase/brand-engine';
+import { useBrand } from '@ottabase/brand-engine-react';
 import { ThemeProviderContext } from './ThemeContext';
-import { applyTheme, getTheme } from '../utils/theme.loader';
 
 const LAYOUT_OVERRIDES_KEY = 'ottabase-layout-overrides';
 
 type ThemeProviderProps = {
     children: React.ReactNode;
-    defaultTheme?: string;
-    storageKey?: string;
 };
 
 function loadLayoutOverrides(): Partial<LayoutConfig> {
@@ -27,42 +26,61 @@ function mergeLayout(base: LayoutConfig | undefined | null, overrides: Partial<L
     return { ...base, ...overrides };
 }
 
-export function ThemeProvider({
-    children,
-    defaultTheme = 'default',
-    storageKey = 'ottabase-ui-theme', // Key for the *theme name*, not mode
-}: ThemeProviderProps) {
+/** Theme is app-level (Brand Engine). User can only switch light/dark. */
+export function ThemeProvider({ children }: ThemeProviderProps) {
+    const { config } = useBrand();
     const { resolvedTheme } = useNextTheme();
-
-    // Initialize state from localStorage or defaults
-    const [theme, setThemeState] = useState<string>(() => {
-        return localStorage.getItem(`${storageKey}-name`) || defaultTheme;
-    });
-
-    const [config, setConfig] = useState<BrandTheme>(getTheme(theme));
-    const [resolved, setResolved] = useState<ResolvedBrandTheme | null>(null);
     const [layoutOverrides, setLayoutOverridesState] = useState<Partial<LayoutConfig>>(loadLayoutOverrides);
 
-    useEffect(() => {
-        // Apply the active theme configuration whenever theme or mode changes
-        const mode = resolvedTheme === 'dark' ? 'dark' : 'light';
-
-        if (import.meta.env.DEV) {
-            console.log(`[ProviderTheme] Updating theme: ${theme} | mode: ${mode} (resolved: ${resolvedTheme})`);
+    const {
+        theme: themeBase,
+        config: brandConfig,
+        resolved,
+    } = useMemo(() => {
+        if (!config) {
+            return {
+                theme: 'default',
+                config: {} as BrandTheme,
+                resolved: null as ResolvedBrandTheme | null,
+            };
         }
+        const mode = resolvedTheme === 'dark' ? 'dark' : 'light';
+        const base = getThemeOrDefault(config.themeBase || 'default');
+        const r = resolveTheme({
+            base,
+            tenantOverrides: config.tenantTheme ?? {},
+            mode,
+        });
+        const rLight = resolveTheme({ base, tenantOverrides: config.tenantTheme ?? {}, mode: 'light' });
+        const rDark = resolveTheme({ base, tenantOverrides: config.tenantTheme ?? {}, mode: 'dark' });
+        const syntheticConfig = {
+            name: r.name,
+            tokens: {
+                color: { light: rLight.colors, dark: rDark.colors },
+                typography: r.typography,
+                spacing: r.spacing,
+                radius: r.radius,
+                shadow: r.shadows,
+                motion: r.motion,
+            },
+            layout: r.layout,
+            cursors: r.cursors,
+        } as BrandTheme;
+        // Flat shape for demo/legacy consumers
+        (syntheticConfig as Record<string, unknown>).typography = r.typography;
+        (syntheticConfig as Record<string, unknown>).colors = { light: rLight.colors, dark: rDark.colors };
+        (syntheticConfig as Record<string, unknown>).radius = r.radius;
+        (syntheticConfig as Record<string, unknown>).spacing = r.spacing;
+        return {
+            theme: config.themeBase || 'default',
+            config: syntheticConfig,
+            resolved: r,
+        };
+    }, [config, resolvedTheme]);
 
-        const resolvedThemeResult = applyTheme(theme, mode);
-        setConfig(getTheme(theme));
-        setResolved(resolvedThemeResult);
-    }, [theme, resolvedTheme]);
-
-    const setTheme = useCallback(
-        (newTheme: string) => {
-            localStorage.setItem(`${storageKey}-name`, newTheme);
-            setThemeState(newTheme);
-        },
-        [storageKey],
-    );
+    const setTheme = useCallback(() => {
+        // Theme is app-level; no user switching. Kept for API compat.
+    }, []);
 
     const setLayoutOverrides = useCallback((overrides: Partial<LayoutConfig>) => {
         setLayoutOverridesState(overrides);
@@ -82,16 +100,16 @@ export function ThemeProvider({
 
     const value = useMemo(
         () => ({
-            theme,
+            theme: themeBase,
             setTheme,
-            config,
+            config: brandConfig,
             resolved,
             layout,
             layoutOverrides,
             setLayoutOverrides,
             resetLayoutOverrides,
         }),
-        [theme, setTheme, config, resolved, layout, layoutOverrides, setLayoutOverrides, resetLayoutOverrides],
+        [themeBase, setTheme, brandConfig, resolved, layout, layoutOverrides, setLayoutOverrides, resetLayoutOverrides],
     );
 
     return <ThemeProviderContext.Provider value={value}>{children}</ThemeProviderContext.Provider>;
