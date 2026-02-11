@@ -17,8 +17,22 @@ function jsonResponse(message: string, status: number, code: string) {
 
 function hasRequiredPermissions(context: RequestContext, required?: string[]): boolean {
     if (!required || required.length === 0) return true;
-    const hasWildcard = context.permissions.includes('*:*');
-    return required.every((perm) => hasWildcard || context.permissions.includes(perm));
+    return required.every((perm) => hasPermission(context, perm));
+}
+
+/** Check single permission with wildcard support (brand:* matches brand:edit, *:* grants all) */
+export function hasPermission(context: RequestContext, permission: string): boolean {
+    const perms = context.permissions || [];
+    if (perms.includes(permission)) return true;
+    const [reqResource, reqAction] = permission.split(':');
+    for (const perm of perms) {
+        const [permResource, permAction] = perm.split(':');
+        if (permResource === '*' && permAction === '*') return true;
+        const resourceMatches = permResource === '*' || permResource === reqResource;
+        const actionMatches = permAction === '*' || permAction === reqAction;
+        if (resourceMatches && actionMatches) return true;
+    }
+    return false;
 }
 
 function hasAdminRole(context: RequestContext): boolean {
@@ -62,6 +76,31 @@ export async function requireAdminAccess(
 ): Promise<{ user: any; organizationId: string | null } | Response> {
     const ctx = await buildContext();
     return assertAdmin(ctx, options);
+}
+
+/** Permission-only check for brand/scoped operations. Does NOT require admin role. */
+export interface AssertPermissionOptions {
+    permission: string; // e.g. 'brand:edit' (matches brand:*, *:*)
+    organizationId: string | null;
+}
+
+export function assertBrandEditAccess(
+    context: RequestContext,
+    options: AssertPermissionOptions,
+): Response | { user: any; organizationId: string } {
+    if (!context.isAuthenticated || !context.user) {
+        return jsonResponse('Unauthorized', 401, 'UNAUTHORIZED');
+    }
+    if (!options.organizationId) {
+        return jsonResponse('Organization context required for brand operations', 400, 'ORG_REQUIRED');
+    }
+    if (!hasPermission(context, options.permission)) {
+        return jsonResponse('Forbidden', 403, 'FORBIDDEN');
+    }
+    return {
+        user: context.user,
+        organizationId: options.organizationId,
+    };
 }
 
 export { SYSTEM_ORGANIZATION_ID };

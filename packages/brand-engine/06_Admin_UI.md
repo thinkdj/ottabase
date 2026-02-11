@@ -31,12 +31,16 @@ control branding.
 - [x] **AdminBrandEnginePage** – tabbed entry (Brand Settings, BrandBoxes, Layouts, Theme Variants)
 - [x] Uses `/api/brand/*`, `/api/brandbox` endpoints
 
-### 5. Optional Enhancements (future)
+### 5. RBAC / Security
+
+- [x] RBAC guard on mutating routes: `requireBrandEditAccess` enforces `brand:edit` (or `brand:*`, `*:*`) per org
+- [x] All PUT/POST/DELETE brand and brandbox routes protected; `organizationId` required; tenant isolation enforced
+
+### 6. Optional Enhancements (future)
 
 - ColorPicker, FontSelector for visual token editing
 - TokenEditor with WCAG contrast validation
 - BrandPreview iframe for live preview
-- RBAC guard on admin route (brand:edit, brand:apply)
 
 ## References
 

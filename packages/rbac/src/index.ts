@@ -41,7 +41,7 @@ export {
 export type { AppContext, BuildAppContextOptions, ExtractAppOptions, ExtractOrgOptions } from './app-context';
 
 // Request context + admin guard
-export { assertAdmin, requireAdminAccess } from './admin-guard';
-export type { AdminScope, AssertAdminOptions } from './admin-guard';
+export { assertAdmin, assertBrandEditAccess, requireAdminAccess } from './admin-guard';
+export type { AdminScope, AssertAdminOptions, AssertPermissionOptions } from './admin-guard';
 export { SYSTEM_ORGANIZATION_ID, getRequestContext } from './request-context';
 export type { GetRequestContextOptions, RequestContext } from './request-context';

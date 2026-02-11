@@ -16,13 +16,10 @@ import {
     handleUpdateThemeVariant,
     handleDeleteThemeVariant,
     handleApplyBrandBox,
-    handleGetLayouts,
-    handlePutLayout,
-    handleGetMappings,
-    handlePutMappings,
 } from '@ottabase/brand-engine/handlers';
 import type { ApiRouteContext } from './router';
 import type { CloudflareEnv } from '../cloudflare-env';
+import { requireBrandEditAccess } from '../lib/admin-guard';
 
 const brandEnv = (env: CloudflareEnv) => ({
     OBCF_D1: env.OBCF_D1,
@@ -51,20 +48,26 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
     }
 
     if (route === '/api/brand' && method === 'PUT') {
-        return handleUpdateBrand(request, envBrand, orgId, appId);
+        const guard = await requireBrandEditAccess(context, orgId, appId);
+        if (guard instanceof Response) return guard;
+        return handleUpdateBrand(request, envBrand, guard.organizationId, guard.appId);
     }
 
     if (route === '/api/brand/apply' && method === 'POST') {
-        return handleApplyBrandBox(request, envBrand, orgId, appId);
+        const guard = await requireBrandEditAccess(context, orgId, appId);
+        if (guard instanceof Response) return guard;
+        return handleApplyBrandBox(request, envBrand, guard.organizationId, guard.appId);
     }
 
     const logoMatch = route.match(/^\/api\/brand\/logo\/(logo|logo-dark|icon|og-image|email-logo)$/);
     if (logoMatch && method === 'POST') {
+        const guard = await requireBrandEditAccess(context, orgId, appId);
+        if (guard instanceof Response) return guard;
         return handleUploadLogo(
             request,
             envBrand,
-            orgId,
-            appId,
+            guard.organizationId,
+            guard.appId,
             logoMatch[1] as 'logo' | 'logo-dark' | 'icon' | 'og-image' | 'email-logo',
         );
     }
@@ -73,13 +76,17 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
         return handleGetLayouts(request, envBrand, orgId, appId);
     }
     if (route === '/api/brand/layouts' && method === 'PUT') {
-        return handlePutLayout(request, envBrand, orgId, appId);
+        const guard = await requireBrandEditAccess(context, orgId, appId);
+        if (guard instanceof Response) return guard;
+        return handlePutLayout(request, envBrand, guard.organizationId, guard.appId);
     }
     if (route === '/api/brand/mappings' && method === 'GET') {
         return handleGetMappings(request, envBrand, orgId, appId);
     }
     if (route === '/api/brand/mappings' && method === 'PUT') {
-        return handlePutMappings(request, envBrand, orgId, appId);
+        const guard = await requireBrandEditAccess(context, orgId, appId);
+        if (guard instanceof Response) return guard;
+        return handlePutMappings(request, envBrand, guard.organizationId, guard.appId);
     }
 
     if (route === '/api/brand/themes' && method === 'GET') {
@@ -87,14 +94,24 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
     }
 
     if (route === '/api/brand/themes' && method === 'POST') {
-        return handleCreateThemeVariant(request, envBrand, orgId, appId);
+        const guard = await requireBrandEditAccess(context, orgId, appId);
+        if (guard instanceof Response) return guard;
+        return handleCreateThemeVariant(request, envBrand, guard.organizationId, guard.appId);
     }
 
     const themeByIdMatch = route.match(/^\/api\/brand\/themes\/([^/]+)$/);
     if (themeByIdMatch) {
         const id = themeByIdMatch[1];
-        if (method === 'PUT') return handleUpdateThemeVariant(request, envBrand, id, orgId, appId);
-        if (method === 'DELETE') return handleDeleteThemeVariant(request, envBrand, id, orgId, appId);
+        if (method === 'PUT') {
+            const guard = await requireBrandEditAccess(context, orgId, appId);
+            if (guard instanceof Response) return guard;
+            return handleUpdateThemeVariant(request, envBrand, id, guard.organizationId, guard.appId);
+        }
+        if (method === 'DELETE') {
+            const guard = await requireBrandEditAccess(context, orgId, appId);
+            if (guard instanceof Response) return guard;
+            return handleDeleteThemeVariant(request, envBrand, id, guard.organizationId, guard.appId);
+        }
     }
 
     return null;

@@ -1,4 +1,4 @@
-﻿import { getSession } from '@ottabase/auth/backend';
+import { getSession } from '@ottabase/auth/backend';
 import { User } from '@ottabase/ottaorm/models';
 import type { RBACCache } from './cache';
 import { createRBACContext } from './utils';
@@ -20,6 +20,8 @@ export interface GetRequestContextOptions {
     getAuthOptions?: (env: any) => any;
     allowNullTenant?: boolean;
     cache?: RBACCache;
+    /** When set, use this org for scoped permission loading (e.g. for brand routes using ?organizationId=) */
+    organizationIdOverride?: string | null;
 }
 
 export const SYSTEM_ORGANIZATION_ID = 'system';
@@ -110,7 +112,8 @@ export async function getRequestContext(
         };
     }
 
-    const organizationId = resolveOrganizationId(request, session, allowNullTenant);
+    const resolvedOrg = resolveOrganizationId(request, session, allowNullTenant);
+    const organizationId = options?.organizationIdOverride !== undefined ? options.organizationIdOverride : resolvedOrg;
     const appId = resolveAppId(request);
     const cache = options?.cache;
 
