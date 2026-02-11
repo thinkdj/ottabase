@@ -27,7 +27,7 @@ pnpm add @ottabase/ui-mantine @ottabase/ui-base @ottabase/state
 the theme value to this provider's `colorScheme` prop to keep it in sync.
 
 ```tsx
-import { ProviderUIMantineBase } from '@ottabase/ui-base';
+import { ProviderUIBase } from '@ottabase/ui-base';
 import { ProviderUIMantine } from '@ottabase/ui-mantine';
 import { useAtomValue } from 'jotai';
 import { themeAtom } from '@/ottabase/state/appGlobalState'; // Adjust path as needed
@@ -36,7 +36,7 @@ function App({ children }) {
     const theme = useAtomValue(themeAtom);
 
     return (
-        <ProviderUIMantineBase>
+        <ProviderUIBase>
             <ProviderUIMantine
                 storagePrefix="ottabase"
                 themeColors={THEME_COLORS}
@@ -46,7 +46,7 @@ function App({ children }) {
             >
                 {children}
             </ProviderUIMantine>
-        </ProviderUIMantineBase>
+        </ProviderUIBase>
     );
 }
 ```
@@ -60,7 +60,7 @@ source of truth for theme state (e.g., a Jotai atom). The `MantineThemeSync` com
 ### Using Pre-built Themes
 
 ```tsx
-import { ProviderUIMantineBase } from '@ottabase/ui-base';
+import { ProviderUIBase } from '@ottabase/ui-base';
 import { ProviderUIMantine, mantineSlate, mantineGraphite, mantineAzure, mantineAurora } from '@ottabase/ui-mantine';
 import { useAtomValue } from 'jotai';
 import { themeAtom } from '@/ottabase/state/appGlobalState';
@@ -69,11 +69,11 @@ function App({ children }) {
     const theme = useAtomValue(themeAtom);
 
     return (
-        <ProviderUIMantineBase>
+        <ProviderUIBase>
             <ProviderUIMantine themeOverride={mantineSlate} colorScheme={theme as 'light' | 'dark'}>
                 {children}
             </ProviderUIMantine>
-        </ProviderUIMantineBase>
+        </ProviderUIBase>
     );
 }
 ```
@@ -81,7 +81,7 @@ function App({ children }) {
 ### Creating Custom Themes
 
 ```tsx
-import { ProviderUIMantineBase } from '@ottabase/ui-base';
+import { ProviderUIBase } from '@ottabase/ui-base';
 import { ProviderUIMantine, createMantineTheme, mantineSlate, type MantineThemeConfig } from '@ottabase/ui-mantine';
 
 const myThemeConfig: MantineThemeConfig = {
@@ -117,11 +117,11 @@ function App({ children }) {
     const theme = useAtomValue(themeAtom);
 
     return (
-        <ProviderUIMantineBase>
+        <ProviderUIBase>
             <ProviderUIMantine themeOverride={customTheme} colorScheme={theme as 'light' | 'dark'}>
                 {children}
             </ProviderUIMantine>
-        </ProviderUIMantineBase>
+        </ProviderUIBase>
     );
 }
 ```
