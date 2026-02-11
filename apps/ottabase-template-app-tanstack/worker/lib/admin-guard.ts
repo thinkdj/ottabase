@@ -39,9 +39,12 @@ export async function requireAdminAccess(
 
     initDbConnection(env);
 
+    // For system-scope routes (e.g. Database Manager), force system org context so isSystemScope is true.
+    // Otherwise users with an org in session/header would get 403 even with *:* permissions.
     const reqCtx = await getRequestContext(request, env as any, {
         getAuthOptions,
         allowNullTenant: options?.allowNullTenant,
+        organizationIdOverride: options?.scope === 'system' ? SYSTEM_ORGANIZATION_ID : undefined,
     });
 
     const result = assertAdmin(reqCtx, {
