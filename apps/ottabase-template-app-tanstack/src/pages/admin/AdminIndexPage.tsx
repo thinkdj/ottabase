@@ -28,8 +28,8 @@ export function AdminIndexPage() {
         },
         {
             title: 'Theme Generator',
-            description: 'Generate color palettes and check accessibility contrast.',
-            href: '/admin/theme-generator',
+            description: 'Generate color palettes and check accessibility contrast (in Brand Engine).',
+            href: '/admin/brand-engine?tab=theme&subtab=generator',
             icon: Palette,
             disabled: false,
         },

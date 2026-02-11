@@ -215,3 +215,60 @@ export function generateSemanticDefaults(h: number, s: number, l: number): Seman
         ring,
     };
 }
+
+/**
+ * Generates dark-mode semantic tokens from a primary brand color (HSL).
+ * Pairs with generateSemanticDefaults for light/dark theme creation.
+ */
+export function generateSemanticDefaultsDark(h: number, s: number, l: number): SemanticPalette {
+    const f = (hVal: number, sVal: number, lVal: number) =>
+        `${Math.round(hVal)} ${Math.round(sVal)}% ${Math.round(lVal)}%`;
+
+    const background = f(224, 71, 4);
+    const foreground = f(213, 31, 91);
+    const primary = f(h, Math.min(s + 5, 100), Math.min(l + 10, 70));
+    const primaryForeground = f(224, 71, 4);
+    const secondary = f(222, 47, 11);
+    const secondaryForeground = f(213, 31, 91);
+    const muted = f(223, 47, 11);
+    const mutedForeground = f(215, 20, 65);
+    const accent = f(h, s, l);
+    const accentForeground = f(213, 31, 91);
+    const destructive = f(0, 62, 35);
+    const destructiveForeground = f(213, 31, 91);
+    const border = f(216, 34, 12);
+    const input = f(216, 34, 12);
+    const ring = f(h, s, Math.min(l + 5, 70));
+
+    return {
+        background,
+        foreground,
+        primary,
+        'primary-foreground': primaryForeground,
+        secondary,
+        'secondary-foreground': secondaryForeground,
+        muted,
+        'muted-foreground': mutedForeground,
+        accent,
+        'accent-foreground': accentForeground,
+        destructive,
+        'destructive-foreground': destructiveForeground,
+        border,
+        input,
+        ring,
+    };
+}
+
+/** Build full tokensJson (color.light + color.dark) for theme variant from base HSL */
+export function buildTokensFromBaseColor(
+    h: number,
+    s: number,
+    l: number,
+): { color: { light: SemanticPalette; dark: SemanticPalette } } {
+    return {
+        color: {
+            light: generateSemanticDefaults(h, s, l),
+            dark: generateSemanticDefaultsDark(h, s, l),
+        },
+    };
+}

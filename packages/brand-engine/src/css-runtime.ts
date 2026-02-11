@@ -12,6 +12,7 @@
 // The `applyBrandTheme` convenience function targets `document.documentElement`.
 // ---------------------------------------------------------------------------
 
+import { resolveCursor } from './cursors';
 import type { LayoutConfig } from './layout';
 import type { ResolvedBrandTheme } from './resolver';
 import type { TokenColors } from './tokens';
@@ -68,11 +69,11 @@ export function buildCSSVarMap(theme: ResolvedBrandTheme): Record<string, string
     // -- Layout tokens (as CSS vars for component contracts) -----------------
     applyLayoutVars(vars, theme.layout);
 
-    // -- Cursors -------------------------------------------------------------
+    // -- Cursors (registry:, svg:, url() resolved to data URIs) --------------
     if (theme.cursors) {
         for (const [state, raw] of Object.entries(theme.cursors)) {
             if (raw !== undefined) {
-                vars[`--cursor-${state}`] = raw;
+                vars[`--cursor-${state}`] = resolveCursor(raw);
             }
         }
     }

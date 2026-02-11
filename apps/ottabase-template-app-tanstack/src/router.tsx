@@ -464,6 +464,9 @@ const adminRoute = new Route({
 const adminBrandEngineRoute = new Route({
     getParentRoute: () => rootRoute,
     path: '/admin/brand-engine',
+    validateSearch: (s: Record<string, unknown>) => ({
+        tab: (s.tab as string) || 'settings',
+    }),
     component: lazyRouteComponent(() =>
         import('@/pages/admin/AdminBrandEnginePage').then((m) => ({
             default: m.AdminBrandEnginePage,
@@ -475,8 +478,8 @@ const adminThemeGeneratorRoute = new Route({
     getParentRoute: () => rootRoute,
     path: '/admin/theme-generator',
     component: lazyRouteComponent(() =>
-        import('@/pages/admin/ThemeGeneratorPage').then((m) => ({
-            default: m.ThemeGeneratorPage,
+        import('@/pages/admin/ThemeGeneratorRedirect').then((m) => ({
+            default: m.ThemeGeneratorRedirect,
         })),
     ),
 });
