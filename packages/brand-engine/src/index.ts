@@ -36,6 +36,7 @@ export { createTokenAccessor, getToken } from './accessors';
 export { calculateContrastRatio, generatePalette, generateSemanticDefaults, hexToHsl } from './colors';
 export type { SemanticPalette } from './colors';
 export { applyBrandTheme, buildCSSVarMap, injectCSSVars, injectFont } from './css-runtime';
+export { buildCriticalCSS, buildCriticalStyleTag, CRITICAL_STYLE_ID } from './css-critical';
 export { deepMerge, resolveAliases, resolveTheme } from './resolver';
 
 // ── Registry ───────────────────────────────────────────────────────────────

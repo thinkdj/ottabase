@@ -1,12 +1,14 @@
 // ---------------------------------------------------------------------------
 // Brand Engine React – BrandProvider
-// Fetches config from API, applies theme via applyBrandTheme, injects custom CSS
+// Fetches config from API, applies theme via applyBrandTheme, injects custom CSS.
+// Cooperates with edge-injected #brand-critical: applies inline styles (which override)
+// and removes the style tag to become sole owner after hydration (avoids duplication).
 // ---------------------------------------------------------------------------
 
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { applyBrandTheme } from '@ottabase/brand-engine';
+import { applyBrandTheme, CRITICAL_STYLE_ID } from '@ottabase/brand-engine';
 import type { LayoutConfig } from '@ottabase/brand-engine';
 import type { ResolvedBrandTheme } from '@ottabase/brand-engine';
 
@@ -53,6 +55,8 @@ export interface BrandProviderProps {
     organizationId?: string | null;
     /** App ID for app-specific branding */
     appId?: string | null;
+    /** BrandBox ID for preview mode (?brandPreview=) - preview without applying */
+    brandPreview?: string | null;
 }
 
 export function BrandProvider({
@@ -61,6 +65,7 @@ export function BrandProvider({
     initialConfig,
     organizationId,
     appId,
+    brandPreview,
 }: BrandProviderProps) {
     const [config, setConfig] = useState<BrandConfig | null>(initialConfig ?? null);
     const [isLoading, setIsLoading] = useState(!initialConfig);
@@ -72,6 +77,13 @@ export function BrandProvider({
             const params = new URLSearchParams();
             if (organizationId) params.set('organizationId', organizationId);
             if (appId) params.set('appId', appId);
+            // Support ?brandPreview=BOX_ID from URL or prop
+            const previewId =
+                brandPreview ??
+                (typeof window !== 'undefined'
+                    ? new URLSearchParams(window.location.search).get('brandPreview')
+                    : null);
+            if (previewId) params.set('brandPreview', previewId);
             const url = params.toString() ? `${apiEndpoint}?${params}` : apiEndpoint;
 
             const response = await fetch(url);
@@ -87,7 +99,7 @@ export function BrandProvider({
         } finally {
             setIsLoading(false);
         }
-    }, [apiEndpoint, organizationId, appId]);
+    }, [apiEndpoint, organizationId, appId, brandPreview]);
 
     useEffect(() => {
         if (!initialConfig) {
@@ -100,6 +112,9 @@ export function BrandProvider({
 
         if (typeof document !== 'undefined') {
             applyBrandTheme(config.theme);
+            // Remove edge-injected #brand-critical; we now own theme via inline styles
+            const critical = document.getElementById(CRITICAL_STYLE_ID);
+            if (critical) critical.remove();
         }
 
         if (config.customCss) {

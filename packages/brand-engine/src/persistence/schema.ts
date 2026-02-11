@@ -171,3 +171,125 @@ export const layoutRouteMappingsTable = sqliteTable('layout_route_mappings', {
 
 export type LayoutRouteMappingType = typeof layoutRouteMappingsTable.$inferSelect;
 export type NewLayoutRouteMappingType = typeof layoutRouteMappingsTable.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════
+// THEME VARIANTS
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Theme Variants - Color/token overlays that can apply to any layout
+ * Use case: Christmas theme, Black Friday, seasonal campaigns
+ */
+export const themeVariantsTable = sqliteTable('theme_variants', {
+    id: text('id')
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    organizationId: text('organization_id'),
+    appId: text('app_id'),
+
+    /** Display name (e.g. "Christmas", "Black Friday") */
+    name: text('name').notNull(),
+
+    /** Optional slug for API (e.g. "christmas-2024") */
+    slug: text('slug'),
+
+    /** Design tokens (colors, typography overrides) - JSON, partial DesignTokens */
+    tokensJson: text('tokens_json').notNull(),
+
+    /** Optional: date range for auto-activation (future) */
+    activeFrom: integer('active_from'),
+    activeUntil: integer('active_until'),
+
+    /** Optional description */
+    description: text('description'),
+
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
+        .notNull(),
+    updatedAt: integer('updated_at')
+        .$defaultFn(() => Date.now())
+        .$onUpdateFn(() => Date.now())
+        .notNull(),
+});
+
+export type ThemeVariantType = typeof themeVariantsTable.$inferSelect;
+export type NewThemeVariantType = typeof themeVariantsTable.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════
+// BRAND BOXES
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * BrandBox - A complete, saveable brand preset
+ * Combines: layout templates + route mappings + theme + logos + tokens + custom CSS
+ * One-click apply to instantly affect the site
+ */
+export const brandBoxesTable = sqliteTable('brand_boxes', {
+    id: text('id')
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    organizationId: text('organization_id'),
+    appId: text('app_id'),
+
+    /** Display name (e.g. "Default", "Christmas 2024", "Client ACME") */
+    name: text('name').notNull(),
+
+    /** Optional slug for API */
+    slug: text('slug'),
+
+    /** Is this the active BrandBox for the org/app? */
+    isActive: integer('is_active', { mode: 'boolean' }).default(false),
+
+    // ═══ Content (all optional - inherits from default if not set) ═══
+
+    /** Brand identity (name, tagline) - JSON */
+    identityJson: text('identity_json'),
+
+    /** Logo R2 keys - JSON */
+    logosJson: text('logos_json'),
+
+    /** Design tokens - JSON */
+    tokensJson: text('tokens_json'),
+
+    /** Theme variant ID (links to theme_variants) - null = use default theme */
+    themeVariantId: text('theme_variant_id'),
+
+    /** Route → Layout mappings (JSON array) - overrides default mappings */
+    routeMappingsJson: text('route_mappings_json'),
+
+    /** Layout config overrides per template (JSON) */
+    layoutOverridesJson: text('layout_overrides_json'),
+
+    /**
+     * Snapshot of layout templates at apply-time (id → { componentKey, config }).
+     * Ensures BrandBox is stable even if layout_templates change later.
+     */
+    layoutTemplatesSnapshotJson: text('layout_templates_snapshot_json'),
+
+    /** Custom CSS */
+    customCss: text('custom_css'),
+
+    /** Custom meta tags (JSON) */
+    customMetaJson: text('custom_meta_json'),
+
+    /** White-label toggle */
+    hideOttabaseBranding: integer('hide_ottabase_branding', { mode: 'boolean' }).default(false),
+
+    // ═══ Scheduling (future) ═══
+
+    /** Optional: activate from date */
+    activeFrom: integer('active_from'),
+    /** Optional: activate until date */
+    activeUntil: integer('active_until'),
+
+    createdAt: integer('created_at')
+        .$defaultFn(() => Date.now())
+        .notNull(),
+    updatedAt: integer('updated_at')
+        .$defaultFn(() => Date.now())
+        .$onUpdateFn(() => Date.now())
+        .notNull(),
+});
+
+export type BrandBoxType = typeof brandBoxesTable.$inferSelect;
+export type NewBrandBoxType = typeof brandBoxesTable.$inferInsert;

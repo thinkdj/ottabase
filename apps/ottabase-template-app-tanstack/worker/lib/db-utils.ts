@@ -24,7 +24,13 @@ import {
     PostVersion,
 } from '@ottabase/ottablog';
 import { ReferralTracking } from '@ottabase/referrals';
-import { BrandSettings, LayoutRouteMapping, LayoutTemplate } from '@ottabase/brand-engine/persistence';
+import {
+    BrandSettings,
+    BrandBox,
+    LayoutRouteMapping,
+    LayoutTemplate,
+    ThemeVariant,
+} from '@ottabase/brand-engine/persistence';
 import { Shortlink } from '@ottabase/shortlinks';
 import { Todo } from '../../ottabase/models/Todo';
 import type { CloudflareEnv } from '../cloudflare-env';
@@ -102,8 +108,10 @@ export function initDbConnection(env: CloudflareEnv): void {
         ReferralTracking,
         // Brand engine models
         BrandSettings,
+        BrandBox,
         LayoutTemplate,
         LayoutRouteMapping,
+        ThemeVariant,
         // App models
         Todo,
     ]);

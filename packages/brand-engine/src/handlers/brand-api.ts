@@ -4,9 +4,8 @@
 // RBAC: Route must enforce brand:edit or brand:* for PUT/POST
 // ---------------------------------------------------------------------------
 
+import { resolveBrandConfig } from '../persistence/resolveBrandConfig';
 import { BrandSettings } from '../persistence/BrandSettings.model';
-import { brandSettingsToConfig } from '../persistence/brandSettingsToConfig';
-import { getLayoutData } from '../persistence/layoutData';
 import { createBrandCache } from '../persistence/cache';
 import { createBrandAssets, type LogoType } from '../persistence/assets';
 import type { D1Database, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
@@ -21,8 +20,9 @@ export interface BrandApiEnv {
 }
 
 /**
- * GET /api/brand - Get resolved brand config (BrandSettings)
- * Query: ?organizationId=&appId= (optional, for multi-tenant)
+ * GET /api/brand - Get resolved brand config
+ * Resolution order: 1) brandPreview=box-id, 2) Active BrandBox, 3) BrandSettings
+ * Query: ?organizationId=&appId=, ?brandPreview=box-id, ?themeVariant=id|active
  */
 export async function handleGetBrand(
     request: Request,
@@ -32,22 +32,14 @@ export async function handleGetBrand(
     userId?: string | null,
 ): Promise<Response> {
     const url = new URL(request.url);
-    const orgId = organizationId ?? url.searchParams.get('organizationId') ?? null;
-    const appIdResolved = appId ?? url.searchParams.get('appId') ?? null;
-
-    const cache = createBrandCache(env.OBCF_KV);
-
-    const cached = await cache.get(orgId, appIdResolved);
-    if (cached) return jsonResponse(cached, 200);
-
-    const settings = await BrandSettings.resolve(orgId, appIdResolved, userId);
-    if (!settings) return errorResponse('Brand config not found', 404);
-
-    const layoutData = await getLayoutData(orgId, appIdResolved);
-    const r2Url = env.R2_PUBLIC_URL || '';
-    const config = brandSettingsToConfig(settings, r2Url, 'light', layoutData);
-
-    await cache.set(orgId, appIdResolved || null, config);
+    const config = await resolveBrandConfig(env, {
+        organizationId: organizationId ?? url.searchParams.get('organizationId') ?? null,
+        appId: appId ?? url.searchParams.get('appId') ?? null,
+        brandPreview: url.searchParams.get('brandPreview') ?? undefined,
+        themeVariant: url.searchParams.get('themeVariant') ?? undefined,
+        userId,
+    });
+    if (!config) return errorResponse('Brand config not found', 404);
     return jsonResponse(config, 200);
 }
 
@@ -156,3 +148,21 @@ export async function handleUploadLogo(
         200,
     );
 }
+
+// Re-export theme variant handlers for single entry point
+export {
+    handleGetThemeVariants,
+    handleCreateThemeVariant,
+    handleUpdateThemeVariant,
+    handleDeleteThemeVariant,
+} from './theme-variant-api';
+
+// Re-export BrandBox handlers for single entry point
+export {
+    handleGetBrandBoxes,
+    handleCreateBrandBox,
+    handleUpdateBrandBox,
+    handleDeleteBrandBox,
+    handleApplyBrandBox,
+    handleDuplicateBrandBox,
+} from './brandbox-api';

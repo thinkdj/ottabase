@@ -6,6 +6,7 @@ import { handleShortlinkFallback } from './worker/routes/shortlinks';
 import { resolveApiRoute } from './worker/routes/router';
 import { resolvePlatformState, handleBootstrapRoute, interceptIfNotReady } from './worker/bootstrap';
 import { checkKillSwitches } from './worker/lib/killswitch';
+import { injectBrandCriticalCSS } from './worker/lib/brand-html-inject';
 import type { CloudflareEnv } from './cloudflare-env';
 
 export { RealtimeActor };
@@ -123,12 +124,16 @@ export default {
                 });
             }
 
-            const response = await env.OBCF_ASSETS.fetch(request);
+            let response = await env.OBCF_ASSETS.fetch(request);
 
             if (isHtmlRequest(request) && (response.status === 404 || SPA_REDIRECT_STATUSES.has(response.status))) {
                 const indexUrl = new URL(request.url);
                 indexUrl.pathname = '/index.html';
-                return env.OBCF_ASSETS.fetch(new Request(indexUrl.toString(), request));
+                response = await env.OBCF_ASSETS.fetch(new Request(indexUrl.toString(), request));
+            }
+
+            if (isHtmlRequest(request) && response.ok) {
+                response = await injectBrandCriticalCSS(response, request, env);
             }
 
             return response;

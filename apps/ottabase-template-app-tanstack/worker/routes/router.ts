@@ -77,6 +77,7 @@ import {
     handleShortlinksList,
 } from './shortlinks';
 import { handleBrandApi } from './brand';
+import { handleBrandboxApi } from './brandbox';
 
 export interface ApiRouteContext {
     request: Request;
@@ -117,8 +118,16 @@ const METHOD_HANDLERS: Record<string, MethodHandler> = {
 async function handleGetRoutes(context: ApiRouteContext): Promise<Response | null> {
     const { route } = context;
 
-    if (route === '/api/brand') {
-        return handleBrandApi(context);
+    // Brand API (GET /api/brand, POST /api/brand/apply, GET/POST /api/brand/themes, etc.)
+    if (route.startsWith('/api/brand')) {
+        const res = await handleBrandApi(context);
+        if (res) return res;
+    }
+
+    // BrandBox API (GET/POST /api/brandbox, PUT/DELETE /api/brandbox/:id, etc.)
+    if (route.startsWith('/api/brandbox')) {
+        const res = await handleBrandboxApi(context);
+        if (res) return res;
     }
 
     if (route === '/api/health') {
@@ -261,6 +270,16 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
 async function handlePostRoutes(context: ApiRouteContext): Promise<Response | null> {
     const { route } = context;
 
+    if (route.startsWith('/api/brand')) {
+        const res = await handleBrandApi(context);
+        if (res) return res;
+    }
+
+    if (route.startsWith('/api/brandbox')) {
+        const res = await handleBrandboxApi(context);
+        if (res) return res;
+    }
+
     if (route === '/api/auth/verify-email/resend') {
         return handleVerifyEmailResend(context);
     }
@@ -385,6 +404,16 @@ async function handlePatchRoutes(context: ApiRouteContext): Promise<Response | n
 async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | null> {
     const { route, url } = context;
 
+    if (route.startsWith('/api/brand')) {
+        const res = await handleBrandApi(context);
+        if (res) return res;
+    }
+
+    if (route.startsWith('/api/brandbox')) {
+        const res = await handleBrandboxApi(context);
+        if (res) return res;
+    }
+
     const shortlinkMatch = route.match(/^\/api\/shortlinks\/(.+)$/);
     if (shortlinkMatch) {
         return handleShortlinkById(context, shortlinkMatch[1], 'DELETE');
@@ -423,6 +452,16 @@ async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | 
 
 async function handlePutRoutes(context: ApiRouteContext): Promise<Response | null> {
     const { route } = context;
+
+    if (route.startsWith('/api/brand')) {
+        const res = await handleBrandApi(context);
+        if (res) return res;
+    }
+
+    if (route.startsWith('/api/brandbox')) {
+        const res = await handleBrandboxApi(context);
+        if (res) return res;
+    }
 
     if (route === '/api/referrals/username') {
         return handleReferralUsernameUpdate(context);

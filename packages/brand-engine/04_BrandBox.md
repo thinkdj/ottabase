@@ -9,39 +9,46 @@ of a complete brand look.
 
 ### 1. BrandBox Schema
 
-- [ ] Update `packages/brand-engine/src/persistence/schema.ts`
-- [ ] Define `brandBoxesTable` with:
-    - `id`, `name`, `slug`, `isActive`
+- [x] Update `packages/brand-engine/src/persistence/schema.ts`
+- [x] Define `brandBoxesTable` with:
+    - `id`, `organizationId`, `appId`
+    - `name`, `slug`, `isActive`
     - `identityJson`, `logosJson`, `tokensJson`, `themeVariantId`
     - `routeMappingsJson`, `layoutOverridesJson`
     - `layoutTemplatesSnapshotJson` (snapshot of layouts at time of creation/update)
+    - `customCss`, `customMetaJson`, `hideOttabaseBranding`
+    - `activeFrom`, `activeUntil` (Scheduling)
+    - `createdAt`, `updatedAt`
 
 ### 2. BrandBox Model
 
-- [ ] Create `packages/brand-engine/src/persistence/BrandBox.model.ts`
-- [ ] Implement `activate(orgId, appId)` (sets existing active boxes to false)
-- [ ] Implement `snapshot()` method to capture current layout templates
+- [x] Create `packages/brand-engine/src/persistence/BrandBox.model.ts`
+- [x] Implement `activate()` (deactivates others via `deactivateAll`, sets this active)
+- [x] Implement `snapshot()` method to capture current layout templates
+- [x] Implement `findActive(orgId, appId)` for resolution
 
 ### 3. Updated Brand Resolver
 
-- [ ] Refactor `BrandResolver.ts` to prioritize Active BrandBox
-- [ ] Logic:
-    1. Check for `previewBrandBoxId` (preview mode)
-    2. Check for Active BrandBox ( `isActive=true` )
+- [x] Refactor `handleGetBrand` to prioritize Active BrandBox
+- [x] Logic:
+    1. Check for `?brandPreview=box-id` (preview mode)
+    2. Check for Active BrandBox (`isActive=true`)
     3. Fallback to `BrandSettings` table
-- [ ] Ensure `ResolvedBrandConfig` takes values from BrandBox if present
+- [x] `brandBoxToConfig()` converts BrandBox to ResolvedBrandConfig
 
 ### 4. API Handlers
 
-- [ ] Create `packages/brand-engine/src/handlers/brandbox-api.ts`
-- [ ] `GET /api/brandbox` - List boxes
-- [ ] `POST /api/brandbox` - Create box
-- [ ] `POST /api/brand/apply` - Apply a BrandBox (activates it, invalidates cache)
-- [ ] `POST /api/brandbox/:id/duplicate` - Duplicate a box
+- [x] Create `packages/brand-engine/src/handlers/brandbox-api.ts`
+- [x] `GET /api/brandbox` - List boxes
+- [x] `POST /api/brandbox` - Create box (RBAC: `brand:edit`)
+- [x] `PUT /api/brandbox/:id` - Update box (RBAC: `brand:edit`)
+- [x] `DELETE /api/brandbox/:id` - Delete box (RBAC: `brand:edit`)
+- [x] `POST /api/brand/apply` - Apply a BrandBox (activates it, invalidates cache) (RBAC: `brand:apply`)
+- [x] `POST /api/brandbox/:id/duplicate` - Duplicate a box (RBAC: `brand:edit`)
 
 ### 5. Client Integration
 
-- [ ] Update `BrandProvider` to support `?brandPreview=BOX_ID` query param for previewing non-active boxes
+- [x] Update `BrandProvider` to support `brandPreview` prop and `?brandPreview=BOX_ID` URL param
 
 ## References
 

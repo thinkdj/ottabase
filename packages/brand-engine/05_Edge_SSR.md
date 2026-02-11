@@ -9,22 +9,20 @@ React app hydrates.
 
 ### 1. Critical CSS Generator
 
-- [ ] Enhance `css-runtime.ts` or create `packages/brand-engine/src/css-critical.ts`
-- [ ] Implement `buildCriticalCSS(theme)` which returns a string: `:root { --color-primary: ...; }`
+- [x] Create `packages/brand-engine/src/css-critical.ts`
+- [x] Implement `buildCriticalCSS(theme)` and `buildCriticalStyleTag(theme)`
 
 ### 2. Edge Middleware / SSR Injection
 
-- [ ] Identify the entry point for HTML response (Cloudflare Worker or Next.js middleware)
-- [ ] In the handler:
-    1. `await resolveBrandConfig(...)`
-    2. `const criticalCss = buildCriticalCSS(config.theme)`
-    3. Inject `<style id="brand-critical">${criticalCss}</style>` into the `<head>` of the HTML response
+- [x] Cloudflare Worker in `cloudflare-worker.ts` intercepts HTML responses
+- [x] `worker/lib/brand-html-inject.ts`: `injectBrandCriticalCSS()` fetches config, builds style tag, injects before
+      `</head>`
+- [x] Uses `resolveBrandConfig()` (extracted to `persistence/resolveBrandConfig.ts`)
 
 ### 3. Provider Hydration
 
-- [ ] Update `BrandProvider` to check for `#brand-critical` style tag
-- [ ] Ensure it doesn't cause hydration mismatch or double-injection issues
-- [ ] `BrandProvider` should "take over" and manage style updates after mount
+- [x] `BrandProvider` applies theme via `applyBrandTheme`, then removes `#brand-critical` to become sole owner
+- [x] No hydration mismatch (SPA: critical CSS in static HTML, React hydrates root div only)
 
 ## References
 

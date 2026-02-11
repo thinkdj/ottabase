@@ -6,12 +6,14 @@
 import type { BrandSettings } from './BrandSettings.model';
 import type { ResolvedBrandConfig } from './types';
 import type { LayoutData } from './layoutData';
+import type { DesignTokens } from '../tokens';
 import { DEFAULT_BRAND_THEME } from '../defaults';
-import { resolveTheme } from '../resolver';
+import { resolveTheme, deepMerge } from '../resolver';
 
 /**
  * Convert BrandSettings to API/cache response shape.
  * Uses default theme as base, merges settings.toBrandTheme() overrides.
+ * Optionally merges themeVariantTokens (from ThemeVariant) over tenant tokens.
  * Optionally merges layout data (routeMappings, layoutTemplatesMap).
  */
 export function brandSettingsToConfig(
@@ -19,8 +21,16 @@ export function brandSettingsToConfig(
     r2PublicUrl: string,
     mode: 'light' | 'dark' = 'light',
     layoutData?: LayoutData,
+    themeVariantTokens?: Partial<DesignTokens>,
 ): ResolvedBrandConfig {
-    const tenantTheme = settings.toBrandTheme();
+    let tenantTheme = settings.toBrandTheme();
+    if (themeVariantTokens && Object.keys(themeVariantTokens).length > 0) {
+        const mergedTokens = deepMerge(
+            (tenantTheme.tokens || {}) as unknown as Record<string, unknown>,
+            themeVariantTokens as unknown as Record<string, unknown>,
+        ) as unknown as DesignTokens;
+        tenantTheme = { ...tenantTheme, tokens: mergedTokens };
+    }
     const theme = resolveTheme({
         base: DEFAULT_BRAND_THEME,
         tenantOverrides: tenantTheme,

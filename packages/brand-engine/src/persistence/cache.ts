@@ -17,7 +17,7 @@ export interface BrandCacheClient {
         config: ResolvedBrandConfig,
         previewBoxId?: string,
     ): Promise<void>;
-    invalidate(organizationId: string | null, appId?: string | null): Promise<void>;
+    invalidate(organizationId: string | null, appId?: string | null, previewBoxId?: string): Promise<void>;
 }
 
 export function createBrandCache(kv: KVNamespace): BrandCacheClient {
@@ -39,9 +39,9 @@ export function createBrandCache(kv: KVNamespace): BrandCacheClient {
             await kv.put(key, JSON.stringify(config), { expirationTtl: CACHE_TTL });
         },
 
-        async invalidate(organizationId, appId) {
-            const key = getKey(organizationId, appId);
-            await kv.delete(key);
+        async invalidate(organizationId, appId, previewBoxId?: string) {
+            await kv.delete(getKey(organizationId, appId));
+            if (previewBoxId) await kv.delete(getKey(organizationId, appId, previewBoxId));
             if (appId) await kv.delete(getKey(organizationId, null));
             if (organizationId) await kv.delete(getKey(null, null));
         },
