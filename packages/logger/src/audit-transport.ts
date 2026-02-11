@@ -100,8 +100,19 @@ export class AuditDbTransport implements Transport {
         this.buffer = [];
 
         try {
-            // Dynamic import to avoid circular dependencies
-            const { AuditLog } = await import('@ottabase/ottaorm/models');
+            // Check global connection registry (stored on globalThis by ottaorm)
+            const globalConnections = (globalThis as any).__OTTAORM_CONNECTIONS__ as Map<string, any> | undefined;
+            if (!globalConnections || !globalConnections.has('default')) {
+                // No DB configured (common in tests) — skip writing without noisy errors
+                this.flushing = false;
+                return;
+            }
+
+            // Dynamic import using a computed string so TypeScript won't statically
+            // resolve the module during d.ts generation (avoids rootDir errors).
+            const moduleName = '@' + 'ottabase' + '/ottaorm';
+            const ottaorm = (await import(moduleName)) as any;
+            const { AuditLog } = ottaorm;
 
             const userContext = await this.getUserContext();
             const requestContext = await this.getRequestContext();
