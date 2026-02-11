@@ -33,6 +33,8 @@ interface ProviderUIBaseProps {
     preventFOUC?: boolean;
     preventFOUCInsideIframe?: boolean;
     fontFamilies?: ProviderUIBaseFontFamilies;
+    /** When true, do NOT set --font-heading/--font-body on wrapper (Brand Engine sets them on :root) */
+    fontVarsFromRoot?: boolean;
 }
 
 export const ProviderUIBase = ({
@@ -40,6 +42,7 @@ export const ProviderUIBase = ({
     preventFOUC = false,
     preventFOUCInsideIframe = false,
     fontFamilies,
+    fontVarsFromRoot = false,
 }: ProviderUIBaseProps): React.JSX.Element => {
     const mergedFontFamilies = {
         ...DEFAULT_FONT_FAMILIES,
@@ -54,19 +57,20 @@ export const ProviderUIBase = ({
 
     const shouldPreventFOUC = preventFOUC && (!isInsideIFRAME || preventFOUCInsideIframe);
 
+    const baseStyle = shouldPreventFOUC
+        ? { visibility: 'hidden' as const }
+        : ({
+              fontFamily: mergedFontFamilies.primary,
+              ...(fontVarsFromRoot
+                  ? { '--font-monospace': mergedFontFamilies.monospace }
+                  : {
+                        '--font-heading': mergedFontFamilies.heading,
+                        '--font-monospace': mergedFontFamilies.monospace,
+                    }),
+          } as React.CSSProperties);
+
     return (
-        <div
-            style={
-                shouldPreventFOUC
-                    ? { visibility: 'hidden' }
-                    : ({
-                          fontFamily: mergedFontFamilies.primary,
-                          '--font-heading': mergedFontFamilies.heading,
-                          '--font-monospace': mergedFontFamilies.monospace,
-                      } as React.CSSProperties)
-            }
-            suppressHydrationWarning
-        >
+        <div style={baseStyle} suppressHydrationWarning>
             {children}
         </div>
     );

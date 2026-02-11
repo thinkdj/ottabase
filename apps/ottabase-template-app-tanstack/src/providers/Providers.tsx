@@ -70,6 +70,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                                 preventFOUC={appConfig.ui.preventFOUC}
                                 preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
                                 fontFamilies={fontFamilies}
+                                fontVarsFromRoot
                             >
                                 <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
                                     <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>

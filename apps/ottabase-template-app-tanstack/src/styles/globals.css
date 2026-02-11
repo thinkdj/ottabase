@@ -12,7 +12,7 @@
     h4,
     h5,
     h6 {
-        font-family: var(--font-heading);
+        font-family: var(--font-heading, ui-sans-serif, system-ui, sans-serif);
     }
 }
 
