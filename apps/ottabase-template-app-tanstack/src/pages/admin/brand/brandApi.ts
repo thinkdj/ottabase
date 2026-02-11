@@ -19,6 +19,11 @@ export const brandApi = {
     getConfig: (params?: { organizationId?: string | null; appId?: string | null }) =>
         fetch(brandUrl(BASE, params as Record<string, string>)).then((r) => (r.ok ? r.json() : Promise.reject(r))),
 
+    getSettings: (params?: { organizationId?: string | null; appId?: string | null }) =>
+        fetch(brandUrl(`${BASE}/settings`, params as Record<string, string>)).then((r) =>
+            r.ok ? r.json() : Promise.reject(r),
+        ),
+
     updateSettings: (
         body: Record<string, unknown>,
         params?: { organizationId?: string | null; appId?: string | null },

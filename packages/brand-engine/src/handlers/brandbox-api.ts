@@ -5,7 +5,9 @@
 // ---------------------------------------------------------------------------
 
 import { BrandBox } from '../persistence/BrandBox.model';
+import { BrandSettings } from '../persistence/BrandSettings.model';
 import { createBrandCache } from '../persistence/cache';
+import { getLayoutData } from '../persistence/layoutData';
 import { logBrandAudit } from './audit-helper';
 import type { BrandApiEnv } from './brand-api';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -62,6 +64,7 @@ export async function handleGetBrandBoxes(
 
 /**
  * POST /api/brandbox - Create BrandBox
+ * When snapshotFromCurrent=true, snapshots current brand (active BrandBox or BrandSettings) into a new box.
  */
 export async function handleCreateBrandBox(
     request: Request,
@@ -76,7 +79,76 @@ export async function handleCreateBrandBox(
         return errorResponse('name is required', 400);
     }
 
-    // Validate JSON fields
+    const cache = createBrandCache(env.OBCF_KV);
+
+    if (body.snapshotFromCurrent === true) {
+        const activeBox = await BrandBox.findActive(organizationId, appId);
+        if (activeBox) {
+            const box = (await BrandBox.create({
+                organizationId,
+                appId: appId || null,
+                name,
+                slug: null,
+                isActive: false,
+                identityJson: activeBox.get('identityJson'),
+                logosJson: activeBox.get('logosJson'),
+                tokensJson: activeBox.get('tokensJson'),
+                themeVariantId: activeBox.get('themeVariantId'),
+                routeMappingsJson: activeBox.get('routeMappingsJson'),
+                layoutOverridesJson: activeBox.get('layoutOverridesJson'),
+                layoutTemplatesSnapshotJson: activeBox.get('layoutTemplatesSnapshotJson'),
+                customCss: activeBox.get('customCss'),
+                customMetaJson: activeBox.get('customMetaJson'),
+                hideOttabaseBranding: activeBox.get('hideOttabaseBranding'),
+                activeFrom: activeBox.get('activeFrom'),
+                activeUntil: activeBox.get('activeUntil'),
+            })) as BrandBox;
+            await cache.invalidate(organizationId, appId);
+            return jsonResponse({ id: box.get('id'), ...serializeBox(box) }, 201);
+        }
+
+        const settings = await BrandSettings.resolve(organizationId, appId);
+        if (settings) {
+            const layoutData = await getLayoutData(organizationId, appId);
+            const identityJson = JSON.stringify({
+                brandName: settings.get('brandName') || 'My App',
+                tagline: settings.get('tagline'),
+            });
+            const logosJson = JSON.stringify({
+                logoKey: settings.get('logoKey'),
+                logoDarkKey: settings.get('logoDarkKey'),
+                iconKey: settings.get('iconKey'),
+                ogImageKey: settings.get('ogImageKey'),
+                emailLogoKey: settings.get('emailLogoKey'),
+            });
+            const routeMappingsJson = JSON.stringify(layoutData.routeMappings);
+            const layoutTemplatesSnapshotJson = JSON.stringify(layoutData.layoutTemplatesMap);
+
+            const box = (await BrandBox.create({
+                organizationId,
+                appId: appId || null,
+                name,
+                slug: null,
+                isActive: false,
+                identityJson,
+                logosJson,
+                tokensJson: settings.get('tokensJson'),
+                themeVariantId: null,
+                routeMappingsJson,
+                layoutOverridesJson: settings.get('layoutJson'),
+                layoutTemplatesSnapshotJson,
+                customCss: settings.get('customCss'),
+                customMetaJson: null,
+                hideOttabaseBranding: (settings.get('hideOttabaseBranding') as boolean) ?? false,
+                activeFrom: null,
+                activeUntil: null,
+            })) as BrandBox;
+            await cache.invalidate(organizationId, appId);
+            return jsonResponse({ id: box.get('id'), ...serializeBox(box) }, 201);
+        }
+    }
+
+    // Validate JSON fields for manual create
     try {
         if (body.identityJson !== undefined) parseJsonField(body.identityJson, 'identityJson');
         if (body.logosJson !== undefined) parseJsonField(body.logosJson, 'logosJson');
@@ -91,7 +163,6 @@ export async function handleCreateBrandBox(
     const toJson = (v: unknown): string | null =>
         v === undefined || v === null ? null : typeof v === 'string' ? v : JSON.stringify(v);
 
-    const cache = createBrandCache(env.OBCF_KV);
     const box = (await BrandBox.create({
         organizationId,
         appId: appId || null,

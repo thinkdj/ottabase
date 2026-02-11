@@ -22,9 +22,9 @@ control branding.
 ### 3. Pages / Views
 
 - [x] **BrandSettingsTab**: Tabs for Identity, Logos, Tokens, Advanced
-- [x] **BrandBoxManagerTab**: List boxes, Create modal, Apply, Duplicate, Delete
-- [x] **LayoutEditorTab**: Layout templates + route mappings
-- [x] **ThemeVariantEditorTab**: Create/delete theme variants
+- [x] **BrandBoxManagerTab**: List boxes, Create (snapshots current), Edit name, Apply, Duplicate, Delete
+- [x] **LayoutEditorTab**: Layout templates (create, edit) + route mappings
+- [x] **ThemeVariantEditorTab**: Create, edit, delete theme variants
 
 ### 4. Integration
 

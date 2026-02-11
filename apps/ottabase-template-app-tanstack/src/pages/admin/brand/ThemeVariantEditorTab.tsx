@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Button,
@@ -16,7 +16,7 @@ import {
     Input,
     Label,
 } from '@ottabase/ui-shadcn';
-import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { themeVariantApi } from './brandApi';
@@ -74,16 +74,19 @@ export function ThemeVariantEditorTab() {
                                                 <p className="text-xs text-muted-foreground mt-1">{v.description}</p>
                                             )}
                                         </div>
-                                        <Button
-                                            size="sm"
-                                            variant="destructive"
-                                            onClick={() => {
-                                                if (confirm(`Delete "${v.name}"?`)) deleteMutation.mutate(v.id);
-                                            }}
-                                            disabled={deleteMutation.isPending}
-                                        >
-                                            <IconTrash className="h-4 w-4" />
-                                        </Button>
+                                        <div className="flex gap-2">
+                                            <EditVariantDialog variant={v} />
+                                            <Button
+                                                size="sm"
+                                                variant="destructive"
+                                                onClick={() => {
+                                                    if (confirm(`Delete "${v.name}"?`)) deleteMutation.mutate(v.id);
+                                                }}
+                                                disabled={deleteMutation.isPending}
+                                            >
+                                                <IconTrash className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -92,6 +95,101 @@ export function ThemeVariantEditorTab() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+function EditVariantDialog({ variant }: { variant: ThemeVariant }) {
+    const [open, setOpen] = useState(false);
+    const [name, setName] = useState(variant.name);
+    const [description, setDescription] = useState(variant.description ?? '');
+    const [tokensJson, setTokensJson] = useState(variant.tokensJson ?? '{}');
+    const queryClient = useQueryClient();
+    const { refresh } = useBrand();
+
+    useEffect(() => {
+        if (open) {
+            setName(variant.name);
+            setDescription(variant.description ?? '');
+            setTokensJson(variant.tokensJson ?? '{}');
+        }
+    }, [open, variant]);
+
+    const updateMutation = useMutation({
+        mutationFn: (body: { name: string; description?: string; tokensJson: string }) =>
+            themeVariantApi.update(variant.id, body),
+        onSuccess: () => {
+            toast.success('Theme variant updated');
+            queryClient.invalidateQueries({ queryKey: ['brand', 'themes'] });
+            refresh();
+            setOpen(false);
+        },
+        onError: () => toast.error('Failed to update'),
+    });
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                    <IconEdit className="h-4 w-4" />
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Edit theme variant</DialogTitle>
+                    <DialogDescription>Update name, description, or tokens.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div>
+                        <Label htmlFor="editVariantName">Name</Label>
+                        <Input
+                            id="editVariantName"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="e.g. Holiday 2024"
+                        />
+                    </div>
+                    <div>
+                        <Label htmlFor="editVariantDesc">Description (optional)</Label>
+                        <Input
+                            id="editVariantDesc"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Brief description"
+                        />
+                    </div>
+                    <div>
+                        <Label htmlFor="editTokensJson">Tokens JSON</Label>
+                        <textarea
+                            id="editTokensJson"
+                            className="mt-1 w-full min-h-[120px] rounded-md border bg-background px-3 py-2 font-mono text-sm"
+                            value={tokensJson}
+                            onChange={(e) => setTokensJson(e.target.value)}
+                            placeholder='{"color":{"light":{"primary":"221.2 83.2% 53.3%"}}}'
+                            spellCheck={false}
+                        />
+                    </div>
+                    <Button
+                        onClick={() => {
+                            if (!name.trim()) return;
+                            try {
+                                JSON.parse(tokensJson);
+                            } catch {
+                                toast.error('Invalid JSON');
+                                return;
+                            }
+                            updateMutation.mutate({
+                                name: name.trim(),
+                                description: description.trim() || undefined,
+                                tokensJson,
+                            });
+                        }}
+                        disabled={updateMutation.isPending || !name.trim()}
+                    >
+                        {updateMutation.isPending ? 'Saving...' : 'Save'}
+                    </Button>
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }
 

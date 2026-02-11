@@ -4,6 +4,7 @@
 
 import {
     handleGetBrand,
+    handleGetBrandSettings,
     handleUpdateBrand,
     handleUploadLogo,
     handleGetLayouts,
@@ -43,6 +44,10 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
 
     if (route === '/api/brand' && method === 'GET') {
         return handleGetBrand(request, envBrand, orgId, appId);
+    }
+
+    if (route === '/api/brand/settings' && method === 'GET') {
+        return handleGetBrandSettings(request, envBrand, orgId, appId);
     }
 
     if (route === '/api/brand' && method === 'PUT') {

@@ -21,7 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@ottabase/ui-shadcn';
-import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { layoutApi } from './brandApi';
@@ -87,6 +87,7 @@ export function LayoutEditorTab() {
                                                 {t.componentKey}
                                             </span>
                                         </div>
+                                        <EditTemplateDialog template={t} />
                                     </div>
                                 ))}
                             </div>
@@ -218,6 +219,101 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplate[] }) {
                         disabled={putMutation.isPending}
                     >
                         {putMutation.isPending ? 'Creating...' : 'Create'}
+                    </Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function EditTemplateDialog({ template }: { template: LayoutTemplate }) {
+    const [open, setOpen] = useState(false);
+    const [name, setName] = useState(template.name);
+    const [componentKey, setComponentKey] = useState<LayoutComponentKey>(template.componentKey as LayoutComponentKey);
+    const queryClient = useQueryClient();
+    const { refresh } = useBrand();
+
+    useEffect(() => {
+        if (open) {
+            setName(template.name);
+            setComponentKey(template.componentKey as LayoutComponentKey);
+        }
+    }, [open, template]);
+
+    const defaultConfigs: Record<LayoutComponentKey, object> = {
+        homepage: { header: 'minimal', navigation: 'topbar', contentWidth: 'full', footer: true, density: 'comfy' },
+        'app-shell': {
+            header: 'topbar',
+            navigation: 'sidebar',
+            contentWidth: 'fluid',
+            footer: false,
+            density: 'comfy',
+        },
+        docs: { header: 'topbar', navigation: 'sidebar', contentWidth: 'fixed', footer: true, density: 'compact' },
+        minimal: { header: 'none', navigation: 'topbar', contentWidth: 'full', footer: false, density: 'comfy' },
+    };
+
+    const putMutation = useMutation({
+        mutationFn: (body: { id: string; name: string; componentKey: string; config: object }) =>
+            layoutApi.putTemplate(body),
+        onSuccess: () => {
+            toast.success('Template updated');
+            queryClient.invalidateQueries({ queryKey: ['brand', 'layouts'] });
+            refresh();
+            setOpen(false);
+        },
+        onError: () => toast.error('Failed to update'),
+    });
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                    <IconEdit className="h-4 w-4" />
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Edit layout template</DialogTitle>
+                    <DialogDescription>Change name or component.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div>
+                        <Label htmlFor="editLayoutName">Name</Label>
+                        <Input
+                            id="editLayoutName"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="e.g. Main App Shell"
+                        />
+                    </div>
+                    <div>
+                        <Label>Component</Label>
+                        <Select value={componentKey} onValueChange={(v) => setComponentKey(v as LayoutComponentKey)}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {COMPONENT_KEYS.map((k) => (
+                                    <SelectItem key={k} value={k}>
+                                        {k}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <Button
+                        onClick={() =>
+                            putMutation.mutate({
+                                id: template.id,
+                                name: name.trim() || template.name,
+                                componentKey,
+                                config: (template.config as object) ?? defaultConfigs[componentKey],
+                            })
+                        }
+                        disabled={putMutation.isPending}
+                    >
+                        {putMutation.isPending ? 'Saving...' : 'Save'}
                     </Button>
                 </div>
             </DialogContent>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Badge,
@@ -17,7 +17,7 @@ import {
     Input,
     Label,
 } from '@ottabase/ui-shadcn';
-import { IconCheck, IconCopy, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconCheck, IconCopy, IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { brandboxApi } from './brandApi';
@@ -61,13 +61,21 @@ export function BrandBoxManagerTab() {
     });
 
     const createMutation = useMutation({
-        mutationFn: (body: { name: string; routeMappingsJson?: string }) =>
-            brandboxApi.create({ name: body.name, routeMappingsJson: body.routeMappingsJson ?? '[]' }),
+        mutationFn: (body: { name: string }) => brandboxApi.create({ name: body.name, snapshotFromCurrent: true }),
         onSuccess: () => {
             toast.success('BrandBox created');
             queryClient.invalidateQueries({ queryKey: ['brandbox'] });
         },
         onError: () => toast.error('Failed to create'),
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: ({ id, name }: { id: string; name: string }) => brandboxApi.update(id, { name }),
+        onSuccess: () => {
+            toast.success('BrandBox updated');
+            queryClient.invalidateQueries({ queryKey: ['brandbox'] });
+        },
+        onError: () => toast.error('Failed to update'),
     });
 
     if (isLoading) {
@@ -90,7 +98,7 @@ export function BrandBoxManagerTab() {
                 <CardContent>
                     <div className="space-y-4">
                         <CreateBoxDialog
-                            onCreate={(name) => createMutation.mutateAsync({ name })}
+                            onCreate={(name) => createMutation.mutateAsync({ name: name })}
                             loading={createMutation.isPending}
                         />
                         {boxes.length === 0 ? (
@@ -123,6 +131,11 @@ export function BrandBoxManagerTab() {
                                                     Apply
                                                 </Button>
                                             )}
+                                            <EditBoxDialog
+                                                box={box}
+                                                onSave={(name) => updateMutation.mutateAsync({ id: box.id, name })}
+                                                loading={updateMutation.isPending}
+                                            />
                                             <Button
                                                 size="sm"
                                                 variant="outline"
@@ -153,6 +166,60 @@ export function BrandBoxManagerTab() {
     );
 }
 
+function EditBoxDialog({
+    box,
+    onSave,
+    loading,
+}: {
+    box: { id: string; name: string };
+    onSave: (name: string) => Promise<unknown>;
+    loading: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const [name, setName] = useState(box.name);
+
+    useEffect(() => {
+        setName(box.name);
+    }, [box.name, open]);
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                    <IconEdit className="h-4 w-4" />
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Edit BrandBox</DialogTitle>
+                    <DialogDescription>Change the display name.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div>
+                        <Label htmlFor="editBoxName">Name</Label>
+                        <Input
+                            id="editBoxName"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="e.g. Christmas 2024"
+                        />
+                    </div>
+                    <Button
+                        onClick={async () => {
+                            if (!name.trim()) return;
+                            await onSave(name.trim());
+                            setOpen(false);
+                        }}
+                        disabled={loading || !name.trim()}
+                    >
+                        {loading ? 'Saving...' : 'Save'}
+                    </Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 function CreateBoxDialog({ onCreate, loading }: { onCreate: (name: string) => Promise<unknown>; loading: boolean }) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
@@ -168,7 +235,9 @@ function CreateBoxDialog({ onCreate, loading }: { onCreate: (name: string) => Pr
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Create BrandBox</DialogTitle>
-                    <DialogDescription>Save the current brand look as a one-click preset.</DialogDescription>
+                    <DialogDescription>
+                        Saves the current brand (identity, logos, tokens, layouts) as a one-click preset.
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div>

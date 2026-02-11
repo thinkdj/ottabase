@@ -45,6 +45,30 @@ export async function handleGetBrand(
 }
 
 /**
+ * GET /api/brand/settings - Get raw settings for admin editing (tokensJson, layoutJson, etc.)
+ */
+export async function handleGetBrandSettings(
+    _request: Request,
+    env: BrandApiEnv,
+    organizationId: string | null,
+    appId?: string | null,
+): Promise<Response> {
+    const settings = await BrandSettings.resolve(organizationId, appId);
+    if (!settings) return errorResponse('Brand settings not found', 404);
+    const raw = {
+        brandName: settings.get('brandName'),
+        tagline: settings.get('tagline'),
+        tokensJson: settings.get('tokensJson') ?? '{}',
+        layoutJson: settings.get('layoutJson') ?? '{}',
+        defaultColorScheme: settings.get('defaultColorScheme') ?? 'system',
+        allowDarkModeToggle: settings.get('allowDarkModeToggle') ?? true,
+        customCss: settings.get('customCss') ?? '',
+        hideOttabaseBranding: settings.get('hideOttabaseBranding') ?? false,
+    };
+    return jsonResponse(raw, 200);
+}
+
+/**
  * PUT /api/brand - Update brand settings
  * RBAC: Route must require brand:edit or brand:*
  */

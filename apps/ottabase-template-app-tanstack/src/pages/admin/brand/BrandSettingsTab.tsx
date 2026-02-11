@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
     Button,
     Card,
@@ -8,6 +9,11 @@ import {
     CardTitle,
     Input,
     Label,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
     Tabs,
     TabsContent,
     TabsList,
@@ -20,13 +26,21 @@ import { brandApi } from './brandApi';
 import { LogoUploader } from './LogoUploader';
 
 export function BrandSettingsTab() {
-    const { config, isLoading, refresh } = useBrand();
+    const { config, isLoading: configLoading, refresh } = useBrand();
     const [saving, setSaving] = useState(false);
     const [brandName, setBrandName] = useState('');
     const [tagline, setTagline] = useState('');
     const [customCss, setCustomCss] = useState('');
     const [hideOttabaseBranding, setHideOttabaseBranding] = useState(false);
     const [tokensJson, setTokensJson] = useState('{}');
+    const [defaultColorScheme, setDefaultColorScheme] = useState<'light' | 'dark' | 'system'>('system');
+    const [allowDarkModeToggle, setAllowDarkModeToggle] = useState(true);
+
+    const { data: rawSettings } = useQuery({
+        queryKey: ['brand', 'settings'],
+        queryFn: () => brandApi.getSettings(),
+        enabled: !!config,
+    });
 
     useEffect(() => {
         if (config) {
@@ -34,9 +48,18 @@ export function BrandSettingsTab() {
             setTagline(config.tagline ?? '');
             setCustomCss(config.customCss ?? '');
             setHideOttabaseBranding(config.hideOttabaseBranding ?? false);
-            // Tokens would come from a different source - for now leave as empty
+            setDefaultColorScheme(config.defaultColorScheme ?? 'system');
+            setAllowDarkModeToggle(config.allowDarkModeToggle ?? true);
         }
     }, [config]);
+
+    useEffect(() => {
+        if (rawSettings) {
+            setTokensJson(rawSettings.tokensJson ?? '{}');
+            setDefaultColorScheme((rawSettings.defaultColorScheme as 'light' | 'dark' | 'system') ?? 'system');
+            setAllowDarkModeToggle(rawSettings.allowDarkModeToggle ?? true);
+        }
+    }, [rawSettings]);
 
     const handleSave = async () => {
         setSaving(true);
@@ -47,6 +70,8 @@ export function BrandSettingsTab() {
                 customCss: customCss || undefined,
                 hideOttabaseBranding,
                 tokensJson: tokensJson.trim() ? tokensJson : undefined,
+                defaultColorScheme,
+                allowDarkModeToggle,
             });
             toast.success('Brand settings saved');
             refresh();
@@ -57,7 +82,7 @@ export function BrandSettingsTab() {
         }
     };
 
-    if (isLoading || !config) {
+    if (configLoading || !config) {
         return (
             <div className="flex items-center justify-center py-12">
                 <p className="text-muted-foreground">Loading brand config...</p>
@@ -100,11 +125,46 @@ export function BrandSettingsTab() {
                                     placeholder="Optional slogan"
                                 />
                             </div>
+                            <div>
+                                <Label>Default color scheme</Label>
+                                <Select
+                                    value={defaultColorScheme}
+                                    onValueChange={(v) => setDefaultColorScheme(v as 'light' | 'dark' | 'system')}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="light">Light</SelectItem>
+                                        <SelectItem value="dark">Dark</SelectItem>
+                                        <SelectItem value="system">System</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label>Allow dark mode toggle</Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        Let users switch light/dark in the app.
+                                    </p>
+                                </div>
+                                <Switch checked={allowDarkModeToggle} onCheckedChange={setAllowDarkModeToggle} />
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
 
                 <TabsContent value="logos">
+                    {(config.logos?.icon ?? config.logos?.primary) && (
+                        <div className="mb-4 rounded-lg border p-3">
+                            <p className="text-xs text-muted-foreground mb-2">Favicon (icon used as /favicon)</p>
+                            <img
+                                src={config.logos?.icon ?? config.logos?.primary ?? ''}
+                                alt="Favicon preview"
+                                className="h-8 w-8 object-contain"
+                            />
+                        </div>
+                    )}
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         <LogoUploader logoType="logo" currentUrl={config.logos?.primary} onUploaded={() => refresh()} />
                         <LogoUploader
@@ -131,7 +191,8 @@ export function BrandSettingsTab() {
                         <CardHeader>
                             <CardTitle>Design tokens</CardTitle>
                             <CardDescription>
-                                JSON overrides for colors, typography, spacing. Merges with defaults.
+                                JSON overrides for colors, typography, spacing. Merges with defaults. Use HSL format for
+                                colors.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

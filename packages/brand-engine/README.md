@@ -59,6 +59,7 @@ Wire these in your Cloudflare Worker. Handlers: `@ottabase/brand-engine/handlers
 | Method | Path                          | Description                                                                       |
 | ------ | ----------------------------- | --------------------------------------------------------------------------------- |
 | GET    | `/api/brand`                  | Get resolved brand config (?organizationId, ?appId, ?brandPreview, ?themeVariant) |
+| GET    | `/api/brand/settings`         | Get raw settings for admin editing (tokensJson, defaultColorScheme, etc.)         |
 | PUT    | `/api/brand`                  | Update brand settings                                                             |
 | POST   | `/api/brand/apply`            | Activate a BrandBox (`{ brandBoxId }`)                                            |
 | POST   | `/api/brand/logo/:type`       | Upload logo (types: logo, logo-dark, icon, og-image, email-logo)                  |
