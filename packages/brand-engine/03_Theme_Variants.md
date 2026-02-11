@@ -22,9 +22,10 @@ without changing the structural layout.
 
 - [ ] Create `packages/brand-engine/src/handlers/theme-variant-api.ts`
 - [ ] `GET /api/brand/themes` - List variants
-- [ ] `POST /api/brand/themes` - Create variant
-- [ ] `PUT /api/brand/themes/:id` - Update variant
-- [ ] `DELETE /api/brand/themes/:id` - Delete variant
+- [ ] `POST /api/brand/themes` - Create variant (RBAC: `brand:edit`)
+- [ ] `PUT /api/brand/themes/:id` - Update variant (RBAC: `brand:edit`)
+- [ ] `DELETE /api/brand/themes/:id` - Delete variant (RBAC: `brand:edit`)
+- [ ] `PUT /api/brand/layouts` - Create/update templates (implemented in step 2 - add RBAC: `brand:edit`)
 
 ### 4. Theme Resolution Logic
 

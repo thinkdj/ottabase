@@ -1,16 +1,27 @@
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { api, isApiError } from '@/lib/api';
-import { BrandLayout } from '@/ottabase/components/BrandLayout';
 import { APP_META } from '@/ottabase/config/app.config';
 import { Button, Toaster } from '@ottabase/ui-shadcn';
-import { Link, RootRoute, Route, Router, createBrowserHistory, lazyRouteComponent } from '@tanstack/react-router';
+import { LayoutResolver } from '@ottabase/brand-engine-react';
+import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
+import {
+    Link,
+    Outlet,
+    RootRoute,
+    Route,
+    Router,
+    createBrowserHistory,
+    lazyRouteComponent,
+} from '@tanstack/react-router';
 import { useState } from 'react';
 
 function RootLayout() {
     return (
         <>
             <Toaster />
-            <BrandLayout />
+            <LayoutResolver router={tanstackRouterAdapter}>
+                <Outlet />
+            </LayoutResolver>
         </>
     );
 }

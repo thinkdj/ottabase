@@ -2,7 +2,8 @@
 // BrandEngine – Default token values
 // ---------------------------------------------------------------------------
 
-import type { TokenColors, TokenCursors, TokenMotion, TokenShadows, TokenSpacing } from './tokens';
+import type { BrandTheme } from './theme';
+import type { DesignTokens, TokenColors, TokenCursors, TokenMotion, TokenShadows, TokenSpacing } from './tokens';
 
 /** Default light-mode colour palette */
 export const DEFAULT_COLORS_LIGHT: TokenColors = {
@@ -115,4 +116,32 @@ export const DEFAULT_SPACING: TokenSpacing = {
     section: '2rem',
     card: '1.5rem',
     element: '0.5rem',
+};
+
+/** Default typography for base theme */
+export const DEFAULT_TYPOGRAPHY: DesignTokens['typography'] = {
+    heading: { fontFamily: 'Inter' },
+    body: { fontFamily: 'Inter' },
+    handwriting: { fontFamily: 'cursive' },
+};
+
+/**
+ * Built-in default BrandTheme used when no theme is registered.
+ * Used by brandSettingsToConfig for resolveTheme base.
+ */
+export const DEFAULT_BRAND_THEME: BrandTheme = {
+    name: 'default',
+    tokens: {
+        color: {
+            light: DEFAULT_COLORS_LIGHT,
+            dark: DEFAULT_COLORS_DARK,
+        },
+        typography: DEFAULT_TYPOGRAPHY,
+        spacing: DEFAULT_SPACING,
+        radius: '0.5rem',
+        shadow: DEFAULT_SHADOWS,
+        motion: DEFAULT_MOTION,
+    },
+    layout: undefined,
+    cursors: DEFAULT_CURSORS,
 };

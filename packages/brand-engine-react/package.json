@@ -1,0 +1,66 @@
+{
+    "name": "@ottabase/brand-engine-react",
+    "version": "1.0.0",
+    "description": "React bindings for Ottabase Brand Engine – BrandProvider, LayoutResolver, useBrand hook",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./routers": {
+            "types": "./dist/routers/tanstack.d.ts",
+            "import": "./dist/routers/tanstack.mjs",
+            "require": "./dist/routers/tanstack.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.tsx src/routers/tanstack.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.tsx src/routers/tanstack.ts --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "brand",
+        "theme",
+        "react",
+        "ottabase"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@ottabase/brand-engine": "workspace:*"
+    },
+    "peerDependencies": {
+        "react": "catalog:",
+        "@tanstack/react-router": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "@tanstack/react-router": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@tanstack/react-router": "catalog:",
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "eslint": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    }
+}

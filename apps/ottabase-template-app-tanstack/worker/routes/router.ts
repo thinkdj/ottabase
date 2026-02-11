@@ -76,6 +76,7 @@ import {
     handleShortlinksCreate,
     handleShortlinksList,
 } from './shortlinks';
+import { handleBrandApi } from './brand';
 
 export interface ApiRouteContext {
     request: Request;
@@ -115,6 +116,10 @@ const METHOD_HANDLERS: Record<string, MethodHandler> = {
 
 async function handleGetRoutes(context: ApiRouteContext): Promise<Response | null> {
     const { route } = context;
+
+    if (route === '/api/brand') {
+        return handleBrandApi(context);
+    }
 
     if (route === '/api/health') {
         return jsonResponse({

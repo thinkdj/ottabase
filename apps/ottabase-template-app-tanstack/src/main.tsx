@@ -5,6 +5,9 @@ import { RouterProvider } from '@tanstack/react-router';
 import { router } from './router';
 import { Providers } from './providers/Providers';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { initBrandLayouts } from './ottabase/components/brandLayout.init';
+
+initBrandLayouts();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>

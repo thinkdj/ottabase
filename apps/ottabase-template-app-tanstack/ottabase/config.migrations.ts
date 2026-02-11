@@ -10,6 +10,7 @@
 // 3. Enable it in `migrationConfig`
 // ============================================================
 
+import { brandSettingsTable, layoutTemplatesTable, layoutRouteMappingsTable } from '@ottabase/brand-engine/persistence';
 import {
     categoriesTable,
     ottablogPluginsTable,
@@ -50,6 +51,10 @@ const PACKAGE_REGISTRY = {
         tables: { referralTrackingTable },
         migrations: [] as Migration[],
     },
+    brandEngine: {
+        tables: { brandSettingsTable, layoutTemplatesTable, layoutRouteMappingsTable },
+        migrations: [] as Migration[],
+    },
 } as const;
 
 /**
@@ -63,6 +68,7 @@ export const migrationConfig: Record<MigrationPackageName, boolean> = {
     ottablog: true,
     shortlinks: true,
     referrals: true,
+    brandEngine: true,
 };
 
 // ============================================================
