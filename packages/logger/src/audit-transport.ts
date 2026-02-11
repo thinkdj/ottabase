@@ -111,7 +111,7 @@ export class AuditDbTransport implements Transport {
             // Dynamic import using a computed string so TypeScript won't statically
             // resolve the module during d.ts generation (avoids rootDir errors).
             const moduleName = '@' + 'ottabase' + '/ottaorm';
-            const ottaorm = (await import(moduleName)) as any;
+            const ottaorm = (await import(/* @vite-ignore */ moduleName)) as any;
             const { AuditLog } = ottaorm;
 
             const userContext = await this.getUserContext();
