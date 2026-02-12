@@ -1,2 +1,0 @@
-DO NOT CREATE YOUR PRISMA SCHEMA HERE. IT WOULD BE GENERATED.
-Check <appRoot>/ottabase/prisma directory;

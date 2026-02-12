@@ -1,5 +1,0 @@
-Ottabase Template App
-=======================
-This app would be copied as the starting base for other apps
-Make changes to ottabase/* files to customize you app
-You can safely delete the `app/demo` folder

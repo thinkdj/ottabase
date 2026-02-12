@@ -10,9 +10,9 @@
 
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { CRITICAL_STYLE_ID, DEFAULT_LAYOUT, pathPatternToRegex } from '@ottabase/brand-engine';
 import type { LayoutConfig, ResolvedBrandTheme } from '@ottabase/brand-engine';
+import { applyBrandTheme, CRITICAL_STYLE_ID, DEFAULT_LAYOUT, pathPatternToRegex } from '@ottabase/brand-engine';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 /** Route mapping shape (expanded form) */
 export type RouteMapping = { pathPattern: string; layoutTemplateId: string; brandKitId: string; priority: number };
@@ -349,8 +349,12 @@ export function BrandProvider({
     useEffect(() => {
         if (!config) return;
         if (typeof document !== 'undefined') {
+            // Remove critical CSS (SSR-injected) and replace with runtime CSS
             const critical = document.getElementById(CRITICAL_STYLE_ID);
             if (critical) critical.remove();
+
+            // Re-apply theme CSS variables to ensure they persist
+            applyBrandTheme(config.theme);
         }
         if (config.customCss) {
             debouncedInjectCss(config.customCss);

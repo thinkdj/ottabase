@@ -1,0 +1,64 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    // Wrangler configuration for Next.js homepage app with brand-engine integration
+    // Minimal configuration for a simple homepage with Cloudflare Workers
+
+    "name": "ottabase-template-app-nextjs-homepage",
+    "compatibility_date": "2024-12-30",
+    // Main worker configuration
+    // OpenNext for Cloudflare creates .open-next/worker.js as the entry point
+    "main": ".open-next/worker.js",
+    // For next.js apps
+    "compatibility_flags": [
+        // Enable Node.js API
+        "nodejs_compat",
+        // Allow to fetch URLs in your app
+        "global_fetch_strictly_public",
+    ],
+
+    // OpenNext already creates the worker & assets structure
+    "no_bundle": true,
+
+    // Observability - logging configuration
+    "observability": {
+        "enabled": true,
+    },
+
+    // Asset bindings
+    "assets": {
+        "directory": ".open-next/assets",
+        "binding": "OBCF_ASSETS",
+    },
+
+    // Environment variables
+    "vars": {
+        "ENVIRONMENT": "development",
+        "NODE_ENV": "production",
+    },
+
+    // Local development settings
+    "dev": {
+        "port": 8788,
+        "local_protocol": "http",
+    },
+
+    // Limits configuration
+    "limits": {
+        "cpu_ms": 50000,
+    },
+
+    // Environment-specific overrides
+    "env": {
+        "production": {
+            "vars": {
+                "ENVIRONMENT": "production",
+                "NODE_ENV": "production",
+            },
+            // Asset bindings for Production
+            "assets": {
+                "binding": "OBCF_ASSETS",
+                "directory": ".open-next/assets",
+            },
+        },
+    },
+}
