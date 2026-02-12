@@ -34,6 +34,7 @@
         "@ottabase/cf": "workspace:*",
         "@ottabase/cf-realtime": "workspace:*",
         "@ottabase/config": "workspace:*",
+        "@ottabase/cropper": "workspace:*",
         "@ottabase/db": "workspace:*",
         "@ottabase/email": "workspace:*",
         "@ottabase/forms": "workspace:*",

@@ -62,6 +62,21 @@ export function DemoIndexPage() {
 
                 <Card>
                     <CardHeader>
+                        <CardTitle>Image Cropper</CardTitle>
+                        <CardDescription>
+                            Vanilla image cropper: crop, flip, rotate. Square/rect/circle viewfinder. PNG/JPEG. Zero
+                            React. ~2–3 KB gzipped.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild variant="outline" className="w-full">
+                            <Link to="/demo/cropper">View Cropper Demo</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
                         <CardTitle>File Upload Package</CardTitle>
                         <CardDescription>
                             Drag-and-drop file uploader with progress tracking, validation, and Cloudflare R2/Images

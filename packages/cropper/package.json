@@ -1,0 +1,51 @@
+{
+    "name": "@ottabase/cropper",
+    "version": "1.0.0",
+    "description": "Advanced vanilla image cropper with smooth transitions. Crop, flip, rotate, zoom. Square/rect/circle viewfinder. Zero React.",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "keywords": [
+        "cropper",
+        "image",
+        "crop",
+        "flip",
+        "rotate",
+        "zoom",
+        "vanilla",
+        "image-cropper",
+        "photo-editor",
+        "canvas",
+        "resize",
+        "drag",
+        "transitions",
+        "animations"
+    ],
+    "license": "MIT",
+    "scripts": {
+        "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "type-check": "tsc --noEmit",
+        "test": "vitest --run"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    }
+}

@@ -4,6 +4,7 @@ import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import {
     Clock,
     Cloud,
+    Crop,
     Code,
     Database,
     FileStack,
@@ -35,6 +36,7 @@ const DEMO_LINKS: DemoLinkProps[] = [
     { to: '/demo/ottaorm', icon: Database, label: 'OttaORM' },
     { to: '/demo/ottaforms', icon: FileText, label: 'OttaForms' },
     { to: '/demo/ottaselect', icon: List, label: 'OttaSelect' },
+    { to: '/demo/cropper', icon: Crop, label: 'Cropper' },
     { to: '/demo/cloudflare', icon: Cloud, label: 'Cloudflare Services' },
     { to: '/demo/cloudflare/file-upload', icon: Upload, label: 'File Upload' },
     { to: '/demo/timezone', icon: Clock, label: 'Timezone Utils' },

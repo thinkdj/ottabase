@@ -178,6 +178,16 @@ const demoOttaSelectRoute = new Route({
     ),
 });
 
+const demoCropperRoute = new Route({
+    getParentRoute: () => demoLayoutRoute,
+    path: 'cropper',
+    component: lazyRouteComponent(() =>
+        import('@/pages/demo/cropper/CropperDemoPage').then((m) => ({
+            default: m.CropperDemoPage,
+        })),
+    ),
+});
+
 const demoTimezoneRoute = new Route({
     getParentRoute: () => demoLayoutRoute,
     path: 'timezone',
@@ -790,6 +800,7 @@ demoLayoutRoute.addChildren([
     demoOttaOrmRoute,
     demoOttaFormsRoute,
     demoOttaSelectRoute,
+    demoCropperRoute,
     demoLoggerRoute,
     demoI18nRoute,
     demoTimezoneRoute,

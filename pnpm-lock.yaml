@@ -570,6 +570,9 @@ importers:
       '@ottabase/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@ottabase/cropper':
+        specifier: workspace:*
+        version: link:../../packages/cropper
       '@ottabase/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -1001,6 +1004,24 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 20.19.28
+      tsup:
+        specifier: 'catalog:'
+        version: 8.5.1(@swc/core@1.13.5)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.28)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+
+  packages/cropper:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.19.28
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       tsup:
         specifier: 'catalog:'
         version: 8.5.1(@swc/core@1.13.5)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
