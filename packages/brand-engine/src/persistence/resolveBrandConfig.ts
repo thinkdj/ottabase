@@ -32,7 +32,7 @@ export interface ResolveBrandConfigOptions {
 }
 
 /** Full resolution data – all route mappings + all brand kits. Client resolves path locally. */
-export type FullBrandConfig = BrandResolutionCache & { mode: 'light' | 'dark' };
+export type FullBrandConfig = BrandResolutionCache & { mode: 'light' | 'dark'; r2PublicUrl?: string };
 
 /**
  * Resolve full brand data (route mappings, layouts, all brand kits). No path required.
@@ -52,7 +52,7 @@ export async function resolveFullBrandConfig(
 
     if (!skipCache) {
         const cached = await cache.getResolutionData(orgId, appId, mode);
-        if (cached) return { ...cached, mode };
+        if (cached) return { ...cached, mode, r2PublicUrl: r2Url };
     }
 
     const layoutData = await getLayoutData(orgId, appId);
@@ -87,17 +87,21 @@ export async function resolveFullBrandConfig(
         };
     }
 
-    const cacheData: FullBrandConfig = {
+    const cacheData: BrandResolutionCache = {
         routeMappings: layoutData.routeMappings,
         layoutTemplatesMap: layoutData.layoutTemplatesMap,
         brandKitsMap,
+    };
+    const fullConfig: FullBrandConfig = {
+        ...cacheData,
         mode,
+        r2PublicUrl: r2Url,
     };
 
     if (!skipCache) {
         await cache.setResolutionData(orgId, appId, mode, cacheData);
     }
-    return cacheData;
+    return fullConfig;
 }
 
 /**

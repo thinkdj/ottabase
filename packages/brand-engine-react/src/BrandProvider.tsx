@@ -21,6 +21,7 @@ export interface FullBrandConfig {
     routeMappings?: RouteMapping[];
     kit?: string;
     routes?: [string, string, number][];
+    r2PublicUrl?: string;
     layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }>;
     brandKitsMap: Record<
         string,
@@ -70,6 +71,7 @@ export interface BrandConfig {
     layoutTemplateId: string;
     layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }>;
     routeMappings: Array<{ pathPattern: string; layoutTemplateId: string; brandKitId: string; priority: number }>;
+    r2PublicUrl?: string;
 }
 
 interface BrandContextValue {
@@ -103,6 +105,7 @@ function resolveConfigForPath(full: FullBrandConfig, pathname: string): BrandCon
         layoutTemplateId: layoutId,
         layoutTemplatesMap: full.layoutTemplatesMap,
         routeMappings,
+        r2PublicUrl: full.r2PublicUrl,
     };
 }
 

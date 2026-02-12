@@ -34,6 +34,7 @@ function toCompactResponse(config: FullBrandConfig): CompactBrandConfig | FullBr
         layoutTemplatesMap: config.layoutTemplatesMap,
         brandKitsMap: config.brandKitsMap,
         mode: config.mode,
+        r2PublicUrl: config.r2PublicUrl,
     };
 }
 

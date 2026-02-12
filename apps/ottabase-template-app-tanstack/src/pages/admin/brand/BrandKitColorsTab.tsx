@@ -1,13 +1,13 @@
 import {
     buildTokensFromBaseColor,
     hexToHsl,
-    generatePalette,
     generateSemanticDefaults,
     type SemanticPalette,
 } from '@ottabase/brand-engine';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@ottabase/ui-shadcn';
 import { IconRefresh } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 function parseHsl(hslStr: string) {
     const parts = hslStr
@@ -39,9 +39,11 @@ export function BrandKitColorsTab({ tokensJson, onTokensChange }: BrandKitColors
                 // No direct hex from HSL, skip hexColor
             }
         } catch {
-            /* ignore */
+            if (tokensJson) {
+                toast.error('Invalid tokens JSON. Fix it before generating colors.');
+            }
         }
-    }, []);
+    }, [tokensJson]);
 
     const handleColorPickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const hex = e.target.value;
@@ -79,6 +81,9 @@ export function BrandKitColorsTab({ tokensJson, onTokensChange }: BrandKitColors
                 ),
             );
         } catch {
+            if (tokensJson) {
+                toast.error('Existing tokens JSON is invalid. Replacing color tokens only.');
+            }
             onTokensChange(JSON.stringify({ color: tokens.color }, null, 2));
         }
     };

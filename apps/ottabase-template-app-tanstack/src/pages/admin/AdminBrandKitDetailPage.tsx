@@ -207,8 +207,8 @@ export function AdminBrandKitDetailPage() {
         );
     }
 
-    // R2 public URL for logo display – may come from env/config when wired
-    const logoBaseUrl = (config as { _r2PublicUrl?: string })?._r2PublicUrl ?? '';
+    // R2 public URL for logo display
+    const logoBaseUrl = config?.r2PublicUrl ?? '';
     const logoUrls = getLogoUrls({ ...kit, ...draft } as BrandKitItem, logoBaseUrl);
 
     return (
