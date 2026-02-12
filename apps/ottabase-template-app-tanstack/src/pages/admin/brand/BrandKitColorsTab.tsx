@@ -38,9 +38,11 @@ export function BrandKitColorsTab({ tokensJson, onTokensChange }: BrandKitColors
                 setBaseColor(primary);
                 // No direct hex from HSL, skip hexColor
             }
-        } catch {
+        } catch (error) {
             if (tokensJson) {
-                toast.error('Invalid tokens JSON. Fix it before generating colors.');
+                const message =
+                    error instanceof Error ? `Invalid tokens JSON: ${error.message}` : 'Invalid tokens JSON';
+                toast.error(message);
             }
         }
     }, [tokensJson]);
@@ -80,9 +82,13 @@ export function BrandKitColorsTab({ tokensJson, onTokensChange }: BrandKitColors
                     2,
                 ),
             );
-        } catch {
+        } catch (error) {
             if (tokensJson) {
-                toast.error('Existing tokens JSON is invalid. Replacing color tokens only.');
+                const message =
+                    error instanceof Error
+                        ? `Existing tokens JSON is invalid (${error.message}). Replacing color tokens only.`
+                        : 'Existing tokens JSON is invalid. Replacing color tokens only.';
+                toast.error(message);
             }
             onTokensChange(JSON.stringify({ color: tokens.color }, null, 2));
         }
