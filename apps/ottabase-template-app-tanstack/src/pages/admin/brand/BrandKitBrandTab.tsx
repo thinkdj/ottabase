@@ -5,21 +5,28 @@ interface BrandKitBrandTabProps {
     brandName: string;
     tagline: string;
     onChange: (data: { name?: string; brandName?: string; tagline?: string }) => void;
+    /** When true, name field is read-only (system default kit) */
+    nameReadOnly?: boolean;
 }
 
-export function BrandKitBrandTab({ name, brandName, tagline, onChange }: BrandKitBrandTabProps) {
+export function BrandKitBrandTab({ name, brandName, tagline, onChange, nameReadOnly }: BrandKitBrandTabProps) {
     return (
         <div className="space-y-4">
             <div>
                 <Label htmlFor="kitName">Kit name</Label>
                 <p className="text-xs text-muted-foreground mb-1">
-                    Display name for this Brand Kit (e.g. Acme, Acme - Christmas)
+                    {nameReadOnly
+                        ? 'System default – name cannot be changed'
+                        : 'Display name for this Brand Kit (e.g. Acme, Acme - Christmas)'}
                 </p>
                 <Input
                     id="kitName"
                     value={name}
                     onChange={(e) => onChange({ name: e.target.value })}
                     placeholder="e.g. Marketing, Acme - Christmas"
+                    readOnly={nameReadOnly}
+                    disabled={nameReadOnly}
+                    className={nameReadOnly ? 'bg-muted' : ''}
                 />
             </div>
             <div>

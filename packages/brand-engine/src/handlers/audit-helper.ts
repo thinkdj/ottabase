@@ -7,16 +7,19 @@ import { logAudit, extractRequestContext } from '@ottabase/audit';
 
 /**
  * Log brand-related action to audit. Non-blocking – failures are caught.
+ * Pass userId/userEmail from the logged-in user; omit when unauthenticated (stores NULL, avoids FK violation).
  */
 export async function logBrandAudit(
     action: 'brand.update' | 'brand.apply' | 'brand.logo.upload' | 'brand.kit.update' | 'brand.kit.logo.upload',
     request: Request,
     metadata: Record<string, unknown>,
+    userId?: string,
+    userEmail?: string,
 ): Promise<void> {
     try {
-        const ctx = extractRequestContext(request);
+        const ctx = extractRequestContext(request, userId, userEmail);
         await logAudit({
-            userId: ctx.userId ?? 'system',
+            userId: ctx.userId,
             userEmail: ctx.userEmail,
             action,
             resourceType: 'brand',

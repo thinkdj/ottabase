@@ -34,6 +34,7 @@ export interface ResolvedBrandConfig {
 /** Brand Kit list/detail item */
 export interface BrandKitItem {
     id: string;
+    organizationId: string | null;
     name: string;
     slug?: string | null;
     brandName: string;

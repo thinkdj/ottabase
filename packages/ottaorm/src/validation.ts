@@ -59,7 +59,7 @@ function parseRules(rulesStr?: string): Map<string, number | boolean> {
         if (!name) continue;
         // Skip server-only rules (unique, alpha_dash, etc. - not expressible in Zod client-side)
         if (name === 'unique' || name === 'alpha_dash') continue;
-        
+
         if (param === undefined) {
             // Flag-style rule (e.g., "required", "email")
             map.set(name, true);
@@ -215,10 +215,11 @@ export function buildZodSchema(
 
     if (mode === 'update') {
         // All fields optional for partial updates
-        return z.object(shape).partial();
+        return z.object(shape).partial().passthrough();
     }
 
-    return z.object(shape);
+    // passthrough: preserve keys not in schema (e.g. editable:false fields like action/resourceType for AuditLog)
+    return z.object(shape).passthrough();
 }
 
 /**

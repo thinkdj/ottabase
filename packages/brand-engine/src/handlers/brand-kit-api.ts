@@ -15,6 +15,7 @@ import { logBrandAudit } from './audit-helper';
 function serializeKit(kit: BrandKit): BrandKitItem {
     return {
         id: kit.get('id') as string,
+        organizationId: (kit.get('organizationId') as string | null) ?? null,
         name: kit.get('name') as string,
         slug: (kit.get('slug') as string) ?? null,
         brandName: kit.get('brandName') as string,
@@ -98,12 +99,19 @@ export async function handleCreateBrandKit(
     return jsonResponse(serializeKit(kit), 201);
 }
 
+/** User context for audit logging (logged-in user's id/email) */
+export interface BrandAuditUser {
+    userId?: string;
+    userEmail?: string;
+}
+
 /** PUT /api/brand/kits/:id - Update Brand Kit */
 export async function handleUpdateBrandKit(
     request: Request,
     env: BrandApiEnv,
     id: string,
     organizationId: string | null,
+    auditUser?: BrandAuditUser,
 ): Promise<Response> {
     const kit = (await BrandKit.find(id)) as BrandKit | null;
     if (!kit)
@@ -128,6 +136,8 @@ export async function handleUpdateBrandKit(
         'hideOttabaseBranding',
     ] as const;
     for (const f of fields) {
+        // System default (org=null): name is locked and cannot be edited
+        if (f === 'name' && kOrg === null) continue;
         if (body[f] !== undefined) kit.set(f, body[f]);
     }
     if (body.tokensJson !== undefined) {
@@ -137,7 +147,13 @@ export async function handleUpdateBrandKit(
     await kit.save();
     await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
 
-    await logBrandAudit('brand.kit.update', request, { organizationId, kitId: id });
+    await logBrandAudit(
+        'brand.kit.update',
+        request,
+        { organizationId, kitId: id },
+        auditUser?.userId,
+        auditUser?.userEmail,
+    );
     return jsonResponse(serializeKit(kit), 200);
 }
 
@@ -152,6 +168,9 @@ export async function handleDeleteBrandKit(
     if (!kit) return errorResponse('Brand Kit not found', 404);
     const kOrg = kit.get('organizationId') as string | null;
     if (kOrg !== null && organizationId !== kOrg) return errorResponse('Brand Kit not found', 404);
+
+    // System default (org=null) cannot be deleted
+    if (kOrg === null) return errorResponse('Cannot delete the default Brand Kit', 400, { code: 'DEFAULT_KIT' });
 
     await kit.destroy();
     await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
@@ -203,6 +222,7 @@ export async function handleUploadBrandKitLogo(
     id: string,
     organizationId: string | null,
     logoType: LogoType,
+    auditUser?: BrandAuditUser,
 ): Promise<Response> {
     const kit = (await BrandKit.find(id)) as BrandKit | null;
     if (!kit) return errorResponse('Brand Kit not found', 404);
@@ -228,6 +248,12 @@ export async function handleUploadBrandKitLogo(
     await kit.save();
     await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
 
-    await logBrandAudit('brand.kit.logo.upload', request, { organizationId, kitId: id, logoType });
+    await logBrandAudit(
+        'brand.kit.logo.upload',
+        request,
+        { organizationId, kitId: id, logoType },
+        auditUser?.userId,
+        auditUser?.userEmail,
+    );
     return jsonResponse({ key, url: assets.getPublicUrl(key) }, 200);
 }

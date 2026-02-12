@@ -19,6 +19,7 @@ const fetchOpts = { credentials: 'include' as RequestCredentials };
 
 export interface BrandKitItem {
     id: string;
+    organizationId?: string | null;
     name: string;
     slug?: string | null;
     brandName: string;

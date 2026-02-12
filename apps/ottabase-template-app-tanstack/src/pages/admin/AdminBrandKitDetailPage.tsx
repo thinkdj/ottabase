@@ -271,6 +271,7 @@ export function AdminBrandKitDetailPage() {
                             brandName={draft.brandName}
                             tagline={draft.tagline}
                             onChange={(d) => setDraft((s) => ({ ...s, ...d }))}
+                            nameReadOnly={kit.organizationId === null}
                         />
                     </TabsContent>
                     <TabsContent value="logo">

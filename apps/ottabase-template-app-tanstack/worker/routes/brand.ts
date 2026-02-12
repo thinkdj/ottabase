@@ -17,8 +17,18 @@ import {
     handleUploadBrandKitLogo,
 } from '@ottabase/brand-engine/handlers';
 import type { ApiRouteContext } from './router';
+import type { AdminContext } from '../lib/admin-guard';
 import { requireBrandEditAccess } from '../lib/admin-guard';
 import { brandEnv, getOrgApp } from '../lib/brand-utils';
+
+function toAuditUser(guard: AdminContext): { userId?: string; userEmail?: string } | undefined {
+    const u = guard.user;
+    if (!u) return undefined;
+    return {
+        userId: (typeof u.get === 'function' ? u.get('id') : u.id) ?? undefined,
+        userEmail: (typeof u.get === 'function' ? u.get('email') : u.email) ?? undefined,
+    };
+}
 
 export async function handleBrandApi(context: ApiRouteContext): Promise<Response | null> {
     const { route, request, url, env, method } = context;
@@ -49,7 +59,7 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
         if (method === 'PUT') {
             const guard = await requireBrandEditAccess(context, orgId, appId);
             if (guard instanceof Response) return guard;
-            return handleUpdateBrandKit(request, envBrand, id, guard.organizationId);
+            return handleUpdateBrandKit(request, envBrand, id, guard.organizationId, toAuditUser(guard));
         }
         if (method === 'DELETE') {
             const guard = await requireBrandEditAccess(context, orgId, appId);
@@ -75,6 +85,7 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
             kitLogoMatch[1],
             guard.organizationId,
             kitLogoMatch[2] as 'logo' | 'logo-dark' | 'icon' | 'og-image' | 'email-logo',
+            toAuditUser(guard),
         );
     }
 

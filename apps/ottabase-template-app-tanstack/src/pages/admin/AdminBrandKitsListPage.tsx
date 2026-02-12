@@ -134,6 +134,7 @@ export function AdminBrandKitsListPage() {
                                     onDelete={() => deleteMutation.mutate(kit.id)}
                                     cloning={cloneMutation.isPending}
                                     deleting={deleteMutation.isPending}
+                                    isDefault={kit.organizationId === null}
                                 />
                             ))}
                         </div>
@@ -150,12 +151,14 @@ function KitCard({
     onDelete,
     cloning,
     deleting,
+    isDefault,
 }: {
     kit: BrandKitItem;
     onClone: () => void;
     onDelete: () => void;
     cloning: boolean;
     deleting: boolean;
+    isDefault?: boolean;
 }) {
     return (
         <Link
@@ -194,16 +197,18 @@ function KitCard({
                             <IconCopy className="h-4 w-4 mr-2" />
                             Clone
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onClick={(e) => {
-                                e.preventDefault();
-                                if (window.confirm('Delete this Brand Kit? This cannot be undone.')) onDelete();
-                            }}
-                            disabled={deleting}
-                            className="text-destructive focus:text-destructive"
-                        >
-                            Delete
-                        </DropdownMenuItem>
+                        {!isDefault && (
+                            <DropdownMenuItem
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    if (window.confirm('Delete this Brand Kit? This cannot be undone.')) onDelete();
+                                }}
+                                disabled={deleting}
+                                className="text-destructive focus:text-destructive"
+                            >
+                                Delete
+                            </DropdownMenuItem>
+                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
