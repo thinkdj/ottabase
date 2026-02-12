@@ -26,10 +26,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <head>
                 {/* Inject critical CSS for theme variables */}
                 <style id="brand-critical" dangerouslySetInnerHTML={{ __html: criticalCSS }} />
-                {/* Load fonts */}
-                <link rel="stylesheet" href={theme.typography.heading.url} />
-                <link rel="stylesheet" href={theme.typography.body.url} />
-                <link rel="stylesheet" href={theme.typography.handwriting.url} />
+                {/* Load fonts - only if URLs are defined */}
+                {theme.typography.heading.url && <link rel="stylesheet" href={theme.typography.heading.url} />}
+                {theme.typography.body.url && <link rel="stylesheet" href={theme.typography.body.url} />}
+                {theme.typography.handwriting.url && <link rel="stylesheet" href={theme.typography.handwriting.url} />}
             </head>
             <body>
                 <Providers initialBrandConfig={brandConfig}>{children}</Providers>
