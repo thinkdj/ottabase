@@ -1,26 +1,20 @@
 // ---------------------------------------------------------------------------
-// Brand API routes – GET /api/brand, GET/POST /api/brand/themes, PUT/DELETE /api/brand/themes/:id
+// Brand API routes – Brand Kits, layouts, mappings, GET /api/brand (path-aware)
 // ---------------------------------------------------------------------------
 
 import {
     handleGetBrand,
-    handleGetBrandSettings,
-    handleUpdateBrand,
-    handleUploadLogo,
     handleGetLayouts,
     handlePutLayout,
     handleGetMappings,
     handlePutMappings,
-    handleGetThemeVariants,
-    handleCreateThemeVariant,
-    handleUpdateThemeVariant,
-    handleDeleteThemeVariant,
-    handleGetBrandPresets,
-    handleCreateBrandPreset,
-    handleUpdateBrandPreset,
-    handleDeleteBrandPreset,
-    handleApplyBrandPreset,
-    handleDuplicateBrandPreset,
+    handleGetBrandKits,
+    handleGetBrandKit,
+    handleCreateBrandKit,
+    handleUpdateBrandKit,
+    handleDeleteBrandKit,
+    handleCloneBrandKit,
+    handleUploadBrandKitLogo,
 } from '@ottabase/brand-engine/handlers';
 import type { ApiRouteContext } from './router';
 import { requireBrandEditAccess } from '../lib/admin-guard';
@@ -31,76 +25,60 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
     const envBrand = brandEnv(env);
     const { orgId, appId } = getOrgApp(url);
 
+    // GET /api/brand - path required (client passes ?path=/current/path)
     if (route === '/api/brand' && method === 'GET') {
         return handleGetBrand(request, envBrand, orgId, appId);
     }
 
-    if (route === '/api/brand/settings' && method === 'GET') {
-        return handleGetBrandSettings(request, envBrand, orgId, appId);
+    // Brand Kits CRUD
+    if (route === '/api/brand/kits' && method === 'GET') {
+        return handleGetBrandKits(request, envBrand, orgId);
     }
-
-    if (route === '/api/brand' && method === 'PUT') {
+    if (route === '/api/brand/kits' && method === 'POST') {
         const guard = await requireBrandEditAccess(context, orgId, appId);
         if (guard instanceof Response) return guard;
-        return handleUpdateBrand(request, envBrand, guard.organizationId, guard.appId);
+        return handleCreateBrandKit(request, envBrand, guard.organizationId);
     }
 
-    if (route === '/api/brand/apply' && method === 'POST') {
-        const guard = await requireBrandEditAccess(context, orgId, appId);
-        if (guard instanceof Response) return guard;
-        return handleApplyBrandPreset(request, envBrand, guard.organizationId, guard.appId);
-    }
-
-    if (route === '/api/brand/presets' && method === 'GET') {
-        return handleGetBrandPresets(request, envBrand, orgId, appId);
-    }
-    if (route === '/api/brand/presets' && method === 'POST') {
-        const guard = await requireBrandEditAccess(context, orgId, appId);
-        if (guard instanceof Response) return guard;
-        return handleCreateBrandPreset(request, envBrand, guard.organizationId, guard.appId);
-    }
-
-    const presetDuplicateMatch = route.match(/^\/api\/brand\/presets\/([^/]+)\/duplicate$/);
-    if (presetDuplicateMatch && method === 'POST') {
-        const guard = await requireBrandEditAccess(context, orgId, appId);
-        if (guard instanceof Response) return guard;
-        return handleDuplicateBrandPreset(
-            request,
-            envBrand,
-            presetDuplicateMatch[1],
-            guard.organizationId,
-            guard.appId,
-        );
-    }
-
-    const presetByIdMatch = route.match(/^\/api\/brand\/presets\/([^/]+)$/);
-    if (presetByIdMatch) {
-        const id = presetByIdMatch[1];
+    const kitByIdMatch = route.match(/^\/api\/brand\/kits\/([^/]+)$/);
+    if (kitByIdMatch) {
+        const id = kitByIdMatch[1];
+        if (method === 'GET') {
+            return handleGetBrandKit(request, envBrand, id, orgId);
+        }
         if (method === 'PUT') {
             const guard = await requireBrandEditAccess(context, orgId, appId);
             if (guard instanceof Response) return guard;
-            return handleUpdateBrandPreset(request, envBrand, id, guard.organizationId, guard.appId);
+            return handleUpdateBrandKit(request, envBrand, id, guard.organizationId);
         }
         if (method === 'DELETE') {
             const guard = await requireBrandEditAccess(context, orgId, appId);
             if (guard instanceof Response) return guard;
-            return handleDeleteBrandPreset(request, envBrand, id, guard.organizationId, guard.appId);
+            return handleDeleteBrandKit(request, envBrand, id, guard.organizationId);
         }
     }
 
-    const logoMatch = route.match(/^\/api\/brand\/logo\/(logo|logo-dark|icon|og-image|email-logo)$/);
-    if (logoMatch && method === 'POST') {
+    const kitCloneMatch = route.match(/^\/api\/brand\/kits\/([^/]+)\/clone$/);
+    if (kitCloneMatch && method === 'POST') {
         const guard = await requireBrandEditAccess(context, orgId, appId);
         if (guard instanceof Response) return guard;
-        return handleUploadLogo(
+        return handleCloneBrandKit(request, envBrand, kitCloneMatch[1], guard.organizationId);
+    }
+
+    const kitLogoMatch = route.match(/^\/api\/brand\/kits\/([^/]+)\/logo\/(logo|logo-dark|icon|og-image|email-logo)$/);
+    if (kitLogoMatch && method === 'POST') {
+        const guard = await requireBrandEditAccess(context, orgId, appId);
+        if (guard instanceof Response) return guard;
+        return handleUploadBrandKitLogo(
             request,
             envBrand,
+            kitLogoMatch[1],
             guard.organizationId,
-            guard.appId,
-            logoMatch[1] as 'logo' | 'logo-dark' | 'icon' | 'og-image' | 'email-logo',
+            kitLogoMatch[2] as 'logo' | 'logo-dark' | 'icon' | 'og-image' | 'email-logo',
         );
     }
 
+    // Layouts & Mappings
     if (route === '/api/brand/layouts' && method === 'GET') {
         return handleGetLayouts(request, envBrand, orgId, appId);
     }
@@ -116,31 +94,6 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
         const guard = await requireBrandEditAccess(context, orgId, appId);
         if (guard instanceof Response) return guard;
         return handlePutMappings(request, envBrand, guard.organizationId, guard.appId);
-    }
-
-    if (route === '/api/brand/themes' && method === 'GET') {
-        return handleGetThemeVariants(request, envBrand, orgId, appId);
-    }
-
-    if (route === '/api/brand/themes' && method === 'POST') {
-        const guard = await requireBrandEditAccess(context, orgId, appId);
-        if (guard instanceof Response) return guard;
-        return handleCreateThemeVariant(request, envBrand, guard.organizationId, guard.appId);
-    }
-
-    const themeByIdMatch = route.match(/^\/api\/brand\/themes\/([^/]+)$/);
-    if (themeByIdMatch) {
-        const id = themeByIdMatch[1];
-        if (method === 'PUT') {
-            const guard = await requireBrandEditAccess(context, orgId, appId);
-            if (guard instanceof Response) return guard;
-            return handleUpdateThemeVariant(request, envBrand, id, guard.organizationId, guard.appId);
-        }
-        if (method === 'DELETE') {
-            const guard = await requireBrandEditAccess(context, orgId, appId);
-            if (guard instanceof Response) return guard;
-            return handleDeleteThemeVariant(request, envBrand, id, guard.organizationId, guard.appId);
-        }
     }
 
     return null;

@@ -9,7 +9,7 @@ import { logAudit, extractRequestContext } from '@ottabase/audit';
  * Log brand-related action to audit. Non-blocking – failures are caught.
  */
 export async function logBrandAudit(
-    action: 'brand.update' | 'brand.apply' | 'brand.logo.upload',
+    action: 'brand.update' | 'brand.apply' | 'brand.logo.upload' | 'brand.kit.update' | 'brand.kit.logo.upload',
     request: Request,
     metadata: Record<string, unknown>,
 ): Promise<void> {

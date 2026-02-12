@@ -1,41 +1,75 @@
 // ---------------------------------------------------------------------------
 // Brand Engine React – BrandProvider
-// Fetches config from API, applies theme via applyBrandTheme, injects custom CSS.
-// Cooperates with edge-injected #brand-critical: applies inline styles (which override)
-// and removes the style tag to become sole owner after hydration (avoids duplication).
+// Single fetch GET /api/brand returns full config. Client resolves path locally.
 // ---------------------------------------------------------------------------
 
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { applyBrandTheme, CRITICAL_STYLE_ID } from '@ottabase/brand-engine';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import { CRITICAL_STYLE_ID, resolveRouteForPath } from '@ottabase/brand-engine';
 import type { LayoutConfig } from '@ottabase/brand-engine';
 import type { ResolvedBrandTheme } from '@ottabase/brand-engine';
 
+/** Route mapping shape (expanded form) */
+export type RouteMapping = { pathPattern: string; layoutTemplateId: string; brandKitId: string; priority: number };
+
 /**
- * Brand config shape returned by GET /api/brand
+ * Full config from GET /api/brand – route mappings, layouts, all brand kits.
+ * API may return compact form (kit + routes) when single brand kit.
+ */
+export interface FullBrandConfig {
+    routeMappings?: RouteMapping[];
+    kit?: string;
+    routes?: [string, string, number][];
+    layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }>;
+    brandKitsMap: Record<
+        string,
+        {
+            brandName: string;
+            tagline?: string;
+            logos: Record<string, string>;
+            theme: ResolvedBrandTheme;
+            themeBase: string;
+            tenantTheme: unknown;
+            defaultColorScheme: string;
+            allowDarkModeToggle: boolean;
+            customCss?: string;
+            hideOttabaseBranding: boolean;
+        }
+    >;
+    mode: 'light' | 'dark';
+}
+
+function expandCompactConfig(config: FullBrandConfig): RouteMapping[] {
+    if (config.routeMappings?.length) return config.routeMappings;
+    if (config.kit && config.routes) {
+        return config.routes.map(([pathPattern, layoutTemplateId, priority]) => ({
+            pathPattern,
+            layoutTemplateId,
+            brandKitId: config.kit!,
+            priority,
+        }));
+    }
+    return [];
+}
+
+/**
+ * Path-resolved config (derived from FullBrandConfig + path).
  */
 export interface BrandConfig {
     brandName: string;
     tagline?: string;
-    logos: {
-        primary?: string;
-        dark?: string;
-        icon?: string;
-        ogImage?: string;
-        emailLogo?: string;
-    };
+    logos: { primary?: string; dark?: string; icon?: string; ogImage?: string; emailLogo?: string };
     theme: ResolvedBrandTheme;
     themeBase: string;
-    tenantTheme: Partial<import('@ottabase/brand-engine').BrandTheme>;
+    tenantTheme: unknown;
     defaultColorScheme: 'light' | 'dark' | 'system';
     allowDarkModeToggle: boolean;
     customCss?: string;
     hideOttabaseBranding: boolean;
-    /** Route path patterns → layout template ID */
-    routeMappings?: Array<{ pathPattern: string; layoutTemplateId: string; priority: number }>;
-    /** Map layoutTemplateId → { componentKey, config } */
-    layoutTemplatesMap?: Record<string, { componentKey: string; config: LayoutConfig }>;
+    layoutTemplateId: string;
+    layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }>;
+    routeMappings: Array<{ pathPattern: string; layoutTemplateId: string; brandKitId: string; priority: number }>;
 }
 
 interface BrandContextValue {
@@ -46,21 +80,30 @@ interface BrandContextValue {
 }
 
 const BrandContext = createContext<BrandContextValue | null>(null);
+const BrandPathContext = createContext<((path: string) => void) | null>(null);
 
 export interface BrandProviderProps {
     children: React.ReactNode;
-    /** API endpoint to fetch brand config */
     apiEndpoint?: string;
-    /** Initial brand config (for SSR) */
-    initialConfig?: BrandConfig;
-    /** Organization ID for multi-tenant */
+    initialConfig?: FullBrandConfig;
     organizationId?: string | null;
-    /** App ID for app-specific branding */
     appId?: string | null;
-    /** Preset ID for preview mode (?brandPreview=) - preview without applying */
-    brandPreview?: string | null;
-    /** Theme variant ID for preview (?themeVariant=) */
-    themeVariant?: string | null;
+}
+
+function resolveConfigForPath(full: FullBrandConfig, pathname: string): BrandConfig | null {
+    const routeMappings = expandCompactConfig(full);
+    const match = resolveRouteForPath(pathname, routeMappings);
+    const kitId = match?.brandKitId ?? full.kit ?? Object.keys(full.brandKitsMap)[0];
+    const layoutId = match?.layoutTemplateId ?? 'homepage';
+    const kit = kitId ? full.brandKitsMap[kitId] : Object.values(full.brandKitsMap)[0];
+    if (!kit) return null;
+    return {
+        ...kit,
+        defaultColorScheme: kit.defaultColorScheme as 'light' | 'dark' | 'system',
+        layoutTemplateId: layoutId,
+        layoutTemplatesMap: full.layoutTemplatesMap,
+        routeMappings,
+    };
 }
 
 export function BrandProvider({
@@ -69,10 +112,9 @@ export function BrandProvider({
     initialConfig,
     organizationId,
     appId,
-    brandPreview,
-    themeVariant,
 }: BrandProviderProps) {
-    const [config, setConfig] = useState<BrandConfig | null>(initialConfig ?? null);
+    const [fullConfig, setFullConfig] = useState<FullBrandConfig | null>(initialConfig ?? null);
+    const [path, setPath] = useState('/');
     const [isLoading, setIsLoading] = useState(!initialConfig);
     const [error, setError] = useState<Error | null>(null);
 
@@ -80,62 +122,60 @@ export function BrandProvider({
         try {
             setIsLoading(true);
             const params = new URLSearchParams();
+            const mode =
+                typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+                    ? 'dark'
+                    : 'light';
+            params.set('mode', mode);
             if (organizationId) params.set('organizationId', organizationId);
             if (appId) params.set('appId', appId);
-            const previewId =
-                brandPreview ??
-                (typeof window !== 'undefined'
-                    ? new URLSearchParams(window.location.search).get('brandPreview')
-                    : null);
-            if (previewId) params.set('brandPreview', previewId);
-            const variantId =
-                themeVariant ??
-                (typeof window !== 'undefined'
-                    ? new URLSearchParams(window.location.search).get('themeVariant')
-                    : null);
-            if (variantId) params.set('themeVariant', variantId);
-            const url = params.toString() ? `${apiEndpoint}?${params}` : apiEndpoint;
+            const url = `${apiEndpoint}?${params}`;
 
             const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error('Failed to fetch brand config');
-            }
-
-            const data = (await response.json()) as BrandConfig;
-            setConfig(data);
+            if (!response.ok) throw new Error('Failed to fetch brand config');
+            const data = (await response.json()) as FullBrandConfig;
+            setFullConfig(data);
             setError(null);
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Unknown error'));
         } finally {
             setIsLoading(false);
         }
-    }, [apiEndpoint, organizationId, appId, brandPreview, themeVariant]);
+    }, [apiEndpoint, organizationId, appId]);
 
     useEffect(() => {
-        if (!initialConfig) {
-            fetchConfig();
-        }
+        if (!initialConfig) fetchConfig();
     }, [fetchConfig, initialConfig]);
+
+    // Derive path-scoped config from full config + current path (no refetch on nav)
+    const config = useMemo(() => {
+        if (!fullConfig) return null;
+        return resolveConfigForPath(fullConfig, path);
+    }, [fullConfig, path]);
 
     useEffect(() => {
         if (!config) return;
-
         if (typeof document !== 'undefined') {
-            // Remove edge-injected #brand-critical; app-level theme applicator owns inline styles
             const critical = document.getElementById(CRITICAL_STYLE_ID);
             if (critical) critical.remove();
         }
-
-        if (config.customCss) {
-            injectCustomCss(config.customCss);
-        }
+        if (config.customCss) injectCustomCss(config.customCss);
     }, [config]);
 
     return (
         <BrandContext.Provider value={{ config, isLoading, error, refresh: fetchConfig }}>
-            {children}
+            <BrandPathContext.Provider value={setPath}>{children}</BrandPathContext.Provider>
         </BrandContext.Provider>
     );
+}
+
+/** Call inside router (e.g. RootLayout) to sync path for path-scoped brand fetch */
+export function BrandPathSync({ pathname }: { pathname: string }) {
+    const setPath = useContext(BrandPathContext);
+    useEffect(() => {
+        setPath?.(pathname);
+    }, [pathname, setPath]);
+    return null;
 }
 
 export function useBrand(): BrandContextValue {

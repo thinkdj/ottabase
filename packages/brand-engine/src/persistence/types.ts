@@ -6,7 +6,7 @@ import type { BrandTheme } from '../theme';
 import type { LayoutConfig } from '../layout';
 import type { ResolvedBrandTheme } from '../resolver';
 
-/** Resolved brand config (GET /api/brand). Same as BrandConfigResponse. */
+/** Resolved brand config (GET /api/brand). Path-scoped: theme + layout for current path. */
 export interface ResolvedBrandConfig {
     brandName: string;
     tagline?: string;
@@ -18,75 +18,51 @@ export interface ResolvedBrandConfig {
         emailLogo?: string;
     };
     theme: ResolvedBrandTheme;
-    /** Base theme preset name (default, neo, artisan, etc.) – for client mode switching */
     themeBase: string;
-    /** Raw tenant overrides from DB – for client resolveTheme with mode */
     tenantTheme: Partial<BrandTheme>;
     defaultColorScheme: 'light' | 'dark' | 'system';
     allowDarkModeToggle: boolean;
     customCss?: string;
     hideOttabaseBranding: boolean;
-    /** Route path patterns → layout template ID (empty for Task 01) */
-    routeMappings: Array<{ pathPattern: string; layoutTemplateId: string; priority: number }>;
-    /** Map layoutTemplateId → { componentKey, config } */
+    /** Resolved for current path */
+    layoutTemplateId: string;
     layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }>;
+    /** All route mappings (path, layout, brandKit per row) */
+    routeMappings: Array<{ pathPattern: string; layoutTemplateId: string; brandKitId: string; priority: number }>;
 }
 
-/** PUT /api/brand – update brand settings */
-export interface UpdateBrandPayload {
-    brandName?: string;
-    tagline?: string;
-    tokensJson?: string | object;
-    layoutJson?: string | object;
-    themePresetId?: string | null;
-    defaultColorScheme?: 'light' | 'dark' | 'system';
-    allowDarkModeToggle?: boolean;
-    customCss?: string;
-    hideOttabaseBranding?: boolean;
-}
-
-/** GET /api/brand/settings – raw settings for admin */
-export interface BrandSettingsResponse {
-    brandName: string;
-    tagline?: string;
-    tokensJson: string;
-    layoutJson: string;
-    themePresetId: string | null;
-    defaultColorScheme: 'light' | 'dark' | 'system';
-    allowDarkModeToggle: boolean;
-    customCss: string;
-    hideOttabaseBranding: boolean;
-}
-
-/** Preset list item (GET /api/brand/presets) */
-export interface BrandPresetItem {
+/** Brand Kit list/detail item */
+export interface BrandKitItem {
     id: string;
     name: string;
     slug?: string | null;
-    isActive?: boolean;
-    brandName?: string;
+    brandName: string;
     tagline?: string | null;
+    themePresetId?: string | null;
     tokensJson?: string | null;
-    themeVariantId?: string | null;
-    routeMappingsJson?: string | null;
-    layoutTemplatesSnapshotJson?: string | null;
+    defaultColorScheme: string;
+    allowDarkModeToggle: boolean;
     customCss?: string | null;
-    hideOttabaseBranding?: boolean;
-    createdAt?: string;
-    updatedAt?: string;
+    hideOttabaseBranding: boolean;
+    logoKey?: string | null;
+    logoDarkKey?: string | null;
+    iconKey?: string | null;
+    ogImageKey?: string | null;
+    emailLogoKey?: string | null;
+    createdAt?: number;
+    updatedAt?: number;
 }
 
-/** POST /api/brand/presets – create preset */
-export interface BrandPresetCreatePayload {
-    name: string;
+/** PUT /api/brand/kits/:id – update Brand Kit */
+export interface UpdateBrandKitPayload {
+    name?: string;
     slug?: string;
-    snapshotFromCurrent?: boolean;
     brandName?: string;
     tagline?: string;
     tokensJson?: string | object;
-    themeVariantId?: string;
-    routeMappingsJson?: string | object;
-    layoutTemplatesSnapshotJson?: string | object;
+    themePresetId?: string | null;
+    defaultColorScheme?: 'light' | 'dark' | 'system';
+    allowDarkModeToggle?: boolean;
     customCss?: string;
     hideOttabaseBranding?: boolean;
 }
@@ -104,5 +80,27 @@ export interface LayoutMappingItem {
     id?: string;
     pathPattern: string;
     layoutTemplateId: string;
+    brandKitId: string;
     priority?: number;
+}
+
+/** Cached resolution data for KV */
+export interface BrandResolutionCache {
+    routeMappings: Array<{ pathPattern: string; layoutTemplateId: string; brandKitId: string; priority: number }>;
+    layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }>;
+    brandKitsMap: Record<
+        string,
+        {
+            brandName: string;
+            tagline?: string;
+            logos: Record<string, string>;
+            theme: ResolvedBrandTheme;
+            themeBase: string;
+            tenantTheme: Partial<BrandTheme>;
+            defaultColorScheme: string;
+            allowDarkModeToggle: boolean;
+            customCss?: string;
+            hideOttabaseBranding: boolean;
+        }
+    >;
 }

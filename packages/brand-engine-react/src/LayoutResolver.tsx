@@ -53,9 +53,20 @@ export function LayoutResolver({ children, router }: LayoutResolverProps) {
     const usePathname = router?.usePathname ?? usePathnameFallback;
     const pathname = usePathname();
 
-    const routeMappings =
-        config?.routeMappings && config.routeMappings.length > 0 ? config.routeMappings : DEFAULT_MAPPINGS;
-    const layoutTemplateId = resolveLayoutForPath(pathname, routeMappings) ?? 'homepage';
+    // Use layoutTemplateId from config (path-scoped) when available; else resolve from routeMappings
+    const layoutTemplateId =
+        config?.layoutTemplateId ??
+        (config?.routeMappings && config.routeMappings.length > 0
+            ? resolveLayoutForPath(
+                  pathname,
+                  config.routeMappings.map((m) => ({
+                      pathPattern: m.pathPattern,
+                      layoutTemplateId: m.layoutTemplateId,
+                      priority: m.priority,
+                  })),
+              )
+            : null) ??
+        'homepage';
 
     const layoutTemplate =
         config?.layoutTemplatesMap?.[layoutTemplateId] ?? PRESETS[layoutTemplateId] ?? HOMEPAGE_LAYOUT;

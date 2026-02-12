@@ -29,7 +29,7 @@ export function AdminIndexPage() {
         {
             title: 'Theme Generator',
             description: 'Generate color palettes and check accessibility contrast (in Brand Engine).',
-            href: '/admin/brand-engine?tab=theme&subtab=generator',
+            href: '/admin/brand-engine',
             icon: Palette,
             disabled: false,
         },

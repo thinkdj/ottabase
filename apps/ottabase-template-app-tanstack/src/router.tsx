@@ -2,7 +2,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { api, isApiError } from '@/lib/api';
 import { APP_META } from '@/ottabase/config/app.config';
 import { Button, Toaster } from '@ottabase/ui-shadcn';
-import { LayoutResolver } from '@ottabase/brand-engine-react';
+import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
 import {
     Link,
@@ -16,8 +16,10 @@ import {
 import { useState } from 'react';
 
 function RootLayout() {
+    const pathname = tanstackRouterAdapter.usePathname();
     return (
         <>
+            <BrandPathSync pathname={pathname} />
             <Toaster />
             <LayoutResolver router={tanstackRouterAdapter}>
                 <Outlet />
@@ -460,16 +462,35 @@ const adminRoute = new Route({
     ),
 });
 
-// Admin BrandEngine route
+// Admin BrandEngine – Brand Kits list
 const adminBrandEngineRoute = new Route({
     getParentRoute: () => rootRoute,
     path: '/admin/brand-engine',
-    validateSearch: (s: Record<string, unknown>) => ({
-        tab: (s.tab as string) || 'settings',
-    }),
     component: lazyRouteComponent(() =>
-        import('@/pages/admin/AdminBrandEnginePage').then((m) => ({
-            default: m.AdminBrandEnginePage,
+        import('@/pages/admin/AdminBrandKitsListPage').then((m) => ({
+            default: m.AdminBrandKitsListPage,
+        })),
+    ),
+});
+
+// Admin Brand Kit detail – tabbed editor with preview
+const adminBrandKitDetailRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/brand-engine/kits/$kitId',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminBrandKitDetailPage').then((m) => ({
+            default: m.AdminBrandKitDetailPage,
+        })),
+    ),
+});
+
+// Admin BrandEngine – Layouts & Route Mappings
+const adminBrandLayoutsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/brand-engine/layouts',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminBrandLayoutsPage').then((m) => ({
+            default: m.AdminBrandLayoutsPage,
         })),
     ),
 });
@@ -803,6 +824,8 @@ const routeTree = rootRoute.addChildren([
     referralsRoute,
     adminRoute,
     adminBrandEngineRoute,
+    adminBrandKitDetailRoute,
+    adminBrandLayoutsRoute,
     adminReferralsRoute,
     adminQueueRoute,
     adminCronRoute,

@@ -20,14 +20,112 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    Switch,
 } from '@ottabase/ui-shadcn';
 import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
-import type { LayoutComponentKey, LayoutTemplateItem, LayoutMappingItem } from '@ottabase/brand-engine';
+import type { LayoutComponentKey, LayoutConfig } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
-import { layoutApi } from './brandApi';
+import { layoutApi, brandKitApi, type LayoutTemplateItem, type LayoutMappingItem } from './brandApi';
 
 const COMPONENT_KEYS: LayoutComponentKey[] = ['homepage', 'app-shell', 'docs', 'minimal'];
+
+const DEFAULT_CONFIGS: Record<LayoutComponentKey, LayoutConfig> = {
+    homepage: { header: 'minimal', navigation: 'topbar', contentWidth: 'full', footer: true, density: 'comfy' },
+    'app-shell': { header: 'topbar', navigation: 'sidebar', contentWidth: 'fluid', footer: false, density: 'comfy' },
+    docs: { header: 'topbar', navigation: 'sidebar', contentWidth: 'fixed', footer: true, density: 'compact' },
+    minimal: { header: 'none', navigation: 'topbar', contentWidth: 'full', footer: false, density: 'comfy' },
+};
+
+function LayoutConfigEditor({ config, onChange }: { config: LayoutConfig; onChange: (c: LayoutConfig) => void }) {
+    return (
+        <div className="space-y-3 rounded-lg border p-3 dark:border-muted">
+            <p className="text-sm font-medium">Layout config</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                    <Label>Header</Label>
+                    <Select
+                        value={config.header}
+                        onValueChange={(v) => onChange({ ...config, header: v as LayoutConfig['header'] })}
+                    >
+                        <SelectTrigger>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {['minimal', 'sidebar', 'topbar', 'none'].map((v) => (
+                                <SelectItem key={v} value={v}>
+                                    {v}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div>
+                    <Label>Navigation</Label>
+                    <Select
+                        value={config.navigation}
+                        onValueChange={(v) => onChange({ ...config, navigation: v as LayoutConfig['navigation'] })}
+                    >
+                        <SelectTrigger>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {['sidebar', 'topbar', 'drawer'].map((v) => (
+                                <SelectItem key={v} value={v}>
+                                    {v}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div>
+                    <Label>Content width</Label>
+                    <Select
+                        value={config.contentWidth}
+                        onValueChange={(v) => onChange({ ...config, contentWidth: v as LayoutConfig['contentWidth'] })}
+                    >
+                        <SelectTrigger>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {['fixed', 'fluid', 'full'].map((v) => (
+                                <SelectItem key={v} value={v}>
+                                    {v}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div>
+                    <Label>Density</Label>
+                    <Select
+                        value={config.density}
+                        onValueChange={(v) => onChange({ ...config, density: v as LayoutConfig['density'] })}
+                    >
+                        <SelectTrigger>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {['compact', 'comfy'].map((v) => (
+                                <SelectItem key={v} value={v}>
+                                    {v}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+            <div className="flex items-center justify-between">
+                <Label htmlFor="layoutFooter">Footer</Label>
+                <Switch
+                    id="layoutFooter"
+                    checked={config.footer}
+                    onCheckedChange={(v) => onChange({ ...config, footer: v })}
+                />
+            </div>
+        </div>
+    );
+}
 
 export function LayoutEditorTab() {
     const queryClient = useQueryClient();
@@ -35,12 +133,17 @@ export function LayoutEditorTab() {
 
     const { data: templates = [], isLoading: loadingTemplates } = useQuery<LayoutTemplateItem[]>({
         queryKey: ['brand', 'layouts'],
-        queryFn: () => layoutApi.getTemplates() as Promise<LayoutTemplateItem[]>,
+        queryFn: () => layoutApi.getTemplates(),
+    });
+
+    const { data: kits = [], isLoading: loadingKits } = useQuery({
+        queryKey: ['brand', 'kits'],
+        queryFn: () => brandKitApi.list(),
     });
 
     const { data: mappings = [], isLoading: loadingMappings } = useQuery<LayoutMappingItem[]>({
         queryKey: ['brand', 'mappings'],
-        queryFn: () => layoutApi.getMappings() as Promise<LayoutMappingItem[]>,
+        queryFn: () => layoutApi.getMappings(),
     });
 
     const putMappingsMutation = useMutation({
@@ -53,7 +156,7 @@ export function LayoutEditorTab() {
         onError: () => toast.error('Failed to save mappings'),
     });
 
-    if (loadingTemplates || loadingMappings) {
+    if (loadingTemplates || loadingMappings || loadingKits) {
         return (
             <div className="flex items-center justify-center py-12">
                 <p className="text-muted-foreground">Loading layouts...</p>
@@ -100,18 +203,20 @@ export function LayoutEditorTab() {
                 <CardHeader>
                     <CardTitle>Route mappings</CardTitle>
                     <CardDescription>
-                        Match URL paths to layout templates. Higher priority wins. Use * for wildcard.
+                        Match paths to layout + Brand Kit. Higher priority wins. Use * and ** for wildcards.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <MappingsEditor
                         mappings={mappings}
                         templates={templates}
+                        kits={kits}
                         onSave={(m) =>
                             putMappingsMutation.mutate({
-                                mappings: m.map(({ pathPattern, layoutTemplateId, priority }) => ({
+                                mappings: m.map(({ pathPattern, layoutTemplateId, brandKitId, priority }) => ({
                                     pathPattern,
                                     layoutTemplateId,
+                                    brandKitId: brandKitId!,
                                     priority: priority ?? 0,
                                 })),
                             })
@@ -128,8 +233,14 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
     const [componentKey, setComponentKey] = useState<LayoutComponentKey>('app-shell');
+    const [config, setConfig] = useState<LayoutConfig>(DEFAULT_CONFIGS['app-shell']);
     const queryClient = useQueryClient();
     const { refresh } = useBrand();
+
+    // Reset config when component changes
+    useEffect(() => {
+        setConfig(DEFAULT_CONFIGS[componentKey]);
+    }, [componentKey]);
 
     const putMutation = useMutation({
         mutationFn: (body: { name: string; componentKey: string; config: object }) => layoutApi.putTemplate(body),
@@ -138,23 +249,11 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
             queryClient.invalidateQueries({ queryKey: ['brand', 'layouts'] });
             refresh();
             setName('');
+            setConfig(DEFAULT_CONFIGS['app-shell']);
             setOpen(false);
         },
         onError: () => toast.error('Failed to create'),
     });
-
-    const defaultConfigs: Record<LayoutComponentKey, object> = {
-        homepage: { header: 'minimal', navigation: 'topbar', contentWidth: 'full', footer: true, density: 'comfy' },
-        'app-shell': {
-            header: 'topbar',
-            navigation: 'sidebar',
-            contentWidth: 'fluid',
-            footer: false,
-            density: 'comfy',
-        },
-        docs: { header: 'topbar', navigation: 'sidebar', contentWidth: 'fixed', footer: true, density: 'compact' },
-        minimal: { header: 'none', navigation: 'topbar', contentWidth: 'full', footer: false, density: 'comfy' },
-    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -167,7 +266,7 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Create layout template</DialogTitle>
-                    <DialogDescription>Add a layout preset for route mappings.</DialogDescription>
+                    <DialogDescription>Add a layout preset with custom config for route mappings.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div>
@@ -194,12 +293,13 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
                             </SelectContent>
                         </Select>
                     </div>
+                    <LayoutConfigEditor config={config} onChange={setConfig} />
                     <Button
                         onClick={() =>
                             putMutation.mutate({
                                 name: name.trim() || componentKey,
                                 componentKey,
-                                config: defaultConfigs[componentKey],
+                                config,
                             })
                         }
                         disabled={putMutation.isPending}
@@ -212,10 +312,28 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
     );
 }
 
+function mergeLayoutConfig(existing: object | undefined, fallback: LayoutConfig): LayoutConfig {
+    if (!existing || typeof existing !== 'object') return fallback;
+    const c = existing as Record<string, unknown>;
+    return {
+        header: (c.header as LayoutConfig['header']) ?? fallback.header,
+        navigation: (c.navigation as LayoutConfig['navigation']) ?? fallback.navigation,
+        contentWidth: (c.contentWidth as LayoutConfig['contentWidth']) ?? fallback.contentWidth,
+        footer: typeof c.footer === 'boolean' ? c.footer : fallback.footer,
+        density: (c.density as LayoutConfig['density']) ?? fallback.density,
+    };
+}
+
 function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState(template.name);
     const [componentKey, setComponentKey] = useState<LayoutComponentKey>(template.componentKey as LayoutComponentKey);
+    const [config, setConfig] = useState<LayoutConfig>(() =>
+        mergeLayoutConfig(
+            template.config,
+            DEFAULT_CONFIGS[template.componentKey as LayoutComponentKey] ?? DEFAULT_CONFIGS['app-shell'],
+        ),
+    );
     const queryClient = useQueryClient();
     const { refresh } = useBrand();
 
@@ -223,21 +341,14 @@ function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
         if (open) {
             setName(template.name);
             setComponentKey(template.componentKey as LayoutComponentKey);
+            setConfig(
+                mergeLayoutConfig(
+                    template.config,
+                    DEFAULT_CONFIGS[template.componentKey as LayoutComponentKey] ?? DEFAULT_CONFIGS['app-shell'],
+                ),
+            );
         }
     }, [open, template]);
-
-    const defaultConfigs: Record<LayoutComponentKey, object> = {
-        homepage: { header: 'minimal', navigation: 'topbar', contentWidth: 'full', footer: true, density: 'comfy' },
-        'app-shell': {
-            header: 'topbar',
-            navigation: 'sidebar',
-            contentWidth: 'fluid',
-            footer: false,
-            density: 'comfy',
-        },
-        docs: { header: 'topbar', navigation: 'sidebar', contentWidth: 'fixed', footer: true, density: 'compact' },
-        minimal: { header: 'none', navigation: 'topbar', contentWidth: 'full', footer: false, density: 'comfy' },
-    };
 
     const putMutation = useMutation({
         mutationFn: (body: { id: string; name: string; componentKey: string; config: object }) =>
@@ -261,7 +372,7 @@ function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Edit layout template</DialogTitle>
-                    <DialogDescription>Change name or component.</DialogDescription>
+                    <DialogDescription>Change name, component, or layout config.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div>
@@ -288,13 +399,14 @@ function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
                             </SelectContent>
                         </Select>
                     </div>
+                    <LayoutConfigEditor config={config} onChange={setConfig} />
                     <Button
                         onClick={() =>
                             putMutation.mutate({
                                 id: template.id,
                                 name: name.trim() || template.name,
                                 componentKey,
-                                config: (template.config as object) ?? defaultConfigs[componentKey],
+                                config,
                             })
                         }
                         disabled={putMutation.isPending}
@@ -310,28 +422,37 @@ function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
 function MappingsEditor({
     mappings,
     templates,
+    kits,
     onSave,
     saving,
 }: {
     mappings: LayoutMappingItem[];
     templates: LayoutTemplateItem[];
+    kits: Array<{ id: string; name: string }>;
     onSave: (m: LayoutMappingItem[]) => void;
     saving: boolean;
 }) {
     const [pathPattern, setPathPattern] = useState('');
     const [layoutTemplateId, setLayoutTemplateId] = useState('');
+    const [brandKitId, setBrandKitId] = useState('');
     const [priority, setPriority] = useState(0);
     const [items, setItems] = useState<LayoutMappingItem[]>(mappings);
 
     useEffect(() => {
-        setItems(mappings);
-    }, [mappings]);
+        setItems(
+            mappings.map((m) => ({
+                ...m,
+                brandKitId: m.brandKitId || kits[0]?.id || '',
+            })),
+        );
+    }, [mappings, kits]);
 
     const add = () => {
-        if (!pathPattern.trim() || !layoutTemplateId) return;
-        setItems([...items, { pathPattern: pathPattern.trim(), layoutTemplateId, priority }]);
+        if (!pathPattern.trim() || !layoutTemplateId || !brandKitId) return;
+        setItems([...items, { pathPattern: pathPattern.trim(), layoutTemplateId, brandKitId, priority }]);
         setPathPattern('');
         setLayoutTemplateId('');
+        setBrandKitId('');
         setPriority(0);
     };
 
@@ -339,24 +460,35 @@ function MappingsEditor({
         setItems(items.filter((_, i) => i !== idx));
     };
 
-    // Fix: use useEffect to sync items when mappings change
     return (
         <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
                 <Input
                     value={pathPattern}
                     onChange={(e) => setPathPattern(e.target.value)}
-                    placeholder="/admin/*"
+                    placeholder="/* or /admin/**"
                     className="max-w-[180px]"
                 />
                 <Select value={layoutTemplateId} onValueChange={setLayoutTemplateId}>
-                    <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="Layout template" />
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Layout" />
                     </SelectTrigger>
                     <SelectContent>
                         {templates.map((t) => (
                             <SelectItem key={t.id} value={t.id}>
                                 {t.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <Select value={brandKitId} onValueChange={setBrandKitId}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Brand Kit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {kits.map((k) => (
+                            <SelectItem key={k.id} value={k.id}>
+                                {k.name}
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -368,16 +500,28 @@ function MappingsEditor({
                     placeholder="Priority"
                     className="w-20"
                 />
-                <Button size="sm" variant="outline" onClick={add} disabled={!pathPattern.trim() || !layoutTemplateId}>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={add}
+                    disabled={!pathPattern.trim() || !layoutTemplateId || !brandKitId || kits.length === 0}
+                >
                     Add
                 </Button>
             </div>
+            {kits.length === 0 && (
+                <p className="text-sm text-muted-foreground">Create a Brand Kit first before adding mappings.</p>
+            )}
             <div className="space-y-2">
                 {items.map((m, idx) => (
-                    <div key={idx} className="flex items-center justify-between rounded border px-3 py-2">
+                    <div
+                        key={idx}
+                        className="flex items-center justify-between rounded border px-3 py-2 dark:border-muted"
+                    >
                         <span className="font-mono text-sm">{m.pathPattern}</span>
                         <span className="text-muted-foreground text-sm">
-                            {templates.find((t) => t.id === m.layoutTemplateId)?.name ?? m.layoutTemplateId}
+                            {templates.find((t) => t.id === m.layoutTemplateId)?.name ?? m.layoutTemplateId} →{' '}
+                            {kits.find((k) => k.id === m.brandKitId)?.name ?? m.brandKitId}
                         </span>
                         <Button size="sm" variant="ghost" onClick={() => remove(idx)}>
                             <IconTrash className="h-4 w-4" />
@@ -385,7 +529,7 @@ function MappingsEditor({
                     </div>
                 ))}
             </div>
-            <Button onClick={() => onSave(items)} disabled={saving}>
+            <Button onClick={() => onSave(items)} disabled={saving || kits.length === 0}>
                 {saving ? 'Saving...' : 'Save mappings'}
             </Button>
         </div>

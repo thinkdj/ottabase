@@ -6,7 +6,6 @@
 import { LayoutTemplate } from '../persistence/LayoutTemplate.model';
 import { LayoutRouteMapping } from '../persistence/LayoutRouteMapping.model';
 import { createBrandCache } from '../persistence/cache';
-import type { D1Database, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import type { BrandApiEnv } from './brand-api';
@@ -89,13 +88,15 @@ export async function handleGetMappings(
         id: m.get('id'),
         pathPattern: m.get('pathPattern'),
         layoutTemplateId: m.get('layoutTemplateId'),
+        brandKitId: m.get('brandKitId'),
         priority: m.get('priority') ?? 0,
     }));
     return jsonResponse(data, 200);
 }
 
 /**
- * PUT /api/brand/mappings - Replace route mappings for org/app
+ * PUT /api/brand/mappings - Replace route mappings for org/app.
+ * Each mapping must include brandKitId.
  */
 export async function handlePutMappings(
     request: Request,
@@ -104,11 +105,15 @@ export async function handlePutMappings(
     appId?: string | null,
 ): Promise<Response> {
     const body = (await request.json()) as {
-        mappings: Array<{ pathPattern: string; layoutTemplateId: string; priority?: number }>;
+        mappings: Array<{
+            pathPattern: string;
+            layoutTemplateId: string;
+            brandKitId: string;
+            priority?: number;
+        }>;
     };
     const cache = createBrandCache(env.OBCF_KV);
 
-    // Delete existing
     const existing = await LayoutRouteMapping.where({
         organizationId: organizationId ?? null,
         appId: appId ?? null,
@@ -117,13 +122,14 @@ export async function handlePutMappings(
         await m.destroy();
     }
 
-    // Create new
     for (const m of body.mappings ?? []) {
+        if (!m.brandKitId) return errorResponse('brandKitId is required for each mapping', 400);
         await LayoutRouteMapping.create({
             organizationId,
             appId: appId || null,
             pathPattern: m.pathPattern,
             layoutTemplateId: m.layoutTemplateId,
+            brandKitId: m.brandKitId,
             priority: m.priority ?? 0,
         });
     }

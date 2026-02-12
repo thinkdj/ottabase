@@ -16,14 +16,7 @@ export type {
 
 export type { ContentWidth, Density, HeaderVariant, LayoutConfig, NavigationVariant } from './layout';
 
-export type {
-    UpdateBrandPayload,
-    BrandSettingsResponse,
-    BrandPresetItem,
-    BrandPresetCreatePayload,
-    LayoutTemplateItem,
-    LayoutMappingItem,
-} from './persistence';
+export type { UpdateBrandKitPayload, BrandKitItem, LayoutTemplateItem, LayoutMappingItem } from './persistence';
 
 export type { LegacyThemeConfig } from './adapter';
 export type { ResolveOptions, ResolvedBrandTheme } from './resolver';
@@ -69,7 +62,8 @@ export {
 export { fromLegacyThemeConfig } from './adapter';
 
 // ── Layout system ─────────────────────────────────────────────────────────
-export { pathPatternToRegex, resolveLayoutForPath } from './layouts/resolver';
+export { pathPatternToRegex, resolveLayoutForPath, resolveRouteForPath } from './layouts/resolver';
+export type { RouteMatchResult } from './layouts/resolver';
 export { HOMEPAGE_LAYOUT, APP_SHELL_LAYOUT, DOCS_LAYOUT, MINIMAL_LAYOUT, LAYOUT_PRESETS } from './layouts/presets';
 export type { LayoutComponentKey, LayoutPreset } from './layouts/presets';
 
@@ -81,6 +75,9 @@ export { CURSOR_SVG_REGISTRY, resolveCursor, getCursorSvg, getAvailableCursors }
 
 // ── Built-in themes ────────────────────────────────────────────────────────
 export { registerBuiltInThemes, BUILTIN_THEME_NAMES } from './themes';
+
+// ── Preview (admin) ────────────────────────────────────────────────────────
+export { buildPreviewTheme, type PreviewKitData } from './previewTheme';
 
 // ── Email & favicon ───────────────────────────────────────────────────────
 export { applyBrandToEmail } from './email/brand-email';

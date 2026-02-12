@@ -1,42 +1,31 @@
 // ---------------------------------------------------------------------------
 // Brand Engine – Fetch layout templates and route mappings for org/app
+// Route mappings include brandKitId per row.
 // ---------------------------------------------------------------------------
 
 import type { LayoutConfig } from '../layout';
 import { LayoutTemplate } from './LayoutTemplate.model';
 import { LayoutRouteMapping } from './LayoutRouteMapping.model';
+import { BrandKit } from './BrandKit.model';
 import { LAYOUT_PRESETS } from '../layouts/presets';
 
 export interface RouteMappingRow {
     pathPattern: string;
     layoutTemplateId: string;
+    brandKitId: string;
     priority: number;
 }
 
 export interface LayoutData {
-    routeMappings: Array<{ pathPattern: string; layoutTemplateId: string; priority: number }>;
+    routeMappings: RouteMappingRow[];
     layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }>;
 }
 
-/** Default route mappings when none in DB */
-const DEFAULT_ROUTE_MAPPINGS: RouteMappingRow[] = [
-    { pathPattern: '/demo/**', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/admin/**', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/dashboard', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/profile', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/shortlinks', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/referrals', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/blog/**', layoutTemplateId: 'homepage', priority: 10 },
-    { pathPattern: '/organizations/**', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/*', layoutTemplateId: 'homepage', priority: 0 },
-];
-
 /**
  * Fetch layout templates and route mappings for org/app.
- * Resolves: app-level -> org-level -> system default.
+ * When no mappings exist, creates default mappings using system default Brand Kit.
  */
 export async function getLayoutData(organizationId: string | null, appId?: string | null): Promise<LayoutData> {
-    // 1. Fetch route mappings (app -> org -> default)
     let mappings: InstanceType<typeof LayoutRouteMapping>[] = [];
 
     if (appId && organizationId) {
@@ -58,16 +47,31 @@ export async function getLayoutData(organizationId: string | null, appId?: strin
         })) as InstanceType<typeof LayoutRouteMapping>[];
     }
 
-    const routeMappings =
-        mappings.length > 0
-            ? (mappings as LayoutRouteMapping[]).map((m) => ({
-                  pathPattern: m.get('pathPattern') as string,
-                  layoutTemplateId: m.get('layoutTemplateId') as string,
-                  priority: (m.get('priority') as number) ?? 0,
-              }))
-            : DEFAULT_ROUTE_MAPPINGS;
+    let routeMappings: RouteMappingRow[];
 
-    // 2. Batch-load layout templates by ID
+    if (mappings.length > 0) {
+        routeMappings = (mappings as LayoutRouteMapping[]).map((m) => ({
+            pathPattern: m.get('pathPattern') as string,
+            layoutTemplateId: m.get('layoutTemplateId') as string,
+            brandKitId: m.get('brandKitId') as string,
+            priority: (m.get('priority') as number) ?? 0,
+        }));
+    } else {
+        const defaultKit = await BrandKit.getOrCreateDefault();
+        const kitId = defaultKit.get('id') as string;
+        routeMappings = [
+            { pathPattern: '/demo/**', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 10 },
+            { pathPattern: '/admin/**', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 10 },
+            { pathPattern: '/dashboard', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 10 },
+            { pathPattern: '/profile', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 10 },
+            { pathPattern: '/shortlinks', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 10 },
+            { pathPattern: '/referrals', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 10 },
+            { pathPattern: '/blog/**', layoutTemplateId: 'homepage', brandKitId: kitId, priority: 10 },
+            { pathPattern: '/organizations/**', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 10 },
+            { pathPattern: '/**', layoutTemplateId: 'homepage', brandKitId: kitId, priority: 0 },
+        ];
+    }
+
     const templateIds = [...new Set(routeMappings.map((m) => m.layoutTemplateId))];
     const layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }> = {};
 
@@ -75,10 +79,10 @@ export async function getLayoutData(organizationId: string | null, appId?: strin
         layoutTemplatesMap[key] = { componentKey: preset.componentKey, config: preset.config };
     }
 
-    if (templateIds.length > 0) {
-        const templates = (await LayoutTemplate.whereIn('id', templateIds)) as InstanceType<typeof LayoutTemplate>[];
-        for (const template of templates) {
-            const id = template.get('id') as string;
+    const dbTemplates = await LayoutTemplate.whereIn('id', templateIds);
+    for (const template of dbTemplates as LayoutTemplate[]) {
+        const id = template.get('id') as string;
+        if (!layoutTemplatesMap[id]) {
             layoutTemplatesMap[id] = {
                 componentKey: template.get('componentKey') as string,
                 config: template.getConfig(),

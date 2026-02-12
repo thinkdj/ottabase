@@ -29,3 +29,23 @@ export function resolveLayoutForPath(
     }
     return null;
 }
+
+export interface RouteMatchResult {
+    layoutTemplateId: string;
+    brandKitId: string;
+}
+
+/**
+ * Resolve layout + brand kit for a given path. Returns matched row or null.
+ */
+export function resolveRouteForPath(
+    pathname: string,
+    routeMappings: Array<{ pathPattern: string; layoutTemplateId: string; brandKitId: string; priority?: number }>,
+): RouteMatchResult | null {
+    const sorted = [...routeMappings].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+    for (const m of sorted) {
+        const re = pathPatternToRegex(m.pathPattern);
+        if (re.test(pathname)) return { layoutTemplateId: m.layoutTemplateId, brandKitId: m.brandKitId };
+    }
+    return null;
+}
