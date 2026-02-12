@@ -77,7 +77,7 @@ import {
     handleShortlinksList,
 } from './shortlinks';
 import { handleBrandApi } from './brand';
-import apiRouter from './index';
+import frameworkRouter from './index';
 
 export interface ApiRouteContext {
     request: Request;
@@ -96,7 +96,7 @@ export async function resolveApiRoute(context: ApiRouteContext): Promise<Respons
         return new Response(null, { status: 204, headers: context.corsHeaders });
     }
 
-    const routedResponse = await apiRouter.handle(context);
+    const routedResponse = await frameworkRouter.handle(context);
     if (routedResponse) {
         return routedResponse;
     }

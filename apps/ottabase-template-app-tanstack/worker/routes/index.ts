@@ -12,7 +12,13 @@ const router = new Router<ApiRouteContext>();
 
 const corsMiddleware: RouterMiddleware<ApiRouteContext> = async (context, next) => {
     const response = await next();
-    return response ? context.withAuthCors(response) : null;
+    if (!response) return null;
+    try {
+        return context.withAuthCors(response);
+    } catch (error) {
+        console.warn('Failed to apply auth CORS headers', error);
+        return response;
+    }
 };
 
 router.group({ prefix: '/api/auth', middleware: [corsMiddleware] }, (group) => {
