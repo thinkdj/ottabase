@@ -237,6 +237,10 @@ export class Router<Context extends RouterContextBase = RouterContextBase> {
         return null;
     }
 
+    /**
+     * Register a route with a specific HTTP method and optional middleware.
+     * Use this when the convenience methods (get/post/put/patch/delete/all) are not enough.
+     */
     addRoute(
         method: string,
         path: string,

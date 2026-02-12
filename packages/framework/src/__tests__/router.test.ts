@@ -16,7 +16,11 @@ describe('Router', () => {
                 prefix: '/api',
                 middleware: [
                     async (context, next) => {
-                        context.steps.push('middleware');
+                        context.steps.push('middleware-1');
+                        return next();
+                    },
+                    async (context, next) => {
+                        context.steps.push('middleware-2');
                         return next();
                     },
                 ],
@@ -34,7 +38,7 @@ describe('Router', () => {
 
         expect(response?.status).toBe(200);
         expect(await response?.text()).toBe('ok');
-        expect(context.steps).toEqual(['middleware', 'handler:42']);
+        expect(context.steps).toEqual(['middleware-1', 'middleware-2', 'handler:42']);
     });
 
     it('allows middleware to short-circuit', async () => {
@@ -69,5 +73,29 @@ describe('Router', () => {
         const router = new Router<TestContext>();
         const response = await router.handle({ route: '/missing', method: 'GET', steps: [] });
         expect(response).toBeNull();
+    });
+
+    it('supports nested groups with wildcard all-method routes', async () => {
+        const router = new Router<TestContext>();
+
+        router.group({ prefix: '/api' }, (group) => {
+            group.group({ prefix: '/files' }, (nested) => {
+                nested.all('/*', (context) => {
+                    context.steps.push(context.params.wildcard);
+                    return new Response(context.params.wildcard);
+                });
+            });
+        });
+
+        const context: TestContext = {
+            route: '/api/files/some%20file.txt',
+            method: 'POST',
+            steps: [],
+        };
+        const response = await router.handle(context);
+
+        expect(response?.status).toBe(200);
+        expect(await response?.text()).toBe('some file.txt');
+        expect(context.steps).toEqual(['some file.txt']);
     });
 });
