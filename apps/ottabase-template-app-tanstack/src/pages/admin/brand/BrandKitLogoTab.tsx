@@ -22,6 +22,8 @@ const LOGO_KEYS: Record<LogoType, 'logoKey' | 'logoDarkKey' | 'iconKey' | 'ogIma
     'email-logo': 'emailLogoKey',
 };
 
+const MAX_LOGO_BYTES = 5 * 1024 * 1024;
+
 interface BrandKitLogoTabProps {
     kitId: string;
     logos: {
@@ -51,13 +53,24 @@ export function BrandKitLogoTab({ kitId, logos, logoBaseUrl = '', onUploaded }: 
                 toast.error('Please upload an image file');
                 return;
             }
+            if (file.size > MAX_LOGO_BYTES) {
+                toast.error('Please upload an image smaller than 5MB');
+                return;
+            }
             setUploading(logoType);
             try {
                 const res = await brandKitApi.uploadLogo(kitId, logoType, file);
                 onUploaded(logoType, res.url);
                 toast.success(`${LOGO_LABELS[logoType]} uploaded`);
-            } catch {
-                toast.error('Upload failed');
+            } catch (error) {
+                let message = 'Upload failed';
+                if (error instanceof Response) {
+                    const text = await error.text();
+                    if (text) message = text;
+                } else if (error instanceof Error && error.message) {
+                    message = error.message;
+                }
+                toast.error(message);
             } finally {
                 setUploading(null);
             }

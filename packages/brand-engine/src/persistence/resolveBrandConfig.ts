@@ -32,31 +32,18 @@ export interface ResolveBrandConfigOptions {
 }
 
 /** Full resolution data – all route mappings + all brand kits. Client resolves path locally. */
-export type FullBrandConfig = BrandResolutionCache & { mode: 'light' | 'dark' };
+export type FullBrandConfig = BrandResolutionCache & { mode: 'light' | 'dark'; r2PublicUrl?: string };
 
 /**
- * Resolve full brand data (route mappings, layouts, all brand kits). No path required.
- * Client uses resolveRouteForPath(path, routeMappings) then brandKitsMap[match.brandKitId].
+ * Load and build brand kits map from database.
+ * Shared helper for both resolveFullBrandConfig and resolveBrandConfig.
+ * Ensures default kit exists if none provided.
  */
-export async function resolveFullBrandConfig(
-    env: ResolveBrandConfigEnv,
-    opts: Omit<ResolveBrandConfigOptions, 'path'> & { path?: string },
-): Promise<FullBrandConfig | null> {
-    const orgId = opts.organizationId ?? null;
-    const appId = opts.appId ?? null;
-    const mode = opts.mode ?? 'light';
-    const skipCache = opts.skipCache ?? false;
-
-    const cache = createBrandCache(env.OBCF_KV);
-    const r2Url = env.R2_PUBLIC_URL || '';
-
-    if (!skipCache) {
-        const cached = await cache.getResolutionData(orgId, appId, mode);
-        if (cached) return { ...cached, mode };
-    }
-
-    const layoutData = await getLayoutData(orgId, appId);
-    const brandKitIds = [...new Set(layoutData.routeMappings.map((m) => m.brandKitId))];
+async function loadBrandKitsMap(
+    brandKitIds: string[],
+    mode: 'light' | 'dark',
+    r2Url: string,
+): Promise<BrandResolutionCache['brandKitsMap']> {
     const brandKitsMap: BrandResolutionCache['brandKitsMap'] = {};
 
     for (const kitId of brandKitIds) {
@@ -87,17 +74,78 @@ export async function resolveFullBrandConfig(
         };
     }
 
-    const cacheData: FullBrandConfig = {
+    // Ensure system default exists if no kits loaded
+    if (Object.keys(brandKitsMap).length === 0) {
+        const defaultKit = await BrandKit.getOrCreateDefault();
+        const defaultKitId = (defaultKit.get('id') as string) || 'default';
+        const theme = brandKitToTheme(defaultKit, mode);
+        const logos = brandKitLogos(defaultKit, r2Url);
+        const presetId = (defaultKit.get('themePresetId') as string) || null;
+        const tokens = defaultKit.toBrandTheme().tokens;
+        const tenantTheme: Partial<BrandTheme> = tokens ? { tokens } : {};
+        brandKitsMap[defaultKitId] = {
+            brandName: (defaultKit.get('brandName') as string) || 'My App',
+            tagline: (defaultKit.get('tagline') as string) || undefined,
+            logos: {
+                primary: logos.logo,
+                dark: logos.logoDark,
+                icon: logos.icon,
+                ogImage: logos.ogImage,
+                emailLogo: logos.emailLogo,
+            } as Record<string, string>,
+            theme,
+            themeBase: presetId || 'default',
+            tenantTheme,
+            defaultColorScheme: (defaultKit.get('defaultColorScheme') as string) || 'system',
+            allowDarkModeToggle: (defaultKit.get('allowDarkModeToggle') as boolean) ?? true,
+            customCss: (defaultKit.get('customCss') as string) || undefined,
+            hideOttabaseBranding: (defaultKit.get('hideOttabaseBranding') as boolean) ?? false,
+        };
+    }
+
+    return brandKitsMap;
+}
+
+/**
+ * Resolve full brand data (route mappings, layouts, all brand kits). No path required.
+ * Client uses resolveRouteForPath(path, routeMappings) then brandKitsMap[match.brandKitId].
+ */
+export async function resolveFullBrandConfig(
+    env: ResolveBrandConfigEnv,
+    opts: Omit<ResolveBrandConfigOptions, 'path'> & { path?: string },
+): Promise<FullBrandConfig | null> {
+    const orgId = opts.organizationId ?? null;
+    const appId = opts.appId ?? null;
+    const mode = opts.mode ?? 'light';
+    const skipCache = opts.skipCache ?? false;
+
+    const cache = createBrandCache(env.OBCF_KV);
+    const r2Url = env.R2_PUBLIC_URL || '';
+
+    if (!skipCache) {
+        const cached = await cache.getResolutionData(orgId, appId, mode);
+        if (cached) return { ...cached, mode, r2PublicUrl: r2Url };
+    }
+
+    const layoutData = await getLayoutData(orgId, appId);
+    const brandKitIds = [...new Set(layoutData.routeMappings.map((m) => m.brandKitId))];
+    const brandKitsMap = await loadBrandKitsMap(brandKitIds, mode, r2Url);
+
+    const cacheData: BrandResolutionCache = {
         routeMappings: layoutData.routeMappings,
         layoutTemplatesMap: layoutData.layoutTemplatesMap,
         brandKitsMap,
+    };
+    const fullConfig: FullBrandConfig = {
+        ...cacheData,
         mode,
+        r2PublicUrl: r2Url,
     };
 
     if (!skipCache) {
         await cache.setResolutionData(orgId, appId, mode, cacheData);
     }
-    return cacheData;
+    return fullConfig;
 }
 
 /**
@@ -136,35 +184,7 @@ export async function resolveBrandConfig(
     if (!match) return null;
 
     const brandKitIds = [...new Set(layoutData.routeMappings.map((m) => m.brandKitId))];
-    const brandKitsMap: BrandResolutionCache['brandKitsMap'] = {};
-
-    for (const kitId of brandKitIds) {
-        const kit = (await BrandKit.find(kitId)) as BrandKit | null;
-        if (!kit) continue;
-        const theme = brandKitToTheme(kit, mode);
-        const logos = brandKitLogos(kit, r2Url);
-        const presetId = (kit.get('themePresetId') as string) || null;
-        const tokens = kit.toBrandTheme().tokens;
-        const tenantTheme: Partial<BrandTheme> = tokens ? { tokens } : {};
-        brandKitsMap[kitId] = {
-            brandName: (kit.get('brandName') as string) || 'My App',
-            tagline: (kit.get('tagline') as string) || undefined,
-            logos: {
-                primary: logos.logo,
-                dark: logos.logoDark,
-                icon: logos.icon,
-                ogImage: logos.ogImage,
-                emailLogo: logos.emailLogo,
-            } as Record<string, string>,
-            theme,
-            themeBase: presetId || 'default',
-            tenantTheme,
-            defaultColorScheme: (kit.get('defaultColorScheme') as string) || 'system',
-            allowDarkModeToggle: (kit.get('allowDarkModeToggle') as boolean) ?? true,
-            customCss: (kit.get('customCss') as string) || undefined,
-            hideOttabaseBranding: (kit.get('hideOttabaseBranding') as boolean) ?? false,
-        };
-    }
+    const brandKitsMap = await loadBrandKitsMap(brandKitIds, mode, r2Url);
 
     const kitData = brandKitsMap[match.brandKitId];
     if (!kitData) return null;

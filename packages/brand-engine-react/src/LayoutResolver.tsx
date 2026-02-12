@@ -14,6 +14,7 @@ import {
     APP_SHELL_LAYOUT,
     DOCS_LAYOUT,
     MINIMAL_LAYOUT,
+    type LayoutPreset,
     type LayoutComponentKey,
 } from '@ottabase/brand-engine';
 
@@ -35,7 +36,7 @@ const DEFAULT_MAPPINGS = [
     { pathPattern: '/*', layoutTemplateId: 'homepage', priority: 0 },
 ];
 
-const PRESETS: Record<string, { componentKey: LayoutComponentKey; config: object }> = {
+const PRESETS: Record<string, LayoutPreset> = {
     homepage: HOMEPAGE_LAYOUT,
     'app-shell': APP_SHELL_LAYOUT,
     docs: DOCS_LAYOUT,
@@ -68,12 +69,17 @@ export function LayoutResolver({ children, router }: LayoutResolverProps) {
             : null) ??
         'homepage';
 
-    const layoutTemplate =
-        config?.layoutTemplatesMap?.[layoutTemplateId] ?? PRESETS[layoutTemplateId] ?? HOMEPAGE_LAYOUT;
-    const LayoutComponent = getLayoutComponent(layoutTemplate.componentKey as LayoutComponentKey);
+    const configTemplate = config?.layoutTemplatesMap?.[layoutTemplateId];
+    const layoutTemplate: LayoutPreset = configTemplate
+        ? {
+              componentKey: configTemplate.componentKey as LayoutComponentKey,
+              config: configTemplate.config,
+          }
+        : (PRESETS[layoutTemplateId] ?? HOMEPAGE_LAYOUT);
+    const LayoutComponent = getLayoutComponent(layoutTemplate.componentKey);
 
     if (!LayoutComponent) return <>{children}</>;
-    return <LayoutComponent config={layoutTemplate.config as any}>{children}</LayoutComponent>;
+    return <LayoutComponent config={layoutTemplate.config}>{children}</LayoutComponent>;
 }
 
 function usePathnameFallback(): string {

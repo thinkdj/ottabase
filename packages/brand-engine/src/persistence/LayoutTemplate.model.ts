@@ -5,6 +5,7 @@
 import { BaseModel, type PackageType } from '@ottabase/ottaorm';
 import { layoutTemplatesTable } from './schema';
 import type { LayoutConfig } from '../layout';
+import { mergeLayoutConfig } from '../validators';
 
 export class LayoutTemplate extends BaseModel {
     static entity = 'layout_templates';
@@ -18,28 +19,17 @@ export class LayoutTemplate extends BaseModel {
         updatedAt: 'date' as const,
     };
 
-    /** Parse configJson to LayoutConfig */
+    /** Parse configJson to LayoutConfig, merging partial values with defaults */
     getConfig(): LayoutConfig {
         const raw = this.get('configJson');
         if (!raw || typeof raw !== 'string') {
-            return {
-                header: 'topbar',
-                navigation: 'sidebar',
-                contentWidth: 'fluid',
-                footer: true,
-                density: 'comfy',
-            };
+            return mergeLayoutConfig(null);
         }
         try {
-            return JSON.parse(raw) as LayoutConfig;
+            const parsed = JSON.parse(raw) as Record<string, unknown>;
+            return mergeLayoutConfig(parsed);
         } catch {
-            return {
-                header: 'topbar',
-                navigation: 'sidebar',
-                contentWidth: 'fluid',
-                footer: true,
-                density: 'comfy',
-            };
+            return mergeLayoutConfig(null);
         }
     }
 }
