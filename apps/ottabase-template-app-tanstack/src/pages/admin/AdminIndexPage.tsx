@@ -15,6 +15,7 @@ import {
     UserPlus,
     Users,
     Power,
+    Terminal,
 } from 'lucide-react';
 
 export function AdminIndexPage() {
@@ -108,6 +109,13 @@ export function AdminIndexPage() {
             description: 'Monitor background job queues, view processing stats, and manage failed jobs.',
             href: '/admin/queues',
             icon: Layers,
+            disabled: false,
+        },
+        {
+            title: 'Tail Workers',
+            description: 'Stream Cloudflare Worker logs for queue, cron, and realtime processing.',
+            href: '/admin/tail-workers',
+            icon: Terminal,
             disabled: false,
         },
         {

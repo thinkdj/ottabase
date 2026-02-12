@@ -21,6 +21,7 @@ import {
     handleAdminQueuesProcessed,
     handleAdminQueuesResetStats,
 } from './admin-queues';
+import { handleAdminTailWorkers } from './admin-tail-workers';
 import {
     handleAdminRoleCreate,
     handleAdminRoleDelete,
@@ -225,6 +226,10 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
 
     if (route === '/api/admin/queues/dlq') {
         return handleAdminQueuesDLQList(context);
+    }
+
+    if (route === '/api/admin/tail-workers') {
+        return handleAdminTailWorkers(context);
     }
 
     if (route === '/api/cloudflare/kv') {

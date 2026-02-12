@@ -537,6 +537,17 @@ const adminQueueRoute = new Route({
     ),
 });
 
+// Admin Tail Workers route
+const adminTailWorkersRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/tail-workers',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminTailWorkersPage').then((m) => ({
+            default: m.AdminTailWorkersPage,
+        })),
+    ),
+});
+
 // Admin Cron/Scheduled Tasks route
 const adminCronRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -839,6 +850,7 @@ const routeTree = rootRoute.addChildren([
     adminBrandLayoutsRoute,
     adminReferralsRoute,
     adminQueueRoute,
+    adminTailWorkersRoute,
     adminCronRoute,
     adminNotificationsRoute,
     adminBlogRoute,
