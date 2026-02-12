@@ -6,7 +6,7 @@ import {
 } from '@ottabase/brand-engine';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@ottabase/ui-shadcn';
 import { IconRefresh } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 function parseHsl(hslStr: string) {
@@ -47,25 +47,30 @@ export function BrandKitColorsTab({ tokensJson, onTokensChange }: BrandKitColors
         }
     }, [tokensJson]);
 
-    const handleColorPickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Memoize expensive palette generation based on base color
+    const generatedTokens = useMemo(() => {
+        const hsl = parseHsl(baseColor);
+        if (!hsl) return null;
+        return generateSemanticDefaults(hsl.h, hsl.s, hsl.l);
+    }, [baseColor]);
+
+    const handleColorPickerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const hex = e.target.value;
         setHexColor(hex);
         const hsl = hexToHsl(hex);
         if (hsl) {
             setBaseColor(`${hsl.h} ${hsl.s}% ${hsl.l}%`);
-            const tokens = generateSemanticDefaults(hsl.h, hsl.s, hsl.l);
-            setSemanticTokens(tokens);
         }
-    };
+    }, []);
 
-    const handleGenerate = () => {
-        const hsl = parseHsl(baseColor);
-        if (hsl) {
-            setSemanticTokens(generateSemanticDefaults(hsl.h, hsl.s, hsl.l));
+    const handleGenerate = useCallback(() => {
+        // Use pre-computed generatedTokens from useMemo
+        if (generatedTokens) {
+            setSemanticTokens(generatedTokens);
         }
-    };
+    }, [generatedTokens]);
 
-    const handleApplyToKit = () => {
+    const handleApplyToKit = useCallback(() => {
         const hsl = parseHsl(baseColor);
         if (!hsl) return;
         const tokens = buildTokensFromBaseColor(hsl.h, hsl.s, hsl.l);
@@ -92,7 +97,7 @@ export function BrandKitColorsTab({ tokensJson, onTokensChange }: BrandKitColors
             }
             onTokensChange(JSON.stringify({ color: tokens.color }, null, 2));
         }
-    };
+    }, [baseColor, tokensJson, onTokensChange]);
 
     return (
         <div className="space-y-6">

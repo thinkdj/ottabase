@@ -5,6 +5,8 @@
 import { BaseModel, type PackageType } from '@ottabase/ottaorm';
 import { layoutTemplatesTable } from './schema';
 import type { LayoutConfig } from '../layout';
+import { isValidLayoutConfig } from '../validators';
+import { DEFAULT_LAYOUT } from '../layout';
 
 export class LayoutTemplate extends BaseModel {
     static entity = 'layout_templates';
@@ -18,28 +20,22 @@ export class LayoutTemplate extends BaseModel {
         updatedAt: 'date' as const,
     };
 
-    /** Parse configJson to LayoutConfig */
+    /** Parse configJson to LayoutConfig with validation */
     getConfig(): LayoutConfig {
         const raw = this.get('configJson');
         if (!raw || typeof raw !== 'string') {
-            return {
-                header: 'topbar',
-                navigation: 'sidebar',
-                contentWidth: 'fluid',
-                footer: true,
-                density: 'comfy',
-            };
+            return DEFAULT_LAYOUT;
         }
         try {
-            return JSON.parse(raw) as LayoutConfig;
-        } catch {
-            return {
-                header: 'topbar',
-                navigation: 'sidebar',
-                contentWidth: 'fluid',
-                footer: true,
-                density: 'comfy',
-            };
+            const parsed = JSON.parse(raw);
+            if (isValidLayoutConfig(parsed)) {
+                return parsed;
+            }
+            console.warn(`Invalid layout config for template ${this.get('id')}, using defaults`);
+            return DEFAULT_LAYOUT;
+        } catch (error) {
+            console.warn(`Failed to parse layout config for template ${this.get('id')}, using defaults`);
+            return DEFAULT_LAYOUT;
         }
     }
 }

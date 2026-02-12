@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Button,
@@ -25,6 +25,7 @@ import {
 import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import type { LayoutComponentKey, LayoutConfig } from '@ottabase/brand-engine';
+import { isValidPathPattern } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { layoutApi, brandKitApi, type LayoutTemplateItem, type LayoutMappingItem } from './brandApi';
 
@@ -433,6 +434,7 @@ function MappingsEditor({
     saving: boolean;
 }) {
     const [pathPattern, setPathPattern] = useState('');
+    const [patternError, setPatternError] = useState('');
     const [layoutTemplateId, setLayoutTemplateId] = useState('');
     const [brandKitId, setBrandKitId] = useState('');
     const [priority, setPriority] = useState(0);
@@ -447,28 +449,44 @@ function MappingsEditor({
         );
     }, [mappings, kits]);
 
-    const add = () => {
-        if (!pathPattern.trim() || !layoutTemplateId || !brandKitId) return;
-        setItems([...items, { pathPattern: pathPattern.trim(), layoutTemplateId, brandKitId, priority }]);
+    const handlePathPatternChange = useCallback((value: string) => {
+        setPathPattern(value);
+        if (value.trim() && !isValidPathPattern(value.trim())) {
+            setPatternError('Invalid pattern. Use *, **, or literal paths.');
+        } else {
+            setPatternError('');
+        }
+    }, []);
+
+    const add = useCallback(() => {
+        if (!pathPattern.trim() || patternError || !layoutTemplateId || !brandKitId) return;
+        setItems((prevItems) => [
+            ...prevItems,
+            { pathPattern: pathPattern.trim(), layoutTemplateId, brandKitId, priority },
+        ]);
         setPathPattern('');
+        setPatternError('');
         setLayoutTemplateId('');
         setBrandKitId('');
         setPriority(0);
-    };
+    }, [pathPattern, patternError, layoutTemplateId, brandKitId, priority]);
 
-    const remove = (idx: number) => {
-        setItems(items.filter((_, i) => i !== idx));
-    };
+    const remove = useCallback((idx: number) => {
+        setItems((prevItems) => prevItems.filter((_, i) => i !== idx));
+    }, []);
 
     return (
         <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
-                <Input
-                    value={pathPattern}
-                    onChange={(e) => setPathPattern(e.target.value)}
-                    placeholder="/* or /admin/**"
-                    className="max-w-[180px]"
-                />
+                <div>
+                    <Input
+                        value={pathPattern}
+                        onChange={(e) => handlePathPatternChange(e.target.value)}
+                        placeholder="/* or /admin/**"
+                        className={`max-w-[180px] ${patternError ? 'border-red-500' : ''}`}
+                    />
+                    {patternError && <p className="text-xs text-red-500 mt-1">{patternError}</p>}
+                </div>
                 <Select value={layoutTemplateId} onValueChange={setLayoutTemplateId}>
                     <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Layout" />

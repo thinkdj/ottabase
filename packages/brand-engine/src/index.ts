@@ -48,6 +48,16 @@ export { applyBrandTheme, buildCSSVarMap, injectCSSVars, injectFont } from './cs
 export { buildCriticalCSS, buildCriticalStyleTag, CRITICAL_STYLE_ID } from './css-critical';
 export { deepMerge, resolveAliases, resolveTheme } from './resolver';
 
+// ── Validators ─────────────────────────────────────────────────────────────
+export {
+    isValidTokenColors,
+    isValidLayoutConfig,
+    isValidBrandTheme,
+    isValidPathPattern,
+    isValidJSON,
+    safeParseJSON,
+} from './validators';
+
 // ── Registry ───────────────────────────────────────────────────────────────
 export {
     clearThemeRegistry,
