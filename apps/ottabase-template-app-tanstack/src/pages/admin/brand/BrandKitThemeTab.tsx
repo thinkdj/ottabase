@@ -1,17 +1,17 @@
-import { BUILTIN_THEME_NAMES } from '@ottabase/brand-engine/themes';
-import {
-    Label,
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@ottabase/ui-shadcn';
+import { THEME_PRESET_ITEMS } from '@ottabase/brand-engine/themes';
+import { OttaSelect, type ItemRendererProps, type OttaSelectItem } from '@ottabase/ottaselect';
+import { Label, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+
+/** Convert HSL string "221 83% 53%" or "217 91% 60% / 0.1" to CSS hsl() */
+function hslToCss(hsl: string): string {
+    const base = hsl.split('/')[0].trim();
+    const parts = base
+        .split(/\s+/)
+        .map(Number)
+        .filter((n) => !isNaN(n));
+    if (parts.length < 3) return 'hsl(221, 83%, 53%)';
+    return `hsl(${parts[0]}, ${parts[1]}%, ${parts[2]}%)`;
+}
 
 interface BrandKitThemeTabProps {
     themePresetId: string | null;
@@ -26,6 +26,25 @@ export function BrandKitThemeTab({
     onThemePresetChange,
     onTokensChange,
 }: BrandKitThemeTabProps) {
+    const selectedId = themePresetId ?? 'default';
+    const selectedItem = THEME_PRESET_ITEMS.find((t) => t.id === selectedId) ?? THEME_PRESET_ITEMS[0];
+
+    const ThemePresetRenderer = ({ item, isSelected }: ItemRendererProps) => (
+        <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+            <span className="truncate font-medium capitalize">{item.name}</span>
+            <div className="flex gap-1 shrink-0">
+                {((item.colors as string[]) ?? []).slice(0, 5).map((hsl, i) => (
+                    <div
+                        key={i}
+                        className="w-5 h-5 rounded border border-border dark:border-muted shrink-0"
+                        style={{ backgroundColor: hslToCss(hsl) }}
+                        title={hsl}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+
     return (
         <div className="space-y-6">
             <Card>
@@ -36,21 +55,37 @@ export function BrandKitThemeTab({
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Select
-                        value={themePresetId ?? 'default'}
-                        onValueChange={(v) => onThemePresetChange(v === 'default' ? null : v)}
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select preset" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {BUILTIN_THEME_NAMES.map((name) => (
-                                <SelectItem key={name} value={name}>
-                                    {name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <OttaSelect
+                        mode="single"
+                        items={THEME_PRESET_ITEMS}
+                        value={selectedItem ? { id: selectedItem.id, name: selectedItem.name, ...selectedItem } : null}
+                        onChange={(v) =>
+                            onThemePresetChange(
+                                v && (v as OttaSelectItem).id !== 'default' ? (v as OttaSelectItem).id : null,
+                            )
+                        }
+                        placeholder="Select preset"
+                        searchable={false}
+                        clearable={false}
+                        renderItem={ThemePresetRenderer}
+                        renderValue={(item) => (
+                            <div className="flex flex-col gap-1 min-w-0">
+                                <span className="truncate capitalize font-medium">{(item as OttaSelectItem).name}</span>
+                                <div className="flex gap-0.5 shrink-0">
+                                    {((item as OttaSelectItem & { colors?: string[] }).colors ?? [])
+                                        .slice(0, 5)
+                                        .map((hsl: string, i: number) => (
+                                            <div
+                                                key={i}
+                                                className="w-4 h-4 rounded border border-border dark:border-muted shrink-0"
+                                                style={{ backgroundColor: hslToCss(hsl) }}
+                                            />
+                                        ))}
+                                </div>
+                            </div>
+                        )}
+                        className="w-full"
+                    />
                 </CardContent>
             </Card>
 

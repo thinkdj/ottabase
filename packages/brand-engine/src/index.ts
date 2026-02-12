@@ -85,7 +85,7 @@ export { GOOGLE_FONTS, buildGoogleFontUrl, fontToTypography, type GoogleFontMeta
 export { CURSOR_SVG_REGISTRY, resolveCursor, getCursorSvg, getAvailableCursors } from './cursors';
 
 // ── Built-in themes ────────────────────────────────────────────────────────
-export { registerBuiltInThemes, BUILTIN_THEME_NAMES } from './themes';
+export { registerBuiltInThemes, BUILTIN_THEME_NAMES, THEME_PRESET_ITEMS, getThemePresetItems } from './themes';
 
 // ── Preview (admin) ────────────────────────────────────────────────────────
 export { buildPreviewTheme, type PreviewKitData } from './previewTheme';

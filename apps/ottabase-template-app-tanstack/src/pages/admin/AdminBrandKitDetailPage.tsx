@@ -54,7 +54,13 @@ function BrandKitPreviewPanel({
     return (
         <div
             className="rounded-xl border bg-background p-4 shadow-sm dark:border-muted"
-            style={{ ...varMap } as React.CSSProperties}
+            style={
+                {
+                    ...varMap,
+                    // Ensure text inherits preview theme's foreground (fixes dark mode contrast)
+                    color: 'hsl(var(--foreground))',
+                } as React.CSSProperties
+            }
         >
             <div className="space-y-4">
                 <div className="flex items-center gap-3">

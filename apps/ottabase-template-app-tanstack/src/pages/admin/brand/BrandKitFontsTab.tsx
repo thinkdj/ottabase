@@ -1,4 +1,5 @@
-import { getThemeOrDefault } from '@ottabase/brand-engine';
+import { useEffect } from 'react';
+import { getThemeOrDefault, injectFont } from '@ottabase/brand-engine';
 import { GOOGLE_FONTS, fontToTypography } from '@ottabase/brand-engine/fonts';
 import {
     Label,
@@ -55,6 +56,24 @@ export function BrandKitFontsTab({ tokensJson, themePresetId, onTokensChange }: 
         onTokensChange(applyFontOverride(tokensJson, role, fontFamily));
     };
 
+    // Load selected fonts for preview
+    useEffect(() => {
+        const urls: string[] = [];
+        const h = fontToTypography(fontHeading, 'heading');
+        const b = fontToTypography(fontBody, 'body');
+        const w = fontToTypography(fontHandwriting, 'handwriting');
+        if (h.url) urls.push(h.url);
+        if (b.url) urls.push(b.url);
+        if (w.url) urls.push(w.url);
+        urls.forEach((url) => injectFont(url));
+    }, [fontHeading, fontBody, fontHandwriting]);
+
+    const FONT_PREVIEW = {
+        heading: 'The quick brown fox jumps over the lazy dog',
+        body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.',
+        handwriting: 'Welcome! Your message here.',
+    };
+
     return (
         <div className="space-y-6">
             <Card>
@@ -92,6 +111,12 @@ export function BrandKitFontsTab({ tokensJson, themePresetId, onTokensChange }: 
                                 ))}
                             </SelectContent>
                         </Select>
+                        <p
+                            className="mt-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-lg font-semibold dark:border-muted"
+                            style={{ fontFamily: `"${fontHeading}", system-ui, sans-serif` }}
+                        >
+                            {FONT_PREVIEW.heading}
+                        </p>
                     </div>
                     <div>
                         <Label>Body</Label>
@@ -118,6 +143,12 @@ export function BrandKitFontsTab({ tokensJson, themePresetId, onTokensChange }: 
                                 ))}
                             </SelectContent>
                         </Select>
+                        <p
+                            className="mt-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm leading-relaxed dark:border-muted"
+                            style={{ fontFamily: `"${fontBody}", sans-serif` }}
+                        >
+                            {FONT_PREVIEW.body}
+                        </p>
                     </div>
                     <div>
                         <Label>Handwriting</Label>
@@ -144,6 +175,12 @@ export function BrandKitFontsTab({ tokensJson, themePresetId, onTokensChange }: 
                                 ))}
                             </SelectContent>
                         </Select>
+                        <p
+                            className="mt-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-lg dark:border-muted"
+                            style={{ fontFamily: `"${fontHandwriting}", cursive` }}
+                        >
+                            {FONT_PREVIEW.handwriting}
+                        </p>
                     </div>
                 </CardContent>
             </Card>
