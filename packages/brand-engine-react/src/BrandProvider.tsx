@@ -11,25 +11,30 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { CRITICAL_STYLE_ID, resolveRouteForPath, pathPatternToRegex } from '@ottabase/brand-engine';
+import { CRITICAL_STYLE_ID, DEFAULT_LAYOUT, pathPatternToRegex } from '@ottabase/brand-engine';
 import type { LayoutConfig, ResolvedBrandTheme } from '@ottabase/brand-engine';
 
 /** Route mapping shape (expanded form) */
 export type RouteMapping = { pathPattern: string; layoutTemplateId: string; brandKitId: string; priority: number };
 
 /**
- * Validates CSS syntax by attempting to parse it.
+ * Validates CSS syntax using Constructable Stylesheet API when available.
+ * Fallback: basic type/emptiness check only (browser cannot reliably detect parse errors).
  */
 function isCSSValid(css: string): boolean {
-    if (!css || typeof css !== 'string') return false;
+    if (typeof css !== 'string' || css.trim() === '') return false;
     try {
-        // Try to create a style element with the CSS
+        if (typeof window !== 'undefined' && 'CSSStyleSheet' in window) {
+            const Sheet = (window as unknown as { CSSStyleSheet: { new (): { replaceSync: (s: string) => void } } })
+                .CSSStyleSheet;
+            const sheet = new Sheet();
+            sheet.replaceSync(css);
+            return true;
+        }
         const style = document.createElement('style');
         style.textContent = css;
-        // If no error is thrown, CSS is likely valid
         return true;
     } catch {
-        console.warn('Invalid CSS provided to BrandProvider');
         return false;
     }
 }
@@ -192,9 +197,15 @@ export interface BrandProviderProps {
     fallbackTheme?: ResolvedBrandTheme;
 }
 
-function resolveConfigForPath(full: FullBrandConfig, pathname: string): BrandConfig | null {
+type RouteMatcherFn = (pathname: string) => { layoutTemplateId: string; brandKitId: string } | null;
+
+function resolveConfigForPath(
+    full: FullBrandConfig,
+    pathname: string,
+    routeMatcher: RouteMatcherFn,
+): BrandConfig | null {
     const routeMappings = expandCompactConfig(full);
-    const match = resolveRouteForPath(pathname, routeMappings);
+    const match = routeMatcher(pathname);
     const kitId = match?.brandKitId ?? full.kit ?? Object.keys(full.brandKitsMap)[0];
     const layoutId = match?.layoutTemplateId ?? 'homepage';
     const kit = kitId ? full.brandKitsMap[kitId] : Object.values(full.brandKitsMap)[0];
@@ -206,6 +217,27 @@ function resolveConfigForPath(full: FullBrandConfig, pathname: string): BrandCon
         layoutTemplatesMap: full.layoutTemplatesMap,
         routeMappings,
         r2PublicUrl: full.r2PublicUrl,
+    };
+}
+
+/** Build degraded config when API fails but fallbackTheme is provided */
+function buildFallbackConfig(theme: ResolvedBrandTheme): BrandConfig {
+    const layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }> = {
+        homepage: { componentKey: 'homepage', config: DEFAULT_LAYOUT },
+    };
+    return {
+        brandName: 'Default',
+        logos: {},
+        theme,
+        themeBase: theme.name,
+        tenantTheme: undefined,
+        defaultColorScheme: 'light',
+        allowDarkModeToggle: true,
+        customCss: undefined,
+        hideOttabaseBranding: false,
+        layoutTemplateId: 'homepage',
+        layoutTemplatesMap,
+        routeMappings: [],
     };
 }
 
@@ -221,7 +253,7 @@ export function BrandProvider({
     const [path, setPath] = useState('/');
     const [isLoading, setIsLoading] = useState(!initialConfig);
     const [error, setError] = useState<Error | null>(null);
-    const retryCountRef = useRef(0);
+    const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const fetchConfigWithRetry = useCallback(
         async (attempt = 1) => {
@@ -244,16 +276,15 @@ export function BrandProvider({
                 const data = (await response.json()) as FullBrandConfig;
                 setFullConfig(data);
                 setError(null);
-                retryCountRef.current = 0;
             } catch (err) {
-                const error = err instanceof Error ? err : new Error('Unknown error');
-                setError(error);
+                const errObj = err instanceof Error ? err : new Error('Unknown error');
+                setError(errObj);
 
                 // Retry with exponential backoff (max 3 attempts)
                 if (attempt < 3) {
                     const delayMs = Math.pow(2, attempt) * 1000; // 2s, 4s
-                    setTimeout(() => {
-                        retryCountRef.current = attempt;
+                    retryTimeoutRef.current = setTimeout(() => {
+                        retryTimeoutRef.current = null;
                         fetchConfigWithRetry(attempt + 1);
                     }, delayMs);
                 }
@@ -268,6 +299,12 @@ export function BrandProvider({
         if (!initialConfig) {
             fetchConfigWithRetry();
         }
+        return () => {
+            if (retryTimeoutRef.current) {
+                clearTimeout(retryTimeoutRef.current);
+                retryTimeoutRef.current = null;
+            }
+        };
     }, [fetchConfigWithRetry, initialConfig]);
 
     // Create route matcher cache, memoized
@@ -279,19 +316,26 @@ export function BrandProvider({
 
     // Derive path-scoped config from full config + current path (no refetch on nav)
     const config = useMemo(() => {
-        if (!fullConfig || !routeMatcher) return null;
-        const resolved = resolveConfigForPath(fullConfig, path);
-        // Fallback if resolution fails
+        // Apply fallback theme when API fails and fallbackTheme is provided
+        if (!fullConfig) {
+            if (fallbackTheme && error) return buildFallbackConfig(fallbackTheme);
+            return null;
+        }
+        if (!routeMatcher) return null;
+        const resolved = resolveConfigForPath(fullConfig, path, routeMatcher);
+        // Fallback if route resolution fails but we have fullConfig + fallbackTheme
         if (resolved || !fallbackTheme) return resolved;
+        const firstKit = Object.values(fullConfig.brandKitsMap)[0];
+        if (!firstKit) return null;
         return {
-            ...Object.values(fullConfig.brandKitsMap)[0],
+            ...firstKit,
             theme: fallbackTheme,
             layoutTemplateId: 'homepage',
             layoutTemplatesMap: fullConfig.layoutTemplatesMap,
             routeMappings: expandCompactConfig(fullConfig),
             r2PublicUrl: fullConfig.r2PublicUrl,
         } as BrandConfig;
-    }, [fullConfig, path, routeMatcher, fallbackTheme]);
+    }, [fullConfig, path, routeMatcher, fallbackTheme, error]);
 
     // Debounced CSS injection with validation
     const debouncedInjectCss = useMemo(

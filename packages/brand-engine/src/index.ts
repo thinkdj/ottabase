@@ -56,6 +56,7 @@ export {
     isValidPathPattern,
     isValidJSON,
     safeParseJSON,
+    mergeLayoutConfig,
 } from './validators';
 
 // ── Registry ───────────────────────────────────────────────────────────────

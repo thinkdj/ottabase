@@ -2,15 +2,21 @@
 // Brand Engine – Layout path resolution (pure functions, no React)
 // ---------------------------------------------------------------------------
 
+/** Regex metacharacters to escape for literal matching (except * and ** which are wildcards) */
+const REGEX_SPECIAL = /[.+?^${}()|[\]\\]/g;
+
 /**
  * Convert path pattern to regex.
  * * = one segment ([^/]+), ** = zero-or-more segments (.*)
+ * Escapes regex metacharacters so literals like /foo.bar match exactly.
  */
 export function pathPatternToRegex(pattern: string): RegExp {
     const escaped = pattern
         .replace(/\*\*/g, '<<GLOB>>')
-        .replace(/\*/g, '[^/]+')
-        .replace(/<<GLOB>>/g, '.*');
+        .replace(/\*/g, '<<STAR>>')
+        .replace(REGEX_SPECIAL, '\\$&')
+        .replace(/<<GLOB>>/g, '.*')
+        .replace(/<<STAR>>/g, '[^/]+');
     return new RegExp(`^${escaped}$`);
 }
 
