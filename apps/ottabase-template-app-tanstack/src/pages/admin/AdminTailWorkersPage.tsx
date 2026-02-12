@@ -121,7 +121,8 @@ export function AdminTailWorkersPage() {
                         Tail Commands
                     </CardTitle>
                     <CardDescription>
-                        Use these commands in a terminal to stream logs for log-processing workers.
+                        Use these commands in a terminal to stream all worker logs, then filter for queues, cron, or
+                        realtime activity.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
