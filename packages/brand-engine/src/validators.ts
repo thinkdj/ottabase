@@ -3,7 +3,8 @@
 // Type guards and validation helpers for brand configuration data
 // ---------------------------------------------------------------------------
 
-import type { LayoutConfig, TokenColors } from './tokens';
+import type { LayoutConfig } from './layout';
+import type { TokenColors } from './tokens';
 import type { BrandTheme } from './theme';
 
 /**
