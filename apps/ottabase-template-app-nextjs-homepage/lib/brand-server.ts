@@ -11,17 +11,27 @@ registerBuiltInThemes();
 /**
  * Generate brand configuration for SSR
  * This replaces the need for a /api/brand endpoint
+ * Generates both light and dark themes for client-side switching
  */
 export function generateBrandConfig(mode: 'light' | 'dark' = 'light'): FullBrandConfig {
     // Get the theme preset
     const baseTheme = getThemeByName(themePreset) || getThemeByName('default')!;
 
-    // Resolve the theme with tenant overrides
-    const resolvedTheme = resolveTheme({
+    // Resolve both light and dark themes
+    const lightTheme = resolveTheme({
         base: baseTheme,
         tenantOverrides: brandConfig,
-        mode,
+        mode: 'light',
     });
+
+    const darkTheme = resolveTheme({
+        base: baseTheme,
+        tenantOverrides: brandConfig,
+        mode: 'dark',
+    });
+
+    // Use requested mode for initial SSR
+    const resolvedTheme = mode === 'dark' ? darkTheme : lightTheme;
 
     // Build the full config structure expected by BrandProvider
     const config: FullBrandConfig = {
@@ -50,7 +60,10 @@ export function generateBrandConfig(mode: 'light' | 'dark' = 'light'): FullBrand
                 allowDarkModeToggle: true,
                 customCss: undefined,
                 hideOttabaseBranding: false,
-            },
+                // Store both themes for client-side switching
+                _lightTheme: lightTheme,
+                _darkTheme: darkTheme,
+            } as any,
         },
     };
 

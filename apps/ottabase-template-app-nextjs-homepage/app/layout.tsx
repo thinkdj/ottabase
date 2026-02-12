@@ -1,3 +1,4 @@
+import { buildCriticalCSS } from '@ottabase/brand-engine';
 import type { Metadata } from 'next';
 import { generateBrandConfig } from '../lib/brand-server';
 import './globals.css';
@@ -13,10 +14,23 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     // Generate brand config server-side (SSR)
+    // Note: Using 'light' for initial SSR. BrandProvider will handle dynamic theme switching on client.
     const brandConfig = generateBrandConfig('light');
+    const theme = brandConfig.brandKitsMap.default.theme;
+
+    // Generate critical CSS for SSR (prevents FOUC)
+    const criticalCSS = buildCriticalCSS(theme);
 
     return (
         <html lang="en" suppressHydrationWarning>
+            <head>
+                {/* Inject critical CSS for theme variables */}
+                <style id="brand-critical" dangerouslySetInnerHTML={{ __html: criticalCSS }} />
+                {/* Load fonts */}
+                <link rel="stylesheet" href={theme.typography.heading.url} />
+                <link rel="stylesheet" href={theme.typography.body.url} />
+                <link rel="stylesheet" href={theme.typography.handwriting.url} />
+            </head>
             <body>
                 <Providers initialBrandConfig={brandConfig}>{children}</Providers>
             </body>

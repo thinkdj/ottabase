@@ -1,7 +1,7 @@
 import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
 import { Button } from '@ottabase/ui-shadcn';
+import { Github, Home, Rocket } from 'lucide-react';
 import Link from 'next/link';
-import { Home, Github, Rocket } from 'lucide-react';
 
 export default function AboutPage() {
     return (
@@ -25,13 +25,7 @@ export default function AboutPage() {
                 {/* Main Content */}
                 <div className="space-y-8">
                     <div>
-                        <h1
-                            className="mb-4 text-5xl font-bold bg-gradient-to-r from-cyan-500 to-fuchsia-500 bg-clip-text text-transparent"
-                            style={{
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                            }}
-                        >
+                        <h1 className="mb-4 text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                             About This Template
                         </h1>
                         <p className="text-xl text-muted-foreground">
@@ -96,7 +90,7 @@ export default function AboutPage() {
 
                     {/* CTA Section */}
                     <div className="mt-12 flex flex-wrap gap-4">
-                        <Button asChild size="lg" className="bg-gradient-to-r from-cyan-500 to-cyan-600">
+                        <Button asChild size="lg">
                             <a href="https://github.com/thinkdj/ottabase" target="_blank" rel="noopener noreferrer">
                                 <Github className="mr-2 h-5 w-5" />
                                 View on GitHub

@@ -35,8 +35,12 @@ export default function HomePage() {
 
                 {/* Action Buttons */}
                 <div className="mt-8 flex flex-wrap gap-4 justify-center">
-                    <Button asChild size="lg" className="bg-gradient-to-r from-cyan-500 to-cyan-600">
+                    <Button asChild size="lg">
                         <Link href="/about">About</Link>
+                    </Button>
+
+                    <Button asChild size="lg" variant="secondary">
+                        <Link href="/theme-demo">🎨 Theme Demo</Link>
                     </Button>
 
                     <Button asChild variant="outline" size="lg">
