@@ -8,7 +8,7 @@ import type { BrandTheme } from '@ottabase/brand-engine';
  * You can customize this to match your brand
  */
 export const brandConfig: Partial<BrandTheme> = {
-    name: 'default',
+    name: 'artisan',
     // You can override colors, typography, spacing, etc. here
     // See @ottabase/brand-engine documentation for all available options
 };
@@ -17,4 +17,4 @@ export const brandConfig: Partial<BrandTheme> = {
  * Theme preset to use
  * Available presets: 'default', 'neo', 'crisp', 'funky', 'artisan', 'midnight', 'rose', 'verdant'
  */
-export const themePreset = 'default';
+export const themePreset = 'artisan';

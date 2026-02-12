@@ -13,7 +13,7 @@ export default function HomePage() {
 
                 {/* Main Heading */}
                 <h1
-                    className="mb-4 bg-gradient-to-r from-cyan-500 to-fuchsia-500 bg-clip-text text-6xl font-bold text-transparent"
+                    className="mb-4 mt-32 bg-gradient-to-r from-cyan-500 to-fuchsia-500 bg-clip-text text-6xl font-bold text-transparent"
                     style={{
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',

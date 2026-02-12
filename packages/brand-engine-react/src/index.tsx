@@ -2,9 +2,9 @@
 // @ottabase/brand-engine-react – Public API
 // ---------------------------------------------------------------------------
 
-export { BrandProvider, useBrand, BrandPathSync } from './BrandProvider';
-export type { BrandConfig } from './BrandProvider';
+export { BrandPathSync, BrandProvider, useBrand } from './BrandProvider';
+export type { BrandConfig, FullBrandConfig } from './BrandProvider';
 export { LayoutResolver } from './LayoutResolver';
 export type { LayoutResolverProps, RouterAdapter } from './LayoutResolver';
-export { registerLayoutComponent, getLayoutComponent } from './registry';
+export { getLayoutComponent, registerLayoutComponent } from './registry';
 export type { LayoutComponentProps } from './registry';
