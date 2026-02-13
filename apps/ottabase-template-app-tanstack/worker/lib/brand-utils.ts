@@ -20,9 +20,13 @@ export function brandEnv(env: CloudflareEnv): BrandEnv {
     };
 }
 
-export function getOrgApp(url: URL): { orgId: string | null; appId: string | null } {
+/**
+ * Extract organizationId and appId from request.
+ * Checks query params first, then X-Organization-Id / X-App-Id headers (RBAC convention).
+ */
+export function getOrgApp(url: URL, request?: Request): { orgId: string | null; appId: string | null } {
     return {
-        orgId: url.searchParams.get('organizationId') ?? null,
-        appId: url.searchParams.get('appId') ?? null,
+        orgId: url.searchParams.get('organizationId') ?? request?.headers.get('x-organization-id') ?? null,
+        appId: url.searchParams.get('appId') ?? request?.headers.get('x-app-id') ?? null,
     };
 }

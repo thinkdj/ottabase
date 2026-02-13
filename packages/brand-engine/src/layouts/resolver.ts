@@ -9,14 +9,19 @@ const REGEX_SPECIAL = /[.+?^${}()|[\]\\]/g;
  * Convert path pattern to regex.
  * * = one segment ([^/]+), ** = zero-or-more segments (.*)
  * Escapes regex metacharacters so literals like /foo.bar match exactly.
+ * /blog/** also matches /blog (exact base path).
  */
 export function pathPatternToRegex(pattern: string): RegExp {
-    const escaped = pattern
+    let escaped = pattern
         .replace(/\*\*/g, '<<GLOB>>')
         .replace(/\*/g, '<<STAR>>')
         .replace(REGEX_SPECIAL, '\\$&')
         .replace(/<<GLOB>>/g, '.*')
         .replace(/<<STAR>>/g, '[^/]+');
+    // /blog/** should match /blog and /blog/anything – make trailing /.* optional
+    if (pattern.endsWith('/**')) {
+        escaped = escaped.replace(/\/\.\*$/, '(\/.*)?');
+    }
     return new RegExp(`^${escaped}$`);
 }
 

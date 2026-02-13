@@ -2,29 +2,31 @@
 // Brand Kit detail – Tabbed editor with realtime preview
 // ---------------------------------------------------------------------------
 
-import { useMemo, useEffect, useState } from 'react';
-import { useParams, Link } from '@tanstack/react-router';
-import { buildPreviewTheme, buildCSSVarMap, injectFont } from '@ottabase/brand-engine';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { buildCSSVarMap, buildPreviewTheme, injectFont } from '@ottabase/brand-engine';
+import { useBrand } from '@ottabase/brand-engine-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ottabase/ui-shadcn';
 import {
     IconArrowLeft,
     IconBadge,
+    IconCheck,
+    IconColorSwatch,
     IconPalette,
     IconPhoto,
-    IconTypography,
     IconSettings,
-    IconColorSwatch,
+    IconTrash,
+    IconTypography,
 } from '@tabler/icons-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useBrand } from '@ottabase/brand-engine-react';
-import { brandKitApi, type BrandKitItem } from './brand/brandApi';
-import { BrandKitBrandTab } from './brand/BrandKitBrandTab';
-import { BrandKitLogoTab } from './brand/BrandKitLogoTab';
-import { BrandKitColorsTab } from './brand/BrandKitColorsTab';
-import { BrandKitThemeTab } from './brand/BrandKitThemeTab';
-import { BrandKitFontsTab } from './brand/BrandKitFontsTab';
+import { brandKitApi, layoutApi, type BrandKitItem } from './brand/brandApi';
 import { BrandKitAdvancedTab } from './brand/BrandKitAdvancedTab';
+import { BrandKitBrandTab } from './brand/BrandKitBrandTab';
+import { BrandKitColorsTab } from './brand/BrandKitColorsTab';
+import { BrandKitFontsTab } from './brand/BrandKitFontsTab';
+import { BrandKitLogoTab } from './brand/BrandKitLogoTab';
+import { BrandKitThemeTab } from './brand/BrandKitThemeTab';
 
 const VALID_TABS = ['brand', 'logo', 'colors', 'theme', 'fonts', 'advanced'] as const;
 
@@ -131,11 +133,13 @@ export function AdminBrandKitDetailPage() {
     const { kitId } = useParams({ strict: false }) as { kitId?: string };
     const queryClient = useQueryClient();
     const { config, refresh } = useBrand();
+    const navigate = useNavigate();
+    const isNew = !kitId || kitId === 'new';
 
     const { data: kit, isLoading } = useQuery<BrandKitItem>({
         queryKey: ['brand', 'kit', kitId],
         queryFn: () => brandKitApi.get(kitId!),
-        enabled: !!kitId,
+        enabled: !!kitId && kitId !== 'new',
         // Trust cached data from create/clone for 5s to avoid D1 eventual consistency
         staleTime: 5000,
     });
@@ -191,10 +195,61 @@ export function AdminBrandKitDetailPage() {
         onError: () => toast.error('Failed to save'),
     });
 
+    const createMutation = useMutation({
+        mutationFn: (body: Record<string, unknown>) => brandKitApi.create(body),
+        onSuccess: (created) => {
+            toast.success('Brand Kit created');
+            queryClient.invalidateQueries({ queryKey: ['brand', 'kits'] });
+            queryClient.setQueryData(['brand', 'kit', created.id], created);
+            refresh();
+            navigate({ to: '/admin/brand-engine/kits/$kitId', params: { kitId: created.id } });
+        },
+        onError: () => toast.error('Failed to create'),
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: () => brandKitApi.delete(kitId!),
+        onSuccess: () =>
+            Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['brand', 'kit', kitId] }),
+                queryClient.invalidateQueries({ queryKey: ['brand', 'kits'] }),
+            ]).then(() => {
+                toast.success('Brand Kit deleted');
+                refresh();
+                navigate({ to: '/admin/brand-engine' });
+            }),
+        onError: () => toast.error('Failed to delete'),
+    });
+
+    const applyKitMutation = useMutation({
+        mutationFn: async () => {
+            const mappings = (await layoutApi.getMappings()) as {
+                pathPattern: string;
+                layoutTemplateId: string;
+                brandKitId: string;
+                priority?: number;
+            }[];
+            const next = (mappings ?? []).map((m) => ({
+                pathPattern: m.pathPattern,
+                layoutTemplateId: m.layoutTemplateId,
+                brandKitId: kitId!,
+                priority: m.priority ?? 0,
+            }));
+            if (next.length === 0) throw new Error('No route mappings found to update');
+            await layoutApi.putMappings({ mappings: next });
+        },
+        onSuccess: () => {
+            toast.success('Brand Kit applied to all routes');
+            queryClient.invalidateQueries({ queryKey: ['brand', 'mappings'] });
+            refresh();
+        },
+        onError: () => toast.error('Failed to apply Brand Kit to routes'),
+    });
+
     const handleSave = () => {
-        updateMutation.mutate({
-            name: draft.name?.trim() || draft.brandName,
-            brandName: draft.brandName,
+        const payload = {
+            name: draft.name?.trim() || draft.brandName || 'New Brand Kit',
+            brandName: draft.brandName || 'My App',
             tagline: draft.tagline || undefined,
             tokensJson: draft.tokensJson.trim() || undefined,
             themePresetId: draft.themePresetId,
@@ -202,10 +257,23 @@ export function AdminBrandKitDetailPage() {
             allowDarkModeToggle: draft.allowDarkModeToggle,
             customCss: draft.customCss || undefined,
             hideOttabaseBranding: draft.hideOttabaseBranding,
-        });
+        };
+
+        if (isNew) {
+            createMutation.mutate(payload);
+        } else {
+            updateMutation.mutate(payload);
+        }
     };
 
-    if (!kitId || isLoading || !kit) {
+    const handleDelete = () => {
+        if (deleteMutation.isPending || !kit) return;
+        const isDefault = (kit.isDefault ?? false) || kit.organizationId === null;
+        if (isDefault) return;
+        if (window.confirm('Delete this Brand Kit? This cannot be undone.')) deleteMutation.mutate();
+    };
+
+    if (!isNew && (isLoading || !kit)) {
         return (
             <div className="flex items-center justify-center py-12">
                 <p className="text-muted-foreground">Loading Brand Kit...</p>
@@ -213,9 +281,32 @@ export function AdminBrandKitDetailPage() {
         );
     }
 
-    // R2 public URL for logo display
+    const kitForView: BrandKitItem =
+        kit ??
+        ({
+            id: 'new',
+            organizationId: null,
+            name: draft.name || 'New Brand Kit',
+            brandName: draft.brandName || 'My App',
+            tagline: draft.tagline || null,
+            themePresetId: draft.themePresetId,
+            tokensJson: draft.tokensJson,
+            defaultColorScheme: draft.defaultColorScheme,
+            allowDarkModeToggle: draft.allowDarkModeToggle,
+            customCss: draft.customCss || null,
+            hideOttabaseBranding: draft.hideOttabaseBranding,
+            logoKey: draft.logoKey,
+            logoDarkKey: draft.logoDarkKey,
+            iconKey: draft.iconKey,
+            ogImageKey: draft.ogImageKey,
+            emailLogoKey: draft.emailLogoKey,
+            isDefault: false,
+        } as BrandKitItem);
+
     const logoBaseUrl = config?.r2PublicUrl ?? '';
-    const logoUrls = getLogoUrls({ ...kit, ...draft } as BrandKitItem, logoBaseUrl);
+    const logoUrls = getLogoUrls({ ...kitForView, ...draft } as BrandKitItem, logoBaseUrl);
+    const isDefaultKit = (kitForView.isDefault ?? false) || kitForView.organizationId === null;
+    const saving = isNew ? createMutation.isPending : updateMutation.isPending;
 
     return (
         <div className="space-y-6">
@@ -230,16 +321,40 @@ export function AdminBrandKitDetailPage() {
                             Back to Kits
                         </button>
                     </Link>
-                    <h1 className="text-2xl font-bold">{draft.name || kit.name}</h1>
+                    <h1 className="text-2xl font-bold">{draft.name || kitForView.name}</h1>
                 </div>
-                <button
-                    type="button"
-                    className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-                    onClick={handleSave}
-                    disabled={updateMutation.isPending}
-                >
-                    {updateMutation.isPending ? 'Saving...' : 'Save'}
-                </button>
+                <div className="flex items-center gap-2">
+                    {isNew || isDefaultKit ? null : (
+                        <button
+                            type="button"
+                            className="inline-flex items-center rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
+                            onClick={handleDelete}
+                            disabled={deleteMutation.isPending}
+                        >
+                            <IconTrash className="mr-2 h-4 w-4" />
+                            {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                        </button>
+                    )}
+                    {!isNew && (
+                        <button
+                            type="button"
+                            className="inline-flex items-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
+                            onClick={() => applyKitMutation.mutate()}
+                            disabled={applyKitMutation.isPending}
+                        >
+                            <IconCheck className="mr-2 h-4 w-4" />
+                            {applyKitMutation.isPending ? 'Applying…' : 'Apply to all routes'}
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                        onClick={handleSave}
+                        disabled={saving}
+                    >
+                        {saving ? (isNew ? 'Creating...' : 'Saving...') : isNew ? 'Create Brand Kit' : 'Save'}
+                    </button>
+                </div>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
@@ -277,25 +392,31 @@ export function AdminBrandKitDetailPage() {
                             brandName={draft.brandName}
                             tagline={draft.tagline}
                             onChange={(d) => setDraft((s) => ({ ...s, ...d }))}
-                            nameReadOnly={kit.organizationId === null}
+                            nameReadOnly={!isNew && kitForView.organizationId === null}
                         />
                     </TabsContent>
                     <TabsContent value="logo">
-                        <BrandKitLogoTab
-                            kitId={kitId}
-                            logos={{
-                                logoKey: draft.logoKey,
-                                logoDarkKey: draft.logoDarkKey,
-                                iconKey: draft.iconKey,
-                                ogImageKey: draft.ogImageKey,
-                                emailLogoKey: draft.emailLogoKey,
-                            }}
-                            logoBaseUrl={logoBaseUrl}
-                            onUploaded={(_, url) => {
-                                // Parent should refetch; we could also update local draft
-                                queryClient.invalidateQueries({ queryKey: ['brand', 'kit', kitId] });
-                            }}
-                        />
+                        {isNew ? (
+                            <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                                Save the Brand Kit first to upload logos.
+                            </div>
+                        ) : (
+                            <BrandKitLogoTab
+                                kitId={kitId!}
+                                logos={{
+                                    logoKey: draft.logoKey,
+                                    logoDarkKey: draft.logoDarkKey,
+                                    iconKey: draft.iconKey,
+                                    ogImageKey: draft.ogImageKey,
+                                    emailLogoKey: draft.emailLogoKey,
+                                }}
+                                logoBaseUrl={logoBaseUrl}
+                                onUploaded={(_, url) => {
+                                    // Parent should refetch; we could also update local draft
+                                    queryClient.invalidateQueries({ queryKey: ['brand', 'kit', kitId] });
+                                }}
+                            />
+                        )}
                     </TabsContent>
                     <TabsContent value="colors">
                         <BrandKitColorsTab

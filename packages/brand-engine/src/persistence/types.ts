@@ -2,9 +2,9 @@
 // Brand Engine – Resolved config types (API response shape, KV cache)
 // ---------------------------------------------------------------------------
 
-import type { BrandTheme } from '../theme';
 import type { LayoutConfig } from '../layout';
 import type { ResolvedBrandTheme } from '../resolver';
+import type { BrandTheme } from '../theme';
 
 /** Resolved brand config (GET /api/brand). Path-scoped: theme + layout for current path. */
 export interface ResolvedBrandConfig {
@@ -35,6 +35,9 @@ export interface ResolvedBrandConfig {
 export interface BrandKitItem {
     id: string;
     organizationId: string | null;
+    isDefault?: boolean;
+    createdBy?: string | null;
+    updatedBy?: string | null;
     name: string;
     slug?: string | null;
     brandName: string;

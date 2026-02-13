@@ -11,7 +11,7 @@
 'use client';
 
 import type { LayoutConfig, ResolvedBrandTheme } from '@ottabase/brand-engine';
-import { applyBrandTheme, CRITICAL_STYLE_ID, DEFAULT_LAYOUT, pathPatternToRegex } from '@ottabase/brand-engine';
+import { DEFAULT_LAYOUT, pathPatternToRegex } from '@ottabase/brand-engine';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 /** Route mapping shape (expanded form) */
@@ -81,21 +81,16 @@ function createDebounce(fn: (css: string) => void, delay: number) {
 function createRouteMatcherCache(mappings: RouteMapping[]) {
     const pathCache = new Map<string, { layoutTemplateId: string; brandKitId: string } | null>();
     const regexCache = new Map<string, RegExp>();
+    const sorted = [...mappings].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
 
     return (pathname: string) => {
-        // Check path result cache first
         if (pathCache.has(pathname)) {
             return pathCache.get(pathname)!;
         }
 
-        // Sort by priority (higher first)
-        const sorted = [...mappings].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
-
         for (const m of sorted) {
-            // Check regex cache
             let regex = regexCache.get(m.pathPattern);
             if (!regex) {
-                // Compile and cache regex
                 regex = pathPatternToRegex(m.pathPattern);
                 regexCache.set(m.pathPattern, regex);
             }
@@ -107,7 +102,6 @@ function createRouteMatcherCache(mappings: RouteMapping[]) {
             }
         }
 
-        // Cache miss
         pathCache.set(pathname, null);
         return null;
     };
@@ -269,7 +263,10 @@ export function BrandProvider({
                 if (appId) params.set('appId', appId);
                 const url = `${apiEndpoint}?${params}`;
 
-                const response = await fetch(url);
+                const headers: Record<string, string> = {};
+                if (organizationId) headers['X-Organization-Id'] = organizationId;
+                if (appId) headers['X-App-Id'] = appId;
+                const response = await fetch(url, { cache: 'no-store', headers });
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: Failed to fetch brand config`);
                 }
@@ -348,17 +345,10 @@ export function BrandProvider({
 
     useEffect(() => {
         if (!config) return;
-        if (typeof document !== 'undefined') {
-            // Remove critical CSS (SSR-injected) and replace with runtime CSS
-            const critical = document.getElementById(CRITICAL_STYLE_ID);
-            if (critical) critical.remove();
-
-            // Re-apply theme CSS variables to ensure they persist
-            applyBrandTheme(config.theme);
-        }
         if (config.customCss) {
             debouncedInjectCss(config.customCss);
         }
+        // Critical CSS removal is done by BrandThemeApplicator after it applies – avoids wrong-mode flash
     }, [config, debouncedInjectCss]);
 
     return (

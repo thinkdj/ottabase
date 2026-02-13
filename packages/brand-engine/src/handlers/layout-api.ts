@@ -5,6 +5,7 @@
 
 import { LayoutTemplate } from '../persistence/LayoutTemplate.model';
 import { LayoutRouteMapping } from '../persistence/LayoutRouteMapping.model';
+import { getLayoutData } from '../persistence/layoutData';
 import { createBrandCache } from '../persistence/cache';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { errorResponse } from '@ottabase/utils/http-errors';
@@ -72,7 +73,8 @@ export async function handlePutLayout(
 }
 
 /**
- * GET /api/brand/mappings - List route mappings for org/app
+ * GET /api/brand/mappings - List route mappings for org/app.
+ * When no DB mappings exist, returns effective defaults from getLayoutData so users can view and edit them.
  */
 export async function handleGetMappings(
     _request: Request,
@@ -84,13 +86,21 @@ export async function handleGetMappings(
         { organizationId: organizationId ?? null, appId: appId ?? null },
         { orderBy: 'priority', orderDirection: 'desc' },
     );
-    const data = (mappings as LayoutRouteMapping[]).map((m) => ({
-        id: m.get('id'),
-        pathPattern: m.get('pathPattern'),
-        layoutTemplateId: m.get('layoutTemplateId'),
-        brandKitId: m.get('brandKitId'),
-        priority: m.get('priority') ?? 0,
-    }));
+    const data =
+        mappings.length > 0
+            ? (mappings as LayoutRouteMapping[]).map((m) => ({
+                  id: m.get('id'),
+                  pathPattern: m.get('pathPattern'),
+                  layoutTemplateId: m.get('layoutTemplateId'),
+                  brandKitId: m.get('brandKitId'),
+                  priority: m.get('priority') ?? 0,
+              }))
+            : (await getLayoutData(organizationId, appId)).routeMappings.map((m) => ({
+                  pathPattern: m.pathPattern,
+                  layoutTemplateId: m.layoutTemplateId,
+                  brandKitId: m.brandKitId,
+                  priority: m.priority,
+              }));
     return jsonResponse(data, 200);
 }
 

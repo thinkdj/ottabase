@@ -20,6 +20,9 @@ const fetchOpts = { credentials: 'include' as RequestCredentials };
 export interface BrandKitItem {
     id: string;
     organizationId?: string | null;
+    isDefault?: boolean;
+    createdBy?: string | null;
+    updatedBy?: string | null;
     name: string;
     slug?: string | null;
     brandName: string;
@@ -123,19 +126,20 @@ export interface LayoutMappingItem {
 
 export const layoutApi = {
     getTemplates: (params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BASE}/layouts`, params as Record<string, string>)).then((r) =>
+        fetch(brandUrl(`${BASE}/layouts`, params as Record<string, string>), fetchOpts).then((r) =>
             r.ok ? r.json() : Promise.reject(r),
         ) as Promise<LayoutTemplateItem[]>,
 
     putTemplate: (body: Record<string, unknown>, params?: { organizationId?: string | null; appId?: string | null }) =>
         fetch(brandUrl(`${BASE}/layouts`, params as Record<string, string>), {
+            ...fetchOpts,
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         }).then((r) => (r.ok ? r.json() : Promise.reject(r))),
 
     getMappings: (params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BASE}/mappings`, params as Record<string, string>)).then((r) =>
+        fetch(brandUrl(`${BASE}/mappings`, params as Record<string, string>), fetchOpts).then((r) =>
             r.ok ? r.json() : Promise.reject(r),
         ) as Promise<LayoutMappingItem[]>,
 
@@ -151,6 +155,7 @@ export const layoutApi = {
         params?: { organizationId?: string | null; appId?: string | null },
     ) =>
         fetch(brandUrl(`${BASE}/mappings`, params as Record<string, string>), {
+            ...fetchOpts,
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),

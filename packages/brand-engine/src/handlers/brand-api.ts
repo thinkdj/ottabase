@@ -3,11 +3,11 @@
 // GET /api/brand – full config (route mappings, layouts, all brand kits). Client resolves path locally.
 // ---------------------------------------------------------------------------
 
-import { resolveFullBrandConfig } from '../persistence/resolveBrandConfig';
-import { errorResponse } from '@ottabase/utils/http-errors';
 import type { D1Database, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
+import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { FullBrandConfig } from '../persistence/resolveBrandConfig';
+import { resolveFullBrandConfig } from '../persistence/resolveBrandConfig';
 
 export interface BrandApiEnv {
     OBCF_D1: D1Database;
@@ -63,15 +63,15 @@ export async function handleGetBrand(
 }
 
 // Re-export layout handlers
-export { handleGetLayouts, handlePutLayout, handleGetMappings, handlePutMappings } from './layout-api';
+export { handleGetLayouts, handleGetMappings, handlePutLayout, handlePutMappings } from './layout-api';
 
 // Re-export Brand Kit handlers
 export {
-    handleGetBrandKits,
-    handleGetBrandKit,
-    handleCreateBrandKit,
-    handleUpdateBrandKit,
-    handleDeleteBrandKit,
     handleCloneBrandKit,
+    handleCreateBrandKit,
+    handleDeleteBrandKit,
+    handleGetBrandKit,
+    handleGetBrandKits,
+    handleUpdateBrandKit,
     handleUploadBrandKitLogo,
 } from './brand-kit-api';

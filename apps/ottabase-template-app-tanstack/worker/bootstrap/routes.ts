@@ -11,23 +11,22 @@
 //   POST /__bootstrap__/api/finalize     → Mark platform READY
 // ============================================================
 
+import { encode as encodeAuthJwt } from '@auth/core/jwt';
 import { hashPassword } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import {
     autoInit,
     clearConnection,
     coreMigrations,
-    Organization,
-    OrganizationMember,
     registerConnection,
     Role,
     runMigrations,
     User,
 } from '@ottabase/ottaorm';
-import { makeSlug } from '@ottabase/utils/url';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
+import { provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
 import { renderBindingsErrorPage, renderLockedPage, renderMaintenancePage, renderWizardPage } from './pages';
 import { ensureMetaTable, probeBindings, writeDBState, writeKVState } from './state-resolver';
 import type { PlatformStateResult } from './types';
@@ -471,48 +470,107 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
 
         // Create personal organization
         let organizationId: string | null = null;
+        let assignedRole: string | null = null;
         try {
-            const orgName = `${name || email.split('@')[0]}'s Workspace`;
-            const slug = makeSlug(orgName) || `org-${userId.slice(0, 8)}`;
-
-            const org = await Organization.create({
-                name: orgName,
-                slug,
-                ownerId: userId,
+            const provisioned = await provisionDefaultOrganizationForUser({
+                user: newUser as any,
+                email,
+                name,
+                organizationRole: 'owner',
+                assignedBy: 'system',
+                roleFallbacks: ['owner'],
             });
-            organizationId = org.get('id') as string;
-
-            await OrganizationMember.create({
-                userId,
-                organizationId,
-                role: 'owner',
-                status: 'active',
-            });
-
-            // Ensure roles exist and assign owner role to the new organization
-            await Role.ensureDefaultRoles();
-            const ownerRole = await Role.findByName('owner');
-
-            if (ownerRole) {
-                // assignRole(roleId, assignedBy, organizationId)
-                await newUser.assignRole(ownerRole.get('id') as string, 'system', organizationId);
-            }
+            organizationId = provisioned.organizationId;
+            assignedRole = provisioned.assignedRole;
         } catch (error) {
-            // Organization creation is non-fatal but highly recommended
-            console.warn('Organization creation during bootstrap:', error);
+            return jsonResp(
+                {
+                    success: false,
+                    error: 'Failed to provision default organization for owner account',
+                    code: 'ORG_PROVISION_FAILED',
+                },
+                500,
+            );
         }
 
-        return jsonResp({
+        // Auto-login: create auth cookie so the user is immediately authenticated
+        const cookieName = (env as any).AUTH_COOKIE_NAME || 'authjs.session-token';
+        const maxAgeSeconds = 30 * 24 * 60 * 60;
+        let sessionToken: string | null = null;
+
+        // Primary path: JWT session strategy (default)
+        try {
+            const nowSeconds = Math.floor(Date.now() / 1000);
+            const authSecret = (env as any).AUTH_SECRET || 'dev-secret-change-in-production';
+            sessionToken = await encodeAuthJwt({
+                token: {
+                    id: userId,
+                    sub: userId,
+                    email,
+                    name: name || null,
+                    emailVerified: Date.now(),
+                    organizationId: organizationId || undefined,
+                    roles: assignedRole ? [assignedRole] : undefined,
+                    permissions: [],
+                    jti: crypto.randomUUID(),
+                    iat: nowSeconds,
+                    exp: nowSeconds + maxAgeSeconds,
+                },
+                secret: authSecret,
+                maxAge: maxAgeSeconds,
+                salt: cookieName,
+            });
+        } catch (error) {
+            console.warn('JWT cookie generation failed during bootstrap auto-login:', error);
+            sessionToken = null;
+        }
+
+        // Fallback for database-session strategy deployments
+        if (!sessionToken) {
+            try {
+                sessionToken = crypto.randomUUID();
+                const expiresMs = Date.now() + maxAgeSeconds * 1000;
+                const nowMs = Date.now();
+                await env.OBCF_D1.prepare(
+                    `INSERT INTO sessions (id, session_token, user_id, expires, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?)`,
+                )
+                    .bind(crypto.randomUUID(), sessionToken, userId, expiresMs, nowMs, nowMs)
+                    .run();
+            } catch {
+                // Session creation is non-fatal; user can log in manually
+                sessionToken = null;
+            }
+        }
+
+        const responseData = {
             success: true,
             user: {
                 id: userId,
                 email,
                 name: name || null,
-                role: 'owner',
+                role: assignedRole || 'owner',
             },
             organizationId,
+            sessionToken: sessionToken ? true : false,
             timestamp: Date.now(),
-        });
+        };
+
+        // Set session cookie so the browser is immediately authenticated
+        if (sessionToken) {
+            const reqUrl = new URL(request.url);
+            const secure = reqUrl.protocol === 'https:';
+            const cookie = `${cookieName}=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}${secure ? '; Secure' : ''}`;
+            return new Response(JSON.stringify(responseData), {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Set-Cookie': cookie,
+                },
+            });
+        }
+
+        return jsonResp(responseData);
     } catch (error: any) {
         if (error.message?.toLowerCase().includes('unique')) {
             return jsonResp({ success: false, error: 'Email already in use', code: 'EMAIL_EXISTS' }, 409);

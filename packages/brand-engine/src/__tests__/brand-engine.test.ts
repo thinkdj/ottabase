@@ -17,6 +17,7 @@ import {
     getThemeByName,
     getThemeOrDefault,
     injectCSSVars,
+    pathPatternToRegex,
     registerTheme,
     registerThemes,
     resolveAliases,
@@ -674,6 +675,35 @@ describe('Theme Registry', () => {
         registerThemes([makeTheme({ name: 'exact' }), makeTheme({ name: 'default' })]);
         const result = getThemeOrDefault('exact');
         expect(result.name).toBe('exact');
+    });
+});
+
+// ===========================================================================
+// pathPatternToRegex
+// ===========================================================================
+
+describe('pathPatternToRegex', () => {
+    it('/blog/** matches /blog and /blog/foo', () => {
+        const re = pathPatternToRegex('/blog/**');
+        expect(re.test('/blog')).toBe(true);
+        expect(re.test('/blog/')).toBe(true);
+        expect(re.test('/blog/foo')).toBe(true);
+        expect(re.test('/blog/foo/bar')).toBe(true);
+        expect(re.test('/blogging')).toBe(false);
+    });
+
+    it('/* matches single segment', () => {
+        const re = pathPatternToRegex('/*');
+        expect(re.test('/')).toBe(false);
+        expect(re.test('/a')).toBe(true);
+        expect(re.test('/a/b')).toBe(false);
+    });
+
+    it('/** matches any path', () => {
+        const re = pathPatternToRegex('/**');
+        expect(re.test('/')).toBe(true);
+        expect(re.test('/foo')).toBe(true);
+        expect(re.test('/foo/bar')).toBe(true);
     });
 });
 

@@ -4,10 +4,10 @@
 // ---------------------------------------------------------------------------
 
 import type { LayoutConfig } from '../layout';
-import { LayoutTemplate } from './LayoutTemplate.model';
-import { LayoutRouteMapping } from './LayoutRouteMapping.model';
+import { DEFAULT_ROUTE_MAPPINGS, LAYOUT_PRESETS } from '../layouts';
 import { BrandKit } from './BrandKit.model';
-import { LAYOUT_PRESETS } from '../layouts/presets';
+import { LayoutRouteMapping } from './LayoutRouteMapping.model';
+import { LayoutTemplate } from './LayoutTemplate.model';
 
 export interface RouteMappingRow {
     pathPattern: string;
@@ -59,16 +59,7 @@ export async function getLayoutData(organizationId: string | null, appId?: strin
     } else {
         const defaultKit = await BrandKit.getOrCreateDefault();
         const kitId = defaultKit.get('id') as string;
-        routeMappings = [
-            { pathPattern: '/blog/**', layoutTemplateId: 'homepage', brandKitId: kitId, priority: 10 },
-            { pathPattern: '/demo/**', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 10 },
-            { pathPattern: '/admin/**', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 10 },
-            { pathPattern: '/dashboard', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 10 },
-            { pathPattern: '/profile', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 10 },
-            { pathPattern: '/shortlinks', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 10 },
-            { pathPattern: '/referrals', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 10 },
-            { pathPattern: '/**', layoutTemplateId: 'app-shell', brandKitId: kitId, priority: 0 },
-        ];
+        routeMappings = DEFAULT_ROUTE_MAPPINGS.map((m) => ({ ...m, brandKitId: kitId }));
     }
 
     const templateIds = [...new Set(routeMappings.map((m) => m.layoutTemplateId))];

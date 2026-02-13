@@ -190,6 +190,14 @@ export function renderWizardPage(state: PlatformStateResult): string {
   <!-- STEP 0: Bindings + DB Init -->
   <div class="step-panel active" id="panel-0">
     <div class="card">
+
+      <div class="form-group">
+        <label class="form-label" for="bootstrap-secret"><h2>Bootstrap Token</h2></label>
+        <input class="form-input" id="bootstrap-secret" type="text" placeholder="Secret Token" autocomplete="off">
+        <div class="form-hint">Your secret token set in environment variable referenced in the apps's 'Required: Secrets' section in .env.example</div>
+      </div>
+    </div>
+    <div class="card">
       <h2>Cloudflare Bindings</h2>
       <p>These are the Cloudflare resources attached to your worker.</p>
       <div class="binding-grid">${bindingsHtml}</div>
@@ -243,11 +251,11 @@ export function renderWizardPage(state: PlatformStateResult): string {
       <p>This will be the platform owner with full administrative privileges. A personal workspace organization will be created automatically.</p>
       <div class="form-group">
         <label class="form-label" for="owner-name">Name</label>
-        <input class="form-input" id="owner-name" type="text" placeholder="Jane Doe" autocomplete="name">
+        <input class="form-input" id="owner-name" name="name" type="text" placeholder="Jane Doe" autocomplete="name">
       </div>
       <div class="form-group">
         <label class="form-label" for="owner-email">Email <span style="color:var(--error)">*</span></label>
-        <input class="form-input" id="owner-email" type="email" placeholder="you@example.com" autocomplete="email" required>
+        <input class="form-input" id="owner-email" name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
         <div class="form-error" id="err-email" style="display:none"></div>
       </div>
       <div class="form-group">
@@ -332,11 +340,16 @@ wrangler secret put MIGRATION_SECRET</pre>
     var progress = document.getElementById('progress-fill');
     var autoAdvanceTimer = null;
     var secret = new URLSearchParams(window.location.search).get('secret');
+    var secretInput = document.getElementById('bootstrap-secret');
+    if (secretInput && secret) {
+      secretInput.value = secret;
+    }
 
     function apiFetch(url, options) {
       options = options || {};
       options.headers = options.headers || {};
-      if (secret) options.headers['X-Bootstrap-Secret'] = secret;
+      var activeSecret = secretInput && secretInput.value ? secretInput.value.trim() : secret;
+      if (activeSecret) options.headers['X-Bootstrap-Secret'] = activeSecret;
       return fetch(url, options);
     }
 

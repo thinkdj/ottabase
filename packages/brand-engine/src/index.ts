@@ -16,7 +16,7 @@ export type {
 
 export type { ContentWidth, Density, HeaderVariant, LayoutConfig, NavigationVariant } from './layout';
 
-export type { UpdateBrandKitPayload, BrandKitItem, LayoutTemplateItem, LayoutMappingItem } from './persistence';
+export type { BrandKitItem, LayoutMappingItem, LayoutTemplateItem, UpdateBrandKitPayload } from './persistence';
 
 export type { LegacyThemeConfig } from './adapter';
 export type { ResolveOptions, ResolvedBrandTheme } from './resolver';
@@ -36,27 +36,33 @@ export { DEFAULT_LAYOUT } from './layout';
 // ── Core functions ─────────────────────────────────────────────────────────
 export { createTokenAccessor, getToken } from './accessors';
 export {
+    buildTokensFromBaseColor,
     calculateContrastRatio,
     generatePalette,
     generateSemanticDefaults,
     generateSemanticDefaultsDark,
-    buildTokensFromBaseColor,
     hexToHsl,
 } from './colors';
 export type { SemanticPalette } from './colors';
+export {
+    CRITICAL_STYLE_ID,
+    buildCriticalCSS,
+    buildCriticalCSSDual,
+    buildCriticalStyleTag,
+    buildCriticalStyleTagDual,
+} from './css-critical';
 export { applyBrandTheme, buildCSSVarMap, injectCSSVars, injectFont } from './css-runtime';
-export { buildCriticalCSS, buildCriticalStyleTag, CRITICAL_STYLE_ID } from './css-critical';
 export { deepMerge, resolveAliases, resolveTheme } from './resolver';
 
 // ── Validators ─────────────────────────────────────────────────────────────
 export {
-    isValidTokenColors,
-    isValidLayoutConfig,
     isValidBrandTheme,
-    isValidPathPattern,
     isValidJSON,
-    safeParseJSON,
+    isValidLayoutConfig,
+    isValidPathPattern,
+    isValidTokenColors,
     mergeLayoutConfig,
+    safeParseJSON,
 } from './validators';
 
 // ── Registry ───────────────────────────────────────────────────────────────
@@ -73,19 +79,26 @@ export {
 export { fromLegacyThemeConfig } from './adapter';
 
 // ── Layout system ─────────────────────────────────────────────────────────
+export { DEFAULT_ROUTE_MAPPINGS } from './layouts';
+export { APP_SHELL_LAYOUT, DOCS_LAYOUT, HOMEPAGE_LAYOUT, LAYOUT_PRESETS, MINIMAL_LAYOUT } from './layouts/presets';
+export type { LayoutComponentKey, LayoutPreset } from './layouts/presets';
 export { pathPatternToRegex, resolveLayoutForPath, resolveRouteForPath } from './layouts/resolver';
 export type { RouteMatchResult } from './layouts/resolver';
-export { HOMEPAGE_LAYOUT, APP_SHELL_LAYOUT, DOCS_LAYOUT, MINIMAL_LAYOUT, LAYOUT_PRESETS } from './layouts/presets';
-export type { LayoutComponentKey, LayoutPreset } from './layouts/presets';
 
 // ── Fonts ──────────────────────────────────────────────────────────────────
 export { GOOGLE_FONTS, buildGoogleFontUrl, fontToTypography, type GoogleFontMeta } from './fonts';
 
 // ── Cursors ────────────────────────────────────────────────────────────────
-export { CURSOR_SVG_REGISTRY, resolveCursor, getCursorSvg, getAvailableCursors } from './cursors';
+export { CURSOR_SVG_REGISTRY, getAvailableCursors, getCursorSvg, resolveCursor } from './cursors';
 
 // ── Built-in themes ────────────────────────────────────────────────────────
-export { registerBuiltInThemes, BUILTIN_THEME_NAMES, THEME_PRESET_ITEMS, getThemePresetItems } from './themes';
+export {
+    BUILTIN_THEME_NAMES,
+    THEME_PRESET_ITEMS,
+    getThemePresetItems,
+    registerBuiltInThemes,
+    type ThemePresetItem,
+} from './themes';
 
 // ── Preview (admin) ────────────────────────────────────────────────────────
 export { buildPreviewTheme, type PreviewKitData } from './previewTheme';

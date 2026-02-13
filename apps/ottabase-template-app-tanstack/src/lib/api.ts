@@ -5,9 +5,9 @@
  * - Type-safe error handling
  */
 
+import { APP_ID } from '@/ottabase/config/app.config';
 import { createApiClient, type ApiError } from '@ottabase/api';
 import { toast } from 'sonner';
-import { APP_ID } from '@/ottabase/config/app.config';
 
 /**
  * Get auth token from storage/context.
@@ -47,6 +47,15 @@ function handleApiError(error: ApiError): void {
 
     if (error.status === 503) {
         const code = (error.code || '').toUpperCase();
+
+        // Platform not initialized → redirect to bootstrap wizard
+        if (code === 'PLATFORM_NOT_READY') {
+            if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/__bootstrap__')) {
+                window.location.href = '/__bootstrap__';
+            }
+            return;
+        }
+
         const message =
             code === 'READONLY_MODE'
                 ? 'The platform is in read-only mode'

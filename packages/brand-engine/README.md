@@ -56,26 +56,22 @@ const faviconUrl = getFaviconUrl(config);
 
 Wire these in your Cloudflare Worker. Handlers: `@ottabase/brand-engine/handlers`.
 
-| Method | Path                          | Description                                                                       |
-| ------ | ----------------------------- | --------------------------------------------------------------------------------- |
-| GET    | `/api/brand`                  | Get resolved brand config (?organizationId, ?appId, ?brandPreview, ?themeVariant) |
-| GET    | `/api/brand/settings`         | Get raw settings for admin editing (tokensJson, defaultColorScheme, etc.)         |
-| PUT    | `/api/brand`                  | Update brand settings                                                             |
-| POST   | `/api/brand/apply`            | Activate a BrandBox (`{ brandBoxId }`)                                            |
-| POST   | `/api/brand/logo/:type`       | Upload logo (types: logo, logo-dark, icon, og-image, email-logo)                  |
-| GET    | `/api/brand/layouts`          | List layout templates                                                             |
-| PUT    | `/api/brand/layouts`          | Create/update layout template                                                     |
-| GET    | `/api/brand/mappings`         | List route mappings                                                               |
-| PUT    | `/api/brand/mappings`         | Replace route mappings                                                            |
-| GET    | `/api/brand/themes`           | List theme variants                                                               |
-| POST   | `/api/brand/themes`           | Create theme variant                                                              |
-| PUT    | `/api/brand/themes/:id`       | Update theme variant                                                              |
-| DELETE | `/api/brand/themes/:id`       | Delete theme variant                                                              |
-| GET    | `/api/brandbox`               | List BrandBoxes                                                                   |
-| POST   | `/api/brandbox`               | Create BrandBox                                                                   |
-| PUT    | `/api/brandbox/:id`           | Update BrandBox                                                                   |
-| DELETE | `/api/brandbox/:id`           | Delete BrandBox                                                                   |
-| POST   | `/api/brandbox/:id/duplicate` | Duplicate BrandBox                                                                |
+| Method | Path                          | Description                                                               |
+| ------ | ----------------------------- | ------------------------------------------------------------------------- |
+| GET    | `/api/brand`                  | Get resolved brand config (?organizationId, ?appId, ?brandPreview)        |
+| GET    | `/api/brand/settings`         | Get raw settings for admin editing (tokensJson, defaultColorScheme, etc.) |
+| PUT    | `/api/brand`                  | Update brand settings                                                     |
+| POST   | `/api/brand/apply`            | Activate a BrandBox (`{ brandBoxId }`)                                    |
+| POST   | `/api/brand/logo/:type`       | Upload logo (types: logo, logo-dark, icon, og-image, email-logo)          |
+| GET    | `/api/brand/layouts`          | List layout templates                                                     |
+| PUT    | `/api/brand/layouts`          | Create/update layout template                                             |
+| GET    | `/api/brand/mappings`         | List route mappings                                                       |
+| PUT    | `/api/brand/mappings`         | Replace route mappings                                                    |
+| GET    | `/api/brandbox`               | List BrandBoxes                                                           |
+| POST   | `/api/brandbox`               | Create BrandBox                                                           |
+| PUT    | `/api/brandbox/:id`           | Update BrandBox                                                           |
+| DELETE | `/api/brandbox/:id`           | Delete BrandBox                                                           |
+| POST   | `/api/brandbox/:id/duplicate` | Duplicate BrandBox                                                        |
 
 ## Creating Layout Components
 

@@ -3,19 +3,22 @@
 // GET/POST /api/brand/kits, GET/PUT/DELETE /api/brand/kits/:id, POST /api/brand/kits/:id/clone, POST /api/brand/kits/:id/logo
 // ---------------------------------------------------------------------------
 
+import { errorResponse } from '@ottabase/utils/http-errors';
+import { jsonResponse } from '@ottabase/utils/http-response';
+import { createBrandAssets, type LogoType } from '../persistence/assets';
 import { BrandKit } from '../persistence/BrandKit.model';
 import { createBrandCache } from '../persistence/cache';
-import { createBrandAssets, type LogoType } from '../persistence/assets';
-import type { BrandApiEnv } from './brand-api';
 import type { BrandKitItem } from '../persistence/types';
-import { jsonResponse } from '@ottabase/utils/http-response';
-import { errorResponse } from '@ottabase/utils/http-errors';
 import { logBrandAudit } from './audit-helper';
+import type { BrandApiEnv } from './brand-api';
 
 function serializeKit(kit: BrandKit): BrandKitItem {
     return {
         id: kit.get('id') as string,
         organizationId: (kit.get('organizationId') as string | null) ?? null,
+        isDefault: (kit.get('isDefault') as boolean) ?? false,
+        createdBy: (kit.get('createdBy') as string | null) ?? null,
+        updatedBy: (kit.get('updatedBy') as string | null) ?? null,
         name: kit.get('name') as string,
         slug: (kit.get('slug') as string) ?? null,
         brandName: kit.get('brandName') as string,
@@ -71,13 +74,20 @@ export async function handleCreateBrandKit(
     request: Request,
     env: BrandApiEnv,
     organizationId: string | null,
+    auditUser?: BrandAuditUser,
 ): Promise<Response> {
     const body = (await request.json()) as Record<string, unknown>;
     const name = body.name as string;
     if (!name || typeof name !== 'string') return errorResponse('name is required', 400);
 
+    const existing = (await BrandKit.where({ organizationId })) as BrandKit[];
+    const isDefault = existing.length === 0;
+
     const kit = (await BrandKit.create({
         organizationId,
+        isDefault,
+        createdBy: auditUser?.userId ?? auditUser?.userEmail ?? null,
+        updatedBy: auditUser?.userId ?? auditUser?.userEmail ?? null,
         name,
         slug: (body.slug as string) ?? null,
         brandName: (body.brandName as string) ?? 'My App',
@@ -144,8 +154,13 @@ export async function handleUpdateBrandKit(
         kit.set('tokensJson', typeof body.tokensJson === 'string' ? body.tokensJson : JSON.stringify(body.tokensJson));
     }
 
+    kit.set('updatedBy', auditUser?.userId ?? auditUser?.userEmail ?? null);
+
     await kit.save();
-    await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
+    const cache = createBrandCache(env.OBCF_KV);
+    await cache.invalidate(organizationId, null);
+    // System default kit (org=null) is used when client fetches without org – always invalidate that too
+    if (kOrg === null) await cache.invalidate(null, null);
 
     await logBrandAudit(
         'brand.kit.update',
@@ -169,6 +184,10 @@ export async function handleDeleteBrandKit(
     const kOrg = kit.get('organizationId') as string | null;
     if (kOrg !== null && organizationId !== kOrg) return errorResponse('Brand Kit not found', 404);
 
+    if ((kit.get('isDefault') as boolean) === true) {
+        return errorResponse('Cannot delete the default Brand Kit', 400, { code: 'DEFAULT_KIT' });
+    }
+
     // System default (org=null) cannot be deleted
     if (kOrg === null) return errorResponse('Cannot delete the default Brand Kit', 400, { code: 'DEFAULT_KIT' });
 
@@ -183,6 +202,7 @@ export async function handleCloneBrandKit(
     env: BrandApiEnv,
     id: string,
     organizationId: string | null,
+    auditUser?: BrandAuditUser,
 ): Promise<Response> {
     const source = (await BrandKit.find(id)) as BrandKit | null;
     if (!source) return errorResponse('Brand Kit not found', 404);
@@ -194,6 +214,9 @@ export async function handleCloneBrandKit(
 
     const copy = (await BrandKit.create({
         organizationId,
+        isDefault: false,
+        createdBy: auditUser?.userId ?? auditUser?.userEmail ?? null,
+        updatedBy: auditUser?.userId ?? auditUser?.userEmail ?? null,
         name: newName,
         slug: null,
         brandName: source.get('brandName'),
@@ -245,6 +268,7 @@ export async function handleUploadBrandKitLogo(
         'email-logo': 'emailLogoKey',
     };
     kit.set(fieldMap[logoType], key);
+    kit.set('updatedBy', auditUser?.userId ?? auditUser?.userEmail ?? null);
     await kit.save();
     await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
 

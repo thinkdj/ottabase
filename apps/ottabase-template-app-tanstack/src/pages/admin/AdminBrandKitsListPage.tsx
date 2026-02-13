@@ -2,9 +2,8 @@
 // Brand Kits list – Create, Clone, navigate to detail
 // ---------------------------------------------------------------------------
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
 import {
+    Badge,
     Button,
     Card,
     CardContent,
@@ -16,9 +15,11 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@ottabase/ui-shadcn';
-import { IconCopy, IconDotsVertical, IconPlus, IconPalette, IconSettings2 } from '@tabler/icons-react';
+import { IconCopy, IconDotsVertical, IconPalette, IconPlus, IconSettings2 } from '@tabler/icons-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
-import { brandKitApi, layoutApi, type BrandKitItem } from './brand/brandApi';
+import { brandKitApi, type BrandKitItem } from './brand/brandApi';
 
 export function AdminBrandKitsListPage() {
     const queryClient = useQueryClient();
@@ -27,18 +28,6 @@ export function AdminBrandKitsListPage() {
     const { data: kits = [], isLoading } = useQuery<BrandKitItem[]>({
         queryKey: ['brand', 'kits'],
         queryFn: () => brandKitApi.list(),
-    });
-
-    const createMutation = useMutation({
-        mutationFn: () => brandKitApi.create({ name: 'New Brand Kit', brandName: 'My App' }),
-        onSuccess: (kit) => {
-            toast.success('Brand Kit created');
-            queryClient.invalidateQueries({ queryKey: ['brand', 'kits'] });
-            // Prime cache so detail page has data immediately (avoids GET 404 race with D1)
-            queryClient.setQueryData(['brand', 'kit', kit.id], kit);
-            navigate({ to: '/admin/brand-engine/kits/$kitId', params: { kitId: kit.id } });
-        },
-        onError: () => toast.error('Failed to create'),
     });
 
     const cloneMutation = useMutation({
@@ -78,7 +67,7 @@ export function AdminBrandKitsListPage() {
                         Self-contained identity, logos, colors, fonts, and theme. Create and clone for variants.
                     </p>
                 </div>
-                <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+                <Button onClick={() => navigate({ to: '/admin/brand-engine/kits/new' })}>
                     <IconPlus className="h-4 w-4 mr-2" />
                     Create Brand Kit
                 </Button>
@@ -115,11 +104,7 @@ export function AdminBrandKitsListPage() {
                         <div className="rounded-lg border border-dashed py-12 text-center">
                             <IconPalette className="mx-auto h-12 w-12 text-muted-foreground/50" />
                             <p className="mt-4 text-muted-foreground">No Brand Kits</p>
-                            <Button
-                                className="mt-4"
-                                onClick={() => createMutation.mutate()}
-                                disabled={createMutation.isPending}
-                            >
+                            <Button className="mt-4" onClick={() => navigate({ to: '/admin/brand-engine/kits/new' })}>
                                 <IconPlus className="h-4 w-4 mr-2" />
                                 Create your first Brand Kit
                             </Button>
@@ -134,7 +119,7 @@ export function AdminBrandKitsListPage() {
                                     onDelete={() => deleteMutation.mutate(kit.id)}
                                     cloning={cloneMutation.isPending}
                                     deleting={deleteMutation.isPending}
-                                    isDefault={kit.organizationId === null}
+                                    isDefault={Boolean(kit.isDefault)}
                                 />
                             ))}
                         </div>
@@ -160,6 +145,8 @@ function KitCard({
     deleting: boolean;
     isDefault?: boolean;
 }) {
+    const isDefaultKit = Boolean(isDefault ?? kit.isDefault);
+
     return (
         <Link
             to="/admin/brand-engine/kits/$kitId"
@@ -167,8 +154,11 @@ function KitCard({
             className="group flex flex-col rounded-lg border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent/5 dark:border-muted"
         >
             <div className="flex items-start justify-between">
-                <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold truncate">{kit.name}</h3>
+                <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                        <h3 className="font-semibold truncate">{kit.name}</h3>
+                        {isDefaultKit && <Badge variant="secondary">Default</Badge>}
+                    </div>
                     <p className="text-sm text-muted-foreground truncate">{kit.brandName}</p>
                     <p className="text-xs text-muted-foreground mt-1">Preset: {kit.themePresetId || 'default'}</p>
                 </div>
@@ -197,7 +187,7 @@ function KitCard({
                             <IconCopy className="h-4 w-4 mr-2" />
                             Clone
                         </DropdownMenuItem>
-                        {!isDefault && (
+                        {!isDefaultKit && (
                             <DropdownMenuItem
                                 onClick={(e) => {
                                     e.preventDefault();

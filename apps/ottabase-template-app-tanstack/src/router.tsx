@@ -1,9 +1,9 @@
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { api, isApiError } from '@/lib/api';
 import { APP_META } from '@/ottabase/config/app.config';
-import { Button, Toaster } from '@ottabase/ui-shadcn';
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
+import { Button, Toaster } from '@ottabase/ui-shadcn';
 import {
     Link,
     Outlet,
@@ -483,6 +483,17 @@ const adminBrandEngineRoute = new Route({
     ),
 });
 
+// Admin Brand Kit create – new kit form
+const adminBrandKitCreateRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/brand-engine/kits/new',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminBrandKitDetailPage').then((m) => ({
+            default: m.AdminBrandKitDetailPage,
+        })),
+    ),
+});
+
 // Admin Brand Kit detail – tabbed editor with preview
 const adminBrandKitDetailRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -835,6 +846,7 @@ const routeTree = rootRoute.addChildren([
     referralsRoute,
     adminRoute,
     adminBrandEngineRoute,
+    adminBrandKitCreateRoute,
     adminBrandKitDetailRoute,
     adminBrandLayoutsRoute,
     adminReferralsRoute,

@@ -1,4 +1,5 @@
-import { THEME_PRESET_ITEMS } from '@ottabase/brand-engine/themes';
+import { useMemo } from 'react';
+import { getThemePresetItems } from '@ottabase/brand-engine/themes';
 import { OttaSelect, type ItemRendererProps, type OttaSelectItem } from '@ottabase/ottaselect';
 import { Label, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 
@@ -26,8 +27,9 @@ export function BrandKitThemeTab({
     onThemePresetChange,
     onTokensChange,
 }: BrandKitThemeTabProps) {
+    const themePresetItems = useMemo(() => getThemePresetItems(), []);
     const selectedId = themePresetId ?? 'default';
-    const selectedItem = THEME_PRESET_ITEMS.find((t) => t.id === selectedId) ?? THEME_PRESET_ITEMS[0];
+    const selectedItem = themePresetItems.find((t) => t.id === selectedId) ?? themePresetItems[0];
 
     const ThemePresetRenderer = ({ item, isSelected }: ItemRendererProps) => (
         <div className="flex flex-col gap-1.5 flex-1 min-w-0">
@@ -51,13 +53,14 @@ export function BrandKitThemeTab({
                 <CardHeader>
                     <CardTitle>Base theme preset</CardTitle>
                     <CardDescription>
-                        Choose a base theme. Tokens below override colors, radius, spacing, shadow, motion.
+                        Choose a preset – it fully overrides the color palette (buttons, sidebar, links). Tokens below
+                        override radius, spacing, shadow, motion only.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <OttaSelect
                         mode="single"
-                        items={THEME_PRESET_ITEMS}
+                        items={themePresetItems}
                         value={selectedItem ? { id: selectedItem.id, name: selectedItem.name, ...selectedItem } : null}
                         onChange={(v) =>
                             onThemePresetChange(
@@ -93,7 +96,7 @@ export function BrandKitThemeTab({
                 <CardHeader>
                     <CardTitle>Design tokens JSON</CardTitle>
                     <CardDescription>
-                        Override color, typography, spacing, radius, shadow, motion. Merged on top of preset.
+                        Override typography, spacing, radius, shadow, motion. Color is controlled by the preset above.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

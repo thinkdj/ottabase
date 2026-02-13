@@ -5,43 +5,23 @@
 
 'use client';
 
+import {
+    DEFAULT_ROUTE_MAPPINGS,
+    LAYOUT_PRESETS,
+    resolveLayoutForPath,
+    type LayoutComponentKey,
+} from '@ottabase/brand-engine';
 import React from 'react';
 import { useBrand } from './BrandProvider';
 import { getLayoutComponent } from './registry';
-import { resolveLayoutForPath } from '@ottabase/brand-engine';
-import {
-    HOMEPAGE_LAYOUT,
-    APP_SHELL_LAYOUT,
-    DOCS_LAYOUT,
-    MINIMAL_LAYOUT,
-    type LayoutPreset,
-    type LayoutComponentKey,
-} from '@ottabase/brand-engine';
 
 /** Router adapter: provide usePathname from your router */
 export interface RouterAdapter {
     usePathname: () => string;
 }
 
-/** Default route mappings when none from API */
-const DEFAULT_MAPPINGS = [
-    { pathPattern: '/demo/**', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/admin/**', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/dashboard', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/profile', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/shortlinks', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/referrals', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/organizations/**', layoutTemplateId: 'app-shell', priority: 10 },
-    { pathPattern: '/blog/**', layoutTemplateId: 'homepage', priority: 10 },
-    { pathPattern: '/*', layoutTemplateId: 'homepage', priority: 0 },
-];
-
-const PRESETS: Record<string, LayoutPreset> = {
-    homepage: HOMEPAGE_LAYOUT,
-    'app-shell': APP_SHELL_LAYOUT,
-    docs: DOCS_LAYOUT,
-    minimal: MINIMAL_LAYOUT,
-};
+/** Default route mappings when none from API (shared with server fallbacks) */
+const DEFAULT_MAPPINGS = DEFAULT_ROUTE_MAPPINGS;
 
 export interface LayoutResolverProps {
     children: React.ReactNode;
@@ -70,13 +50,17 @@ export function LayoutResolver({ children, router }: LayoutResolverProps) {
         'homepage';
 
     const configTemplate = config?.layoutTemplatesMap?.[layoutTemplateId];
-    const layoutTemplate: LayoutPreset = configTemplate
+    const layoutTemplate = configTemplate
         ? {
-              componentKey: configTemplate.componentKey as LayoutComponentKey,
+              componentKey: configTemplate.componentKey,
               config: configTemplate.config,
           }
-        : (PRESETS[layoutTemplateId] ?? HOMEPAGE_LAYOUT);
-    const LayoutComponent = getLayoutComponent(layoutTemplate.componentKey);
+        : layoutTemplateId in LAYOUT_PRESETS
+          ? LAYOUT_PRESETS[layoutTemplateId as LayoutComponentKey]
+          : LAYOUT_PRESETS.homepage;
+
+    const componentKey = layoutTemplate.componentKey as LayoutComponentKey;
+    const LayoutComponent = getLayoutComponent(componentKey);
 
     if (!LayoutComponent) return <>{children}</>;
     return <LayoutComponent config={layoutTemplate.config}>{children}</LayoutComponent>;
