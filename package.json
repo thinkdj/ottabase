@@ -21,6 +21,7 @@
         "clean": "turbo clean",
         "clean:cache": "pnpm --filter @ottabase/scripts run clean-cache",
         "clean:reset": "pnpm --filter @ottabase/scripts run clean-reset",
+        "clean:db": "pnpm --filter @ottabase/scripts run clean-db",
         "test": "turbo test -- --run",
         "test:all": "turbo test --filter=./packages/* --filter=./apps/*",
         "test:packages": "turbo test --filter=./packages/*",

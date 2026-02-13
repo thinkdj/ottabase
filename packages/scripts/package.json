@@ -18,7 +18,8 @@
         "cloudflare-setup": "bin/cloudflare-setup.cjs",
         "cloudflare-validate": "bin/cloudflare-validate.cjs",
         "clean-cache": "bin/clean-cache.cjs",
-        "clean-reset": "bin/clean-reset.mjs"
+        "clean-reset": "bin/clean-reset.mjs",
+        "clean-db": "bin/clean-db.mjs"
     },
     "files": [
         "dist",
@@ -31,6 +32,7 @@
         "clean": "rimraf dist",
         "clean-cache": "node bin/clean-cache.cjs",
         "clean-reset": "node bin/clean-reset.mjs",
+        "clean-db": "node bin/clean-db.mjs",
         "lint": "eslint src --ext .ts",
         "type-check": "tsc --noEmit",
         "test": "vitest",
