@@ -47,13 +47,27 @@ function prompt(question) {
     });
 }
 
+function findMonorepoRoot(startPath) {
+    let current = path.resolve(startPath);
+    while (true) {
+        if (fs.existsSync(path.join(current, 'pnpm-workspace.yaml'))) {
+            return current;
+        }
+        const parent = path.dirname(current);
+        if (parent === current) {
+            return path.resolve(startPath);
+        }
+        current = parent;
+    }
+}
+
 /**
  * @param {{ scope: 'all' | 'db', force?: boolean }} options
  */
 export async function runCleanReset(options = { scope: 'all', force: false }) {
     const scope = options.scope === 'db' ? 'db' : 'all';
     const force = options.force === true;
-    const root = process.cwd();
+    const root = findMonorepoRoot(process.cwd());
 
     log('');
     if (scope === 'db') {
