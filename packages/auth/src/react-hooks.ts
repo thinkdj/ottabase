@@ -43,8 +43,19 @@ export interface Session extends AuthSession {
     user: User;
 }
 
-// Persistent session storage using localStorage
-const persistentSessionAtom = atomWithStorage<Session | null>('auth_session', null);
+/** localStorage key for session persistence */
+export const AUTH_STORAGE_KEY = 'ottabase.auth-session';
+
+/** Clears the persisted session from localStorage. Use in API client onUnauthorized. */
+export function clearAuthSessionStorage(): void {
+    try {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch {
+        // ignore
+    }
+}
+
+const persistentSessionAtom = atomWithStorage<Session | null>(AUTH_STORAGE_KEY, null);
 // In-memory session storage (cleared on refresh)
 const memorySessionAtom = atom<Session | null>(null);
 // Remember-me toggle (defaults to true, not persisted)

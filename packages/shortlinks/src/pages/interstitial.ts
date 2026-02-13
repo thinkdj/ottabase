@@ -1,8 +1,13 @@
 import { getShortlinkPageCss } from './styles';
 
+/** Default localStorage key for theme (must match app's theme provider) */
+export const DEFAULT_THEME_STORAGE_KEY = 'ottabase.theme';
+
 type InterstitialOptions = {
     url: string;
     seconds?: number;
+    /** localStorage key for theme detection (default: ottabase.theme) */
+    themeStorageKey?: string;
 };
 
 function truncateUrl(url: string, maxLength: number = 60) {
@@ -14,6 +19,7 @@ export function renderShortlinkInterstitialPage(options: InterstitialOptions): R
     const seconds = Math.max(1, Math.min(60, options.seconds ?? 10));
     const targetUrl = options.url;
     const displayUrl = truncateUrl(targetUrl);
+    const themeKey = options.themeStorageKey ?? DEFAULT_THEME_STORAGE_KEY;
     const css = `${getShortlinkPageCss({ maxWidth: 520 })}
 .count {
   font-size: 36px;
@@ -31,7 +37,7 @@ export function renderShortlinkInterstitialPage(options: InterstitialOptions): R
     <script>
       (function () {
         try {
-          var theme = localStorage.getItem("ottabase-theme");
+          var theme = localStorage.getItem("${themeKey}");
           if (theme === "dark" || theme === "light") {
             document.documentElement.setAttribute("data-theme", theme);
           } else if (theme === "system") {

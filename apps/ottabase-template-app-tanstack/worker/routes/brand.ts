@@ -15,7 +15,10 @@ import {
     handlePutLayout,
     handlePutMappings,
     handleUpdateBrandKit,
+    handleUploadBrandKitLogo,
 } from '@ottabase/brand-engine/handlers';
+import { requireBrandEditAccess } from '../lib/admin-guard';
+import { brandEnv, getOrgApp } from '../lib/brand-utils';
 
 function toAuditUser(guard: AdminContext): { userId?: string; userEmail?: string } | undefined {
     const u = guard.user;

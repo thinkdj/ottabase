@@ -310,13 +310,13 @@ export const i18nConfig = {
                     <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <p className="text-sm font-medium">localStorage Key</p>
-                            <code className="text-xs bg-muted px-2 py-1 rounded">ottabase-language</code>
+                            <code className="text-xs bg-muted px-2 py-1 rounded">ottabase.language</code>
                         </div>
                         <div className="space-y-2">
                             <p className="text-sm font-medium">Stored Value</p>
                             <code className="text-xs bg-muted px-2 py-1 rounded">
                                 {typeof localStorage !== 'undefined'
-                                    ? localStorage.getItem('ottabase-language') || 'Not set'
+                                    ? localStorage.getItem('ottabase.language') || 'Not set'
                                     : 'N/A'}
                             </code>
                         </div>

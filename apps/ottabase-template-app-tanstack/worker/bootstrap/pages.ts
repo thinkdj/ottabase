@@ -545,6 +545,16 @@ wrangler secret put MIGRATION_SECRET</pre>
       setBtn(btnOwner, true, 'Creating...');
       log('log-owner', 'Creating owner account: ' + email, 'info');
 
+      /* Clear ottabase.* from localStorage before autologin (fresh owner = clean client state) */
+      try {
+        var keys = [];
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('ottabase.') === 0) keys.push(k);
+        }
+        keys.forEach(function(k) { localStorage.removeItem(k); });
+      } catch (e) { /* ignore */ }
+
       apiFetch('/__bootstrap__/api/create-owner', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

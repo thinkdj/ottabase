@@ -8,8 +8,8 @@ import { REFERRALS_CONFIG } from '@/ottabase/config/app.config';
 import { api } from './api';
 
 // Local storage keys
-const REFERRAL_CODE_KEY = 'ottabase_referralCode';
-const REFERRAL_TIMESTAMP_KEY = 'ottabase_referralTimestamp';
+const REFERRAL_CODE_KEY = 'ottabase.referral-code';
+const REFERRAL_TIMESTAMP_KEY = 'ottabase.referral-timestamp';
 
 // Calculate expiry based on config (with fallback)
 const getReferralExpiryMs = () => {

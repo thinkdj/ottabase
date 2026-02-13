@@ -17,7 +17,7 @@ describe('Integration Tests', () => {
         // Run restore-from-localStorage first so init runs with detector before other tests leave state
         it('should restore language from localStorage on initialization', async () => {
             // Pre-populate localStorage
-            localStorage.setItem('i18nextLng', 'es');
+            localStorage.setItem('ottabase.language', 'es');
 
             function App() {
                 const { t, i18n } = useTranslation('common');
@@ -83,7 +83,7 @@ describe('Integration Tests', () => {
             });
 
             // Verify localStorage was updated
-            expect(localStorage.getItem('i18nextLng')).toBe('fr');
+            expect(localStorage.getItem('ottabase.language')).toBe('fr');
 
             // Switch to German
             act(() => {
@@ -95,7 +95,7 @@ describe('Integration Tests', () => {
                 expect(screen.getByTestId('lang')).toHaveTextContent('de');
             });
 
-            expect(localStorage.getItem('i18nextLng')).toBe('de');
+            expect(localStorage.getItem('ottabase.language')).toBe('de');
         });
     });
 

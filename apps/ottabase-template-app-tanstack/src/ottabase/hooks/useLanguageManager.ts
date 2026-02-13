@@ -3,7 +3,7 @@ import { useAtom } from 'jotai';
 import { useEffect } from 'react';
 import { languageAtom } from '../state/appState';
 
-const LANGUAGE_STORAGE_KEY = 'ottabase-language';
+const LANGUAGE_STORAGE_KEY = 'ottabase.language';
 
 /**
  * Syncs language between i18n and global state (Jotai atom).

@@ -23,7 +23,7 @@ import { ScaleManager } from '../ScaleManager';
 // Helpers
 // ---------------------------------------------------------------------------
 
-const SCALE_STORAGE_KEY = 'ottabase-ui-scale';
+const SCALE_STORAGE_KEY = 'ottabase.ui-scale';
 
 function renderWithStore(initialScale = 1.0) {
     const store = createStore();

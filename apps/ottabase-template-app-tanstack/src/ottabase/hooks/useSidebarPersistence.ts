@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { useAtom } from 'jotai';
 import { sidebarStateAtom, type SidebarState } from '@/ottabase/state/appState';
 
-const STORAGE_KEY = 'ottabase.sidebar.state';
+const STORAGE_KEY = 'ottabase.sidebar-state';
 
 export function useSidebarPersistence(): void {
     const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);

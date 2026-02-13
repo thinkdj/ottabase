@@ -35,9 +35,9 @@ export function useSession(options?: UseSessionOptions) {
         setOrganizationId(orgId);
         try {
             if (orgId) {
-                localStorage.setItem('currentOrgId', orgId);
+                localStorage.setItem('ottabase.current-org-id', orgId);
             } else {
-                localStorage.removeItem('currentOrgId');
+                localStorage.removeItem('ottabase.current-org-id');
             }
         } catch {
             // ignore storage failures

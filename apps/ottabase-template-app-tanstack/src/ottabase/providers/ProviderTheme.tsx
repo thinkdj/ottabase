@@ -5,7 +5,7 @@ import { getThemeOrDefault, resolveTheme } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { ThemeProviderContext } from './ThemeContext';
 
-const LAYOUT_OVERRIDES_KEY = 'ottabase-layout-overrides';
+const LAYOUT_OVERRIDES_KEY = 'ottabase.layout-overrides';
 
 type ThemeProviderProps = {
     children: React.ReactNode;
