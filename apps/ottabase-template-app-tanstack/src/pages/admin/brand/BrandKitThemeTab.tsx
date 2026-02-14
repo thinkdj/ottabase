@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { getThemePresetItems } from '@ottabase/brand-engine/themes';
+import { THEME_PRESET_ITEMS, getThemePresetItems } from '@ottabase/brand-engine';
 import { OttaSelect, type ItemRendererProps, type OttaSelectItem } from '@ottabase/ottaselect';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Label } from '@ottabase/ui-shadcn';
 
@@ -8,8 +8,8 @@ function hslToCss(hsl: string): string {
     const base = hsl.split('/')[0].trim();
     const parts = base
         .split(/\s+/)
-        .map(Number)
-        .filter((n) => !isNaN(n));
+        .map((value) => parseFloat(value))
+        .filter((n) => !Number.isNaN(n));
     if (parts.length < 3) return 'hsl(221, 83%, 53%)';
     return `hsl(${parts[0]}, ${parts[1]}%, ${parts[2]}%)`;
 }
@@ -27,7 +27,13 @@ export function BrandKitThemeTab({
     onThemePresetChange,
     onTokensChange,
 }: BrandKitThemeTabProps) {
-    const themePresetItems = useMemo(() => getThemePresetItems(), []);
+    const themePresetItems = useMemo(() => {
+        const runtimeItems = getThemePresetItems();
+        if (runtimeItems.length <= 1) return THEME_PRESET_ITEMS;
+        const palettes = runtimeItems.map((item) => item.colors.join('|'));
+        const hasDistinctPalettes = new Set(palettes).size > 1;
+        return hasDistinctPalettes ? runtimeItems : THEME_PRESET_ITEMS;
+    }, []);
     const selectedId = themePresetId ?? 'default';
     const selectedItem = themePresetItems.find((t) => t.id === selectedId) ?? themePresetItems[0];
     const hasCustomColorOverrides = useMemo(() => {
