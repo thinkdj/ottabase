@@ -98,9 +98,13 @@ export class CacheKeyBuilder {
 
     /**
      * Add version segment
+     * Handles both string versions (with or without 'v' prefix) and numeric versions
      */
     version(version: string | number): this {
-        this.parts.push(`v${version}`);
+        const versionStr = String(version);
+        // Add 'v' prefix only if not already present
+        const versionSegment = versionStr.startsWith('v') ? versionStr : `v${versionStr}`;
+        this.parts.push(versionSegment);
         return this;
     }
 

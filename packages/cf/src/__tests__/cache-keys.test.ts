@@ -81,7 +81,12 @@ describe('CacheKeyBuilder', () => {
     describe('version support', () => {
         it('should build versioned key with string version', () => {
             const key = CacheKeyBuilder.create('rbac').org('acme').version('v1').segment('cache').build();
-            expect(key).toBe('rbac:org:acme:vv1:cache');
+            expect(key).toBe('rbac:org:acme:v1:cache');
+        });
+
+        it('should build versioned key with string version without v prefix', () => {
+            const key = CacheKeyBuilder.create('rbac').org('acme').version('1').segment('cache').build();
+            expect(key).toBe('rbac:org:acme:v1:cache');
         });
 
         it('should build versioned key with number version', () => {
@@ -198,7 +203,12 @@ describe('Helper Functions', () => {
     describe('versionedOrgKey', () => {
         it('should create versioned org key with string version', () => {
             const key = versionedOrgKey('rbac', 'acme', 'v1', 'cache');
-            expect(key).toBe('rbac:org:acme:vv1:cache');
+            expect(key).toBe('rbac:org:acme:v1:cache');
+        });
+
+        it('should create versioned org key with string version without v prefix', () => {
+            const key = versionedOrgKey('rbac', 'acme', '1', 'cache');
+            expect(key).toBe('rbac:org:acme:v1:cache');
         });
 
         it('should create versioned org key with number version', () => {
