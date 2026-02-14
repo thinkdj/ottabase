@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from '@tanstack/react-router';
-import { RegisterForm, type RegisterFormData } from '@ottabase/auth/components';
 import { useSession } from '@/lib/auth';
 import { registerWithCredentials, requestEmailVerification, signInWithCredentials } from '@/lib/auth-api';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@ottabase/ui-shadcn';
+import { resolveAuthRedirect } from '@/lib/auth-redirect';
+import { clearStoredReferralCode, getReferralExpiryInfo, getStoredReferralCode } from '@/lib/referrals';
+import { RegisterForm, type RegisterFormData } from '@ottabase/auth/components';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
-import { clearStoredReferralCode, getStoredReferralCode, getReferralExpiryInfo } from '@/lib/referrals';
+import { useEffect, useRef, useState } from 'react';
 
 export function RegisterPage() {
     const navigate = useNavigate();
@@ -18,6 +19,8 @@ export function RegisterPage() {
     const [verificationRequired, setVerificationRequired] = useState(false);
     const [verificationSent, setVerificationSent] = useState(false);
     const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
+    const hasNavigated = useRef(false);
+    const redirectTarget = useRef(resolveAuthRedirect());
 
     // Check for stored referral code on mount
     useEffect(() => {
@@ -72,8 +75,11 @@ export function RegisterPage() {
             setSuccess(true);
             setIsLoading(false);
 
+            // Redirect after brief delay to show success message
             setTimeout(() => {
-                navigate({ to: '/dashboard' });
+                if (hasNavigated.current) return;
+                hasNavigated.current = true;
+                navigate({ to: redirectTarget.current, replace: true });
             }, 1000);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Registration failed');
@@ -174,7 +180,7 @@ export function RegisterPage() {
                     <CardContent className="pt-6">
                         <p className="text-center text-sm">
                             Already have an account?{' '}
-                            <Link to="/login" className="font-medium text-primary hover:underline">
+                            <Link to="/login" search={loginSearch} className="font-medium text-primary hover:underline">
                                 Sign in
                             </Link>
                         </p>

@@ -1,5 +1,6 @@
 import { useSession } from '@/lib/auth';
 import { requestPasswordReset, sendMagicLink, signInWithCredentials, signInWithProvider } from '@/lib/auth-api';
+import { resolveAuthRedirect } from '@/lib/auth-redirect';
 import { getLoginConfig, LoginForm } from '@ottabase/auth/components';
 import {
     Button,
@@ -19,7 +20,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export function LoginPage() {
     const navigate = useNavigate();
@@ -32,6 +33,8 @@ export function LoginPage() {
     const [forgotEmail, setForgotEmail] = useState('');
     const [forgotStatus, setForgotStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
     const [forgotError, setForgotError] = useState<string | null>(null);
+    const hasNavigated = useRef(false);
+    const redirectTarget = useRef(resolveAuthRedirect());
 
     // Auto-detect configured providers from env
     // This will check process.env for OAuth provider credentials
@@ -65,10 +68,12 @@ export function LoginPage() {
         };
     }, []);
 
+    // Redirect if already authenticated
     useEffect(() => {
-        if (!isSessionLoading && isAuthenticated) {
-            navigate({ to: '/dashboard' });
-        }
+        if (hasNavigated.current || isSessionLoading || !isAuthenticated) return;
+
+        hasNavigated.current = true;
+        navigate({ to: redirectTarget.current, replace: true });
     }, [isAuthenticated, isSessionLoading, navigate]);
 
     // Check for missing configuration and show warnings
@@ -116,7 +121,7 @@ export function LoginPage() {
 
         try {
             const result = await signInWithProvider(providerId, {
-                redirectTo: '/dashboard',
+                redirectTo: redirectTarget.current,
             });
 
             if (!result.success) {
@@ -151,14 +156,13 @@ export function LoginPage() {
                 return;
             }
 
-            // Update local session state
             if (result.session) {
                 login(result.session, { remember: rememberMe });
             }
 
-            // Navigate to dashboard
             setIsLoading(false);
-            navigate({ to: '/dashboard' });
+            hasNavigated.current = true;
+            navigate({ to: redirectTarget.current, replace: true });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Login failed');
             setIsLoading(false);
@@ -171,7 +175,7 @@ export function LoginPage() {
 
         try {
             const result = await sendMagicLink(email, {
-                redirectTo: '/dashboard',
+                redirectTo: redirectTarget.current,
             });
 
             if (!result.success) {
