@@ -247,6 +247,15 @@ export function AdminBrandKitDetailPage() {
         if (window.confirm('Delete this Brand Kit? This cannot be undone.')) deleteMutation.mutate();
     };
 
+    const hasColorOverrides = useMemo(() => {
+        try {
+            const parsed = JSON.parse(draft.tokensJson || '{}') as { color?: unknown };
+            return Boolean(parsed.color);
+        } catch {
+            return false;
+        }
+    }, [draft.tokensJson]);
+
     if (!isNew && (isLoading || !kit)) {
         return (
             <div className="flex items-center justify-center py-12">
@@ -281,15 +290,6 @@ export function AdminBrandKitDetailPage() {
     const logoUrls = getLogoUrls({ ...kitForView, ...draft } as BrandKitItem, logoBaseUrl);
     const isDefaultKit = (kitForView.isDefault ?? false) || kitForView.organizationId === null;
     const saving = isNew ? createMutation.isPending : updateMutation.isPending;
-
-    const hasColorOverrides = useMemo(() => {
-        try {
-            const parsed = JSON.parse(draft.tokensJson || '{}') as { color?: unknown };
-            return Boolean(parsed.color);
-        } catch {
-            return false;
-        }
-    }, [draft.tokensJson]);
 
     return (
         <div className="space-y-6">
