@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
-import { getThemePresetItems } from '@ottabase/brand-engine/themes';
+import { THEME_PRESET_ITEMS, getThemePresetItems } from '@ottabase/brand-engine';
 import { OttaSelect, type ItemRendererProps, type OttaSelectItem } from '@ottabase/ottaselect';
-import { Label, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Label } from '@ottabase/ui-shadcn';
 
 /** Convert HSL string "221 83% 53%" or "217 91% 60% / 0.1" to CSS hsl() */
 function hslToCss(hsl: string): string {
     const base = hsl.split('/')[0].trim();
     const parts = base
         .split(/\s+/)
-        .map(Number)
-        .filter((n) => !isNaN(n));
+        .map((value) => parseFloat(value))
+        .filter((n) => !Number.isNaN(n));
     if (parts.length < 3) return 'hsl(221, 83%, 53%)';
     return `hsl(${parts[0]}, ${parts[1]}%, ${parts[2]}%)`;
 }
@@ -27,11 +27,36 @@ export function BrandKitThemeTab({
     onThemePresetChange,
     onTokensChange,
 }: BrandKitThemeTabProps) {
-    const themePresetItems = useMemo(() => getThemePresetItems(), []);
+    const themePresetItems = useMemo(() => {
+        const runtimeItems = getThemePresetItems();
+        if (runtimeItems.length <= 1) return THEME_PRESET_ITEMS;
+        const palettes = runtimeItems.map((item) => item.colors.join('|'));
+        const hasDistinctPalettes = new Set(palettes).size > 1;
+        return hasDistinctPalettes ? runtimeItems : THEME_PRESET_ITEMS;
+    }, []);
     const selectedId = themePresetId ?? 'default';
     const selectedItem = themePresetItems.find((t) => t.id === selectedId) ?? themePresetItems[0];
+    const hasCustomColorOverrides = useMemo(() => {
+        try {
+            const parsed = JSON.parse(tokensJson || '{}') as { color?: unknown };
+            return !!parsed?.color;
+        } catch {
+            return false;
+        }
+    }, [tokensJson]);
 
-    const ThemePresetRenderer = ({ item, isSelected }: ItemRendererProps) => (
+    const handleRestorePresetColors = () => {
+        try {
+            const parsed = JSON.parse(tokensJson || '{}') as Record<string, unknown>;
+            if (!parsed.color) return;
+            delete parsed.color;
+            onTokensChange(JSON.stringify(parsed, null, 2));
+        } catch {
+            // Keep the raw text untouched when invalid JSON
+        }
+    };
+
+    const ThemePresetRenderer = ({ item }: ItemRendererProps) => (
         <div className="flex flex-col gap-1.5 flex-1 min-w-0">
             <span className="truncate font-medium capitalize">{item.name}</span>
             <div className="flex gap-1 shrink-0">
@@ -53,11 +78,11 @@ export function BrandKitThemeTab({
                 <CardHeader>
                     <CardTitle>Base theme preset</CardTitle>
                     <CardDescription>
-                        Choose a preset – it fully overrides the color palette (buttons, sidebar, links). Tokens below
-                        override radius, spacing, shadow, motion only.
+                        Choose the base palette for this Brand Kit. If custom color tokens exist, they override the
+                        preset until restored.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-3">
                     <OttaSelect
                         mode="single"
                         items={themePresetItems}
@@ -89,6 +114,23 @@ export function BrandKitThemeTab({
                         )}
                         className="w-full"
                     />
+                    {hasCustomColorOverrides ? (
+                        <div className="rounded-md border border-amber-300/50 bg-amber-50/70 p-3 text-sm dark:border-amber-700/40 dark:bg-amber-950/20">
+                            <p className="font-medium">Custom color overrides are active</p>
+                            <p className="text-muted-foreground mt-1">
+                                The preview and app will use token color values instead of the selected preset.
+                            </p>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-2"
+                                onClick={handleRestorePresetColors}
+                            >
+                                Restore preset colors
+                            </Button>
+                        </div>
+                    ) : null}
                 </CardContent>
             </Card>
 
@@ -96,7 +138,8 @@ export function BrandKitThemeTab({
                 <CardHeader>
                     <CardTitle>Design tokens JSON</CardTitle>
                     <CardDescription>
-                        Override typography, spacing, radius, shadow, motion. Color is controlled by the preset above.
+                        Override typography, spacing, radius, shadow, and motion. Add color tokens only when you
+                        intentionally want to override the preset.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

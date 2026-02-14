@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ottabase/ui-shadcn';
 import {
     IconArrowLeft,
     IconBadge,
-    IconCheck,
     IconColorSwatch,
     IconPalette,
     IconPhoto,
@@ -20,7 +19,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { brandKitApi, layoutApi, type BrandKitItem } from './brand/brandApi';
+import { brandKitApi, type BrandKitItem } from './brand/brandApi';
 import { BrandKitAdvancedTab } from './brand/BrandKitAdvancedTab';
 import { BrandKitBrandTab } from './brand/BrandKitBrandTab';
 import { BrandKitColorsTab } from './brand/BrandKitColorsTab';
@@ -221,31 +220,6 @@ export function AdminBrandKitDetailPage() {
         onError: () => toast.error('Failed to delete'),
     });
 
-    const applyKitMutation = useMutation({
-        mutationFn: async () => {
-            const mappings = (await layoutApi.getMappings()) as {
-                pathPattern: string;
-                layoutTemplateId: string;
-                brandKitId: string;
-                priority?: number;
-            }[];
-            const next = (mappings ?? []).map((m) => ({
-                pathPattern: m.pathPattern,
-                layoutTemplateId: m.layoutTemplateId,
-                brandKitId: kitId!,
-                priority: m.priority ?? 0,
-            }));
-            if (next.length === 0) throw new Error('No route mappings found to update');
-            await layoutApi.putMappings({ mappings: next });
-        },
-        onSuccess: () => {
-            toast.success('Brand Kit applied to all routes');
-            queryClient.invalidateQueries({ queryKey: ['brand', 'mappings'] });
-            refresh();
-        },
-        onError: () => toast.error('Failed to apply Brand Kit to routes'),
-    });
-
     const handleSave = () => {
         const payload = {
             name: draft.name?.trim() || draft.brandName || 'New Brand Kit',
@@ -272,6 +246,15 @@ export function AdminBrandKitDetailPage() {
         if (isDefault) return;
         if (window.confirm('Delete this Brand Kit? This cannot be undone.')) deleteMutation.mutate();
     };
+
+    const hasColorOverrides = useMemo(() => {
+        try {
+            const parsed = JSON.parse(draft.tokensJson || '{}') as { color?: unknown };
+            return Boolean(parsed.color);
+        } catch {
+            return false;
+        }
+    }, [draft.tokensJson]);
 
     if (!isNew && (isLoading || !kit)) {
         return (
@@ -323,6 +306,14 @@ export function AdminBrandKitDetailPage() {
                     </Link>
                     <h1 className="text-2xl font-bold">{draft.name || kitForView.name}</h1>
                 </div>
+                {!isNew ? (
+                    <Link
+                        to="/admin/brand-engine/layouts"
+                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                    >
+                        Configure layouts & route mappings
+                    </Link>
+                ) : null}
                 <div className="flex items-center gap-2">
                     {isNew || isDefaultKit ? null : (
                         <button
@@ -333,17 +324,6 @@ export function AdminBrandKitDetailPage() {
                         >
                             <IconTrash className="mr-2 h-4 w-4" />
                             {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-                        </button>
-                    )}
-                    {!isNew && (
-                        <button
-                            type="button"
-                            className="inline-flex items-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
-                            onClick={() => applyKitMutation.mutate()}
-                            disabled={applyKitMutation.isPending}
-                        >
-                            <IconCheck className="mr-2 h-4 w-4" />
-                            {applyKitMutation.isPending ? 'Applying…' : 'Apply to all routes'}
                         </button>
                     )}
                     <button
@@ -452,7 +432,14 @@ export function AdminBrandKitDetailPage() {
 
                 {/* Realtime preview – light and dark stacked */}
                 <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
-                    <p className="text-sm font-medium text-muted-foreground">Live preview</p>
+                    <div>
+                        <p className="text-sm font-medium text-muted-foreground">Live preview</p>
+                        {hasColorOverrides ? (
+                            <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
+                                Showing custom token colors (overrides preset).
+                            </p>
+                        ) : null}
+                    </div>
                     <div className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">Light</p>
                         <BrandKitPreviewPanel
