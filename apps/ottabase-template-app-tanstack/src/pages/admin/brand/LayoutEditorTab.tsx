@@ -66,7 +66,7 @@ function getTemplateConfig(template: LayoutTemplateItem): LayoutConfig {
 
 function LayoutMiniPreview({ config }: { config: LayoutConfig }) {
     const densityGap = config.density === 'compact' ? 'gap-1' : 'gap-1.5';
-    const blockHeight = config.density === 'compact' ? 'h-5' : 'h-6';
+
     const contentMaxWidth =
         config.contentWidth === 'full' ? 'max-w-none' : config.contentWidth === 'fluid' ? 'max-w-[94%]' : 'max-w-[72%]';
     const navWidth = config.navigation === 'sidebar' ? 'w-10' : config.navigation === 'drawer' ? 'w-6' : 'w-0';
@@ -410,8 +410,13 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
                     </div>
                     <LayoutConfigEditor config={config} onChange={setConfig} />
                     <Button
-                        onClick={() => putMutation.mutate({ name: name.trim() || componentKey, componentKey, config })}
-                        disabled={putMutation.isPending}
+                        onClick={() => {
+                            if (duplicateName) {
+                                return;
+                            }
+                            putMutation.mutate({ name: name.trim() || componentKey, componentKey, config });
+                        }}
+                        disabled={putMutation.isPending || duplicateName}
                     >
                         {putMutation.isPending ? 'Creating...' : 'Create'}
                     </Button>
