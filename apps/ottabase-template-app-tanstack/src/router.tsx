@@ -397,6 +397,16 @@ const demoI18nRoute = new Route({
     ),
 });
 
+const demoBreadcrumbsRoute = new Route({
+    getParentRoute: () => demoLayoutRoute,
+    path: 'breadcrumbs',
+    component: lazyRouteComponent(() =>
+        import('@/pages/demo/breadcrumbs/BreadcrumbsDemoPage').then((m) => ({
+            default: m.BreadcrumbsDemoPage,
+        })),
+    ),
+});
+
 // Auth routes
 const loginRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -817,6 +827,7 @@ demoLayoutRoute.addChildren([
     demoCropperRoute,
     demoLoggerRoute,
     demoI18nRoute,
+    demoBreadcrumbsRoute,
     demoTimezoneRoute,
     demoCloudflareRoute,
     demoCloudflareD1Route,

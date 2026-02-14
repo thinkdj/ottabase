@@ -1,3 +1,4 @@
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button } from '@ottabase/ui-shadcn';
 import { cn } from '@ottabase/ui-shadcn/lib/utils';
 import { Link, Outlet, useLocation } from '@tanstack/react-router';
@@ -13,6 +14,7 @@ import {
     Layout,
     List,
     Mail,
+    Navigation,
     Palette,
     Settings,
     Type,
@@ -30,6 +32,7 @@ const DEMO_LINKS: DemoLinkProps[] = [
     { to: '/demo/state', icon: Settings, label: 'State Management' },
     { to: '/demo/logger', icon: FileStack, label: 'Logger' },
     { to: '/demo/i18n', icon: Languages, label: 'Internationalization (i18n)' },
+    { to: '/demo/breadcrumbs', icon: Navigation, label: 'Breadcrumbs' },
     { to: '/demo/mantine', icon: Layout, label: 'Mantine UI' },
     { to: '/demo/shadcn', icon: Palette, label: 'shadcn/ui' },
     { to: '/demo/ottaeditor', icon: Type, label: 'OttaEditor' },
@@ -101,6 +104,9 @@ export function DemoLayout() {
             {/* Content */}
             <main className="flex-1 overflow-auto bg-background/50">
                 <div className="container mx-auto px-6 py-12 max-w-7xl">
+                    <div className="mb-6">
+                        <Breadcrumbs />
+                    </div>
                     <Outlet />
                 </div>
             </main>

@@ -165,6 +165,21 @@ export function DemoIndexPage() {
 
                 <Card>
                     <CardHeader>
+                        <CardTitle>Smart Breadcrumbs</CardTitle>
+                        <CardDescription>
+                            Automatic breadcrumb navigation with intelligent route metadata and human-readable labels.
+                            Fully TanStack Router integrated.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild variant="outline" className="w-full">
+                            <Link to="/demo/breadcrumbs">View Breadcrumbs Demo</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
                         <CardTitle>API Client</CardTitle>
                         <CardDescription>
                             Type-safe fetch wrapper with error handling, auth injection, and shorthand method syntax
