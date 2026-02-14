@@ -74,40 +74,36 @@ function LayoutMiniPreview({ config }: { config: LayoutConfig }) {
     const hasHeader = config.header !== 'none';
 
     return (
-        <div className="space-y-2 rounded-lg border bg-background p-2.5 dark:border-muted">
-            <div className="rounded-md border bg-muted/20 p-2 dark:border-muted">
-                <div className="aspect-[16/10] rounded-md border bg-background p-2 shadow-sm dark:border-muted">
-                    <div className="flex h-full gap-1.5">
-                        {config.header === 'sidebar' ? <div className="w-2.5 rounded bg-muted" /> : null}
-                        <div className="flex flex-1 flex-col gap-1">
-                            {hasHeader && config.header !== 'sidebar' ? (
-                                <div className={`${headerHeight} rounded bg-muted`} />
-                            ) : null}
-                            {config.navigation === 'topbar' ? <div className="h-2.5 rounded bg-muted/90" /> : null}
-                            <div className="flex min-h-0 flex-1 gap-1">
-                                {config.navigation !== 'topbar' ? (
-                                    <div className={`${navWidth} relative rounded bg-muted`}>
-                                        {config.navigation === 'drawer' ? (
-                                            <div className="absolute left-1 top-2 flex flex-col gap-0.5">
-                                                <span className="h-0.5 w-3 rounded-full bg-background" />
-                                                <span className="h-0.5 w-3 rounded-full bg-background" />
-                                                <span className="h-0.5 w-3 rounded-full bg-background" />
-                                            </div>
-                                        ) : null}
-                                    </div>
-                                ) : null}
-                                <div className="flex min-h-0 flex-1 justify-center rounded bg-muted/40 p-1.5">
-                                    <div className={`flex h-full w-full ${contentMaxWidth} flex-col ${densityGap}`}>
-                                        <div className={`${blockHeight} rounded bg-background/90`} />
-                                        <div className="grid flex-1 grid-cols-2 gap-1">
-                                            <div className="rounded bg-background/90" />
-                                            <div className="rounded bg-background/90" />
+        <div className="space-y-2">
+            <div className="aspect-[16/10] rounded-md border bg-muted/10 p-2 dark:border-muted/60">
+                <div className="flex h-full gap-1.5">
+                    {config.header === 'sidebar' ? <div className="w-2.5 rounded bg-muted" /> : null}
+                    <div className="flex flex-1 flex-col gap-1">
+                        {hasHeader && config.header !== 'sidebar' ? (
+                            <div className={`${headerHeight} rounded bg-muted`} />
+                        ) : null}
+                        {config.navigation === 'topbar' ? <div className="h-2.5 rounded bg-muted/90" /> : null}
+                        <div className="flex min-h-0 flex-1 gap-1">
+                            {config.navigation !== 'topbar' ? (
+                                <div className={`${navWidth} relative rounded bg-muted`}>
+                                    {config.navigation === 'drawer' ? (
+                                        <div className="absolute left-1.5 top-2 flex flex-col gap-0.5">
+                                            <span className="h-0.5 w-3 rounded-full bg-background" />
+                                            <span className="h-0.5 w-3 rounded-full bg-background" />
+                                            <span className="h-0.5 w-3 rounded-full bg-background" />
                                         </div>
+                                    ) : null}
+                                </div>
+                            ) : null}
+                            <div className="flex min-h-0 flex-1 justify-center rounded bg-muted/40 p-1.5">
+                                <div className={`flex h-full w-full ${contentMaxWidth} flex-col ${densityGap}`}>
+                                    <div className="grid flex-1 grid-cols-1 gap-1">
+                                        <div className="rounded bg-background/90" />
                                     </div>
                                 </div>
                             </div>
-                            {config.footer ? <div className="h-2 rounded bg-muted" /> : null}
                         </div>
+                        {config.footer ? <div className="h-2 rounded bg-muted" /> : null}
                     </div>
                 </div>
             </div>
