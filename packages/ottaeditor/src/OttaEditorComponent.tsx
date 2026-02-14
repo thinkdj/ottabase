@@ -38,12 +38,9 @@ export const OttaEditorComponent: React.FC<OttaEditorComponentProps> = ({
     return (
         <div
             ref={editorRef}
-            className={`ottaeditor-container ${className}`}
+            className={`ottaeditor-container border border-input rounded-md p-4 bg-background ${className}`}
             style={{
                 minHeight: editorOptions.minHeight || 300,
-                border: '1px solid #e5e7eb',
-                borderRadius: '0.375rem',
-                padding: '1rem',
                 ...style,
             }}
         />
