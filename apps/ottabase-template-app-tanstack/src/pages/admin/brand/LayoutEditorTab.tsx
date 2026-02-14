@@ -1,6 +1,7 @@
 import { isValidPathPattern, LAYOUT_PRESETS, type LayoutComponentKey, type LayoutConfig } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
 import {
+    Badge,
     Button,
     Card,
     CardContent,
@@ -24,7 +25,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { brandKitApi, layoutApi, type LayoutMappingItem, type LayoutTemplateItem } from './brandApi';
 
@@ -44,6 +45,47 @@ const DEFAULT_CONFIGS = COMPONENT_KEYS.reduce<Record<LayoutComponentKey, LayoutC
     },
     {} as Record<LayoutComponentKey, LayoutConfig>,
 );
+
+function mergeLayoutConfig(existing: object | undefined, fallback: LayoutConfig): LayoutConfig {
+    if (!existing || typeof existing !== 'object') return fallback;
+    const c = existing as Record<string, unknown>;
+    return {
+        header: (c.header as LayoutConfig['header']) ?? fallback.header,
+        navigation: (c.navigation as LayoutConfig['navigation']) ?? fallback.navigation,
+        contentWidth: (c.contentWidth as LayoutConfig['contentWidth']) ?? fallback.contentWidth,
+        footer: typeof c.footer === 'boolean' ? c.footer : fallback.footer,
+        density: (c.density as LayoutConfig['density']) ?? fallback.density,
+    };
+}
+
+function getTemplateConfig(template: LayoutTemplateItem): LayoutConfig {
+    const key = template.componentKey as LayoutComponentKey;
+    const fallback = DEFAULT_CONFIGS[key] ?? DEFAULT_CONFIGS['app-shell'];
+    return mergeLayoutConfig(template.config, fallback);
+}
+
+function LayoutMiniPreview({ config }: { config: LayoutConfig }) {
+    const headerVisible = config.header !== 'none';
+    const navWidth = config.navigation === 'sidebar' ? 'w-8' : config.navigation === 'drawer' ? 'w-5' : 'w-0';
+    return (
+        <div className="rounded border bg-background p-2 dark:border-muted">
+            <div className="h-16 rounded border bg-muted/30 p-1 dark:border-muted">
+                {headerVisible ? <div className="mb-1 h-2.5 rounded bg-muted" /> : null}
+                <div className="flex h-[calc(100%-0.5rem)] gap-1">
+                    {config.navigation !== 'topbar' ? <div className={`${navWidth} rounded bg-muted`} /> : null}
+                    <div className="flex-1 rounded bg-muted/70 p-1">
+                        {config.navigation === 'topbar' ? <div className="mb-1 h-2 rounded bg-muted" /> : null}
+                        <div className="grid h-full grid-cols-2 gap-1">
+                            <div className="rounded bg-background/70" />
+                            <div className="rounded bg-background/70" />
+                        </div>
+                    </div>
+                </div>
+                {config.footer ? <div className="mt-1 h-1.5 rounded bg-muted" /> : null}
+            </div>
+        </div>
+    );
+}
 
 function LayoutConfigEditor({ config, onChange }: { config: LayoutConfig; onChange: (c: LayoutConfig) => void }) {
     return (
@@ -164,6 +206,8 @@ export function LayoutEditorTab() {
         onError: () => toast.error('Failed to save mappings'),
     });
 
+    const layoutOptions = useMemo(() => [...BUILT_IN_PRESETS, ...templates], [templates]);
+
     if (loadingTemplates || loadingMappings || loadingKits) {
         return (
             <div className="flex items-center justify-center py-12">
@@ -178,30 +222,36 @@ export function LayoutEditorTab() {
                 <CardHeader>
                     <CardTitle>Layout templates</CardTitle>
                     <CardDescription>
-                        Built-in presets (Homepage, App Shell, Docs, Minimal) are always available. Create custom
-                        templates for more control.
+                        Built-in presets are always available. Create custom templates only when you need different
+                        structure rules.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
                         <CreateTemplateDialog templates={templates} />
                         {templates.length === 0 ? (
-                            <p className="text-sm text-muted-foreground py-6 text-center">
-                                No custom templates yet. You can map routes to built-in presets below.
+                            <p className="py-6 text-center text-sm text-muted-foreground">
+                                No custom templates yet. Use built-in templates in route mappings below.
                             </p>
                         ) : (
-                            <div className="space-y-2">
-                                {templates.map((t) => (
-                                    <div key={t.id} className="flex items-center justify-between rounded-lg border p-4">
-                                        <div>
-                                            <span className="font-medium">{t.name}</span>
-                                            <span className="ml-2 text-xs text-muted-foreground font-mono">
-                                                {t.componentKey}
-                                            </span>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                {templates.map((t) => {
+                                    const config = getTemplateConfig(t);
+                                    return (
+                                        <div key={t.id} className="rounded-lg border p-4 dark:border-muted">
+                                            <div className="mb-3 flex items-center justify-between gap-2">
+                                                <div>
+                                                    <p className="font-medium">{t.name}</p>
+                                                    <p className="font-mono text-xs text-muted-foreground">
+                                                        {t.componentKey}
+                                                    </p>
+                                                </div>
+                                                <EditTemplateDialog template={t} />
+                                            </div>
+                                            <LayoutMiniPreview config={config} />
                                         </div>
-                                        <EditTemplateDialog template={t} />
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -212,14 +262,13 @@ export function LayoutEditorTab() {
                 <CardHeader>
                     <CardTitle>Route mappings</CardTitle>
                     <CardDescription>
-                        Match paths to layout + Brand Kit. Higher priority wins. Use * (one segment) and ** (rest of
-                        path). Saving replaces all mappings.
+                        Map path patterns to a layout + Brand Kit. Higher priority wins. Saving replaces all mappings.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <MappingsEditor
                         mappings={mappings}
-                        layoutOptions={[...BUILT_IN_PRESETS, ...templates]}
+                        layoutOptions={layoutOptions}
                         kits={kits}
                         onSave={(m) =>
                             putMappingsMutation.mutate({
@@ -247,7 +296,6 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
     const queryClient = useQueryClient();
     const { refresh } = useBrand();
 
-    // Reset config when component changes
     useEffect(() => {
         setConfig(DEFAULT_CONFIGS[componentKey]);
     }, [componentKey]);
@@ -265,18 +313,20 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
         onError: () => toast.error('Failed to create'),
     });
 
+    const duplicateName = templates.some((t) => t.name.toLowerCase() === name.trim().toLowerCase());
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button>
-                    <IconPlus className="h-4 w-4 mr-2" />
+                    <IconPlus className="mr-2 h-4 w-4" />
                     New template
                 </Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Create layout template</DialogTitle>
-                    <DialogDescription>Add a layout preset with custom config for route mappings.</DialogDescription>
+                    <DialogDescription>Use this only for reusable layouts you plan to map on routes.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div>
@@ -285,8 +335,9 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
                             id="layoutName"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="e.g. Main App Shell"
+                            placeholder="e.g. Marketing Shell"
                         />
+                        {duplicateName ? <p className="mt-1 text-xs text-amber-600">Name already exists.</p> : null}
                     </div>
                     <div>
                         <Label>Component</Label>
@@ -305,13 +356,7 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
                     </div>
                     <LayoutConfigEditor config={config} onChange={setConfig} />
                     <Button
-                        onClick={() =>
-                            putMutation.mutate({
-                                name: name.trim() || componentKey,
-                                componentKey,
-                                config,
-                            })
-                        }
+                        onClick={() => putMutation.mutate({ name: name.trim() || componentKey, componentKey, config })}
                         disabled={putMutation.isPending}
                     >
                         {putMutation.isPending ? 'Creating...' : 'Create'}
@@ -322,42 +367,19 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
     );
 }
 
-function mergeLayoutConfig(existing: object | undefined, fallback: LayoutConfig): LayoutConfig {
-    if (!existing || typeof existing !== 'object') return fallback;
-    const c = existing as Record<string, unknown>;
-    return {
-        header: (c.header as LayoutConfig['header']) ?? fallback.header,
-        navigation: (c.navigation as LayoutConfig['navigation']) ?? fallback.navigation,
-        contentWidth: (c.contentWidth as LayoutConfig['contentWidth']) ?? fallback.contentWidth,
-        footer: typeof c.footer === 'boolean' ? c.footer : fallback.footer,
-        density: (c.density as LayoutConfig['density']) ?? fallback.density,
-    };
-}
-
 function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState(template.name);
     const [componentKey, setComponentKey] = useState<LayoutComponentKey>(template.componentKey as LayoutComponentKey);
-    const [config, setConfig] = useState<LayoutConfig>(() =>
-        mergeLayoutConfig(
-            template.config,
-            DEFAULT_CONFIGS[template.componentKey as LayoutComponentKey] ?? DEFAULT_CONFIGS['app-shell'],
-        ),
-    );
+    const [config, setConfig] = useState<LayoutConfig>(() => getTemplateConfig(template));
     const queryClient = useQueryClient();
     const { refresh } = useBrand();
 
     useEffect(() => {
-        if (open) {
-            setName(template.name);
-            setComponentKey(template.componentKey as LayoutComponentKey);
-            setConfig(
-                mergeLayoutConfig(
-                    template.config,
-                    DEFAULT_CONFIGS[template.componentKey as LayoutComponentKey] ?? DEFAULT_CONFIGS['app-shell'],
-                ),
-            );
-        }
+        if (!open) return;
+        setName(template.name);
+        setComponentKey(template.componentKey as LayoutComponentKey);
+        setConfig(getTemplateConfig(template));
     }, [open, template]);
 
     const putMutation = useMutation({
@@ -382,7 +404,7 @@ function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Edit layout template</DialogTitle>
-                    <DialogDescription>Change name, component, or layout config.</DialogDescription>
+                    <DialogDescription>Change the name, component, or config.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div>
@@ -486,70 +508,91 @@ function MappingsEditor({
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-                <div>
+            <div className="space-y-3 rounded-lg border p-4 dark:border-muted">
+                <div className="flex flex-wrap gap-2">
+                    <div>
+                        <Input
+                            value={pathPattern}
+                            onChange={(e) => handlePathPatternChange(e.target.value)}
+                            placeholder="/* or /admin/**"
+                            className={`max-w-[180px] ${patternError ? 'border-red-500' : ''}`}
+                        />
+                        {patternError ? <p className="mt-1 text-xs text-red-500">{patternError}</p> : null}
+                    </div>
+                    <Select value={brandKitId} onValueChange={setBrandKitId}>
+                        <SelectTrigger className="w-[220px]">
+                            <SelectValue placeholder="Brand Kit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {kits.map((k) => (
+                                <SelectItem key={k.id} value={k.id}>
+                                    {k.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <Input
-                        value={pathPattern}
-                        onChange={(e) => handlePathPatternChange(e.target.value)}
-                        placeholder="/* or /admin/**"
-                        className={`max-w-[180px] ${patternError ? 'border-red-500' : ''}`}
+                        type="number"
+                        value={priority}
+                        onChange={(e) => setPriority(Number(e.target.value) || 0)}
+                        placeholder="Priority"
+                        className="w-20"
                     />
-                    {patternError && <p className="text-xs text-red-500 mt-1">{patternError}</p>}
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={add}
+                        disabled={
+                            !pathPattern.trim() ||
+                            !!patternError ||
+                            !layoutTemplateId ||
+                            !brandKitId ||
+                            kits.length === 0
+                        }
+                    >
+                        Add mapping
+                    </Button>
                 </div>
-                <Select value={layoutTemplateId} onValueChange={setLayoutTemplateId}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Layout" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {layoutOptions.map((t) => (
-                            <SelectItem key={t.id} value={t.id}>
-                                {t.name}
-                                {BUILT_IN_PRESETS.some((p) => p.id === t.id) && (
-                                    <span className="ml-1.5 text-muted-foreground text-xs">preset</span>
-                                )}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <Select value={brandKitId} onValueChange={setBrandKitId}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Brand Kit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {kits.map((k) => (
-                            <SelectItem key={k.id} value={k.id}>
-                                {k.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <Input
-                    type="number"
-                    value={priority}
-                    onChange={(e) => setPriority(Number(e.target.value) || 0)}
-                    placeholder="Priority"
-                    className="w-20"
-                />
-                <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={add}
-                    disabled={
-                        !pathPattern.trim() || !!patternError || !layoutTemplateId || !brandKitId || kits.length === 0
-                    }
-                >
-                    Add mapping
-                </Button>
+                <div>
+                    <p className="mb-2 text-sm font-medium">Select layout</p>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {layoutOptions.map((option) => {
+                            const selected = layoutTemplateId === option.id;
+                            const config = getTemplateConfig(option);
+                            const isPreset = BUILT_IN_PRESETS.some((p) => p.id === option.id);
+                            return (
+                                <button
+                                    key={option.id}
+                                    type="button"
+                                    onClick={() => setLayoutTemplateId(option.id)}
+                                    className={`rounded-lg border p-2 text-left transition-colors ${
+                                        selected ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'
+                                    }`}
+                                >
+                                    <div className="mb-1 flex items-center gap-2">
+                                        <p className="truncate text-sm font-medium">{option.name}</p>
+                                        {isPreset ? (
+                                            <Badge variant="secondary" className="text-[10px]">
+                                                Preset
+                                            </Badge>
+                                        ) : null}
+                                    </div>
+                                    <LayoutMiniPreview config={config} />
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
-            {kits.length === 0 && (
+            {kits.length === 0 ? (
                 <p className="text-sm text-amber-600 dark:text-amber-500">
                     Create a Brand Kit first before adding mappings.
                 </p>
-            )}
+            ) : null}
             {items.length === 0 ? (
                 <div className="rounded-lg border border-dashed py-8 text-center dark:border-muted">
                     <p className="text-sm text-muted-foreground">No mappings yet. Add path patterns above.</p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="mt-1 text-xs text-muted-foreground">
                         Example: <code className="rounded bg-muted px-1">/blog/**</code> or{' '}
                         <code className="rounded bg-muted px-1">/admin/**</code>
                     </p>
@@ -562,7 +605,7 @@ function MappingsEditor({
                             className="flex items-center justify-between rounded border px-3 py-2 dark:border-muted"
                         >
                             <span className="font-mono text-sm">{m.pathPattern}</span>
-                            <span className="text-muted-foreground text-sm">
+                            <span className="text-sm text-muted-foreground">
                                 {layoutOptions.find((t) => t.id === m.layoutTemplateId)?.name ?? m.layoutTemplateId} →{' '}
                                 {kits.find((k) => k.id === m.brandKitId)?.name ?? m.brandKitId}
                             </span>

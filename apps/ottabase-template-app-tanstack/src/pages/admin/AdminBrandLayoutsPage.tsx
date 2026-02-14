@@ -19,7 +19,8 @@ export function AdminBrandLayoutsPage() {
                 </Link>
                 <h1 className="text-3xl font-bold tracking-tight">Layouts & Route Mappings</h1>
                 <p className="text-muted-foreground mt-1">
-                    Define layout templates and map paths to layout + Brand Kit. Higher priority wins.
+                    Choose layout structures and map routes to Brand Kits. Start with visual presets, then fine-tune
+                    priorities.
                 </p>
             </div>
             <LayoutEditorTab />
