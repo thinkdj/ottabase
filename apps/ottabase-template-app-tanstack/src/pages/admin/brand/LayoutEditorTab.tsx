@@ -65,23 +65,50 @@ function getTemplateConfig(template: LayoutTemplateItem): LayoutConfig {
 }
 
 function LayoutMiniPreview({ config }: { config: LayoutConfig }) {
-    const headerVisible = config.header !== 'none';
-    const navWidth = config.navigation === 'sidebar' ? 'w-8' : config.navigation === 'drawer' ? 'w-5' : 'w-0';
+    const densityGap = config.density === 'compact' ? 'gap-1' : 'gap-1.5';
+    const blockHeight = config.density === 'compact' ? 'h-5' : 'h-6';
+    const contentMaxWidth =
+        config.contentWidth === 'full' ? 'max-w-none' : config.contentWidth === 'fluid' ? 'max-w-[94%]' : 'max-w-[72%]';
+    const navWidth = config.navigation === 'sidebar' ? 'w-10' : config.navigation === 'drawer' ? 'w-6' : 'w-0';
+    const headerHeight = config.header === 'minimal' ? 'h-3' : config.header === 'topbar' ? 'h-4' : 'h-0';
+
     return (
-        <div className="rounded border bg-background p-2 dark:border-muted">
-            <div className="h-16 rounded border bg-muted/30 p-1 dark:border-muted">
-                {headerVisible ? <div className="mb-1 h-2.5 rounded bg-muted" /> : null}
-                <div className="flex h-[calc(100%-0.5rem)] gap-1">
-                    {config.navigation !== 'topbar' ? <div className={`${navWidth} rounded bg-muted`} /> : null}
-                    <div className="flex-1 rounded bg-muted/70 p-1">
-                        {config.navigation === 'topbar' ? <div className="mb-1 h-2 rounded bg-muted" /> : null}
-                        <div className="grid h-full grid-cols-2 gap-1">
-                            <div className="rounded bg-background/70" />
-                            <div className="rounded bg-background/70" />
+        <div className="space-y-2 rounded-lg border bg-background p-2.5 dark:border-muted">
+            <div className="rounded-md border bg-muted/20 p-2 dark:border-muted">
+                <div className="mb-2 h-1.5 w-16 rounded-full bg-muted" />
+                <div className="aspect-[16/10] rounded-md border bg-background p-2 shadow-sm dark:border-muted">
+                    <div className="flex h-full gap-1.5">
+                        {config.header === 'sidebar' ? <div className="w-2.5 rounded bg-muted" /> : null}
+                        <div className="flex flex-1 flex-col gap-1">
+                            {config.header !== 'none' && config.header !== 'sidebar' ? (
+                                <div className={`${headerHeight} rounded bg-muted`} />
+                            ) : null}
+                            {config.navigation === 'topbar' ? <div className="h-2.5 rounded bg-muted/90" /> : null}
+                            <div className="flex min-h-0 flex-1 gap-1">
+                                {config.navigation !== 'topbar' ? (
+                                    <div className={`${navWidth} rounded bg-muted`} />
+                                ) : null}
+                                <div className="flex min-h-0 flex-1 justify-center rounded bg-muted/40 p-1.5">
+                                    <div className={`flex h-full w-full ${contentMaxWidth} flex-col ${densityGap}`}>
+                                        <div className={`${blockHeight} rounded bg-background/90`} />
+                                        <div className="grid flex-1 grid-cols-2 gap-1">
+                                            <div className="rounded bg-background/90" />
+                                            <div className="rounded bg-background/90" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {config.footer ? <div className="h-2 rounded bg-muted" /> : null}
                         </div>
                     </div>
                 </div>
-                {config.footer ? <div className="mt-1 h-1.5 rounded bg-muted" /> : null}
+            </div>
+            <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+                <span className="rounded bg-muted px-1.5 py-0.5">header: {config.header}</span>
+                <span className="rounded bg-muted px-1.5 py-0.5">nav: {config.navigation}</span>
+                <span className="rounded bg-muted px-1.5 py-0.5">width: {config.contentWidth}</span>
+                <span className="rounded bg-muted px-1.5 py-0.5">density: {config.density}</span>
+                <span className="rounded bg-muted px-1.5 py-0.5">footer: {config.footer ? 'on' : 'off'}</span>
             </div>
         </div>
     );
