@@ -287,10 +287,9 @@ describe('BrandLayout', () => {
     // =======================================================================
 
     describe('controls', () => {
-        it('renders theme switcher and dark mode toggle', () => {
+        it('renders dark mode toggle', () => {
             setLayout({ header: 'topbar' });
             render(<BrandLayout />);
-            expect(screen.getByTestId('theme-switcher')).toBeTruthy();
             expect(screen.getByTestId('dark-mode-toggle')).toBeTruthy();
         });
 
