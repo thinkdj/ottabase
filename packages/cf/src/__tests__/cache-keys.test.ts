@@ -128,13 +128,13 @@ describe('CacheKeyBuilder', () => {
 
     describe('sanitization', () => {
         it('should sanitize values with colons', () => {
-            const key = CacheKeyBuilder.create('test').segment('value:with:colons').build();
-            expect(key).toBe('test:value-with-colons');
+            const key = CacheKeyBuilder.create('cache').segment('value:with:colons').build();
+            expect(key).toBe('cache:value-with-colons');
         });
 
         it('should trim whitespace', () => {
-            const key = CacheKeyBuilder.create('test').segment('  value  ').build();
-            expect(key).toBe('test:value');
+            const key = CacheKeyBuilder.create('cache').segment('  value  ').build();
+            expect(key).toBe('cache:value');
         });
     });
 });

@@ -27,6 +27,7 @@ export type CacheNamespace =
     | 'session' // User sessions
     | 'config' // Configuration
     | 'cache' // General caching
+    | 'system' // System-level operations
     | 'temp'; // Temporary data
 
 /**
