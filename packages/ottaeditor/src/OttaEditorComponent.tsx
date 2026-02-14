@@ -1,4 +1,5 @@
 import React from 'react';
+import './editorjs-brandkit-theme.css';
 import { useOttaEditor, UseOttaEditorOptions } from './useOttaEditor';
 
 export interface OttaEditorComponentProps extends UseOttaEditorOptions {
