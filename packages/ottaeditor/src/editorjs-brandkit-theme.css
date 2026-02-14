@@ -38,18 +38,34 @@
     fill: currentColor !important;
 }
 
-/* Selected/Active Popover Items - Theme-aware for dark mode */
+/* Popover Item Hover - Brand color with transparency */
+.ce-popover__item:hover,
+.ce-popover-item:hover {
+    background: hsl(var(--primary) / 0.1) !important;
+}
+
+/* Selected Popover Items - Brand color with transparency */
 .ce-popover__item--selected,
-.ce-popover-item--selected,
-.ce-popover__item--active {
-    background: hsl(var(--primary)) !important;
-    color: hsl(var(--primary-foreground)) !important;
+.ce-popover-item--selected {
+    background: hsl(var(--primary) / 0.15) !important;
+    color: #000 !important;
 }
 
 .ce-popover__item--selected *,
-.ce-popover-item--selected *,
+.ce-popover-item--selected * {
+    color: #000 !important;
+}
+
+/* Active Popover Items - Brand color with transparency */
+.ce-popover__item--active,
+.ce-popover-item--active {
+    background: hsl(var(--primary) / 0.15) !important;
+    color: #000 !important;
+}
+
+.ce-popover-item--active *,
 .ce-popover__item--active * {
-    color: hsl(var(--primary-foreground)) !important;
+    color: #000 !important;
 }
 
 /* Selected Block - Theme-aware background */
