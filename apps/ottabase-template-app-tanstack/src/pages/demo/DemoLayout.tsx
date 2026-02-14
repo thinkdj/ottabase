@@ -4,8 +4,8 @@ import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import {
     Clock,
     Cloud,
-    Crop,
     Code,
+    Crop,
     Database,
     FileStack,
     FileText,
@@ -100,7 +100,7 @@ export function DemoLayout() {
 
             {/* Content */}
             <main className="flex-1 overflow-auto bg-background/50">
-                <div className="container mx-auto py-8 pr-8 lg:pr-12">
+                <div className="container mx-auto px-6 py-12 max-w-7xl">
                     <Outlet />
                 </div>
             </main>

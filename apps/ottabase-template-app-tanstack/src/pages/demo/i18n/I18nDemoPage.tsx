@@ -24,7 +24,7 @@ export function I18nDemoPage() {
     const [globalLanguage, setGlobalLanguage] = useAtom(languageAtom);
 
     return (
-        <div className="container max-w-5xl mx-auto py-8 space-y-8">
+        <div className="space-y-8">
             <div className="space-y-2">
                 <h1 className="text-4xl font-bold">Internationalization (i18n) Demo</h1>
                 <p className="text-muted-foreground">

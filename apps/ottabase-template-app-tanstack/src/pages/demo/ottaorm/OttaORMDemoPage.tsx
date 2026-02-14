@@ -90,7 +90,7 @@ export function OttaORMDemoPage() {
     };
 
     return (
-        <div className="mx-auto max-w-4xl space-y-6 px-4 py-12">
+        <div className="space-y-6">
             <Button asChild variant="ghost" className="w-fit">
                 <Link to="/demo">← Back to Demos</Link>
             </Button>

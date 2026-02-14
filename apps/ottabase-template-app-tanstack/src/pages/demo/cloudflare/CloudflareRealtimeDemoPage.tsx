@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link } from '@tanstack/react-router';
+import { ApiErrorDisplay } from '@/components/ErrorBoundary';
+import { api, ApiError, isApiError } from '@/lib/api';
 import { ConnectionState, RealtimeClient } from '@ottabase/cf-realtime';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea, toast } from '@ottabase/ui-shadcn';
-import { api, ApiError, isApiError } from '@/lib/api';
-import { ApiErrorDisplay } from '@/components/ErrorBoundary';
+import { Link } from '@tanstack/react-router';
+import { useEffect, useRef, useState } from 'react';
 
 interface Message {
     id: string;
@@ -178,7 +178,7 @@ export function CloudflareRealtimeDemoPage() {
     }, []);
 
     return (
-        <div className="mx-auto max-w-6xl space-y-6 px-4 py-12">
+        <div className="space-y-6">
             <Button asChild variant="ghost" className="w-fit">
                 <Link to="/demo/cloudflare">← Back to Cloudflare Features</Link>
             </Button>

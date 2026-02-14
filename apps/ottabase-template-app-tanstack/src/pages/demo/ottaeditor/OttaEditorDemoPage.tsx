@@ -6,10 +6,8 @@ export function OttaEditorDemoPage() {
     return (
         <Suspense
             fallback={
-                <div className="mx-auto max-w-7xl p-6">
-                    <div className="py-12 text-center">
-                        <p className="text-lg text-muted-foreground">Loading editor...</p>
-                    </div>
+                <div className="py-12 text-center">
+                    <p className="text-lg text-muted-foreground">Loading editor...</p>
                 </div>
             }
         >

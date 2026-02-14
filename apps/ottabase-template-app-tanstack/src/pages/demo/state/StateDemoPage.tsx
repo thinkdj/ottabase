@@ -2,6 +2,7 @@
  * State Demo Page
  * Demonstrates @ottabase/state global state management
  */
+import { useTheme as useBrandTheme } from '@/ottabase/providers/ThemeContext';
 import {
     appStateAtom,
     isAuthenticatedAtom,
@@ -13,9 +14,7 @@ import {
     userAtom,
     zoomAtom,
     type AppUser,
-    type SidebarState,
 } from '@/ottabase/state/appState';
-import { useTheme as useBrandTheme } from '@/ottabase/providers/ThemeContext';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { useAtom, useAtomValue } from 'jotai';
@@ -65,7 +64,7 @@ export function StateDemoPage() {
     };
 
     return (
-        <div className="mx-auto w-full max-w-5xl space-y-8 pb-16">
+        <div className="space-y-8">
             {/* Header */}
             <div className="flex flex-col gap-2">
                 <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">

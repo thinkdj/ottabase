@@ -221,7 +221,7 @@ export function EmailDemoPage() {
     };
 
     return (
-        <div className="mx-auto flex max-w-5xl flex-col gap-6">
+        <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-3">
                 <Button asChild variant="ghost" className="w-fit">
                     <Link to="/demo">← Back to Demo Gallery</Link>

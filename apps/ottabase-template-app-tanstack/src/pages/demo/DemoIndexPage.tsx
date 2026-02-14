@@ -4,7 +4,7 @@ import { Link } from '@tanstack/react-router';
 
 export function DemoIndexPage() {
     return (
-        <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-4xl flex-col gap-8 px-4 py-12">
+        <div className="flex min-h-[calc(100vh-10rem)] flex-col gap-8">
             <div className="flex flex-col gap-4">
                 <Button asChild variant="ghost" className="w-fit">
                     <Link to="/">← Back to Home</Link>

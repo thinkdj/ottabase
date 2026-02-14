@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import {
     convertTimezone,
     formatCompactDateTime,
@@ -25,8 +25,8 @@ import {
     toUTC,
     type Timezone,
 } from '@ottabase/utils/timezone';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 
 export function TimezoneDemoPage() {
     const [selectedTimezone, setSelectedTimezone] = useState<Timezone>('UTC');
@@ -55,7 +55,7 @@ export function TimezoneDemoPage() {
     };
 
     return (
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <div className="flex flex-col gap-8">
             <div className="flex flex-col gap-4">
                 <Button asChild variant="ghost" className="w-fit">
                     <Link to="/demo">← Back to Demo Gallery</Link>

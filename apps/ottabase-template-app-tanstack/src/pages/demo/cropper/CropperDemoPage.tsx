@@ -3,8 +3,8 @@
  * Vanilla image cropper: crop, flip, rotate. Square/rect/circle viewfinder.
  * All capabilities exposed via realtime config.
  */
-import { Cropper, DEFAULT_ASPECT_PRESETS } from '@ottabase/cropper';
 import type { CropShape } from '@ottabase/cropper';
+import { Cropper, DEFAULT_ASPECT_PRESETS } from '@ottabase/cropper';
 import {
     Button,
     Card,
@@ -119,7 +119,7 @@ export function CropperDemoPage() {
     };
 
     return (
-        <div className="mx-auto max-w-4xl space-y-8">
+        <div className="space-y-8">
             <div className="flex flex-col gap-2">
                 <Button asChild variant="ghost" size="sm" className="w-fit gap-2">
                     <Link to="/demo">

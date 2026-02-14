@@ -7,8 +7,6 @@ import {
     type UseOttaEditorOptions,
 } from '@ottabase/ottaeditor';
 import {
-    Badge,
-    Button,
     AlertDialog,
     AlertDialogAction,
     AlertDialogContent,
@@ -16,6 +14,8 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    Badge,
+    Button,
     Card,
     CardContent,
     CardDescription,
@@ -145,7 +145,7 @@ export function EditorClient() {
     });
 
     return (
-        <div className="mx-auto max-w-7xl space-y-8 p-6">
+        <div className="space-y-8">
             <Button asChild variant="ghost" className="w-fit">
                 <Link to="/demo">← Back to Demo Gallery</Link>
             </Button>

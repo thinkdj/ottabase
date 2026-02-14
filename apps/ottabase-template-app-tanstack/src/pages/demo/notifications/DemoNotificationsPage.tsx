@@ -1,19 +1,19 @@
-import { useState } from 'react';
 import {
+    Badge,
     Button,
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-    Badge,
     Tabs,
     TabsContent,
     TabsList,
     TabsTrigger,
 } from '@ottabase/ui-shadcn';
-import { Bell, Mail, Radio, AlertCircle, CheckCircle2, Clock, Inbox, Archive } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
+import { AlertCircle, Archive, Bell, CheckCircle2, Clock, Inbox, Mail, Radio } from 'lucide-react';
+import { useState } from 'react';
 
 interface DemoNotification {
     id: string;
@@ -114,7 +114,7 @@ export function DemoNotificationsPage() {
     };
 
     return (
-        <div className="space-y-6 p-6">
+        <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
                     <Button asChild variant="ghost" className="mb-4">

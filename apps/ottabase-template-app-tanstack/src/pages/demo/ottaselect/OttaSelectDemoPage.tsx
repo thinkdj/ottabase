@@ -197,7 +197,7 @@ export function OttaSelectDemoPage() {
     );
 
     return (
-        <div className="mx-auto w-full max-w-5xl space-y-8 pb-16">
+        <div className="space-y-8">
             {/* Header */}
             <div className="flex flex-col gap-2">
                 <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">
