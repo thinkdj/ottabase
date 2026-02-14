@@ -4,9 +4,9 @@
 // ---------------------------------------------------------------------------
 
 import type { KVNamespace } from '@cloudflare/workers-types';
+import { orgAppKey } from '@ottabase/cf/cache-keys';
 import type { BrandResolutionCache } from './types';
 
-const CACHE_PREFIX = 'brand:resolved:';
 const CACHE_TTL = 60 * 60; // 1 hour
 
 export interface BrandCacheClient {
@@ -24,8 +24,17 @@ export interface BrandCacheClient {
     invalidate(organizationId: string | null, appId?: string | null): Promise<void>;
 }
 
-function getKey(orgId: string | null, appId?: string | null, mode?: 'light' | 'dark') {
-    return `${CACHE_PREFIX}${orgId || 'default'}:${appId || 'default'}:${mode || 'light'}`;
+/**
+ * Build cache key for brand resolution data
+ * Format: brand:org:{orgId}:app:{appId}:resolved:{mode}
+ * Example: brand:org:acme:app:web:resolved:light
+ */
+function getKey(orgId: string | null, appId?: string | null, mode?: 'light' | 'dark'): string {
+    const effectiveOrgId = orgId || 'default';
+    const effectiveAppId = appId || 'default';
+    const effectiveMode = mode || 'light';
+
+    return orgAppKey('brand', effectiveOrgId, effectiveAppId, 'resolved', effectiveMode);
 }
 
 export function createBrandCache(kv: KVNamespace): BrandCacheClient {

@@ -1,7 +1,26 @@
 import { createKVClient } from '@ottabase/cf/kv';
+import { userKey, globalKey } from '@ottabase/cf/cache-keys';
 import { createRateLimitingClient } from '@ottabase/cf/rate-limiting';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import type { CloudflareEnv } from '../cloudflare-env';
+
+/**
+ * Build scoped rate limit key
+ * @param key - The base key (e.g., userId, IP address, endpoint)
+ * @param scope - Optional scope (user, global, or custom prefix)
+ */
+function buildRateLimitKey(key: string, scope?: { type: 'user' | 'global'; id?: string }): string {
+    if (!scope || scope.type === 'global') {
+        return globalKey('ratelimit', key);
+    }
+
+    if (scope.type === 'user' && scope.id) {
+        return userKey('ratelimit', scope.id, key);
+    }
+
+    // Fallback to global scope
+    return globalKey('ratelimit', key);
+}
 
 export async function simulateRateLimit(env: CloudflareEnv, key: string) {
     if (!env.OBCF_KV) {
@@ -9,7 +28,7 @@ export async function simulateRateLimit(env: CloudflareEnv, key: string) {
     }
 
     const kv = createKVClient({ namespace: env.OBCF_KV as any });
-    const rateLimitKey = `ratelimit:${key}`;
+    const rateLimitKey = buildRateLimitKey(key);
 
     const LIMIT = 10;
     const PERIOD = 60; // seconds

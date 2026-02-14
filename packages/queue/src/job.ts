@@ -18,6 +18,26 @@ import type {
 } from './types';
 
 /**
+ * Build scoped deduplication key
+ * Format with org: dedupe:org:{orgId}:{type}:{uniqueKey}
+ * Format without org: dedupe:{type}:{uniqueKey}
+ */
+function buildDedupeKey(type: string, uniqueKey: string, organizationId?: string): string {
+    // Note: We can't import from @ottabase/cf/cache-keys here to avoid circular deps
+    // So we build the key manually following the same pattern
+    if (organizationId) {
+        const sanitizedOrgId = organizationId.replace(/[:]/g, '-').trim();
+        const sanitizedType = type.replace(/[:]/g, '-').trim();
+        const sanitizedKey = uniqueKey.replace(/[:]/g, '-').trim();
+        return `dedupe:org:${sanitizedOrgId}:${sanitizedType}:${sanitizedKey}`;
+    }
+
+    const sanitizedType = type.replace(/[:]/g, '-').trim();
+    const sanitizedKey = uniqueKey.replace(/[:]/g, '-').trim();
+    return `dedupe:${sanitizedType}:${sanitizedKey}`;
+}
+
+/**
  * Generate a unique job ID
  */
 function generateJobId(): string {
@@ -130,7 +150,7 @@ export class Dispatcher {
             return false;
         }
 
-        const key = `dedupe:${type}:${options.uniqueKey}`;
+        const key = buildDedupeKey(type, options.uniqueKey, options.organizationId);
         const existing = await this.dedupeStore.get(key);
 
         if (existing) {
