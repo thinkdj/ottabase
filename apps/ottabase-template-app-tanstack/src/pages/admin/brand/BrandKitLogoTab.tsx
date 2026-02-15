@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { IconUpload } from '@tabler/icons-react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { brandKitApi } from './brandApi';
 
@@ -35,7 +35,7 @@ interface BrandKitLogoTabProps {
     };
     /** Base URL for R2 assets (e.g. https://pub-xxx.r2.dev). Logos shown as base + key. */
     logoBaseUrl?: string;
-    onUploaded: (logoType: LogoType, url: string) => void;
+    onUploaded: (logoType: LogoType, key: string, url: string) => void;
 }
 
 function getLogoUrl(key: string | null | undefined, base: string): string | undefined {
@@ -60,7 +60,7 @@ export function BrandKitLogoTab({ kitId, logos, logoBaseUrl = '', onUploaded }: 
             setUploading(logoType);
             try {
                 const res = await brandKitApi.uploadLogo(kitId, logoType, file);
-                onUploaded(logoType, res.url);
+                onUploaded(logoType, res.key, res.url);
                 toast.success(`${LOGO_LABELS[logoType]} uploaded`);
             } catch (error) {
                 let message = 'Upload failed';
