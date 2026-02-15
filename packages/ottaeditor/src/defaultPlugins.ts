@@ -15,6 +15,7 @@ import Table from '@editorjs/table';
 import Underline from '@editorjs/underline';
 import Warning from '@editorjs/warning';
 import CTATool from './tools/CTATool/CTATool';
+import ReviewTool from './tools/ReviewTool/ReviewTool';
 import SpoilerTool from './tools/SpoilerTool/SpoilerTool';
 import type { OttaEditorPlugin } from './types';
 
@@ -39,6 +40,7 @@ export const DEFAULT_PLUGIN_NAMES = {
     INLINE_CODE: 'inlineCode',
     SPOILER: 'spoiler',
     CTA: 'cta',
+    REVIEW: 'review',
 } as const;
 
 /**
@@ -164,6 +166,11 @@ export const defaultPlugins: OttaEditorPlugin[] = [
             defaultStyle: 'primary',
         } as any,
     },
+    {
+        name: DEFAULT_PLUGIN_NAMES.REVIEW,
+        tool: ReviewTool as any,
+        config: {} as any,
+    },
 ];
 
 /**
@@ -206,6 +213,7 @@ export {
     Paragraph,
     Quote,
     Raw,
+    ReviewTool,
     SpoilerTool,
     Table,
     Underline,
