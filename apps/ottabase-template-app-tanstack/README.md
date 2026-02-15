@@ -37,7 +37,7 @@ This template ships with Auth.js + D1 integration and tighter session handling:
 
 - **UI**: `/login`, `/register`, `/dashboard`, `/profile`
 - **Backend**: `/api/auth/*`, `/api/auth/register`, `/api/users/me`
-- **Session freshness**: Profile edits bump `auth:profile:version:{userId}` in KV so the next `/api/auth/session`
+- **Session freshness**: Profile edits bump `auth:usr:{userId}:profile:version` in KV so the next `/api/auth/session`
   refresh pulls the updated name/image without polling D1 constantly.
 - **Rate limiting**: Auth endpoints run through the shared rate limiter (per IP bucket for signin, register, signout).
 - **Email flows**: `/api/auth/verify-email`, `/api/auth/verify-email/resend`, `/api/auth/password/reset/request`,
@@ -56,9 +56,9 @@ This template ships with Auth.js + D1 integration and tighter session handling:
 | `/api/auth/verify-email`           | `POST`  | Consume verification token from email link after registration or resend.                                                                                |
 | `/api/auth/verify-email/resend`    | `POST`  | Sends a new verification token; rate-limited by `enforceRateLimit`.                                                                                     |
 | `/api/auth/password/reset/request` | `POST`  | Sends reset token email (supports Resend/Ses/KV mailers).                                                                                               |
-| `/api/auth/password/reset/confirm` | `POST`  | Applies a new password and revokes existing JWTs via `auth:revoked:user:{userId}`.                                                                      |
+| `/api/auth/password/reset/confirm` | `POST`  | Applies a new password and revokes existing JWTs via `auth:usr:{userId}:revoked`.                                                                       |
 | `/api/users/me`                    | `GET`   | Returns the authenticated user (filters out password data).                                                                                             |
-| `/api/users/me`                    | `PATCH` | Updates profile fields (`name`, `image`), enforces validation, and bumps `auth:profile:version` in KV for session refresh.                              |
+| `/api/users/me`                    | `PATCH` | Updates profile fields (`name`, `image`), enforces validation, and bumps `auth:usr:{userId}:profile:version` in KV for session refresh.                 |
 
 ### Required Env (production)
 

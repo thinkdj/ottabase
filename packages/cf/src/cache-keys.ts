@@ -1,225 +1,210 @@
 /**
  * Cache Key Builder for KV Storage
- * Provides type-safe, namespaced cache keys to prevent accidental overwrites
  *
- * Key Format Examples:
- * - Organization: org:{orgId}:brandkit
- * - User: u:{userId}:preferences
- * - App: app:{appId}:config
- * - Composite: org:{orgId}:app:{appId}:layout
- * - With version: org:{orgId}:v{version}:user:{userId}:rbac
+ * Type-safe, scoped cache keys for multi-tenant SaaS architecture.
+ * Prevents cross-tenant KV collisions via consistent namespace:scope:id format.
  *
- * @see https://developers.cloudflare.com/kv/
+ * Key Format: namespace:scope:id[:scope:id]:segments
+ * Examples:
+ *   brand:org:acme:app:web:layout
+ *   rbac:org:acme:usr:user-123:roles
+ *   session:usr:user-123:active
+ *
+ * @see docs/CACHE_KEYS.md
  */
 
-export type CacheScope =
-    | 'org' // Organization-level cache
-    | 'user' // User-level cache
-    | 'app' // Application-level cache
-    | 'global' // Global/shared cache
-    | 'system'; // System-level cache
+// ── Types ───────────────────────────────────────────────────
 
+export type CacheScope = 'org' | 'user' | 'app' | 'global';
+
+/**
+ * Suggested cache namespaces. Accepts any string for extensibility —
+ * packages can use their own namespaces (e.g., 'auth', 'order').
+ */
 export type CacheNamespace =
-    | 'rbac' // RBAC permissions/roles
-    | 'brand' // Brand kits and layouts
-    | 'ratelimit' // Rate limiting
-    | 'dedupe' // Job deduplication
-    | 'session' // User sessions
-    | 'config' // Configuration
-    | 'cache' // General caching
-    | 'system' // System-level operations
-    | 'temp'; // Temporary data
+    | 'rbac'
+    | 'brand'
+    | 'ratelimit'
+    | 'dedupe'
+    | 'session'
+    | 'config'
+    | 'cache'
+    | 'auth'
+    | 'system'
+    | 'temp'
+    | (string & {}); // extensible — any string is accepted
 
-/**
- * Cache key segment - represents a part of the cache key
- */
-interface KeySegment {
-    type: CacheScope;
-    id: string;
+// ── Internal helpers ────────────────────────────────────────
+
+/** Cloudflare KV max key length in bytes */
+const MAX_KEY_LENGTH = 512;
+
+/** Replace colons and collapse whitespace to prevent key structure corruption */
+function sanitize(value: string): string {
+    return value
+        .replace(/[:\s]+/g, '-') // colons & whitespace → dash
+        .replace(/^-+|-+$/g, ''); // trim leading/trailing dashes
 }
 
-/**
- * Options for building cache keys
- */
-export interface CacheKeyOptions {
-    namespace?: CacheNamespace;
-    version?: string | number;
-    segments?: string[];
+/** Validate that a required ID is non-empty, then sanitize */
+function requireId(value: string, label: string): string {
+    if (!value) throw new Error(`${label} is required`);
+    return sanitize(value);
 }
 
+// ── Builder (for complex / dynamic keys) ────────────────────
+
 /**
- * Cache Key Builder
- * Constructs consistent, namespaced cache keys with type safety
+ * Fluent builder for constructing cache keys with arbitrary scope combinations.
+ * Use the helper functions below for common patterns.
+ *
+ * @example
+ * CacheKeyBuilder.create('rbac')
+ *   .org('acme').version(1).app('web').user('u-123').segment('context')
+ *   .build()
+ * // → rbac:org:acme:v1:app:web:usr:u-123:context
  */
 export class CacheKeyBuilder {
     private parts: string[] = [];
 
-    /**
-     * Create a new cache key builder with optional namespace
-     */
-    constructor(namespace?: CacheNamespace) {
-        if (namespace) {
-            this.parts.push(namespace);
-        }
+    private constructor(namespace?: string) {
+        if (namespace) this.parts.push(namespace);
     }
 
-    /**
-     * Add organization scope
-     */
-    org(orgId: string): this {
-        if (!orgId) {
-            throw new Error('Organization ID is required for org scope');
-        }
-        this.parts.push('org', this.sanitize(orgId));
-        return this;
-    }
-
-    /**
-     * Add user scope
-     */
-    user(userId: string): this {
-        if (!userId) {
-            throw new Error('User ID is required for user scope');
-        }
-        this.parts.push('u', this.sanitize(userId));
-        return this;
-    }
-
-    /**
-     * Add app scope
-     */
-    app(appId: string): this {
-        if (!appId) {
-            throw new Error('App ID is required for app scope');
-        }
-        this.parts.push('app', this.sanitize(appId));
-        return this;
-    }
-
-    /**
-     * Add version segment
-     * Handles both string versions (with or without 'v' prefix) and numeric versions
-     */
-    version(version: string | number): this {
-        const versionStr = String(version);
-        // Add 'v' prefix only if not already present
-        const versionSegment = versionStr.startsWith('v') ? versionStr : `v${versionStr}`;
-        this.parts.push(versionSegment);
-        return this;
-    }
-
-    /**
-     * Add custom segment
-     */
-    segment(segment: string): this {
-        if (!segment) {
-            throw new Error('Segment cannot be empty');
-        }
-        this.parts.push(this.sanitize(segment));
-        return this;
-    }
-
-    /**
-     * Add multiple custom segments
-     */
-    segments(...segments: string[]): this {
-        for (const seg of segments) {
-            this.segment(seg);
-        }
-        return this;
-    }
-
-    /**
-     * Build the final cache key
-     */
-    build(): string {
-        if (this.parts.length === 0) {
-            throw new Error('Cache key must have at least one part');
-        }
-        return this.parts.join(':');
-    }
-
-    /**
-     * Sanitize a key segment to prevent injection attacks
-     */
-    private sanitize(value: string): string {
-        // Remove colons and whitespace to prevent key structure corruption
-        return value.replace(/[:]/g, '-').trim();
-    }
-
-    /**
-     * Create a new builder instance
-     */
     static create(namespace?: CacheNamespace): CacheKeyBuilder {
         return new CacheKeyBuilder(namespace);
     }
+
+    /** Add organization scope */
+    org(orgId: string): this {
+        this.parts.push('org', requireId(orgId, 'Organization ID'));
+        return this;
+    }
+
+    /** Add user scope */
+    user(userId: string): this {
+        this.parts.push('usr', requireId(userId, 'User ID'));
+        return this;
+    }
+
+    /** Add app scope */
+    app(appId: string): this {
+        this.parts.push('app', requireId(appId, 'App ID'));
+        return this;
+    }
+
+    /** Add version segment (auto-prefixes 'v' if missing) */
+    version(v: string | number): this {
+        const s = String(v);
+        this.parts.push(s.startsWith('v') ? s : `v${s}`);
+        return this;
+    }
+
+    /** Add one or more custom segments */
+    segment(...segments: string[]): this {
+        for (const s of segments) {
+            if (!s) throw new Error('Segment cannot be empty');
+            this.parts.push(sanitize(s));
+        }
+        return this;
+    }
+
+    /** Build the final colon-separated cache key. Throws if >512 bytes (KV limit). */
+    build(): string {
+        if (!this.parts.length) throw new Error('Cache key must have at least one part');
+        const key = this.parts.join(':');
+        if (new TextEncoder().encode(key).byteLength > MAX_KEY_LENGTH) {
+            throw new Error(`Cache key exceeds ${MAX_KEY_LENGTH}-byte KV limit (${key.length} chars)`);
+        }
+        return key;
+    }
 }
 
-/**
- * Helper functions for common cache key patterns
- */
+// ── Helper functions (cover all scope combinations) ─────────
 
-/**
- * Build organization-scoped cache key
- * Example: brand:org:acme-corp:brandkit
- */
+// -- Single scope --
+
+/** Global key (no scope markers). Example: `system:maintenance` */
+export function globalKey(namespace: CacheNamespace, ...segments: string[]): string {
+    return CacheKeyBuilder.create(namespace)
+        .segment(...segments)
+        .build();
+}
+
+/** Org-scoped key. Example: `brand:org:acme:brandkit` */
 export function orgKey(namespace: CacheNamespace, orgId: string, ...segments: string[]): string {
     return CacheKeyBuilder.create(namespace)
         .org(orgId)
-        .segments(...segments)
+        .segment(...segments)
         .build();
 }
 
-/**
- * Build user-scoped cache key
- * Example: session:u:user123:active
- */
+/** User-scoped key. Example: `session:usr:user-123:active` */
 export function userKey(namespace: CacheNamespace, userId: string, ...segments: string[]): string {
     return CacheKeyBuilder.create(namespace)
         .user(userId)
-        .segments(...segments)
+        .segment(...segments)
         .build();
 }
 
-/**
- * Build app-scoped cache key
- * Example: config:app:web:settings
- */
+/** App-scoped key. Example: `config:app:web:settings` */
 export function appKey(namespace: CacheNamespace, appId: string, ...segments: string[]): string {
     return CacheKeyBuilder.create(namespace)
         .app(appId)
-        .segments(...segments)
+        .segment(...segments)
         .build();
 }
 
-/**
- * Build org+app composite cache key
- * Example: brand:org:acme:app:web:layout
- */
+// -- Double scope --
+
+/** Org+App composite key. Example: `brand:org:acme:app:web:layout` */
 export function orgAppKey(namespace: CacheNamespace, orgId: string, appId: string, ...segments: string[]): string {
     return CacheKeyBuilder.create(namespace)
         .org(orgId)
         .app(appId)
-        .segments(...segments)
+        .segment(...segments)
         .build();
 }
 
-/**
- * Build org+user composite cache key
- * Example: rbac:org:acme:u:user123:roles
- */
+/** Org+User composite key. Example: `rbac:org:acme:usr:user-123:roles` */
 export function orgUserKey(namespace: CacheNamespace, orgId: string, userId: string, ...segments: string[]): string {
     return CacheKeyBuilder.create(namespace)
         .org(orgId)
         .user(userId)
-        .segments(...segments)
+        .segment(...segments)
         .build();
 }
 
-/**
- * Build versioned org cache key (for O(1) invalidation)
- * Example: rbac:org:acme:v2:u:user123:perms
- */
+/** App+User composite key. Example: `config:app:web:usr:user-123:theme` */
+export function appUserKey(namespace: CacheNamespace, appId: string, userId: string, ...segments: string[]): string {
+    return CacheKeyBuilder.create(namespace)
+        .app(appId)
+        .user(userId)
+        .segment(...segments)
+        .build();
+}
+
+// -- Triple scope --
+
+/** Org+App+User composite key. Example: `rbac:org:acme:app:web:usr:user-123:perms` */
+export function orgAppUserKey(
+    namespace: CacheNamespace,
+    orgId: string,
+    appId: string,
+    userId: string,
+    ...segments: string[]
+): string {
+    return CacheKeyBuilder.create(namespace)
+        .org(orgId)
+        .app(appId)
+        .user(userId)
+        .segment(...segments)
+        .build();
+}
+
+// -- Versioned --
+
+/** Versioned org key for O(1) cache invalidation. Example: `rbac:org:acme:v2:perms` */
 export function versionedOrgKey(
     namespace: CacheNamespace,
     orgId: string,
@@ -229,23 +214,18 @@ export function versionedOrgKey(
     return CacheKeyBuilder.create(namespace)
         .org(orgId)
         .version(version)
-        .segments(...segments)
+        .segment(...segments)
         .build();
 }
 
-/**
- * Build global cache key (use sparingly)
- * Example: system:global:maintenance
- */
-export function globalKey(namespace: CacheNamespace, ...segments: string[]): string {
-    return CacheKeyBuilder.create(namespace)
-        .segments(...segments)
-        .build();
-}
+// ── Parse (debugging / monitoring) ──────────────────────────
+
+/** Known scope markers used for parsing */
+const SCOPE_MARKERS = new Set(['org', 'usr', 'app']);
 
 /**
- * Parse a cache key to extract its components
- * Useful for debugging and monitoring
+ * Parse a cache key to extract its components.
+ * Useful for debugging and monitoring — not for production hot paths.
  */
 export function parseKey(key: string): {
     namespace?: string;
@@ -257,19 +237,15 @@ export function parseKey(key: string): {
     segments: string[];
 } {
     const parts = key.split(':');
-    const result: ReturnType<typeof parseKey> = {
-        segments: [],
-    };
-
+    const result: ReturnType<typeof parseKey> = { segments: [] };
     let i = 0;
 
-    // First part might be namespace
-    if (parts[i] && !['org', 'u', 'app', 'v'].some((p) => parts[i].startsWith(p))) {
+    // First part is namespace if it's not an exact scope marker or version tag
+    if (parts[i] && !SCOPE_MARKERS.has(parts[i]) && !/^v\d+/.test(parts[i])) {
         result.namespace = parts[i];
         i++;
     }
 
-    // Parse scope segments
     while (i < parts.length) {
         const part = parts[i];
 
@@ -277,7 +253,7 @@ export function parseKey(key: string): {
             result.scope = 'org';
             result.orgId = parts[i + 1];
             i += 2;
-        } else if (part === 'u' && parts[i + 1]) {
+        } else if (part === 'usr' && parts[i + 1]) {
             result.scope = 'user';
             result.userId = parts[i + 1];
             i += 2;
@@ -285,7 +261,7 @@ export function parseKey(key: string): {
             result.scope = 'app';
             result.appId = parts[i + 1];
             i += 2;
-        } else if (part.startsWith('v')) {
+        } else if (/^v\d+$/.test(part)) {
             result.version = part.substring(1);
             i++;
         } else {

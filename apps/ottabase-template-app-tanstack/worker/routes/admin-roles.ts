@@ -1,8 +1,19 @@
+import { invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
 import { Role } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { requireAdminAccess } from '../lib/admin-guard';
 import type { ApiRouteContext } from './router';
+
+/** Invalidate all RBAC cache entries when system roles change */
+async function invalidateRBACCache(env: ApiRouteContext['env']): Promise<void> {
+    if (!env.OBCF_KV) return;
+    try {
+        await invalidateCacheByPrefix(env.OBCF_KV as any, 'rbac:');
+    } catch {
+        // Cache invalidation failure is non-fatal
+    }
+}
 
 /**
  * GET /api/admin/roles - List all roles
@@ -28,6 +39,7 @@ export async function handleAdminRoleCreate(context: ApiRouteContext): Promise<R
         permissions: Array.isArray(body.permissions) ? JSON.stringify(body.permissions) : body.permissions || '[]',
         isSystem: false,
     });
+    await invalidateRBACCache(context.env);
     return jsonResponse({ data: role.toJson() });
 }
 
@@ -46,6 +58,7 @@ export async function handleAdminRoleUpdate(context: ApiRouteContext, roleId: st
         role.set('permissions', Array.isArray(body.permissions) ? JSON.stringify(body.permissions) : body.permissions);
     }
     await role.save();
+    await invalidateRBACCache(context.env);
     return jsonResponse({ data: role.toJson() });
 }
 
@@ -59,5 +72,6 @@ export async function handleAdminRoleDelete(context: ApiRouteContext, roleId: st
     if (!role) return errorResponse('Role not found', 404, { code: 'NOT_FOUND' });
     if (role.get('isSystem')) return errorResponse('Cannot delete system roles', 403, { code: 'FORBIDDEN' });
     await role.delete();
+    await invalidateRBACCache(context.env);
     return jsonResponse({ success: true });
 }

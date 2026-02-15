@@ -7,9 +7,22 @@ import { LayoutTemplate } from '../persistence/LayoutTemplate.model';
 import { LayoutRouteMapping } from '../persistence/LayoutRouteMapping.model';
 import { getLayoutData } from '../persistence/layoutData';
 import { createBrandCache } from '../persistence/cache';
+import { resolveFullBrandConfig } from '../persistence/resolveBrandConfig';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import type { BrandApiEnv } from './brand-api';
+
+/**
+ * Invalidate stale brand cache, then eagerly re-resolve to keep cache warm.
+ */
+async function warmBrandCache(env: BrandApiEnv, organizationId: string | null, appId?: string | null): Promise<void> {
+    const cache = createBrandCache(env.OBCF_KV);
+    await cache.invalidate(organizationId, appId);
+    await Promise.all([
+        resolveFullBrandConfig(env, { organizationId, appId, mode: 'light' }),
+        resolveFullBrandConfig(env, { organizationId, appId, mode: 'dark' }),
+    ]);
+}
 
 /**
  * GET /api/brand/layouts - List layout templates for org/app
@@ -48,7 +61,6 @@ export async function handlePutLayout(
     } catch {
         return errorResponse('Invalid config object', 400);
     }
-    const cache = createBrandCache(env.OBCF_KV);
 
     let template: LayoutTemplate;
     if (body.id) {
@@ -68,7 +80,7 @@ export async function handlePutLayout(
         })) as LayoutTemplate;
     }
 
-    await cache.invalidate(organizationId, appId);
+    await warmBrandCache(env, organizationId, appId);
     return jsonResponse({ id: template.get('id'), ...body }, 200);
 }
 
@@ -122,7 +134,6 @@ export async function handlePutMappings(
             priority?: number;
         }>;
     };
-    const cache = createBrandCache(env.OBCF_KV);
 
     const existing = await LayoutRouteMapping.where({
         organizationId: organizationId ?? null,
@@ -144,6 +155,6 @@ export async function handlePutMappings(
         });
     }
 
-    await cache.invalidate(organizationId, appId);
+    await warmBrandCache(env, organizationId, appId);
     return jsonResponse({ success: true }, 200);
 }
