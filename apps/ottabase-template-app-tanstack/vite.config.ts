@@ -105,6 +105,11 @@ export default defineConfig(({ command }) => ({
                     ottaeditor: ['@ottabase/ottaeditor'],
                 },
             },
+            onwarn(warning) {
+                // Suppress ignored-bare-import warnings from @ottabase/* packages...
+                if (warning.message.includes('ignored-bare-import')) return;
+                console.warn(warning.message);
+            },
         },
     },
     server: {
