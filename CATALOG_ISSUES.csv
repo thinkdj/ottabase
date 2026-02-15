@@ -1,0 +1,60 @@
+Dependency,Catalog Version,Status,Used By Count,Used By,Recommendation,Priority
+@babel/core,^7.28.6,UNUSED,0,NONE,Remove from catalog,MEDIUM
+@babel/preset-env,^7.28.6,UNUSED,0,NONE,Remove from catalog,MEDIUM
+@babel/preset-react,^7.28.5,UNUSED,0,NONE,Remove from catalog,MEDIUM
+@babel/preset-typescript,^7.28.5,UNUSED,0,NONE,Remove from catalog,MEDIUM
+@prisma/adapter-d1,^5.22.0,UNUSED,0,NONE,Remove from catalog,MEDIUM
+@prisma/client,^5.22.0,UNUSED,0,NONE,Remove from catalog,MEDIUM
+@storybook/addon-docs,^10.2.3,UNUSED,0,NONE,Remove from catalog,MEDIUM
+@storybook/addon-links,^10.2.3,UNUSED,0,NONE,Remove from catalog,MEDIUM
+@storybook/addon-styling-webpack,^3.0.0,UNUSED,0,NONE,Remove from catalog,MEDIUM
+@storybook/react-webpack5,^10.2.3,UNUSED,0,NONE,Remove from catalog,MEDIUM
+@storybook/test,^9.1.15,UNUSED,0,NONE,Remove from catalog,MEDIUM
+@typescript-eslint/eslint-plugin,^8.54.0,UNUSED,0,NONE,Remove from catalog,MEDIUM
+@typescript-eslint/parser,^8.54.0,UNUSED,0,NONE,Remove from catalog,MEDIUM
+babel-loader,^10.0.0,UNUSED,0,NONE,Remove from catalog,MEDIUM
+critters,^0.0.22,UNUSED,0,NONE,Remove from catalog,MEDIUM
+css-loader,^7.1.3,UNUSED,0,NONE,Remove from catalog,MEDIUM
+eslint-plugin-storybook,^10.2.3,UNUSED,0,NONE,Remove from catalog,MEDIUM
+handlebars,^4.7.8,UNUSED,0,NONE,Remove from catalog,MEDIUM
+highlight.js,^11.11.1,UNUSED,0,NONE,Remove from catalog,MEDIUM
+husky,^9.1.7,UNUSED,0,NONE,Remove from catalog,MEDIUM
+lint-staged,^15.5.2,UNUSED,0,NONE,Remove from catalog,MEDIUM
+mongodb,^7.0.0,UNUSED,0,NONE,Remove from catalog,MEDIUM
+postcss-loader,^8.2.0,UNUSED,0,NONE,Remove from catalog,MEDIUM
+prettier,^3.7.4,UNUSED,0,NONE,Remove from catalog,MEDIUM
+prisma,^5.22.0,UNUSED,0,NONE,Remove from catalog,MEDIUM
+storybook,^10.2.3,UNUSED,0,NONE,Remove from catalog,MEDIUM
+style-loader,^4.0.0,UNUSED,0,NONE,Remove from catalog,MEDIUM
+ts-node,^10.9.2,SINGLE_USE (scripts),1,scripts,Move to scripts/package.json,MEDIUM
+tsx,^4.19.2,UNUSED,0,NONE,Remove from catalog,MEDIUM
+ts-node,^10.9.2,UNUSED,0,NONE,Remove from catalog,MEDIUM
+vitest,^4.0.18,UNUSED,0,NONE,Remove from catalog,MEDIUM
+date-fns,^4.1.0,UNUSED,0,NONE,Remove from catalog,MEDIUM
+date-fns-tz,^3.2.0,UNUSED,0,NONE,Remove from catalog,MEDIUM
+@auth/core,^0.34.0,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+@hookform/resolvers,^3.9.1,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+@mantine/carousel,^8.3.1,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+@mantine/core,^8.3.1,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+@mantine/hooks,^8.3.1,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+@mantine/modals,^8.3.1,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+@mantine/notifications,^8.3.1,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+@tailwindcss/forms,^0.5.10,SINGLE_USE,1,ottabase-template-app-nextjs-homepage,Move to template app package.json,MEDIUM
+@tailwindcss/typography,^0.5.18,SINGLE_USE,1,ottabase-template-app-nextjs-homepage,Move to template app package.json,MEDIUM
+@tanstack/react-query,^5.90.16,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+@tanstack/react-query-devtools,^5.90.16,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+@tanstack/react-router,^1.145.2,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+@types/nodemailer,^7.0.0,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+@vitejs/plugin-react,^4.7.0,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+drizzle-kit,^0.31.8,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+localflare,^0.1.2,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+nodemailer,^7.0.0,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+postcss-preset-mantine,^1.18.0,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+postcss-simple-vars,^7.0.1,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+sonner,^1.5.1,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+vite,^5.4.11,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+vite-tsconfig-paths,^5.1.4,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+wrangler,^4.59.1,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+zod,^3.24.1,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+cross-env,^7.0.3,SINGLE_USE,1,ottabase-template-app-tanstack,Move to template app package.json,MEDIUM
+@radix-ui/react-dialog,^1.1.4,NOT_IN_CATALOG,2,"ui-shadcn, spotlight",Add to catalog,HIGH

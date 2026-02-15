@@ -1,0 +1,471 @@
+{
+  "analysis_title": "Ottabase Dependency Consistency Analysis",
+  "analysis_date": "2026-02-15",
+  "total_packages_analyzed": 41,
+  "summary": {
+    "total_catalog_entries": 81,
+    "catalog_entries_actually_used": 49,
+    "catalog_entries_unused": 32,
+    "single_package_in_catalog": 28,
+    "multi_package_not_in_catalog": 1,
+    "dependencies_with_version_mismatches": 0
+  },
+  "key_findings": {
+    "finding_1": "32 catalog entries (39.5%) are never used by any package and should be reviewed for removal",
+    "finding_2": "28 catalog entries (34.6%) are only used by a single package - consider moving these to app-level package.json",
+    "finding_3": "@radix-ui/react-dialog is shared between 2 packages but not in catalog - should be added",
+    "finding_4": "Zero version mismatches - excellent consistency across the monorepo",
+    "finding_5": "Properly managed: EditorJS plugins, renderer dependencies, i18n dependencies, and Radix UI components are correctly kept out of catalog"
+  },
+  "unused_catalog_entries": [
+    "@babel/core",
+    "@babel/preset-env",
+    "@babel/preset-react",
+    "@babel/preset-typescript",
+    "@prisma/adapter-d1",
+    "@prisma/client",
+    "@storybook/addon-docs",
+    "@storybook/addon-links",
+    "@storybook/addon-styling-webpack",
+    "@storybook/react-webpack5",
+    "@storybook/test",
+    "@typescript-eslint/eslint-plugin",
+    "@typescript-eslint/parser",
+    "babel-loader",
+    "critters",
+    "css-loader",
+    "date-fns",
+    "date-fns-tz",
+    "eslint-plugin-storybook",
+    "handlebars",
+    "highlight.js",
+    "husky",
+    "lint-staged",
+    "mongodb",
+    "postcss-loader",
+    "prettier",
+    "prisma",
+    "storybook",
+    "style-loader",
+    "ts-node",
+    "tsx",
+    "vitest"
+  ],
+  "single_package_catalog_candidates_for_removal": [
+    {
+      "dependency": "@auth/core",
+      "catalogVersion": "^0.34.0",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "@hookform/resolvers",
+      "catalogVersion": "^3.9.1",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "@mantine/carousel",
+      "catalogVersion": "^8.3.1",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "@mantine/core",
+      "catalogVersion": "^8.3.1",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "@mantine/hooks",
+      "catalogVersion": "^8.3.1",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "@mantine/modals",
+      "catalogVersion": "^8.3.1",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "@mantine/notifications",
+      "catalogVersion": "^8.3.1",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "@tailwindcss/forms",
+      "catalogVersion": "^0.5.10",
+      "onlyUsedBy": "ottabase-template-app-nextjs-homepage",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "@tailwindcss/typography",
+      "catalogVersion": "^0.5.18",
+      "onlyUsedBy": "ottabase-template-app-nextjs-homepage",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "@tanstack/react-query",
+      "catalogVersion": "^5.90.16",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "@tanstack/react-query-devtools",
+      "catalogVersion": "^5.90.16",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "@tanstack/react-router",
+      "catalogVersion": "^1.145.2",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "@types/nodemailer",
+      "catalogVersion": "^7.0.0",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "@vitejs/plugin-react",
+      "catalogVersion": "^4.7.0",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "drizzle-kit",
+      "catalogVersion": "^0.31.8",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "localflare",
+      "catalogVersion": "^0.1.2",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "nodemailer",
+      "catalogVersion": "^7.0.0",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "postcss-preset-mantine",
+      "catalogVersion": "^1.18.0",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "postcss-simple-vars",
+      "catalogVersion": "^7.0.1",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "sonner",
+      "catalogVersion": "^1.5.1",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "ts-node",
+      "catalogVersion": "^10.9.2",
+      "onlyUsedBy": "scripts",
+      "type": "Package specific",
+      "action": "Move to scripts package.json"
+    },
+    {
+      "dependency": "vite",
+      "catalogVersion": "^5.4.11",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "vite-tsconfig-paths",
+      "catalogVersion": "^5.1.4",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "wrangler",
+      "catalogVersion": "^4.59.1",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "zod",
+      "catalogVersion": "^3.24.1",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    },
+    {
+      "dependency": "cross-env",
+      "catalogVersion": "^7.0.3",
+      "onlyUsedBy": "ottabase-template-app-tanstack",
+      "type": "Template app specific",
+      "action": "Move to template app package.json"
+    }
+  ],
+  "not_in_catalog_multi_package_candidates": [
+    {
+      "dependency": "@radix-ui/react-dialog",
+      "currentVersions": ["^1.1.4"],
+      "usedByCount": 2,
+      "usedBy": ["ui-shadcn", "spotlight"],
+      "priority": "HIGH",
+      "recommendation": "Add to catalog: 'radix-ui/react-dialog': '^1.1.4'",
+      "rationale": "Shared between ui-shadcn and spotlight components - should be centrally managed"
+    }
+  ],
+  "properly_managed_single_use_dependencies": {
+    "description": "The following dependencies are correctly kept OUT of the catalog because they are only used by one package",
+    "examples": [
+      {
+        "category": "EditorJS plugins",
+        "packages": ["@editorjs/editorjs", "@editorjs/checklist", "@editorjs/code", "@editorjs/delimiter", "@editorjs/embed", "@editorjs/header", "@editorjs/inline-code", "@editorjs/link", "@editorjs/marker", "@editorjs/nested-list", "@editorjs/paragraph", "@editorjs/quote", "@editorjs/raw", "@editorjs/table", "@editorjs/underline", "@editorjs/warning"],
+        "usedBy": ["ottaeditor"],
+        "status": "Correct - no need to add to catalog"
+      },
+      {
+        "category": "Renderer dependencies",
+        "packages": ["editorjs-blocks-react-renderer", "html-react-parser", "@wooorm/starry-night", "hast-util-to-jsx-runtime"],
+        "usedBy": ["ottarenderer"],
+        "status": "Correct - no need to add to catalog"
+      },
+      {
+        "category": "i18n dependencies",
+        "packages": ["i18next", "i18next-browser-languagedetector", "react-i18next"],
+        "usedBy": ["i18n"],
+        "status": "Correct - no need to add to catalog"
+      },
+      {
+        "category": "Radix UI components",
+        "packages": ["@radix-ui/react-accordion", "@radix-ui/react-alert-dialog", "@radix-ui/react-aspect-ratio", "@radix-ui/react-avatar", "@radix-ui/react-checkbox", "@radix-ui/react-collapsible", "@radix-ui/react-context-menu", "@radix-ui/react-dropdown-menu", "@radix-ui/react-hover-card", "@radix-ui/react-menubar", "@radix-ui/react-navigation-menu", "@radix-ui/react-popover", "@radix-ui/react-progress", "@radix-ui/react-radio-group", "@radix-ui/react-scroll-area", "@radix-ui/react-select", "@radix-ui/react-slider", "@radix-ui/react-switch", "@radix-ui/react-tabs", "@radix-ui/react-toggle", "@radix-ui/react-toggle-group", "@radix-ui/react-tooltip"],
+        "usedBy": ["ui-shadcn"],
+        "status": "Correct - no need to add to catalog"
+      },
+      {
+        "category": "ui-shadcn component dependencies",
+        "packages": ["cmdk", "embla-carousel-react", "input-otp", "react-day-picker", "react-resizable-panels", "vaul"],
+        "usedBy": ["ui-shadcn"],
+        "status": "Correct - no need to add to catalog"
+      },
+      {
+        "category": "CloudFlare actors",
+        "packages": ["@cloudflare/actors"],
+        "usedBy": ["cf-realtime"],
+        "status": "Correct - no need to add to catalog"
+      },
+      {
+        "category": "Forms dependencies",
+        "packages": ["json-edit-react"],
+        "usedBy": ["forms"],
+        "status": "Correct - no need to add to catalog"
+      },
+      {
+        "category": "Testing dependencies",
+        "packages": ["@testing-library/react", "jsdom"],
+        "usedBy": ["spotlight"],
+        "status": "Correct - no need to add to catalog"
+      }
+    ]
+  },
+  "widely_used_catalog_dependencies": [
+    {
+      "dependency": "react",
+      "version": "^19.2.4",
+      "approximateUsageCount": "15+",
+      "status": "essential",
+      "note": "Core React framework - used across nearly all packages"
+    },
+    {
+      "dependency": "react-dom",
+      "version": "^19.2.4",
+      "approximateUsageCount": "15+",
+      "status": "essential",
+      "note": "Core React DOM - used across nearly all React packages"
+    },
+    {
+      "dependency": "@types/react",
+      "version": "^19.2.7",
+      "approximateUsageCount": "20+",
+      "status": "essential",
+      "note": "TypeScript definitions for React"
+    },
+    {
+      "dependency": "@types/react-dom",
+      "version": "^19.2.3",
+      "approximateUsageCount": "15+",
+      "status": "essential",
+      "note": "TypeScript definitions for React DOM"
+    },
+    {
+      "dependency": "typescript",
+      "version": "^5.9.3",
+      "approximateUsageCount": "25+",
+      "status": "essential",
+      "note": "TypeScript compiler - used everywhere"
+    },
+    {
+      "dependency": "tsup",
+      "version": "^8.5.1",
+      "approximateUsageCount": "20+",
+      "status": "essential",
+      "note": "TypeScript bundler - standard build tool across monorepo"
+    },
+    {
+      "dependency": "eslint",
+      "version": "^9.39.2",
+      "approximateUsageCount": "20+",
+      "status": "essential",
+      "note": "Linter used across packages"
+    },
+    {
+      "dependency": "@types/node",
+      "version": "^20.19.27",
+      "approximateUsageCount": "20+",
+      "status": "essential",
+      "note": "TypeScript definitions for Node.js"
+    },
+    {
+      "dependency": "rimraf",
+      "version": "^6.1.2",
+      "approximateUsageCount": "15+",
+      "status": "essential",
+      "note": "Utility for cleaning build directories"
+    },
+    {
+      "dependency": "drizzle-orm",
+      "version": "^0.38.3",
+      "approximateUsageCount": "5+",
+      "status": "core",
+      "note": "ORM used by database packages"
+    },
+    {
+      "dependency": "zod",
+      "version": "^3.24.1",
+      "approximateUsageCount": "5+",
+      "status": "core",
+      "note": "Schema validation used across packages"
+    },
+    {
+      "dependency": "@cloudflare/workers-types",
+      "version": "^4.20251210.0",
+      "approximateUsageCount": "10+",
+      "status": "core",
+      "note": "Cloudflare Workers TypeScript types"
+    },
+    {
+      "dependency": "jotai",
+      "version": "^2.16.2",
+      "approximateUsageCount": "3+",
+      "status": "core",
+      "note": "State management solution"
+    },
+    {
+      "dependency": "react-hook-form",
+      "version": "^7.54.2",
+      "approximateUsageCount": "3+",
+      "status": "core",
+      "note": "Form handling library"
+    },
+    {
+      "dependency": "date-fns",
+      "version": "^4.1.0",
+      "approximateUsageCount": "3+",
+      "status": "core",
+      "note": "Date utility library"
+    }
+  ],
+  "version_consistency_report": {
+    "total_dependencies_checked": 81,
+    "version_mismatches_found": 0,
+    "status": "EXCELLENT",
+    "note": "All packages referencing catalog dependencies use the exact versions specified in the catalog"
+  },
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "category": "Add Missing Dependencies",
+      "item": "Add '@radix-ui/react-dialog': '^1.1.4' to catalog",
+      "rationale": "Used by 2 packages (ui-shadcn and spotlight) - should be centrally managed",
+      "effort": "Minimal",
+      "file": "/home/user/ottabase/pnpm-workspace.yaml"
+    },
+    {
+      "priority": "MEDIUM",
+      "category": "Review Unused Dependencies",
+      "item": "Review and remove 32 unused catalog entries",
+      "rationale": "These include Babel tools, Storybook, TypeScript ESLint, Prisma, and others that don't appear to be used",
+      "effort": "Low to Medium",
+      "file": "/home/user/ottabase/pnpm-workspace.yaml",
+      "candidates": ["@babel/core", "@babel/preset-env", "@babel/preset-react", "@babel/preset-typescript", "@prisma/adapter-d1", "@prisma/client", "@storybook/addon-docs", "@storybook/addon-links", "@storybook/addon-styling-webpack", "@storybook/react-webpack5", "@storybook/test", "@typescript-eslint/eslint-plugin", "@typescript-eslint/parser", "babel-loader", "critters", "css-loader", "eslint-plugin-storybook", "handlebars", "highlight.js", "husky", "lint-staged", "mongodb", "postcss-loader", "prettier", "prisma", "storybook", "style-loader", "tsx", "vitest"]
+    },
+    {
+      "priority": "MEDIUM",
+      "category": "Refactor Single-Use Catalog Dependencies",
+      "item": "Move 25+ single-use dependencies from catalog to app-level package.json",
+      "rationale": "Keeps catalog clean and focused on truly shared dependencies. Single-use deps should live with their consuming package.",
+      "effort": "Medium",
+      "files": [
+        "/home/user/ottabase/apps/ottabase-template-app-tanstack/package.json",
+        "/home/user/ottabase/apps/ottabase-template-app-nextjs-homepage/package.json",
+        "/home/user/ottabase/packages/scripts/package.json"
+      ],
+      "estimated_dependencies_to_move": 25
+    },
+    {
+      "priority": "LOW",
+      "category": "Future Review",
+      "item": "Monitor for new multi-package dependencies not in catalog",
+      "rationale": "As new features are added, ensure that multi-package dependencies are added to the catalog",
+      "effort": "Minimal - automated check",
+      "frequency": "During code review"
+    }
+  ],
+  "conclusion": {
+    "overall_status": "GOOD - Minor improvements needed",
+    "key_strengths": [
+      "Perfect version consistency - no mismatches found",
+      "Well-organized catalog with clear structure",
+      "Good separation of concerns with package-specific dependencies kept local",
+      "Major shared dependencies properly centralized"
+    ],
+    "areas_for_improvement": [
+      "32 unused catalog entries should be reviewed and cleaned up",
+      "28 single-use dependencies could be moved to app-level for better maintainability",
+      "@radix-ui/react-dialog should be added to catalog"
+    ],
+    "estimated_effort_to_improve": "Medium - 4-8 hours for cleanup and refactoring",
+    "impact_if_improved": "Cleaner, more maintainable catalog with better clarity on what dependencies are actually shared"
+  }
+}
