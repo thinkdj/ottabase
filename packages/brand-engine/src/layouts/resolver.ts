@@ -44,6 +44,8 @@ export function resolveLayoutForPath(
 export interface RouteMatchResult {
     layoutTemplateId: string;
     brandKitId: string;
+    /** Per-route token overrides JSON (if defined on the matched route mapping) */
+    tokenOverridesJson?: string | null;
 }
 
 /**
@@ -51,12 +53,23 @@ export interface RouteMatchResult {
  */
 export function resolveRouteForPath(
     pathname: string,
-    routeMappings: Array<{ pathPattern: string; layoutTemplateId: string; brandKitId: string; priority?: number }>,
+    routeMappings: Array<{
+        pathPattern: string;
+        layoutTemplateId: string;
+        brandKitId: string;
+        priority?: number;
+        tokenOverridesJson?: string | null;
+    }>,
 ): RouteMatchResult | null {
     const sorted = [...routeMappings].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
     for (const m of sorted) {
         const re = pathPatternToRegex(m.pathPattern);
-        if (re.test(pathname)) return { layoutTemplateId: m.layoutTemplateId, brandKitId: m.brandKitId };
+        if (re.test(pathname))
+            return {
+                layoutTemplateId: m.layoutTemplateId,
+                brandKitId: m.brandKitId,
+                tokenOverridesJson: m.tokenOverridesJson,
+            };
     }
     return null;
 }

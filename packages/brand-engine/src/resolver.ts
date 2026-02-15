@@ -21,7 +21,7 @@ import {
 import type { LayoutConfig } from './layout';
 import { DEFAULT_LAYOUT } from './layout';
 import type { BrandTheme } from './theme';
-import type { DesignTokens, TokenAliases, TokenColors } from './tokens';
+import type { ColorScheme, DesignTokens, TokenAliases, TokenColors } from './tokens';
 
 // ---------------------------------------------------------------------------
 // Deep-merge utility
@@ -100,8 +100,8 @@ export interface ResolveOptions {
     base: BrandTheme;
     /** Optional tenant-level overrides (partial BrandTheme) */
     tenantOverrides?: Partial<BrandTheme>;
-    /** Current colour-scheme mode */
-    mode?: 'light' | 'dark';
+    /** Current color-scheme mode (built-in: 'light' | 'dark'; custom schemes also supported) */
+    mode?: ColorScheme;
 }
 
 /**
@@ -119,9 +119,10 @@ export function resolveTheme(options: ResolveOptions): ResolvedBrandTheme {
           ) as unknown as BrandTheme)
         : base;
 
-    // 2. Select mode-specific colour palette with defaults
+    // 2. Select mode-specific colour palette with fallback chain:
+    //    requested mode → light → defaults
     const defaultPalette = mode === 'dark' ? DEFAULT_COLORS_DARK : DEFAULT_COLORS_LIGHT;
-    const rawPalette = merged.tokens.color[mode] ?? defaultPalette;
+    const rawPalette = merged.tokens.color[mode] ?? merged.tokens.color.light ?? defaultPalette;
     const palette: TokenColors = { ...defaultPalette, ...rawPalette };
 
     // 3. Resolve token aliases

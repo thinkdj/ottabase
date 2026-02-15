@@ -323,6 +323,79 @@ describe('resolveTheme', () => {
         expect(resolved.motion.durationFast).toBe('50ms');
         expect(resolved.motion.durationNormal).toBe(DEFAULT_MOTION.durationNormal);
     });
+
+    it('resolves custom color scheme when defined', () => {
+        const highContrastColors: typeof DEFAULT_COLORS_LIGHT = {
+            ...DEFAULT_COLORS_LIGHT,
+            background: '0 0% 0%',
+            foreground: '0 0% 100%',
+            primary: '60 100% 50%',
+        };
+        const theme = makeTheme({
+            tokens: {
+                color: {
+                    light: DEFAULT_COLORS_LIGHT,
+                    dark: DEFAULT_COLORS_DARK,
+                    'high-contrast': highContrastColors,
+                },
+                typography: {
+                    heading: { fontFamily: 'Inter' },
+                    body: { fontFamily: 'Inter' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        });
+        const resolved = resolveTheme({ base: theme, mode: 'high-contrast' });
+        expect(resolved.colors.background).toBe('0 0% 0%');
+        expect(resolved.colors.foreground).toBe('0 0% 100%');
+        expect(resolved.colors.primary).toBe('60 100% 50%');
+    });
+
+    it('falls back to light palette when custom scheme is not defined', () => {
+        const theme = makeTheme();
+        const resolved = resolveTheme({ base: theme, mode: 'colorblind-deuteranopia' });
+        // Should fall back to light since the custom scheme doesn't exist
+        expect(resolved.colors.background).toBe(DEFAULT_COLORS_LIGHT.background);
+        expect(resolved.colors.primary).toBe(DEFAULT_COLORS_LIGHT.primary);
+    });
+
+    it('merges custom scheme with light defaults for missing tokens', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: {
+                    light: DEFAULT_COLORS_LIGHT,
+                    dark: DEFAULT_COLORS_DARK,
+                    'high-contrast': {
+                        // Only override a few tokens – rest should come from light defaults
+                        background: '0 0% 0%',
+                        foreground: '0 0% 100%',
+                        primary: '60 100% 50%',
+                        'primary-foreground': '0 0% 0%',
+                        secondary: '180 100% 50%',
+                        'secondary-foreground': '0 0% 0%',
+                        muted: '0 0% 20%',
+                        'muted-foreground': '0 0% 80%',
+                        accent: '300 100% 50%',
+                        'accent-foreground': '0 0% 0%',
+                        destructive: '0 100% 50%',
+                        'destructive-foreground': '0 0% 100%',
+                        border: '0 0% 50%',
+                        input: '0 0% 30%',
+                        ring: '60 100% 50%',
+                    } as typeof DEFAULT_COLORS_LIGHT,
+                },
+                typography: {
+                    heading: { fontFamily: 'Inter' },
+                    body: { fontFamily: 'Inter' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        });
+        const resolved = resolveTheme({ base: theme, mode: 'high-contrast' });
+        expect(resolved.colors.background).toBe('0 0% 0%');
+        // card not specified in high-contrast – should get light default as base
+        expect(resolved.colors.card).toBe(DEFAULT_COLORS_LIGHT.card);
+    });
 });
 
 // ===========================================================================
@@ -675,6 +748,327 @@ describe('Theme Registry', () => {
         registerThemes([makeTheme({ name: 'exact' }), makeTheme({ name: 'default' })]);
         const result = getThemeOrDefault('exact');
         expect(result.name).toBe('exact');
+    });
+});
+
+// ===========================================================================
+// Inheritance diff – deepMerge with partial tokensJson
+// Simulates the resolveInheritanceChain behavior where child kits only
+// store overridden sections, not the full config.
+// ===========================================================================
+
+describe('inheritance diff (partial tokensJson overlay)', () => {
+    it('child with only typography inherits parent colors', () => {
+        // Parent provides full tokens (color + typography)
+        const parentTheme: Partial<BrandTheme> = {
+            name: 'parent',
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '120 80% 40%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Playfair Display' },
+                    body: { fontFamily: 'Lora' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        };
+
+        // Child only overrides typography (diff-only: no color key)
+        const childTheme: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {
+                typography: {
+                    heading: { fontFamily: 'Roboto' },
+                    body: { fontFamily: 'Roboto' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            } as BrandTheme['tokens'],
+        };
+
+        // Simulate inheritance chain merge: parent → child
+        const merged = deepMerge(
+            parentTheme as Record<string, unknown>,
+            childTheme as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+
+        // Color should be inherited from parent (child didn't override)
+        expect(merged.tokens.color.light.primary).toBe('120 80% 40%');
+        // Typography should be the child's override
+        expect(merged.tokens.typography.heading.fontFamily).toBe('Roboto');
+    });
+
+    it('child with only color inherits parent typography', () => {
+        const parentTheme: Partial<BrandTheme> = {
+            name: 'parent',
+            tokens: {
+                color: {
+                    light: DEFAULT_COLORS_LIGHT,
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Merriweather' },
+                    body: { fontFamily: 'Source Sans Pro' },
+                    handwriting: { fontFamily: 'Dancing Script' },
+                },
+            },
+        };
+
+        // Child only overrides color (diff-only: no typography key)
+        const childTheme: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '0 100% 50%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+            } as BrandTheme['tokens'],
+        };
+
+        const merged = deepMerge(
+            parentTheme as Record<string, unknown>,
+            childTheme as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+
+        // Typography should be inherited from parent (child didn't override)
+        expect(merged.tokens.typography.heading.fontFamily).toBe('Merriweather');
+        expect(merged.tokens.typography.body.fontFamily).toBe('Source Sans Pro');
+        // Color should be child's override
+        expect(merged.tokens.color.light.primary).toBe('0 100% 50%');
+    });
+
+    it('child with empty tokens inherits everything from parent', () => {
+        const parentTheme: Partial<BrandTheme> = {
+            name: 'parent',
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '250 50% 50%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Georgia' },
+                    body: { fontFamily: 'Georgia' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+                radius: '1rem',
+                spacing: { section: '4rem', card: '2rem', element: '1rem' },
+            },
+        };
+
+        // Child has empty tokens (equivalent to tokensJson = "{}")
+        const childTheme: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {} as BrandTheme['tokens'],
+        };
+
+        const merged = deepMerge(
+            parentTheme as Record<string, unknown>,
+            childTheme as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+
+        // Everything inherited from parent
+        expect(merged.tokens.color.light.primary).toBe('250 50% 50%');
+        expect(merged.tokens.typography.heading.fontFamily).toBe('Georgia');
+        expect(merged.tokens.radius).toBe('1rem');
+        expect(merged.tokens.spacing).toEqual({ section: '4rem', card: '2rem', element: '1rem' });
+    });
+
+    it('removing a section from child causes parent values to show through', () => {
+        const parentTheme: Partial<BrandTheme> = {
+            name: 'parent',
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '200 60% 45%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Poppins' },
+                    body: { fontFamily: 'Open Sans' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        };
+
+        // Step 1: Child initially overrides both color + typography
+        const childWithBoth: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '0 100% 50%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Roboto' },
+                    body: { fontFamily: 'Roboto' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        };
+
+        const mergedBoth = deepMerge(
+            parentTheme as Record<string, unknown>,
+            childWithBoth as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+        expect(mergedBoth.tokens.color.light.primary).toBe('0 100% 50%');
+        expect(mergedBoth.tokens.typography.heading.fontFamily).toBe('Roboto');
+
+        // Step 2: Child removes color override (simulates toggle OFF)
+        const childWithoutColor: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {
+                typography: {
+                    heading: { fontFamily: 'Roboto' },
+                    body: { fontFamily: 'Roboto' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            } as BrandTheme['tokens'],
+        };
+
+        const mergedWithoutColor = deepMerge(
+            parentTheme as Record<string, unknown>,
+            childWithoutColor as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+
+        // Color should now come from parent
+        expect(mergedWithoutColor.tokens.color.light.primary).toBe('200 60% 45%');
+        // Typography still from child
+        expect(mergedWithoutColor.tokens.typography.heading.fontFamily).toBe('Roboto');
+    });
+
+    it('three-level chain: grandparent → parent → child with selective overrides', () => {
+        const grandparent: Partial<BrandTheme> = {
+            name: 'grandparent',
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '100 50% 50%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Serif A' },
+                    body: { fontFamily: 'Sans A' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+                radius: '0.25rem',
+            },
+        };
+
+        // Parent overrides only typography
+        const parent: Partial<BrandTheme> = {
+            name: 'parent',
+            tokens: {
+                typography: {
+                    heading: { fontFamily: 'Serif B' },
+                    body: { fontFamily: 'Sans B' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            } as BrandTheme['tokens'],
+        };
+
+        // Child overrides only radius
+        const child: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {
+                radius: '1rem',
+            } as BrandTheme['tokens'],
+        };
+
+        // Merge: grandparent → parent → child
+        let merged = deepMerge(
+            grandparent as Record<string, unknown>,
+            parent as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+        merged = deepMerge(
+            merged as unknown as Record<string, unknown>,
+            child as unknown as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+
+        // Color from grandparent (neither parent nor child overrode it)
+        expect(merged.tokens.color.light.primary).toBe('100 50% 50%');
+        // Typography from parent
+        expect(merged.tokens.typography.heading.fontFamily).toBe('Serif B');
+        // Radius from child
+        expect(merged.tokens.radius).toBe('1rem');
+    });
+
+    it('child overriding a single color sub-key merges with parent color', () => {
+        const parentTheme: Partial<BrandTheme> = {
+            name: 'parent',
+            tokens: {
+                color: {
+                    light: {
+                        ...DEFAULT_COLORS_LIGHT,
+                        primary: '200 50% 50%',
+                        accent: '100 50% 50%',
+                    },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Inter' },
+                    body: { fontFamily: 'Inter' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        };
+
+        // Child overrides only primary in light, accent should inherit from parent
+        const childTheme: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {
+                color: {
+                    light: { primary: '0 100% 50%' },
+                },
+            } as BrandTheme['tokens'],
+        };
+
+        const merged = deepMerge(
+            parentTheme as Record<string, unknown>,
+            childTheme as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+
+        expect(merged.tokens.color.light.primary).toBe('0 100% 50%');
+        expect(merged.tokens.color.light.accent).toBe('100 50% 50%'); // inherited
+        expect(merged.tokens.color.dark).toEqual(DEFAULT_COLORS_DARK); // inherited
+    });
+
+    it('resolveTheme correctly handles partial tenant overrides (diff-only)', () => {
+        const base = makeTheme({
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '220 60% 50%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Times New Roman' },
+                    body: { fontFamily: 'Arial' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+                radius: '0.5rem',
+            },
+        });
+
+        // Tenant overrides only typography (simulates diff-only from child kit)
+        const resolved = resolveTheme({
+            base,
+            tenantOverrides: {
+                tokens: {
+                    typography: {
+                        heading: { fontFamily: 'Montserrat' },
+                        body: { fontFamily: 'Lato' },
+                        handwriting: { fontFamily: 'Caveat' },
+                    },
+                } as BrandTheme['tokens'],
+            },
+            mode: 'light',
+        });
+
+        // Colors from base (not overridden by tenant)
+        expect(resolved.colors.primary).toBe('220 60% 50%');
+        // Typography from tenant override
+        expect(resolved.typography.heading.fontFamily).toBe('Montserrat');
+        expect(resolved.typography.body.fontFamily).toBe('Lato');
+        // Radius from base (not overridden)
+        expect(resolved.radius).toBe('0.5rem');
     });
 });
 

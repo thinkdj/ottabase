@@ -6,16 +6,24 @@
 //   • Fallback theme for graceful degradation
 //   • Route matching cache for performance
 //   • CSS validation and debounced injection
+//   • Per-route token overrides (applied on top of brand kit theme)
 // ---------------------------------------------------------------------------
 
 'use client';
 
 import type { LayoutConfig, ResolvedBrandTheme } from '@ottabase/brand-engine';
-import { DEFAULT_LAYOUT, pathPatternToRegex } from '@ottabase/brand-engine';
+import { DEFAULT_LAYOUT, deepMerge, pathPatternToRegex, resolveTheme } from '@ottabase/brand-engine';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 /** Route mapping shape (expanded form) */
-export type RouteMapping = { pathPattern: string; layoutTemplateId: string; brandKitId: string; priority: number };
+export type RouteMapping = {
+    pathPattern: string;
+    layoutTemplateId: string;
+    brandKitId: string;
+    priority: number;
+    /** Optional per-route token overrides (partial DesignTokens JSON) */
+    tokenOverridesJson?: string | null;
+};
 
 /**
  * Validates CSS syntax using Constructable Stylesheet API when available.
@@ -74,16 +82,23 @@ function createDebounce(fn: (css: string) => void, delay: number) {
     };
 }
 
+/** Route match result from the cached matcher */
+interface RouteMatchResult {
+    layoutTemplateId: string;
+    brandKitId: string;
+    tokenOverridesJson?: string | null;
+}
+
 /**
  * Creates a cached route matcher for efficient path resolution.
  * Caches both regex compilation and match results.
  */
 function createRouteMatcherCache(mappings: RouteMapping[]) {
-    const pathCache = new Map<string, { layoutTemplateId: string; brandKitId: string } | null>();
+    const pathCache = new Map<string, RouteMatchResult | null>();
     const regexCache = new Map<string, RegExp>();
     const sorted = [...mappings].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
 
-    return (pathname: string) => {
+    return (pathname: string): RouteMatchResult | null => {
         if (pathCache.has(pathname)) {
             return pathCache.get(pathname)!;
         }
@@ -96,7 +111,11 @@ function createRouteMatcherCache(mappings: RouteMapping[]) {
             }
 
             if (regex.test(pathname)) {
-                const result = { layoutTemplateId: m.layoutTemplateId, brandKitId: m.brandKitId };
+                const result: RouteMatchResult = {
+                    layoutTemplateId: m.layoutTemplateId,
+                    brandKitId: m.brandKitId,
+                    tokenOverridesJson: m.tokenOverridesJson,
+                };
                 pathCache.set(pathname, result);
                 return result;
             }
@@ -105,6 +124,28 @@ function createRouteMatcherCache(mappings: RouteMapping[]) {
         pathCache.set(pathname, null);
         return null;
     };
+}
+
+/**
+ * Apply per-route token overrides to a resolved theme.
+ * Parses the tokenOverridesJson and deep-merges on top of the kit theme.
+ */
+function applyRouteTokenOverrides(
+    kitTheme: ResolvedBrandTheme,
+    tokenOverridesJson: string,
+    themeBase: string,
+    tenantTheme: unknown,
+): ResolvedBrandTheme {
+    try {
+        const overrides = JSON.parse(tokenOverridesJson) as Record<string, unknown>;
+        if (!overrides || typeof overrides !== 'object' || Object.keys(overrides).length === 0) {
+            return kitTheme;
+        }
+        // Deep-merge overrides into the resolved theme's colors/typography/etc.
+        return deepMerge(kitTheme as unknown as Record<string, unknown>, overrides) as unknown as ResolvedBrandTheme;
+    } catch {
+        return kitTheme;
+    }
 }
 
 /**
@@ -164,7 +205,13 @@ export interface BrandConfig {
     hideOttabaseBranding: boolean;
     layoutTemplateId: string;
     layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }>;
-    routeMappings: Array<{ pathPattern: string; layoutTemplateId: string; brandKitId: string; priority: number }>;
+    routeMappings: Array<{
+        pathPattern: string;
+        layoutTemplateId: string;
+        brandKitId: string;
+        priority: number;
+        tokenOverridesJson?: string | null;
+    }>;
     r2PublicUrl?: string;
 }
 
@@ -191,7 +238,7 @@ export interface BrandProviderProps {
     fallbackTheme?: ResolvedBrandTheme;
 }
 
-type RouteMatcherFn = (pathname: string) => { layoutTemplateId: string; brandKitId: string } | null;
+type RouteMatcherFn = (pathname: string) => RouteMatchResult | null;
 
 function resolveConfigForPath(
     full: FullBrandConfig,
@@ -204,8 +251,16 @@ function resolveConfigForPath(
     const layoutId = match?.layoutTemplateId ?? 'homepage';
     const kit = kitId ? full.brandKitsMap[kitId] : Object.values(full.brandKitsMap)[0];
     if (!kit) return null;
+
+    // Apply per-route token overrides if present
+    let theme = kit.theme;
+    if (match?.tokenOverridesJson) {
+        theme = applyRouteTokenOverrides(kit.theme, match.tokenOverridesJson, kit.themeBase, kit.tenantTheme);
+    }
+
     return {
         ...kit,
+        theme,
         defaultColorScheme: kit.defaultColorScheme as 'light' | 'dark' | 'system',
         layoutTemplateId: layoutId,
         layoutTemplatesMap: full.layoutTemplatesMap,

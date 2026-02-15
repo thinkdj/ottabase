@@ -113,14 +113,30 @@ export type TokenAliases = Record<string, string>;
 // ---------------------------------------------------------------------------
 
 /**
+ * Named color scheme identifier.
+ * `light` and `dark` are always present. Additional custom schemes
+ * (e.g. `'high-contrast'`, `'colorblind-deuteranopia'`) can be added
+ * and resolved at runtime via the `mode` parameter.
+ */
+export type ColorScheme = 'light' | 'dark' | (string & {});
+
+/**
+ * Color palette map keyed by scheme name.
+ * `light` and `dark` are required; additional custom schemes are optional.
+ */
+export type ColorPalettes = {
+    light: TokenColors;
+    dark: TokenColors;
+    /** Custom color schemes (high-contrast, colorblind-safe, seasonal, etc.) */
+    [scheme: string]: TokenColors | undefined;
+};
+
+/**
  * The complete set of design tokens that defines a brand's visual identity.
  * This is the "single JSON source" described in the BrandEngine spec.
  */
 export interface DesignTokens {
-    color: {
-        light: TokenColors;
-        dark: TokenColors;
-    };
+    color: ColorPalettes;
     typography: {
         heading: TokenTypography;
         body: TokenTypography;

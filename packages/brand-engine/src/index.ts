@@ -4,6 +4,8 @@
 
 // ── Types ──────────────────────────────────────────────────────────────────
 export type {
+    ColorPalettes,
+    ColorScheme,
     DesignTokens,
     TokenAliases,
     TokenColors,

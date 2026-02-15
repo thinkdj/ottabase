@@ -14,6 +14,8 @@ export interface RouteMappingRow {
     layoutTemplateId: string;
     brandKitId: string;
     priority: number;
+    /** Optional per-route token overrides (partial DesignTokens JSON) */
+    tokenOverridesJson?: string | null;
 }
 
 export interface LayoutData {
@@ -55,6 +57,7 @@ export async function getLayoutData(organizationId: string | null, appId?: strin
             layoutTemplateId: m.get('layoutTemplateId') as string,
             brandKitId: m.get('brandKitId') as string,
             priority: (m.get('priority') as number) ?? 0,
+            tokenOverridesJson: (m.get('tokenOverridesJson') as string | null) ?? null,
         }));
     } else {
         const defaultKit = await BrandKit.getOrCreateDefault();

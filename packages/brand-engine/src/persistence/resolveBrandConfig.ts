@@ -3,15 +3,15 @@
 // Resolution: route mappings → match path → Brand Kit + layout
 // ---------------------------------------------------------------------------
 
-import type { ResolvedBrandConfig, BrandResolutionCache } from './types';
 import type { D1Database, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
+import { resolveRouteForPath } from '../layouts/resolver';
+import { deepMerge } from '../resolver';
+import type { BrandTheme } from '../theme';
 import { BrandKit } from './BrandKit.model';
-import { brandKitToTheme, brandKitLogos } from './brandKitToConfig';
+import { brandKitLogos, brandKitToTheme } from './brandKitToConfig';
 import { createBrandCache } from './cache';
 import { getLayoutData } from './layoutData';
-import { resolveRouteForPath } from '../layouts/resolver';
-import type { ResolvedBrandTheme } from '../resolver';
-import type { BrandTheme } from '../theme';
+import type { BrandResolutionCache, ResolvedBrandConfig } from './types';
 
 export interface ResolveBrandConfigEnv {
     OBCF_D1: D1Database;
@@ -25,14 +25,14 @@ export interface ResolveBrandConfigOptions {
     appId?: string | null;
     /** Current pathname – required for path-scoped resolution */
     path: string;
-    /** Light/dark mode */
-    mode?: 'light' | 'dark';
+    /** Color scheme mode (light, dark, or custom scheme name) */
+    mode?: string;
     /** Skip cache */
     skipCache?: boolean;
 }
 
 /** Full resolution data – all route mappings + all brand kits. Client resolves path locally. */
-export type FullBrandConfig = BrandResolutionCache & { mode: 'light' | 'dark'; r2PublicUrl?: string };
+export type FullBrandConfig = BrandResolutionCache & { mode: string; r2PublicUrl?: string };
 
 /**
  * Load and build brand kits map from database.
@@ -41,7 +41,7 @@ export type FullBrandConfig = BrandResolutionCache & { mode: 'light' | 'dark'; r
  */
 async function loadBrandKitsMap(
     brandKitIds: string[],
-    mode: 'light' | 'dark',
+    mode: string,
     r2Url: string,
 ): Promise<BrandResolutionCache['brandKitsMap']> {
     const brandKitsMap: BrandResolutionCache['brandKitsMap'] = {};
@@ -49,7 +49,7 @@ async function loadBrandKitsMap(
     for (const kitId of brandKitIds) {
         const kit = (await BrandKit.find(kitId)) as BrandKit | null;
         if (!kit) continue;
-        const theme = brandKitToTheme(kit, mode);
+        const theme = await brandKitToTheme(kit, mode);
         const logos = brandKitLogos(kit, r2Url);
         const presetId = (kit.get('themePresetId') as string) || null;
         const tokens = kit.toBrandTheme().tokens;
@@ -78,7 +78,7 @@ async function loadBrandKitsMap(
     if (Object.keys(brandKitsMap).length === 0) {
         const defaultKit = await BrandKit.getOrCreateDefault();
         const defaultKitId = (defaultKit.get('id') as string) || 'default';
-        const theme = brandKitToTheme(defaultKit, mode);
+        const theme = await brandKitToTheme(defaultKit, mode);
         const logos = brandKitLogos(defaultKit, r2Url);
         const presetId = (defaultKit.get('themePresetId') as string) || null;
         const tokens = defaultKit.toBrandTheme().tokens;
@@ -189,8 +189,25 @@ export async function resolveBrandConfig(
     const kitData = brandKitsMap[match.brandKitId];
     if (!kitData) return null;
 
+    // Apply per-route token overrides when present
+    let resolvedTheme = kitData.theme;
+    if (match.tokenOverridesJson) {
+        try {
+            const overrides = JSON.parse(match.tokenOverridesJson) as Record<string, unknown>;
+            if (overrides && typeof overrides === 'object' && Object.keys(overrides).length > 0) {
+                resolvedTheme = deepMerge(
+                    resolvedTheme as unknown as Record<string, unknown>,
+                    overrides,
+                ) as unknown as typeof resolvedTheme;
+            }
+        } catch {
+            /* ignore malformed JSON */
+        }
+    }
+
     const config: ResolvedBrandConfig = {
         ...kitData,
+        theme: resolvedTheme,
         defaultColorScheme: kitData.defaultColorScheme as 'light' | 'dark' | 'system',
         layoutTemplateId: match.layoutTemplateId,
         layoutTemplatesMap: layoutData.layoutTemplatesMap,
@@ -211,15 +228,27 @@ export async function resolveBrandConfig(
 
 function buildConfigFromCache(
     cached: BrandResolutionCache,
-    match: { layoutTemplateId: string; brandKitId: string },
+    match: { layoutTemplateId: string; brandKitId: string; tokenOverridesJson?: string | null },
     kitData: BrandResolutionCache['brandKitsMap'][string],
     _path: string,
 ): ResolvedBrandConfig {
+    // Apply per-route token overrides when present
+    let theme = kitData.theme;
+    if (match.tokenOverridesJson) {
+        try {
+            const overrides = JSON.parse(match.tokenOverridesJson) as Record<string, unknown>;
+            if (overrides && typeof overrides === 'object' && Object.keys(overrides).length > 0) {
+                theme = deepMerge(theme as unknown as Record<string, unknown>, overrides) as unknown as typeof theme;
+            }
+        } catch {
+            /* ignore malformed JSON – serve base kit theme */
+        }
+    }
     return {
         brandName: kitData.brandName,
         tagline: kitData.tagline,
         logos: kitData.logos,
-        theme: kitData.theme,
+        theme,
         themeBase: kitData.themeBase,
         tenantTheme: kitData.tenantTheme,
         defaultColorScheme: kitData.defaultColorScheme as 'light' | 'dark' | 'system',

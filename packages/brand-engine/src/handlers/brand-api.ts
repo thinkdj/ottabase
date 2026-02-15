@@ -24,7 +24,9 @@ export type CompactBrandConfig = Omit<FullBrandConfig, 'routeMappings'> & {
 
 function toCompactResponse(config: FullBrandConfig): CompactBrandConfig | FullBrandConfig {
     const kits = [...new Set(config.routeMappings.map((m) => m.brandKitId))];
-    if (kits.length !== 1) return config;
+    // Cannot compact when multiple kits or when any route has token overrides
+    const hasTokenOverrides = config.routeMappings.some((m) => m.tokenOverridesJson);
+    if (kits.length !== 1 || hasTokenOverrides) return config;
     const kit = kits[0];
     return {
         kit,
@@ -50,7 +52,7 @@ export async function handleGetBrand(
 ): Promise<Response> {
     const url = new URL(request.url);
     const modeParam = url.searchParams.get('mode');
-    const mode = modeParam === 'dark' ? 'dark' : 'light';
+    const mode = modeParam || 'light';
 
     const config = await resolveFullBrandConfig(env, {
         organizationId: organizationId ?? url.searchParams.get('organizationId') ?? null,

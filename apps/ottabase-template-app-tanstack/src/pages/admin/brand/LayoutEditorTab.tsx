@@ -23,7 +23,7 @@ import {
     SelectValue,
     Switch,
 } from '@ottabase/ui-shadcn';
-import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconAdjustments, IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -282,12 +282,21 @@ export function LayoutEditorTab() {
                             kits={kits}
                             onSave={(m) =>
                                 putMappingsMutation.mutate({
-                                    mappings: m.map(({ pathPattern, layoutTemplateId, brandKitId, priority }) => ({
-                                        pathPattern,
-                                        layoutTemplateId,
-                                        brandKitId: brandKitId!,
-                                        priority: priority ?? 0,
-                                    })),
+                                    mappings: m.map(
+                                        ({
+                                            pathPattern,
+                                            layoutTemplateId,
+                                            brandKitId,
+                                            priority,
+                                            tokenOverridesJson,
+                                        }) => ({
+                                            pathPattern,
+                                            layoutTemplateId,
+                                            brandKitId: brandKitId!,
+                                            priority: priority ?? 0,
+                                            tokenOverridesJson: tokenOverridesJson || null,
+                                        }),
+                                    ),
                                 })
                             }
                             saving={putMappingsMutation.isPending}
@@ -552,7 +561,7 @@ function MappingsEditor({
         if (!pathPattern.trim() || patternError || !layoutTemplateId || !brandKitId) return;
         setItems((prevItems) => [
             ...prevItems,
-            { pathPattern: pathPattern.trim(), layoutTemplateId, brandKitId, priority },
+            { pathPattern: pathPattern.trim(), layoutTemplateId, brandKitId, priority, tokenOverridesJson: null },
         ]);
         setPathPattern('');
         setPatternError('');
@@ -674,31 +683,24 @@ function MappingsEditor({
                             {items.map((m, idx) => {
                                 const layout = layoutOptions.find((t) => t.id === m.layoutTemplateId);
                                 const kit = kits.find((k) => k.id === m.brandKitId);
+                                const hasOverrides = !!m.tokenOverridesJson && m.tokenOverridesJson !== '{}';
                                 return (
-                                    <tr key={`${m.pathPattern}-${idx}`}>
-                                        <td className="px-3 py-3 align-top">
-                                            <code className="font-mono text-xs text-muted-foreground">
-                                                {m.pathPattern}
-                                            </code>
-                                        </td>
-                                        <td className="px-3 py-3 align-top">
-                                            <p className="font-medium">{layout?.name ?? m.layoutTemplateId}</p>
-                                            <p className="text-xs text-muted-foreground">{layout?.componentKey}</p>
-                                        </td>
-                                        <td className="px-3 py-3 align-top">
-                                            <p className="font-medium">{kit?.name ?? m.brandKitId}</p>
-                                        </td>
-                                        <td className="px-3 py-3 align-top">
-                                            <span className="rounded bg-muted/40 px-2 py-0.5 text-[10px] font-semibold">
-                                                {m.priority ?? 0}
-                                            </span>
-                                        </td>
-                                        <td className="px-3 py-3 align-top">
-                                            <Button size="sm" variant="ghost" onClick={() => remove(idx)}>
-                                                <IconTrash className="h-4 w-4" />
-                                            </Button>
-                                        </td>
-                                    </tr>
+                                    <MappingRow
+                                        key={`${m.pathPattern}-${idx}`}
+                                        mapping={m}
+                                        layoutName={layout?.name ?? m.layoutTemplateId}
+                                        layoutComponentKey={layout?.componentKey}
+                                        kitName={kit?.name ?? m.brandKitId}
+                                        hasOverrides={hasOverrides}
+                                        onRemove={() => remove(idx)}
+                                        onTokenOverridesChange={(json) =>
+                                            setItems((prev) =>
+                                                prev.map((item, i) =>
+                                                    i === idx ? { ...item, tokenOverridesJson: json || null } : item,
+                                                ),
+                                            )
+                                        }
+                                    />
                                 );
                             })}
                         </tbody>
@@ -709,5 +711,126 @@ function MappingsEditor({
                 {saving ? 'Saving...' : 'Save mappings'}
             </Button>
         </div>
+    );
+}
+
+/** Individual mapping row with collapsible token overrides editor */
+function MappingRow({
+    mapping,
+    layoutName,
+    layoutComponentKey,
+    kitName,
+    hasOverrides,
+    onRemove,
+    onTokenOverridesChange,
+}: {
+    mapping: LayoutMappingItem;
+    layoutName: string;
+    layoutComponentKey?: string;
+    kitName: string;
+    hasOverrides: boolean;
+    onRemove: () => void;
+    onTokenOverridesChange: (json: string | null) => void;
+}) {
+    const [expanded, setExpanded] = useState(false);
+    const [overrideText, setOverrideText] = useState(mapping.tokenOverridesJson ?? '');
+    const [jsonError, setJsonError] = useState('');
+
+    const handleBlur = () => {
+        const trimmed = overrideText.trim();
+        if (!trimmed || trimmed === '{}') {
+            onTokenOverridesChange(null);
+            setJsonError('');
+            return;
+        }
+        try {
+            JSON.parse(trimmed);
+            onTokenOverridesChange(trimmed);
+            setJsonError('');
+        } catch {
+            setJsonError('Invalid JSON');
+        }
+    };
+
+    return (
+        <>
+            <tr>
+                <td className="px-3 py-3 align-top">
+                    <code className="font-mono text-xs text-muted-foreground">{mapping.pathPattern}</code>
+                </td>
+                <td className="px-3 py-3 align-top">
+                    <p className="font-medium">{layoutName}</p>
+                    {layoutComponentKey && <p className="text-xs text-muted-foreground">{layoutComponentKey}</p>}
+                </td>
+                <td className="px-3 py-3 align-top">
+                    <p className="font-medium">{kitName}</p>
+                </td>
+                <td className="px-3 py-3 align-top">
+                    <span className="rounded bg-muted/40 px-2 py-0.5 text-[10px] font-semibold">
+                        {mapping.priority ?? 0}
+                    </span>
+                </td>
+                <td className="px-3 py-3 align-top">
+                    <div className="flex items-center gap-1">
+                        <Button
+                            size="sm"
+                            variant={hasOverrides ? 'default' : 'ghost'}
+                            onClick={() => setExpanded(!expanded)}
+                            title="Token overrides for this route"
+                            className={hasOverrides ? 'h-7 w-7 p-0' : 'h-7 w-7 p-0'}
+                        >
+                            <IconAdjustments className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={onRemove} className="h-7 w-7 p-0">
+                            <IconTrash className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </td>
+            </tr>
+            {expanded && (
+                <tr>
+                    <td colSpan={5} className="px-3 pb-3 pt-0">
+                        <div className="rounded-lg border border-dashed p-3 space-y-2 bg-muted/5">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs font-medium">Route token overrides</p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Partial JSON merged on top of the Brand Kit's theme for this route only.
+                                        Override colors, typography, etc. without creating a separate kit.
+                                    </p>
+                                </div>
+                                {overrideText.trim() && (
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-xs text-muted-foreground"
+                                        onClick={() => {
+                                            setOverrideText('');
+                                            onTokenOverridesChange(null);
+                                        }}
+                                    >
+                                        Clear
+                                    </Button>
+                                )}
+                            </div>
+                            <textarea
+                                className="w-full rounded-md border bg-background px-3 py-2 font-mono text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary dark:border-muted"
+                                rows={5}
+                                value={overrideText}
+                                onChange={(e) => setOverrideText(e.target.value)}
+                                onBlur={handleBlur}
+                                placeholder={`{\n  "colors": {\n    "primary": "220 90% 56%"\n  }\n}`}
+                                spellCheck={false}
+                            />
+                            {jsonError && <p className="text-xs text-red-500">{jsonError}</p>}
+                            <p className="text-[10px] text-muted-foreground">
+                                Tip: Use HSL values matching your design tokens. E.g.{' '}
+                                <code className="rounded bg-muted px-1">{`{"colors":{"primary":"220 90% 56%"}}`}</code>
+                            </p>
+                        </div>
+                    </td>
+                </tr>
+            )}
+        </>
     );
 }

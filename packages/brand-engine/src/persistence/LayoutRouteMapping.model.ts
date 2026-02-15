@@ -23,8 +23,16 @@ export class LayoutRouteMapping extends BaseModel {
     };
 
     static writable = {
-        create: ['organizationId', 'appId', 'pathPattern', 'priority', 'layoutTemplateId', 'brandKitId'],
-        update: ['pathPattern', 'priority', 'layoutTemplateId', 'brandKitId'],
+        create: [
+            'organizationId',
+            'appId',
+            'pathPattern',
+            'priority',
+            'layoutTemplateId',
+            'brandKitId',
+            'tokenOverridesJson',
+        ],
+        update: ['pathPattern', 'priority', 'layoutTemplateId', 'brandKitId', 'tokenOverridesJson'],
     };
 
     protected static fields: ModelFields = {
@@ -67,6 +75,12 @@ export class LayoutRouteMapping extends BaseModel {
             editable: true,
             uiConfig: { label: 'Brand Kit' },
             tableConfig: { visible: true },
+        },
+        tokenOverridesJson: {
+            type: 'string',
+            editable: true,
+            uiConfig: { label: 'Token Overrides' },
+            tableConfig: { visible: false },
         },
         createdAt: {
             type: 'date',

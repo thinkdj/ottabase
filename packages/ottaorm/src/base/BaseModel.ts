@@ -5,7 +5,7 @@
 // ============================================================
 
 import type { DbDriver } from '@ottabase/db/drizzle';
-import { and, asc, desc, eq, inArray, like, ne, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, like, ne, or, sql } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { getConnection } from '../context';
 import { ValidationError } from '../validation';
@@ -335,7 +335,8 @@ export class BaseModel extends AbstractBaseModel {
             if (!column) continue;
 
             if (value === null) {
-                continue; // Skip null values
+                conditions.push(isNull(column));
+                continue;
             }
 
             if (Array.isArray(value)) {
