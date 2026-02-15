@@ -13,51 +13,26 @@
 
 import type { KVNamespace } from '@cloudflare/workers-types';
 
-export interface WithCacheOptions {
-    /** TTL in seconds. Required to prevent stale data. */
-    ttl: number;
-    /**
-     * If true, return stale data on fetcher error (if cached value exists).
-     * Defaults to false — errors propagate immediately.
-     */
-    staleOnError?: boolean;
-}
-
 /**
  * Read-through cache: returns cached value if present, otherwise calls
  * `fetcher`, stores result in KV, and returns it.
  *
  * @param kv - Cloudflare KV namespace binding
  * @param key - Cache key (use cache-keys helpers to build)
- * @param ttlOrOptions - TTL in seconds, or options object
+ * @param ttl - Cache TTL in seconds
  * @param fetcher - Async function that produces the value on cache miss
  * @returns The cached or freshly-fetched value
  */
-export async function withCache<T>(
-    kv: KVNamespace,
-    key: string,
-    ttlOrOptions: number | WithCacheOptions,
-    fetcher: () => Promise<T>,
-): Promise<T> {
-    const opts: WithCacheOptions = typeof ttlOrOptions === 'number' ? { ttl: ttlOrOptions } : ttlOrOptions;
-
+export async function withCache<T>(kv: KVNamespace, key: string, ttl: number, fetcher: () => Promise<T>): Promise<T> {
     // Try cache first
     const cached = await kv.get(key, 'text');
     if (cached !== null) {
         return JSON.parse(cached) as T;
     }
 
-    // Cache miss — call fetcher
-    if (opts.staleOnError) {
-        // staleOnError has no cached value to fall back to here,
-        // so just call the fetcher normally
-        const value = await fetcher();
-        await kv.put(key, JSON.stringify(value), { expirationTtl: opts.ttl });
-        return value;
-    }
-
+    // Cache miss — call fetcher, store result
     const value = await fetcher();
-    await kv.put(key, JSON.stringify(value), { expirationTtl: opts.ttl });
+    await kv.put(key, JSON.stringify(value), { expirationTtl: ttl });
     return value;
 }
 

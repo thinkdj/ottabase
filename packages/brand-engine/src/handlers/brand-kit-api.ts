@@ -7,25 +7,10 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { createBrandAssets, type LogoType } from '../persistence/assets';
 import { BrandKit } from '../persistence/BrandKit.model';
-import { createBrandCache } from '../persistence/cache';
-import { resolveFullBrandConfig } from '../persistence/resolveBrandConfig';
 import type { BrandKitItem } from '../persistence/types';
 import { logBrandAudit } from './audit-helper';
 import type { BrandApiEnv } from './brand-api';
-
-/**
- * Invalidate stale brand cache, then eagerly re-resolve to keep cache warm.
- * Both light and dark mode variants are refreshed so the next request is a cache hit.
- */
-async function warmBrandCache(env: BrandApiEnv, organizationId: string | null, appId?: string | null): Promise<void> {
-    const cache = createBrandCache(env.OBCF_KV);
-    await cache.invalidate(organizationId, appId);
-    // Re-populate both color modes so the very next request is a hit
-    await Promise.all([
-        resolveFullBrandConfig(env, { organizationId, appId, mode: 'light' }),
-        resolveFullBrandConfig(env, { organizationId, appId, mode: 'dark' }),
-    ]);
-}
+import { warmBrandCache } from './warm-cache';
 
 function serializeKit(kit: BrandKit): BrandKitItem {
     return {

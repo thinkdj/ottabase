@@ -68,7 +68,10 @@ export class CacheKeyBuilder {
     private parts: string[] = [];
 
     private constructor(namespace?: string) {
-        if (namespace) this.parts.push(namespace);
+        if (namespace) {
+            const ns = sanitize(namespace);
+            if (ns) this.parts.push(ns);
+        }
     }
 
     static create(namespace?: CacheNamespace): CacheKeyBuilder {
@@ -96,7 +99,8 @@ export class CacheKeyBuilder {
     /** Add version segment (auto-prefixes 'v' if missing) */
     version(v: string | number): this {
         const s = String(v);
-        this.parts.push(s.startsWith('v') ? s : `v${s}`);
+        const withPrefix = s.startsWith('v') ? s : `v${s}`;
+        this.parts.push(sanitize(withPrefix));
         return this;
     }
 

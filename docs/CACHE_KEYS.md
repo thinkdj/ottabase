@@ -144,17 +144,6 @@ await invalidateCache(env.OBCF_KV, userKey('auth', userId, 'profile'));
 const deleted = await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
 ```
 
-### Options
-
-```typescript
-await withCache(env.OBCF_KV, key, { ttl: 300, staleOnError: true }, fetcher);
-```
-
-| Option         | Type      | Description                                               |
-| -------------- | --------- | --------------------------------------------------------- |
-| `ttl`          | `number`  | TTL in seconds (required)                                 |
-| `staleOnError` | `boolean` | Return stale cached value on fetcher error (default: off) |
-
 ## Cache Invalidation Patterns
 
 ### 1. Version-Based Invalidation (RBAC)
@@ -177,8 +166,8 @@ next request is a cache hit:
 // After brand kit mutation (handled by warmBrandCache in brand-kit-api)
 await cache.invalidate(orgId, appId);
 await Promise.all([
-    resolveFullBrandConfig(env, orgId, appId, 'light'),
-    resolveFullBrandConfig(env, orgId, appId, 'dark'),
+    resolveFullBrandConfig(env, { organizationId: orgId, appId, mode: 'light' }),
+    resolveFullBrandConfig(env, { organizationId: orgId, appId, mode: 'dark' }),
 ]);
 ```
 

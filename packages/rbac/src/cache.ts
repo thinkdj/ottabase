@@ -7,6 +7,11 @@ import { CacheKeyBuilder, orgKey } from '@ottabase/cf/cache-keys';
 import logger from '@ottabase/logger';
 import type { RBACContext } from './types';
 
+/** Escape special regex characters in a string for safe use in RegExp */
+function escapeRegex(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * Cache configuration
  */
@@ -441,8 +446,12 @@ export class RBACCache {
 
         // Clear request cache for this user
         const pattern = appId
-            ? new RegExp(`${this.prefix}org:${organizationId}:.*:app:${appId}:usr:${userId}:`)
-            : new RegExp(`${this.prefix}org:${organizationId}:.*:usr:${userId}:`);
+            ? new RegExp(
+                  `${escapeRegex(this.prefix)}org:${escapeRegex(organizationId)}:.*:app:${escapeRegex(appId)}:usr:${escapeRegex(userId)}:`,
+              )
+            : new RegExp(
+                  `${escapeRegex(this.prefix)}org:${escapeRegex(organizationId)}:.*:usr:${escapeRegex(userId)}:`,
+              );
 
         this.requestCache.deletePattern(pattern);
 
@@ -466,7 +475,7 @@ export class RBACCache {
         const newVersion = await this.incrementOrgCacheVersion(organizationId);
 
         // Clear request cache for this organization
-        const pattern = new RegExp(`${this.prefix}org:${organizationId}:`);
+        const pattern = new RegExp(`${escapeRegex(this.prefix)}org:${escapeRegex(organizationId)}:`);
         this.requestCache.deletePattern(pattern);
 
         const roleInfo = roleName ? ` (role: ${roleName})` : '';

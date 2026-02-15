@@ -90,7 +90,7 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
     // Clear RBAC cache when user signs out so stale permissions aren't served
     options.onSignOut = async (_userId: string) => {
         if (!env.OBCF_KV) return;
-        await invalidateCacheByPrefix(env.OBCF_KV as any, 'rbac:');
+        await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
     };
 
     return options;

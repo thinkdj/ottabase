@@ -4,6 +4,7 @@
  */
 
 import { createCloudflareAdapter } from './adapters/cloudflare';
+import { globalKey, orgKey } from '@ottabase/cf/cache-keys';
 import type { QueueAdapter } from './adapters/types';
 import type {
     DedupeStore,
@@ -18,23 +19,15 @@ import type {
 } from './types';
 
 /**
- * Build scoped deduplication key
+ * Build scoped deduplication key using @ottabase/cf/cache-keys for consistent formatting.
  * Format with org: dedupe:org:{orgId}:{type}:{uniqueKey}
  * Format without org: dedupe:{type}:{uniqueKey}
  */
 function buildDedupeKey(type: string, uniqueKey: string, organizationId?: string): string {
-    // Note: We can't import from @ottabase/cf/cache-keys here to avoid circular deps
-    // So we build the key manually following the same pattern
     if (organizationId) {
-        const sanitizedOrgId = organizationId.replace(/[:]/g, '-').trim();
-        const sanitizedType = type.replace(/[:]/g, '-').trim();
-        const sanitizedKey = uniqueKey.replace(/[:]/g, '-').trim();
-        return `dedupe:org:${sanitizedOrgId}:${sanitizedType}:${sanitizedKey}`;
+        return orgKey('dedupe', organizationId, type, uniqueKey);
     }
-
-    const sanitizedType = type.replace(/[:]/g, '-').trim();
-    const sanitizedKey = uniqueKey.replace(/[:]/g, '-').trim();
-    return `dedupe:${sanitizedType}:${sanitizedKey}`;
+    return globalKey('dedupe', type, uniqueKey);
 }
 
 /**

@@ -76,7 +76,7 @@ export {
 } from './rate-limiting';
 
 // KV Cache (read-through helper)
-export { invalidateCache, invalidateCacheByPrefix, withCache, type WithCacheOptions } from './kv-cache';
+export { invalidateCache, invalidateCacheByPrefix, withCache } from './kv-cache';
 
 // Cache Keys
 export {

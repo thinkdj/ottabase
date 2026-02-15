@@ -66,14 +66,6 @@ describe('withCache', () => {
         expect(fetcher).not.toHaveBeenCalled();
     });
 
-    it('should accept options object instead of number TTL', async () => {
-        const fetcher = vi.fn(async () => 42);
-
-        await withCache(kv, 'num:key', { ttl: 120 }, fetcher);
-
-        expect(kv.put).toHaveBeenCalledWith('num:key', '42', { expirationTtl: 120 });
-    });
-
     it('should propagate fetcher errors by default', async () => {
         const fetcher = vi.fn(async () => {
             throw new Error('DB down');

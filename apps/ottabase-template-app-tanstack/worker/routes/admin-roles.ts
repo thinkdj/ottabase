@@ -1,4 +1,5 @@
 import { invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
+import type { KVNamespace } from '@cloudflare/workers-types';
 import { Role } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -6,10 +7,10 @@ import { requireAdminAccess } from '../lib/admin-guard';
 import type { ApiRouteContext } from './router';
 
 /** Invalidate all RBAC cache entries when system roles change */
-async function invalidateRBACCache(env: ApiRouteContext['env']): Promise<void> {
+async function invalidateRBACCache(env: { OBCF_KV?: KVNamespace }): Promise<void> {
     if (!env.OBCF_KV) return;
     try {
-        await invalidateCacheByPrefix(env.OBCF_KV as any, 'rbac:');
+        await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
     } catch {
         // Cache invalidation failure is non-fatal
     }
