@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 
 import type { D1Database, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
-import { resolveRouteForPath } from '../layouts/resolver';
+import { resolveRouteForPath } from '@ottabase/ottalayout';
 import { deepMerge } from '../resolver';
 import type { BrandTheme } from '../theme';
 import { BrandKit } from './BrandKit.model';
@@ -31,25 +31,24 @@ export interface ResolveBrandConfigOptions {
     skipCache?: boolean;
 }
 
-/** Full resolution data – all route mappings + all brand kits. Client resolves path locally. */
-export type FullBrandConfig = BrandResolutionCache & { mode: string; r2PublicUrl?: string };
+/** Full resolution data – all route mappings + all brand kits (both modes). Client resolves path locally. */
+export type FullBrandConfig = BrandResolutionCache & { mode?: string; r2PublicUrl?: string };
 
 /**
  * Load and build brand kits map from database.
- * Shared helper for both resolveFullBrandConfig and resolveBrandConfig.
- * Ensures default kit exists if none provided.
+ * Resolves BOTH light and dark themes per kit so the client can switch modes
+ * without a refetch. `theme` = light, `darkTheme` = dark.
  */
-async function loadBrandKitsMap(
-    brandKitIds: string[],
-    mode: string,
-    r2Url: string,
-): Promise<BrandResolutionCache['brandKitsMap']> {
+async function loadBrandKitsMap(brandKitIds: string[], r2Url: string): Promise<BrandResolutionCache['brandKitsMap']> {
     const brandKitsMap: BrandResolutionCache['brandKitsMap'] = {};
 
     for (const kitId of brandKitIds) {
         const kit = (await BrandKit.find(kitId)) as BrandKit | null;
         if (!kit) continue;
-        const theme = await brandKitToTheme(kit, mode);
+        const [lightTheme, darkTheme] = await Promise.all([
+            brandKitToTheme(kit, 'light'),
+            brandKitToTheme(kit, 'dark'),
+        ]);
         const logos = brandKitLogos(kit, r2Url);
         const presetId = (kit.get('themePresetId') as string) || null;
         const tokens = kit.toBrandTheme().tokens;
@@ -64,7 +63,8 @@ async function loadBrandKitsMap(
                 ogImage: logos.ogImage,
                 emailLogo: logos.emailLogo,
             } as Record<string, string>,
-            theme,
+            theme: lightTheme,
+            darkTheme,
             themeBase: presetId || 'default',
             tenantTheme,
             defaultColorScheme: (kit.get('defaultColorScheme') as string) || 'system',
@@ -78,7 +78,10 @@ async function loadBrandKitsMap(
     if (Object.keys(brandKitsMap).length === 0) {
         const defaultKit = await BrandKit.getOrCreateDefault();
         const defaultKitId = (defaultKit.get('id') as string) || 'default';
-        const theme = await brandKitToTheme(defaultKit, mode);
+        const [lightTheme, darkTheme] = await Promise.all([
+            brandKitToTheme(defaultKit, 'light'),
+            brandKitToTheme(defaultKit, 'dark'),
+        ]);
         const logos = brandKitLogos(defaultKit, r2Url);
         const presetId = (defaultKit.get('themePresetId') as string) || null;
         const tokens = defaultKit.toBrandTheme().tokens;
@@ -93,7 +96,8 @@ async function loadBrandKitsMap(
                 ogImage: logos.ogImage,
                 emailLogo: logos.emailLogo,
             } as Record<string, string>,
-            theme,
+            theme: lightTheme,
+            darkTheme,
             themeBase: presetId || 'default',
             tenantTheme,
             defaultColorScheme: (defaultKit.get('defaultColorScheme') as string) || 'system',
@@ -108,6 +112,7 @@ async function loadBrandKitsMap(
 
 /**
  * Resolve full brand data (route mappings, layouts, all brand kits). No path required.
+ * Returns both light and dark themes per kit – client picks mode at runtime.
  * Client uses resolveRouteForPath(path, routeMappings) then brandKitsMap[match.brandKitId].
  */
 export async function resolveFullBrandConfig(
@@ -116,20 +121,20 @@ export async function resolveFullBrandConfig(
 ): Promise<FullBrandConfig | null> {
     const orgId = opts.organizationId ?? null;
     const appId = opts.appId ?? null;
-    const mode = opts.mode ?? 'light';
     const skipCache = opts.skipCache ?? false;
 
     const cache = createBrandCache(env.OBCF_KV);
     const r2Url = env.R2_PUBLIC_URL || '';
 
+    // Dual-mode: cache is mode-neutral (both themes stored per kit)
     if (!skipCache) {
-        const cached = await cache.getResolutionData(orgId, appId, mode);
-        if (cached) return { ...cached, mode, r2PublicUrl: r2Url };
+        const cached = await cache.getResolutionData(orgId, appId, 'all');
+        if (cached) return { ...cached, r2PublicUrl: r2Url };
     }
 
     const layoutData = await getLayoutData(orgId, appId);
     const brandKitIds = [...new Set(layoutData.routeMappings.map((m) => m.brandKitId))];
-    const brandKitsMap = await loadBrandKitsMap(brandKitIds, mode, r2Url);
+    const brandKitsMap = await loadBrandKitsMap(brandKitIds, r2Url);
 
     const cacheData: BrandResolutionCache = {
         routeMappings: layoutData.routeMappings,
@@ -138,18 +143,19 @@ export async function resolveFullBrandConfig(
     };
     const fullConfig: FullBrandConfig = {
         ...cacheData,
-        mode,
         r2PublicUrl: r2Url,
     };
 
     if (!skipCache) {
-        await cache.setResolutionData(orgId, appId, mode, cacheData);
+        await cache.setResolutionData(orgId, appId, 'all', cacheData);
     }
     return fullConfig;
 }
 
 /**
  * Resolve brand config for org/app at the given path.
+ * Uses the mode-neutral cache (both themes stored per kit).
+ * Picks the mode-appropriate theme from the kit's `theme`/`darkTheme`.
  */
 export async function resolveBrandConfig(
     env: ResolveBrandConfigEnv,
@@ -164,33 +170,36 @@ export async function resolveBrandConfig(
     const cache = createBrandCache(env.OBCF_KV);
     const r2Url = env.R2_PUBLIC_URL || '';
 
-    // Try cache
+    // Try dual-mode cache first, fall back to legacy per-mode cache
     if (!skipCache) {
-        const cached = await cache.getResolutionData(orgId, appId, mode);
+        const cached = await cache.getResolutionData(orgId, appId, 'all');
         if (cached) {
             const match = resolveRouteForPath(path, cached.routeMappings);
             if (match) {
                 const kitData = cached.brandKitsMap[match.brandKitId];
                 if (kitData) {
-                    return buildConfigFromCache(cached, match, kitData, path);
+                    return buildConfigFromCache(cached, match, kitData, mode);
                 }
             }
         }
     }
 
-    // Load fresh
+    // Load fresh — loadBrandKitsMap resolves both modes
     const layoutData = await getLayoutData(orgId, appId);
     const match = resolveRouteForPath(path, layoutData.routeMappings);
     if (!match) return null;
 
     const brandKitIds = [...new Set(layoutData.routeMappings.map((m) => m.brandKitId))];
-    const brandKitsMap = await loadBrandKitsMap(brandKitIds, mode, r2Url);
+    const brandKitsMap = await loadBrandKitsMap(brandKitIds, r2Url);
 
     const kitData = brandKitsMap[match.brandKitId];
     if (!kitData) return null;
 
+    // Pick mode-appropriate theme
+    const baseTheme = mode === 'dark' && kitData.darkTheme ? kitData.darkTheme : kitData.theme;
+
     // Apply per-route token overrides when present
-    let resolvedTheme = kitData.theme;
+    let resolvedTheme = baseTheme;
     if (match.tokenOverridesJson) {
         try {
             const overrides = JSON.parse(match.tokenOverridesJson) as Record<string, unknown>;
@@ -220,7 +229,7 @@ export async function resolveBrandConfig(
             layoutTemplatesMap: layoutData.layoutTemplatesMap,
             brandKitsMap,
         };
-        await cache.setResolutionData(orgId, appId, mode, cacheData);
+        await cache.setResolutionData(orgId, appId, 'all', cacheData);
     }
 
     return config;
@@ -230,10 +239,12 @@ function buildConfigFromCache(
     cached: BrandResolutionCache,
     match: { layoutTemplateId: string; brandKitId: string; tokenOverridesJson?: string | null },
     kitData: BrandResolutionCache['brandKitsMap'][string],
-    _path: string,
+    mode: string,
 ): ResolvedBrandConfig {
+    // Pick mode-appropriate theme
+    let theme = mode === 'dark' && kitData.darkTheme ? kitData.darkTheme : kitData.theme;
+
     // Apply per-route token overrides when present
-    let theme = kitData.theme;
     if (match.tokenOverridesJson) {
         try {
             const overrides = JSON.parse(match.tokenOverridesJson) as Record<string, unknown>;

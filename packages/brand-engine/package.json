@@ -64,6 +64,7 @@
     "dependencies": {
         "@ottabase/audit": "workspace:*",
         "@ottabase/cf": "workspace:*",
+        "@ottabase/ottalayout": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/utils": "workspace:*"
     },

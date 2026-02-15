@@ -10,6 +10,8 @@
 //   • White-label / multi-tenant support
 // ---------------------------------------------------------------------------
 
+import type { LayoutConfig } from '@ottabase/ottalayout';
+import { DEFAULT_LAYOUT } from '@ottabase/ottalayout';
 import {
     DEFAULT_COLORS_DARK,
     DEFAULT_COLORS_LIGHT,
@@ -18,8 +20,6 @@ import {
     DEFAULT_SHADOWS,
     DEFAULT_SPACING,
 } from './defaults';
-import type { LayoutConfig } from './layout';
-import { DEFAULT_LAYOUT } from './layout';
 import type { BrandTheme } from './theme';
 import type { ColorScheme, DesignTokens, TokenAliases, TokenColors } from './tokens';
 

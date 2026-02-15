@@ -3,8 +3,8 @@
 // Self-contained: identity, logos, colors, fonts, theme
 // ---------------------------------------------------------------------------
 
+import type { LayoutConfig } from '@ottabase/ottalayout';
 import { BaseModel, type ModelFields, type PackageType } from '@ottabase/ottaorm';
-import type { LayoutConfig } from '../layout';
 import type { BrandTheme } from '../theme';
 import type { DesignTokens } from '../tokens';
 import { brandKitsTable } from './schema';

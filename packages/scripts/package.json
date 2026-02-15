@@ -19,7 +19,8 @@
         "cloudflare-validate": "bin/cloudflare-validate.cjs",
         "clean-cache": "bin/clean-cache.cjs",
         "clean-reset": "bin/clean-reset.mjs",
-        "clean-db": "bin/clean-db.mjs"
+        "clean-db": "bin/clean-db.mjs",
+        "clean-kv": "bin/clean-kv.mjs"
     },
     "files": [
         "dist",
@@ -33,6 +34,7 @@
         "clean-cache": "node bin/clean-cache.cjs",
         "clean-reset": "node bin/clean-reset.mjs",
         "clean-db": "node bin/clean-db.mjs",
+        "clean-kv": "node bin/clean-kv.mjs",
         "lint": "eslint src --ext .ts",
         "type-check": "tsc --noEmit",
         "test": "vitest",

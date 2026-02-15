@@ -2,7 +2,7 @@
 // Brand Engine – Resolved config types (API response shape, KV cache)
 // ---------------------------------------------------------------------------
 
-import type { LayoutConfig } from '../layout';
+import type { LayoutConfig } from '@ottabase/ottalayout';
 import type { ResolvedBrandTheme } from '../resolver';
 import type { BrandTheme } from '../theme';
 
@@ -117,7 +117,10 @@ export interface BrandResolutionCache {
             brandName: string;
             tagline?: string;
             logos: Record<string, string>;
+            /** Light-mode resolved theme */
             theme: ResolvedBrandTheme;
+            /** Dark-mode resolved theme (returned alongside light so client picks at runtime) */
+            darkTheme?: ResolvedBrandTheme;
             themeBase: string;
             tenantTheme: Partial<BrandTheme>;
             defaultColorScheme: string;

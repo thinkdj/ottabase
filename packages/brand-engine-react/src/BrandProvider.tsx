@@ -11,8 +11,10 @@
 
 'use client';
 
-import type { LayoutConfig, ResolvedBrandTheme } from '@ottabase/brand-engine';
-import { DEFAULT_LAYOUT, deepMerge, pathPatternToRegex, resolveTheme } from '@ottabase/brand-engine';
+import type { ResolvedBrandTheme } from '@ottabase/brand-engine';
+import { deepMerge } from '@ottabase/brand-engine';
+import type { LayoutConfig } from '@ottabase/ottalayout';
+import { DEFAULT_LAYOUT, pathPatternToRegex } from '@ottabase/ottalayout';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 /** Route mapping shape (expanded form) */
@@ -150,6 +152,7 @@ function applyRouteTokenOverrides(
 
 /**
  * Full config from GET /api/brand – route mappings, layouts, all brand kits.
+ * API returns both light and dark themes per kit. Client picks at runtime.
  * API may return compact form (kit + routes) when single brand kit.
  */
 export interface FullBrandConfig {
@@ -164,7 +167,10 @@ export interface FullBrandConfig {
             brandName: string;
             tagline?: string;
             logos: Record<string, string>;
+            /** Light-mode resolved theme */
             theme: ResolvedBrandTheme;
+            /** Dark-mode resolved theme */
+            darkTheme?: ResolvedBrandTheme;
             themeBase: string;
             tenantTheme: unknown;
             defaultColorScheme: string;
@@ -173,7 +179,8 @@ export interface FullBrandConfig {
             hideOttabaseBranding: boolean;
         }
     >;
-    mode: 'light' | 'dark';
+    /** @deprecated No longer sent by API — client determines mode locally */
+    mode?: 'light' | 'dark';
 }
 
 function expandCompactConfig(config: FullBrandConfig): RouteMapping[] {
@@ -244,6 +251,7 @@ function resolveConfigForPath(
     full: FullBrandConfig,
     pathname: string,
     routeMatcher: RouteMatcherFn,
+    mode: 'light' | 'dark',
 ): BrandConfig | null {
     const routeMappings = expandCompactConfig(full);
     const match = routeMatcher(pathname);
@@ -252,10 +260,12 @@ function resolveConfigForPath(
     const kit = kitId ? full.brandKitsMap[kitId] : Object.values(full.brandKitsMap)[0];
     if (!kit) return null;
 
+    // Pick mode-appropriate theme (dark-mode theme if available, else fall back to light)
+    let theme = mode === 'dark' && kit.darkTheme ? kit.darkTheme : kit.theme;
+
     // Apply per-route token overrides if present
-    let theme = kit.theme;
     if (match?.tokenOverridesJson) {
-        theme = applyRouteTokenOverrides(kit.theme, match.tokenOverridesJson, kit.themeBase, kit.tenantTheme);
+        theme = applyRouteTokenOverrides(theme, match.tokenOverridesJson, kit.themeBase, kit.tenantTheme);
     }
 
     return {
@@ -290,6 +300,14 @@ function buildFallbackConfig(theme: ResolvedBrandTheme): BrandConfig {
     };
 }
 
+/** Detect current color scheme mode from DOM */
+function detectMode(): 'light' | 'dark' {
+    if (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) {
+        return 'dark';
+    }
+    return 'light';
+}
+
 export function BrandProvider({
     children,
     apiEndpoint = '/api/brand',
@@ -300,23 +318,30 @@ export function BrandProvider({
 }: BrandProviderProps) {
     const [fullConfig, setFullConfig] = useState<FullBrandConfig | null>(initialConfig ?? null);
     const [path, setPath] = useState('/');
+    const [mode, setMode] = useState<'light' | 'dark'>(detectMode);
     const [isLoading, setIsLoading] = useState(!initialConfig);
     const [error, setError] = useState<Error | null>(null);
     const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Watch for dark/light mode changes on <html> class (no refetch needed)
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const observer = new MutationObserver(() => {
+            setMode(detectMode());
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
+    }, []);
 
     const fetchConfigWithRetry = useCallback(
         async (attempt = 1) => {
             try {
                 setIsLoading(true);
+                // No mode param — API returns both light+dark themes per kit
                 const params = new URLSearchParams();
-                const mode =
-                    typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
-                        ? 'dark'
-                        : 'light';
-                params.set('mode', mode);
                 if (organizationId) params.set('organizationId', organizationId);
                 if (appId) params.set('appId', appId);
-                const url = `${apiEndpoint}?${params}`;
+                const url = params.toString() ? `${apiEndpoint}?${params}` : apiEndpoint;
 
                 const headers: Record<string, string> = {};
                 if (organizationId) headers['X-Organization-Id'] = organizationId;
@@ -366,7 +391,7 @@ export function BrandProvider({
         return createRouteMatcherCache(routeMappings);
     }, [fullConfig]);
 
-    // Derive path-scoped config from full config + current path (no refetch on nav)
+    // Derive path-scoped config from full config + current path + mode (no refetch on nav or mode change)
     const config = useMemo(() => {
         // Apply fallback theme when API fails and fallbackTheme is provided
         if (!fullConfig) {
@@ -374,7 +399,7 @@ export function BrandProvider({
             return null;
         }
         if (!routeMatcher) return null;
-        const resolved = resolveConfigForPath(fullConfig, path, routeMatcher);
+        const resolved = resolveConfigForPath(fullConfig, path, routeMatcher, mode);
         // Fallback if route resolution fails but we have fullConfig + fallbackTheme
         if (resolved || !fallbackTheme) return resolved;
         const firstKit = Object.values(fullConfig.brandKitsMap)[0];
@@ -387,7 +412,7 @@ export function BrandProvider({
             routeMappings: expandCompactConfig(fullConfig),
             r2PublicUrl: fullConfig.r2PublicUrl,
         } as BrandConfig;
-    }, [fullConfig, path, routeMatcher, fallbackTheme, error]);
+    }, [fullConfig, path, mode, routeMatcher, fallbackTheme, error]);
 
     // Debounced CSS injection with validation
     const debouncedInjectCss = useMemo(

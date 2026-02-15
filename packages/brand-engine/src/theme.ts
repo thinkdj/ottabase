@@ -2,8 +2,8 @@
 // BrandEngine – Brand Theme definition
 // ---------------------------------------------------------------------------
 
+import type { LayoutConfig } from '@ottabase/ottalayout';
 import type { DesignTokens, TokenCursors } from './tokens';
-import type { LayoutConfig } from './layout';
 
 /**
  * A complete BrandTheme – the union of design tokens, layout configuration,

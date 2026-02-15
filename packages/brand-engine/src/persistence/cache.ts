@@ -47,8 +47,8 @@ export function createBrandCache(kv: KVNamespace): BrandCacheClient {
         },
 
         async invalidate(organizationId, appId) {
-            // Invalidate light/dark caches. Custom color scheme caches (if any) expire via TTL.
-            for (const m of ['light', 'dark'] as const) {
+            // Invalidate all variants: dual-mode ('all') + legacy per-mode caches
+            for (const m of ['all', 'light', 'dark'] as const) {
                 await kv.delete(getKey(organizationId, appId, m));
                 if (appId) await kv.delete(getKey(organizationId, null, m));
                 if (organizationId) await kv.delete(getKey(null, null, m));

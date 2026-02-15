@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useTheme as useNextTheme } from 'next-themes';
-import type { BrandTheme, LayoutConfig, ResolvedBrandTheme } from '@ottabase/brand-engine';
+import type { BrandTheme, ResolvedBrandTheme } from '@ottabase/brand-engine';
 import { getThemeOrDefault, resolveTheme } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
+import type { LayoutConfig } from '@ottabase/ottalayout';
+import { useTheme as useNextTheme } from 'next-themes';
+import { useCallback, useMemo, useState } from 'react';
 import { ThemeProviderContext } from './ThemeContext';
 
 const LAYOUT_OVERRIDES_KEY = 'ottabase.layout-overrides';

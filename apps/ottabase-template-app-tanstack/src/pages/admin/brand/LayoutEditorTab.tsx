@@ -1,5 +1,11 @@
-import { isValidPathPattern, LAYOUT_PRESETS, type LayoutComponentKey, type LayoutConfig } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
+import {
+    isValidPathPattern,
+    LAYOUT_PRESETS,
+    mergeLayoutConfig,
+    type LayoutConfig,
+    type LayoutPresetId,
+} from '@ottabase/ottalayout';
 import {
     Badge,
     Button,
@@ -29,49 +35,43 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { brandKitApi, layoutApi, type LayoutMappingItem, type LayoutTemplateItem } from './brandApi';
 
-const COMPONENT_KEYS = Object.keys(LAYOUT_PRESETS) as LayoutComponentKey[];
+const PRESET_IDS = Object.keys(LAYOUT_PRESETS) as LayoutPresetId[];
 
-const BUILT_IN_PRESETS: LayoutTemplateItem[] = COMPONENT_KEYS.map((key) => ({
+const BUILT_IN_PRESETS: LayoutTemplateItem[] = PRESET_IDS.map((key) => ({
     id: key,
     name: key.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
     componentKey: key,
     config: LAYOUT_PRESETS[key].config,
 }));
 
-const DEFAULT_CONFIGS = COMPONENT_KEYS.reduce<Record<LayoutComponentKey, LayoutConfig>>(
+const DEFAULT_CONFIGS = PRESET_IDS.reduce<Record<LayoutPresetId, LayoutConfig>>(
     (acc, key) => {
         acc[key] = LAYOUT_PRESETS[key].config;
         return acc;
     },
-    {} as Record<LayoutComponentKey, LayoutConfig>,
+    {} as Record<LayoutPresetId, LayoutConfig>,
 );
 
-function mergeLayoutConfig(existing: object | undefined, fallback: LayoutConfig): LayoutConfig {
-    if (!existing || typeof existing !== 'object') return fallback;
-    const c = existing as Record<string, unknown>;
-    return {
-        header: (c.header as LayoutConfig['header']) ?? fallback.header,
-        navigation: (c.navigation as LayoutConfig['navigation']) ?? fallback.navigation,
-        contentWidth: (c.contentWidth as LayoutConfig['contentWidth']) ?? fallback.contentWidth,
-        footer: typeof c.footer === 'boolean' ? c.footer : fallback.footer,
-        density: (c.density as LayoutConfig['density']) ?? fallback.density,
-    };
-}
-
 function getTemplateConfig(template: LayoutTemplateItem): LayoutConfig {
-    const key = template.componentKey as LayoutComponentKey;
-    const fallback = DEFAULT_CONFIGS[key] ?? DEFAULT_CONFIGS['app-shell'];
+    const fallback = DEFAULT_CONFIGS[template.componentKey as LayoutPresetId] ?? DEFAULT_CONFIGS['app-shell'];
     return mergeLayoutConfig(template.config, fallback);
 }
 
 function LayoutMiniPreview({ config }: { config: LayoutConfig }) {
-    const densityGap = config.density === 'compact' ? 'gap-1' : 'gap-1.5';
+    const densityGap = config.density === 'compact' ? 'gap-1' : config.density === 'spacious' ? 'gap-2' : 'gap-1.5';
 
     const contentMaxWidth =
-        config.contentWidth === 'full' ? 'max-w-none' : config.contentWidth === 'fluid' ? 'max-w-[94%]' : 'max-w-[72%]';
+        config.contentWidth === 'full'
+            ? 'max-w-none'
+            : ['lg', 'fluid', 'xl'].includes(config.contentWidth)
+              ? 'max-w-[94%]'
+              : ['xs', 'sm'].includes(config.contentWidth)
+                ? 'max-w-[56%]'
+                : 'max-w-[72%]';
     const navWidth = config.navigation === 'sidebar' ? 'w-10' : config.navigation === 'drawer' ? 'w-6' : 'w-0';
     const headerHeight = config.header === 'minimal' ? 'h-3' : config.header === 'topbar' ? 'h-4' : 'h-0';
     const hasHeader = config.header !== 'none';
+    const hasNav = config.navigation !== 'none';
 
     return (
         <div className="space-y-2">
@@ -84,7 +84,7 @@ function LayoutMiniPreview({ config }: { config: LayoutConfig }) {
                         ) : null}
                         {config.navigation === 'topbar' ? <div className="h-2.5 rounded bg-muted/90" /> : null}
                         <div className="flex min-h-0 flex-1 gap-1">
-                            {config.navigation !== 'topbar' ? (
+                            {hasNav && config.navigation !== 'topbar' ? (
                                 <div className={`${navWidth} relative rounded bg-muted`}>
                                     {config.navigation === 'drawer' ? (
                                         <div className="absolute left-1.5 top-2 flex flex-col gap-0.5">
@@ -151,7 +151,7 @@ function LayoutConfigEditor({ config, onChange }: { config: LayoutConfig; onChan
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            {['sidebar', 'topbar', 'drawer'].map((v) => (
+                            {['sidebar', 'topbar', 'drawer', 'none'].map((v) => (
                                 <SelectItem key={v} value={v}>
                                     {v}
                                 </SelectItem>
@@ -169,7 +169,7 @@ function LayoutConfigEditor({ config, onChange }: { config: LayoutConfig; onChan
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            {['fixed', 'fluid', 'full'].map((v) => (
+                            {['xs', 'sm', 'md', 'lg', 'xl', 'full'].map((v) => (
                                 <SelectItem key={v} value={v}>
                                     {v}
                                 </SelectItem>
@@ -187,7 +187,7 @@ function LayoutConfigEditor({ config, onChange }: { config: LayoutConfig; onChan
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            {['compact', 'comfy'].map((v) => (
+                            {['compact', 'comfy', 'spacious'].map((v) => (
                                 <SelectItem key={v} value={v}>
                                     {v}
                                 </SelectItem>
@@ -196,13 +196,82 @@ function LayoutConfigEditor({ config, onChange }: { config: LayoutConfig; onChan
                     </Select>
                 </div>
             </div>
-            <div className="flex items-center justify-between">
-                <Label htmlFor="layoutFooter">Footer</Label>
-                <Switch
-                    id="layoutFooter"
-                    checked={config.footer}
-                    onCheckedChange={(v) => onChange({ ...config, footer: v })}
-                />
+
+            {/* Extended layout controls */}
+            <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                    <Label>Sidebar width</Label>
+                    <Select
+                        value={config.sidebarWidth ?? 'standard'}
+                        onValueChange={(v) => onChange({ ...config, sidebarWidth: v as LayoutConfig['sidebarWidth'] })}
+                    >
+                        <SelectTrigger>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {['narrow', 'standard', 'wide'].map((v) => (
+                                <SelectItem key={v} value={v}>
+                                    {v}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div>
+                    <Label>Container padding</Label>
+                    <Select
+                        value={config.containerPadding ?? 'md'}
+                        onValueChange={(v) =>
+                            onChange({ ...config, containerPadding: v as LayoutConfig['containerPadding'] })
+                        }
+                    >
+                        <SelectTrigger>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {['none', 'sm', 'md', 'lg'].map((v) => (
+                                <SelectItem key={v} value={v}>
+                                    {v}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="layoutFooter">Footer</Label>
+                    <Switch
+                        id="layoutFooter"
+                        checked={config.footer}
+                        onCheckedChange={(v) => onChange({ ...config, footer: v })}
+                    />
+                </div>
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="layoutSticky">Sticky header</Label>
+                    <Switch
+                        id="layoutSticky"
+                        checked={config.headerSticky ?? true}
+                        onCheckedChange={(v) => onChange({ ...config, headerSticky: v })}
+                    />
+                </div>
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="layoutCollapsible">Collapsible sidebar</Label>
+                    <Switch
+                        id="layoutCollapsible"
+                        checked={config.sidebarCollapsible ?? false}
+                        onCheckedChange={(v) => onChange({ ...config, sidebarCollapsible: v })}
+                    />
+                </div>
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="layoutCenter">Center content</Label>
+                    <Switch
+                        id="layoutCenter"
+                        checked={config.centerContent ?? false}
+                        onCheckedChange={(v) => onChange({ ...config, centerContent: v })}
+                    />
+                </div>
             </div>
         </div>
     );
@@ -266,87 +335,71 @@ export function LayoutEditorTab() {
                 </CardContent>
             </Card>
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),320px]">
-                <Card className="space-y-0">
-                    <CardHeader>
-                        <CardTitle>Route mappings</CardTitle>
-                        <CardDescription>
-                            Higher priorities win. This form builds the list of patterns that the router evaluates every
-                            request against.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <MappingsEditor
-                            mappings={mappings}
-                            layoutOptions={layoutOptions}
-                            kits={kits}
-                            onSave={(m) =>
-                                putMappingsMutation.mutate({
-                                    mappings: m.map(
-                                        ({
-                                            pathPattern,
-                                            layoutTemplateId,
-                                            brandKitId,
-                                            priority,
-                                            tokenOverridesJson,
-                                        }) => ({
-                                            pathPattern,
-                                            layoutTemplateId,
-                                            brandKitId: brandKitId!,
-                                            priority: priority ?? 0,
-                                            tokenOverridesJson: tokenOverridesJson || null,
-                                        }),
-                                    ),
-                                })
-                            }
-                            saving={putMappingsMutation.isPending}
-                        />
-                    </CardContent>
-                </Card>
+            <Card className="space-y-0">
+                <CardHeader>
+                    <CardTitle>Route mappings</CardTitle>
+                    <CardDescription>
+                        Higher priorities win. This form builds the list of patterns that the router evaluates every
+                        request against.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <MappingsEditor
+                        mappings={mappings}
+                        layoutOptions={layoutOptions}
+                        kits={kits}
+                        onSave={(m) =>
+                            putMappingsMutation.mutate({
+                                mappings: m.map(
+                                    ({ pathPattern, layoutTemplateId, brandKitId, priority, tokenOverridesJson }) => ({
+                                        pathPattern,
+                                        layoutTemplateId,
+                                        brandKitId: brandKitId!,
+                                        priority: priority ?? 0,
+                                        tokenOverridesJson: tokenOverridesJson || null,
+                                    }),
+                                ),
+                            })
+                        }
+                        saving={putMappingsMutation.isPending}
+                    />
+                </CardContent>
+            </Card>
 
-                <div className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Layout templates</CardTitle>
-                            <CardDescription>
-                                Built-in presets are guaranteed, but you can clone any structure as a template to map on
-                                multiple routes.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                <CreateTemplateDialog templates={templates} />
-                                {templates.length === 0 ? (
-                                    <p className="py-6 text-center text-sm text-muted-foreground">
-                                        No custom templates yet. Use the built-in presets listed on the right when
-                                        creating mappings.
-                                    </p>
-                                ) : (
-                                    <div className="grid gap-3 sm:grid-cols-1">
-                                        {templates.map((t) => {
-                                            const config = getTemplateConfig(t);
-                                            return (
-                                                <div key={t.id} className="rounded-lg border p-4 dark:border-muted">
-                                                    <div className="mb-3 flex items-center justify-between gap-2">
-                                                        <div>
-                                                            <p className="font-medium">{t.name}</p>
-                                                            <p className="font-mono text-xs text-muted-foreground">
-                                                                {t.componentKey}
-                                                            </p>
-                                                        </div>
-                                                        <EditTemplateDialog template={t} />
-                                                    </div>
-                                                    <LayoutMiniPreview config={config} />
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Layout templates</CardTitle>
+                    <CardDescription>
+                        Built-in presets are guaranteed, but you can clone any structure as a template to map on
+                        multiple routes.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        <CreateTemplateDialog templates={templates} />
+                        {templates.length === 0 ? (
+                            <p className="py-6 text-center text-sm text-muted-foreground">
+                                No custom templates yet. Use the built-in presets when creating mappings.
+                            </p>
+                        ) : (
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                {templates.map((t) => {
+                                    const config = getTemplateConfig(t);
+                                    return (
+                                        <div key={t.id} className="rounded-lg border p-4 dark:border-muted">
+                                            <div className="mb-3 flex items-center justify-between gap-2">
+                                                <p className="font-medium">{t.name}</p>
+                                                <EditTemplateDialog template={t} />
+                                            </div>
+                                            <LayoutMiniPreview config={config} />
+                                        </div>
+                                    );
+                                })}
                             </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }
@@ -354,14 +407,14 @@ export function LayoutEditorTab() {
 function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
-    const [componentKey, setComponentKey] = useState<LayoutComponentKey>('app-shell');
+    const [basePreset, setBasePreset] = useState<LayoutPresetId>('app-shell');
     const [config, setConfig] = useState<LayoutConfig>(DEFAULT_CONFIGS['app-shell']);
     const queryClient = useQueryClient();
     const { refresh } = useBrand();
 
     useEffect(() => {
-        setConfig(DEFAULT_CONFIGS[componentKey]);
-    }, [componentKey]);
+        setConfig(DEFAULT_CONFIGS[basePreset]);
+    }, [basePreset]);
 
     const putMutation = useMutation({
         mutationFn: (body: { name: string; componentKey: string; config: object }) => layoutApi.putTemplate(body),
@@ -370,6 +423,7 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
             queryClient.invalidateQueries({ queryKey: ['brand', 'layouts'] });
             refresh();
             setName('');
+            setBasePreset('app-shell');
             setConfig(DEFAULT_CONFIGS['app-shell']);
             setOpen(false);
         },
@@ -389,7 +443,9 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Create layout template</DialogTitle>
-                    <DialogDescription>Use this only for reusable layouts you plan to map on routes.</DialogDescription>
+                    <DialogDescription>
+                        Start from a preset, then customise the config. Templates are reusable across route mappings.
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div>
@@ -403,27 +459,33 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
                         {duplicateName ? <p className="mt-1 text-xs text-amber-600">Name already exists.</p> : null}
                     </div>
                     <div>
-                        <Label>Component</Label>
-                        <Select value={componentKey} onValueChange={(v) => setComponentKey(v as LayoutComponentKey)}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {COMPONENT_KEYS.map((k) => (
-                                    <SelectItem key={k} value={k}>
-                                        {k}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Label className="mb-2 block">Start from preset</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {PRESET_IDS.map((id) => (
+                                <button
+                                    key={id}
+                                    type="button"
+                                    onClick={() => setBasePreset(id)}
+                                    className={`rounded-lg border p-2 text-center text-xs transition-colors ${
+                                        basePreset === id
+                                            ? 'border-primary bg-primary/5 font-medium'
+                                            : 'hover:bg-muted/40'
+                                    }`}
+                                >
+                                    {id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                     <LayoutConfigEditor config={config} onChange={setConfig} />
                     <Button
                         onClick={() => {
-                            if (duplicateName) {
-                                return;
-                            }
-                            putMutation.mutate({ name: name.trim() || componentKey, componentKey, config });
+                            if (duplicateName) return;
+                            putMutation.mutate({
+                                name: name.trim() || basePreset,
+                                componentKey: basePreset,
+                                config,
+                            });
                         }}
                         disabled={putMutation.isPending || duplicateName}
                     >
@@ -438,7 +500,6 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
 function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState(template.name);
-    const [componentKey, setComponentKey] = useState<LayoutComponentKey>(template.componentKey as LayoutComponentKey);
     const [config, setConfig] = useState<LayoutConfig>(() => getTemplateConfig(template));
     const queryClient = useQueryClient();
     const { refresh } = useBrand();
@@ -446,7 +507,6 @@ function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
     useEffect(() => {
         if (!open) return;
         setName(template.name);
-        setComponentKey(template.componentKey as LayoutComponentKey);
         setConfig(getTemplateConfig(template));
     }, [open, template]);
 
@@ -472,7 +532,7 @@ function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Edit layout template</DialogTitle>
-                    <DialogDescription>Change the name, component, or config.</DialogDescription>
+                    <DialogDescription>Change the name or layout config.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div>
@@ -484,28 +544,13 @@ function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
                             placeholder="e.g. Main App Shell"
                         />
                     </div>
-                    <div>
-                        <Label>Component</Label>
-                        <Select value={componentKey} onValueChange={(v) => setComponentKey(v as LayoutComponentKey)}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {COMPONENT_KEYS.map((k) => (
-                                    <SelectItem key={k} value={k}>
-                                        {k}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
                     <LayoutConfigEditor config={config} onChange={setConfig} />
                     <Button
                         onClick={() =>
                             putMutation.mutate({
                                 id: template.id,
                                 name: name.trim() || template.name,
-                                componentKey,
+                                componentKey: template.componentKey,
                                 config,
                             })
                         }
@@ -574,9 +619,71 @@ function MappingsEditor({
         setItems((prevItems) => prevItems.filter((_, i) => i !== idx));
     }, []);
 
+    /** Update a single field on an existing mapping row */
+    const updateItem = useCallback((idx: number, patch: Partial<LayoutMappingItem>) => {
+        setItems((prev) => prev.map((item, i) => (i === idx ? { ...item, ...patch } : item)));
+    }, []);
+
     return (
         <div className="space-y-4">
+            {/* Existing mappings table (shown first) */}
+            {kits.length === 0 ? (
+                <p className="text-sm text-amber-600 dark:text-amber-500">
+                    Create a Brand Kit first before adding mappings.
+                </p>
+            ) : null}
+            {items.length === 0 ? (
+                <div className="rounded-lg border border-dashed py-8 text-center dark:border-muted">
+                    <p className="text-sm text-muted-foreground">No mappings yet. Add one below.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        Example: <code className="rounded bg-muted px-1">/blog/**</code> or{' '}
+                        <code className="rounded bg-muted px-1">/admin/**</code>
+                    </p>
+                </div>
+            ) : (
+                <div className="overflow-x-auto rounded-lg border dark:border-muted">
+                    <table className="min-w-full divide-y divide-muted text-sm">
+                        <thead className="bg-muted/20">
+                            <tr>
+                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
+                                    Path pattern
+                                </th>
+                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Layout</th>
+                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Brand Kit</th>
+                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Priority</th>
+                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-muted bg-background">
+                            {items.map((m, idx) => {
+                                const hasOverrides = !!m.tokenOverridesJson && m.tokenOverridesJson !== '{}';
+                                return (
+                                    <MappingRow
+                                        key={`${m.pathPattern}-${idx}`}
+                                        mapping={m}
+                                        layoutOptions={layoutOptions}
+                                        kits={kits}
+                                        hasOverrides={hasOverrides}
+                                        onUpdate={(patch) => updateItem(idx, patch)}
+                                        onRemove={() => remove(idx)}
+                                        onTokenOverridesChange={(json) =>
+                                            updateItem(idx, { tokenOverridesJson: json || null })
+                                        }
+                                    />
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            <Button onClick={() => onSave(items)} disabled={saving || kits.length === 0}>
+                {saving ? 'Saving...' : 'Save mappings'}
+            </Button>
+
+            {/* Add new mapping (below save button) */}
             <div className="space-y-3 rounded-lg border p-4 dark:border-muted">
+                <p className="text-sm font-medium text-muted-foreground">Add new mapping</p>
                 <div className="flex flex-wrap gap-2">
                     <div>
                         <Input
@@ -652,89 +759,41 @@ function MappingsEditor({
                     </div>
                 </div>
             </div>
-            {kits.length === 0 ? (
-                <p className="text-sm text-amber-600 dark:text-amber-500">
-                    Create a Brand Kit first before adding mappings.
-                </p>
-            ) : null}
-            {items.length === 0 ? (
-                <div className="rounded-lg border border-dashed py-8 text-center dark:border-muted">
-                    <p className="text-sm text-muted-foreground">No mappings yet. Add pattern rows above.</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                        Example: <code className="rounded bg-muted px-1">/blog/**</code> or{' '}
-                        <code className="rounded bg-muted px-1">/admin/**</code>
-                    </p>
-                </div>
-            ) : (
-                <div className="overflow-x-auto rounded-lg border dark:border-muted">
-                    <table className="min-w-full divide-y divide-muted text-sm">
-                        <thead className="bg-muted/20">
-                            <tr>
-                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
-                                    Path pattern
-                                </th>
-                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Layout</th>
-                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Brand Kit</th>
-                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Priority</th>
-                                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-muted bg-background">
-                            {items.map((m, idx) => {
-                                const layout = layoutOptions.find((t) => t.id === m.layoutTemplateId);
-                                const kit = kits.find((k) => k.id === m.brandKitId);
-                                const hasOverrides = !!m.tokenOverridesJson && m.tokenOverridesJson !== '{}';
-                                return (
-                                    <MappingRow
-                                        key={`${m.pathPattern}-${idx}`}
-                                        mapping={m}
-                                        layoutName={layout?.name ?? m.layoutTemplateId}
-                                        layoutComponentKey={layout?.componentKey}
-                                        kitName={kit?.name ?? m.brandKitId}
-                                        hasOverrides={hasOverrides}
-                                        onRemove={() => remove(idx)}
-                                        onTokenOverridesChange={(json) =>
-                                            setItems((prev) =>
-                                                prev.map((item, i) =>
-                                                    i === idx ? { ...item, tokenOverridesJson: json || null } : item,
-                                                ),
-                                            )
-                                        }
-                                    />
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-            <Button onClick={() => onSave(items)} disabled={saving || kits.length === 0} className="mt-4">
-                {saving ? 'Saving...' : 'Save mappings'}
-            </Button>
         </div>
     );
 }
 
-/** Individual mapping row with collapsible token overrides editor */
+/** Individual mapping row with inline-editable fields and collapsible token overrides */
 function MappingRow({
     mapping,
-    layoutName,
-    layoutComponentKey,
-    kitName,
+    layoutOptions,
+    kits,
     hasOverrides,
+    onUpdate,
     onRemove,
     onTokenOverridesChange,
 }: {
     mapping: LayoutMappingItem;
-    layoutName: string;
-    layoutComponentKey?: string;
-    kitName: string;
+    layoutOptions: LayoutTemplateItem[];
+    kits: Array<{ id: string; name: string }>;
     hasOverrides: boolean;
+    onUpdate: (patch: Partial<LayoutMappingItem>) => void;
     onRemove: () => void;
     onTokenOverridesChange: (json: string | null) => void;
 }) {
     const [expanded, setExpanded] = useState(false);
     const [overrideText, setOverrideText] = useState(mapping.tokenOverridesJson ?? '');
     const [jsonError, setJsonError] = useState('');
+    const [pathError, setPathError] = useState('');
+
+    const handlePathChange = (value: string) => {
+        onUpdate({ pathPattern: value });
+        if (value.trim() && !isValidPathPattern(value.trim())) {
+            setPathError('Invalid pattern');
+        } else {
+            setPathError('');
+        }
+    };
 
     const handleBlur = () => {
         const trimmed = overrideText.trim();
@@ -755,22 +814,54 @@ function MappingRow({
     return (
         <>
             <tr>
-                <td className="px-3 py-3 align-top">
-                    <code className="font-mono text-xs text-muted-foreground">{mapping.pathPattern}</code>
+                <td className="px-3 py-2 align-top">
+                    <div>
+                        <Input
+                            value={mapping.pathPattern}
+                            onChange={(e) => handlePathChange(e.target.value)}
+                            placeholder="/* or /admin/**"
+                            className={`h-8 font-mono text-xs ${pathError ? 'border-red-500' : ''}`}
+                        />
+                        {pathError ? <p className="mt-0.5 text-[10px] text-red-500">{pathError}</p> : null}
+                    </div>
                 </td>
-                <td className="px-3 py-3 align-top">
-                    <p className="font-medium">{layoutName}</p>
-                    {layoutComponentKey && <p className="text-xs text-muted-foreground">{layoutComponentKey}</p>}
+                <td className="px-3 py-2 align-top">
+                    <Select value={mapping.layoutTemplateId} onValueChange={(v) => onUpdate({ layoutTemplateId: v })}>
+                        <SelectTrigger className="h-8 w-[160px] text-xs">
+                            <SelectValue placeholder="Layout" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {layoutOptions.map((opt) => (
+                                <SelectItem key={opt.id} value={opt.id}>
+                                    {opt.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </td>
-                <td className="px-3 py-3 align-top">
-                    <p className="font-medium">{kitName}</p>
+                <td className="px-3 py-2 align-top">
+                    <Select value={mapping.brandKitId || ''} onValueChange={(v) => onUpdate({ brandKitId: v })}>
+                        <SelectTrigger className="h-8 w-[160px] text-xs">
+                            <SelectValue placeholder="Brand Kit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {kits.map((k) => (
+                                <SelectItem key={k.id} value={k.id}>
+                                    {k.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </td>
-                <td className="px-3 py-3 align-top">
-                    <span className="rounded bg-muted/40 px-2 py-0.5 text-[10px] font-semibold">
-                        {mapping.priority ?? 0}
-                    </span>
+                <td className="px-3 py-2 align-top">
+                    <Input
+                        type="number"
+                        value={mapping.priority ?? 0}
+                        onChange={(e) => onUpdate({ priority: Number(e.target.value) || 0 })}
+                        className="h-8 w-16 text-xs"
+                    />
                 </td>
-                <td className="px-3 py-3 align-top">
+                <td className="px-3 py-2 align-top">
                     <div className="flex items-center gap-1">
                         <Button
                             size="sm"

@@ -16,8 +16,6 @@ export type {
     TokenTypography,
 } from './tokens';
 
-export type { ContentWidth, Density, HeaderVariant, LayoutConfig, NavigationVariant } from './layout';
-
 export type { BrandKitItem, LayoutMappingItem, LayoutTemplateItem, UpdateBrandKitPayload } from './persistence';
 
 export type { LegacyThemeConfig } from './adapter';
@@ -33,7 +31,6 @@ export {
     DEFAULT_SHADOWS,
     DEFAULT_SPACING,
 } from './defaults';
-export { DEFAULT_LAYOUT } from './layout';
 
 // ── Core functions ─────────────────────────────────────────────────────────
 export { createTokenAccessor, getToken } from './accessors';
@@ -57,15 +54,7 @@ export { applyBrandTheme, buildCSSVarMap, injectCSSVars, injectFont } from './cs
 export { deepMerge, resolveAliases, resolveTheme } from './resolver';
 
 // ── Validators ─────────────────────────────────────────────────────────────
-export {
-    isValidBrandTheme,
-    isValidJSON,
-    isValidLayoutConfig,
-    isValidPathPattern,
-    isValidTokenColors,
-    mergeLayoutConfig,
-    safeParseJSON,
-} from './validators';
+export { isValidBrandTheme, isValidJSON, isValidTokenColors, safeParseJSON } from './validators';
 
 // ── Registry ───────────────────────────────────────────────────────────────
 export {
@@ -80,12 +69,8 @@ export {
 // ── Legacy adapter ─────────────────────────────────────────────────────────
 export { fromLegacyThemeConfig } from './adapter';
 
-// ── Layout system ─────────────────────────────────────────────────────────
+// ── Layout defaults (brand-engine-owned) ──────────────────────────────────
 export { DEFAULT_ROUTE_MAPPINGS } from './layouts';
-export { APP_SHELL_LAYOUT, DOCS_LAYOUT, HOMEPAGE_LAYOUT, LAYOUT_PRESETS, MINIMAL_LAYOUT } from './layouts/presets';
-export type { LayoutComponentKey, LayoutPreset } from './layouts/presets';
-export { pathPatternToRegex, resolveLayoutForPath, resolveRouteForPath } from './layouts/resolver';
-export type { RouteMatchResult } from './layouts/resolver';
 
 // ── Fonts ──────────────────────────────────────────────────────────────────
 export { GOOGLE_FONTS, buildGoogleFontUrl, fontToTypography, type GoogleFontMeta } from './fonts';

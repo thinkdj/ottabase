@@ -105,7 +105,8 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
     if (route === '/api/brand/layouts' && method === 'PUT') {
         const guard = await requireBrandEditAccess(context, orgId, appId);
         if (guard instanceof Response) return guard;
-        return handlePutLayout(request, envBrand, normalizeOrgId(orgId), guard.appId);
+        // Use URL-provided appId (same scope as GET) — not guard.appId which defaults to 'web'
+        return handlePutLayout(request, envBrand, normalizeOrgId(orgId), appId);
     }
     if (route === '/api/brand/mappings' && method === 'GET') {
         return handleGetMappings(request, envBrand, orgId, appId);
@@ -113,7 +114,8 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
     if (route === '/api/brand/mappings' && method === 'PUT') {
         const guard = await requireBrandEditAccess(context, orgId, appId);
         if (guard instanceof Response) return guard;
-        return handlePutMappings(request, envBrand, normalizeOrgId(orgId), guard.appId);
+        // Use URL-provided appId (same scope as GET) — not guard.appId which defaults to 'web'
+        return handlePutMappings(request, envBrand, normalizeOrgId(orgId), appId);
     }
 
     return null;

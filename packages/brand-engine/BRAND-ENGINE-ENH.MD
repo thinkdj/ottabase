@@ -253,3 +253,14 @@ If I were implementing these, this is the order I'd tackle:
 The core architecture is solid. The main gap is that it's built for "one org, one kit" simplicity but marketed for
 "multi-tenant, per-route, per-org" flexibility. The inheritance chain and route-level overrides are what bridge that
 gap. Everything else is polish.
+
+## TO ENSURE (brand-engine, ottalayout and their deep integration into tanstack template app)
+
+- Only one default brand kit per org
+- Inherited Brand Kits have enable/disable for each section and it saves only the diff.
+- Layouts and routes are configurable
+- User can save and/or delete route maps
+- If NO route maps are present, use `/**` with Default Brand Kit and app-shell layout as fallback
+- ottalayout and brand-engine packages are decoupled but work seamlessly together in the template app
+- ottalayout and brand-engine have no React or UI dependencies and can be used in any framework with the appropriate
+  bindings

@@ -37,6 +37,22 @@ function rmWranglerD1State(basePath, baseLabel) {
     return removed;
 }
 
+function rmWranglerKVState(basePath, baseLabel) {
+    let removed = 0;
+    const candidates = [
+        path.join(basePath, '.wrangler', 'state', 'v3', 'kv'),
+        path.join(basePath, '.wrangler', 'state', 'v2', 'kv'),
+        path.join(basePath, '.wrangler', 'state', 'kv'),
+    ];
+
+    for (const candidate of candidates) {
+        const rel = path.relative(basePath, candidate).replaceAll('\\', '/');
+        if (rmIfExists(candidate, `${baseLabel}/${rel}`)) removed++;
+    }
+
+    return removed;
+}
+
 function prompt(question) {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     return new Promise((resolve) => {
@@ -65,7 +81,7 @@ function findMonorepoRoot(startPath) {
  * @param {{ scope: 'all' | 'db', force?: boolean }} options
  */
 export async function runCleanReset(options = { scope: 'all', force: false }) {
-    const scope = options.scope === 'db' ? 'db' : 'all';
+    const scope = ['db', 'kv'].includes(options.scope) ? options.scope : 'all';
     const force = options.force === true;
     const root = findMonorepoRoot(process.cwd());
 
@@ -75,6 +91,11 @@ export async function runCleanReset(options = { scope: 'all', force: false }) {
         log('');
         log('This will delete local D1 state under .wrangler/state/*/d1 from root/apps/packages workspaces.', YELLOW);
         log(`${RED}Your local D1 database will be destroyed. You will need to re-bootstrap.${NC}`);
+    } else if (scope === 'kv') {
+        log(`${BOLD}${YELLOW}⚠ clean:kv${NC}`);
+        log('');
+        log('This will delete local KV state under .wrangler/state/*/kv from root/apps/packages workspaces.', YELLOW);
+        log(`${YELLOW}Your local KV cache will be cleared.${NC}`);
     } else {
         log(`${BOLD}${RED}⚠ clean:reset - DESTRUCTIVE OPERATION${NC}`);
         log('');
@@ -99,7 +120,14 @@ export async function runCleanReset(options = { scope: 'all', force: false }) {
     }
 
     log('');
-    log(scope === 'db' ? 'Cleaning local D1 state...' : 'Resetting local dev environment...', YELLOW);
+    log(
+        scope === 'db'
+            ? 'Cleaning local D1 state...'
+            : scope === 'kv'
+              ? 'Cleaning local KV state...'
+              : 'Resetting local dev environment...',
+        YELLOW,
+    );
     let removed = 0;
 
     if (scope === 'all') {
@@ -109,8 +137,10 @@ export async function runCleanReset(options = { scope: 'all', force: false }) {
 
     if (scope === 'all') {
         if (rmIfExists(path.join(root, '.wrangler'), '.wrangler')) removed++;
-    } else {
+    } else if (scope === 'db') {
         removed += rmWranglerD1State(root, 'root');
+    } else if (scope === 'kv') {
+        removed += rmWranglerKVState(root, 'root');
     }
 
     for (const dir of ['apps', 'packages']) {
@@ -125,8 +155,10 @@ export async function runCleanReset(options = { scope: 'all', force: false }) {
 
             if (scope === 'all') {
                 if (rmIfExists(path.join(wsPath, '.wrangler'), `${wsLabel}/.wrangler`)) removed++;
-            } else {
+            } else if (scope === 'db') {
                 removed += rmWranglerD1State(wsPath, wsLabel);
+            } else if (scope === 'kv') {
+                removed += rmWranglerKVState(wsPath, wsLabel);
             }
 
             if (scope === 'all') {
@@ -150,6 +182,8 @@ export async function runCleanReset(options = { scope: 'all', force: false }) {
     if (scope === 'db') {
         log('  1. pnpm dev           → Start dev server');
         log('  2. Visit /__bootstrap__ to re-initialize the database');
+    } else if (scope === 'kv') {
+        log('  1. pnpm dev           → Start dev server');
     } else {
         log('  1. pnpm build:pkg     → Rebuild all packages');
         log('  2. pnpm dev           → Start dev server');

@@ -1,5 +1,6 @@
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { api, isApiError } from '@/lib/api';
+import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { APP_META } from '@/ottabase/config/app.config';
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
@@ -24,7 +25,7 @@ function RootLayout() {
         <>
             <BrandPathSync pathname={pathname} />
             <Toaster />
-            <LayoutResolver router={tanstackRouterAdapter}>
+            <LayoutResolver router={tanstackRouterAdapter} layoutComponent={ConfigurableLayout}>
                 <Outlet />
             </LayoutResolver>
         </>

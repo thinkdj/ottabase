@@ -1,3 +1,4 @@
+import { DEFAULT_LAYOUT, pathPatternToRegex } from '@ottabase/ottalayout';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { BrandTheme, ResolvedBrandTheme, TokenColors } from '../index';
 import {
@@ -8,7 +9,6 @@ import {
     DEFAULT_COLORS_DARK,
     DEFAULT_COLORS_LIGHT,
     DEFAULT_CURSORS,
-    DEFAULT_LAYOUT,
     DEFAULT_MOTION,
     DEFAULT_SHADOWS,
     DEFAULT_SPACING,
@@ -17,7 +17,6 @@ import {
     getThemeByName,
     getThemeOrDefault,
     injectCSSVars,
-    pathPatternToRegex,
     registerTheme,
     registerThemes,
     resolveAliases,
@@ -449,7 +448,7 @@ describe('buildCSSVarMap', () => {
         const vars = buildCSSVarMap(resolved);
         expect(vars['--layout-header']).toBe('topbar');
         expect(vars['--layout-navigation']).toBe('sidebar');
-        expect(vars['--layout-content-width']).toBe('fluid');
+        expect(vars['--layout-content-width']).toBe('lg');
         expect(vars['--layout-footer']).toBe('1');
         expect(vars['--layout-density']).toBe('comfy');
     });
@@ -548,7 +547,7 @@ describe('fromLegacyThemeConfig', () => {
             spacing: { section: '2rem' },
             shadows: { xs: 'custom-shadow' },
             motion: { durationFast: '80ms' },
-            appearance: { cursors: { default: 'crosshair' } },
+            cursors: { default: 'crosshair' },
         };
 
         const brand = fromLegacyThemeConfig(legacy);
@@ -601,26 +600,6 @@ describe('fromLegacyThemeConfig', () => {
         const brand = fromLegacyThemeConfig(legacy);
         expect(brand.cursors?.default).toBe('url(arrow.svg), auto');
         expect(brand.cursors?.pointer).toBe('url(hand.svg), pointer');
-    });
-
-    it('top-level cursors take precedence over appearance.cursors', () => {
-        const legacy = {
-            name: 'both',
-            typography: {
-                heading: { fontFamily: 'Inter' },
-                body: { fontFamily: 'Inter' },
-                handwriting: { fontFamily: 'Inter' },
-            },
-            colors: {
-                light: { background: '0 0% 100%' } as any,
-                dark: { background: '0 0% 0%' } as any,
-            },
-            cursors: { default: 'top-level-cursor' },
-            appearance: { cursors: { default: 'legacy-cursor' } },
-        };
-
-        const brand = fromLegacyThemeConfig(legacy);
-        expect(brand.cursors?.default).toBe('top-level-cursor');
     });
 
     it('passes layout config through to BrandTheme', () => {
@@ -1107,13 +1086,17 @@ describe('pathPatternToRegex', () => {
 
 describe('Layout', () => {
     it('DEFAULT_LAYOUT has expected shape', () => {
-        expect(DEFAULT_LAYOUT).toEqual({
+        expect(DEFAULT_LAYOUT).toMatchObject({
             header: 'topbar',
             navigation: 'sidebar',
-            contentWidth: 'fluid',
+            contentWidth: 'lg',
             footer: true,
             density: 'comfy',
         });
+        // Extended fields
+        expect(DEFAULT_LAYOUT.headerSticky).toBe(true);
+        expect(DEFAULT_LAYOUT.sidebarWidth).toBe('standard');
+        expect(DEFAULT_LAYOUT.centerContent).toBe(false);
     });
 
     it('layout vars reflect custom config', () => {

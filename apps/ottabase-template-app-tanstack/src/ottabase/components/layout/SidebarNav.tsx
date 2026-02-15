@@ -2,13 +2,26 @@ import { useSession } from '@/lib/auth';
 import { Link, useLocation } from '@tanstack/react-router';
 import { NAV_LINKS } from './layout.constants';
 
-export function SidebarNav() {
+/** Map width class to px value for responsive inline style */
+const WIDTH_MAP: Record<string, string> = {
+    'w-48': '12rem',
+    'w-56': '14rem',
+    'w-64': '16rem',
+    'w-80': '20rem',
+};
+
+export function SidebarNav({ widthClass = 'w-56' }: { widthClass?: string }) {
     const { isAuthenticated } = useSession();
     const location = useLocation();
     const links = NAV_LINKS.filter((l) => !l.authRequired || isAuthenticated);
+    const desktopWidth = WIDTH_MAP[widthClass] ?? '14rem';
 
     return (
-        <aside className="w-full border-b bg-sidebar md:w-56 md:shrink-0 md:border-b-0 md:border-r md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:overflow-y-auto">
+        <aside
+            className="w-full border-b bg-sidebar md:shrink-0 md:border-b-0 md:border-r md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:overflow-y-auto"
+            style={{ '--sidebar-width': desktopWidth } as React.CSSProperties}
+        >
+            <style>{`@media (min-width: 768px) { aside[style*="--sidebar-width"] { width: var(--sidebar-width); } }`}</style>
             <nav className="flex gap-1 p-2 overflow-x-auto md:flex-col md:gap-0.5 md:p-3 md:overflow-x-visible">
                 {links.map((link) => {
                     const isActive =

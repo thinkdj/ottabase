@@ -3,8 +3,9 @@
 // Route mappings include brandKitId per row.
 // ---------------------------------------------------------------------------
 
-import type { LayoutConfig } from '../layout';
-import { DEFAULT_ROUTE_MAPPINGS, LAYOUT_PRESETS } from '../layouts';
+import type { LayoutConfig } from '@ottabase/ottalayout';
+import { LAYOUT_PRESETS } from '@ottabase/ottalayout';
+import { DEFAULT_ROUTE_MAPPINGS } from '../layouts';
 import { BrandKit } from './BrandKit.model';
 import { LayoutRouteMapping } from './LayoutRouteMapping.model';
 import { LayoutTemplate } from './LayoutTemplate.model';
@@ -69,7 +70,7 @@ export async function getLayoutData(organizationId: string | null, appId?: strin
     const layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }> = {};
 
     for (const [key, preset] of Object.entries(LAYOUT_PRESETS)) {
-        layoutTemplatesMap[key] = { componentKey: preset.componentKey, config: preset.config };
+        layoutTemplatesMap[key] = { componentKey: key, config: preset.config };
     }
 
     const dbTemplates = await LayoutTemplate.whereIn('id', templateIds);
