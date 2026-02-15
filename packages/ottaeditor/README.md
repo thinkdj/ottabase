@@ -21,6 +21,12 @@ pnpm add @ottabase/ottaeditor
 15 EditorJS plugins included: Header, Paragraph, List, Checklist, Code, Quote, Table, Warning, Delimiter, Link, Embed,
 Raw HTML, Marker, Underline, Inline Code.
 
+### Custom Block Plugins
+
+- **Spoiler** - Collapsible spoiler content
+- **CTA** - Call-to-action button with style variants
+- **Review** - Product/service review block with image, rating, pros/cons, and summary
+
 ## Quick Start
 
 ### Load All Plugins
@@ -73,7 +79,7 @@ const { editorRef } = useOttaEditor({
 Use these names with `defaultPlugins`:
 
 `'header'`, `'paragraph'`, `'list'`, `'checklist'`, `'code'`, `'quote'`, `'table'`, `'warning'`, `'delimiter'`,
-`'linkTool'`, `'embed'`, `'raw'`, `'Marker'`, `'underline'`, `'inlineCode'`
+`'linkTool'`, `'embed'`, `'raw'`, `'Marker'`, `'underline'`, `'inlineCode'`, `'spoiler'`, `'cta'`, `'review'`
 
 ## API
 

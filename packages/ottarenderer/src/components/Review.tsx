@@ -65,6 +65,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
     if (!title) return null;
 
     const structuredData = useMemo(() => {
+        if (!title) return null;
         const schema: Record<string, any> = {
             '@context': 'https://schema.org',
             '@type': 'Review',
