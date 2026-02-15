@@ -3,13 +3,13 @@
 // GET/PUT /api/brand/layouts, GET/PUT /api/brand/mappings
 // ---------------------------------------------------------------------------
 
-import { LayoutTemplate } from '../persistence/LayoutTemplate.model';
-import { LayoutRouteMapping } from '../persistence/LayoutRouteMapping.model';
-import { getLayoutData } from '../persistence/layoutData';
-import { createBrandCache } from '../persistence/cache';
-import { jsonResponse } from '@ottabase/utils/http-response';
 import { errorResponse } from '@ottabase/utils/http-errors';
+import { jsonResponse } from '@ottabase/utils/http-response';
+import { LayoutRouteMapping } from '../persistence/LayoutRouteMapping.model';
+import { LayoutTemplate } from '../persistence/LayoutTemplate.model';
+import { getLayoutData } from '../persistence/layoutData';
 import type { BrandApiEnv } from './brand-api';
+import { warmBrandCache } from './warm-cache';
 
 /**
  * GET /api/brand/layouts - List layout templates for org/app
@@ -48,7 +48,6 @@ export async function handlePutLayout(
     } catch {
         return errorResponse('Invalid config object', 400);
     }
-    const cache = createBrandCache(env.OBCF_KV);
 
     let template: LayoutTemplate;
     if (body.id) {
@@ -68,7 +67,7 @@ export async function handlePutLayout(
         })) as LayoutTemplate;
     }
 
-    await cache.invalidate(organizationId, appId);
+    await warmBrandCache(env, organizationId, appId);
     return jsonResponse({ id: template.get('id'), ...body }, 200);
 }
 
@@ -122,7 +121,6 @@ export async function handlePutMappings(
             priority?: number;
         }>;
     };
-    const cache = createBrandCache(env.OBCF_KV);
 
     const existing = await LayoutRouteMapping.where({
         organizationId: organizationId ?? null,
@@ -144,6 +142,6 @@ export async function handlePutMappings(
         });
     }
 
-    await cache.invalidate(organizationId, appId);
+    await warmBrandCache(env, organizationId, appId);
     return jsonResponse({ success: true }, 200);
 }

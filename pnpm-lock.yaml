@@ -796,6 +796,9 @@ importers:
       '@ottabase/audit':
         specifier: workspace:*
         version: link:../audit
+      '@ottabase/cf':
+        specifier: workspace:*
+        version: link:../cf
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm

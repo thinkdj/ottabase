@@ -154,6 +154,50 @@ if (!result.data.success) {
 }
 ```
 
+### Cache Keys (Multi-Tenant KV Scoping)
+
+Type-safe, namespaced cache key builder for Cloudflare KV. Prevents cross-tenant collisions with consistent
+`namespace:scope:id` formatting. All scope markers are 3-letter: `org`, `app`, `usr`.
+
+```typescript
+import { orgKey, userKey, orgAppUserKey } from '@ottabase/cf/cache-keys';
+
+orgKey('brand', 'acme', 'brandkit'); // brand:org:acme:brandkit
+userKey('session', 'user-123', 'active'); // session:usr:user-123:active
+orgAppUserKey('rbac', 'acme', 'web', 'user-123', 'perms'); // rbac:org:acme:app:web:usr:user-123:perms
+```
+
+| Helper            | Key Pattern                            | Use case                |
+| ----------------- | -------------------------------------- | ----------------------- |
+| `globalKey`       | `ns:segments`                          | System-wide data        |
+| `orgKey`          | `ns:org:{orgId}:segments`              | Tenant data             |
+| `userKey`         | `ns:usr:{userId}:segments`             | User data               |
+| `appKey`          | `ns:app:{appId}:segments`              | App configuration       |
+| `orgAppKey`       | `ns:org:{orgId}:app:{appId}:segments`  | Tenant + app            |
+| `orgUserKey`      | `ns:org:{orgId}:usr:{userId}:segments` | User within tenant      |
+| `appUserKey`      | `ns:app:{appId}:usr:{userId}:segments` | User within app         |
+| `orgAppUserKey`   | `ns:org:…:app:…:usr:…:segments`        | User in tenant's app    |
+| `versionedOrgKey` | `ns:org:{orgId}:v{N}:segments`         | O(1) cache invalidation |
+
+See [docs/CACHE_KEYS.md](../../docs/CACHE_KEYS.md) for full documentation.
+
+### KV Read-Through Cache
+
+`withCache` wraps an async fetcher with KV-backed caching — returns cached data on hit, calls the fetcher on miss:
+
+```typescript
+import { withCache, invalidateCache, invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
+import { userKey } from '@ottabase/cf/cache-keys';
+
+const profile = await withCache(env.OBCF_KV, userKey('auth', userId, 'profile'), 300, async () => {
+    return db.query.users.findFirst({ where: eq(users.id, userId) });
+});
+
+// Invalidate single key or by prefix
+await invalidateCache(env.OBCF_KV, key);
+await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
+```
+
 ## Complete Documentation
 
 For setup instructions, configuration, and Next.js integration, see the

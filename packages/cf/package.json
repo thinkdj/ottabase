@@ -50,12 +50,22 @@
             "types": "./dist/rate-limiting.d.ts",
             "import": "./dist/rate-limiting.mjs",
             "require": "./dist/rate-limiting.js"
+        },
+        "./cache-keys": {
+            "types": "./dist/cache-keys.d.ts",
+            "import": "./dist/cache-keys.mjs",
+            "require": "./dist/cache-keys.js"
+        },
+        "./kv-cache": {
+            "types": "./dist/kv-cache.d.ts",
+            "import": "./dist/kv-cache.mjs",
+            "require": "./dist/kv-cache.js"
         }
     },
     "sideEffects": false,
     "scripts": {
-        "build": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts --format cjs,esm --dts --watch",
         "type-check": "tsc --noEmit",
         "test": "vitest",
         "test:coverage": "vitest --coverage"

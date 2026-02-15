@@ -3,8 +3,14 @@
 // ============================================================
 
 import type { KVClient } from '@ottabase/cf';
-import type { RBACContext } from './types';
+import { CacheKeyBuilder, orgKey } from '@ottabase/cf/cache-keys';
 import logger from '@ottabase/logger';
+import type { RBACContext } from './types';
+
+/** Escape special regex characters in a string for safe use in RegExp */
+function escapeRegex(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 /**
  * Cache configuration
@@ -67,9 +73,9 @@ class RequestCache {
  *
  * Hierarchy: Tenant > App > User
  *
- * Cache Key Format:
- * - With app: rbac:org:org-123:v1:app:web:user:user-456
- * - Without app: rbac:org:org-123:v1:user:user-456
+ * Cache Key Format (via @ottabase/cf/cache-keys builder):
+ * - With app: rbac:org:org-123:v1:app:web:usr:user-456:roles
+ * - Without app: rbac:org:org-123:v1:usr:user-456:roles
  *
  * Provides two-level caching:
  * 1. Request-level in-memory cache (short TTL, same request)
@@ -90,6 +96,11 @@ export class RBACCache {
         this.requestCache = new RequestCache();
     }
 
+    /** Namespace for cache key builder (prefix without trailing colon) */
+    private get namespace(): string {
+        return this.prefix.replace(/:$/, '');
+    }
+
     /**
      * Get current cache version for an organization from KV
      * Each organization has its own cache version for isolated invalidation
@@ -99,7 +110,7 @@ export class RBACCache {
         if (!this.kv) return 'v1';
 
         try {
-            const versionKey = `${this.prefix}version:org:${organizationId}`;
+            const versionKey = orgKey(this.namespace, organizationId, 'version');
             const result = await this.kv.getText(versionKey);
 
             if (result.success && result.data) {
@@ -129,7 +140,7 @@ export class RBACCache {
             const num = match ? parseInt(match[1], 10) : 1;
             const newVersion = `v${num + 1}`;
 
-            const versionKey = `${this.prefix}version:org:${organizationId}`;
+            const versionKey = orgKey(this.namespace, organizationId, 'version');
             const result = await this.kv.put(versionKey, newVersion, {
                 expirationTtl: 86400 * 30, // 30 days
             });
@@ -158,8 +169,8 @@ export class RBACCache {
      * Build cache key with REQUIRED organization scoping and optional app scoping
      *
      * Format examples:
-     * - With app: rbac:org:org-123:v1:app:web:user:user-456
-     * - Without app: rbac:org:org-123:v1:user:user-456
+     * - With app: rbac:org:org-123:v1:app:web:usr:user-456:user
+     * - Without app: rbac:org:org-123:v1:usr:user-456:user
      *
      * @param type Cache entry type (user, roles, perms)
      * @param userId User ID
@@ -175,19 +186,9 @@ export class RBACCache {
         version?: string,
     ): Promise<string> {
         const orgVersion = version || (await this.getOrgCacheVersion(organizationId));
-        const parts = [
-            this.prefix.replace(/:$/, ''), // Remove trailing colon if exists
-            'org',
-            organizationId,
-            orgVersion,
-        ];
-
-        if (appId) {
-            parts.push('app', appId);
-        }
-
-        parts.push(type, userId);
-        return parts.join(':');
+        const builder = CacheKeyBuilder.create(this.namespace).org(organizationId).version(orgVersion);
+        if (appId) builder.app(appId);
+        return builder.user(userId).segment(type).build();
     }
 
     /**
@@ -445,8 +446,12 @@ export class RBACCache {
 
         // Clear request cache for this user
         const pattern = appId
-            ? new RegExp(`${this.prefix}org:${organizationId}:.*:app:${appId}:.*:${userId}$`)
-            : new RegExp(`${this.prefix}org:${organizationId}:.*:${userId}$`);
+            ? new RegExp(
+                  `${escapeRegex(this.prefix)}org:${escapeRegex(organizationId)}:.*:app:${escapeRegex(appId)}:usr:${escapeRegex(userId)}:`,
+              )
+            : new RegExp(
+                  `${escapeRegex(this.prefix)}org:${escapeRegex(organizationId)}:.*:usr:${escapeRegex(userId)}:`,
+              );
 
         this.requestCache.deletePattern(pattern);
 
@@ -470,7 +475,7 @@ export class RBACCache {
         const newVersion = await this.incrementOrgCacheVersion(organizationId);
 
         // Clear request cache for this organization
-        const pattern = new RegExp(`${this.prefix}org:${organizationId}:`);
+        const pattern = new RegExp(`${escapeRegex(this.prefix)}org:${escapeRegex(organizationId)}:`);
         this.requestCache.deletePattern(pattern);
 
         const roleInfo = roleName ? ` (role: ${roleName})` : '';

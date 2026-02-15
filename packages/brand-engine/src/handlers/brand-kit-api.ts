@@ -7,10 +7,10 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { createBrandAssets, type LogoType } from '../persistence/assets';
 import { BrandKit } from '../persistence/BrandKit.model';
-import { createBrandCache } from '../persistence/cache';
 import type { BrandKitItem } from '../persistence/types';
 import { logBrandAudit } from './audit-helper';
 import type { BrandApiEnv } from './brand-api';
+import { warmBrandCache } from './warm-cache';
 
 function serializeKit(kit: BrandKit): BrandKitItem {
     return {
@@ -105,7 +105,7 @@ export async function handleCreateBrandKit(
         hideOttabaseBranding: (body.hideOttabaseBranding as boolean) ?? false,
     })) as BrandKit;
 
-    await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
+    await warmBrandCache(env, organizationId);
     return jsonResponse(serializeKit(kit), 201);
 }
 
@@ -157,10 +157,9 @@ export async function handleUpdateBrandKit(
     kit.set('updatedBy', auditUser?.userId ?? auditUser?.userEmail ?? null);
 
     await kit.save();
-    const cache = createBrandCache(env.OBCF_KV);
-    await cache.invalidate(organizationId, null);
+    await warmBrandCache(env, organizationId);
     // System default kit (org=null) is used when client fetches without org – always invalidate that too
-    if (kOrg === null) await cache.invalidate(null, null);
+    if (kOrg === null) await warmBrandCache(env, null);
 
     await logBrandAudit(
         'brand.kit.update',
@@ -192,7 +191,7 @@ export async function handleDeleteBrandKit(
     if (kOrg === null) return errorResponse('Cannot delete the default Brand Kit', 400, { code: 'DEFAULT_KIT' });
 
     await kit.destroy();
-    await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
+    await warmBrandCache(env, organizationId);
     return jsonResponse({ success: true }, 200);
 }
 
@@ -234,7 +233,7 @@ export async function handleCloneBrandKit(
         hideOttabaseBranding: source.get('hideOttabaseBranding'),
     })) as BrandKit;
 
-    await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
+    await warmBrandCache(env, organizationId);
     return jsonResponse(serializeKit(copy), 201);
 }
 
@@ -270,7 +269,7 @@ export async function handleUploadBrandKitLogo(
     kit.set(fieldMap[logoType], key);
     kit.set('updatedBy', auditUser?.userId ?? auditUser?.userEmail ?? null);
     await kit.save();
-    await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
+    await warmBrandCache(env, organizationId);
 
     await logBrandAudit(
         'brand.kit.logo.upload',

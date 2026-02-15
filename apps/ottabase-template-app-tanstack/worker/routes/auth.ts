@@ -1,5 +1,6 @@
 import { getSession, handleAuthRequest, hashPassword } from '@ottabase/auth/backend';
 import { getLoginConfig } from '@ottabase/auth/components';
+import { userKey } from '@ottabase/cf/cache-keys';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { sendTemplatedEmail } from '@ottabase/email';
 import { registerConnection } from '@ottabase/ottaorm';
@@ -321,7 +322,7 @@ export async function handlePasswordResetConfirm(context: AuthRouteContext): Pro
     if (env.OBCF_KV) {
         try {
             const revokedAt = Math.floor(Date.now() / 1000);
-            await env.OBCF_KV.put(`auth:revoked:user:${user.get('id')}`, String(revokedAt), {
+            await env.OBCF_KV.put(userKey('auth', String(user.get('id')), 'revoked'), String(revokedAt), {
                 expirationTtl: Number(env.AUTH_SESSION_MAX_AGE) || 30 * 24 * 60 * 60,
             });
         } catch {
@@ -406,7 +407,7 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
         if (env.OBCF_KV) {
             try {
                 const version = Date.now();
-                await env.OBCF_KV.put(`auth:profile:version:${userId}`, String(version), {
+                await env.OBCF_KV.put(userKey('auth', userId, 'profile', 'version'), String(version), {
                     expirationTtl: Number(env.AUTH_SESSION_MAX_AGE) || 30 * 24 * 60 * 60,
                 });
             } catch (error) {

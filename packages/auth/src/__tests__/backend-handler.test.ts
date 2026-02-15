@@ -118,7 +118,7 @@ describe('Auth Backend Handler', () => {
 
         expect(kvPut).toHaveBeenCalled();
         const [key, value, options] = kvPut.mock.calls[0];
-        expect(key).toBe('auth:revoked:user:user-1');
+        expect(key).toBe('auth:usr:user-1:revoked');
         expect(typeof value).toBe('string');
         expect(options.expirationTtl).toBe(3600);
     });

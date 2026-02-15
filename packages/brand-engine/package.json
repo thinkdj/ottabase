@@ -63,6 +63,7 @@
     "license": "MIT",
     "dependencies": {
         "@ottabase/audit": "workspace:*",
+        "@ottabase/cf": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/utils": "workspace:*"
     },

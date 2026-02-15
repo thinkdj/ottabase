@@ -15,12 +15,13 @@
  * ```
  */
 
-import type { JobHandler } from '@ottabase/queue';
-import type { CloudflareEnv } from '../../cloudflare-env';
+import { globalKey } from '@ottabase/cf/cache-keys';
+import type { Mailer } from '@ottabase/email';
+import { sendTemplatedEmail } from '@ottabase/email/mailer';
 import { createResendMailer } from '@ottabase/email/providers/resend';
 import { createSESMailer } from '@ottabase/email/providers/ses';
-import { sendTemplatedEmail } from '@ottabase/email/mailer';
-import type { Mailer } from '@ottabase/email';
+import type { JobHandler } from '@ottabase/queue';
+import type { CloudflareEnv } from '../../cloudflare-env';
 
 function getMailer(env: CloudflareEnv): { mailer: Mailer | null; from: string } {
     const from = (env as any).EMAIL_FROM || 'noreply@example.com';
@@ -105,7 +106,9 @@ export const processOrderHandler: JobHandler<ProcessOrderPayload, CloudflareEnv>
     };
 
     if (ctx.env.OBCF_KV) {
-        await ctx.env.OBCF_KV.put(`order:${orderId}:status`, JSON.stringify(status), { expirationTtl: 86400 * 30 });
+        await ctx.env.OBCF_KV.put(globalKey('order', orderId, 'status'), JSON.stringify(status), {
+            expirationTtl: 86400 * 30,
+        });
     }
 
     console.log(`[Queue:process-order] Order ${orderId} processed`);
@@ -169,7 +172,7 @@ export const syncDataHandler: JobHandler<SyncDataPayload, CloudflareEnv> = async
     };
 
     if (ctx.env.OBCF_KV) {
-        await ctx.env.OBCF_KV.put(`sync:${source}:${target}:status`, JSON.stringify(status), {
+        await ctx.env.OBCF_KV.put(globalKey('sync', source, target, 'status'), JSON.stringify(status), {
             expirationTtl: 86400 * 7,
         });
     }
