@@ -5,7 +5,7 @@
 export { createBrandAssets } from './assets';
 export type { BrandAssetClient, LogoType } from './assets';
 export { BrandKit } from './BrandKit.model';
-export { brandKitLogos, brandKitToTheme } from './brandKitToConfig';
+export { brandKitLogos, brandKitToTheme, resolveInheritanceChain } from './brandKitToConfig';
 export { createBrandCache } from './cache';
 export type { BrandCacheClient } from './cache';
 export { getLayoutData } from './layoutData';

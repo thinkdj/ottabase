@@ -94,12 +94,14 @@ export async function handleGetMappings(
                   layoutTemplateId: m.get('layoutTemplateId'),
                   brandKitId: m.get('brandKitId'),
                   priority: m.get('priority') ?? 0,
+                  tokenOverridesJson: (m.get('tokenOverridesJson') as string | null) ?? null,
               }))
             : (await getLayoutData(organizationId, appId)).routeMappings.map((m) => ({
                   pathPattern: m.pathPattern,
                   layoutTemplateId: m.layoutTemplateId,
                   brandKitId: m.brandKitId,
                   priority: m.priority,
+                  tokenOverridesJson: m.tokenOverridesJson ?? null,
               }));
     return jsonResponse(data, 200);
 }
@@ -120,6 +122,7 @@ export async function handlePutMappings(
             layoutTemplateId: string;
             brandKitId: string;
             priority?: number;
+            tokenOverridesJson?: string | null;
         }>;
     };
     const cache = createBrandCache(env.OBCF_KV);
@@ -141,6 +144,7 @@ export async function handlePutMappings(
             layoutTemplateId: m.layoutTemplateId,
             brandKitId: m.brandKitId,
             priority: m.priority ?? 0,
+            tokenOverridesJson: m.tokenOverridesJson || null,
         });
     }
 

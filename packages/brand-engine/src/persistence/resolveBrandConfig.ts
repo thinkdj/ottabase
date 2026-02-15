@@ -49,7 +49,7 @@ async function loadBrandKitsMap(
     for (const kitId of brandKitIds) {
         const kit = (await BrandKit.find(kitId)) as BrandKit | null;
         if (!kit) continue;
-        const theme = brandKitToTheme(kit, mode);
+        const theme = await brandKitToTheme(kit, mode);
         const logos = brandKitLogos(kit, r2Url);
         const presetId = (kit.get('themePresetId') as string) || null;
         const tokens = kit.toBrandTheme().tokens;
@@ -78,7 +78,7 @@ async function loadBrandKitsMap(
     if (Object.keys(brandKitsMap).length === 0) {
         const defaultKit = await BrandKit.getOrCreateDefault();
         const defaultKitId = (defaultKit.get('id') as string) || 'default';
-        const theme = brandKitToTheme(defaultKit, mode);
+        const theme = await brandKitToTheme(defaultKit, mode);
         const logos = brandKitLogos(defaultKit, r2Url);
         const presetId = (defaultKit.get('themePresetId') as string) || null;
         const tokens = defaultKit.toBrandTheme().tokens;

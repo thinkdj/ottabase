@@ -148,6 +148,7 @@ export function AdminBrandKitDetailPage() {
         name: '',
         brandName: '',
         tagline: '',
+        parentBrandKitId: null as string | null,
         tokensJson: '{}',
         themePresetId: null as string | null,
         defaultColorScheme: 'system' as 'light' | 'dark' | 'system',
@@ -168,6 +169,7 @@ export function AdminBrandKitDetailPage() {
                 name: kit.name ?? '',
                 brandName: kit.brandName ?? 'My App',
                 tagline: kit.tagline ?? '',
+                parentBrandKitId: kit.parentBrandKitId ?? null,
                 tokensJson: kit.tokensJson ?? '{}',
                 themePresetId: kit.themePresetId ?? null,
                 defaultColorScheme: (kit.defaultColorScheme as 'light' | 'dark' | 'system') ?? 'system',
@@ -225,6 +227,7 @@ export function AdminBrandKitDetailPage() {
             name: draft.name?.trim() || draft.brandName || 'New Brand Kit',
             brandName: draft.brandName || 'My App',
             tagline: draft.tagline || undefined,
+            parentBrandKitId: draft.parentBrandKitId || null,
             tokensJson: draft.tokensJson.trim() || undefined,
             themePresetId: draft.themePresetId,
             defaultColorScheme: draft.defaultColorScheme,
@@ -371,6 +374,8 @@ export function AdminBrandKitDetailPage() {
                             name={draft.name}
                             brandName={draft.brandName}
                             tagline={draft.tagline}
+                            parentBrandKitId={draft.parentBrandKitId}
+                            currentKitId={isNew ? undefined : kitId}
                             onChange={(d) => setDraft((s) => ({ ...s, ...d }))}
                             nameReadOnly={!isNew && kitForView.organizationId === null}
                         />

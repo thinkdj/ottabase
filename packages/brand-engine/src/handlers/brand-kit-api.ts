@@ -17,6 +17,7 @@ function serializeKit(kit: BrandKit): BrandKitItem {
         id: kit.get('id') as string,
         organizationId: (kit.get('organizationId') as string | null) ?? null,
         isDefault: (kit.get('isDefault') as boolean) ?? false,
+        parentBrandKitId: (kit.get('parentBrandKitId') as string | null) ?? null,
         createdBy: (kit.get('createdBy') as string | null) ?? null,
         updatedBy: (kit.get('updatedBy') as string | null) ?? null,
         name: kit.get('name') as string,
@@ -51,6 +52,13 @@ export async function handleGetBrandKits(
     }
     const kits = (await BrandKit.where({ organizationId: organizationId ?? null }, { orderBy: 'name' })) as BrandKit[];
     const data = kits.map(serializeKit);
+    // Resolve parent kit names for display
+    const kitNameMap = new Map(data.map((k) => [k.id, k.name]));
+    for (const item of data) {
+        if (item.parentBrandKitId) {
+            item.parentBrandKitName = kitNameMap.get(item.parentBrandKitId) ?? null;
+        }
+    }
     return jsonResponse(data, 200);
 }
 
@@ -86,6 +94,7 @@ export async function handleCreateBrandKit(
     const kit = (await BrandKit.create({
         organizationId,
         isDefault,
+        parentBrandKitId: (body.parentBrandKitId as string) ?? null,
         createdBy: auditUser?.userId ?? auditUser?.userEmail ?? null,
         updatedBy: auditUser?.userId ?? auditUser?.userEmail ?? null,
         name,
@@ -134,6 +143,10 @@ export async function handleUpdateBrandKit(
     if (kOrg !== null && organizationId !== kOrg) return errorResponse('Brand Kit not found', 404);
 
     const body = (await request.json()) as Record<string, unknown>;
+    // Handle parentBrandKitId – allow setting to null (detach) or to a valid ID
+    if (body.parentBrandKitId !== undefined) {
+        kit.set('parentBrandKitId', (body.parentBrandKitId as string) || null);
+    }
     const fields = [
         'name',
         'slug',
@@ -209,12 +222,13 @@ export async function handleCloneBrandKit(
     const sOrg = source.get('organizationId') as string | null;
     if (sOrg !== null && organizationId !== sOrg) return errorResponse('Brand Kit not found', 404);
 
-    const body = (await request.json()) as { name?: string } | undefined;
+    const body = (await request.json()) as { name?: string; inheritFromSource?: boolean } | undefined;
     const newName = body?.name ?? `${source.get('name')} (Copy)`;
 
     const copy = (await BrandKit.create({
         organizationId,
         isDefault: false,
+        parentBrandKitId: source.get('parentBrandKitId'),
         createdBy: auditUser?.userId ?? auditUser?.userEmail ?? null,
         updatedBy: auditUser?.userId ?? auditUser?.userEmail ?? null,
         name: newName,

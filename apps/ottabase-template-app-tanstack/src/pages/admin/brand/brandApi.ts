@@ -21,6 +21,10 @@ export interface BrandKitItem {
     id: string;
     organizationId?: string | null;
     isDefault?: boolean;
+    /** Parent Brand Kit ID for inheritance */
+    parentBrandKitId?: string | null;
+    /** Resolved parent name (populated by list API for display) */
+    parentBrandKitName?: string | null;
     createdBy?: string | null;
     updatedBy?: string | null;
     name: string;
@@ -122,6 +126,8 @@ export interface LayoutMappingItem {
     layoutTemplateId: string;
     brandKitId: string;
     priority?: number;
+    /** Optional per-route token overrides (partial DesignTokens JSON) */
+    tokenOverridesJson?: string | null;
 }
 
 export const layoutApi = {
@@ -150,6 +156,7 @@ export const layoutApi = {
                 layoutTemplateId: string;
                 brandKitId: string;
                 priority?: number;
+                tokenOverridesJson?: string | null;
             }>;
         },
         params?: { organizationId?: string | null; appId?: string | null },
