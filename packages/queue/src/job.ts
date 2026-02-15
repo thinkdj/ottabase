@@ -3,8 +3,8 @@
  * Create and dispatch jobs to queues using adapters
  */
 
-import { createCloudflareAdapter } from './adapters/cloudflare';
 import { globalKey, orgKey } from '@ottabase/cf/cache-keys';
+import { createCloudflareAdapter } from './adapters/cloudflare';
 import type { QueueAdapter } from './adapters/types';
 import type {
     DedupeStore,
