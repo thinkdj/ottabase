@@ -180,16 +180,20 @@ export interface AssignRoleInput {
 
 export interface AuditLogRecord {
     id: string;
-    userId: string;
-    organizationId?: string;
-    appId?: string;
+    user_id: string;
+    user_email?: string | null;
+    organization_id?: string | null;
+    app_id?: string | null;
     action: string;
-    resource: string;
-    resourceId?: string;
-    metadata?: Record<string, unknown>;
-    ipAddress?: string;
-    userAgent?: string;
-    createdAt: string;
+    resource_type: string;
+    resource_id?: string | null;
+    changes?: string | null;
+    metadata?: string | null;
+    ip_address?: string | null;
+    user_agent?: string | null;
+    status: 'success' | 'failure' | 'error';
+    error_message?: string | null;
+    created_at: number;
 }
 
 export type AuditAction =
