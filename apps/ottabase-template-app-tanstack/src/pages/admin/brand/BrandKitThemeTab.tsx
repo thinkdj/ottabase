@@ -15,7 +15,7 @@ import {
 import { OttaSelect, type ItemRendererProps, type OttaSelectItem } from '@ottabase/ottaselect';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@ottabase/ui-shadcn';
 import { IconPalette, IconRefresh } from '@tabler/icons-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { OverrideSection } from './OverrideSection';
 
@@ -88,6 +88,58 @@ const TOKEN_USAGE: Record<string, string> = {
     popover: 'Dropdown & tooltip backgrounds',
     'popover-foreground': 'Text inside dropdowns & tooltips',
 };
+
+/** Custom renderer for theme preset items in OttaSelect dropdown (render function, not a component) */
+const themePresetRenderer = ({ item }: ItemRendererProps) => (
+    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+        <span className="truncate font-medium capitalize">{item.name}</span>
+        <div className="flex gap-1 shrink-0">
+            {((item.colors as string[]) ?? []).slice(0, 5).map((hsl, i) => (
+                <div
+                    key={i}
+                    className="w-5 h-5 rounded border border-border dark:border-muted shrink-0"
+                    style={{ backgroundColor: hslToCss(hsl) }}
+                    title={hsl}
+                />
+            ))}
+        </div>
+    </div>
+);
+
+/** Renders a single editable token swatch with inline color picker */
+const TokenSwatch = memo(function TokenSwatch({
+    token,
+    value,
+    mode,
+    onEdit,
+}: {
+    token: string;
+    value: string;
+    mode: 'light' | 'dark';
+    onEdit: (mode: 'light' | 'dark', token: string, hex: string) => void;
+}) {
+    return (
+        <div className="flex items-center gap-1.5 rounded-md border p-1.5 bg-card/50 dark:border-muted group">
+            <label className="relative shrink-0 cursor-pointer">
+                <div
+                    className="h-7 w-7 rounded border shadow-sm dark:border-muted"
+                    style={{ backgroundColor: hslToCss(value) }}
+                />
+                <input
+                    type="color"
+                    value={hslChannelsToHex(value)}
+                    onChange={(e) => onEdit(mode, token, e.target.value)}
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    title={`Edit ${token}`}
+                />
+            </label>
+            <div className="min-w-0 flex-1">
+                <p className="truncate text-[10px] font-medium leading-tight">{token.replace('-foreground', '-fg')}</p>
+                <p className="truncate text-[9px] font-mono text-muted-foreground leading-tight">{value}</p>
+            </div>
+        </div>
+    );
+});
 
 export function BrandKitThemeTab({
     themePresetId,
@@ -255,23 +307,6 @@ export function BrandKitThemeTab({
         [tokensJson, onTokensChange],
     );
 
-    // ── Renderers ────────────────────────────────────────────────────────
-    const ThemePresetRenderer = ({ item }: ItemRendererProps) => (
-        <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-            <span className="truncate font-medium capitalize">{item.name}</span>
-            <div className="flex gap-1 shrink-0">
-                {((item.colors as string[]) ?? []).slice(0, 5).map((hsl, i) => (
-                    <div
-                        key={i}
-                        className="w-5 h-5 rounded border border-border dark:border-muted shrink-0"
-                        style={{ backgroundColor: hslToCss(hsl) }}
-                        title={hsl}
-                    />
-                ))}
-            </div>
-        </div>
-    );
-
     // ── Preset section ───────────────────────────────────────────────────
     const presetSection = (
         <Card>
@@ -294,7 +329,7 @@ export function BrandKitThemeTab({
                     placeholder="Select preset"
                     searchable={false}
                     clearable={false}
-                    renderItem={ThemePresetRenderer}
+                    renderItem={themePresetRenderer}
                     renderValue={(item) => (
                         <div className="flex flex-col gap-1 min-w-0">
                             <span className="truncate capitalize font-medium">{(item as OttaSelectItem).name}</span>
@@ -366,29 +401,6 @@ export function BrandKitThemeTab({
 
     // ── Color override section ───────────────────────────────────────────
     const paletteTokenKeys = Object.keys(lightTokens ?? darkTokens ?? {}) as (keyof SemanticPalette)[];
-
-    /** Renders a single editable token swatch with inline color picker */
-    const TokenSwatch = ({ token, value, mode }: { token: string; value: string; mode: 'light' | 'dark' }) => (
-        <div className="flex items-center gap-1.5 rounded-md border p-1.5 bg-card/50 dark:border-muted group">
-            <label className="relative shrink-0 cursor-pointer">
-                <div
-                    className="h-7 w-7 rounded border shadow-sm dark:border-muted"
-                    style={{ backgroundColor: hslToCss(value) }}
-                />
-                <input
-                    type="color"
-                    value={hslChannelsToHex(value)}
-                    onChange={(e) => handleTokenEdit(mode, token, e.target.value)}
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                    title={`Edit ${token}`}
-                />
-            </label>
-            <div className="min-w-0 flex-1">
-                <p className="truncate text-[10px] font-medium leading-tight">{token.replace('-foreground', '-fg')}</p>
-                <p className="truncate text-[9px] font-mono text-muted-foreground leading-tight">{value}</p>
-            </div>
-        </div>
-    );
 
     const colorSection = (
         <Card>
@@ -464,6 +476,7 @@ export function BrandKitThemeTab({
                                             token={token}
                                             value={lightTokens[token]}
                                             mode="light"
+                                            onEdit={handleTokenEdit}
                                         />
                                     ))}
                                 </div>
@@ -483,6 +496,7 @@ export function BrandKitThemeTab({
                                             token={token}
                                             value={darkTokens[token]}
                                             mode="dark"
+                                            onEdit={handleTokenEdit}
                                         />
                                     ))}
                                 </div>

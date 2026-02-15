@@ -252,8 +252,8 @@ function resolveConfigForPath(
     pathname: string,
     routeMatcher: RouteMatcherFn,
     mode: 'light' | 'dark',
+    routeMappings: RouteMapping[],
 ): BrandConfig | null {
-    const routeMappings = expandCompactConfig(full);
     const match = routeMatcher(pathname);
     const kitId = match?.brandKitId ?? full.kit ?? Object.keys(full.brandKitsMap)[0];
     const layoutId = match?.layoutTemplateId ?? 'homepage';
@@ -384,11 +384,11 @@ export function BrandProvider({
         };
     }, [fetchConfigWithRetry, initialConfig]);
 
-    // Create route matcher cache, memoized
-    const routeMatcher = useMemo(() => {
-        if (!fullConfig) return null;
-        const routeMappings = expandCompactConfig(fullConfig);
-        return createRouteMatcherCache(routeMappings);
+    // Create route matcher cache + expanded route mappings, memoized
+    const { routeMatcher, expandedRouteMappings } = useMemo(() => {
+        if (!fullConfig) return { routeMatcher: null, expandedRouteMappings: [] as RouteMapping[] };
+        const mappings = expandCompactConfig(fullConfig);
+        return { routeMatcher: createRouteMatcherCache(mappings), expandedRouteMappings: mappings };
     }, [fullConfig]);
 
     // Derive path-scoped config from full config + current path + mode (no refetch on nav or mode change)
@@ -399,7 +399,7 @@ export function BrandProvider({
             return null;
         }
         if (!routeMatcher) return null;
-        const resolved = resolveConfigForPath(fullConfig, path, routeMatcher, mode);
+        const resolved = resolveConfigForPath(fullConfig, path, routeMatcher, mode, expandedRouteMappings);
         // Fallback if route resolution fails but we have fullConfig + fallbackTheme
         if (resolved || !fallbackTheme) return resolved;
         const firstKit = Object.values(fullConfig.brandKitsMap)[0];
@@ -409,10 +409,10 @@ export function BrandProvider({
             theme: fallbackTheme,
             layoutTemplateId: 'homepage',
             layoutTemplatesMap: fullConfig.layoutTemplatesMap,
-            routeMappings: expandCompactConfig(fullConfig),
+            routeMappings: expandedRouteMappings,
             r2PublicUrl: fullConfig.r2PublicUrl,
         } as BrandConfig;
-    }, [fullConfig, path, mode, routeMatcher, fallbackTheme, error]);
+    }, [fullConfig, path, mode, routeMatcher, expandedRouteMappings, fallbackTheme, error]);
 
     // Debounced CSS injection with validation
     const debouncedInjectCss = useMemo(
@@ -431,8 +431,13 @@ export function BrandProvider({
         // Critical CSS removal is done by BrandThemeApplicator after it applies – avoids wrong-mode flash
     }, [config, debouncedInjectCss]);
 
+    const brandContextValue = useMemo<BrandContextValue>(
+        () => ({ config, isLoading, error, refresh: fetchConfigWithRetry }),
+        [config, isLoading, error, fetchConfigWithRetry],
+    );
+
     return (
-        <BrandContext.Provider value={{ config, isLoading, error, refresh: fetchConfigWithRetry }}>
+        <BrandContext.Provider value={brandContextValue}>
             <BrandPathContext.Provider value={setPath}>{children}</BrandPathContext.Provider>
         </BrandContext.Provider>
     );

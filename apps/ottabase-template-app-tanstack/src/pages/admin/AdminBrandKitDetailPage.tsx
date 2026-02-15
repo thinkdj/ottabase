@@ -16,7 +16,7 @@ import {
 } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { brandKitApi, type BrandKitItem } from './brand/brandApi';
 import { BrandKitAdvancedTab } from './brand/BrandKitAdvancedTab';
@@ -247,6 +247,20 @@ export function AdminBrandKitDetailPage() {
         if (window.confirm('Delete this Brand Kit? This cannot be undone.')) deleteMutation.mutate();
     };
 
+    // Stable handlers for child tab components (avoids re-render on every draft change)
+    const handleDraftMerge = useCallback((d: Partial<typeof draft>) => setDraft((s) => ({ ...s, ...d })), []);
+    const handleThemePresetChange = useCallback(
+        (v: string | null) => setDraft((s) => ({ ...s, themePresetId: v })),
+        [],
+    );
+    const handleTokensChange = useCallback((v: string) => setDraft((s) => ({ ...s, tokensJson: v })), []);
+    const handleLogoUploaded = useCallback(
+        (_logoType: string, _key: string, _url: string) => {
+            queryClient.invalidateQueries({ queryKey: ['brand', 'kit', kitId] });
+        },
+        [queryClient, kitId],
+    );
+
     const hasColorOverrides = useMemo(() => {
         try {
             const parsed = JSON.parse(draft.tokensJson || '{}') as { color?: unknown };
@@ -369,7 +383,7 @@ export function AdminBrandKitDetailPage() {
                             tagline={draft.tagline}
                             parentBrandKitId={draft.parentBrandKitId}
                             currentKitId={isNew ? undefined : kitId}
-                            onChange={(d) => setDraft((s) => ({ ...s, ...d }))}
+                            onChange={handleDraftMerge}
                             nameReadOnly={!isNew && kitForView.organizationId === null}
                         />
                     </TabsContent>
@@ -389,10 +403,7 @@ export function AdminBrandKitDetailPage() {
                                     emailLogoKey: draft.emailLogoKey,
                                 }}
                                 logoBaseUrl={logoBaseUrl}
-                                onUploaded={(_, url) => {
-                                    // Parent should refetch; we could also update local draft
-                                    queryClient.invalidateQueries({ queryKey: ['brand', 'kit', kitId] });
-                                }}
+                                onUploaded={handleLogoUploaded}
                             />
                         )}
                     </TabsContent>
@@ -400,8 +411,8 @@ export function AdminBrandKitDetailPage() {
                         <BrandKitThemeTab
                             themePresetId={draft.themePresetId}
                             tokensJson={draft.tokensJson}
-                            onThemePresetChange={(v) => setDraft((s) => ({ ...s, themePresetId: v }))}
-                            onTokensChange={(v) => setDraft((s) => ({ ...s, tokensJson: v }))}
+                            onThemePresetChange={handleThemePresetChange}
+                            onTokensChange={handleTokensChange}
                             hasParent={!!draft.parentBrandKitId}
                         />
                     </TabsContent>
@@ -409,7 +420,7 @@ export function AdminBrandKitDetailPage() {
                         <BrandKitFontsTab
                             tokensJson={draft.tokensJson}
                             themePresetId={draft.themePresetId}
-                            onTokensChange={(v) => setDraft((s) => ({ ...s, tokensJson: v }))}
+                            onTokensChange={handleTokensChange}
                             hasParent={!!draft.parentBrandKitId}
                         />
                     </TabsContent>
@@ -420,8 +431,8 @@ export function AdminBrandKitDetailPage() {
                             customCss={draft.customCss}
                             hideOttabaseBranding={draft.hideOttabaseBranding}
                             tokensJson={draft.tokensJson}
-                            onTokensChange={(v) => setDraft((s) => ({ ...s, tokensJson: v }))}
-                            onChange={(d) => setDraft((s) => ({ ...s, ...d }))}
+                            onTokensChange={handleTokensChange}
+                            onChange={handleDraftMerge}
                         />
                     </TabsContent>
                 </Tabs>

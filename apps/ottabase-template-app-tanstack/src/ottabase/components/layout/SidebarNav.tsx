@@ -1,5 +1,6 @@
 import { useSession } from '@/lib/auth';
 import { Link, useLocation } from '@tanstack/react-router';
+import { memo } from 'react';
 import { NAV_LINKS } from './layout.constants';
 
 /** Map width class to px value for responsive inline style */
@@ -10,7 +11,10 @@ const WIDTH_MAP: Record<string, string> = {
     'w-80': '20rem',
 };
 
-export function SidebarNav({ widthClass = 'w-56' }: { widthClass?: string }) {
+/** Static CSS for sidebar width — hoisted to avoid re-injecting on every render */
+const SIDEBAR_WIDTH_CSS = `@media (min-width: 768px) { aside[style*="--sidebar-width"] { width: var(--sidebar-width); } }`;
+
+export const SidebarNav = memo(function SidebarNav({ widthClass = 'w-56' }: { widthClass?: string }) {
     const { isAuthenticated } = useSession();
     const location = useLocation();
     const links = NAV_LINKS.filter((l) => !l.authRequired || isAuthenticated);
@@ -21,7 +25,7 @@ export function SidebarNav({ widthClass = 'w-56' }: { widthClass?: string }) {
             className="w-full border-b bg-sidebar md:shrink-0 md:border-b-0 md:border-r md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:overflow-y-auto"
             style={{ '--sidebar-width': desktopWidth } as React.CSSProperties}
         >
-            <style>{`@media (min-width: 768px) { aside[style*="--sidebar-width"] { width: var(--sidebar-width); } }`}</style>
+            <style>{SIDEBAR_WIDTH_CSS}</style>
             <nav className="flex gap-1 p-2 overflow-x-auto md:flex-col md:gap-0.5 md:p-3 md:overflow-x-visible">
                 {links.map((link) => {
                     const isActive =
@@ -43,4 +47,4 @@ export function SidebarNav({ widthClass = 'w-56' }: { widthClass?: string }) {
             </nav>
         </aside>
     );
-}
+});

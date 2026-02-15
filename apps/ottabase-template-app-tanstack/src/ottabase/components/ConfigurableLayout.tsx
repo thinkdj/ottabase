@@ -7,7 +7,7 @@ import { ReferralTracker } from '@/components/ReferralTracker';
 import type { LayoutConfig } from '@ottabase/ottalayout';
 import { contentWidthClass, containerPaddingClass, densityPadding, sidebarWidthClass } from '@ottabase/ottalayout';
 import { LayoutSlot } from '@ottabase/ottalayout/react';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { BrandFooter } from './layout/BrandFooter';
 import { MinimalHeader, TopbarHeader } from './layout/BrandHeaders';
 import { DrawerNav } from './layout/DrawerNav';
@@ -22,7 +22,7 @@ export interface ConfigurableLayoutProps {
  * Renders the app shell from LayoutConfig.
  * Used by @ottabase/brand-engine-react LayoutResolver.
  */
-export function ConfigurableLayout({ config, children }: ConfigurableLayoutProps) {
+export const ConfigurableLayout = memo(function ConfigurableLayout({ config, children }: ConfigurableLayoutProps) {
     const header = config?.header ?? 'topbar';
     const navigation = config?.navigation ?? 'topbar';
     const cw = config?.contentWidth ?? 'lg';
@@ -87,4 +87,4 @@ export function ConfigurableLayout({ config, children }: ConfigurableLayoutProps
             {showFooter && <BrandFooter containerClass={cwClass} />}
         </div>
     );
-}
+});

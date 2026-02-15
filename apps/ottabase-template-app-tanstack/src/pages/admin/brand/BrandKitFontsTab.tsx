@@ -38,18 +38,25 @@ function applyFontOverride(tokensJson: string, role: 'heading' | 'body' | 'handw
 
 export function BrandKitFontsTab({ tokensJson, themePresetId, onTokensChange, hasParent }: BrandKitFontsTabProps) {
     const presetTypo = getThemeOrDefault(themePresetId || 'default').tokens?.typography;
-    let parsed: {
-        typography?: {
-            heading?: { fontFamily?: string };
-            body?: { fontFamily?: string };
-            handwriting?: { fontFamily?: string };
-        };
-    } = {};
-    try {
-        parsed = JSON.parse(tokensJson || '{}') as typeof parsed;
-    } catch {
-        /* ignore */
-    }
+    const parsed = useMemo(() => {
+        try {
+            return JSON.parse(tokensJson || '{}') as {
+                typography?: {
+                    heading?: { fontFamily?: string };
+                    body?: { fontFamily?: string };
+                    handwriting?: { fontFamily?: string };
+                };
+            };
+        } catch {
+            return {} as {
+                typography?: {
+                    heading?: { fontFamily?: string };
+                    body?: { fontFamily?: string };
+                    handwriting?: { fontFamily?: string };
+                };
+            };
+        }
+    }, [tokensJson]);
     const fontHeading = parsed?.typography?.heading?.fontFamily ?? presetTypo?.heading?.fontFamily ?? 'Inter';
     const fontBody = parsed?.typography?.body?.fontFamily ?? presetTypo?.body?.fontFamily ?? 'Inter';
     const fontHandwriting =

@@ -13,7 +13,7 @@
 
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -62,7 +62,9 @@ export function LayoutSlotsProvider({ children }: { children: React.ReactNode })
         });
     }, []);
 
-    return <LayoutSlotsContext.Provider value={{ slots, setSlot, clearSlot }}>{children}</LayoutSlotsContext.Provider>;
+    const slotsContextValue = useMemo(() => ({ slots, setSlot, clearSlot }), [slots, setSlot, clearSlot]);
+
+    return <LayoutSlotsContext.Provider value={slotsContextValue}>{children}</LayoutSlotsContext.Provider>;
 }
 
 // ── Consumer hook ──────────────────────────────────────────────────────────
@@ -148,7 +150,7 @@ export function SlotContent({ name, children }: SlotContentProps) {
     // Update slot when children change (re-renders from parent)
     useEffect(() => {
         setSlot(name, children);
-    });
+    }, [name, children, setSlot]);
 
     // SlotContent doesn't render anything itself – content appears at the LayoutSlot
     return null;

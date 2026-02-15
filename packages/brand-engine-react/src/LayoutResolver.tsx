@@ -15,7 +15,7 @@ import {
     type LayoutPresetId,
 } from '@ottabase/ottalayout';
 import { LayoutMetaProvider, LayoutSlotsProvider, useResolvedLayoutMeta } from '@ottabase/ottalayout/react';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useBrand } from './BrandProvider';
 
 /** Props accepted by a layout component (the "shell" renderer) */
@@ -48,29 +48,38 @@ function LayoutResolverInner({ children, router, layoutComponent: LayoutComponen
     const pageMeta = useResolvedLayoutMeta();
 
     // Resolve preset ID: explicit from config → route-mapping match → fallback
-    const presetId =
-        config?.layoutTemplateId ??
-        (config?.routeMappings && config.routeMappings.length > 0
-            ? resolveLayoutForPath(
-                  pathname,
-                  config.routeMappings.map((m) => ({
-                      pathPattern: m.pathPattern,
-                      layoutTemplateId: m.layoutTemplateId,
-                      priority: m.priority,
-                  })),
-              )
-            : null) ??
-        'homepage';
+    const presetId = useMemo(
+        () =>
+            config?.layoutTemplateId ??
+            (config?.routeMappings && config.routeMappings.length > 0
+                ? resolveLayoutForPath(
+                      pathname,
+                      config.routeMappings.map((m) => ({
+                          pathPattern: m.pathPattern,
+                          layoutTemplateId: m.layoutTemplateId,
+                          priority: m.priority,
+                      })),
+                  )
+                : null) ??
+            'homepage',
+        [config?.layoutTemplateId, config?.routeMappings, pathname],
+    );
 
     // Resolve config: DB template map → built-in preset → fallback to homepage
-    const baseConfig =
-        config?.layoutTemplatesMap?.[presetId]?.config ??
-        (presetId in LAYOUT_PRESETS
-            ? LAYOUT_PRESETS[presetId as LayoutPresetId].config
-            : LAYOUT_PRESETS.homepage.config);
+    const baseConfig = useMemo(
+        () =>
+            config?.layoutTemplatesMap?.[presetId]?.config ??
+            (presetId in LAYOUT_PRESETS
+                ? LAYOUT_PRESETS[presetId as LayoutPresetId].config
+                : LAYOUT_PRESETS.homepage.config),
+        [config?.layoutTemplatesMap, presetId],
+    );
 
     // Merge page-level overrides from useLayoutMeta (if any)
-    const layoutConfig = pageMeta ? mergeLayoutConfig({ ...baseConfig, ...pageMeta }, baseConfig) : baseConfig;
+    const layoutConfig = useMemo(
+        () => (pageMeta ? mergeLayoutConfig({ ...baseConfig, ...pageMeta }, baseConfig) : baseConfig),
+        [baseConfig, pageMeta],
+    );
 
     return <LayoutComponent config={layoutConfig}>{children}</LayoutComponent>;
 }

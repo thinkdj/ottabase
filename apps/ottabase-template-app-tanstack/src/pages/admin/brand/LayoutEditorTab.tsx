@@ -31,7 +31,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { IconAdjustments, IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { brandKitApi, layoutApi, type LayoutMappingItem, type LayoutTemplateItem } from './brandApi';
 
@@ -57,7 +57,7 @@ function getTemplateConfig(template: LayoutTemplateItem): LayoutConfig {
     return mergeLayoutConfig(template.config, fallback);
 }
 
-function LayoutMiniPreview({ config }: { config: LayoutConfig }) {
+const LayoutMiniPreview = memo(function LayoutMiniPreview({ config }: { config: LayoutConfig }) {
     const densityGap = config.density === 'compact' ? 'gap-1' : config.density === 'spacious' ? 'gap-2' : 'gap-1.5';
 
     const contentMaxWidth =
@@ -116,7 +116,7 @@ function LayoutMiniPreview({ config }: { config: LayoutConfig }) {
             </div>
         </div>
     );
-}
+});
 
 function LayoutConfigEditor({ config, onChange }: { config: LayoutConfig; onChange: (c: LayoutConfig) => void }) {
     return (
@@ -764,7 +764,7 @@ function MappingsEditor({
 }
 
 /** Individual mapping row with inline-editable fields and collapsible token overrides */
-function MappingRow({
+const MappingRow = memo(function MappingRow({
     mapping,
     layoutOptions,
     kits,
@@ -924,4 +924,4 @@ function MappingRow({
             )}
         </>
     );
-}
+});
