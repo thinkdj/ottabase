@@ -143,6 +143,9 @@ describe('Review Renderer', () => {
                 expect(data.reviewBody).toBe('Excellent!');
                 expect(data.reviewRating.ratingValue).toBe(4.5);
                 expect(data.reviewRating.bestRating).toBe(5);
+                expect(data.itemReviewed).toBeTruthy();
+                expect(data.itemReviewed['@type']).toBe('Thing');
+                expect(data.itemReviewed.name).toBe('Great Product');
             }
         });
 

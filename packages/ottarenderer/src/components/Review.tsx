@@ -1,5 +1,5 @@
 import { RenderFn } from 'editorjs-blocks-react-renderer';
-import { useMemo } from 'react';
+import { useId, useMemo } from 'react';
 
 export interface ReviewData {
     image?: string;
@@ -27,30 +27,33 @@ const FullStar = ({ className }: { className?: string }) => (
     </svg>
 );
 
-const HalfStar = ({ className }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24">
-        {/* Background empty star */}
-        <path
-            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-            fill="none"
-            stroke="#9CA3AF"
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-        />
-        {/* Half filled star using clip */}
-        <clipPath id="halfClip">
-            <rect x="0" y="0" width="12" height="24" />
-        </clipPath>
-        <path
-            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-            fill="#FACC15"
-            clipPath="url(#halfClip)"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-        />
-    </svg>
-);
+const HalfStar = ({ className }: { className?: string }) => {
+    const clipId = useId();
+    return (
+        <svg className={className} viewBox="0 0 24 24">
+            {/* Background empty star */}
+            <path
+                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                fill="none"
+                stroke="#9CA3AF"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+            />
+            {/* Half filled star using clip */}
+            <clipPath id={clipId}>
+                <rect x="0" y="0" width="12" height="24" />
+            </clipPath>
+            <path
+                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                fill="#FACC15"
+                clipPath={`url(#${clipId})`}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+            />
+        </svg>
+    );
+};
 
 const EmptyStar = ({ className }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.5">
@@ -143,7 +146,6 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
 
     if (!title) return null;
 
-    const ratingPercentage = (rating / maxStars) * 100;
     const accentGradient = getRatingColor(rating, maxStars);
 
     const structuredData = useMemo(() => {
@@ -153,6 +155,10 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
             '@type': 'Review',
             name: title,
             reviewBody: content,
+            itemReviewed: {
+                '@type': 'Thing',
+                name: title,
+            },
         };
         if (rating > 0) {
             schema.reviewRating = {

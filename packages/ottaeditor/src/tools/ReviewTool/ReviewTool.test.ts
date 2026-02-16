@@ -162,6 +162,21 @@ describe('ReviewTool', () => {
             (stars[2] as HTMLElement).click();
             expect(tool.save().rating).toBe(3);
         });
+
+        it('should never produce negative rating when clicking first star multiple times', () => {
+            const element = tool.render();
+            const stars = element.querySelectorAll('.cdx-review__star');
+            const firstStar = stars[0] as HTMLElement;
+            // Click first star: rating = 1
+            firstStar.click();
+            expect(tool.save().rating).toBe(1);
+            // Click again: rating = 0.5 (half star)
+            firstStar.click();
+            expect(tool.save().rating).toBe(0.5);
+            // Click again: rating = 0 (not negative)
+            firstStar.click();
+            expect(tool.save().rating).toBe(0);
+        });
     });
 
     describe('Save', () => {

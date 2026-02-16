@@ -2,29 +2,28 @@ import type { API, BlockTool, BlockToolConstructorOptions } from '@editorjs/edit
 import './ReviewTool.css';
 
 export interface ReviewToolConfig {
-    uploadEndpoint?: string;
     maxStars?: 5 | 10;
     allowHalfStars?: boolean;
 }
 
 export interface ReviewData {
-    image: string;
-    title: string;
-    content: string;
-    linkUrl: string;
-    linkLabel: string;
-    pros: string[];
-    cons: string[];
-    rating: number;
-    maxStars: 5 | 10;
-    allowHalfStars: boolean;
-    summary: string;
-    compact: boolean;
+    image?: string;
+    title?: string;
+    content?: string;
+    linkUrl?: string;
+    linkLabel?: string;
+    pros?: string[];
+    cons?: string[];
+    rating?: number;
+    maxStars?: 5 | 10;
+    allowHalfStars?: boolean;
+    summary?: string;
+    compact?: boolean;
 }
 
 export default class ReviewTool implements BlockTool {
     private api: API;
-    private data: ReviewData;
+    private data: Required<ReviewData>;
     private config: ReviewToolConfig;
     private wrapper: HTMLElement | null = null;
     private fileInput: HTMLInputElement | null = null;
@@ -413,6 +412,8 @@ export default class ReviewTool implements BlockTool {
                 } else {
                     this.data.rating = i;
                 }
+                // Ensure rating is never negative
+                this.data.rating = Math.max(0, this.data.rating);
                 this.renderStars(container);
                 // Update the number input
                 const ratingInput = this.wrapper?.querySelector('.cdx-review__rating-value') as HTMLInputElement;
