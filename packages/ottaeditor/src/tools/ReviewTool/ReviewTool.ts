@@ -19,6 +19,7 @@ export interface ReviewData {
     maxStars: 5 | 10;
     allowHalfStars: boolean;
     summary: string;
+    compact: boolean;
 }
 
 export default class ReviewTool implements BlockTool {
@@ -68,6 +69,7 @@ export default class ReviewTool implements BlockTool {
             maxStars: data?.maxStars || this.config.maxStars || 5,
             allowHalfStars: data?.allowHalfStars ?? this.config.allowHalfStars ?? true,
             summary: data?.summary || '',
+            compact: data?.compact ?? false,
         };
     }
 
@@ -98,6 +100,9 @@ export default class ReviewTool implements BlockTool {
 
         // Summary
         form.appendChild(this.createTextarea('summary', 'Summary (optional)', 'Final verdict...'));
+
+        // Compact mode checkbox
+        form.appendChild(this.createCompactToggle());
 
         wrapper.appendChild(form);
         this.wrapper = wrapper;
@@ -498,6 +503,35 @@ export default class ReviewTool implements BlockTool {
         col.appendChild(addBtn);
 
         return col;
+    }
+
+    private createCompactToggle(): HTMLElement {
+        const group = document.createElement('div');
+        group.classList.add(ReviewTool.CSS.inputGroup);
+        group.style.flexDirection = 'row';
+        group.style.alignItems = 'center';
+        group.style.gap = '8px';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = 'cdx-review-compact';
+        checkbox.classList.add('cdx-review__checkbox');
+        checkbox.checked = this.data.compact;
+        checkbox.addEventListener('change', () => {
+            this.data.compact = checkbox.checked;
+        });
+
+        const label = document.createElement('label');
+        label.htmlFor = 'cdx-review-compact';
+        label.classList.add(ReviewTool.CSS.label);
+        label.textContent = 'Compact mode';
+        label.title = 'Render as a smaller horizontal card';
+        label.style.margin = '0';
+        label.style.cursor = 'pointer';
+
+        group.appendChild(checkbox);
+        group.appendChild(label);
+        return group;
     }
 
     save(): ReviewData {
