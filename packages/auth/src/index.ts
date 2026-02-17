@@ -113,7 +113,14 @@ export {
 // ============================================================
 // REACT HOOKS
 // ============================================================
-export { useSession, type Session, type User, type UseSessionOptions } from './react-hooks';
+export {
+    useSession,
+    clearAuthSessionStorage,
+    AUTH_STORAGE_KEY,
+    type Session,
+    type User,
+    type UseSessionOptions,
+} from './react-hooks';
 
 // ============================================================
 // TYPE DEFINITIONS

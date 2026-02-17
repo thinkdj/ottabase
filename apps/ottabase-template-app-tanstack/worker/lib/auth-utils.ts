@@ -1,9 +1,10 @@
-import { createResendMailer, createSESMailer } from '@ottabase/email';
 import { CreateAuthConfigOptions } from '@ottabase/auth/backend';
+import { invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
+import { createResendMailer, createSESMailer } from '@ottabase/email';
 import { SecurityContext } from '@ottabase/ottaorm';
 import { Account, Organization, OrganizationMember, VerificationToken } from '@ottabase/ottaorm/models';
-import { createSecureToken } from './utils';
 import type { CloudflareEnv } from '../cloudflare-env';
+import { createSecureToken } from './utils';
 
 export async function resolveMailer(env: CloudflareEnv) {
     const from = env.EMAIL_FROM || 'noreply@example.com';
@@ -85,6 +86,12 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
     if (verbose) {
         options.verbose = true;
     }
+
+    // Clear RBAC cache when user signs out so stale permissions aren't served
+    options.onSignOut = async (_userId: string) => {
+        if (!env.OBCF_KV) return;
+        await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
+    };
 
     return options;
 }

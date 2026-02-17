@@ -264,7 +264,7 @@ export function buildTokensFromBaseColor(
     h: number,
     s: number,
     l: number,
-): { color: { light: SemanticPalette; dark: SemanticPalette } } {
+): { color: { light: SemanticPalette; dark: SemanticPalette; [scheme: string]: SemanticPalette | undefined } } {
     return {
         color: {
             light: generateSemanticDefaults(h, s, l),

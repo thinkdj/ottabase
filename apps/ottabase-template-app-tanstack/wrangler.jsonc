@@ -111,6 +111,9 @@
     "vars": {
         "ENVIRONMENT": "development",
         "NODE_ENV": "production",
+        // R2 proxy path - works in dev and production (same origin)
+        // For custom R2 domain, set to: https://cdn.yourdomain.com
+        "R2_PUBLIC_URL": "/api/upload/file",
     },
 
     // Local development settings

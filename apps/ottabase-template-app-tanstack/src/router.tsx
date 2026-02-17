@@ -1,19 +1,23 @@
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { api, isApiError } from '@/lib/api';
+import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { APP_META } from '@/ottabase/config/app.config';
-import { Button, Toaster } from '@ottabase/ui-shadcn';
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
+import { Button, Toaster } from '@ottabase/ui-shadcn';
 import {
+    createBrowserHistory,
+    lazyRouteComponent,
     Link,
     Outlet,
     RootRoute,
     Route,
     Router,
-    createBrowserHistory,
-    lazyRouteComponent,
 } from '@tanstack/react-router';
-import { useState } from 'react';
+
+import { useState, type ReactNode } from 'react';
+
+const ADMIN_REQUIRED_PERMISSIONS = ['admin'];
 
 function RootLayout() {
     const pathname = tanstackRouterAdapter.usePathname();
@@ -21,7 +25,7 @@ function RootLayout() {
         <>
             <BrandPathSync pathname={pathname} />
             <Toaster />
-            <LayoutResolver router={tanstackRouterAdapter}>
+            <LayoutResolver router={tanstackRouterAdapter} layoutComponent={ConfigurableLayout}>
                 <Outlet />
             </LayoutResolver>
         </>
@@ -77,6 +81,22 @@ function HomeRouteComponent() {
                 )}
             </div>
         </div>
+    );
+}
+
+function AdminPrivilegeFallback() {
+    return (
+        <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
+            Missing privilege: admin
+        </div>
+    );
+}
+
+function renderAdminRoute(children: ReactNode) {
+    return (
+        <ProtectedRoute requiredPermissions={ADMIN_REQUIRED_PERMISSIONS} fallback={<AdminPrivilegeFallback />}>
+            {children}
+        </ProtectedRoute>
     );
 }
 
@@ -378,6 +398,16 @@ const demoI18nRoute = new Route({
     ),
 });
 
+const demoBreadcrumbsRoute = new Route({
+    getParentRoute: () => demoLayoutRoute,
+    path: 'breadcrumbs',
+    component: lazyRouteComponent(() =>
+        import('@/pages/demo/breadcrumbs/BreadcrumbsDemoPage').then((m) => ({
+            default: m.BreadcrumbsDemoPage,
+        })),
+    ),
+});
+
 // Auth routes
 const loginRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -467,7 +497,7 @@ const adminRoute = new Route({
     path: '/admin',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/AdminIndexPage').then((m) => ({
-            default: m.AdminIndexPage,
+            default: () => renderAdminRoute(<m.AdminIndexPage />),
         })),
     ),
 });
@@ -478,7 +508,18 @@ const adminBrandEngineRoute = new Route({
     path: '/admin/brand-engine',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/AdminBrandKitsListPage').then((m) => ({
-            default: m.AdminBrandKitsListPage,
+            default: () => renderAdminRoute(<m.AdminBrandKitsListPage />),
+        })),
+    ),
+});
+
+// Admin Brand Kit create – new kit form
+const adminBrandKitCreateRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/brand-engine/kits/new',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminBrandKitDetailPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminBrandKitDetailPage />),
         })),
     ),
 });
@@ -489,7 +530,7 @@ const adminBrandKitDetailRoute = new Route({
     path: '/admin/brand-engine/kits/$kitId',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/AdminBrandKitDetailPage').then((m) => ({
-            default: m.AdminBrandKitDetailPage,
+            default: () => renderAdminRoute(<m.AdminBrandKitDetailPage />),
         })),
     ),
 });
@@ -500,7 +541,7 @@ const adminBrandLayoutsRoute = new Route({
     path: '/admin/brand-engine/layouts',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/AdminBrandLayoutsPage').then((m) => ({
-            default: m.AdminBrandLayoutsPage,
+            default: () => renderAdminRoute(<m.AdminBrandLayoutsPage />),
         })),
     ),
 });
@@ -510,7 +551,7 @@ const adminThemeGeneratorRoute = new Route({
     path: '/admin/theme-generator',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/ThemeGeneratorRedirect').then((m) => ({
-            default: m.ThemeGeneratorRedirect,
+            default: () => renderAdminRoute(<m.ThemeGeneratorRedirect />),
         })),
     ),
 });
@@ -521,7 +562,7 @@ const adminReferralsRoute = new Route({
     path: '/admin/referrals',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/AdminReferralsPage').then((m) => ({
-            default: m.AdminReferralsPage,
+            default: () => renderAdminRoute(<m.AdminReferralsPage />),
         })),
     ),
 });
@@ -532,7 +573,7 @@ const adminQueueRoute = new Route({
     path: '/admin/queues',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/AdminQueuePage').then((m) => ({
-            default: m.AdminQueuePage,
+            default: () => renderAdminRoute(<m.AdminQueuePage />),
         })),
     ),
 });
@@ -543,7 +584,7 @@ const adminCronRoute = new Route({
     path: '/admin/cron',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/AdminCronPage').then((m) => ({
-            default: m.AdminCronPage,
+            default: () => renderAdminRoute(<m.AdminCronPage />),
         })),
     ),
 });
@@ -554,7 +595,7 @@ const adminNotificationsRoute = new Route({
     path: '/admin/notifications',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/AdminNotificationsPage').then((m) => ({
-            default: m.AdminNotificationsPage,
+            default: () => renderAdminRoute(<m.AdminNotificationsPage />),
         })),
     ),
 });
@@ -565,11 +606,7 @@ const adminBlogRoute = new Route({
     path: '/admin/blog',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/blog/AdminBlogListPage').then((m) => ({
-            default: () => (
-                <ProtectedRoute requiredPermissions={['posts:*']}>
-                    <m.AdminBlogListPage />
-                </ProtectedRoute>
-            ),
+            default: () => renderAdminRoute(<m.AdminBlogListPage />),
         })),
     ),
 });
@@ -579,11 +616,7 @@ const adminBlogNewRoute = new Route({
     path: '/admin/blog/new',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/blog/AdminBlogEditorPage').then((m) => ({
-            default: () => (
-                <ProtectedRoute requiredPermissions={['posts:*']}>
-                    <m.AdminBlogEditorPage />
-                </ProtectedRoute>
-            ),
+            default: () => renderAdminRoute(<m.AdminBlogEditorPage />),
         })),
     ),
 });
@@ -593,11 +626,7 @@ const adminBlogEditRoute = new Route({
     path: '/admin/blog/$postId/edit',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/blog/AdminBlogEditorPage').then((m) => ({
-            default: () => (
-                <ProtectedRoute requiredPermissions={['posts:*']}>
-                    <m.AdminBlogEditorPage />
-                </ProtectedRoute>
-            ),
+            default: () => renderAdminRoute(<m.AdminBlogEditorPage />),
         })),
     ),
 });
@@ -607,11 +636,7 @@ const adminBlogStudioRoute = new Route({
     path: '/admin/blog/studio',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/blog/AdminBlogStudioPage').then((m) => ({
-            default: () => (
-                <ProtectedRoute requiredPermissions={['posts:*']}>
-                    <m.AdminBlogStudioPage />
-                </ProtectedRoute>
-            ),
+            default: () => renderAdminRoute(<m.AdminBlogStudioPage />),
         })),
     ),
 });
@@ -639,7 +664,7 @@ const adminDbRoute = new Route({
     },
     component: lazyRouteComponent(() =>
         import('@/pages/admin/AdminDbPage').then((m) => ({
-            default: m.AdminDbPage,
+            default: () => renderAdminRoute(<m.AdminDbPage />),
         })),
     ),
 });
@@ -716,7 +741,7 @@ const adminUsersRoute = new Route({
     path: '/admin/users',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/users/UserManagementPage').then((m) => ({
-            default: m.UserManagementPage,
+            default: () => renderAdminRoute(<m.UserManagementPage />),
         })),
     ),
 });
@@ -726,7 +751,7 @@ const adminUserRBACRoute = new Route({
     path: '/admin/users/$userId/rbac',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/users/UserRBACPage').then((m) => ({
-            default: m.UserRBACPage,
+            default: () => renderAdminRoute(<m.UserRBACPage />),
         })),
     ),
 });
@@ -737,7 +762,7 @@ const adminRBACRoute = new Route({
     path: '/admin/rbac',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/rbac/RBACAdminPage').then((m) => ({
-            default: m.RBACAdminPage,
+            default: () => renderAdminRoute(<m.RBACAdminPage />),
         })),
     ),
 });
@@ -747,7 +772,7 @@ const adminRBACRolesRoute = new Route({
     path: '/admin/rbac/roles',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/rbac/RBACRolesPage').then((m) => ({
-            default: m.RBACRolesPage,
+            default: () => renderAdminRoute(<m.RBACRolesPage />),
         })),
     ),
 });
@@ -757,7 +782,7 @@ const adminRBACPermissionsRoute = new Route({
     path: '/admin/rbac/permissions',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/rbac/PermissionsMatrixPage').then((m) => ({
-            default: m.PermissionsMatrixPage,
+            default: () => renderAdminRoute(<m.PermissionsMatrixPage />),
         })),
     ),
 });
@@ -767,7 +792,7 @@ const adminAuditRoute = new Route({
     path: '/admin/audit',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/audit/AuditLogViewerPage').then((m) => ({
-            default: m.AuditLogViewerPage,
+            default: () => renderAdminRoute(<m.AuditLogViewerPage />),
         })),
     ),
 });
@@ -777,7 +802,7 @@ const adminSecurityRLSRoute = new Route({
     path: '/admin/security/rls',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/security/RLSSecurityDemoPage').then((m) => ({
-            default: m.RLSSecurityDemoPage,
+            default: () => renderAdminRoute(<m.RLSSecurityDemoPage />),
         })),
     ),
 });
@@ -787,7 +812,7 @@ const adminKillSwitchesRoute = new Route({
     path: '/admin/security/kill-switches',
     component: lazyRouteComponent(() =>
         import('@/pages/admin/security/KillSwitchesPage').then((m) => ({
-            default: m.default,
+            default: () => renderAdminRoute(<m.default />),
         })),
     ),
 });
@@ -803,6 +828,7 @@ demoLayoutRoute.addChildren([
     demoCropperRoute,
     demoLoggerRoute,
     demoI18nRoute,
+    demoBreadcrumbsRoute,
     demoTimezoneRoute,
     demoCloudflareRoute,
     demoCloudflareD1Route,
@@ -835,6 +861,7 @@ const routeTree = rootRoute.addChildren([
     referralsRoute,
     adminRoute,
     adminBrandEngineRoute,
+    adminBrandKitCreateRoute,
     adminBrandKitDetailRoute,
     adminBrandLayoutsRoute,
     adminReferralsRoute,

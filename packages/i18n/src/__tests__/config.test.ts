@@ -14,7 +14,7 @@ describe('i18n Configuration', () => {
     // Run Language Detection first so localStorage test runs before any init
     describe('Language Detection', () => {
         it('should use localStorage language if available', async () => {
-            localStorage.setItem('i18nextLng', 'fr');
+            localStorage.setItem('ottabase.language', 'fr');
 
             await initI18n();
 

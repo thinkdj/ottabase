@@ -11,17 +11,21 @@ export const TopbarHeader = memo(function TopbarHeader({
     showNav,
     containerClass,
     leading,
+    sticky = true,
 }: {
     showNav: boolean;
     containerClass: string;
     leading?: React.ReactNode;
+    sticky?: boolean;
 }) {
     const { isAuthenticated } = useSession();
 
     const navLinks = NAV_LINKS.filter((l) => !l.authRequired || isAuthenticated);
 
     return (
-        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
+        <header
+            className={`border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${sticky ? 'sticky top-0' : ''} z-40`}
+        >
             <div className={`mx-auto flex items-center justify-between px-4 py-3 ${containerClass}`}>
                 <div className="flex items-center gap-2">
                     {leading}

@@ -1,10 +1,11 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Built-in themes (neo, crisp, default, etc.)
+// Brand Engine – Built-in themes (default, neo, crisp, funky, artisan, midnight, rose, verdant)
 // Call registerBuiltInThemes() at app startup to make them available.
 // ---------------------------------------------------------------------------
 
 import type { LegacyThemeConfig } from '../adapter';
 import { fromLegacyThemeConfig } from '../adapter';
+import { DEFAULT_COLORS_LIGHT } from '../defaults';
 import { getThemeByName, registerThemes } from '../registry';
 
 import defaultTheme from './default.json';
@@ -36,38 +37,45 @@ export function registerBuiltInThemes(): void {
 /** Names of built-in themes */
 export const BUILTIN_THEME_NAMES = BUILTIN_THEMES.map((t) => t.name);
 
-/** Theme preset items for enhanced dropdowns (id, name, swatch colors as HSL strings) */
-export const THEME_PRESET_ITEMS = BUILTIN_THEMES.map((t) => {
-    const light = t.colors?.light || {};
-    return {
-        id: t.name,
-        name: t.name.charAt(0).toUpperCase() + t.name.slice(1),
-        colors: [
-            light.primary || '221 83% 53%',
-            light.secondary || '210 40% 96%',
-            light.accent || light.primary || '221 83% 53%',
-            light.muted || '210 40% 96%',
-            light.destructive || '0 84% 60%',
-        ] as string[],
-    };
-});
+export type ThemePresetItem = {
+    id: string;
+    name: string;
+    colors: [string, string, string, string, string];
+};
 
-/** Build theme preset items from the runtime registry. Use this when THEME_PRESET_ITEMS shows stale/default colors (e.g. bundling issues). Call after registerBuiltInThemes(). */
-export function getThemePresetItems(): typeof THEME_PRESET_ITEMS {
+/** Shared fallback colors aligned with defaults */
+const FALLBACK = {
+    primary: DEFAULT_COLORS_LIGHT.primary,
+    secondary: DEFAULT_COLORS_LIGHT.secondary,
+    accent: DEFAULT_COLORS_LIGHT.accent,
+    muted: DEFAULT_COLORS_LIGHT.muted,
+    destructive: DEFAULT_COLORS_LIGHT.destructive,
+};
+
+/** Build a single preset item from theme name and light color tokens */
+function toPresetItem(name: string, light: Record<string, string> | undefined): ThemePresetItem {
+    const primary = light?.primary || FALLBACK.primary;
+    return {
+        id: name,
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        colors: [
+            primary,
+            light?.secondary || FALLBACK.secondary,
+            light?.accent || primary,
+            light?.muted || FALLBACK.muted,
+            light?.destructive || FALLBACK.destructive,
+        ],
+    };
+}
+
+/** Theme preset items from JSON (static fallback). Prefer getThemePresetItems() when registry is ready. */
+export const THEME_PRESET_ITEMS: ThemePresetItem[] = BUILTIN_THEMES.map((t) => toPresetItem(t.name, t.colors?.light));
+
+/** Build theme preset items from the runtime registry. Use for admin UI to get accurate swatch colors. Call after registerBuiltInThemes(). */
+export function getThemePresetItems(): ThemePresetItem[] {
     return BUILTIN_THEME_NAMES.map((name) => {
         const theme = getThemeByName(name);
-        const light = theme?.tokens?.color?.light;
-        const primary = (light as Record<string, string> | undefined)?.primary || '221 83% 53%';
-        return {
-            id: name,
-            name: name.charAt(0).toUpperCase() + name.slice(1),
-            colors: [
-                primary,
-                (light as Record<string, string> | undefined)?.secondary || '210 40% 96%',
-                (light as Record<string, string> | undefined)?.accent || primary,
-                (light as Record<string, string> | undefined)?.muted || '210 40% 96%',
-                (light as Record<string, string> | undefined)?.destructive || '0 84% 60%',
-            ] as string[],
-        };
+        const light = theme?.tokens?.color?.light as Record<string, string> | undefined;
+        return toPresetItem(name, light);
     });
 }

@@ -1,10 +1,11 @@
 // ---------------------------------------------------------------------------
 // Brand Engine – Critical CSS injection for HTML responses (Zero FOUC)
-// Injects :root CSS vars into <head> before first paint
+// Injects :root + .dark CSS vars into <head> before first paint.
+// Dual mode ensures brand theme applies universally on first paint for both light/dark.
 // ---------------------------------------------------------------------------
 
+import { buildCriticalStyleTagDual, getThemeOrDefault, resolveTheme } from '@ottabase/brand-engine';
 import { resolveBrandConfig } from '@ottabase/brand-engine/persistence';
-import { buildCriticalStyleTag } from '@ottabase/brand-engine';
 import type { CloudflareEnv } from '../../cloudflare-env';
 
 export interface BrandHtmlInjectEnv {
@@ -15,8 +16,9 @@ export interface BrandHtmlInjectEnv {
 }
 
 /**
- * If response is HTML, fetch brand config and inject critical CSS into <head>.
+ * If response is HTML, fetch brand config and inject critical CSS (light + dark) into <head>.
  * Returns original response if not HTML or on error.
+ * Dual theme ensures correct palette on first paint regardless of user color scheme.
  */
 export async function injectBrandCriticalCSS(
     response: Response,
@@ -28,16 +30,22 @@ export async function injectBrandCriticalCSS(
 
     try {
         const url = new URL(request.url);
+        const path = url.pathname || '/';
         const config = await resolveBrandConfig(env, {
-            organizationId: url.searchParams.get('organizationId') ?? null,
-            appId: url.searchParams.get('appId') ?? null,
-            brandPreview: url.searchParams.get('brandPreview') ?? undefined,
-            themeVariant: url.searchParams.get('themeVariant') ?? undefined,
+            organizationId: url.searchParams.get('organizationId') ?? request.headers.get('x-organization-id') ?? null,
+            appId: url.searchParams.get('appId') ?? request.headers.get('x-app-id') ?? null,
+            path,
+            mode: 'light', // Used for initial load; both palettes injected below
         });
         if (!config?.theme) return response;
 
+        const base = getThemeOrDefault(config.themeBase || 'default');
+        const tenantTheme = config.tenantTheme ?? {};
+        const lightTheme = resolveTheme({ base, tenantOverrides: tenantTheme, mode: 'light' });
+        const darkTheme = resolveTheme({ base, tenantOverrides: tenantTheme, mode: 'dark' });
+
         const html = await response.text();
-        const criticalTag = buildCriticalStyleTag(config.theme);
+        const criticalTag = buildCriticalStyleTagDual(lightTheme, darkTheme);
         const injectedHtml = html.replace('</head>', `${criticalTag}\n    </head>`);
         return new Response(injectedHtml, {
             status: response.status,

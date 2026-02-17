@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-import { Link } from '@tanstack/react-router';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -16,6 +14,8 @@ import {
     CardTitle,
     Input,
 } from '@ottabase/ui-shadcn';
+import { Link } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 
 interface R2Object {
     key: string;
@@ -166,7 +166,7 @@ export function CloudflareR2DemoPage() {
     };
 
     return (
-        <div className="mx-auto max-w-4xl space-y-6 px-4 py-12">
+        <div className="space-y-6">
             <Button asChild variant="ghost" className="w-fit">
                 <Link to="/demo/cloudflare">← Back to Cloudflare Features</Link>
             </Button>

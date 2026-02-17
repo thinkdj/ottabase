@@ -59,7 +59,7 @@ describe('Shortlink Page Renderers', () => {
             const response = renderExpiredShortlinkPage();
             const html = await response.text();
 
-            expect(html).toContain('localStorage.getItem("ottabase-theme")');
+            expect(html).toContain('localStorage.getItem("ottabase.theme")');
             expect(html).toContain('data-theme');
         });
 
@@ -215,7 +215,7 @@ describe('Shortlink Page Renderers', () => {
             });
             const html = await response.text();
 
-            expect(html).toContain('localStorage.getItem("ottabase-theme")');
+            expect(html).toContain('localStorage.getItem("ottabase.theme")');
         });
 
         it('should include redirect functionality script', async () => {

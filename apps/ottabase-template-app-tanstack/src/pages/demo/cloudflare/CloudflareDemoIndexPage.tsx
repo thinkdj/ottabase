@@ -1,5 +1,5 @@
-import { Link } from '@tanstack/react-router';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Link } from '@tanstack/react-router';
 
 export function CloudflareDemoIndexPage() {
     const demos = [
@@ -51,7 +51,7 @@ export function CloudflareDemoIndexPage() {
     ];
 
     return (
-        <div className="mx-auto max-w-4xl space-y-8 px-4 py-12">
+        <div className="space-y-8">
             <Button asChild variant="ghost" className="w-fit">
                 <Link to="/demo">← Back to Demo Gallery</Link>
             </Button>

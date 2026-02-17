@@ -119,7 +119,7 @@ const Chip = ({
         <span
             className={clsx(
                 'inline-flex items-center gap-1 px-2 py-0.5 text-sm',
-                'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200',
+                'bg-primary/10 text-primary',
                 'rounded-md whitespace-nowrap',
             )}
         >
@@ -135,7 +135,7 @@ const Chip = ({
                             onRemove(e as any, item);
                         }
                     }}
-                    className="ml-0.5 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors cursor-pointer"
+                    className="ml-0.5 hover:bg-primary/20 rounded-full p-0.5 transition-colors cursor-pointer"
                 >
                     <X className="w-3 h-3" />
                 </span>
@@ -480,7 +480,7 @@ export function OttaSelect({
     const displayContent = useMemo(() => {
         if (mode === 'single') {
             if (selectedItems.length === 0) {
-                return <span className="text-gray-500 dark:text-gray-400">{placeholder}</span>;
+                return <span className="text-muted-foreground">{placeholder}</span>;
             }
             if (renderValue) {
                 return renderValue(selectedItems[0]);
@@ -490,7 +490,7 @@ export function OttaSelect({
 
         // Multiple mode
         if (selectedItems.length === 0) {
-            return <span className="text-gray-500 dark:text-gray-400">{placeholder}</span>;
+            return <span className="text-muted-foreground">{placeholder}</span>;
         }
 
         // Show chips mode
@@ -510,9 +510,7 @@ export function OttaSelect({
                         />
                     ))}
                     {hiddenCount > 0 && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                            +{hiddenCount} more
-                        </span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">+{hiddenCount} more</span>
                     )}
                 </div>
             );
@@ -563,12 +561,12 @@ export function OttaSelect({
                 disabled={disabled}
                 className={clsx(
                     'w-full px-3 py-2 text-left min-h-[42px]',
-                    'bg-white dark:bg-gray-800',
-                    'border border-gray-300 dark:border-gray-600',
-                    'text-gray-900 dark:text-gray-100',
+                    'bg-background',
+                    'border border-input',
+                    'text-foreground',
                     'rounded-lg',
-                    'hover:border-gray-400 dark:hover:border-gray-500',
-                    'focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent',
+                    'hover:border-ring/50',
+                    'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
                     'transition-colors duration-150',
                     'flex items-center justify-between gap-2',
                     disabled && 'cursor-not-allowed',
@@ -580,7 +578,7 @@ export function OttaSelect({
                     {clearable && hasValue && !disabled && (
                         <span
                             onClick={handleClear}
-                            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors cursor-pointer"
+                            className="p-1 hover:bg-accent rounded transition-colors cursor-pointer"
                             role="button"
                             aria-label="Clear selection"
                             tabIndex={0}
@@ -591,13 +589,13 @@ export function OttaSelect({
                                 }
                             }}
                         >
-                            <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            <X className="w-4 h-4 text-muted-foreground" />
                         </span>
                     )}
 
                     <ChevronDown
                         className={clsx(
-                            'w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200',
+                            'w-4 h-4 text-muted-foreground transition-transform duration-200',
                             isOpen && 'transform rotate-180',
                         )}
                     />
@@ -610,21 +608,21 @@ export function OttaSelect({
                     ref={dropdownRef}
                     className={clsx(
                         'absolute z-50 w-full mt-2',
-                        'bg-white dark:bg-gray-800',
-                        'border border-gray-200 dark:border-gray-700',
-                        'rounded-lg shadow-lg dark:shadow-gray-900/50',
+                        'bg-popover',
+                        'border border-border',
+                        'rounded-lg shadow-lg',
                         'max-h-80 overflow-hidden flex flex-col',
                         dropdownClassName,
                     )}
                 >
                     {/* Header */}
-                    {header && <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">{header}</div>}
+                    {header && <div className="px-3 py-2 border-b border-border">{header}</div>}
 
                     {/* Search Input */}
                     {searchable && (
-                        <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+                        <div className="px-3 py-2 border-b border-border">
                             <div className="relative">
-                                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+                                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                 <input
                                     ref={searchInputRef}
                                     type="text"
@@ -633,11 +631,11 @@ export function OttaSelect({
                                     placeholder={searchPlaceholder}
                                     className={clsx(
                                         'w-full pl-8 pr-3 py-1.5 text-sm rounded',
-                                        'bg-white dark:bg-gray-900',
-                                        'border border-gray-300 dark:border-gray-600',
-                                        'text-gray-900 dark:text-gray-100',
-                                        'placeholder:text-gray-400 dark:placeholder:text-gray-500',
-                                        'focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent',
+                                        'bg-background',
+                                        'border border-input',
+                                        'text-foreground',
+                                        'placeholder:text-muted-foreground',
+                                        'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
                                     )}
                                 />
                             </div>
@@ -647,16 +645,14 @@ export function OttaSelect({
                     {/* Items List */}
                     <div className="overflow-y-auto flex-1">
                         {isLoading ? (
-                            <div className="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                            <div className="px-3 py-8 text-center text-sm text-muted-foreground">
                                 <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
                                 {loadingMessage}
                             </div>
                         ) : error ? (
-                            <div className="px-3 py-8 text-center text-sm text-red-500 dark:text-red-400">{error}</div>
+                            <div className="px-3 py-8 text-center text-sm text-destructive">{error}</div>
                         ) : filteredItems.length === 0 ? (
-                            <div className="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                                {emptyMessage}
-                            </div>
+                            <div className="px-3 py-8 text-center text-sm text-muted-foreground">{emptyMessage}</div>
                         ) : (
                             <div className="py-1">
                                 {filteredItems.map((item, index) => {
@@ -671,12 +667,11 @@ export function OttaSelect({
                                             onClick={() => handleSelect(item)}
                                             className={clsx(
                                                 'w-full px-3 py-2 text-left text-sm',
-                                                'text-gray-900 dark:text-gray-100',
-                                                'hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors',
+                                                'text-popover-foreground',
+                                                'hover:bg-accent hover:text-accent-foreground transition-colors',
                                                 'flex items-center justify-between gap-2',
-                                                focused && 'bg-gray-100 dark:bg-gray-700',
-                                                selected &&
-                                                    'bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50',
+                                                focused && 'bg-accent text-accent-foreground',
+                                                selected && 'bg-accent/50 hover:bg-accent',
                                             )}
                                         >
                                             {itemRenderer({
@@ -684,9 +679,7 @@ export function OttaSelect({
                                                 isSelected: selected,
                                                 isFocused: focused,
                                             })}
-                                            {selected && (
-                                                <Check className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                                            )}
+                                            {selected && <Check className="w-4 h-4 text-primary flex-shrink-0" />}
                                         </button>
                                     );
                                 })}
@@ -695,7 +688,7 @@ export function OttaSelect({
                     </div>
 
                     {/* Footer */}
-                    {footer && <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700">{footer}</div>}
+                    {footer && <div className="px-3 py-2 border-t border-border">{footer}</div>}
                 </div>
             )}
         </div>

@@ -133,11 +133,11 @@ const sampleEditorJSData = {
             id: 'code1',
             type: 'code',
             data: {
-                code: `import { 
+                code: `import {
   Blocks,
-  customRenderers, 
-  defaultEJSRConfigs, 
-  HtmlRenderer 
+  customRenderers,
+  defaultEJSRConfigs,
+  HtmlRenderer
 } from "@ottabase/ottarenderer";
 import "@ottabase/ottarenderer/styles";
 

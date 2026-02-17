@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { Link } from '@tanstack/react-router';
+import { api, isApiError } from '@/lib/api';
 import {
     Button,
     Card,
@@ -10,7 +9,8 @@ import {
     Input,
     Textarea,
 } from '@ottabase/ui-shadcn';
-import { api, isApiError } from '@/lib/api';
+import { Link } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 
 interface QueueMessage {
     key: string;
@@ -128,7 +128,7 @@ export function CloudflareQueuesDemoPage() {
     };
 
     return (
-        <div className="mx-auto max-w-4xl space-y-6 px-4 py-12">
+        <div className="space-y-6">
             <Button asChild variant="ghost" className="w-fit">
                 <Link to="/demo/cloudflare">← Back to Cloudflare Features</Link>
             </Button>

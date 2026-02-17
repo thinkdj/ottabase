@@ -21,7 +21,7 @@ export function StoryShell({ children }: StoryShellProps) {
         */}
             <ThemeProvider
                 attribute="class"
-                storageKey="ottabase-theme"
+                storageKey="ottabase.theme"
                 defaultTheme="light"
                 enableSystem={false}
                 disableTransitionOnChange={false}

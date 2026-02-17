@@ -20,6 +20,13 @@ const fetchOpts = { credentials: 'include' as RequestCredentials };
 export interface BrandKitItem {
     id: string;
     organizationId?: string | null;
+    isDefault?: boolean;
+    /** Parent Brand Kit ID for inheritance */
+    parentBrandKitId?: string | null;
+    /** Resolved parent name (populated by list API for display) */
+    parentBrandKitName?: string | null;
+    createdBy?: string | null;
+    updatedBy?: string | null;
     name: string;
     slug?: string | null;
     brandName: string;
@@ -119,23 +126,26 @@ export interface LayoutMappingItem {
     layoutTemplateId: string;
     brandKitId: string;
     priority?: number;
+    /** Optional per-route token overrides (partial DesignTokens JSON) */
+    tokenOverridesJson?: string | null;
 }
 
 export const layoutApi = {
     getTemplates: (params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BASE}/layouts`, params as Record<string, string>)).then((r) =>
+        fetch(brandUrl(`${BASE}/layouts`, params as Record<string, string>), fetchOpts).then((r) =>
             r.ok ? r.json() : Promise.reject(r),
         ) as Promise<LayoutTemplateItem[]>,
 
     putTemplate: (body: Record<string, unknown>, params?: { organizationId?: string | null; appId?: string | null }) =>
         fetch(brandUrl(`${BASE}/layouts`, params as Record<string, string>), {
+            ...fetchOpts,
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         }).then((r) => (r.ok ? r.json() : Promise.reject(r))),
 
     getMappings: (params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BASE}/mappings`, params as Record<string, string>)).then((r) =>
+        fetch(brandUrl(`${BASE}/mappings`, params as Record<string, string>), fetchOpts).then((r) =>
             r.ok ? r.json() : Promise.reject(r),
         ) as Promise<LayoutMappingItem[]>,
 
@@ -146,11 +156,13 @@ export const layoutApi = {
                 layoutTemplateId: string;
                 brandKitId: string;
                 priority?: number;
+                tokenOverridesJson?: string | null;
             }>;
         },
         params?: { organizationId?: string | null; appId?: string | null },
     ) =>
         fetch(brandUrl(`${BASE}/mappings`, params as Record<string, string>), {
+            ...fetchOpts,
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),

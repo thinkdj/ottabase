@@ -4,28 +4,33 @@
 // ---------------------------------------------------------------------------
 
 import type { KVNamespace } from '@cloudflare/workers-types';
+import { orgAppKey } from '@ottabase/cf/cache-keys';
 import type { BrandResolutionCache } from './types';
 
-const CACHE_PREFIX = 'brand:resolved:';
 const CACHE_TTL = 60 * 60; // 1 hour
 
 export interface BrandCacheClient {
-    getResolutionData(
-        orgId: string | null,
-        appId?: string | null,
-        mode?: 'light' | 'dark',
-    ): Promise<BrandResolutionCache | null>;
+    getResolutionData(orgId: string | null, appId?: string | null, mode?: string): Promise<BrandResolutionCache | null>;
     setResolutionData(
         orgId: string | null,
         appId: string | null | undefined,
-        mode: 'light' | 'dark',
+        mode: string,
         data: BrandResolutionCache,
     ): Promise<void>;
     invalidate(organizationId: string | null, appId?: string | null): Promise<void>;
 }
 
-function getKey(orgId: string | null, appId?: string | null, mode?: 'light' | 'dark') {
-    return `${CACHE_PREFIX}${orgId || 'default'}:${appId || 'default'}:${mode || 'light'}`;
+/**
+ * Build cache key for brand resolution data
+ * Format: brand:org:{orgId}:app:{appId}:resolved:{mode}
+ * Example: brand:org:acme:app:web:resolved:light
+ */
+function getKey(orgId: string | null, appId?: string | null, mode?: string): string {
+    const effectiveOrgId = orgId || 'default';
+    const effectiveAppId = appId || 'default';
+    const effectiveMode = mode || 'light';
+
+    return orgAppKey('brand', effectiveOrgId, effectiveAppId, 'resolved', effectiveMode);
 }
 
 export function createBrandCache(kv: KVNamespace): BrandCacheClient {
@@ -42,7 +47,8 @@ export function createBrandCache(kv: KVNamespace): BrandCacheClient {
         },
 
         async invalidate(organizationId, appId) {
-            for (const m of ['light', 'dark'] as const) {
+            // Invalidate all variants: dual-mode ('all') + legacy per-mode caches
+            for (const m of ['all', 'light', 'dark'] as const) {
                 await kv.delete(getKey(organizationId, appId, m));
                 if (appId) await kv.delete(getKey(organizationId, null, m));
                 if (organizationId) await kv.delete(getKey(null, null, m));

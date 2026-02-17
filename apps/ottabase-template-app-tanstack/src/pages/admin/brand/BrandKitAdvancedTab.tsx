@@ -5,6 +5,9 @@ interface BrandKitAdvancedTabProps {
     allowDarkModeToggle: boolean;
     customCss: string;
     hideOttabaseBranding: boolean;
+    /** Raw design-tokens JSON for power users */
+    tokensJson?: string;
+    onTokensChange?: (tokensJson: string) => void;
     onChange: (data: {
         defaultColorScheme: 'light' | 'dark' | 'system';
         allowDarkModeToggle: boolean;
@@ -18,6 +21,8 @@ export function BrandKitAdvancedTab({
     allowDarkModeToggle,
     customCss,
     hideOttabaseBranding,
+    tokensJson,
+    onTokensChange,
     onChange,
 }: BrandKitAdvancedTabProps) {
     return (
@@ -100,6 +105,23 @@ export function BrandKitAdvancedTab({
                     }
                 />
             </div>
+
+            {/* Raw design-tokens JSON – power-user escape hatch */}
+            {onTokensChange && (
+                <div>
+                    <Label htmlFor="tokensJson">Design tokens (JSON)</Label>
+                    <p className="text-xs text-muted-foreground mb-2">
+                        Raw token overrides. Edits here take effect immediately in the preview.
+                    </p>
+                    <textarea
+                        id="tokensJson"
+                        className="w-full min-h-[180px] rounded-md border bg-background px-3 py-2 font-mono text-sm dark:border-muted"
+                        value={tokensJson ?? '{}'}
+                        onChange={(e) => onTokensChange(e.target.value)}
+                        spellCheck={false}
+                    />
+                </div>
+            )}
         </div>
     );
 }

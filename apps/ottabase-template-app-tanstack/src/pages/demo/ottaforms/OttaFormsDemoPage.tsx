@@ -4,13 +4,13 @@
 // Demonstrates auto-generated CRUD forms from OttaORM models
 // ============================================================
 
-import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { ModelCrud, createModelConfig, defineModelConfig } from '@ottabase/forms';
-import { User, Tag } from '@ottabase/ottaorm/models';
-import { Post } from '@ottabase/ottablog';
 import type { ModelConfig } from '@ottabase/forms';
+import { ModelCrud, createModelConfig, defineModelConfig } from '@ottabase/forms';
+import { Post } from '@ottabase/ottablog';
+import { Tag, User } from '@ottabase/ottaorm/models';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Link } from '@tanstack/react-router';
+import { useState } from 'react';
 
 // Create model configs from OttaORM models
 // Models now contain all metadata (displayName, defaultSort, etc.) as SSOT
@@ -127,7 +127,7 @@ export function OttaFormsDemoPage() {
     const [selectedModel, setSelectedModel] = useState<ModelKey | null>(null);
 
     return (
-        <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-6xl flex-col gap-8 px-4 py-8">
+        <div className="flex min-h-[calc(100vh-10rem)] flex-col gap-8">
             {/* Header */}
             <div className="flex flex-col gap-4">
                 <Button asChild variant="ghost" className="w-fit">

@@ -1,29 +1,27 @@
 // ---------------------------------------------------------------------------
-// Applies Brand theme to document. Uses config from BrandProvider + mode from next-themes.
-// Theme is app-level (set by admin); user can only switch light/dark.
+// Applies Brand theme to document. Consumes the resolved theme from
+// ThemeProviderContext (already computed by ThemeProvider) and applies CSS vars.
+// Must be rendered INSIDE ThemeProvider.
 // ---------------------------------------------------------------------------
 
+import { applyBrandTheme, CRITICAL_STYLE_ID } from '@ottabase/brand-engine';
 import { useEffect } from 'react';
-import { useTheme } from 'next-themes';
-import { applyBrandTheme, getThemeOrDefault, resolveTheme } from '@ottabase/brand-engine';
-import { useBrand } from '@ottabase/brand-engine-react';
+import { useTheme } from './ThemeContext';
 
 export function BrandThemeApplicator() {
-    const { config } = useBrand();
-    const { resolvedTheme } = useTheme();
+    const { resolved } = useTheme();
 
     useEffect(() => {
-        if (!config?.theme) return;
+        if (!resolved) return;
 
-        const mode = resolvedTheme === 'dark' ? 'dark' : 'light';
-        const base = getThemeOrDefault(config.themeBase || 'default');
-        const resolved = resolveTheme({
-            base,
-            tenantOverrides: config.tenantTheme ?? {},
-            mode,
-        });
         applyBrandTheme(resolved);
-    }, [config, resolvedTheme]);
+
+        // Remove SSR critical CSS after applying – keeps single source of truth
+        if (typeof document !== 'undefined') {
+            const critical = document.getElementById(CRITICAL_STYLE_ID);
+            if (critical) critical.remove();
+        }
+    }, [resolved]);
 
     return null;
 }

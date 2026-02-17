@@ -1,18 +1,20 @@
 import { getSession, handleAuthRequest, hashPassword } from '@ottabase/auth/backend';
 import { getLoginConfig } from '@ottabase/auth/components';
+import { userKey } from '@ottabase/cf/cache-keys';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { sendTemplatedEmail } from '@ottabase/email';
 import { registerConnection } from '@ottabase/ottaorm';
-import { Organization, OrganizationMember, Role, User, VerificationToken } from '@ottabase/ottaorm/models';
+import { User, VerificationToken } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { isEmail } from '@ottabase/utils/string';
-import { isValidUrl, makeSlug } from '@ottabase/utils/url';
+import { isValidUrl } from '@ottabase/utils/url';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { processReferralAttribution } from '../../ottabase/helpers/referral-attribution';
 import { registerAppEmailTemplates } from '../../src/email/templates';
 import { createVerificationToken, getAuthOptions, getUserLinkedAccounts, resolveMailer } from '../lib/auth-utils';
 import { enforceRateLimit } from '../lib/rate-limiting';
+import { provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
 import { getClientIpAddress, isStrongPassword, normalizeEmail, readJson } from '../lib/utils';
 
 export interface AuthRouteContext {
@@ -320,7 +322,7 @@ export async function handlePasswordResetConfirm(context: AuthRouteContext): Pro
     if (env.OBCF_KV) {
         try {
             const revokedAt = Math.floor(Date.now() / 1000);
-            await env.OBCF_KV.put(`auth:revoked:user:${user.get('id')}`, String(revokedAt), {
+            await env.OBCF_KV.put(userKey('auth', String(user.get('id')), 'revoked'), String(revokedAt), {
                 expirationTtl: Number(env.AUTH_SESSION_MAX_AGE) || 30 * 24 * 60 * 60,
             });
         } catch {
@@ -405,7 +407,7 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
         if (env.OBCF_KV) {
             try {
                 const version = Date.now();
-                await env.OBCF_KV.put(`auth:profile:version:${userId}`, String(version), {
+                await env.OBCF_KV.put(userKey('auth', userId, 'profile', 'version'), String(version), {
                     expirationTtl: Number(env.AUTH_SESSION_MAX_AGE) || 30 * 24 * 60 * 60,
                 });
             } catch (error) {
@@ -512,44 +514,17 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
         let assignedRole: string | null = null;
 
         try {
-            await Role.ensureDefaultRoles();
-
-            const baseName = (name || email.split('@')[0] || 'Workspace').trim();
-            const orgName = `${baseName}'s Workspace`;
-            const baseSlug = makeSlug(orgName) || `org-${newUserId.slice(0, 8)}`;
-
-            let slug = baseSlug;
-            let attempt = 0;
-            while (await Organization.findBySlug(slug)) {
-                attempt += 1;
-                slug = `${baseSlug}-${attempt}`;
-                if (attempt > 8) {
-                    slug = `${baseSlug}-${crypto.randomUUID().slice(0, 6)}`;
-                    break;
-                }
-            }
-
-            const organization = await Organization.create({
-                name: orgName,
-                slug,
-                ownerId: newUserId,
+            const provisioned = await provisionDefaultOrganizationForUser({
+                user: newUser,
+                email,
+                name,
+                organizationRole: 'owner',
+                roleFallbacks: ['member', 'viewer'],
             });
 
-            organizationId = organization.get('id') as string;
-            organizationRole = 'owner';
-
-            await OrganizationMember.create({
-                userId: newUserId,
-                organizationId,
-                role: organizationRole,
-                status: 'active',
-            });
-
-            const memberRole = (await Role.findByName('member')) || (await Role.findByName('viewer'));
-            if (memberRole) {
-                await newUser.assignRole(memberRole.get('id') as string, organizationId);
-                assignedRole = memberRole.get('name') as string;
-            }
+            organizationId = provisioned.organizationId;
+            organizationRole = provisioned.organizationRole;
+            assignedRole = provisioned.assignedRole;
         } catch (error) {
             console.warn('Failed to initialize organization or roles:', error);
         }

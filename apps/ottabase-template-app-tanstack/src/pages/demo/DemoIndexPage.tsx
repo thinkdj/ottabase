@@ -4,7 +4,7 @@ import { Link } from '@tanstack/react-router';
 
 export function DemoIndexPage() {
     return (
-        <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-4xl flex-col gap-8 px-4 py-12">
+        <div className="flex min-h-[calc(100vh-10rem)] flex-col gap-8">
             <div className="flex flex-col gap-4">
                 <Button asChild variant="ghost" className="w-fit">
                     <Link to="/">← Back to Home</Link>
@@ -159,6 +159,21 @@ export function DemoIndexPage() {
                     <CardContent>
                         <Button asChild variant="outline" className="w-full">
                             <Link to="/demo/logger">View Logger Demo</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Smart Breadcrumbs</CardTitle>
+                        <CardDescription>
+                            Automatic breadcrumb navigation with intelligent route metadata and human-readable labels.
+                            Fully TanStack Router integrated.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild variant="outline" className="w-full">
+                            <Link to="/demo/breadcrumbs">View Breadcrumbs Demo</Link>
                         </Button>
                     </CardContent>
                 </Card>

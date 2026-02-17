@@ -35,6 +35,7 @@ export {
     defaultNS,
     i18n,
     initI18n,
+    DEFAULT_LANGUAGE_STORAGE_KEY,
     languageNames,
     resources,
     supportedLanguages,

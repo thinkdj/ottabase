@@ -1,3 +1,4 @@
+import { useTheme } from '@/ottabase/providers/ThemeContext';
 import {
     Button,
     Card,
@@ -13,7 +14,6 @@ import {
     TabsList,
     TabsTrigger,
 } from '@ottabase/ui-shadcn';
-import { useTheme } from '@/ottabase/providers/ThemeContext';
 import { useTheme as useNextTheme } from 'next-themes';
 
 export function ThemingDemoPage() {

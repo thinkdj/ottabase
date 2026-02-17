@@ -1,7 +1,6 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Layout system exports (pure logic, no React)
+// Brand Engine – Layout defaults (brand-engine-owned constants only)
+// For types, presets, resolver, validators: import from '@ottabase/ottalayout'.
 // ---------------------------------------------------------------------------
 
-export { pathPatternToRegex, resolveLayoutForPath } from './resolver';
-export { HOMEPAGE_LAYOUT, APP_SHELL_LAYOUT, DOCS_LAYOUT, MINIMAL_LAYOUT, LAYOUT_PRESETS } from './presets';
-export type { LayoutComponentKey, LayoutPreset } from './presets';
+export { DEFAULT_ROUTE_MAPPINGS } from './defaults';

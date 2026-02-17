@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { FileUploader } from '@ottabase/ottaupload/client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Link } from '@tanstack/react-router';
+import { useState } from 'react';
 
 export function CloudflareFileUploadDemoPage() {
     const [uploadMode, setUploadMode] = useState<'dropzone' | 'button'>('dropzone');
@@ -11,7 +11,7 @@ export function CloudflareFileUploadDemoPage() {
     };
 
     return (
-        <div className="p-8 max-w-4xl mx-auto space-y-8">
+        <div className="space-y-8">
             {/* Header */}
             <div>
                 <Link

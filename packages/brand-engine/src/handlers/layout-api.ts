@@ -3,12 +3,13 @@
 // GET/PUT /api/brand/layouts, GET/PUT /api/brand/mappings
 // ---------------------------------------------------------------------------
 
-import { LayoutTemplate } from '../persistence/LayoutTemplate.model';
-import { LayoutRouteMapping } from '../persistence/LayoutRouteMapping.model';
-import { createBrandCache } from '../persistence/cache';
-import { jsonResponse } from '@ottabase/utils/http-response';
 import { errorResponse } from '@ottabase/utils/http-errors';
+import { jsonResponse } from '@ottabase/utils/http-response';
+import { LayoutRouteMapping } from '../persistence/LayoutRouteMapping.model';
+import { LayoutTemplate } from '../persistence/LayoutTemplate.model';
+import { getLayoutData } from '../persistence/layoutData';
 import type { BrandApiEnv } from './brand-api';
+import { warmBrandCache } from './warm-cache';
 
 /**
  * GET /api/brand/layouts - List layout templates for org/app
@@ -47,7 +48,6 @@ export async function handlePutLayout(
     } catch {
         return errorResponse('Invalid config object', 400);
     }
-    const cache = createBrandCache(env.OBCF_KV);
 
     let template: LayoutTemplate;
     if (body.id) {
@@ -67,12 +67,13 @@ export async function handlePutLayout(
         })) as LayoutTemplate;
     }
 
-    await cache.invalidate(organizationId, appId);
+    await warmBrandCache(env, organizationId, appId);
     return jsonResponse({ id: template.get('id'), ...body }, 200);
 }
 
 /**
- * GET /api/brand/mappings - List route mappings for org/app
+ * GET /api/brand/mappings - List route mappings for org/app.
+ * When no DB mappings exist, returns effective defaults from getLayoutData so users can view and edit them.
  */
 export async function handleGetMappings(
     _request: Request,
@@ -84,13 +85,23 @@ export async function handleGetMappings(
         { organizationId: organizationId ?? null, appId: appId ?? null },
         { orderBy: 'priority', orderDirection: 'desc' },
     );
-    const data = (mappings as LayoutRouteMapping[]).map((m) => ({
-        id: m.get('id'),
-        pathPattern: m.get('pathPattern'),
-        layoutTemplateId: m.get('layoutTemplateId'),
-        brandKitId: m.get('brandKitId'),
-        priority: m.get('priority') ?? 0,
-    }));
+    const data =
+        mappings.length > 0
+            ? (mappings as LayoutRouteMapping[]).map((m) => ({
+                  id: m.get('id'),
+                  pathPattern: m.get('pathPattern'),
+                  layoutTemplateId: m.get('layoutTemplateId'),
+                  brandKitId: m.get('brandKitId'),
+                  priority: m.get('priority') ?? 0,
+                  tokenOverridesJson: (m.get('tokenOverridesJson') as string | null) ?? null,
+              }))
+            : (await getLayoutData(organizationId, appId)).routeMappings.map((m) => ({
+                  pathPattern: m.pathPattern,
+                  layoutTemplateId: m.layoutTemplateId,
+                  brandKitId: m.brandKitId,
+                  priority: m.priority,
+                  tokenOverridesJson: m.tokenOverridesJson ?? null,
+              }));
     return jsonResponse(data, 200);
 }
 
@@ -110,9 +121,9 @@ export async function handlePutMappings(
             layoutTemplateId: string;
             brandKitId: string;
             priority?: number;
+            tokenOverridesJson?: string | null;
         }>;
     };
-    const cache = createBrandCache(env.OBCF_KV);
 
     const existing = await LayoutRouteMapping.where({
         organizationId: organizationId ?? null,
@@ -124,6 +135,14 @@ export async function handlePutMappings(
 
     for (const m of body.mappings ?? []) {
         if (!m.brandKitId) return errorResponse('brandKitId is required for each mapping', 400);
+        // Validate tokenOverridesJson is valid JSON if provided
+        if (m.tokenOverridesJson) {
+            try {
+                JSON.parse(m.tokenOverridesJson);
+            } catch {
+                return errorResponse(`Invalid JSON in tokenOverridesJson for pattern "${m.pathPattern}"`, 400);
+            }
+        }
         await LayoutRouteMapping.create({
             organizationId,
             appId: appId || null,
@@ -131,9 +150,10 @@ export async function handlePutMappings(
             layoutTemplateId: m.layoutTemplateId,
             brandKitId: m.brandKitId,
             priority: m.priority ?? 0,
+            tokenOverridesJson: m.tokenOverridesJson || null,
         });
     }
 
-    await cache.invalidate(organizationId, appId);
+    await warmBrandCache(env, organizationId, appId);
     return jsonResponse({ success: true }, 200);
 }

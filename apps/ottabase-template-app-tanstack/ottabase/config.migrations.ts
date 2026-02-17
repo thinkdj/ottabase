@@ -10,7 +10,7 @@
 // 3. Enable it in `migrationConfig`
 // ============================================================
 
-import { brandKitsTable, layoutTemplatesTable, layoutRouteMappingsTable } from '@ottabase/brand-engine/persistence';
+import { brandKitsTable, layoutRouteMappingsTable, layoutTemplatesTable } from '@ottabase/brand-engine/persistence';
 import {
     categoriesTable,
     ottablogPluginsTable,

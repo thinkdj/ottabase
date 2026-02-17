@@ -3,6 +3,7 @@
  * Create and dispatch jobs to queues using adapters
  */
 
+import { globalKey, orgKey } from '@ottabase/cf/cache-keys';
 import { createCloudflareAdapter } from './adapters/cloudflare';
 import type { QueueAdapter } from './adapters/types';
 import type {
@@ -16,6 +17,18 @@ import type {
     QueuedJob,
     QueueResult,
 } from './types';
+
+/**
+ * Build scoped deduplication key using @ottabase/cf/cache-keys for consistent formatting.
+ * Format with org: dedupe:org:{orgId}:{type}:{uniqueKey}
+ * Format without org: dedupe:{type}:{uniqueKey}
+ */
+function buildDedupeKey(type: string, uniqueKey: string, organizationId?: string): string {
+    if (organizationId) {
+        return orgKey('dedupe', organizationId, type, uniqueKey);
+    }
+    return globalKey('dedupe', type, uniqueKey);
+}
 
 /**
  * Generate a unique job ID
@@ -130,7 +143,7 @@ export class Dispatcher {
             return false;
         }
 
-        const key = `dedupe:${type}:${options.uniqueKey}`;
+        const key = buildDedupeKey(type, options.uniqueKey, options.organizationId);
         const existing = await this.dedupeStore.get(key);
 
         if (existing) {

@@ -24,7 +24,7 @@ export function I18nDemoPage() {
     const [globalLanguage, setGlobalLanguage] = useAtom(languageAtom);
 
     return (
-        <div className="container max-w-5xl mx-auto py-8 space-y-8">
+        <div className="space-y-8">
             <div className="space-y-2">
                 <h1 className="text-4xl font-bold">Internationalization (i18n) Demo</h1>
                 <p className="text-muted-foreground">
@@ -310,13 +310,13 @@ export const i18nConfig = {
                     <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <p className="text-sm font-medium">localStorage Key</p>
-                            <code className="text-xs bg-muted px-2 py-1 rounded">ottabase-language</code>
+                            <code className="text-xs bg-muted px-2 py-1 rounded">ottabase.language</code>
                         </div>
                         <div className="space-y-2">
                             <p className="text-sm font-medium">Stored Value</p>
                             <code className="text-xs bg-muted px-2 py-1 rounded">
                                 {typeof localStorage !== 'undefined'
-                                    ? localStorage.getItem('ottabase-language') || 'Not set'
+                                    ? localStorage.getItem('ottabase.language') || 'Not set'
                                     : 'N/A'}
                             </code>
                         </div>

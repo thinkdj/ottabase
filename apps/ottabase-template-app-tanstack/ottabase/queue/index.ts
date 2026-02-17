@@ -5,6 +5,7 @@
  * Add your job handlers here to process queue messages.
  */
 
+import { globalKey } from '@ottabase/cf/cache-keys';
 import { createKVClient } from '@ottabase/cf/kv';
 import { createQueueHandler, createRegistry, dispatch, type QueuedJob } from '@ottabase/queue';
 import type { CloudflareEnv } from '../../cloudflare-env';
@@ -16,11 +17,11 @@ import {
     syncDataHandler,
 } from './handlers';
 
-// KV keys for queue stats
-const STATS_KEY = 'queue:stats';
-const PROCESSED_PREFIX = 'queue:processed:';
-const FAILED_PREFIX = 'queue:failed:';
-const DLQ_PREFIX = 'queue:dlq:';
+// KV keys for queue stats (using cache key builder for consistency)
+const STATS_KEY = globalKey('queue', 'stats');
+const PROCESSED_PREFIX = globalKey('queue', 'processed') + ':';
+const FAILED_PREFIX = globalKey('queue', 'failed') + ':';
+const DLQ_PREFIX = globalKey('queue', 'dlq') + ':';
 
 // TTL constants (in seconds)
 const HISTORY_TTL = 86400; // 24 hours for processed/failed history

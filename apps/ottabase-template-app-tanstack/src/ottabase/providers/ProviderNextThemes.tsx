@@ -10,7 +10,7 @@ const ProviderNextThemes = ({ children }: NextThemesWrapperProps) => {
     return (
         <NextThemesProvider
             attribute="class"
-            storageKey="ottabase-theme"
+            storageKey="ottabase.theme"
             defaultTheme="light"
             enableSystem={false}
             disableTransitionOnChange={false}

@@ -74,3 +74,23 @@ export {
     type RateLimitResult,
     type RateLimitingConfig,
 } from './rate-limiting';
+
+// KV Cache (read-through helper)
+export { invalidateCache, invalidateCacheByPrefix, withCache } from './kv-cache';
+
+// Cache Keys
+export {
+    CacheKeyBuilder,
+    appKey,
+    appUserKey,
+    globalKey,
+    orgAppKey,
+    orgAppUserKey,
+    orgKey,
+    orgUserKey,
+    parseKey,
+    userKey,
+    versionedOrgKey,
+    type CacheNamespace,
+    type CacheScope,
+} from './cache-keys';

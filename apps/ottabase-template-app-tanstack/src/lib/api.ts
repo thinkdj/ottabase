@@ -5,9 +5,15 @@
  * - Type-safe error handling
  */
 
+import { AUTH_STORAGE_KEY, clearAuthSessionStorage } from '@ottabase/auth/react';
 import { createApiClient, type ApiError } from '@ottabase/api';
 import { toast } from 'sonner';
 import { APP_ID } from '@/ottabase/config/app.config';
+
+/**
+ * localStorage key for current org (used when session not yet loaded).
+ */
+const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 
 /**
  * Get auth token from storage/context.
@@ -19,14 +25,14 @@ function getAuthToken(): string | null {
 
 function getOrganizationId(): string | null {
     try {
-        const stored = localStorage.getItem('currentOrgId');
+        const stored = localStorage.getItem(CURRENT_ORG_KEY);
         if (stored) return stored;
     } catch {
         // ignore
     }
 
     try {
-        const sessionRaw = localStorage.getItem('auth_session');
+        const sessionRaw = localStorage.getItem(AUTH_STORAGE_KEY);
         if (!sessionRaw) return null;
         const session = JSON.parse(sessionRaw) as { user?: { organizationId?: string | null } };
         return session.user?.organizationId ?? null;
@@ -47,6 +53,15 @@ function handleApiError(error: ApiError): void {
 
     if (error.status === 503) {
         const code = (error.code || '').toUpperCase();
+
+        // Platform not initialized → redirect to bootstrap wizard
+        if (code === 'PLATFORM_NOT_READY') {
+            if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/__bootstrap__')) {
+                window.location.href = '/__bootstrap__';
+            }
+            return;
+        }
+
         const message =
             code === 'READONLY_MODE'
                 ? 'The platform is in read-only mode'
@@ -127,13 +142,8 @@ export const api = createApiClient({
     baseUrl: '',
     getAuthToken,
     onError: handleApiError,
-    onUnauthorized: (error) => {
-        try {
-            localStorage.removeItem('auth_session');
-        } catch {
-            // ignore
-        }
-
+    onUnauthorized: () => {
+        clearAuthSessionStorage();
         if (typeof window !== 'undefined') {
             window.location.href = '/login';
         }

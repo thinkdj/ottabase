@@ -7,7 +7,7 @@ import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
 
 export function ControlsSection() {
     const { isAuthenticated } = useSession();
-    const [currentOrgId, setCurrentOrgId] = useLocalStorage<string>('currentOrgId');
+    const [currentOrgId, setCurrentOrgId] = useLocalStorage<string>('ottabase.current-org-id');
 
     return (
         <div className="flex items-center gap-1">

@@ -170,7 +170,7 @@ createTodo.mutate({ title: 'New Todo' });
 | ------------------- | ------------------------------------------------------------------------ |
 | `@ottabase/ottaorm` | Fat models, CRUD, relationships, auto-migrations                         |
 | `@ottabase/db`      | Drizzle D1 driver (`createD1Driver`)                                     |
-| `@ottabase/cf`      | D1, KV, R2, Queues, Rate Limiting wrappers                               |
+| `@ottabase/cf`      | D1, KV, R2, Queues, Rate Limiting, Cache Keys, read-through cache        |
 | `@ottabase/queue`   | Job queue system (dispatch, handlers, deduplication, chaining, priority) |
 | `@ottabase/auth`    | Auth.js v5 with D1 adapter                                               |
 | `@ottabase/rbac`    | Role-based access control with per-org KV caching                        |

@@ -14,7 +14,7 @@ import { scaleAtom } from '@/ottabase/state/appState';
 import { useAtom } from 'jotai';
 import { useEffect } from 'react';
 
-const SCALE_STORAGE_KEY = 'ottabase-ui-scale';
+const SCALE_STORAGE_KEY = 'ottabase.ui-scale';
 
 export function ScaleManager(): null {
     const [scale, setScale] = useAtom(scaleAtom);

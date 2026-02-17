@@ -2,9 +2,9 @@
 // Brand Engine – Resolved config types (API response shape, KV cache)
 // ---------------------------------------------------------------------------
 
-import type { BrandTheme } from '../theme';
-import type { LayoutConfig } from '../layout';
+import type { LayoutConfig } from '@ottabase/ottalayout';
 import type { ResolvedBrandTheme } from '../resolver';
+import type { BrandTheme } from '../theme';
 
 /** Resolved brand config (GET /api/brand). Path-scoped: theme + layout for current path. */
 export interface ResolvedBrandConfig {
@@ -28,13 +28,26 @@ export interface ResolvedBrandConfig {
     layoutTemplateId: string;
     layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }>;
     /** All route mappings (path, layout, brandKit per row) */
-    routeMappings: Array<{ pathPattern: string; layoutTemplateId: string; brandKitId: string; priority: number }>;
+    routeMappings: Array<{
+        pathPattern: string;
+        layoutTemplateId: string;
+        brandKitId: string;
+        priority: number;
+        tokenOverridesJson?: string | null;
+    }>;
 }
 
 /** Brand Kit list/detail item */
 export interface BrandKitItem {
     id: string;
     organizationId: string | null;
+    isDefault?: boolean;
+    /** Parent Brand Kit ID – child inherits tokens/settings, overrides selectively */
+    parentBrandKitId?: string | null;
+    /** Resolved parent name (populated by list API for display) */
+    parentBrandKitName?: string | null;
+    createdBy?: string | null;
+    updatedBy?: string | null;
     name: string;
     slug?: string | null;
     brandName: string;
@@ -56,6 +69,7 @@ export interface BrandKitItem {
 
 /** PUT /api/brand/kits/:id – update Brand Kit */
 export interface UpdateBrandKitPayload {
+    parentBrandKitId?: string | null;
     name?: string;
     slug?: string;
     brandName?: string;
@@ -83,11 +97,19 @@ export interface LayoutMappingItem {
     layoutTemplateId: string;
     brandKitId: string;
     priority?: number;
+    /** Optional per-route token overrides (partial DesignTokens JSON) */
+    tokenOverridesJson?: string | null;
 }
 
 /** Cached resolution data for KV */
 export interface BrandResolutionCache {
-    routeMappings: Array<{ pathPattern: string; layoutTemplateId: string; brandKitId: string; priority: number }>;
+    routeMappings: Array<{
+        pathPattern: string;
+        layoutTemplateId: string;
+        brandKitId: string;
+        priority: number;
+        tokenOverridesJson?: string | null;
+    }>;
     layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }>;
     brandKitsMap: Record<
         string,
@@ -95,7 +117,10 @@ export interface BrandResolutionCache {
             brandName: string;
             tagline?: string;
             logos: Record<string, string>;
+            /** Light-mode resolved theme */
             theme: ResolvedBrandTheme;
+            /** Dark-mode resolved theme (returned alongside light so client picks at runtime) */
+            darkTheme?: ResolvedBrandTheme;
             themeBase: string;
             tenantTheme: Partial<BrandTheme>;
             defaultColorScheme: string;

@@ -16,6 +16,7 @@
 
 import { Auth, type AuthConfig } from '@auth/core';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
+import { userKey } from '@ottabase/cf/cache-keys';
 import { bootstrapFirstUser, parseBooleanFlag, SYSTEM_ORGANIZATION_ID } from './bootstrap';
 import { createOttabaseAuthConfig } from './config';
 import type { ProviderEnv } from './providers';
@@ -164,6 +165,12 @@ export interface CreateAuthConfigOptions extends CredentialsAuthorizeOptions {
      * Disable credentials provider entirely
      */
     disableCredentials?: boolean;
+
+    /**
+     * Called after a user signs out. Use this to clear app-level caches
+     * (e.g., RBAC) without overriding the core signOut event.
+     */
+    onSignOut?: (userId: string) => Promise<void> | void;
 }
 
 /**
@@ -332,7 +339,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                     // Check for user-level revocation (logout / password reset)
                     if (env.OBCF_KV && token.id) {
                         try {
-                            const revokedAtRaw = await env.OBCF_KV.get(`auth:revoked:user:${token.id}`);
+                            const revokedAtRaw = await env.OBCF_KV.get(userKey('auth', String(token.id), 'revoked'));
                             if (revokedAtRaw) {
                                 const revokedAt = Number(revokedAtRaw);
                                 const issuedAt = Number(token.issuedAt || 0);
@@ -447,7 +454,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                     async function refreshProfileIfNeeded(userId: string) {
                         if (!env.OBCF_D1 || !env.OBCF_KV) return;
                         try {
-                            const profileVersionKey = `auth:profile:version:${userId}`;
+                            const profileVersionKey = userKey('auth', userId, 'profile', 'version');
                             const versionRaw = await env.OBCF_KV.get(profileVersionKey);
                             if (!versionRaw) return;
 
@@ -531,7 +538,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                             }
                         }
                         if (env.OBCF_KV) {
-                            const profileVersionKey = `auth:profile:version:${user.id}`;
+                            const profileVersionKey = userKey('auth', String(user.id), 'profile', 'version');
                             const versionRaw = await env.OBCF_KV.get(profileVersionKey);
                             const version = Number(versionRaw || 0);
                             if (Number.isFinite(version)) {
@@ -606,11 +613,17 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                     if (typeof userId !== 'string' || !userId) return;
                     try {
                         const revokedAt = Math.floor(Date.now() / 1000);
-                        await env.OBCF_KV.put(`auth:revoked:user:${userId}`, String(revokedAt), {
+                        await env.OBCF_KV.put(userKey('auth', userId, 'revoked'), String(revokedAt), {
                             expirationTtl: sessionMaxAge ?? 30 * 24 * 60 * 60,
                         });
                     } catch (error) {
                         console.warn('Failed to revoke session on signOut:', error);
+                    }
+                    // App-level hook (e.g., clear RBAC cache for the user)
+                    try {
+                        await options?.onSignOut?.(userId);
+                    } catch {
+                        // Hook failure is non-fatal
                     }
                 },
             },
