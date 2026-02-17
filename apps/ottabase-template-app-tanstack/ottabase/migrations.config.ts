@@ -81,7 +81,7 @@ export const migrationConfig: Record<MigrationPackageName, boolean> = {
 
 /**
  * Merges tables from all enabled packages into a single object.
- * Used by `schema.ts` (Drizzle Kit) and `config.migrations.ts` (Runtime).
+ * Used by `schema.ts` (Drizzle Kit) and `migrations.config.ts` (Runtime).
  */
 export function getEnabledPackageTables() {
     const tables: Record<string, any> = {};

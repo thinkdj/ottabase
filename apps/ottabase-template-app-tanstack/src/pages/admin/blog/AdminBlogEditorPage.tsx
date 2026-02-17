@@ -4,7 +4,7 @@
  * Full-featured blog post editor with OttaEditor integration,
  * hero image upload, SEO settings, and all post fields.
  */
-import { SERIES_LIST_QUERY_CONFIG, VERSION_HISTORY_QUERY_CONFIG } from '@/config/queryConfig';
+import { SERIES_LIST_QUERY_CONFIG, VERSION_HISTORY_QUERY_CONFIG } from '@/ottabase/config/query.config';
 import {
     CONTENT_TYPES,
     formatDate,

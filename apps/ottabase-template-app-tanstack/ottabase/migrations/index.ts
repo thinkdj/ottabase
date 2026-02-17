@@ -17,7 +17,7 @@
 // ============================================================
 
 import type { Migration } from '@ottabase/ottaorm';
-import { getEnabledPackageMigrations } from '../config.migrations';
+import { getEnabledPackageMigrations } from '../migrations.config';
 
 // ============================================================
 // 1. CORE MIGRATIONS
@@ -62,7 +62,7 @@ const appSpecificMigrations: Migration[] = [
 // ============================================================
 // 3. PACKAGE MIGRATIONS
 // ============================================================
-// Migrations from enabled packages (configured in config.migrations.ts)
+// Migrations from enabled packages (configured in migrations.config.ts)
 // These are automatically collected based on your package configuration
 const packageMigrations = getEnabledPackageMigrations();
 

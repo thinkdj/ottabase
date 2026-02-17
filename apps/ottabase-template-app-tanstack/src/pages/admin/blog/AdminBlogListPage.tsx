@@ -4,7 +4,7 @@
  * Lists all blog posts with filtering, status management, and CRUD operations.
  */
 import { CONTENT_TYPES, formatShortDate, POST_STATUSES, type ContentType, type PostStatus } from '@ottabase/ottablog';
-import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
+import { ADMIN_LIST_QUERY_CONFIG } from '@/ottabase/config/query.config';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 import {
     AlertDialog,
