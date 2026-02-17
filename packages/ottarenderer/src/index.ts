@@ -9,6 +9,7 @@ export { default as Code } from './components/Code';
 export { default as CTA } from './components/CTA';
 export { default as List } from './components/List';
 export { default as Quote } from './components/Quote';
+export { default as Review } from './components/Review';
 export { default as Spoiler } from './components/Spoiler';
 export { default as Table } from './components/Table';
 export { default as Warning } from './components/Warning';
@@ -18,6 +19,7 @@ export type { AdvancedImageData, UploadResponse } from './components/AdvancedIma
 export type { ChecklistItem } from './components/Checklist';
 export type { CTAData } from './components/CTA';
 export type { QuoteData } from './components/Quote';
+export type { ReviewData } from './components/Review';
 
 // Export configuration and utilities
 export { blockClass, customRenderers, defaultEJSRConfigs, shouldRenderContentBlocks } from './EditorJsRenderer';

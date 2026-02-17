@@ -6,6 +6,7 @@ import Code from './components/Code';
 import CTA from './components/CTA';
 import List from './components/List';
 import Quote from './components/Quote';
+import Review from './components/Review';
 import Spoiler from './components/Spoiler';
 import Table from './components/Table';
 import Warning from './components/Warning';
@@ -22,6 +23,7 @@ export const customRenderers = {
     quote: Quote,
     spoiler: Spoiler,
     cta: CTA,
+    review: Review,
 };
 
 export const blockClass = 'cdc-content-block';
@@ -88,6 +90,9 @@ export const defaultEJSRConfigs = {
     },
     cta: {
         className: `${blockClass} cdc-content-cta`,
+    },
+    review: {
+        className: `${blockClass} cdc-content-review`,
     },
 };
 
