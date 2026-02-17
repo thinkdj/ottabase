@@ -3,4 +3,4 @@ export * from './api.config';
 export * from './i18n.config';
 export * from './log.config';
 export * from './query.config';
-export * from './theme.config';
+export * from './mantine.config';
