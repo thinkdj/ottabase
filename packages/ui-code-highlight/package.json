@@ -28,8 +28,7 @@
         "highlight.js": "catalog:"
     },
     "peerDependencies": {
-        "@mantine/code-highlight": "^8.3.1",
-        "@mantine/core": "catalog:",
+        "lucide-react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:"
     },
@@ -37,6 +36,7 @@
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
         "eslint": "catalog:",
+        "lucide-react": "catalog:",
         "react": "catalog:",
         "rimraf": "catalog:",
         "tsup": "catalog:",

@@ -1,1 +1,4 @@
-export { default as ProviderCodeHighlight } from './ProviderCodeHighlight';
+export { CodeBlock, type CodeBlockProps } from './CodeBlock';
+
+// Import styles
+import './styles.css';

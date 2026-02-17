@@ -1,0 +1,171 @@
+/* GitHub-style syntax highlighting for light and dark modes */
+
+/* Base styles */
+.code-block-wrapper {
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.code-block-wrapper code {
+    display: block;
+    background: transparent !important;
+}
+
+.code-block-wrapper pre {
+    background: transparent;
+    margin: 0;
+    padding: 0;
+}
+
+/* Light mode syntax highlighting (GitHub Light) */
+:root,
+[data-theme='light'],
+.light {
+    --code-bg: #ffffff;
+    --code-fg: #24292f;
+    --code-comment: #6e7781;
+    --code-keyword: #cf222e;
+    --code-string: #0a3069;
+    --code-number: #0550ae;
+    --code-function: #8250df;
+    --code-variable: #953800;
+    --code-tag: #116329;
+    --code-attribute: #0550ae;
+    --code-meta: #6e7781;
+}
+
+/* Dark mode syntax highlighting (GitHub Dark) */
+[data-theme='dark'],
+.dark {
+    --code-bg: #0d1117;
+    --code-fg: #e6edf3;
+    --code-comment: #8b949e;
+    --code-keyword: #ff7b72;
+    --code-string: #a5d6ff;
+    --code-number: #79c0ff;
+    --code-function: #d2a8ff;
+    --code-variable: #ffa657;
+    --code-tag: #7ee787;
+    --code-attribute: #79c0ff;
+    --code-meta: #8b949e;
+}
+
+/* Apply theme colors */
+.code-block-content {
+    background-color: var(--code-bg);
+    color: var(--code-fg);
+}
+
+/* Syntax highlighting classes */
+.hljs {
+    background: var(--code-bg) !important;
+    color: var(--code-fg) !important;
+}
+
+.hljs-comment,
+.hljs-quote {
+    color: var(--code-comment) !important;
+    font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-type,
+.hljs-built_in {
+    color: var(--code-keyword) !important;
+    font-weight: 600;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-template-string {
+    color: var(--code-string) !important;
+}
+
+.hljs-number,
+.hljs-boolean {
+    color: var(--code-number) !important;
+}
+
+.hljs-function,
+.hljs-title.function_,
+.hljs-title.class_,
+.hljs-class .hljs-title {
+    color: var(--code-function) !important;
+    font-weight: 600;
+}
+
+.hljs-variable,
+.hljs-property,
+.hljs-attr {
+    color: var(--code-variable) !important;
+}
+
+.hljs-tag,
+.hljs-name {
+    color: var(--code-tag) !important;
+}
+
+.hljs-attribute {
+    color: var(--code-attribute) !important;
+}
+
+.hljs-meta,
+.hljs-meta .hljs-keyword {
+    color: var(--code-meta) !important;
+}
+
+.hljs-deletion {
+    color: #ff7b72;
+    background-color: rgba(255, 123, 114, 0.1);
+}
+
+.hljs-addition {
+    color: #7ee787;
+    background-color: rgba(126, 231, 135, 0.1);
+}
+
+.hljs-emphasis {
+    font-style: italic;
+}
+
+.hljs-strong {
+    font-weight: bold;
+}
+
+/* Line numbers */
+.code-block-line-numbers {
+    user-select: none;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Copy button styling */
+.code-block-copy-btn {
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.code-block-copy-btn:hover {
+    opacity: 1;
+}
+
+/* Scrollbar styling for code blocks */
+.code-block-content pre::-webkit-scrollbar {
+    height: 8px;
+}
+
+.code-block-content pre::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.code-block-content pre::-webkit-scrollbar-thumb {
+    background: rgba(128, 128, 128, 0.3);
+    border-radius: 4px;
+}
+
+.code-block-content pre::-webkit-scrollbar-thumb:hover {
+    background: rgba(128, 128, 128, 0.5);
+}
