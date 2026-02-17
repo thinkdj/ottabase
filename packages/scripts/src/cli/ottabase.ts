@@ -39,19 +39,72 @@ const C = {
 };
 
 // ─── ASCII Art Logo ─────────────────────────────────────────────────
-const LOGO_LINES = [
-    `${C.o1}     ████████████████     `,
-    `${C.o1}   ████${RESET}${C.o2}██████████████${RESET}${C.o1}███  `,
-    `${C.o2}  ████${RESET}                ${C.o2}████ `,
-    `${C.o2} ████${RESET}    ${C.o3}██████████${RESET}    ${C.o2}████`,
-    `${C.o3} ████${RESET}   ${C.o3}████████████${RESET}   ${C.o3}████`,
-    `${C.o3} ████${RESET}   ${C.o4}████████████${RESET}   ${C.o3}████`,
-    `${C.o4} ████${RESET}   ${C.o4}████████████${RESET}   ${C.o4}████`,
-    `${C.o4}  ████${RESET}   ${C.o5}██████████${RESET}   ${C.o4}████ `,
-    `${C.o5}  ████${RESET}                ${C.o5}████ `,
-    `${C.o5}   ████${RESET}${C.o5}██████████████${RESET}${C.o5}███  `,
-    `${C.o5}     ████████████████     `,
+// Raw logo lines (no color) - each line is 25 chars wide
+// Pattern: outer ring + inner hole + inner ring
+const LOGO_RAW = [
+    '     ████████████████     ', //  0: top cap
+    '   ██████████████████████ ', //  1: upper rim (solid)
+    '  ████                ████', //  2: outer ring
+    ' ████    ██████████    ████', //  3: outer + inner ring
+    ' ████   ████████████   ████', //  4: outer + inner ring
+    ' ████   ████████████   ████', //  5: outer + inner ring
+    ' ████   ████████████   ████', //  6: outer + inner ring
+    '  ████   ██████████   ████', //  7: outer + inner ring
+    '  ████                ████', //  8: outer ring
+    '   ██████████████████████ ', //  9: lower rim (solid)
+    '     ████████████████     ', // 10: bottom cap
 ];
+
+const LOGO_WIDTH = 27; // visual char width of widest line
+
+// Apply gradient colors to raw logo lines
+function colorizeLogo(lines: string[]): string[] {
+    const colors = [C.o1, C.o1, C.o2, C.o2, C.o3, C.o3, C.o4, C.o4, C.o5, C.o5, C.o5];
+    return lines.map((line, i) => `${colors[i] || C.o3}${line}${RESET}`);
+}
+
+const LOGO_LINES = colorizeLogo(LOGO_RAW);
+
+// ─── Coin Spin Frames ───────────────────────────────────────────────
+// Simulate a coin spinning on vertical axis by horizontally compressing
+// each line of the O. At scale 1.0 = full width, 0.0 = edge-on (thin line).
+function scaleLineHorizontally(line: string, scale: number): string {
+    if (scale <= 0.05) {
+        // Edge-on: thin vertical line
+        const pad = Math.floor(LOGO_WIDTH / 2);
+        return ' '.repeat(pad) + '▌' + ' '.repeat(pad);
+    }
+    const stripped = line;
+    const totalLen = stripped.length;
+    const newLen = Math.max(1, Math.round(totalLen * scale));
+    const result: string[] = [];
+    for (let i = 0; i < newLen; i++) {
+        const srcIdx = Math.round((i / newLen) * totalLen);
+        result.push(stripped[Math.min(srcIdx, totalLen - 1)]);
+    }
+    const padTotal = LOGO_WIDTH - newLen;
+    const padLeft = Math.floor(padTotal / 2);
+    const padRight = padTotal - padLeft;
+    return ' '.repeat(padLeft) + result.join('') + ' '.repeat(padRight);
+}
+
+function generateSpinFrame(rawLines: string[], scale: number): string[] {
+    return rawLines.map((line) => scaleLineHorizontally(line, scale));
+}
+
+// Easing for smooth spin: cosine-based for that coin-flip feel
+function coinSpinPhases(): number[] {
+    // 2 full rotations = 720 degrees, sampled at intervals
+    const phases: number[] = [];
+    const totalFrames = 32; // 16 frames per rotation × 2
+    for (let i = 0; i <= totalFrames; i++) {
+        // cos gives us: 1 → 0 → -1 → 0 → 1 per 360°
+        // abs(cos) gives: 1 → 0 → 1 → 0 → 1 (the "width" as seen)
+        const angle = (i / totalFrames) * 2 * Math.PI * 2; // 2 full rotations
+        phases.push(Math.abs(Math.cos(angle)));
+    }
+    return phases;
+}
 
 const TITLE_LINES = [
     `${C.o2}${BOLD} ╔═══════════════════════════════════╗${RESET}`,
@@ -113,11 +166,63 @@ async function typeText(text: string, delay: number = 25): Promise<void> {
 async function animateLogo(): Promise<void> {
     hideCursor();
 
-    // Reveal logo line by line
-    for (const line of LOGO_LINES) {
-        console.log(line);
-        await sleep(40);
+    const phases = coinSpinPhases();
+    const logoHeight = LOGO_RAW.length;
+    const frameDelay = 35; // ms per frame - snappy like a real coin
+
+    // First, print placeholder lines we'll overwrite
+    for (let i = 0; i < logoHeight; i++) {
+        console.log('');
     }
+
+    // Animate the coin spin (2 rotations)
+    for (let f = 0; f < phases.length; f++) {
+        const scale = phases[f];
+        const frame = generateSpinFrame(LOGO_RAW, scale);
+        const coloredFrame = colorizeLogo(frame);
+
+        // Move cursor up to top of logo area
+        process.stdout.write(`\x1b[${logoHeight}A`);
+
+        // Redraw all lines
+        for (const line of coloredFrame) {
+            clearLine();
+            console.log(line);
+        }
+
+        await sleep(frameDelay);
+    }
+
+    // Final frame: the full O with sparkle on top-right ✦
+    process.stdout.write(`\x1b[${logoHeight}A`);
+    for (let i = 0; i < LOGO_LINES.length; i++) {
+        clearLine();
+        if (i === 0) {
+            // Add sparkle to top-right of first line
+            console.log(`${LOGO_LINES[i]} ${C.accent}${BOLD}✦${RESET}`);
+        } else {
+            console.log(LOGO_LINES[i]);
+        }
+    }
+
+    // Brief sparkle twinkle effect
+    const sparkleFrames = ['✦', '✧', '✦', '⋆', '✦'];
+    for (const sp of sparkleFrames) {
+        await sleep(100);
+        // Move up to first line, overwrite sparkle
+        process.stdout.write(`\x1b[${logoHeight}A`);
+        clearLine();
+        console.log(`${LOGO_LINES[0]} ${C.accent}${BOLD}${sp}${RESET}`);
+        // Move back down
+        process.stdout.write(`\x1b[${logoHeight - 1}B`);
+    }
+
+    // Final sparkle settled
+    await sleep(80);
+    process.stdout.write(`\x1b[${logoHeight}A`);
+    clearLine();
+    console.log(`${LOGO_LINES[0]} ${C.accent}${BOLD}✦${RESET}`);
+    process.stdout.write(`\x1b[${logoHeight - 1}B`);
 
     console.log('');
 
