@@ -98,7 +98,7 @@ export const SplitPane: React.FC<SplitPaneProps> = ({
     const ariaValueMax = useMemo(() => {
         if (effectiveMaxSize) return effectiveMaxSize;
         if (isPercentage) return 100;
-        // Default to 100 if container not yet available
+        // Default to 100 pixels when no max constraint is specified
         return 100;
     }, [effectiveMaxSize, isPercentage]);
 

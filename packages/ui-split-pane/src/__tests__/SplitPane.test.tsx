@@ -13,7 +13,7 @@ function mockContainerRect(wrapper: HTMLElement, width = 800, height = 600) {
         bottom: height,
         x: 0,
         y: 0,
-        toJSON: () => {},
+        toJSON: () => ({ left: 0, top: 0, width, height, right: width, bottom: height, x: 0, y: 0 }),
     }));
 }
 
