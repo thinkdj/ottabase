@@ -1,11 +1,8 @@
-import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { CodeBlock } from '@ottabase/ui-code-highlight';
 
 export function CodeBlockDemoPage() {
-    const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
-
     // Example code snippets
     const examples = [
         {
