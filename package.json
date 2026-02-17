@@ -42,10 +42,11 @@
         "storybook:build": "storybook build",
         "cloudflare:setup": "pnpm --filter @ottabase/scripts exec cloudflare-setup",
         "cloudflare:validate": "pnpm --filter @ottabase/scripts exec cloudflare-validate",
-        "ottabase": "pnpm --filter @ottabase/scripts exec ottabase",
-        "ob": "pnpm --filter @ottabase/scripts exec ob"
+        "ottabase": "pnpm exec ottabase",
+        "ob": "pnpm exec ob"
     },
     "devDependencies": {
+        "@ottabase/scripts": "workspace:*",
         "@babel/core": "catalog:",
         "@babel/preset-env": "catalog:",
         "@babel/preset-react": "catalog:",

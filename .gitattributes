@@ -30,3 +30,7 @@
 
 # Keep executable bit on scripts where relevant
 *.sh     eol=lf
+
+# Root CLI launchers (Unix)
+/ottabase text eol=lf
+/ob      text eol=lf
