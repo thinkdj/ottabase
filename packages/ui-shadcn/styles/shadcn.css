@@ -104,6 +104,11 @@
         --spacing-section: 2rem;
         --spacing-card: 1.5rem;
         --spacing-element: 0.5rem;
+
+        /* ── Resizer (split-pane) tokens ─────────────────────────── */
+        --resizer: 214.3 31.8% 91.4%;
+        --resizer-hover: 215.4 16.3% 80%;
+        --resizer-dragging: 215.4 16.3% 70%;
     }
 
     .dark {
@@ -155,6 +160,10 @@
         --chart-3: 40 82% 56%;
         --chart-4: 284 52% 58%;
         --chart-5: 18 74% 60%;
+
+        --resizer: 217.2 32.6% 17.5%;
+        --resizer-hover: 217.2 32.6% 25%;
+        --resizer-dragging: 217.2 32.6% 35%;
     }
 }
 

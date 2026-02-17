@@ -14,13 +14,13 @@ const baseStyles: Record<string, CSSProperties> = {
         position: 'relative',
     },
     resizer: {
-        background: 'rgba(0, 0, 0, 0.1)',
+        background: 'hsl(var(--resizer))',
         zIndex: 1,
         boxSizing: 'border-box',
         backgroundClip: 'padding-box',
         cursor: 'col-resize',
         flexShrink: 0,
-        transition: 'background-color 0.2s ease',
+        transition: 'background-color var(--duration-normal, 200ms) var(--ease, ease)',
     },
     resizerVertical: {
         width: '8px',
@@ -35,10 +35,10 @@ const baseStyles: Record<string, CSSProperties> = {
         borderBottom: '2px solid transparent',
     },
     resizerHover: {
-        background: 'rgba(0, 0, 0, 0.2)',
+        background: 'hsl(var(--resizer-hover))',
     },
     resizerDragging: {
-        background: 'rgba(0, 0, 0, 0.3)',
+        background: 'hsl(var(--resizer-dragging))',
     },
 };
 
