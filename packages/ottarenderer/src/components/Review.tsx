@@ -18,7 +18,7 @@ export interface ReviewData {
 
 // SVG Star Icons for clean rendering with rounded edges
 const FullStar = ({ className }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="#FACC15">
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
         <path
             d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
             strokeLinejoin="round"
@@ -35,10 +35,11 @@ const HalfStar = ({ className }: { className?: string }) => {
             <path
                 d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
                 fill="none"
-                stroke="#9CA3AF"
+                stroke="currentColor"
                 strokeWidth="1.5"
                 strokeLinejoin="round"
                 strokeLinecap="round"
+                className="text-muted-foreground"
             />
             {/* Half filled star using clip */}
             <clipPath id={clipId}>
@@ -46,7 +47,7 @@ const HalfStar = ({ className }: { className?: string }) => {
             </clipPath>
             <path
                 d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                fill="#FACC15"
+                fill="currentColor"
                 clipPath={`url(#${clipId})`}
                 strokeLinejoin="round"
                 strokeLinecap="round"
@@ -56,7 +57,7 @@ const HalfStar = ({ className }: { className?: string }) => {
 };
 
 const EmptyStar = ({ className }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.5">
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path
             d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
             strokeLinejoin="round"
@@ -98,9 +99,9 @@ const StarRating = ({
         <div className="flex items-center gap-0.5" role="img" aria-label={`Rating: ${rating} out of ${maxStars} stars`}>
             {stars.map((type, i) => {
                 const starClass = sizeClasses[size];
-                if (type === 'full') return <FullStar key={i} className={starClass} />;
-                if (type === 'half') return <HalfStar key={i} className={starClass} />;
-                return <EmptyStar key={i} className={starClass} />;
+                if (type === 'full') return <FullStar key={i} className={`${starClass} text-warning`} />;
+                if (type === 'half') return <HalfStar key={i} className={`${starClass} text-warning`} />;
+                return <EmptyStar key={i} className={`${starClass} text-muted-foreground`} />;
             })}
         </div>
     );
@@ -109,10 +110,10 @@ const StarRating = ({
 // Determine accent color based on rating percentage
 const getRatingColor = (rating: number, maxStars: number) => {
     const percentage = (rating / maxStars) * 100;
-    if (percentage >= 80) return 'from-green-500 to-emerald-600';
-    if (percentage >= 60) return 'from-blue-500 to-cyan-600';
-    if (percentage >= 40) return 'from-amber-500 to-orange-600';
-    return 'from-red-500 to-rose-600';
+    if (percentage >= 80) return 'from-success to-success/80';
+    if (percentage >= 60) return 'from-info to-info/80';
+    if (percentage >= 40) return 'from-warning to-warning/80';
+    return 'from-destructive to-destructive/80';
 };
 
 // Shared rating badge — yellow circle with white text
@@ -121,7 +122,7 @@ const RatingBadge = ({ rating, maxStars, size = 'lg' }: { rating: number; maxSta
     const isLarge = size === 'lg';
     return (
         <div
-            className={`inline-flex flex-col items-center justify-center bg-yellow-500 text-white rounded-full shadow-md ${
+            className={`inline-flex flex-col items-center justify-center bg-primary text-primary-foreground rounded-full shadow-md ${
                 isLarge ? 'w-24 h-24' : 'w-12 h-12'
             }`}
         >
@@ -185,7 +186,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
             {compact ? (
                 /* ── Compact layout: stamp image left, content right, summary bottom ── */
                 <div
-                    className={`${className} my-4 rounded-lg overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow cdc-content-review cdc-content-review--compact`}
+                    className={`${className} my-4 rounded-lg overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow cdc-content-review cdc-content-review--compact`}
                     itemScope
                     itemType="https://schema.org/Review"
                 >
@@ -208,7 +209,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                             <div className="flex items-start gap-2">
                                 <div className="flex-1 min-w-0">
                                     <h3
-                                        className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 leading-tight truncate m-0"
+                                        className="text-sm sm:text-base font-semibold text-card-foreground leading-tight truncate m-0"
                                         itemProp="name"
                                     >
                                         {linkUrl ? (
@@ -233,7 +234,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                                                 <meta itemProp="bestRating" content={String(maxStars)} />
                                                 <StarRating rating={rating} maxStars={maxStars} size="sm" />
                                             </div>
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                            <span className="text-xs text-muted-foreground">
                                                 {rating}/{maxStars}
                                             </span>
                                         </div>
@@ -241,9 +242,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
 
                                     {/* Content snippet */}
                                     {content && (
-                                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-1 m-0">
-                                            {content}
-                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1 m-0">{content}</p>
                                     )}
                                 </div>
 
@@ -259,12 +258,9 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
 
                     {/* Bottom summary bar */}
                     {summary && (
-                        <div className="px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                            <p
-                                className="text-xs text-gray-600 dark:text-gray-400 m-0 line-clamp-1"
-                                itemProp="reviewBody"
-                            >
-                                <span className="font-medium text-gray-700 dark:text-gray-300">Verdict:</span> {summary}
+                        <div className="px-3 py-1.5 border-t border-border bg-muted/50">
+                            <p className="text-xs text-muted-foreground m-0 line-clamp-1" itemProp="reviewBody">
+                                <span className="font-medium text-foreground">Verdict:</span> {summary}
                             </p>
                         </div>
                     )}
@@ -272,7 +268,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
             ) : (
                 /* ── Full layout ── */
                 <div
-                    className={`${className} my-5 rounded-xl overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg transition-shadow cdc-content-review`}
+                    className={`${className} my-5 rounded-xl overflow-hidden bg-card border border-border shadow-md hover:shadow-lg transition-shadow cdc-content-review`}
                     itemScope
                     itemType="https://schema.org/Review"
                 >
@@ -296,10 +292,10 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                                 )}
                             </div>
                         ) : rating > 0 ? (
-                            <div className="bg-amber-600 h-32 flex items-center justify-center relative">
-                                <div className="text-white text-center flex items-center gap-2">
+                            <div className="bg-muted h-32 flex items-center justify-center relative">
+                                <div className="text-foreground text-center flex items-center gap-2">
                                     <RatingBadge rating={rating} maxStars={maxStars} size="lg" />
-                                    <span className="text-white/80 font-medium text-sm">out of {maxStars}</span>
+                                    <span className="text-muted-foreground font-medium text-sm">out of {maxStars}</span>
                                 </div>
                             </div>
                         ) : null}
@@ -309,7 +305,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                     <div className="px-5 py-4 sm:px-6 sm:py-5">
                         {/* Title */}
                         <h3
-                            className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1 leading-tight"
+                            className="text-xl sm:text-2xl font-bold text-card-foreground mb-1 leading-tight"
                             itemProp="name"
                         >
                             {title}
@@ -323,7 +319,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                                     <meta itemProp="bestRating" content={String(maxStars)} />
                                     <StarRating rating={rating} maxStars={maxStars} size="md" />
                                 </div>
-                                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                <span className="text-sm font-medium text-muted-foreground">
                                     {rating}/{maxStars}
                                 </span>
                             </div>
@@ -331,10 +327,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
 
                         {/* Content paragraph */}
                         {content && (
-                            <p
-                                className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-4"
-                                itemProp="reviewBody"
-                            >
+                            <p className="text-muted-foreground text-sm leading-relaxed mb-4" itemProp="reviewBody">
                                 {content}
                             </p>
                         )}
@@ -343,8 +336,8 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                         {(pros.length > 0 || cons.length > 0) && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                 {pros.length > 0 && (
-                                    <div className="bg-emerald-900/90 rounded-lg p-3 border border-emerald-700">
-                                        <h4 className="text-xs font-bold text-emerald-300 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+                                    <div className="bg-success/10 rounded-lg p-3 border border-success/20">
+                                        <h4 className="text-xs font-bold text-success mb-2 flex items-center gap-1.5 uppercase tracking-wide">
                                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                                 <path
                                                     fillRule="evenodd"
@@ -358,9 +351,9 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                                             {pros.map((pro, i) => (
                                                 <li
                                                     key={i}
-                                                    className="text-sm text-emerald-100 flex items-start gap-2.5"
+                                                    className="text-sm text-foreground flex items-start gap-2.5"
                                                 >
-                                                    <span className="text-emerald-400 font-bold mt-0.5 flex-shrink-0">
+                                                    <span className="text-success font-bold mt-0.5 flex-shrink-0">
                                                         •
                                                     </span>
                                                     <span>{pro}</span>
@@ -370,8 +363,8 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                                     </div>
                                 )}
                                 {cons.length > 0 && (
-                                    <div className="bg-rose-900/90 rounded-lg p-3 border border-rose-700">
-                                        <h4 className="text-xs font-bold text-rose-300 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+                                    <div className="bg-destructive/10 rounded-lg p-3 border border-destructive/20">
+                                        <h4 className="text-xs font-bold text-destructive mb-2 flex items-center gap-1.5 uppercase tracking-wide">
                                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                                 <path
                                                     fillRule="evenodd"
@@ -383,8 +376,11 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                                         </h4>
                                         <ul className="list-none m-0 p-0 space-y-2">
                                             {cons.map((con, i) => (
-                                                <li key={i} className="text-sm text-rose-100 flex items-start gap-2.5">
-                                                    <span className="text-rose-400 font-bold mt-0.5 flex-shrink-0">
+                                                <li
+                                                    key={i}
+                                                    className="text-sm text-foreground flex items-start gap-2.5"
+                                                >
+                                                    <span className="text-destructive font-bold mt-0.5 flex-shrink-0">
                                                         •
                                                     </span>
                                                     <span>{con}</span>
@@ -437,9 +433,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                                     </svg>
                                     Verdict
                                 </h4>
-                                <p className="text-sm text-gray-900 dark:text-white/95 m-0 leading-relaxed">
-                                    {summary}
-                                </p>
+                                <p className="text-sm text-foreground m-0 leading-relaxed">{summary}</p>
                             </div>
                         )}
                     </div>
