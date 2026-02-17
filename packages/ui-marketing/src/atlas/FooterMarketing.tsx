@@ -7,33 +7,27 @@ import { cn } from '../lib/utils';
  * 4-column grid footer: brand description left, link groups center-right.
  * Bottom bar with copyright and optional social/legal links.
  */
-export function AtlasFooterMarketing({
-    brand,
-    sections,
-    social,
-    legal,
-    className,
-}: FooterMarketingProps) {
+export function AtlasFooterMarketing({ brand, sections, social, legal, className }: FooterMarketingProps) {
     return (
         <footer className={cn('bg-background border-t border-border', className)}>
             <div className="mx-auto max-w-6xl px-6 py-12">
                 {/* Top row */}
-                <div className={cn(
-                    'grid grid-cols-2 gap-8',
-                    sections.length <= 2
-                        ? 'md:grid-cols-[1.5fr_repeat(2,1fr)]'
-                        : sections.length === 3
-                        ? 'md:grid-cols-[1.5fr_repeat(3,1fr)]'
-                        : 'md:grid-cols-[1.5fr_repeat(4,1fr)]',
-                )}>
+                <div
+                    className={cn(
+                        'grid grid-cols-2 gap-8',
+                        sections.length <= 2
+                            ? 'md:grid-cols-[1.5fr_repeat(2,1fr)]'
+                            : sections.length === 3
+                              ? 'md:grid-cols-[1.5fr_repeat(3,1fr)]'
+                              : 'md:grid-cols-[1.5fr_repeat(4,1fr)]',
+                    )}
+                >
                     {/* Brand */}
                     <div className="col-span-2 md:col-span-1">
                         {brand.logo ? (
                             <div className="mb-3">{brand.logo}</div>
                         ) : (
-                            <p className="font-heading text-sm font-semibold text-foreground mb-3">
-                                {brand.name}
-                            </p>
+                            <p className="font-heading text-sm font-semibold text-foreground mb-3">{brand.name}</p>
                         )}
                         {brand.description && (
                             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
@@ -66,7 +60,7 @@ export function AtlasFooterMarketing({
                             </p>
                             <ul className="flex flex-col gap-2">
                                 {section.links.map((link) => (
-                                    <li key={link.href}>
+                                    <li key={link.label}>
                                         <a
                                             href={link.href}
                                             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -90,7 +84,7 @@ export function AtlasFooterMarketing({
                         <div className="flex items-center gap-4">
                             {legal.links.map((link) => (
                                 <a
-                                    key={link.href}
+                                    key={link.label}
                                     href={link.href}
                                     className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                                 >

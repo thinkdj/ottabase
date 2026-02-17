@@ -17,6 +17,9 @@ const entries: Record<string, string> = {
     'atlas/LogoCloud': 'src/atlas/LogoCloud.tsx',
     'atlas/CTABanner': 'src/atlas/CTABanner.tsx',
     'atlas/FooterMarketing': 'src/atlas/FooterMarketing.tsx',
+    'atlas/Navbar': 'src/atlas/Navbar.tsx',
+    'atlas/StatsSection': 'src/atlas/StatsSection.tsx',
+    'atlas/StepsSection': 'src/atlas/StepsSection.tsx',
     // Mono barrel
     'mono/index': 'src/mono/index.ts',
     // Mono components
@@ -28,6 +31,9 @@ const entries: Record<string, string> = {
     'mono/LogoCloud': 'src/mono/LogoCloud.tsx',
     'mono/CTABanner': 'src/mono/CTABanner.tsx',
     'mono/FooterMarketing': 'src/mono/FooterMarketing.tsx',
+    'mono/Navbar': 'src/mono/Navbar.tsx',
+    'mono/StatsSection': 'src/mono/StatsSection.tsx',
+    'mono/StepsSection': 'src/mono/StepsSection.tsx',
 };
 
 export default defineConfig({

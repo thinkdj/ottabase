@@ -145,6 +145,55 @@ export interface CTABannerProps {
     className?: string;
 }
 
+// ─── Navbar ───────────────────────────────────────────────────────────────────
+
+export interface NavLink {
+    label: string;
+    href: string;
+}
+
+export interface NavbarProps {
+    brand: {
+        name: string;
+        logo?: ReactNode;
+        href?: string;
+    };
+    links?: NavLink[];
+    cta?: CtaButton;
+    className?: string;
+}
+
+// ─── StatsSection ─────────────────────────────────────────────────────────────
+
+export interface StatItem {
+    value: string;
+    label: string;
+    description?: string;
+}
+
+export interface StatsSectionProps {
+    eyebrow?: string;
+    headline?: string;
+    stats: StatItem[];
+    className?: string;
+}
+
+// ─── StepsSection ─────────────────────────────────────────────────────────────
+
+export interface Step {
+    title: string;
+    description: string;
+    icon?: ReactNode;
+}
+
+export interface StepsSectionProps {
+    eyebrow?: string;
+    headline: string;
+    subheadline?: string;
+    steps: Step[];
+    className?: string;
+}
+
 // ─── FooterMarketing ──────────────────────────────────────────────────────────
 
 export interface SocialLink {

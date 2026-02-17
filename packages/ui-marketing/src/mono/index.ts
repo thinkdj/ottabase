@@ -6,3 +6,6 @@ export { MonoFAQAccordion } from './FAQAccordion';
 export { MonoLogoCloud } from './LogoCloud';
 export { MonoCTABanner } from './CTABanner';
 export { MonoFooterMarketing } from './FooterMarketing';
+export { MonoNavbar } from './Navbar';
+export { MonoStatsSection } from './StatsSection';
+export { MonoStepsSection } from './StepsSection';

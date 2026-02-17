@@ -8,13 +8,7 @@ import { cn } from '../lib/utils';
  * Section groups rendered inline. Copyright in a bottom strip.
  * No column grids — just a flat, horizontal layout.
  */
-export function MonoFooterMarketing({
-    brand,
-    sections,
-    social,
-    legal,
-    className,
-}: FooterMarketingProps) {
+export function MonoFooterMarketing({ brand, sections, social, legal, className }: FooterMarketingProps) {
     const allLinks = sections.flatMap((s) => s.links);
 
     return (
@@ -27,9 +21,7 @@ export function MonoFooterMarketing({
                         {brand.logo ? (
                             brand.logo
                         ) : (
-                            <span className="font-heading text-sm font-semibold text-foreground">
-                                {brand.name}
-                            </span>
+                            <span className="font-heading text-sm font-semibold text-foreground">{brand.name}</span>
                         )}
                         {brand.description && (
                             <span className="hidden md:inline text-xs text-muted-foreground">
@@ -43,11 +35,13 @@ export function MonoFooterMarketing({
                         {sections.map((section, si) => (
                             <div key={section.title} className="flex items-center gap-5">
                                 {si > 0 && (
-                                    <span className="text-border font-mono text-xs" aria-hidden="true">·</span>
+                                    <span className="text-border font-mono text-xs" aria-hidden="true">
+                                        ·
+                                    </span>
                                 )}
                                 {section.links.map((link) => (
                                     <a
-                                        key={link.href}
+                                        key={link.label}
                                         href={link.href}
                                         className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                                     >
@@ -69,7 +63,7 @@ export function MonoFooterMarketing({
                         {/* Legal links */}
                         {legal?.links?.map((link) => (
                             <a
-                                key={link.href}
+                                key={link.label}
                                 href={link.href}
                                 className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                             >

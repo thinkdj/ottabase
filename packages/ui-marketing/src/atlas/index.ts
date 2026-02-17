@@ -6,3 +6,6 @@ export { AtlasFAQAccordion } from './FAQAccordion';
 export { AtlasLogoCloud } from './LogoCloud';
 export { AtlasCTABanner } from './CTABanner';
 export { AtlasFooterMarketing } from './FooterMarketing';
+export { AtlasNavbar } from './Navbar';
+export { AtlasStatsSection } from './StatsSection';
+export { AtlasStepsSection } from './StepsSection';
