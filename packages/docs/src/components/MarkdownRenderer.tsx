@@ -65,12 +65,15 @@ function escapeHtml(text: string): string {
 function renderInline(text: string): string {
     let result = escapeHtml(text);
     // Images (before links to avoid conflict)
-    result = result.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="otta-docs-img" />');
+    result = result.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match, alt: string, src: string) => {
+        if (/^\s*javascript:/i.test(src)) return alt;
+        return `<img src="${src}" alt="${alt}" class="otta-docs-img" />`;
+    });
     // Links
-    result = result.replace(
-        /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<a href="$2" class="otta-docs-link" target="_blank" rel="noopener noreferrer">$1</a>',
-    );
+    result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, linkText: string, href: string) => {
+        if (/^\s*javascript:/i.test(href)) return linkText;
+        return `<a href="${href}" class="otta-docs-link" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+    });
     // Bold + italic
     result = result.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
     // Bold
