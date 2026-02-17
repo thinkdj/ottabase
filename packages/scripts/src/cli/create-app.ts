@@ -35,6 +35,16 @@ function prompt(question: string): Promise<string> {
 }
 
 /**
+ * Adjust exclude patterns for a subdirectory context.
+ * Strips the current relative path prefix from exclude patterns
+ * so they continue to match correctly when recursing into subdirectories.
+ */
+function adjustExcludes(excludes: string[], relativePath: string): string[] {
+    const prefix = relativePath + path.sep;
+    return excludes.map((ex) => (ex.startsWith(prefix) ? ex.slice(prefix.length) : ex)).filter(Boolean);
+}
+
+/**
  * Recursively copy a directory, skipping excluded paths.
  */
 function copyDirSync(src: string, dest: string, excludes: string[] = []): void {
@@ -52,12 +62,7 @@ function copyDirSync(src: string, dest: string, excludes: string[] = []): void {
         }
 
         if (entry.isDirectory()) {
-            copyDirSync(srcPath, destPath, excludes.map((ex) => {
-                if (ex.startsWith(relativePath + path.sep)) {
-                    return ex.slice(relativePath.length + 1);
-                }
-                return ex;
-            }).filter(Boolean));
+            copyDirSync(srcPath, destPath, adjustExcludes(excludes, relativePath));
         } else {
             fs.copyFileSync(srcPath, destPath);
         }
@@ -98,7 +103,9 @@ async function main() {
 
     // Validate app name (lowercase, alphanumeric, hyphens)
     if (!/^[a-z][a-z0-9-]*$/.test(appName)) {
-        log(`${RED}Error: App name must start with a letter and contain only lowercase letters, numbers, and hyphens.${NC}`);
+        log(
+            `${RED}Error: App name must start with a letter and contain only lowercase letters, numbers, and hyphens.${NC}`,
+        );
         process.exit(1);
     }
 
