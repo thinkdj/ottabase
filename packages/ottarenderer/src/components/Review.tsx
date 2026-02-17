@@ -1,6 +1,8 @@
 import { RenderFn } from 'editorjs-blocks-react-renderer';
 import { useId, useMemo } from 'react';
 
+/** NOTE: Do not remove `not-prose` class from the component. It is used to prevent the component from being styled by the parent prose class.  */
+
 export interface ReviewData {
     image?: string;
     title?: string;
@@ -186,7 +188,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
             {compact ? (
                 /* ── Compact layout: stamp image left, content right, summary bottom ── */
                 <div
-                    className={`${className} my-4 rounded-lg overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow cdc-content-review cdc-content-review--compact`}
+                    className={`not-prose ${className} my-4 rounded-lg overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow cdc-content-review cdc-content-review--compact`}
                     itemScope
                     itemType="https://schema.org/Review"
                 >
@@ -268,7 +270,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
             ) : (
                 /* ── Full layout ── */
                 <div
-                    className={`${className} my-5 rounded-xl overflow-hidden bg-card border border-border shadow-md hover:shadow-lg transition-shadow cdc-content-review`}
+                    className={`not-prose ${className} my-5 rounded-xl overflow-hidden bg-card border border-border shadow-md hover:shadow-lg transition-shadow cdc-content-review`}
                     itemScope
                     itemType="https://schema.org/Review"
                 >
@@ -305,7 +307,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                     <div className="px-5 py-4 sm:px-6 sm:py-5">
                         {/* Title */}
                         <h3
-                            className="text-xl sm:text-2xl font-bold text-card-foreground mb-1 leading-tight"
+                            className="text-xl sm:text-2xl font-bold text-card-foreground leading-tight mb-1 mt-0"
                             itemProp="name"
                         >
                             {title}
@@ -417,7 +419,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
                         {/* Verdict/Summary */}
                         {summary && (
                             <div className={`bg-gradient-to-r ${accentGradient} rounded-lg p-4 border-0`}>
-                                <h4 className="font-bold text-xs mb-1.5 flex items-center gap-1.5 text-gray-900 dark:text-white">
+                                <h4 className="font-bold text-xs mb-1.5 mt-0 flex items-center gap-1.5 text-gray-900 dark:text-white">
                                     <svg
                                         className="w-5 h-5"
                                         fill="none"
