@@ -198,24 +198,28 @@ export function SplitPaneDemoPage() {
                     </CardContent>
                 </Card>
 
-                {/* Min/Max Constraints */}
+                {/* Min/Max Width Constraints */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Min/Max Constraints</CardTitle>
-                        <CardDescription>Limit the resizing range with minSize and maxSize</CardDescription>
+                        <CardTitle>Min/Max Width Constraints</CardTitle>
+                        <CardDescription>
+                            Limit the resizing range with minWidth and maxWidth for vertical splits
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="h-[300px] border rounded">
                             <SplitPane
                                 split="vertical"
                                 defaultSize={300}
-                                minSize={150}
-                                maxSize={500}
+                                minWidth={150}
+                                maxWidth={500}
                                 onChange={setSize1}
                             >
                                 <div className="h-full p-4 bg-muted/30">
                                     <p className="font-medium">Constrained Pane</p>
-                                    <p className="text-sm text-muted-foreground mt-1">Min: 150px, Max: 500px</p>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Min Width: 150px, Max Width: 500px
+                                    </p>
                                     <p className="text-sm text-muted-foreground mt-1">
                                         Current:{' '}
                                         <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">
@@ -226,7 +230,38 @@ export function SplitPaneDemoPage() {
                                 <div className="h-full p-4 bg-muted/50">
                                     <p className="font-medium">Right Pane</p>
                                     <p className="text-sm text-muted-foreground mt-1">
-                                        Try dragging - the left pane can't go below 150px or above 500px
+                                        Try dragging - the left pane width can't go below 150px or above 500px
+                                    </p>
+                                </div>
+                            </SplitPane>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Min/Max Height Constraints */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Min/Max Height Constraints</CardTitle>
+                        <CardDescription>
+                            Limit the resizing range with minHeight and maxHeight for horizontal splits
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[400px] border rounded">
+                            <SplitPane split="horizontal" defaultSize={150} minHeight={100} maxHeight={250}>
+                                <div className="h-full p-4 bg-muted/30">
+                                    <p className="font-medium">Top Pane</p>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Min Height: 100px, Max Height: 250px
+                                    </p>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Try dragging - this pane's height is constrained
+                                    </p>
+                                </div>
+                                <div className="h-full p-4 bg-muted/50">
+                                    <p className="font-medium">Bottom Pane</p>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        This pane flexes to fill the remaining space
                                     </p>
                                 </div>
                             </SplitPane>

@@ -14,14 +14,34 @@ export interface SplitPaneProps {
     defaultSize?: string | number;
 
     /**
-     * Minimum size of a pane in pixels
+     * Minimum size of a pane in pixels (deprecated, use minWidth or minHeight)
      */
     minSize?: number;
 
     /**
-     * Maximum size of a pane in pixels
+     * Maximum size of a pane in pixels (deprecated, use maxWidth or maxHeight)
      */
     maxSize?: number;
+
+    /**
+     * Minimum width of the first pane in pixels (for vertical split)
+     */
+    minWidth?: number;
+
+    /**
+     * Maximum width of the first pane in pixels (for vertical split)
+     */
+    maxWidth?: number;
+
+    /**
+     * Minimum height of the first pane in pixels (for horizontal split)
+     */
+    minHeight?: number;
+
+    /**
+     * Maximum height of the first pane in pixels (for horizontal split)
+     */
+    maxHeight?: number;
 
     /**
      * Array of snap positions in pixels

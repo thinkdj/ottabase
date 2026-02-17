@@ -1,4 +1,4 @@
-import React, { Children, CSSProperties } from 'react';
+import React, { Children, CSSProperties, useState } from 'react';
 import { SplitPaneProps } from '../types';
 import { useSplitPane } from '../hooks/useSplitPane';
 
@@ -14,13 +14,13 @@ const baseStyles: Record<string, CSSProperties> = {
         position: 'relative',
     },
     resizer: {
-        background: '#e0e0e0',
-        opacity: 0.5,
+        background: 'rgba(0, 0, 0, 0.1)',
         zIndex: 1,
         boxSizing: 'border-box',
         backgroundClip: 'padding-box',
         cursor: 'col-resize',
         flexShrink: 0,
+        transition: 'background-color 0.2s ease',
     },
     resizerVertical: {
         width: '8px',
@@ -35,20 +35,22 @@ const baseStyles: Record<string, CSSProperties> = {
         borderBottom: '2px solid transparent',
     },
     resizerHover: {
-        opacity: 1,
-        background: '#b0b0b0',
+        background: 'rgba(0, 0, 0, 0.2)',
     },
     resizerDragging: {
-        opacity: 1,
-        background: '#999',
+        background: 'rgba(0, 0, 0, 0.3)',
     },
 };
 
 export const SplitPane: React.FC<SplitPaneProps> = ({
     split = 'vertical',
     defaultSize = '50%',
-    minSize = 50,
+    minSize,
     maxSize,
+    minWidth,
+    maxWidth,
+    minHeight,
+    maxHeight,
     snapPoints = [],
     snapThreshold = 20,
     onChange,
@@ -60,11 +62,17 @@ export const SplitPane: React.FC<SplitPaneProps> = ({
     resizerStyle,
     children,
 }) => {
+    const [isHovering, setIsHovering] = useState(false);
+
+    // Determine min/max based on split direction
+    const effectiveMinSize = split === 'vertical' ? (minWidth ?? minSize ?? 50) : (minHeight ?? minSize ?? 50);
+    const effectiveMaxSize = split === 'vertical' ? (maxWidth ?? maxSize) : (maxHeight ?? maxSize);
+
     const { containerRef, pane1Size, isPercentage, isDragging, handleMouseDown } = useSplitPane({
         split,
         defaultSize,
-        minSize,
-        maxSize,
+        minSize: effectiveMinSize,
+        maxSize: effectiveMaxSize,
         snapPoints,
         snapThreshold,
         onChange,
@@ -99,6 +107,7 @@ export const SplitPane: React.FC<SplitPaneProps> = ({
     const resizerBaseStyle: CSSProperties = {
         ...baseStyles.resizer,
         ...(split === 'vertical' ? baseStyles.resizerVertical : baseStyles.resizerHorizontal),
+        ...(isHovering && !isDragging && baseStyles.resizerHover),
         ...(isDragging && baseStyles.resizerDragging),
         ...resizerStyle,
     };
@@ -110,6 +119,8 @@ export const SplitPane: React.FC<SplitPaneProps> = ({
                 className={resizerClassName}
                 style={resizerBaseStyle}
                 onMouseDown={handleMouseDown}
+                onMouseEnter={() => setIsHovering(true)}
+                onMouseLeave={() => setIsHovering(false)}
                 role="separator"
                 aria-orientation={split === 'vertical' ? 'vertical' : 'horizontal'}
             />
