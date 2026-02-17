@@ -1,5 +1,6 @@
+import type { BrandTheme, ResolvedBrandTheme } from '@ottabase/brand-engine';
+import type { LayoutConfig } from '@ottabase/ottalayout';
 import { createContext, useContext } from 'react';
-import type { BrandTheme, ResolvedBrandTheme, LayoutConfig } from '@ottabase/brand-engine';
 
 export interface ThemeProviderState {
     /** Current theme name */

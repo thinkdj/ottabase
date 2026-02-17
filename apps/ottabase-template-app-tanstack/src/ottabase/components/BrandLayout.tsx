@@ -1,12 +1,12 @@
 import { ReferralTracker } from '@/components/ReferralTracker';
 import { useTheme } from '@/ottabase/providers/ThemeContext';
+import { contentWidthClass, densityPadding } from '@ottabase/ottalayout';
 import { Outlet } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { BrandFooter } from './layout/BrandFooter';
 import { MinimalHeader, TopbarHeader } from './layout/BrandHeaders';
 import { DrawerNav } from './layout/DrawerNav';
 import { SidebarNav } from './layout/SidebarNav';
-import { contentWidthClass, densityPadding } from './layout/layout.utils';
 
 // ---------------------------------------------------------------------------
 // BrandLayout – the root layout component driven by BrandEngine config

@@ -1,6 +1,6 @@
-import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
     plugins: [react()],
@@ -32,6 +32,9 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            // Self-referencing package imports used by components/ui/*.tsx
+            '@ottabase/ui-shadcn/lib/utils': path.resolve(__dirname, './src/lib/utils.ts'),
+            '@ottabase/ui-shadcn': path.resolve(__dirname, './src/index.ts'),
         },
     },
 });

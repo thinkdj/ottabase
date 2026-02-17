@@ -23,6 +23,7 @@ export {
     Paragraph,
     Quote,
     Raw,
+    ReviewTool,
     SpoilerTool,
     Table,
     Underline,

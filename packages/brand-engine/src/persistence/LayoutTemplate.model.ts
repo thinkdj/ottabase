@@ -2,9 +2,9 @@
 // Brand Engine – LayoutTemplate OttaORM Model
 // ---------------------------------------------------------------------------
 
+import type { LayoutConfig } from '@ottabase/ottalayout';
+import { mergeLayoutConfig } from '@ottabase/ottalayout';
 import { BaseModel, type ModelFields, type PackageType } from '@ottabase/ottaorm';
-import type { LayoutConfig } from '../layout';
-import { mergeLayoutConfig } from '../validators';
 import { layoutTemplatesTable } from './schema';
 
 export class LayoutTemplate extends BaseModel {

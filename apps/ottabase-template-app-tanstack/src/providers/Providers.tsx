@@ -10,22 +10,21 @@ import {
     ProviderFont,
     ProviderNextThemes,
 } from '@/ottabase/providers';
-import { LanguageManager } from '@/ottabase/providers/LanguageManager';
 import { BrandThemeApplicator } from '@/ottabase/providers/BrandThemeApplicator';
+import { LanguageManager } from '@/ottabase/providers/LanguageManager';
 import { ThemeProvider } from '@/ottabase/providers/ProviderTheme';
 import { ScaleManager } from '@/ottabase/providers/ScaleManager';
 import { SidebarStateManager } from '@/ottabase/providers/SidebarStateManager';
 import { ThemeManager } from '@/ottabase/providers/ThemeManager';
 import { ZoomManager } from '@/ottabase/providers/ZoomManager';
+import { ApiError } from '@ottabase/api';
 import { BrandProvider } from '@ottabase/brand-engine-react';
 import { I18nProvider } from '@ottabase/i18n/react';
 import { OttaQueryProvider } from '@ottabase/ottaorm/client';
 import { SpotlightProvider } from '@ottabase/spotlight';
 import { ProviderState } from '@ottabase/state';
 import { ProviderUIBase } from '@ottabase/ui-base';
-import { ProviderCodeHighlight } from '@ottabase/ui-code-highlight';
 import { ShadcnProviders } from '@ottabase/ui-shadcn/providers';
-import { ApiError } from '@ottabase/api';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import React from 'react';
 
@@ -74,8 +73,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
                             >
                                 <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
                                     <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
-                                        <BrandThemeApplicator />
                                         <ThemeProvider>
+                                            <BrandThemeApplicator />
                                             <ThemeManager />
                                             <ZoomManager />
                                             <ScaleManager />
@@ -85,7 +84,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                                                     enabled={appConfig.features.spotlight.enabled}
                                                     shortcuts={appConfig.features.spotlight.shortcuts}
                                                 >
-                                                    <ProviderCodeHighlight>{children}</ProviderCodeHighlight>
+                                                    {children}
                                                 </SpotlightProvider>
                                             </ShadcnProviders>
                                         </ThemeProvider>

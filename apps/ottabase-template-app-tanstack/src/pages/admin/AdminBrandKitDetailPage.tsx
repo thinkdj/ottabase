@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ottabase/ui-shadcn';
 import {
     IconArrowLeft,
     IconBadge,
-    IconColorSwatch,
     IconPalette,
     IconPhoto,
     IconSettings,
@@ -17,17 +16,16 @@ import {
 } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { brandKitApi, type BrandKitItem } from './brand/brandApi';
 import { BrandKitAdvancedTab } from './brand/BrandKitAdvancedTab';
 import { BrandKitBrandTab } from './brand/BrandKitBrandTab';
-import { BrandKitColorsTab } from './brand/BrandKitColorsTab';
 import { BrandKitFontsTab } from './brand/BrandKitFontsTab';
 import { BrandKitLogoTab } from './brand/BrandKitLogoTab';
 import { BrandKitThemeTab } from './brand/BrandKitThemeTab';
 
-const VALID_TABS = ['brand', 'logo', 'colors', 'theme', 'fonts', 'advanced'] as const;
+const VALID_TABS = ['brand', 'logo', 'theme', 'fonts', 'advanced'] as const;
 
 /** Preview panel – reflects current draft (colors, fonts) in realtime */
 function BrandKitPreviewPanel({
@@ -148,6 +146,7 @@ export function AdminBrandKitDetailPage() {
         name: '',
         brandName: '',
         tagline: '',
+        parentBrandKitId: null as string | null,
         tokensJson: '{}',
         themePresetId: null as string | null,
         defaultColorScheme: 'system' as 'light' | 'dark' | 'system',
@@ -168,6 +167,7 @@ export function AdminBrandKitDetailPage() {
                 name: kit.name ?? '',
                 brandName: kit.brandName ?? 'My App',
                 tagline: kit.tagline ?? '',
+                parentBrandKitId: kit.parentBrandKitId ?? null,
                 tokensJson: kit.tokensJson ?? '{}',
                 themePresetId: kit.themePresetId ?? null,
                 defaultColorScheme: (kit.defaultColorScheme as 'light' | 'dark' | 'system') ?? 'system',
@@ -225,6 +225,7 @@ export function AdminBrandKitDetailPage() {
             name: draft.name?.trim() || draft.brandName || 'New Brand Kit',
             brandName: draft.brandName || 'My App',
             tagline: draft.tagline || undefined,
+            parentBrandKitId: draft.parentBrandKitId || null,
             tokensJson: draft.tokensJson.trim() || undefined,
             themePresetId: draft.themePresetId,
             defaultColorScheme: draft.defaultColorScheme,
@@ -242,10 +243,23 @@ export function AdminBrandKitDetailPage() {
 
     const handleDelete = () => {
         if (deleteMutation.isPending || !kit) return;
-        const isDefault = (kit.isDefault ?? false) || kit.organizationId === null;
-        if (isDefault) return;
+        if (kit.isDefault) return;
         if (window.confirm('Delete this Brand Kit? This cannot be undone.')) deleteMutation.mutate();
     };
+
+    // Stable handlers for child tab components (avoids re-render on every draft change)
+    const handleDraftMerge = useCallback((d: Partial<typeof draft>) => setDraft((s) => ({ ...s, ...d })), []);
+    const handleThemePresetChange = useCallback(
+        (v: string | null) => setDraft((s) => ({ ...s, themePresetId: v })),
+        [],
+    );
+    const handleTokensChange = useCallback((v: string) => setDraft((s) => ({ ...s, tokensJson: v })), []);
+    const handleLogoUploaded = useCallback(
+        (_logoType: string, _key: string, _url: string) => {
+            queryClient.invalidateQueries({ queryKey: ['brand', 'kit', kitId] });
+        },
+        [queryClient, kitId],
+    );
 
     const hasColorOverrides = useMemo(() => {
         try {
@@ -288,7 +302,7 @@ export function AdminBrandKitDetailPage() {
 
     const logoBaseUrl = config?.r2PublicUrl ?? '';
     const logoUrls = getLogoUrls({ ...kitForView, ...draft } as BrandKitItem, logoBaseUrl);
-    const isDefaultKit = (kitForView.isDefault ?? false) || kitForView.organizationId === null;
+    const isDefaultKit = Boolean(kitForView.isDefault);
     const saving = isNew ? createMutation.isPending : updateMutation.isPending;
 
     return (
@@ -339,7 +353,7 @@ export function AdminBrandKitDetailPage() {
 
             <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
                 <Tabs value={tab} onValueChange={(v) => setTab(v as (typeof VALID_TABS)[number])} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-6 lg:w-auto lg:inline-flex lg:flex-wrap">
+                    <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-5 lg:w-auto lg:inline-flex lg:flex-wrap">
                         <TabsTrigger value="brand">
                             <IconBadge className="h-4 w-4 mr-2" />
                             Brand
@@ -347,10 +361,6 @@ export function AdminBrandKitDetailPage() {
                         <TabsTrigger value="logo">
                             <IconPhoto className="h-4 w-4 mr-2" />
                             Logo
-                        </TabsTrigger>
-                        <TabsTrigger value="colors">
-                            <IconColorSwatch className="h-4 w-4 mr-2" />
-                            Colors
                         </TabsTrigger>
                         <TabsTrigger value="theme">
                             <IconPalette className="h-4 w-4 mr-2" />
@@ -371,7 +381,9 @@ export function AdminBrandKitDetailPage() {
                             name={draft.name}
                             brandName={draft.brandName}
                             tagline={draft.tagline}
-                            onChange={(d) => setDraft((s) => ({ ...s, ...d }))}
+                            parentBrandKitId={draft.parentBrandKitId}
+                            currentKitId={isNew ? undefined : kitId}
+                            onChange={handleDraftMerge}
                             nameReadOnly={!isNew && kitForView.organizationId === null}
                         />
                     </TabsContent>
@@ -391,32 +403,25 @@ export function AdminBrandKitDetailPage() {
                                     emailLogoKey: draft.emailLogoKey,
                                 }}
                                 logoBaseUrl={logoBaseUrl}
-                                onUploaded={(_, url) => {
-                                    // Parent should refetch; we could also update local draft
-                                    queryClient.invalidateQueries({ queryKey: ['brand', 'kit', kitId] });
-                                }}
+                                onUploaded={handleLogoUploaded}
                             />
                         )}
-                    </TabsContent>
-                    <TabsContent value="colors">
-                        <BrandKitColorsTab
-                            tokensJson={draft.tokensJson}
-                            onTokensChange={(v) => setDraft((s) => ({ ...s, tokensJson: v }))}
-                        />
                     </TabsContent>
                     <TabsContent value="theme">
                         <BrandKitThemeTab
                             themePresetId={draft.themePresetId}
                             tokensJson={draft.tokensJson}
-                            onThemePresetChange={(v) => setDraft((s) => ({ ...s, themePresetId: v }))}
-                            onTokensChange={(v) => setDraft((s) => ({ ...s, tokensJson: v }))}
+                            onThemePresetChange={handleThemePresetChange}
+                            onTokensChange={handleTokensChange}
+                            hasParent={!!draft.parentBrandKitId}
                         />
                     </TabsContent>
                     <TabsContent value="fonts">
                         <BrandKitFontsTab
                             tokensJson={draft.tokensJson}
                             themePresetId={draft.themePresetId}
-                            onTokensChange={(v) => setDraft((s) => ({ ...s, tokensJson: v }))}
+                            onTokensChange={handleTokensChange}
+                            hasParent={!!draft.parentBrandKitId}
                         />
                     </TabsContent>
                     <TabsContent value="advanced">
@@ -425,7 +430,9 @@ export function AdminBrandKitDetailPage() {
                             allowDarkModeToggle={draft.allowDarkModeToggle}
                             customCss={draft.customCss}
                             hideOttabaseBranding={draft.hideOttabaseBranding}
-                            onChange={(d) => setDraft((s) => ({ ...s, ...d }))}
+                            tokensJson={draft.tokensJson}
+                            onTokensChange={handleTokensChange}
+                            onChange={handleDraftMerge}
                         />
                     </TabsContent>
                 </Tabs>

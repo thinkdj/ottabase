@@ -35,6 +35,9 @@ export const brandKitsTable = sqliteTable('brand_kits', {
     defaultColorScheme: text('default_color_scheme').default('system'),
     allowDarkModeToggle: integer('allow_dark_mode_toggle', { mode: 'boolean' }).default(true),
 
+    /** Parent Brand Kit for inheritance – child inherits all tokens/settings, overrides selectively */
+    parentBrandKitId: text('parent_brand_kit_id'),
+
     customCss: text('custom_css'),
     hideOttabaseBranding: integer('hide_ottabase_branding', { mode: 'boolean' }).default(false),
 
@@ -99,6 +102,9 @@ export const layoutRouteMappingsTable = sqliteTable('layout_route_mappings', {
     priority: integer('priority').default(0),
     layoutTemplateId: text('layout_template_id').notNull(),
     brandKitId: text('brand_kit_id').notNull(),
+
+    /** Optional per-route token overrides – partial JSON applied on top of the brand kit's tokens */
+    tokenOverridesJson: text('token_overrides_json'),
 
     createdBy: text('created_by'),
 

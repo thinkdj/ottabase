@@ -2,21 +2,17 @@
 // BrandEngine – Theme JSON adapter
 //
 // Converts the per-app ThemeConfig JSON format into a BrandTheme.
-// Supports both the current flat format (cursors at top level) and the
-// legacy nested format (appearance.cursors) for backward compatibility.
 // ---------------------------------------------------------------------------
 
+import type { LayoutConfig } from '@ottabase/ottalayout';
 import type { BrandTheme } from './theme';
 import type { TokenCursors } from './tokens';
-import type { LayoutConfig } from './layout';
 
 /**
  * Shape of a theme JSON file.
  *
  * All theme-related config lives at the top level:
  *   name, typography, colors, spacing, radius, shadows, motion, layout, cursors
- *
- * The legacy `appearance.cursors` nesting is still accepted for backward compat.
  */
 export interface LegacyThemeConfig {
     name: string;
@@ -47,18 +43,11 @@ export interface LegacyThemeConfig {
         footer?: boolean;
         density?: string;
     };
-    /** Top-level cursors (preferred) */
+    /** Custom cursor overrides */
     cursors?: Record<string, string>;
-    /** @deprecated Use top-level `cursors` instead */
-    appearance?: {
-        cursors?: Record<string, string>;
-    };
 }
 
-/**
- * Converts a theme JSON into a `BrandTheme`.
- * Reads cursors from top-level `cursors` first, falls back to `appearance.cursors`.
- */
+/** Converts a theme JSON into a `BrandTheme`. */
 export function fromLegacyThemeConfig(legacy: LegacyThemeConfig): BrandTheme {
     return {
         name: legacy.name,
@@ -74,6 +63,6 @@ export function fromLegacyThemeConfig(legacy: LegacyThemeConfig): BrandTheme {
             motion: legacy.motion,
         },
         layout: legacy.layout as LayoutConfig | undefined,
-        cursors: (legacy.cursors ?? legacy.appearance?.cursors) as TokenCursors | undefined,
+        cursors: legacy.cursors as TokenCursors | undefined,
     };
 }

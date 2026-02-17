@@ -8,7 +8,7 @@ import type { BrandApiEnv } from './brand-api';
 
 /**
  * Invalidate stale brand cache, then eagerly re-resolve to keep cache warm.
- * Both light and dark mode variants are refreshed so the next request is a cache hit.
+ * Single dual-mode call: resolveFullBrandConfig resolves both light+dark per kit.
  */
 export async function warmBrandCache(
     env: BrandApiEnv,
@@ -17,8 +17,6 @@ export async function warmBrandCache(
 ): Promise<void> {
     const cache = createBrandCache(env.OBCF_KV);
     await cache.invalidate(organizationId, appId);
-    await Promise.all([
-        resolveFullBrandConfig(env, { organizationId, appId, mode: 'light' }),
-        resolveFullBrandConfig(env, { organizationId, appId, mode: 'dark' }),
-    ]);
+    // Single call resolves both modes (light + dark themes per kit)
+    await resolveFullBrandConfig(env, { organizationId, appId });
 }

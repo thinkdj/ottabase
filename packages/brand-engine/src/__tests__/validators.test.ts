@@ -1,14 +1,6 @@
+import { DEFAULT_LAYOUT, isValidLayoutConfig, isValidPathPattern, mergeLayoutConfig } from '@ottabase/ottalayout';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LAYOUT } from '../layout';
-import {
-    isValidBrandTheme,
-    isValidJSON,
-    isValidLayoutConfig,
-    isValidPathPattern,
-    isValidTokenColors,
-    mergeLayoutConfig,
-    safeParseJSON,
-} from '../validators';
+import { isValidBrandTheme, isValidJSON, isValidTokenColors, safeParseJSON } from '../validators';
 
 // ===========================================================================
 // mergeLayoutConfig
@@ -52,7 +44,15 @@ describe('mergeLayoutConfig', () => {
             density: 'compact',
         };
         const result = mergeLayoutConfig(partial);
-        expect(result).toEqual(partial);
+        // Check all required fields match partial
+        expect(result.header).toBe('none');
+        expect(result.navigation).toBe('drawer');
+        expect(result.contentWidth).toBe('full');
+        expect(result.footer).toBe(false);
+        expect(result.density).toBe('compact');
+        // Extended fields get defaults
+        expect(result.headerSticky).toBeDefined();
+        expect(result.sidebarWidth).toBeDefined();
     });
 });
 

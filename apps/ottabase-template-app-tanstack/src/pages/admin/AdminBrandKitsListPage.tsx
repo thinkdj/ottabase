@@ -15,7 +15,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@ottabase/ui-shadcn';
-import { IconCopy, IconDotsVertical, IconPalette, IconPlus, IconSettings2 } from '@tabler/icons-react';
+import { IconCopy, IconDotsVertical, IconGitBranch, IconPalette, IconPlus, IconSettings2 } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
@@ -160,6 +160,12 @@ function KitCard({
                         {isDefaultKit && <Badge variant="secondary">Default</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground truncate">{kit.brandName}</p>
+                    {kit.parentBrandKitName && (
+                        <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-0.5">
+                            <IconGitBranch className="h-3 w-3" />
+                            Inherits from {kit.parentBrandKitName}
+                        </p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-1">Preset: {kit.themePresetId || 'default'}</p>
                 </div>
                 <DropdownMenu>

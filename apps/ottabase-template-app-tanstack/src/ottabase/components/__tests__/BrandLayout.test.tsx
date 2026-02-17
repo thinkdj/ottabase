@@ -1,4 +1,4 @@
-import type { LayoutConfig } from '@ottabase/brand-engine';
+import type { LayoutConfig } from '@ottabase/ottalayout';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -227,12 +227,13 @@ describe('BrandLayout', () => {
     // =======================================================================
 
     describe('responsive sidebar classes', () => {
-        it('sidebar has full-width class for mobile and fixed width for desktop', () => {
+        it('sidebar has full-width class for mobile and CSS custom property for desktop width', () => {
             setLayout({ navigation: 'sidebar' });
             const { container } = render(<BrandLayout />);
             const aside = container.querySelector('aside');
             expect(aside?.className).toContain('w-full');
-            expect(aside?.className).toContain('md:w-56');
+            // Desktop width is now set via CSS custom property instead of a Tailwind class
+            expect(aside?.getAttribute('style')).toContain('--sidebar-width');
         });
 
         it('body container uses flex-col on mobile and flex-row on desktop', () => {

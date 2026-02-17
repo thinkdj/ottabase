@@ -3,8 +3,8 @@
 // Self-contained: identity, logos, colors, fonts, theme
 // ---------------------------------------------------------------------------
 
+import type { LayoutConfig } from '@ottabase/ottalayout';
 import { BaseModel, type ModelFields, type PackageType } from '@ottabase/ottaorm';
-import type { LayoutConfig } from '../layout';
 import type { BrandTheme } from '../theme';
 import type { DesignTokens } from '../tokens';
 import { brandKitsTable } from './schema';
@@ -33,6 +33,7 @@ export class BrandKit extends BaseModel {
     static writable = {
         create: [
             'organizationId',
+            'parentBrandKitId',
             'name',
             'slug',
             'brandName',
@@ -45,6 +46,7 @@ export class BrandKit extends BaseModel {
             'hideOttabaseBranding',
         ],
         update: [
+            'parentBrandKitId',
             'name',
             'slug',
             'brandName',
@@ -72,6 +74,12 @@ export class BrandKit extends BaseModel {
             editable: false,
             uiConfig: { label: 'Default Kit' },
             tableConfig: { visible: true },
+        },
+        parentBrandKitId: {
+            type: 'string',
+            editable: true,
+            uiConfig: { label: 'Inherits From' },
+            tableConfig: { visible: false },
         },
         name: {
             type: 'string',

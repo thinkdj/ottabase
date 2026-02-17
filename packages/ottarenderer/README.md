@@ -61,6 +61,7 @@ The package includes default renderers for standard Editor.js blocks and custom 
     - `AdvancedImageBlock`: Enhanced image with caption and layout options
     - `Checklist`: Interactive checklist
     - `CTA`: Call-to-action buttons
+    - `Review`: Product/service review with image, star rating, pros/cons, and summary
     - `Spoiler`: Collapsible content
     - `Warning`: Callout/Alert boxes
 

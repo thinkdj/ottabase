@@ -180,7 +180,7 @@ export function RegisterPage() {
                     <CardContent className="pt-6">
                         <p className="text-center text-sm">
                             Already have an account?{' '}
-                            <Link to="/login" search={loginSearch} className="font-medium text-primary hover:underline">
+                            <Link to="/login" className="font-medium text-primary hover:underline">
                                 Sign in
                             </Link>
                         </p>

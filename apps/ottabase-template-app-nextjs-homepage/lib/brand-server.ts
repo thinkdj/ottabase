@@ -1,8 +1,9 @@
 // Server-side brand configuration generator for Next.js SSR
 // This generates the brand config that would normally come from /api/brand
 
-import { DEFAULT_LAYOUT, getThemeByName, registerBuiltInThemes, resolveTheme } from '@ottabase/brand-engine';
+import { getThemeByName, registerBuiltInThemes, resolveTheme } from '@ottabase/brand-engine';
 import type { FullBrandConfig } from '@ottabase/brand-engine-react';
+import { DEFAULT_LAYOUT } from '@ottabase/ottalayout';
 import { brandConfig, themePreset } from '../config/brand.config';
 
 // Register themes on server startup

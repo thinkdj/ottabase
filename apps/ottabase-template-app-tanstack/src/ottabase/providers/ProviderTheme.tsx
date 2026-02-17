@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useTheme as useNextTheme } from 'next-themes';
-import type { BrandTheme, LayoutConfig, ResolvedBrandTheme } from '@ottabase/brand-engine';
+import type { BrandTheme, ResolvedBrandTheme } from '@ottabase/brand-engine';
 import { getThemeOrDefault, resolveTheme } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
+import type { LayoutConfig } from '@ottabase/ottalayout';
+import { useTheme as useNextTheme } from 'next-themes';
+import { useCallback, useMemo, useState } from 'react';
 import { ThemeProviderContext } from './ThemeContext';
 
 const LAYOUT_OVERRIDES_KEY = 'ottabase.layout-overrides';
@@ -46,13 +47,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         }
         const mode = resolvedTheme === 'dark' ? 'dark' : 'light';
         const base = getThemeOrDefault(config.themeBase || 'default');
-        const r = resolveTheme({
-            base,
-            tenantOverrides: config.tenantTheme ?? {},
-            mode,
-        });
         const rLight = resolveTheme({ base, tenantOverrides: config.tenantTheme ?? {}, mode: 'light' });
         const rDark = resolveTheme({ base, tenantOverrides: config.tenantTheme ?? {}, mode: 'dark' });
+        // Current mode's resolved theme — reuse already-computed value instead of a third resolveTheme call
+        const r = mode === 'dark' ? rDark : rLight;
         const syntheticConfig = {
             name: r.name,
             tokens: {

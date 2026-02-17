@@ -42,6 +42,7 @@
         "@ottabase/logger": "workspace:*",
         "@ottabase/ottablog": "workspace:*",
         "@ottabase/ottaeditor": "workspace:*",
+        "@ottabase/ottalayout": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottarenderer": "workspace:*",
         "@ottabase/ottaselect": "workspace:*",

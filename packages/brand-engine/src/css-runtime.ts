@@ -12,8 +12,8 @@
 // The `applyBrandTheme` convenience function targets `document.documentElement`.
 // ---------------------------------------------------------------------------
 
+import type { LayoutConfig } from '@ottabase/ottalayout';
 import { resolveCursor } from './cursors';
-import type { LayoutConfig } from './layout';
 import type { ResolvedBrandTheme } from './resolver';
 import type { TokenColors } from './tokens';
 

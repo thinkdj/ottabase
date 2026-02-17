@@ -40,7 +40,8 @@
     "author": "",
     "license": "MIT",
     "dependencies": {
-        "@ottabase/brand-engine": "workspace:*"
+        "@ottabase/brand-engine": "workspace:*",
+        "@ottabase/ottalayout": "workspace:*"
     },
     "peerDependencies": {
         "react": "catalog:",

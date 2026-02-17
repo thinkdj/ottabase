@@ -1,69 +1,103 @@
 // ---------------------------------------------------------------------------
 // Brand Engine React – LayoutResolver
-// Resolves layout by path from config.routeMappings, renders registered layout
+// Resolves layout preset for the current path, renders the provided
+// layout component with the preset's config. Merges page-level overrides
+// from useLayoutMeta and wraps children in the slot + meta providers.
 // ---------------------------------------------------------------------------
 
 'use client';
 
 import {
-    DEFAULT_ROUTE_MAPPINGS,
     LAYOUT_PRESETS,
+    mergeLayoutConfig,
     resolveLayoutForPath,
-    type LayoutComponentKey,
-} from '@ottabase/brand-engine';
-import React from 'react';
+    type LayoutConfig,
+    type LayoutPresetId,
+} from '@ottabase/ottalayout';
+import { LayoutMetaProvider, LayoutSlotsProvider, useResolvedLayoutMeta } from '@ottabase/ottalayout/react';
+import React, { useMemo } from 'react';
 import { useBrand } from './BrandProvider';
-import { getLayoutComponent } from './registry';
+
+/** Props accepted by a layout component (the "shell" renderer) */
+export interface LayoutComponentProps {
+    config: LayoutConfig;
+    children: React.ReactNode;
+}
 
 /** Router adapter: provide usePathname from your router */
 export interface RouterAdapter {
     usePathname: () => string;
 }
 
-/** Default route mappings when none from API (shared with server fallbacks) */
-const DEFAULT_MAPPINGS = DEFAULT_ROUTE_MAPPINGS;
-
 export interface LayoutResolverProps {
     children: React.ReactNode;
     /** Router adapter (e.g. tanstackRouterAdapter) */
     router?: RouterAdapter;
+    /** The layout component that renders the app shell from LayoutConfig */
+    layoutComponent: React.ComponentType<LayoutComponentProps>;
 }
 
-export function LayoutResolver({ children, router }: LayoutResolverProps) {
+/**
+ * Inner component that resolves layout and merges page-level meta.
+ * Must be rendered inside LayoutMetaProvider to read overrides.
+ */
+function LayoutResolverInner({ children, router, layoutComponent: LayoutComponent }: LayoutResolverProps) {
     const { config } = useBrand();
     const usePathname = router?.usePathname ?? usePathnameFallback;
     const pathname = usePathname();
+    const pageMeta = useResolvedLayoutMeta();
 
-    // Use layoutTemplateId from config (path-scoped) when available; else resolve from routeMappings
-    const layoutTemplateId =
-        config?.layoutTemplateId ??
-        (config?.routeMappings && config.routeMappings.length > 0
-            ? resolveLayoutForPath(
-                  pathname,
-                  config.routeMappings.map((m) => ({
-                      pathPattern: m.pathPattern,
-                      layoutTemplateId: m.layoutTemplateId,
-                      priority: m.priority,
-                  })),
-              )
-            : null) ??
-        'homepage';
+    // Resolve preset ID: explicit from config → route-mapping match → fallback
+    const presetId = useMemo(
+        () =>
+            config?.layoutTemplateId ??
+            (config?.routeMappings && config.routeMappings.length > 0
+                ? resolveLayoutForPath(
+                      pathname,
+                      config.routeMappings.map((m) => ({
+                          pathPattern: m.pathPattern,
+                          layoutTemplateId: m.layoutTemplateId,
+                          priority: m.priority,
+                      })),
+                  )
+                : null) ??
+            'homepage',
+        [config?.layoutTemplateId, config?.routeMappings, pathname],
+    );
 
-    const configTemplate = config?.layoutTemplatesMap?.[layoutTemplateId];
-    const layoutTemplate = configTemplate
-        ? {
-              componentKey: configTemplate.componentKey,
-              config: configTemplate.config,
-          }
-        : layoutTemplateId in LAYOUT_PRESETS
-          ? LAYOUT_PRESETS[layoutTemplateId as LayoutComponentKey]
-          : LAYOUT_PRESETS.homepage;
+    // Resolve config: DB template map → built-in preset → fallback to homepage
+    const baseConfig = useMemo(
+        () =>
+            config?.layoutTemplatesMap?.[presetId]?.config ??
+            (presetId in LAYOUT_PRESETS
+                ? LAYOUT_PRESETS[presetId as LayoutPresetId].config
+                : LAYOUT_PRESETS.homepage.config),
+        [config?.layoutTemplatesMap, presetId],
+    );
 
-    const componentKey = layoutTemplate.componentKey as LayoutComponentKey;
-    const LayoutComponent = getLayoutComponent(componentKey);
+    // Merge page-level overrides from useLayoutMeta (if any)
+    const layoutConfig = useMemo(
+        () => (pageMeta ? mergeLayoutConfig({ ...baseConfig, ...pageMeta }, baseConfig) : baseConfig),
+        [baseConfig, pageMeta],
+    );
 
-    if (!LayoutComponent) return <>{children}</>;
-    return <LayoutComponent config={layoutTemplate.config}>{children}</LayoutComponent>;
+    return <LayoutComponent config={layoutConfig}>{children}</LayoutComponent>;
+}
+
+/**
+ * Top-level LayoutResolver wraps the inner resolver with providers
+ * for layout slots and page-level meta overrides.
+ */
+export function LayoutResolver({ children, router, layoutComponent }: LayoutResolverProps) {
+    return (
+        <LayoutMetaProvider>
+            <LayoutSlotsProvider>
+                <LayoutResolverInner router={router} layoutComponent={layoutComponent}>
+                    {children}
+                </LayoutResolverInner>
+            </LayoutSlotsProvider>
+        </LayoutMetaProvider>
+    );
 }
 
 function usePathnameFallback(): string {

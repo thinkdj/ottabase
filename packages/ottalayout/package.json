@@ -1,0 +1,58 @@
+{
+    "name": "@ottabase/ottalayout",
+    "version": "1.0.0",
+    "description": "Layout system for Ottabase – types, presets, resolver, slots, and page-level layout hints",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./react": {
+            "types": "./dist/react/index.d.ts",
+            "import": "./dist/react/index.mjs",
+            "require": "./dist/react/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts src/react/index.tsx --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/react/index.tsx --format cjs,esm --dts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "layout",
+        "presets",
+        "slots",
+        "ottabase"
+    ],
+    "author": "",
+    "license": "MIT",
+    "peerDependencies": {
+        "react": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "react": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@types/react": "catalog:",
+        "react": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    }
+}
