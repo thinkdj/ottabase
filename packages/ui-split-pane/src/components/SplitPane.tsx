@@ -1,4 +1,4 @@
-import React, { Children, CSSProperties, useState } from 'react';
+import React, { Children, CSSProperties, useState, useEffect } from 'react';
 import { SplitPaneProps } from '../types';
 import { useSplitPane } from '../hooks/useSplitPane';
 
@@ -64,11 +64,27 @@ export const SplitPane: React.FC<SplitPaneProps> = ({
 }) => {
     const [isHovering, setIsHovering] = useState(false);
 
+    // Warn about deprecated props
+    useEffect(() => {
+        if (minSize !== undefined && (split === 'vertical' ? minWidth === undefined : minHeight === undefined)) {
+            console.warn(
+                '[SplitPane] The "minSize" prop is deprecated and will be removed in a future major version. ' +
+                    `Use "min${split === 'vertical' ? 'Width' : 'Height'}" instead.`,
+            );
+        }
+        if (maxSize !== undefined && (split === 'vertical' ? maxWidth === undefined : maxHeight === undefined)) {
+            console.warn(
+                '[SplitPane] The "maxSize" prop is deprecated and will be removed in a future major version. ' +
+                    `Use "max${split === 'vertical' ? 'Width' : 'Height'}" instead.`,
+            );
+        }
+    }, [minSize, maxSize, minWidth, maxWidth, minHeight, maxHeight, split]);
+
     // Determine min/max based on split direction
     const effectiveMinSize = split === 'vertical' ? (minWidth ?? minSize ?? 50) : (minHeight ?? minSize ?? 50);
     const effectiveMaxSize = split === 'vertical' ? (maxWidth ?? maxSize) : (maxHeight ?? maxSize);
 
-    const { containerRef, pane1Size, isPercentage, isDragging, handleMouseDown } = useSplitPane({
+    const { containerRef, pane1Size, isPercentage, isDragging, handleMouseDown, handleKeyDown } = useSplitPane({
         split,
         defaultSize,
         minSize: effectiveMinSize,
@@ -121,8 +137,23 @@ export const SplitPane: React.FC<SplitPaneProps> = ({
                 onMouseDown={handleMouseDown}
                 onMouseEnter={() => setIsHovering(true)}
                 onMouseLeave={() => setIsHovering(false)}
+                onKeyDown={handleKeyDown}
                 role="separator"
                 aria-orientation={split === 'vertical' ? 'vertical' : 'horizontal'}
+                aria-valuenow={Math.round(pane1Size)}
+                aria-valuemin={effectiveMinSize}
+                aria-valuemax={
+                    effectiveMaxSize ??
+                    (isPercentage
+                        ? 100
+                        : containerRef.current
+                          ? split === 'vertical'
+                              ? containerRef.current.getBoundingClientRect().width
+                              : containerRef.current.getBoundingClientRect().height
+                          : 100)
+                }
+                aria-valuetext={isPercentage ? `${Math.round(pane1Size)}%` : `${Math.round(pane1Size)}px`}
+                tabIndex={0}
             />
             <div style={pane2SizeStyle}>{pane2}</div>
         </div>

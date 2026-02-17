@@ -14,12 +14,16 @@ export interface SplitPaneProps {
     defaultSize?: string | number;
 
     /**
-     * Minimum size of a pane in pixels (deprecated, use minWidth or minHeight)
+     * @deprecated Use `minWidth` (for vertical splits) or `minHeight` (for horizontal splits) instead.
+     * Minimum size of a pane in pixels.
+     * This prop is maintained for backwards compatibility and will be removed in a future major version.
      */
     minSize?: number;
 
     /**
-     * Maximum size of a pane in pixels (deprecated, use maxWidth or maxHeight)
+     * @deprecated Use `maxWidth` (for vertical splits) or `maxHeight` (for horizontal splits) instead.
+     * Maximum size of a pane in pixels.
+     * This prop is maintained for backwards compatibility and will be removed in a future major version.
      */
     maxSize?: number;
 
