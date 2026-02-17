@@ -23,6 +23,7 @@
         "@ottabase/config": "workspace:*",
         "@ottabase/ottalayout": "workspace:*",
         "@ottabase/ui-components": "workspace:*",
+        "@ottabase/ui-marketing": "workspace:*",
         "@ottabase/ui-shadcn": "workspace:*",
         "@radix-ui/react-slot": "^1.1.1",
         "@tabler/icons-react": "catalog:",

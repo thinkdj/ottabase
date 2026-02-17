@@ -23,7 +23,9 @@ export function MonoPricingTable({
 
     // Collect all unique feature labels in order
     const allFeatures = Array.from(
-        new Map(plans.flatMap((p) => p.features.map((f) => [f.label, f])).map(([k, v]) => [k, v])).keys(),
+        new Map<string, (typeof plans)[number]['features'][number]>(
+            plans.flatMap((p) => p.features.map((f): [string, typeof f] => [f.label, f])),
+        ).keys(),
     );
 
     return (
@@ -41,9 +43,7 @@ export function MonoPricingTable({
                             <h2 className="font-heading text-3xl md:text-4xl font-semibold text-foreground tracking-tight">
                                 {headline}
                             </h2>
-                            {subheadline && (
-                                <p className="mt-2 text-base text-muted-foreground">{subheadline}</p>
-                            )}
+                            {subheadline && <p className="mt-2 text-base text-muted-foreground">{subheadline}</p>}
                         </div>
 
                         {hasAnnual && (
@@ -122,8 +122,18 @@ export function MonoPricingTable({
                                                         {f.included}
                                                     </span>
                                                 ) : (
-                                                    <svg className="h-4 w-4 text-foreground" viewBox="0 0 16 16" fill="none">
-                                                        <path d="M2 8l4 4 8-8" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+                                                    <svg
+                                                        className="h-4 w-4 text-foreground"
+                                                        viewBox="0 0 16 16"
+                                                        fill="none"
+                                                    >
+                                                        <path
+                                                            d="M2 8l4 4 8-8"
+                                                            stroke="currentColor"
+                                                            strokeWidth="1.75"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                        />
                                                     </svg>
                                                 )}
                                             </td>

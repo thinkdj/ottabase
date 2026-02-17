@@ -2,8 +2,10 @@ import { defineConfig } from 'tsup';
 
 const entries: Record<string, string> = {
     // Barrel exports
-    'index': 'src/index.ts',
-    'types': 'src/types.ts',
+    index: 'src/index.ts',
+    types: 'src/types.ts',
+    // Internal lib (needed so relative dist imports resolve)
+    'lib/utils': 'src/lib/utils.ts',
     // Atlas barrel
     'atlas/index': 'src/atlas/index.ts',
     // Atlas components
