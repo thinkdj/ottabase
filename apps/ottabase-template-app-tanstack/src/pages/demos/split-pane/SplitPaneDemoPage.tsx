@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { SplitPane } from '@ottabase/ui-split-pane';
-import { Container, Title, Text, Stack, Box, Paper, Group, Button, Code } from '@mantine/core';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 
 export function SplitPaneDemoPage() {
     const [size1, setSize1] = useState<number>(50);
@@ -8,117 +8,97 @@ export function SplitPaneDemoPage() {
     const [size3, setSize3] = useState<number>(50);
 
     return (
-        <Container size="xl" py="xl">
-            <Stack gap="xl">
+        <div className="container mx-auto py-8">
+            <div className="flex flex-col gap-8">
                 <div>
-                    <Title order={1}>SplitPane Component Demo</Title>
-                    <Text c="dimmed" mt="sm">
-                        Minimal, clean split-pane component with no frills
-                    </Text>
+                    <h1 className="text-4xl font-bold tracking-tight">SplitPane Component Demo</h1>
+                    <p className="text-muted-foreground mt-2">Minimal, clean split-pane component with no frills</p>
                 </div>
 
                 {/* Basic Vertical Split */}
-                <Paper shadow="sm" p="md" withBorder>
-                    <Stack gap="md">
-                        <div>
-                            <Title order={3}>Basic Vertical Split</Title>
-                            <Text size="sm" c="dimmed">
-                                Simple vertical split with 50/50 default size
-                            </Text>
-                        </div>
-                        <Box style={{ height: '300px', border: '1px solid #ddd' }}>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Basic Vertical Split</CardTitle>
+                        <CardDescription>Simple vertical split with 50/50 default size</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] border rounded">
                             <SplitPane split="vertical" defaultSize="50%">
-                                <Paper p="md" style={{ height: '100%', background: '#f8f9fa' }}>
-                                    <Text fw={500}>Left Pane</Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
-                                        Drag the divider to resize
-                                    </Text>
-                                </Paper>
-                                <Paper p="md" style={{ height: '100%', background: '#e9ecef' }}>
-                                    <Text fw={500}>Right Pane</Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
+                                <div className="h-full p-4 bg-muted/30">
+                                    <p className="font-medium">Left Pane</p>
+                                    <p className="text-sm text-muted-foreground mt-1">Drag the divider to resize</p>
+                                </div>
+                                <div className="h-full p-4 bg-muted/50">
+                                    <p className="font-medium">Right Pane</p>
+                                    <p className="text-sm text-muted-foreground mt-1">
                                         This pane will flex to fill remaining space
-                                    </Text>
-                                </Paper>
+                                    </p>
+                                </div>
                             </SplitPane>
-                        </Box>
-                    </Stack>
-                </Paper>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Basic Horizontal Split */}
-                <Paper shadow="sm" p="md" withBorder>
-                    <Stack gap="md">
-                        <div>
-                            <Title order={3}>Basic Horizontal Split</Title>
-                            <Text size="sm" c="dimmed">
-                                Simple horizontal split with 40/60 default size
-                            </Text>
-                        </div>
-                        <Box style={{ height: '300px', border: '1px solid #ddd' }}>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Basic Horizontal Split</CardTitle>
+                        <CardDescription>Simple horizontal split with 40/60 default size</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] border rounded">
                             <SplitPane split="horizontal" defaultSize="40%">
-                                <Paper p="md" style={{ height: '100%', background: '#f8f9fa' }}>
-                                    <Text fw={500}>Top Pane</Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
-                                        40% of the height
-                                    </Text>
-                                </Paper>
-                                <Paper p="md" style={{ height: '100%', background: '#e9ecef' }}>
-                                    <Text fw={500}>Bottom Pane</Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
-                                        Fills remaining 60%
-                                    </Text>
-                                </Paper>
+                                <div className="h-full p-4 bg-muted/30">
+                                    <p className="font-medium">Top Pane</p>
+                                    <p className="text-sm text-muted-foreground mt-1">40% of the height</p>
+                                </div>
+                                <div className="h-full p-4 bg-muted/50">
+                                    <p className="font-medium">Bottom Pane</p>
+                                    <p className="text-sm text-muted-foreground mt-1">Fills remaining 60%</p>
+                                </div>
                             </SplitPane>
-                        </Box>
-                    </Stack>
-                </Paper>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Nested Split Panes */}
-                <Paper shadow="sm" p="md" withBorder>
-                    <Stack gap="md">
-                        <div>
-                            <Title order={3}>Nested Split Panes</Title>
-                            <Text size="sm" c="dimmed">
-                                Create complex layouts by nesting split panes
-                            </Text>
-                        </div>
-                        <Box style={{ height: '400px', border: '1px solid #ddd' }}>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Nested Split Panes</CardTitle>
+                        <CardDescription>Create complex layouts by nesting split panes</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[400px] border rounded">
                             <SplitPane split="vertical" defaultSize="30%">
-                                <Paper p="md" style={{ height: '100%', background: '#f8f9fa' }}>
-                                    <Text fw={500}>Sidebar</Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
-                                        Fixed width sidebar
-                                    </Text>
-                                </Paper>
+                                <div className="h-full p-4 bg-muted/30">
+                                    <p className="font-medium">Sidebar</p>
+                                    <p className="text-sm text-muted-foreground mt-1">Fixed width sidebar</p>
+                                </div>
                                 <SplitPane split="horizontal" defaultSize="50%">
-                                    <Paper p="md" style={{ height: '100%', background: '#e9ecef' }}>
-                                        <Text fw={500}>Top Content</Text>
-                                        <Text size="sm" c="dimmed" mt="xs">
-                                            Nested horizontal split
-                                        </Text>
-                                    </Paper>
-                                    <Paper p="md" style={{ height: '100%', background: '#dee2e6' }}>
-                                        <Text fw={500}>Bottom Content</Text>
-                                        <Text size="sm" c="dimmed" mt="xs">
+                                    <div className="h-full p-4 bg-muted/50">
+                                        <p className="font-medium">Top Content</p>
+                                        <p className="text-sm text-muted-foreground mt-1">Nested horizontal split</p>
+                                    </div>
+                                    <div className="h-full p-4 bg-muted/70">
+                                        <p className="font-medium">Bottom Content</p>
+                                        <p className="text-sm text-muted-foreground mt-1">
                                             You can nest as many levels as needed
-                                        </Text>
-                                    </Paper>
+                                        </p>
+                                    </div>
                                 </SplitPane>
                             </SplitPane>
-                        </Box>
-                    </Stack>
-                </Paper>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Styled Split Pane */}
-                <Paper shadow="sm" p="md" withBorder>
-                    <Stack gap="md">
-                        <div>
-                            <Title order={3}>Styled Split Pane</Title>
-                            <Text size="sm" c="dimmed">
-                                Customize the appearance with custom styles
-                            </Text>
-                        </div>
-                        <Box style={{ height: '300px', border: '1px solid #ddd' }}>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Styled Split Pane</CardTitle>
+                        <CardDescription>Customize the appearance with custom styles</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] border rounded">
                             <SplitPane
                                 split="vertical"
                                 defaultSize="50%"
@@ -138,36 +118,26 @@ export function SplitPaneDemoPage() {
                                 }}
                             >
                                 <div>
-                                    <Text fw={700} size="lg">
-                                        Styled Left Pane
-                                    </Text>
-                                    <Text size="sm" mt="xs">
-                                        Custom gradient background
-                                    </Text>
+                                    <p className="text-lg font-bold">Styled Left Pane</p>
+                                    <p className="text-sm mt-2">Custom gradient background</p>
                                 </div>
                                 <div>
-                                    <Text fw={700} size="lg">
-                                        Styled Right Pane
-                                    </Text>
-                                    <Text size="sm" mt="xs">
-                                        Different gradient background
-                                    </Text>
+                                    <p className="text-lg font-bold">Styled Right Pane</p>
+                                    <p className="text-sm mt-2">Different gradient background</p>
                                 </div>
                             </SplitPane>
-                        </Box>
-                    </Stack>
-                </Paper>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Snap Points */}
-                <Paper shadow="sm" p="md" withBorder>
-                    <Stack gap="md">
-                        <div>
-                            <Title order={3}>Snap Points</Title>
-                            <Text size="sm" c="dimmed">
-                                Define specific positions where the divider will snap
-                            </Text>
-                        </div>
-                        <Box style={{ height: '300px', border: '1px solid #ddd' }}>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Snap Points</CardTitle>
+                        <CardDescription>Define specific positions where the divider will snap</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] border rounded">
                             <SplitPane
                                 split="vertical"
                                 defaultSize={300}
@@ -175,67 +145,67 @@ export function SplitPaneDemoPage() {
                                 snapThreshold={30}
                                 onChange={setSize2}
                             >
-                                <Paper p="md" style={{ height: '100%', background: '#f8f9fa' }}>
-                                    <Text fw={500}>Left Pane</Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
+                                <div className="h-full p-4 bg-muted/30">
+                                    <p className="font-medium">Left Pane</p>
+                                    <p className="text-sm text-muted-foreground mt-1">
                                         Snap points at: 200px, 400px, 600px
-                                    </Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
-                                        Current size: <Code>{Math.round(size2)}px</Code>
-                                    </Text>
-                                </Paper>
-                                <Paper p="md" style={{ height: '100%', background: '#e9ecef' }}>
-                                    <Text fw={500}>Right Pane</Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
+                                    </p>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Current size:{' '}
+                                        <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">
+                                            {Math.round(size2)}px
+                                        </code>
+                                    </p>
+                                </div>
+                                <div className="h-full p-4 bg-muted/50">
+                                    <p className="font-medium">Right Pane</p>
+                                    <p className="text-sm text-muted-foreground mt-1">
                                         Drag the divider and it will snap to the nearest point when within 30px
-                                    </Text>
-                                </Paper>
+                                    </p>
+                                </div>
                             </SplitPane>
-                        </Box>
-                    </Stack>
-                </Paper>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Percentage Configuration */}
-                <Paper shadow="sm" p="md" withBorder>
-                    <Stack gap="md">
-                        <div>
-                            <Title order={3}>Percentage Configuration</Title>
-                            <Text size="sm" c="dimmed">
-                                Use percentage-based sizing for responsive layouts
-                            </Text>
-                        </div>
-                        <Box style={{ height: '300px', border: '1px solid #ddd' }}>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Percentage Configuration</CardTitle>
+                        <CardDescription>Use percentage-based sizing for responsive layouts</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] border rounded">
                             <SplitPane split="vertical" defaultSize="33%" minSize={100} onChange={setSize3}>
-                                <Paper p="md" style={{ height: '100%', background: '#f8f9fa' }}>
-                                    <Text fw={500}>33% Default Width</Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
-                                        Current size: <Code>{Math.round(size3)}%</Code>
-                                    </Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
-                                        Minimum size: 100px
-                                    </Text>
-                                </Paper>
-                                <Paper p="md" style={{ height: '100%', background: '#e9ecef' }}>
-                                    <Text fw={500}>67% Remaining</Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
+                                <div className="h-full p-4 bg-muted/30">
+                                    <p className="font-medium">33% Default Width</p>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Current size:{' '}
+                                        <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">
+                                            {Math.round(size3)}%
+                                        </code>
+                                    </p>
+                                    <p className="text-sm text-muted-foreground mt-1">Minimum size: 100px</p>
+                                </div>
+                                <div className="h-full p-4 bg-muted/50">
+                                    <p className="font-medium">67% Remaining</p>
+                                    <p className="text-sm text-muted-foreground mt-1">
                                         Resize the window to see the percentage-based behavior
-                                    </Text>
-                                </Paper>
+                                    </p>
+                                </div>
                             </SplitPane>
-                        </Box>
-                    </Stack>
-                </Paper>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Min/Max Constraints */}
-                <Paper shadow="sm" p="md" withBorder>
-                    <Stack gap="md">
-                        <div>
-                            <Title order={3}>Min/Max Constraints</Title>
-                            <Text size="sm" c="dimmed">
-                                Limit the resizing range with minSize and maxSize
-                            </Text>
-                        </div>
-                        <Box style={{ height: '300px', border: '1px solid #ddd' }}>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Min/Max Constraints</CardTitle>
+                        <CardDescription>Limit the resizing range with minSize and maxSize</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] border rounded">
                             <SplitPane
                                 split="vertical"
                                 defaultSize={300}
@@ -243,84 +213,73 @@ export function SplitPaneDemoPage() {
                                 maxSize={500}
                                 onChange={setSize1}
                             >
-                                <Paper p="md" style={{ height: '100%', background: '#f8f9fa' }}>
-                                    <Text fw={500}>Constrained Pane</Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
-                                        Min: 150px, Max: 500px
-                                    </Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
-                                        Current: <Code>{Math.round(size1)}px</Code>
-                                    </Text>
-                                </Paper>
-                                <Paper p="md" style={{ height: '100%', background: '#e9ecef' }}>
-                                    <Text fw={500}>Right Pane</Text>
-                                    <Text size="sm" c="dimmed" mt="xs">
+                                <div className="h-full p-4 bg-muted/30">
+                                    <p className="font-medium">Constrained Pane</p>
+                                    <p className="text-sm text-muted-foreground mt-1">Min: 150px, Max: 500px</p>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Current:{' '}
+                                        <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">
+                                            {Math.round(size1)}px
+                                        </code>
+                                    </p>
+                                </div>
+                                <div className="h-full p-4 bg-muted/50">
+                                    <p className="font-medium">Right Pane</p>
+                                    <p className="text-sm text-muted-foreground mt-1">
                                         Try dragging - the left pane can't go below 150px or above 500px
-                                    </Text>
-                                </Paper>
+                                    </p>
+                                </div>
                             </SplitPane>
-                        </Box>
-                    </Stack>
-                </Paper>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Complex Nested Example */}
-                <Paper shadow="sm" p="md" withBorder>
-                    <Stack gap="md">
-                        <div>
-                            <Title order={3}>Complex Nested Layout</Title>
-                            <Text size="sm" c="dimmed">
-                                IDE-like layout with multiple nested panes
-                            </Text>
-                        </div>
-                        <Box style={{ height: '500px', border: '1px solid #ddd' }}>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Complex Nested Layout</CardTitle>
+                        <CardDescription>IDE-like layout with multiple nested panes</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[500px] border rounded">
                             <SplitPane split="vertical" defaultSize="20%">
                                 {/* Sidebar */}
-                                <Paper p="md" style={{ height: '100%', background: '#2c3e50', color: 'white' }}>
-                                    <Text fw={700}>Explorer</Text>
-                                    <Text size="xs" c="gray.4" mt="xs">
-                                        File tree would go here
-                                    </Text>
-                                </Paper>
+                                <div className="h-full p-4" style={{ background: '#2c3e50', color: 'white' }}>
+                                    <p className="font-bold">Explorer</p>
+                                    <p className="text-xs text-gray-400 mt-1">File tree would go here</p>
+                                </div>
 
                                 {/* Main area */}
                                 <SplitPane split="vertical" defaultSize="70%">
                                     {/* Editor area */}
                                     <SplitPane split="horizontal" defaultSize="70%">
-                                        <Paper p="md" style={{ height: '100%', background: '#1e1e1e', color: 'white' }}>
-                                            <Text fw={700}>Editor</Text>
-                                            <Text size="xs" c="gray.4" mt="xs">
-                                                Code editor would go here
-                                            </Text>
-                                        </Paper>
-                                        <Paper p="md" style={{ height: '100%', background: '#252526', color: 'white' }}>
-                                            <Text fw={700}>Terminal</Text>
-                                            <Text size="xs" c="gray.4" mt="xs">
-                                                Terminal output
-                                            </Text>
-                                        </Paper>
+                                        <div className="h-full p-4" style={{ background: '#1e1e1e', color: 'white' }}>
+                                            <p className="font-bold">Editor</p>
+                                            <p className="text-xs text-gray-400 mt-1">Code editor would go here</p>
+                                        </div>
+                                        <div className="h-full p-4" style={{ background: '#252526', color: 'white' }}>
+                                            <p className="font-bold">Terminal</p>
+                                            <p className="text-xs text-gray-400 mt-1">Terminal output</p>
+                                        </div>
                                     </SplitPane>
 
                                     {/* Right panel */}
                                     <SplitPane split="horizontal" defaultSize="50%">
-                                        <Paper p="md" style={{ height: '100%', background: '#37474f', color: 'white' }}>
-                                            <Text fw={700}>Properties</Text>
-                                            <Text size="xs" c="gray.4" mt="xs">
-                                                Component properties
-                                            </Text>
-                                        </Paper>
-                                        <Paper p="md" style={{ height: '100%', background: '#455a64', color: 'white' }}>
-                                            <Text fw={700}>Console</Text>
-                                            <Text size="xs" c="gray.4" mt="xs">
-                                                Debug console
-                                            </Text>
-                                        </Paper>
+                                        <div className="h-full p-4" style={{ background: '#37474f', color: 'white' }}>
+                                            <p className="font-bold">Properties</p>
+                                            <p className="text-xs text-gray-400 mt-1">Component properties</p>
+                                        </div>
+                                        <div className="h-full p-4" style={{ background: '#455a64', color: 'white' }}>
+                                            <p className="font-bold">Console</p>
+                                            <p className="text-xs text-gray-400 mt-1">Debug console</p>
+                                        </div>
                                     </SplitPane>
                                 </SplitPane>
                             </SplitPane>
-                        </Box>
-                    </Stack>
-                </Paper>
-            </Stack>
-        </Container>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
     );
 }
