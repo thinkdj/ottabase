@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/db",
     "version": "1.0.0",
-    "description": "Shared database layer for Ottabase applications - Prisma schema configuration, Drizzle driver support, and ORM setup",
+    "description": "Shared database layer for Ottabase applications - Drizzle driver support, and ORM setup",
     "main": "dist/index.js",
     "module": "dist/index.mjs",
     "types": "dist/index.d.ts",
@@ -51,14 +51,10 @@
         "test:coverage": "vitest --coverage"
     },
     "peerDependencies": {
-        "@prisma/client": "catalog:",
         "drizzle-orm": "catalog:",
         "mongodb": "catalog:"
     },
     "peerDependenciesMeta": {
-        "@prisma/client": {
-            "optional": true
-        },
         "drizzle-orm": {
             "optional": true
         },
@@ -68,12 +64,10 @@
     },
     "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
-        "@prisma/client": "catalog:",
         "@types/node": "catalog:",
         "drizzle-orm": "catalog:",
         "eslint": "catalog:",
         "mongodb": "catalog:",
-        "prisma": "catalog:",
         "rimraf": "catalog:",
         "tsup": "catalog:",
         "typescript": "catalog:"

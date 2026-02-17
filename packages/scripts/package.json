@@ -54,7 +54,7 @@
         "@types/node": "catalog:",
         "typescript": "catalog:",
         "tsup": "catalog:",
-        "ts-node": "catalog:",
+        "ts-node": "^10.9.2",
         "rimraf": "catalog:",
         "eslint": "catalog:"
     }

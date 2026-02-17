@@ -76,7 +76,7 @@
     "author": "",
     "license": "MIT",
     "dependencies": {
-        "handlebars": "catalog:",
+        "handlebars": "^4.7.8",
         "nodemailer": "catalog:"
     },
     "devDependencies": {

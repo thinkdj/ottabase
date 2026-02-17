@@ -74,7 +74,7 @@
     "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
         "@ottabase/ui-tailwind": "workspace:*",
-        "@tanstack/react-query-devtools": "catalog:",
+        "@tanstack/react-query-devtools": "^5.90.16",
         "@types/node": "catalog:",
         "@types/nodemailer": "catalog:",
         "@types/react": "catalog:",
@@ -82,19 +82,19 @@
         "@vitejs/plugin-react": "catalog:",
         "autoprefixer": "catalog:",
         "baseline-browser-mapping": "^2.9.14",
-        "cross-env": "catalog:",
-        "drizzle-kit": "catalog:",
+        "cross-env": "^7.0.3",
+        "drizzle-kit": "^0.31.8",
         "localflare": "catalog:",
         "nodemailer": "catalog:",
         "postcss": "catalog:",
         "postcss-preset-env": "catalog:",
         "postcss-preset-mantine": "catalog:",
-        "postcss-simple-vars": "catalog:",
+        "postcss-simple-vars": "^7.0.1",
         "tailwindcss": "catalog:",
         "tailwindcss-animate": "catalog:",
         "typescript": "catalog:",
-        "vite": "catalog:",
-        "vite-tsconfig-paths": "catalog:",
+        "vite": "^5.4.11",
+        "vite-tsconfig-paths": "^5.1.4",
         "wrangler": "catalog:"
     }
 }

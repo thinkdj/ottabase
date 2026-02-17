@@ -41,7 +41,7 @@
         "@tabler/icons-react": "catalog:"
     },
     "peerDependencies": {
-        "@radix-ui/react-dialog": "^1.1.4",
+        "@radix-ui/react-dialog": "catalog:",
         "@tabler/icons-react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:"
@@ -52,13 +52,13 @@
         }
     },
     "devDependencies": {
-        "@testing-library/react": "^16.3.2",
+        "@testing-library/react": "catalog:",
         "@types/node": "catalog:",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
         "@vitejs/plugin-react": "catalog:",
         "eslint": "catalog:",
-        "jsdom": "^27.4.0",
+        "jsdom": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
         "rimraf": "catalog:",
