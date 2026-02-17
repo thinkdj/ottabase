@@ -234,6 +234,21 @@ export function DemoIndexPage() {
                         </Button>
                     </CardContent>
                 </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Code Highlighting</CardTitle>
+                        <CardDescription>
+                            GitHub-style syntax highlighting with highlight.js. Supports 190+ languages, copy to
+                            clipboard, line numbers, and light/dark themes.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild variant="outline" className="w-full">
+                            <Link to="/demo/codeblock">View CodeBlock Demo</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
 
             <div className="mt-2 rounded-lg border bg-muted/50 p-6">
