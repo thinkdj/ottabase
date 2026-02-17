@@ -507,6 +507,9 @@ importers:
       '@ottabase/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@ottabase/docs':
+        specifier: workspace:*
+        version: link:../../packages/docs
       '@ottabase/email':
         specifier: workspace:*
         version: link:../../packages/email
@@ -1010,6 +1013,42 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+
+  packages/docs:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.19.28
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.7)
+      '@vitejs/plugin-react':
+        specifier: 'catalog:'
+        version: 4.7.0(vite@7.3.1(@types/node@20.19.28)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.2(jiti@2.6.1)
+      react:
+        specifier: 'catalog:'
+        version: 19.2.4
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.4(react@19.2.4)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
+      tsup:
+        specifier: 'catalog:'
+        version: 8.5.1(@swc/core@1.13.5)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.28)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/email:
     dependencies:

@@ -118,6 +118,16 @@ const indexRoute = new Route({
     component: HomeRouteComponent,
 });
 
+const docsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/docs/$',
+    component: lazyRouteComponent(() =>
+        import('@/pages/docs/DocsPage').then((m) => ({
+            default: m.DocsPage,
+        })),
+    ),
+});
+
 const demoLayoutRoute = new Route({
     getParentRoute: () => rootRoute,
     path: '/demo',
@@ -872,6 +882,7 @@ demoLayoutRoute.addChildren([
 
 const routeTree = rootRoute.addChildren([
     indexRoute,
+    docsRoute,
     demoLayoutRoute,
     loginRoute,
     registerRoute,

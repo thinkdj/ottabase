@@ -1,0 +1,510 @@
+/* ==========================================================================
+   @ottabase/docs — Minimal documentation layout styles
+   Clean, Mantine-docs-inspired design. CSS custom properties for theming.
+   ========================================================================== */
+
+/* --- CSS Custom Properties (Theming) --- */
+:root {
+    --otta-docs-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --otta-docs-font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Consolas, monospace;
+    --otta-docs-sidebar-width: 260px;
+    --otta-docs-toc-width: 220px;
+    --otta-docs-content-max-width: 780px;
+    --otta-docs-color-bg: #ffffff;
+    --otta-docs-color-bg-subtle: #f8f9fa;
+    --otta-docs-color-bg-code: #f1f3f5;
+    --otta-docs-color-border: #e9ecef;
+    --otta-docs-color-text: #212529;
+    --otta-docs-color-text-muted: #868e96;
+    --otta-docs-color-text-dimmed: #adb5bd;
+    --otta-docs-color-primary: #228be6;
+    --otta-docs-color-primary-light: #e7f5ff;
+    --otta-docs-color-link: #1c7ed6;
+    --otta-docs-color-code-bg: #f8f9fa;
+    --otta-docs-color-code-border: #e9ecef;
+    --otta-docs-color-blockquote-border: #228be6;
+    --otta-docs-color-blockquote-bg: #f8f9fa;
+    --otta-docs-radius: 8px;
+    --otta-docs-radius-sm: 4px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --otta-docs-color-bg: #1a1b1e;
+        --otta-docs-color-bg-subtle: #25262b;
+        --otta-docs-color-bg-code: #2c2e33;
+        --otta-docs-color-border: #373a40;
+        --otta-docs-color-text: #c1c2c5;
+        --otta-docs-color-text-muted: #909296;
+        --otta-docs-color-text-dimmed: #5c5f66;
+        --otta-docs-color-primary: #4dabf7;
+        --otta-docs-color-primary-light: #1b2838;
+        --otta-docs-color-link: #74c0fc;
+        --otta-docs-color-code-bg: #2c2e33;
+        --otta-docs-color-code-border: #373a40;
+        --otta-docs-color-blockquote-bg: #25262b;
+    }
+}
+
+/* Also support class-based dark mode (e.g., Tailwind) */
+.dark {
+    --otta-docs-color-bg: #1a1b1e;
+    --otta-docs-color-bg-subtle: #25262b;
+    --otta-docs-color-bg-code: #2c2e33;
+    --otta-docs-color-border: #373a40;
+    --otta-docs-color-text: #c1c2c5;
+    --otta-docs-color-text-muted: #909296;
+    --otta-docs-color-text-dimmed: #5c5f66;
+    --otta-docs-color-primary: #4dabf7;
+    --otta-docs-color-primary-light: #1b2838;
+    --otta-docs-color-link: #74c0fc;
+    --otta-docs-color-code-bg: #2c2e33;
+    --otta-docs-color-code-border: #373a40;
+    --otta-docs-color-blockquote-bg: #25262b;
+}
+
+/* --- Layout --- */
+.otta-docs-layout {
+    display: flex;
+    min-height: calc(100vh - 3.5rem);
+    font-family: var(--otta-docs-font);
+    color: var(--otta-docs-color-text);
+    background: var(--otta-docs-color-bg);
+    position: relative;
+}
+
+/* --- Sidebar --- */
+.otta-docs-sidebar {
+    width: var(--otta-docs-sidebar-width);
+    flex-shrink: 0;
+    border-right: 1px solid var(--otta-docs-color-border);
+    background: var(--otta-docs-color-bg-subtle);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 20;
+}
+
+.otta-docs-sidebar-search {
+    padding: 16px 16px 8px;
+    position: sticky;
+    top: 0;
+    background: var(--otta-docs-color-bg-subtle);
+    z-index: 1;
+}
+
+.otta-docs-search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--otta-docs-color-border);
+    border-radius: var(--otta-docs-radius);
+    background: var(--otta-docs-color-bg);
+    color: var(--otta-docs-color-text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.otta-docs-search-input:focus {
+    border-color: var(--otta-docs-color-primary);
+    box-shadow: 0 0 0 2px var(--otta-docs-color-primary-light);
+}
+
+.otta-docs-search-input::placeholder {
+    color: var(--otta-docs-color-text-dimmed);
+}
+
+.otta-docs-sidebar-nav {
+    padding: 8px 0 24px;
+}
+
+.otta-docs-nav-group {
+    padding: 0 12px;
+    margin-bottom: 4px;
+}
+
+.otta-docs-nav-group-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--otta-docs-color-text-muted);
+    padding: 12px 8px 4px;
+    margin: 0;
+}
+
+.otta-docs-nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.otta-docs-nav-link {
+    display: block;
+    width: 100%;
+    padding: 6px 8px;
+    border: none;
+    border-radius: var(--otta-docs-radius-sm);
+    background: transparent;
+    color: var(--otta-docs-color-text-muted);
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.otta-docs-nav-link:hover {
+    background: var(--otta-docs-color-bg);
+    color: var(--otta-docs-color-text);
+}
+
+.otta-docs-nav-active {
+    background: var(--otta-docs-color-primary-light) !important;
+    color: var(--otta-docs-color-primary) !important;
+    font-weight: 500;
+}
+
+/* --- Main content area --- */
+.otta-docs-main {
+    flex: 1;
+    display: flex;
+    min-width: 0;
+    justify-content: center;
+}
+
+.otta-docs-article {
+    flex: 1;
+    max-width: var(--otta-docs-content-max-width);
+    padding: 40px 48px 80px;
+    min-width: 0;
+}
+
+/* --- Right TOC sidebar --- */
+.otta-docs-toc-sidebar {
+    width: var(--otta-docs-toc-width);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 40px 16px 24px 0;
+    border-left: 1px solid var(--otta-docs-color-border);
+}
+
+.otta-docs-toc-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--otta-docs-color-text-muted);
+    padding: 0 8px 8px;
+    margin: 0;
+}
+
+.otta-docs-toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.otta-docs-toc-link {
+    display: block;
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 3px 8px;
+    color: var(--otta-docs-color-text-dimmed);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+}
+
+.otta-docs-toc-link:hover {
+    color: var(--otta-docs-color-text);
+}
+
+.otta-docs-toc-active {
+    color: var(--otta-docs-color-primary) !important;
+    border-left-color: var(--otta-docs-color-primary);
+}
+
+/* --- Markdown content styles --- */
+.otta-docs-content {
+    line-height: 1.7;
+    word-wrap: break-word;
+}
+
+.otta-docs-content h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0 0 16px;
+    line-height: 1.2;
+}
+.otta-docs-content h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 40px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--otta-docs-color-border);
+    line-height: 1.3;
+}
+.otta-docs-content h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 32px 0 12px;
+    line-height: 1.3;
+}
+.otta-docs-content h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 24px 0 8px;
+    line-height: 1.4;
+}
+
+.otta-docs-p {
+    margin: 0 0 16px;
+    font-size: 15px;
+}
+
+.otta-docs-link {
+    color: var(--otta-docs-color-link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s;
+}
+
+.otta-docs-link:hover {
+    border-bottom-color: var(--otta-docs-color-link);
+}
+
+.otta-docs-inline-code {
+    background: var(--otta-docs-color-code-bg);
+    border: 1px solid var(--otta-docs-color-code-border);
+    border-radius: var(--otta-docs-radius-sm);
+    padding: 2px 6px;
+    font-size: 0.85em;
+    font-family: var(--otta-docs-font-mono);
+}
+
+.otta-docs-code-block {
+    margin: 0 0 20px;
+    border-radius: var(--otta-docs-radius);
+    border: 1px solid var(--otta-docs-color-code-border);
+    overflow: hidden;
+    background: var(--otta-docs-color-code-bg);
+}
+
+.otta-docs-code-lang {
+    padding: 6px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--otta-docs-color-text-muted);
+    border-bottom: 1px solid var(--otta-docs-color-code-border);
+    background: var(--otta-docs-color-bg-subtle);
+}
+
+.otta-docs-code-block pre {
+    margin: 0;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.otta-docs-code-block code {
+    font-family: var(--otta-docs-font-mono);
+}
+
+.otta-docs-ul,
+.otta-docs-ol {
+    margin: 0 0 16px;
+    padding-left: 24px;
+    font-size: 15px;
+}
+
+.otta-docs-ul li,
+.otta-docs-ol li {
+    margin: 4px 0;
+    line-height: 1.7;
+}
+
+.otta-docs-blockquote {
+    margin: 0 0 16px;
+    padding: 12px 20px;
+    border-left: 3px solid var(--otta-docs-color-blockquote-border);
+    background: var(--otta-docs-color-blockquote-bg);
+    border-radius: 0 var(--otta-docs-radius-sm) var(--otta-docs-radius-sm) 0;
+    color: var(--otta-docs-color-text-muted);
+}
+
+.otta-docs-blockquote p {
+    margin: 0;
+}
+
+.otta-docs-hr {
+    border: none;
+    height: 1px;
+    background: var(--otta-docs-color-border);
+    margin: 32px 0;
+}
+
+.otta-docs-table-wrapper {
+    overflow-x: auto;
+    margin: 0 0 20px;
+    border-radius: var(--otta-docs-radius);
+    border: 1px solid var(--otta-docs-color-border);
+}
+
+.otta-docs-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.otta-docs-table th {
+    background: var(--otta-docs-color-bg-subtle);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 10px 16px;
+    border-bottom: 2px solid var(--otta-docs-color-border);
+}
+
+.otta-docs-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--otta-docs-color-border);
+}
+
+.otta-docs-table tr:last-child td {
+    border-bottom: none;
+}
+
+.otta-docs-img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--otta-docs-radius);
+    margin: 8px 0;
+}
+
+/* --- Pagination --- */
+.otta-docs-pagination {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--otta-docs-color-border);
+}
+
+.otta-docs-pagination-btn {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 16px;
+    border: 1px solid var(--otta-docs-color-border);
+    border-radius: var(--otta-docs-radius);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    max-width: 50%;
+}
+
+.otta-docs-pagination-btn:hover {
+    border-color: var(--otta-docs-color-primary);
+    background: var(--otta-docs-color-primary-light);
+}
+
+.otta-docs-pagination-prev {
+    align-items: flex-start;
+}
+
+.otta-docs-pagination-next {
+    align-items: flex-end;
+    margin-left: auto;
+}
+
+.otta-docs-pagination-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--otta-docs-color-text-muted);
+}
+
+.otta-docs-pagination-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--otta-docs-color-primary);
+}
+
+/* --- Empty state --- */
+.otta-docs-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 24px;
+    color: var(--otta-docs-color-text-dimmed);
+    font-size: 15px;
+}
+
+/* --- Mobile --- */
+.otta-docs-mobile-toggle {
+    display: none;
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 30;
+    padding: 10px 16px;
+    border: 1px solid var(--otta-docs-color-border);
+    border-radius: var(--otta-docs-radius);
+    background: var(--otta-docs-color-bg);
+    color: var(--otta-docs-color-text);
+    font-size: 13px;
+    cursor: pointer;
+    gap: 6px;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.otta-docs-mobile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 19;
+}
+
+@media (max-width: 1100px) {
+    .otta-docs-toc-sidebar {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .otta-docs-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .otta-docs-sidebar-open {
+        transform: translateX(0);
+    }
+
+    .otta-docs-mobile-toggle {
+        display: flex;
+    }
+
+    .otta-docs-mobile-overlay {
+        display: block;
+    }
+
+    .otta-docs-article {
+        padding: 24px 16px 80px;
+    }
+}
