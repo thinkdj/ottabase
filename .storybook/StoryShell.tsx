@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { ProviderState } from '@ottabase/state';
 import { ShadcnProviders } from '@ottabase/ui-shadcn/providers';
-import { ProviderCodeHighlight } from '@ottabase/ui-code-highlight';
 import { ThemeProvider } from 'next-themes';
 
 interface StoryShellProps {
@@ -31,9 +30,7 @@ export function StoryShell({ children }: StoryShellProps) {
                     enableTooltipProvider={true}
                     enableToaster={true}
                 >
-                    <ProviderCodeHighlight>
-                        <div className="story-shell p-4">{children}</div>
-                    </ProviderCodeHighlight>
+                    <div className="story-shell p-4">{children}</div>
                 </ShadcnProviders>
             </ThemeProvider>
         </ProviderState>

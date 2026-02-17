@@ -124,31 +124,36 @@ You can customize the syntax highlighting colors by overriding these CSS variabl
 
 ## Dependencies
 
-- `highlight.js` - Syntax highlighting engine
-- `lucide-react` - Icons for copy button
-- `react` - Peer dependency
+- **`highlight.js`** - Lightweight (76KB minified core), battle-tested syntax highlighting engine with 190+ language
+  support
+- **`lucide-react`** - Beautiful, consistent icons for the copy button
+- **`react`** - Peer dependency
 
-## Migration from Mantine
+## Technical Details
 
-If you're migrating from the previous Mantine-based version:
+### Why highlight.js?
 
-**Before:**
+- **Lightweight**: Core library is only 76KB minified
+- **Extensible**: 190+ languages supported (we bundle only the most common ones)
+- **No runtime dependencies**: Pure JavaScript, no external services required
+- **Well-maintained**: Active development since 2006, used by GitHub, StackOverflow, and millions of websites
+- **Performance**: Optimized for fast rendering and minimal DOM manipulation
 
-```tsx
-import { CodeHighlight } from '@mantine/code-highlight';
+### Bundle Size
 
-<CodeHighlight code={code} language={language} />;
-```
+The component includes only the most commonly used languages to keep the bundle small:
 
-**After:**
+- JavaScript/TypeScript
+- HTML/XML
+- CSS/SCSS
+- JSON
+- Bash/Shell
+- SQL
+- Python
+- Markdown
 
-```tsx
-import { CodeBlock } from '@ottabase/ui-code-highlight';
-
-<CodeBlock code={code} language={language} />;
-```
-
-The `ProviderCodeHighlight` is no longer needed and can be removed from your app providers.
+If you need additional languages, you can extend the component by importing and registering them from
+`highlight.js/lib/languages/`.
 
 ## License
 

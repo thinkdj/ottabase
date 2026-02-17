@@ -24,7 +24,6 @@ import { OttaQueryProvider } from '@ottabase/ottaorm/client';
 import { SpotlightProvider } from '@ottabase/spotlight';
 import { ProviderState } from '@ottabase/state';
 import { ProviderUIBase } from '@ottabase/ui-base';
-import { ProviderCodeHighlight } from '@ottabase/ui-code-highlight';
 import { ShadcnProviders } from '@ottabase/ui-shadcn/providers';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import React from 'react';
@@ -85,7 +84,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                                                     enabled={appConfig.features.spotlight.enabled}
                                                     shortcuts={appConfig.features.spotlight.shortcuts}
                                                 >
-                                                    <ProviderCodeHighlight>{children}</ProviderCodeHighlight>
+                                                    {children}
                                                 </SpotlightProvider>
                                             </ShadcnProviders>
                                         </ThemeProvider>
