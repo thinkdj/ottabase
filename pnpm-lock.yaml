@@ -1741,15 +1741,12 @@ importers:
 
   packages/ui-code-highlight:
     dependencies:
-      '@mantine/code-highlight':
-        specifier: ^8.3.15
-        version: 8.3.15(@mantine/core@8.3.15(@mantine/hooks@8.3.15(react@19.2.4))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@mantine/hooks@8.3.15(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@mantine/core':
-        specifier: 'catalog:'
-        version: 8.3.15(@mantine/hooks@8.3.15(react@19.2.4))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       highlight.js:
         specifier: 'catalog:'
         version: 11.11.1
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.468.0(react@19.2.4)
       react-dom:
         specifier: 'catalog:'
         version: 19.2.4(react@19.2.4)
@@ -4644,14 +4641,6 @@ packages:
       '@mantine/hooks': 8.3.15
       embla-carousel: '>=8.0.0'
       embla-carousel-react: '>=8.0.0'
-      react: ^18.x || ^19.x
-      react-dom: ^18.x || ^19.x
-
-  '@mantine/code-highlight@8.3.15':
-    resolution: {integrity: sha512-N15ZNf/zJXfr/Nq5DRCfuhT22rIIJ54Rdfm8du5/c953B9+kfKVDEGZGh7SVrcXfo9sz7o5tLgQmlVRuSkgYuw==}
-    peerDependencies:
-      '@mantine/core': 8.3.15
-      '@mantine/hooks': 8.3.15
       react: ^18.x || ^19.x
       react-dom: ^18.x || ^19.x
 
@@ -14998,14 +14987,6 @@ snapshots:
       '@mantine/hooks': 8.3.15(react@19.2.4)
       embla-carousel: 8.6.0
       embla-carousel-react: 8.6.0(react@19.2.4)
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
-
-  '@mantine/code-highlight@8.3.15(@mantine/core@8.3.15(@mantine/hooks@8.3.15(react@19.2.4))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@mantine/hooks@8.3.15(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
-    dependencies:
-      '@mantine/core': 8.3.15(@mantine/hooks@8.3.15(react@19.2.4))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@mantine/hooks': 8.3.15(react@19.2.4)
-      clsx: 2.1.1
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
