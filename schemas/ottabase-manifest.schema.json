@@ -1,0 +1,41 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Ottabase Manifest",
+    "description": "Schema for ottabase.manifest.json - defines package tiers for open-source vs PRO distribution",
+    "type": "object",
+    "required": ["packages"],
+    "properties": {
+        "$schema": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "tiers": {
+            "type": "object",
+            "description": "Documentation of available tiers",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "packages": {
+            "type": "object",
+            "description": "Map of package names to their tier configuration",
+            "additionalProperties": {
+                "type": "object",
+                "required": ["tier"],
+                "properties": {
+                    "tier": {
+                        "type": "string",
+                        "enum": ["community", "pro"],
+                        "description": "Package distribution tier"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Brief description of the package"
+                    }
+                }
+            }
+        }
+    }
+}

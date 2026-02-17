@@ -20,7 +20,9 @@
         "clean-cache": "bin/clean-cache.cjs",
         "clean-reset": "bin/clean-reset.mjs",
         "clean-db": "bin/clean-db.mjs",
-        "clean-kv": "bin/clean-kv.mjs"
+        "clean-kv": "bin/clean-kv.mjs",
+        "create-app": "bin/create-app.cjs",
+        "sync-tiers": "bin/sync-tiers.cjs"
     },
     "files": [
         "dist",
@@ -28,8 +30,8 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/clean-cache.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/clean-cache.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/clean-cache.ts src/cli/create-app.ts src/cli/sync-tiers.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/clean-cache.ts src/cli/create-app.ts src/cli/sync-tiers.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "clean-cache": "node bin/clean-cache.cjs",
         "clean-reset": "node bin/clean-reset.mjs",
