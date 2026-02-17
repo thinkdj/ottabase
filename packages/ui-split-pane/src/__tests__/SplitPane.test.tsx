@@ -2,6 +2,21 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { SplitPane } from '../components/SplitPane';
 
+// Test helper to mock getBoundingClientRect
+function mockContainerRect(wrapper: HTMLElement, width = 800, height = 600) {
+    wrapper.getBoundingClientRect = vi.fn(() => ({
+        left: 0,
+        top: 0,
+        width,
+        height,
+        right: width,
+        bottom: height,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+    }));
+}
+
 describe('SplitPane', () => {
     it('renders with two children', () => {
         render(
@@ -108,17 +123,7 @@ describe('SplitPane', () => {
         const wrapper = container.firstChild as HTMLElement;
 
         // Mock getBoundingClientRect
-        wrapper.getBoundingClientRect = vi.fn(() => ({
-            left: 0,
-            top: 0,
-            width: 800,
-            height: 600,
-            right: 800,
-            bottom: 600,
-            x: 0,
-            y: 0,
-            toJSON: () => {},
-        }));
+        mockContainerRect(wrapper);
 
         // Start dragging
         fireEvent.mouseDown(resizer);
@@ -151,17 +156,7 @@ describe('SplitPane', () => {
         const resizer = container.querySelector('[role="separator"]') as HTMLElement;
         const wrapper = container.firstChild as HTMLElement;
 
-        wrapper.getBoundingClientRect = vi.fn(() => ({
-            left: 0,
-            top: 0,
-            width: 800,
-            height: 600,
-            right: 800,
-            bottom: 600,
-            x: 0,
-            y: 0,
-            toJSON: () => {},
-        }));
+        mockContainerRect(wrapper);
 
         fireEvent.mouseDown(resizer);
         fireEvent.mouseMove(document, {

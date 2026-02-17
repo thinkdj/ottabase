@@ -21,6 +21,7 @@ export function useSplitPane({
     onChange,
 }: UseSplitPaneProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const isDraggingRef = useRef(false);
     const [isDragging, setIsDragging] = useState(false);
     const [pane1Size, setPane1Size] = useState<number>(() => {
         if (typeof defaultSize === 'string' && defaultSize.endsWith('%')) {
@@ -39,8 +40,8 @@ export function useSplitPane({
         if (newIsPercentage !== isPercentage) {
             setIsPercentage(newIsPercentage);
 
-            if (typeof defaultSize === 'string' && defaultSize.endsWith('%')) {
-                setPane1Size(parseFloat(defaultSize));
+            if (newIsPercentage) {
+                setPane1Size(parseFloat(defaultSize as string));
             } else if (typeof defaultSize === 'number') {
                 setPane1Size(defaultSize);
             } else {
@@ -64,12 +65,13 @@ export function useSplitPane({
     );
 
     const handleMouseDown = useCallback(() => {
+        isDraggingRef.current = true;
         setIsDragging(true);
     }, []);
 
     const handleMouseMove = useCallback(
         (event: MouseEvent) => {
-            if (!containerRef.current) return;
+            if (!isDraggingRef.current || !containerRef.current) return;
 
             const container = containerRef.current;
             const rect = container.getBoundingClientRect();
@@ -168,21 +170,17 @@ export function useSplitPane({
     );
 
     const handleMouseUp = useCallback(() => {
+        isDraggingRef.current = false;
         setIsDragging(false);
     }, []);
 
     useEffect(() => {
         if (isDragging) {
-            const wrappedHandleMouseMove = (event: MouseEvent) => {
-                if (!isDragging) return; // Double-check dragging state
-                handleMouseMove(event);
-            };
-
-            document.addEventListener('mousemove', wrappedHandleMouseMove);
+            document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', handleMouseUp);
 
             return () => {
-                document.removeEventListener('mousemove', wrappedHandleMouseMove);
+                document.removeEventListener('mousemove', handleMouseMove);
                 document.removeEventListener('mouseup', handleMouseUp);
             };
         }

@@ -1,4 +1,4 @@
-import React, { Children, CSSProperties, useState, useEffect } from 'react';
+import React, { Children, CSSProperties, useState, useEffect, useMemo } from 'react';
 import { SplitPaneProps } from '../types';
 import { useSplitPane } from '../hooks/useSplitPane';
 
@@ -94,6 +94,17 @@ export const SplitPane: React.FC<SplitPaneProps> = ({
         onChange,
     });
 
+    // Calculate aria-valuemax once
+    const ariaValueMax = useMemo(() => {
+        if (effectiveMaxSize) return effectiveMaxSize;
+        if (isPercentage) return 100;
+        if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            return split === 'vertical' ? rect.width : rect.height;
+        }
+        return 100;
+    }, [effectiveMaxSize, isPercentage, split, containerRef.current]);
+
     const childrenArray = Children.toArray(children);
     if (childrenArray.length !== 2) {
         console.warn('SplitPane requires exactly 2 children');
@@ -142,16 +153,7 @@ export const SplitPane: React.FC<SplitPaneProps> = ({
                 aria-orientation={split === 'vertical' ? 'vertical' : 'horizontal'}
                 aria-valuenow={Math.round(pane1Size)}
                 aria-valuemin={effectiveMinSize}
-                aria-valuemax={
-                    effectiveMaxSize ??
-                    (isPercentage
-                        ? 100
-                        : containerRef.current
-                          ? split === 'vertical'
-                              ? containerRef.current.getBoundingClientRect().width
-                              : containerRef.current.getBoundingClientRect().height
-                          : 100)
-                }
+                aria-valuemax={ariaValueMax}
                 aria-valuetext={isPercentage ? `${Math.round(pane1Size)}%` : `${Math.round(pane1Size)}px`}
                 tabIndex={0}
             />
