@@ -98,12 +98,9 @@ export const SplitPane: React.FC<SplitPaneProps> = ({
     const ariaValueMax = useMemo(() => {
         if (effectiveMaxSize) return effectiveMaxSize;
         if (isPercentage) return 100;
-        if (containerRef.current) {
-            const rect = containerRef.current.getBoundingClientRect();
-            return split === 'vertical' ? rect.width : rect.height;
-        }
+        // Default to 100 if container not yet available
         return 100;
-    }, [effectiveMaxSize, isPercentage, split, containerRef.current]);
+    }, [effectiveMaxSize, isPercentage]);
 
     const childrenArray = Children.toArray(children);
     if (childrenArray.length !== 2) {

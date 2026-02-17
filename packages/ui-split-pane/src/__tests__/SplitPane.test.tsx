@@ -180,17 +180,7 @@ describe('SplitPane', () => {
         const resizer = container.querySelector('[role="separator"]') as HTMLElement;
         const wrapper = container.firstChild as HTMLElement;
 
-        wrapper.getBoundingClientRect = vi.fn(() => ({
-            left: 0,
-            top: 0,
-            width: 800,
-            height: 600,
-            right: 800,
-            bottom: 600,
-            x: 0,
-            y: 0,
-            toJSON: () => {},
-        }));
+        mockContainerRect(wrapper);
 
         fireEvent.mouseDown(resizer);
         // Try to resize below minSize
@@ -217,17 +207,7 @@ describe('SplitPane', () => {
         const resizer = container.querySelector('[role="separator"]') as HTMLElement;
         const wrapper = container.firstChild as HTMLElement;
 
-        wrapper.getBoundingClientRect = vi.fn(() => ({
-            left: 0,
-            top: 0,
-            width: 800,
-            height: 600,
-            right: 800,
-            bottom: 600,
-            x: 0,
-            y: 0,
-            toJSON: () => {},
-        }));
+        mockContainerRect(wrapper);
 
         fireEvent.mouseDown(resizer);
         // Try to resize above maxSize
@@ -254,17 +234,7 @@ describe('SplitPane', () => {
         const resizer = container.querySelector('[role="separator"]') as HTMLElement;
         const wrapper = container.firstChild as HTMLElement;
 
-        wrapper.getBoundingClientRect = vi.fn(() => ({
-            left: 0,
-            top: 0,
-            width: 800,
-            height: 600,
-            right: 800,
-            bottom: 600,
-            x: 0,
-            y: 0,
-            toJSON: () => {},
-        }));
+        mockContainerRect(wrapper);
 
         fireEvent.mouseDown(resizer);
         // Move to 310, which is within threshold of snap point 300
@@ -292,17 +262,7 @@ describe('SplitPane', () => {
         const wrapper = container.firstChild as HTMLElement;
         const pane1 = wrapper.children[0] as HTMLElement;
 
-        wrapper.getBoundingClientRect = vi.fn(() => ({
-            left: 0,
-            top: 0,
-            width: 800,
-            height: 600,
-            right: 800,
-            bottom: 600,
-            x: 0,
-            y: 0,
-            toJSON: () => {},
-        }));
+        mockContainerRect(wrapper);
 
         // Press ArrowRight to increase size
         fireEvent.keyDown(resizer, { key: 'ArrowRight' });
@@ -325,17 +285,7 @@ describe('SplitPane', () => {
         const wrapper = container.firstChild as HTMLElement;
         const pane1 = wrapper.children[0] as HTMLElement;
 
-        wrapper.getBoundingClientRect = vi.fn(() => ({
-            left: 0,
-            top: 0,
-            width: 800,
-            height: 600,
-            right: 800,
-            bottom: 600,
-            x: 0,
-            y: 0,
-            toJSON: () => {},
-        }));
+        mockContainerRect(wrapper);
 
         // Press Home to go to minimum
         fireEvent.keyDown(resizer, { key: 'Home' });
@@ -391,17 +341,7 @@ describe('SplitPane', () => {
         const resizer = container.querySelector('[role="separator"]') as HTMLElement;
         const wrapper = container.firstChild as HTMLElement;
 
-        wrapper.getBoundingClientRect = vi.fn(() => ({
-            left: 0,
-            top: 0,
-            width: 800,
-            height: 600,
-            right: 800,
-            bottom: 600,
-            x: 0,
-            y: 0,
-            toJSON: () => {},
-        }));
+        mockContainerRect(wrapper);
 
         fireEvent.mouseDown(resizer);
         // Try to resize below minWidth
