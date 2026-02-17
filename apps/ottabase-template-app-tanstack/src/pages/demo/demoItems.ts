@@ -2,6 +2,7 @@
  * Single source of truth for demo gallery items.
  * Used by both DemoLayout (sidemenu) and DemoIndexPage (cards).
  */
+import type { ElementType } from 'react';
 import {
     Bell,
     Clock,
@@ -27,7 +28,7 @@ import {
 
 export interface DemoItem {
     to: string;
-    icon: React.ElementType;
+    icon: ElementType;
     /** Short label for sidemenu */
     label: string;
     /** Card title (can differ from label) */

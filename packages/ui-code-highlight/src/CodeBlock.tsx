@@ -80,37 +80,35 @@ export function CodeBlock({
     return (
         <div className={`code-block-wrapper rounded-lg overflow-hidden border ${className}`}>
             {/* Header with filename and copy button */}
-            {(filename || true) && (
-                <div className="code-block-header flex items-center justify-between px-4 py-2 border-b bg-muted/30">
-                    <div className="flex items-center gap-2">
-                        {filename && <span className="text-xs font-medium text-muted-foreground">{filename}</span>}
-                        {!filename && language !== 'plaintext' && (
-                            <span className="text-xs font-medium text-muted-foreground uppercase">{language}</span>
-                        )}
-                    </div>
-                    <button
-                        onClick={handleCopy}
-                        className="code-block-copy-btn flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors hover:bg-muted"
-                        title="Copy code"
-                    >
-                        {copied ? (
-                            <>
-                                <Check className="w-3.5 h-3.5" />
-                                <span>Copied!</span>
-                            </>
-                        ) : (
-                            <>
-                                <Copy className="w-3.5 h-3.5" />
-                                <span>Copy</span>
-                            </>
-                        )}
-                    </button>
+            <div className="code-block-header flex items-center justify-between px-4 py-2 border-b bg-muted/30">
+                <div className="flex items-center gap-2">
+                    {filename && <span className="text-xs font-medium text-muted-foreground">{filename}</span>}
+                    {!filename && language !== 'plaintext' && (
+                        <span className="text-xs font-medium text-muted-foreground uppercase">{language}</span>
+                    )}
                 </div>
-            )}
+                <button
+                    onClick={handleCopy}
+                    className="code-block-copy-btn flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors hover:bg-muted"
+                    title="Copy code"
+                >
+                    {copied ? (
+                        <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Copied!</span>
+                        </>
+                    ) : (
+                        <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy</span>
+                        </>
+                    )}
+                </button>
+            </div>
 
             {/* Code content */}
             <div className="code-block-content relative">
-                <pre className="!m-0 !p-4 overflow-x-auto">
+                <pre className={`!m-0 overflow-x-auto ${showLineNumbers ? '!pl-12 !pr-4 !py-4' : '!p-4'}`}>
                     <code ref={codeRef} className={`language-${language} !bg-transparent`}>
                         {code}
                     </code>
