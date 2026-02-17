@@ -2,7 +2,9 @@ import type { DocGroup, DocPage, DocsSource, TocItem } from '../types';
 
 /** Extract a title from markdown content (first # heading) */
 export function extractTitle(content: string): string {
-    const match = content.match(/^#\s+(.+)$/m);
+    // Strip BOM and zero-width chars that may appear at file start
+    const clean = content.replace(/^\uFEFF/, '');
+    const match = clean.match(/^#\s+(.+)$/m);
     return match ? match[1].trim() : 'Untitled';
 }
 
@@ -28,6 +30,7 @@ export function slugToTitle(slug: string): string {
 export function extractToc(content: string): TocItem[] {
     const items: TocItem[] = [];
     const lines = content.split('\n');
+    const usedIds = new Map<string, number>();
     let inCodeBlock = false;
 
     for (const line of lines) {
@@ -41,10 +44,14 @@ export function extractToc(content: string): TocItem[] {
         if (match) {
             const level = match[1].length;
             const text = match[2].replace(/[*_`\[\]]/g, '').trim();
-            const id = text
+            let id = text
                 .toLowerCase()
                 .replace(/[^a-z0-9\s-]/g, '')
                 .replace(/\s+/g, '-');
+            // Deduplicate IDs for repeated headings (must match renderMarkdown logic)
+            const count = usedIds.get(id) || 0;
+            usedIds.set(id, count + 1);
+            if (count > 0) id = `${id}-${count}`;
             items.push({ id, text, level });
         }
     }

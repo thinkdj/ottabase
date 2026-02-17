@@ -69,6 +69,9 @@ function HomeRouteComponent() {
                     <Button asChild variant="outline">
                         <Link to="/demo">Go to Demo</Link>
                     </Button>
+                    <Button asChild variant="outline">
+                        <Link to="/docs/">Docs</Link>
+                    </Button>
                     <Button variant="outline" onClick={checkHealth} disabled={loading}>
                         {loading ? 'Checking...' : '/api/health'}
                     </Button>

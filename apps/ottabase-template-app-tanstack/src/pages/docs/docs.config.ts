@@ -30,7 +30,7 @@ export function createDocsSource(
 // --- Load documentation sources ---
 
 // 1. Docs directory (repo root /docs/)
-const guidesModules = import.meta.glob('/docs/*.md', { eager: true, query: '?raw', import: 'default' }) as Record<
+const guidesModules = import.meta.glob('/../../docs/*.md', { eager: true, query: '?raw', import: 'default' }) as Record<
     string,
     string
 >;
@@ -50,7 +50,8 @@ function createPackageSource(): DocsSource {
             const parts = filePath.split('/');
             const pkgIndex = parts.indexOf('packages');
             const pkgName = pkgIndex >= 0 ? parts[pkgIndex + 1] : 'unknown';
-            const title = extractTitle(content) || pkgName;
+            const extracted = extractTitle(content);
+            const title = extracted !== 'Untitled' ? extracted : `@ottabase/${pkgName}`;
             return { slug: pkgName, title, content, sourcePath: filePath, order: 50 };
         })
         .sort((a, b) => a.title.localeCompare(b.title));

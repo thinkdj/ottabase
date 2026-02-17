@@ -34,8 +34,8 @@ export function TableOfContents({ content, activeId, onItemClick, className = ''
         <nav className={`otta-docs-toc ${className}`}>
             <p className="otta-docs-toc-title">On this page</p>
             <ul className="otta-docs-toc-list">
-                {toc.map((item) => (
-                    <li key={item.id} className="otta-docs-toc-item" data-level={item.level}>
+                {toc.map((item, index) => (
+                    <li key={`${item.id}-${index}`} className="otta-docs-toc-item" data-level={item.level}>
                         <a
                             href={`#${item.id}`}
                             className={`otta-docs-toc-link ${activeId === item.id ? 'otta-docs-toc-active' : ''}`}
@@ -89,6 +89,7 @@ function renderInline(text: string): string {
 function renderMarkdown(md: string): string {
     const lines = md.split('\n');
     const output: string[] = [];
+    const usedIds = new Map<string, number>();
     let i = 0;
 
     while (i < lines.length) {
@@ -123,10 +124,14 @@ function renderMarkdown(md: string): string {
         if (headingMatch) {
             const level = headingMatch[1].length;
             const text = headingMatch[2].replace(/[*_`\[\]]/g, '').trim();
-            const id = text
+            let id = text
                 .toLowerCase()
                 .replace(/[^a-z0-9\s-]/g, '')
                 .replace(/\s+/g, '-');
+            // Deduplicate IDs for repeated headings
+            const count = usedIds.get(id) || 0;
+            usedIds.set(id, count + 1);
+            if (count > 0) id = `${id}-${count}`;
             output.push(
                 `<h${level} id="${id}" class="otta-docs-h${level}">${renderInline(headingMatch[2])}</h${level}>`,
             );
