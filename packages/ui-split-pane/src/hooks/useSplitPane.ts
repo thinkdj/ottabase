@@ -21,6 +21,7 @@ export function useSplitPane({
     onChange,
 }: UseSplitPaneProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const isDraggingRef = useRef(false);
     const [isDragging, setIsDragging] = useState(false);
     const [pane1Size, setPane1Size] = useState<number>(() => {
         if (typeof defaultSize === 'string' && defaultSize.endsWith('%')) {
@@ -31,6 +32,23 @@ export function useSplitPane({
     const [isPercentage, setIsPercentage] = useState(() => {
         return typeof defaultSize === 'string' && defaultSize.endsWith('%');
     });
+
+    // Sync isPercentage and pane1Size when defaultSize changes
+    useEffect(() => {
+        const newIsPercentage = typeof defaultSize === 'string' && defaultSize.endsWith('%');
+
+        if (newIsPercentage !== isPercentage) {
+            setIsPercentage(newIsPercentage);
+
+            if (newIsPercentage) {
+                setPane1Size(parseFloat(defaultSize as string));
+            } else if (typeof defaultSize === 'number') {
+                setPane1Size(defaultSize);
+            } else {
+                setPane1Size(50);
+            }
+        }
+    }, [defaultSize, isPercentage]);
 
     const findNearestSnapPoint = useCallback(
         (position: number): number => {
@@ -47,12 +65,13 @@ export function useSplitPane({
     );
 
     const handleMouseDown = useCallback(() => {
+        isDraggingRef.current = true;
         setIsDragging(true);
     }, []);
 
     const handleMouseMove = useCallback(
         (event: MouseEvent) => {
-            if (!isDragging || !containerRef.current) return;
+            if (!isDraggingRef.current || !containerRef.current) return;
 
             const container = containerRef.current;
             const rect = container.getBoundingClientRect();
@@ -88,10 +107,70 @@ export function useSplitPane({
             setPane1Size(newSize);
             onChange?.(newSize);
         },
-        [isDragging, split, minSize, maxSize, isPercentage, findNearestSnapPoint, onChange],
+        [split, minSize, maxSize, isPercentage, findNearestSnapPoint, onChange],
+    );
+
+    const handleKeyDown = useCallback(
+        (event: React.KeyboardEvent) => {
+            if (!containerRef.current) return;
+
+            const container = containerRef.current;
+            const rect = container.getBoundingClientRect();
+            const containerSize = split === 'vertical' ? rect.width : rect.height;
+
+            let delta = 0;
+            const step = isPercentage ? 1 : 10; // 1% or 10px per key press
+
+            switch (event.key) {
+                case 'ArrowLeft':
+                case 'ArrowUp':
+                    delta = -step;
+                    event.preventDefault();
+                    break;
+                case 'ArrowRight':
+                case 'ArrowDown':
+                    delta = step;
+                    event.preventDefault();
+                    break;
+                case 'Home':
+                    delta = minSize - pane1Size;
+                    event.preventDefault();
+                    break;
+                case 'End':
+                    delta = (maxSize ?? (isPercentage ? 100 : containerSize)) - pane1Size;
+                    event.preventDefault();
+                    break;
+                default:
+                    return;
+            }
+
+            let newSize = pane1Size + delta;
+
+            // Apply snap points (only for pixel values)
+            if (!isPercentage) {
+                newSize = findNearestSnapPoint(newSize);
+            }
+
+            // Apply min/max constraints
+            const actualMinSize = isPercentage ? (minSize / containerSize) * 100 : minSize;
+            const actualMaxSize = maxSize
+                ? isPercentage
+                    ? (maxSize / containerSize) * 100
+                    : maxSize
+                : isPercentage
+                  ? 100
+                  : containerSize;
+
+            newSize = Math.max(actualMinSize, Math.min(actualMaxSize, newSize));
+
+            setPane1Size(newSize);
+            onChange?.(newSize);
+        },
+        [split, minSize, maxSize, isPercentage, findNearestSnapPoint, onChange, pane1Size],
     );
 
     const handleMouseUp = useCallback(() => {
+        isDraggingRef.current = false;
         setIsDragging(false);
     }, []);
 
@@ -113,5 +192,6 @@ export function useSplitPane({
         isPercentage,
         isDragging,
         handleMouseDown,
+        handleKeyDown,
     };
 }
