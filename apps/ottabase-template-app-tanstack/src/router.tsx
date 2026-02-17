@@ -378,6 +378,16 @@ const demoEmailRoute = new Route({
     ),
 });
 
+const demoCodeBlockRoute = new Route({
+    getParentRoute: () => demoLayoutRoute,
+    path: 'codeblock',
+    component: lazyRouteComponent(() =>
+        import('@/pages/demo/CodeBlockDemoPage').then((m) => ({
+            default: m.CodeBlockDemoPage,
+        })),
+    ),
+});
+
 const demoNotificationsRoute = new Route({
     getParentRoute: () => demoLayoutRoute,
     path: 'notifications',
@@ -856,6 +866,7 @@ demoLayoutRoute.addChildren([
     demoStateRoute,
     demoRendererRoute,
     demoEmailRoute,
+    demoCodeBlockRoute,
     demoNotificationsRoute,
 ]);
 
