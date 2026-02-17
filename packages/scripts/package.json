@@ -15,6 +15,8 @@
         "./migrations": null
     },
     "bin": {
+        "ottabase": "bin/ottabase.cjs",
+        "ob": "bin/ob.cjs",
         "cloudflare-setup": "bin/cloudflare-setup.cjs",
         "cloudflare-validate": "bin/cloudflare-validate.cjs",
         "clean-cache": "bin/clean-cache.cjs",
@@ -28,8 +30,8 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/clean-cache.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/clean-cache.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/cli/ottabase.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/clean-cache.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/cli/ottabase.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/clean-cache.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "clean-cache": "node bin/clean-cache.cjs",
         "clean-reset": "node bin/clean-reset.mjs",
