@@ -57,6 +57,7 @@
         "@ottabase/ui-components": "workspace:*",
         "@ottabase/ui-mantine": "workspace:*",
         "@ottabase/ui-shadcn": "workspace:*",
+        "@ottabase/ui-split-pane": "workspace:*",
         "@ottabase/utils": "workspace:*",
         "@tabler/icons-react": "catalog:",
         "@tanstack/react-query": "catalog:",

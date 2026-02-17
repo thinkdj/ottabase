@@ -1,0 +1,75 @@
+import { ReactNode, CSSProperties } from 'react';
+
+export type SplitType = 'vertical' | 'horizontal';
+
+export interface SplitPaneProps {
+    /**
+     * Direction of the split (vertical = left/right, horizontal = top/bottom)
+     */
+    split?: SplitType;
+
+    /**
+     * Initial size of the first pane (can be px or %)
+     */
+    defaultSize?: string | number;
+
+    /**
+     * Minimum size of a pane in pixels
+     */
+    minSize?: number;
+
+    /**
+     * Maximum size of a pane in pixels
+     */
+    maxSize?: number;
+
+    /**
+     * Array of snap positions in pixels
+     */
+    snapPoints?: number[];
+
+    /**
+     * Distance to snap point before snapping (in pixels)
+     */
+    snapThreshold?: number;
+
+    /**
+     * Callback when size changes
+     */
+    onChange?: (size: number) => void;
+
+    /**
+     * Additional CSS class for the container
+     */
+    className?: string;
+
+    /**
+     * Additional CSS class for the resizer
+     */
+    resizerClassName?: string;
+
+    /**
+     * Custom styles for the container
+     */
+    style?: CSSProperties;
+
+    /**
+     * Custom styles for pane 1
+     */
+    pane1Style?: CSSProperties;
+
+    /**
+     * Custom styles for pane 2
+     */
+    pane2Style?: CSSProperties;
+
+    /**
+     * Custom styles for the resizer
+     */
+    resizerStyle?: CSSProperties;
+
+    /**
+     * Two child elements to split
+     */
+    children: [ReactNode, ReactNode] | ReactNode;
+}

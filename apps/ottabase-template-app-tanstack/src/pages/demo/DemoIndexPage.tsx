@@ -77,6 +77,21 @@ export function DemoIndexPage() {
 
                 <Card>
                     <CardHeader>
+                        <CardTitle>Split Pane</CardTitle>
+                        <CardDescription>
+                            Minimal, clean split-pane component with support for nested layouts, snap points, and
+                            percentage-based sizing
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild variant="outline" className="w-full">
+                            <Link to="/demo/split-pane">View Split Pane Demo</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
                         <CardTitle>File Upload Package</CardTitle>
                         <CardDescription>
                             Drag-and-drop file uploader with progress tracking, validation, and Cloudflare R2/Images

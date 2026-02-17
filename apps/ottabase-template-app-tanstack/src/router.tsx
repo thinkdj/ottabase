@@ -198,6 +198,16 @@ const demoOttaSelectRoute = new Route({
     ),
 });
 
+const demoSplitPaneRoute = new Route({
+    getParentRoute: () => demoLayoutRoute,
+    path: 'split-pane',
+    component: lazyRouteComponent(() =>
+        import('@/pages/demos/split-pane/SplitPaneDemoPage').then((m) => ({
+            default: m.SplitPaneDemoPage,
+        })),
+    ),
+});
+
 const demoCropperRoute = new Route({
     getParentRoute: () => demoLayoutRoute,
     path: 'cropper',
@@ -825,6 +835,7 @@ demoLayoutRoute.addChildren([
     demoOttaOrmRoute,
     demoOttaFormsRoute,
     demoOttaSelectRoute,
+    demoSplitPaneRoute,
     demoCropperRoute,
     demoLoggerRoute,
     demoI18nRoute,
