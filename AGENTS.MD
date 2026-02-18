@@ -154,6 +154,196 @@ export const {
 // const { data: todo } = useTodoBySlug("slug", "my-todo-slug");
 ```
 
+### RBAC (Role-Based Access Control)
+
+**Package:** `@ottabase/rbac` — tenant-aware, cached permission system.
+
+**Permission format:** `resource:action` with wildcards (`*:*`, `users:*`, `*:read`).
+
+```typescript
+import { createRBACContext, hasPermission, hasRole, isAdmin } from '@ottabase/rbac';
+
+// Build context from a User model (auto-loads roles + permissions for tenant)
+const ctx = await createRBACContext(user, { organizationId: 'org-123' });
+
+hasPermission(ctx, 'posts:write');              // Single check
+hasPermission(ctx, ['posts:write', 'posts:delete'], { requireAll: true }); // All required
+hasRole(ctx, 'admin');
+isAdmin(ctx); // true if role='admin' or permission='*:*'
+```
+
+**Request context** — extracted automatically from headers in the worker:
+
+| Header              | Purpose                                       |
+| ------------------- | --------------------------------------------- |
+| `x-org-id`         | Organization (tenant) scope                   |
+| `x-app-id`         | App identifier (default: `'web'`)             |
+| `x-user-id`        | Authenticated user ID                         |
+| `x-user-roles`     | Comma-separated roles                         |
+| `x-user-permissions` | Comma-separated permissions                 |
+
+**Middleware guard** for API routes:
+
+```typescript
+import { withRBAC } from '@ottabase/rbac';
+
+const handler = withRBAC(myHandler, { permissions: ['posts:write'] }); // returns 401/403 on fail
+```
+
+**Cache:** Two-level (in-memory 60s + KV 5min). Org-scoped keys prevent cross-tenant leaks. Invalidate with `invalidateUser()` / `invalidateOrganization()`.
+
+### RLS (Row-Level Security)
+
+**Package:** `@ottabase/ottaorm` (in `rls/`) — **secure by default**. If a model has no RLS policy, access is **denied**.
+
+**How it works:** Every CRUD operation passes through the RLS engine which:
+
+- **Reads:** Injects WHERE filters (e.g., `WHERE org_id = ?`) so users only see their data
+- **Writes:** Validates permissions + auto-injects `organizationId`/`userId`/`appId` on create
+- **Deletes:** Verifies ownership/permissions before allowing
+
+**Pre-built policies:**
+
+```typescript
+import { RLSPolicies } from '@ottabase/ottaorm';
+
+RLSPolicies.TenantScoped()    // Filter by organizationId column
+RLSPolicies.UserScoped()      // Filter by userId column
+RLSPolicies.AppScoped()       // Filter by appId column
+RLSPolicies.PublicReadOnly()   // Anyone reads, only owners write
+RLSPolicies.AdminOnly()       // Only admin role
+RLSPolicies.OwnerOnly()       // Only record owner
+```
+
+**⚠️ When adding a new model, you MUST register an RLS policy:**
+
+```typescript
+// In packages/ottaorm/src/rls/registry.ts → MODEL_POLICIES array:
+{ model: 'my_new_table', policy: RLSPolicies.TenantScoped(), auditEnabled: true }
+
+// Or register dynamically at runtime:
+import { registerPolicy } from '@ottabase/ottaorm';
+registerPolicy('my_new_table', RLSPolicies.TenantScoped());
+```
+
+Without a policy, all CRUD on that model will return **403 Forbidden**.
+
+**SecurityContext** (automatically extracted from X- headers):
+
+```typescript
+interface SecurityContext {
+    userId: string;
+    organizationId: string;
+    appId: string;
+    roles: string[];
+    permissions: string[];
+    memberOrganizationIds: string[];
+}
+```
+
+### API Client (`@ottabase/api`)
+
+**Type-safe HTTP client** with automatic header injection, deduplication, and error handling.
+
+```typescript
+import { createApiClient } from '@ottabase/api';
+
+const api = createApiClient({
+    baseUrl: '',
+    getAuthToken: () => sessionToken,           // Auto-adds Authorization: Bearer
+    defaultHeaders: () => ({                     // Auto-added to EVERY request
+        'X-App-Id': getAppId(),
+        'X-Org-Id': getOrganizationId(),
+    }),
+    onUnauthorized: () => redirectToLogin(),     // 401 handler
+    onError: (err) => showToast(err.message),    // Global error handler
+});
+
+// Usage
+const posts = await api<Post[]>('/api/ottaorm/posts', { params: { limit: 10 } });
+```
+
+**Key behaviors:**
+
+- **X-headers auto-injected** via `defaultHeaders()` — reads from Jotai global store so org/app context flows to every request
+- **In-flight dedup:** Identical concurrent GET requests share a single Promise
+- **Auth:** `getAuthToken()` callback adds `Authorization: Bearer {token}` if token exists
+- **Errors:** `ApiError` class with helpers: `.isUnauthorized()`, `.isForbidden()`, `.isNotFound()`
+- **Timeout:** 30s default, AbortController-based
+
+### Global State (`@ottabase/state`)
+
+**Jotai atoms** — components subscribe to individual atoms and re-render only when that slice changes.
+
+```typescript
+import { createAppState } from '@ottabase/state';
+
+const { appStateAtom, atoms } = createAppState({
+    appName: 'MyApp',
+    initialState: { appId: 'web', organizationId: null },
+});
+
+export const {
+    userAtom,            // Current user object
+    themeAtom,           // 'light' | 'dark'
+    organizationIdAtom,  // Current tenant ID
+    appIdAtom,           // App identifier
+    sidebarStateAtom,    // { open, collapsed, width }
+    scaleAtom,           // UI scale factor
+    languageAtom,        // i18n locale
+    isLoadingAtom,       // Global loading state
+} = atoms;
+```
+
+**Usage in components:**
+
+```typescript
+import { useAtom } from 'jotai';
+const [user, setUser] = useAtom(userAtom);
+const [orgId] = useAtom(organizationIdAtom);
+```
+
+**Outside React** (e.g., in API client): Create a global Jotai store and read directly:
+
+```typescript
+import { createStore } from 'jotai';
+export const globalStore = createStore();
+const getOrganizationId = () => globalStore.get(organizationIdAtom);
+```
+
+### Auth (`@ottabase/auth`)
+
+Auth.js v5 with D1 adapter. Supports OAuth (Google, GitHub, Discord), credentials, and magic link.
+
+```typescript
+// Server setup
+import { createOttabaseAuthConfig, createGoogleProvider } from '@ottabase/auth';
+const config = createOttabaseAuthConfig({ d1: env.OBCF_D1, providers: [createGoogleProvider(env)] });
+
+// Client hooks
+import { useSession } from '@ottabase/auth/react';
+const { session, isAuthenticated } = useSession();
+
+// Client actions
+import { signIn, signUp, sendMagicLink } from '@ottabase/auth/client';
+```
+
+### Request Flow (End-to-End)
+
+```
+Client Component → useAtom(orgIdAtom) sets context
+       ↓
+API Client → defaultHeaders() injects X-Org-Id, X-App-Id, Authorization
+       ↓
+Cloudflare Worker → initDbConnection() registers models + initRLS()
+       ↓
+secureCrud() → extractSecurityContext() from X-headers
+       ↓
+RLS Engine → applies WHERE filters (reads) / validates permissions (writes)
+       ↓
+OttaORM → executes query via Drizzle → D1
+```
+
 ## Package Guide
 
 ### @ottabase/ottaorm
@@ -306,7 +496,21 @@ export class MyModel extends BaseModel {
 export { myTable } from '@ottabase/mypackage/schema';
 ```
 
-### 4. App: Create hooks
+### 4. Register RLS policy (required — no policy = 403)
+
+```typescript
+// packages/ottaorm/src/rls/registry.ts → MODEL_POLICIES array:
+{ model: 'mytable', policy: RLSPolicies.TenantScoped(), auditEnabled: true }
+```
+
+### 5. Register model for CRUD API
+
+```typescript
+// apps/my-app/ottabase/db/db-utils.ts → initDbConnection():
+registerModels([..., MyModel]);
+```
+
+### 6. App: Create hooks
 
 ```typescript
 // ottabase/hooks/useMyModel.ts
@@ -315,7 +519,7 @@ import { createModelHooks } from '@ottabase/ottaorm/client';
 export const { useList, useCreate, useUpdate, useDelete } = createModelHooks({ entity: 'mytable' });
 ```
 
-### 5. Run migrations
+### 7. Run migrations
 
 ```bash
 curl -X POST http://localhost:3004/api/ottaorm/init
@@ -424,6 +628,8 @@ pnpm install
 - Implicit dependencies
 - Missing type definitions
 - Models without `static entity` and `static table`
+- Models without an RLS policy (causes 403 on all CRUD)
+- Bypassing RLS with raw Drizzle queries (use `secureCrud()` or fat model methods)
 
 ## Commands Reference
 
