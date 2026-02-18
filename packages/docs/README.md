@@ -1,7 +1,7 @@
 # @ottabase/docs
 
-Minimal, reusable documentation viewer for Markdown files. Clean, Mantine-docs-inspired layout with left navigation,
-content area, and right table of contents.
+Minimal, reusable documentation viewer for Markdown files. Clean layout with left navigation, content area, and right
+table of contents. Three built-in themes inspired by GitHub, Notion, and Mantine.
 
 ## Features
 
@@ -11,8 +11,10 @@ content area, and right table of contents.
 - 📱 Responsive with mobile drawer navigation
 - 🌙 Dark mode support (system preference and `.dark` class)
 - ⬅️➡️ Previous/Next page navigation
-- 🎨 CSS custom properties for easy theming
-- 📦 Zero runtime dependencies (only React peer dep)
+- 🎨 Three built-in themes: `default`, `github`, `notion`
+- 📋 Enhanced code blocks with copy-to-clipboard
+- 🔌 Extensible — optional integration with `@ottabase/ui-code-highlight`, `@ottabase/ui-shadcn`, `@tabler/icons-react`
+- 📦 Zero required runtime dependencies (only React peer dep)
 
 ## Installation
 
@@ -20,7 +22,7 @@ content area, and right table of contents.
 pnpm add @ottabase/docs
 ```
 
-## Usage
+## Quick Start
 
 ```tsx
 import { DocsLayout } from '@ottabase/docs';
@@ -29,23 +31,47 @@ import '@ottabase/docs/styles.css';
 const config = {
     title: 'My Docs',
     basePath: '/docs',
+    theme: 'github', // 'default' | 'github' | 'notion'
+    enableCodeHighlight: true, // Adds copy button to code blocks
     sources: [
         {
             label: 'Guides',
             basePath: 'guides',
-            pages: [
-                { slug: 'getting-started', title: 'Getting Started', content: '# Getting Started\n...' },
-                { slug: 'configuration', title: 'Configuration', content: '# Configuration\n...' },
-            ],
+            pages: [{ slug: 'getting-started', title: 'Getting Started', content: '# Getting Started\n...' }],
         },
     ],
 };
 
 function DocsPage() {
     const [activeSlug, setActiveSlug] = useState('guides/getting-started');
-
     return <DocsLayout config={config} activeSlug={activeSlug} onNavigate={setActiveSlug} />;
 }
+```
+
+## Loading Markdown with Vite
+
+Use `import.meta.glob` to load `.md` files at build time:
+
+```typescript
+import { createDocsSource, createPackageSource } from './docs.config';
+
+// Load guides from a docs/ directory
+const guidesModules = import.meta.glob('/../../docs/*.md', {
+    eager: true,
+    query: '?raw',
+    import: 'default',
+});
+const guides = createDocsSource('Guides', guidesModules, { basePath: 'guides' });
+
+// Load package READMEs (toggle on/off)
+const packageModules = import.meta.glob('/../../packages/*/README.md', {
+    eager: true,
+    query: '?raw',
+    import: 'default',
+});
+const packages = createPackageSource(packageModules, { prefix: '@ottabase/' });
+
+const config = { sources: [guides, packages], theme: 'github' };
 ```
 
 ## Configuration
@@ -53,30 +79,27 @@ function DocsPage() {
 ```typescript
 interface DocsConfig {
     title?: string; // Docs site title
-    logo?: React.ReactNode; // Logo element
+    logo?: React.ReactNode; // Logo element for sidebar
     basePath?: string; // Base URL path (e.g. "/docs")
+    theme?: 'default' | 'github' | 'notion'; // Built-in theme
+    enableCodeHighlight?: boolean; // Copy button on code blocks
     sources: DocsSource[]; // Documentation sources
-}
-
-interface DocsSource {
-    label: string; // Sidebar group label
-    basePath?: string; // URL prefix for pages
-    order?: number; // Sort order
-    pages: DocPage[]; // Pre-loaded pages
-}
-
-interface DocPage {
-    slug: string; // URL-friendly identifier
-    title: string; // Display title
-    content: string; // Raw markdown content
-    group?: string; // Optional sub-group
-    order?: number; // Sort order within group
 }
 ```
 
-## Theming
+## Themes
 
-Override CSS custom properties to match your app's design:
+Three built-in themes, all with dark mode support:
+
+| Theme     | Style                                           | Inspiration  |
+| --------- | ----------------------------------------------- | ------------ |
+| `default` | Soft borders, rounded corners, blue accents     | Mantine docs |
+| `github`  | Utilitarian, clean lines, blue links            | GitHub docs  |
+| `notion`  | Warm, readable, large headings, red inline code | Notion       |
+
+Set via config: `{ theme: 'github' }`. Override any CSS custom property for further customization.
+
+## CSS Custom Properties
 
 ```css
 :root {
@@ -85,5 +108,6 @@ Override CSS custom properties to match your app's design:
     --otta-docs-color-text: #212529;
     --otta-docs-sidebar-width: 260px;
     --otta-docs-toc-width: 220px;
+    --otta-docs-content-max-width: 780px;
 }
 ```
