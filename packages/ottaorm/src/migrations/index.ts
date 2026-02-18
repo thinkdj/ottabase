@@ -579,7 +579,7 @@ export const coreMigrations: Migration[] = [
                 SELECT
                     user_id,
                     role_id,
-                    COALESCE(organization_id, 'default-org'),
+                    organization_id,
                     NULL as app_id,
                     assigned_at,
                     assigned_by
@@ -650,18 +650,6 @@ export const coreMigrations: Migration[] = [
             await db.execute(
                 `CREATE INDEX IF NOT EXISTS idx_audit_logs_user_org ON audit_logs(user_id, organization_id)`,
             );
-            await db.execute(`
-                INSERT OR IGNORE INTO organizations (id, name, slug, plan, status, created_at, updated_at)
-                VALUES (
-                    'default-org',
-                    'Default Organization',
-                    'default',
-                    'free',
-                    'active',
-                    (unixepoch() * 1000),
-                    (unixepoch() * 1000)
-                )
-            `);
         },
         down: async (db) => {
             await db.execute(`DROP INDEX IF EXISTS idx_audit_logs_user_org`);

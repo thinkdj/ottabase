@@ -8,6 +8,7 @@
 import { useCreateOrganization } from '@/hooks/useRBAC';
 import { useRBACToast } from '@/hooks/useToast';
 import { slugFromName } from '@/lib/slug';
+import { organizationIdAtom } from '@/ottabase/state/appState';
 import {
     Button,
     Card,
@@ -25,13 +26,17 @@ import {
     SelectValue,
 } from '@ottabase/ui-shadcn';
 import { useNavigate } from '@tanstack/react-router';
+import { useSetAtom } from 'jotai';
 import { Building2, Loader2 } from 'lucide-react';
 import { useState } from 'react';
+
+const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 
 export function OrganizationRegistrationPage() {
     const navigate = useNavigate();
     const toast = useRBACToast();
     const createMutation = useCreateOrganization();
+    const setOrganizationId = useSetAtom(organizationIdAtom);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -45,11 +50,6 @@ export function OrganizationRegistrationPage() {
     const handleChange = (field: string, value: string) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
 
-        // Auto-generate slug from name
-        if (field === 'name' && !formData.slug) {
-            setFormData((prev) => ({ ...prev, slug: slugFromName(value) }));
-        }
-
         // Clear error
         if (errors[field]) {
             setErrors((prev) => {
@@ -57,6 +57,22 @@ export function OrganizationRegistrationPage() {
                 delete next[field];
                 return next;
             });
+        }
+    };
+
+    const handleNameBlur = () => {
+        setFormData((prev) => {
+            if (prev.slug.trim()) return prev;
+            return { ...prev, slug: slugFromName(prev.name) };
+        });
+    };
+
+    const applyCurrentOrganization = (orgId: string) => {
+        setOrganizationId(orgId);
+        try {
+            localStorage.setItem(CURRENT_ORG_KEY, orgId);
+        } catch {
+            // ignore storage failures
         }
     };
 
@@ -89,7 +105,14 @@ export function OrganizationRegistrationPage() {
         createMutation.mutate(formData, {
             onSuccess: (org) => {
                 toast.rbac.organizationCreated();
-                navigate({ to: `/organizations/${org.id}/members` });
+                if (org?.id) {
+                    applyCurrentOrganization(org.id);
+                    navigate({ to: `/organizations/${org.id}/members` });
+                    return;
+                }
+
+                toast.warning('Organization created', 'Could not resolve organization id for redirect.');
+                navigate({ to: '/organizations' });
             },
             onError: (error) => {
                 toast.error('Failed to create organization', error instanceof Error ? error.message : 'Unknown error');
@@ -121,6 +144,7 @@ export function OrganizationRegistrationPage() {
                                 placeholder="Acme Inc"
                                 value={formData.name}
                                 onChange={(e) => handleChange('name', e.target.value)}
+                                onBlur={handleNameBlur}
                                 disabled={createMutation.isPending}
                                 className={errors.name ? 'border-destructive' : ''}
                             />

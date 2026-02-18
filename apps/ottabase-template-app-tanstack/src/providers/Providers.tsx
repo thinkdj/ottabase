@@ -1,7 +1,7 @@
 import { api } from '@/lib/api';
 import enApp from '@/locales/en/app.json';
 import { BlogStudioProvider } from '@/ottabase/blog/BlogStudioContext';
-import { appConfig } from '@/ottabase/config/app.config';
+import { APP_ID, appConfig } from '@/ottabase/config/app.config';
 import { i18nConfig } from '@/ottabase/config/i18n.config';
 import {
     headingFontFamily,
@@ -17,6 +17,7 @@ import { ScaleManager } from '@/ottabase/providers/ScaleManager';
 import { SidebarStateManager } from '@/ottabase/providers/SidebarStateManager';
 import { ThemeManager } from '@/ottabase/providers/ThemeManager';
 import { ZoomManager } from '@/ottabase/providers/ZoomManager';
+import { globalStore } from '@/ottabase/state/appState';
 import { ApiError } from '@ottabase/api';
 import { BrandProvider } from '@ottabase/brand-engine-react';
 import { I18nProvider } from '@ottabase/i18n/react';
@@ -54,48 +55,74 @@ export function Providers({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <ProviderState>
-            <I18nProvider
-                defaultLanguage={i18nConfig.defaultLanguage}
-                supportedLngs={i18nConfig.enabledLanguages}
-                fallbackLng={i18nConfig.fallbackLanguage}
-                resources={appResources}
-            >
-                <LanguageManager />
-                <BlogStudioProvider>
-                    <BrandProvider apiEndpoint="/api/brand">
-                        <OttaQueryProvider apiClient={api} config={queryConfig}>
-                            <ProviderUIBase
-                                preventFOUC={appConfig.ui.preventFOUC}
-                                preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
-                                fontFamilies={fontFamilies}
-                                fontVarsFromRoot
-                            >
-                                <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
-                                    <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
-                                        <ThemeProvider>
-                                            <BrandThemeApplicator />
-                                            <ThemeManager />
-                                            <ZoomManager />
-                                            <ScaleManager />
-                                            <SidebarStateManager />
-                                            <ShadcnProviders enableThemeProvider={false} enableToaster>
-                                                <SpotlightProvider
-                                                    enabled={appConfig.features.spotlight.enabled}
-                                                    shortcuts={appConfig.features.spotlight.shortcuts}
-                                                >
-                                                    {children}
-                                                </SpotlightProvider>
-                                            </ShadcnProviders>
-                                        </ThemeProvider>
-                                    </ProviderNextThemes>
-                                </ProviderFont>
-                            </ProviderUIBase>
-                            <ReactQueryDevtools initialIsOpen={false} />
-                        </OttaQueryProvider>
-                    </BrandProvider>
-                </BlogStudioProvider>
-            </I18nProvider>
+        <ProviderState store={globalStore}>
+            <ProvidersContent queryConfig={queryConfig} fontFamilies={fontFamilies}>
+                {children}
+            </ProvidersContent>
         </ProviderState>
+    );
+}
+
+function ProvidersContent({
+    children,
+    queryConfig,
+    fontFamilies,
+}: {
+    children: React.ReactNode;
+    queryConfig: {
+        defaultOptions: {
+            queries: {
+                retry: (failureCount: number, error: unknown) => boolean;
+            };
+        };
+    };
+    fontFamilies: {
+        primary: string;
+        heading: string;
+        monospace: string;
+    };
+}) {
+    return (
+        <I18nProvider
+            defaultLanguage={i18nConfig.defaultLanguage}
+            supportedLngs={i18nConfig.enabledLanguages}
+            fallbackLng={i18nConfig.fallbackLanguage}
+            resources={appResources}
+        >
+            <LanguageManager />
+            <BlogStudioProvider>
+                <BrandProvider apiEndpoint="/api/brand" appId={APP_ID}>
+                    <OttaQueryProvider apiClient={api} config={queryConfig}>
+                        <ProviderUIBase
+                            preventFOUC={appConfig.ui.preventFOUC}
+                            preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
+                            fontFamilies={fontFamilies}
+                            fontVarsFromRoot
+                        >
+                            <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
+                                <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
+                                    <ThemeProvider>
+                                        <BrandThemeApplicator />
+                                        <ThemeManager />
+                                        <ZoomManager />
+                                        <ScaleManager />
+                                        <SidebarStateManager />
+                                        <ShadcnProviders enableThemeProvider={false} enableToaster>
+                                            <SpotlightProvider
+                                                enabled={appConfig.features.spotlight.enabled}
+                                                shortcuts={appConfig.features.spotlight.shortcuts}
+                                            >
+                                                {children}
+                                            </SpotlightProvider>
+                                        </ShadcnProviders>
+                                    </ThemeProvider>
+                                </ProviderNextThemes>
+                            </ProviderFont>
+                        </ProviderUIBase>
+                        <ReactQueryDevtools initialIsOpen={false} />
+                    </OttaQueryProvider>
+                </BrandProvider>
+            </BlogStudioProvider>
+        </I18nProvider>
     );
 }

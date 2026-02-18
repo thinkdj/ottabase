@@ -6,7 +6,7 @@
  */
 
 import { TableSkeleton } from '@/components/LoadingSkeletons';
-import { api } from '@/lib/api';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import {
     Avatar,
     AvatarFallback,
@@ -26,7 +26,6 @@ import {
     TableHeader,
     TableRow,
 } from '@ottabase/ui-shadcn';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Calendar, Mail, Search, Shield, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -44,19 +43,18 @@ interface User {
 export function UserManagementPage() {
     const [searchTerm, setSearchTerm] = useState('');
 
-    const { data: allUsers = [], isLoading } = useQuery({
-        queryKey: ['admin', 'users'],
-        queryFn: async () => {
-            const response = await api<{
-                data: Array<User | { entity: string; data: User }>;
-            }>('/api/admin/users');
-
-            // Support both flat and nested payloads while filtering out invalid entries.
-            return response.data
+    const { data: allUsers = [], isLoading } = useApiQuery<
+        { data: Array<User | { entity: string; data: User }> },
+        User[]
+    >({
+        entity: 'users',
+        queryKey: ['admin-list'],
+        endpoint: '/api/admin/users',
+        transform: (response) =>
+            response.data
                 .map((item) => ('data' in item ? item.data : item))
-                .filter((user): user is User => !!user && typeof user.id === 'string');
-        },
-        staleTime: 2 * 60 * 1000,
+                .filter((user): user is User => !!user && typeof user.id === 'string'),
+        queryOptions: { staleTime: 2 * 60 * 1000 },
     });
 
     const users = useMemo(

@@ -14,9 +14,13 @@
             "Bash(ls:*)",
             "Bash(grep:*)",
             "Bash(tree:*)",
-            "Bash(pnpm:*)"
+            "Bash(pnpm:*)",
+            "Bash(dir:*)",
+            "Bash(echo:*)"
         ],
         "deny": [],
         "ask": []
-    }
+    },
+    "outputStyle": "default",
+    "prefersReducedMotion": false
 }

@@ -424,6 +424,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                                         // ignore bad permissions
                                     }
                                 }
+
                                 permissions = Array.from(permissionsSet);
                             } catch (error) {
                                 console.warn('Failed to load user roles for auth:', error);

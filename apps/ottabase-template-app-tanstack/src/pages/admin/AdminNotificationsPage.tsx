@@ -1,3 +1,4 @@
+import { useApiMutation } from '@ottabase/ottaorm/client';
 import { useState } from 'react';
 import {
     Button,
@@ -44,24 +45,14 @@ export function AdminNotificationsPage() {
         priority: 'normal',
     });
 
-    const [sending, setSending] = useState(false);
     const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
 
-    const handleSend = async () => {
-        setSending(true);
-        setResult(null);
-
-        try {
-            // TODO: Implement actual API call to send notification
-            const response = await fetch('/api/admin/notifications/send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form),
-            });
-
-            if (response.ok) {
+    const sendNotification = useApiMutation<unknown, NotificationForm>({
+        endpoint: '/api/admin/notifications/send',
+        method: 'POST',
+        mutationOptions: {
+            onSuccess: () => {
                 setResult({ success: true, message: 'Notification sent successfully!' });
-                // Reset form
                 setForm({
                     recipientId: '',
                     recipientEmail: '',
@@ -70,36 +61,30 @@ export function AdminNotificationsPage() {
                     channel: 'email',
                     priority: 'normal',
                 });
-            } else {
-                const error = await response.json();
-                setResult({ success: false, message: error.message || 'Failed to send notification' });
-            }
-        } catch (error) {
-            setResult({ success: false, message: 'Error sending notification' });
-        } finally {
-            setSending(false);
-        }
+            },
+            onError: () => setResult({ success: false, message: 'Failed to send notification' }),
+        },
+    });
+
+    const sendAlert = useApiMutation<unknown, { title: string; message: string; severity: string; eventType: string }>({
+        endpoint: '/api/admin/notifications/system-alert',
+        method: 'POST',
+        mutationOptions: {
+            onSuccess: () => setResult({ success: true, message: 'System alert sent to admins!' }),
+            onError: () => setResult({ success: false, message: 'Failed to send system alert' }),
+        },
+    });
+
+    const sending = sendNotification.isPending || sendAlert.isPending;
+
+    const handleSend = () => {
+        setResult(null);
+        sendNotification.mutate(form);
     };
 
-    const sendSystemAlert = async (severity: 'info' | 'warning' | 'error' | 'critical') => {
-        setSending(true);
-        try {
-            await fetch('/api/admin/notifications/system-alert', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: form.title,
-                    message: form.message,
-                    severity,
-                    eventType: 'admin.manual',
-                }),
-            });
-            setResult({ success: true, message: 'System alert sent to admins!' });
-        } catch (error) {
-            setResult({ success: false, message: 'Failed to send system alert' });
-        } finally {
-            setSending(false);
-        }
+    const sendSystemAlert = (severity: 'info' | 'warning' | 'error' | 'critical') => {
+        setResult(null);
+        sendAlert.mutate({ title: form.title, message: form.message, severity, eventType: 'admin.manual' });
     };
 
     return (
