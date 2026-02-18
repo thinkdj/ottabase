@@ -5,6 +5,7 @@
  * hero image upload, SEO settings, and all post fields.
  */
 import { SERIES_LIST_QUERY_CONFIG, VERSION_HISTORY_QUERY_CONFIG } from '@/config/queryConfig';
+import { useSession } from '@/lib/auth';
 import {
     CONTENT_TYPES,
     formatDate,
@@ -74,7 +75,6 @@ import {
     X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSession } from '@/lib/auth';
 
 interface BlogPost {
     id: string;
@@ -448,7 +448,18 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
             params.set('uniqueField', 'slug');
             params.set('uniqueValue', toCheck);
             if (postId) params.set('uniqueIgnoreId', postId);
-            if (initialData?.appId) params.set('where', JSON.stringify({ appId: initialData.appId }));
+            if (postId) params.set('uniqueIgnoreId', postId);
+
+            // If we have an appId, check within that app scope.
+            // If we DON'T have an appId (null/undefined), explicitly check for null to match the partial index.
+            // The default generic uniqueness check might ignore nulls or check `appId = null` differently depending on the backend,
+            // so we pass an explicit where clause to be safe.
+            if (initialData?.appId) {
+                params.set('where', JSON.stringify({ appId: initialData.appId }));
+            } else {
+                params.set('where', JSON.stringify({ appId: null }));
+            }
+
             fetch(`/api/ottaorm/posts/unique?${params.toString()}`)
                 .then((res) => res.json())
                 .then((result: { unique?: boolean }) => setSlugStatus(result.unique ? 'available' : 'taken'))

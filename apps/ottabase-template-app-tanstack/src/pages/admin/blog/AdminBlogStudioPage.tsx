@@ -34,13 +34,12 @@ import {
     SelectValue,
     Textarea,
 } from '@ottabase/ui-shadcn';
-import { api } from '@/lib/api';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, Loader2, Palette, Puzzle, Settings } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
-const STUDIO_STATE_QUERY_KEY = ['blog', 'studio', 'state'] as const;
+const STUDIO_ENTITY = 'blog_studio' as const;
 
 interface StudioStateResponse {
     activeThemeId: string | null;
@@ -89,16 +88,16 @@ function formToPluginConfig(form: ContentInjectorConfigForm): Record<string, unk
 }
 
 export function AdminBlogStudioPage() {
-    const queryClient = useQueryClient();
     const {
         data: state,
         isLoading,
         isError,
         error,
         refetch,
-    } = useQuery({
-        queryKey: STUDIO_STATE_QUERY_KEY,
-        queryFn: () => api<StudioStateResponse>('/api/blog/studio/state'),
+    } = useApiQuery<StudioStateResponse>({
+        entity: STUDIO_ENTITY,
+        queryKey: ['state'],
+        endpoint: '/api/blog/studio/state',
     });
     const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
         open: false,
@@ -112,30 +111,49 @@ export function AdminBlogStudioPage() {
     const [configForm, setConfigForm] = useState<ContentInjectorConfigForm>(defaultContentInjectorForm);
     const [savingConfig, setSavingConfig] = useState(false);
 
-    const activateTheme = useCallback(
-        async (themeId: string) => {
-            try {
-                await api('/api/blog/studio/theme/activate', { method: 'POST', body: { themeId } });
-                await queryClient.invalidateQueries({ queryKey: STUDIO_STATE_QUERY_KEY });
-            } catch (err) {
-                console.error('Failed to activate theme', err);
-                setAlertDialog({ open: true, title: 'Error', message: 'Failed to activate theme. Please try again.' });
-            }
+    const activateThemeMutation = useApiMutation<unknown, { themeId: string }>({
+        endpoint: '/api/blog/studio/theme/activate',
+        method: 'POST',
+        invalidateEntities: [STUDIO_ENTITY],
+        mutationOptions: {
+            onError: () =>
+                setAlertDialog({ open: true, title: 'Error', message: 'Failed to activate theme. Please try again.' }),
         },
-        [queryClient],
+    });
+
+    const setPluginEnabledMutation = useApiMutation<unknown, { pluginId: string; enabled: boolean }>({
+        endpoint: '/api/blog/studio/plugin/enable',
+        method: 'POST',
+        invalidateEntities: [STUDIO_ENTITY],
+        mutationOptions: {
+            onError: () =>
+                setAlertDialog({ open: true, title: 'Error', message: 'Failed to update plugin. Please try again.' }),
+        },
+    });
+
+    const savePluginConfigMutation = useApiMutation<unknown, { pluginId: string; config: Record<string, unknown> }>({
+        endpoint: '/api/blog/studio/plugin/config',
+        method: 'POST',
+        invalidateEntities: [STUDIO_ENTITY],
+        mutationOptions: {
+            onSuccess: () => closeConfigModal(),
+            onError: () =>
+                setAlertDialog({
+                    open: true,
+                    title: 'Error',
+                    message: 'Failed to save plugin config. Please try again.',
+                }),
+        },
+    });
+
+    const activateTheme = useCallback(
+        (themeId: string) => activateThemeMutation.mutate({ themeId }),
+        [activateThemeMutation],
     );
 
     const setPluginEnabled = useCallback(
-        async (pluginId: string, enabled: boolean) => {
-            try {
-                await api('/api/blog/studio/plugin/enable', { method: 'POST', body: { pluginId, enabled } });
-                await queryClient.invalidateQueries({ queryKey: STUDIO_STATE_QUERY_KEY });
-            } catch (err) {
-                console.error('Failed to update plugin', err);
-                setAlertDialog({ open: true, title: 'Error', message: 'Failed to update plugin. Please try again.' });
-            }
-        },
-        [queryClient],
+        (pluginId: string, enabled: boolean) => setPluginEnabledMutation.mutate({ pluginId, enabled }),
+        [setPluginEnabledMutation],
     );
 
     const openConfigModal = useCallback((plugin: StudioPluginState) => {
@@ -152,28 +170,19 @@ export function AdminBlogStudioPage() {
         setSavingConfig(false);
     }, []);
 
-    const savePluginConfig = useCallback(async () => {
+    const savePluginConfig = useCallback(() => {
         const plugin = configModal.plugin;
         if (!plugin) return;
         setSavingConfig(true);
-        try {
-            const config =
-                plugin.pluginId === 'content-injector-plugin'
-                    ? formToPluginConfig(configForm)
-                    : ((configModal.plugin?.config as Record<string, unknown>) ?? {});
-            await api('/api/blog/studio/plugin/config', {
-                method: 'POST',
-                body: { pluginId: plugin.pluginId, config },
-            });
-            await queryClient.invalidateQueries({ queryKey: STUDIO_STATE_QUERY_KEY });
-            closeConfigModal();
-        } catch (err) {
-            console.error('Failed to save plugin config', err);
-            setAlertDialog({ open: true, title: 'Error', message: 'Failed to save plugin config. Please try again.' });
-        } finally {
-            setSavingConfig(false);
-        }
-    }, [configModal.plugin, configForm, queryClient, closeConfigModal]);
+        const config =
+            plugin.pluginId === 'content-injector-plugin'
+                ? formToPluginConfig(configForm)
+                : ((configModal.plugin?.config as Record<string, unknown>) ?? {});
+        savePluginConfigMutation.mutate(
+            { pluginId: plugin.pluginId, config },
+            { onSettled: () => setSavingConfig(false) },
+        );
+    }, [configModal.plugin, configForm, savePluginConfigMutation]);
 
     if (isError && error) {
         return (

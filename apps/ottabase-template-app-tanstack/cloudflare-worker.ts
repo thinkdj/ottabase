@@ -1,17 +1,13 @@
-import { registerBuiltInThemes } from '@ottabase/brand-engine';
 import { RealtimeActor } from '@ottabase/cf-realtime/server';
 import { errorResponse, ServiceError } from '@ottabase/utils/http-errors';
-import { queueHandler } from './ottabase/queue';
-
-// Register built-in themes so API can resolve themePresetId (default, neo, artisan, etc.)
-registerBuiltInThemes();
-import { initDbConnection } from './worker/lib/db-utils';
-import { handleShortlinkFallback } from './worker/routes/shortlinks';
-import { resolveApiRoute } from './worker/routes/router';
-import { resolvePlatformState, handleBootstrapRoute, interceptIfNotReady } from './worker/bootstrap';
-import { checkKillSwitches } from './worker/lib/killswitch';
-import { injectBrandCriticalCSS } from './worker/lib/brand-html-inject';
 import type { CloudflareEnv } from './cloudflare-env';
+import { queueHandler } from './ottabase/queue';
+import { handleBootstrapRoute, interceptIfNotReady, resolvePlatformState } from './worker/bootstrap';
+import { injectBrandCriticalCSS } from './worker/lib/brand-html-inject';
+import { initDbConnection } from './worker/lib/db-utils';
+import { checkKillSwitches } from './worker/lib/killswitch';
+import { resolveApiRoute } from './worker/routes/router';
+import { handleShortlinkFallback } from './worker/routes/shortlinks';
 
 export { RealtimeActor };
 

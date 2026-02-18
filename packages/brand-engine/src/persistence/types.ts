@@ -1,12 +1,12 @@
 // ---------------------------------------------------------------------------
 // Brand Engine – Resolved config types (API response shape, KV cache)
+// v2: Per-app scoping – no organizationId references
 // ---------------------------------------------------------------------------
 
 import type { LayoutConfig } from '@ottabase/ottalayout';
 import type { ResolvedBrandTheme } from '../resolver';
-import type { BrandTheme } from '../theme';
 
-/** Resolved brand config (GET /api/brand). Path-scoped: theme + layout for current path. */
+/** Resolved brand config (GET /api/brand). Path-scoped: theme + layout for current path. Per-app. */
 export interface ResolvedBrandConfig {
     brandName: string;
     tagline?: string;
@@ -18,8 +18,6 @@ export interface ResolvedBrandConfig {
         emailLogo?: string;
     };
     theme: ResolvedBrandTheme;
-    themeBase: string;
-    tenantTheme: Partial<BrandTheme>;
     defaultColorScheme: 'light' | 'dark' | 'system';
     allowDarkModeToggle: boolean;
     customCss?: string;
@@ -40,7 +38,7 @@ export interface ResolvedBrandConfig {
 /** Brand Kit list/detail item */
 export interface BrandKitItem {
     id: string;
-    organizationId: string | null;
+    appId: string | null;
     isDefault?: boolean;
     /** Parent Brand Kit ID – child inherits tokens/settings, overrides selectively */
     parentBrandKitId?: string | null;
@@ -117,14 +115,13 @@ export interface BrandResolutionCache {
             brandName: string;
             tagline?: string;
             logos: Record<string, string>;
-            /** Light-mode resolved theme */
+            /** Light-mode resolved theme (fully merged: preset + tenant overrides) */
             theme: ResolvedBrandTheme;
             /** Dark-mode resolved theme (returned alongside light so client picks at runtime) */
             darkTheme?: ResolvedBrandTheme;
-            themeBase: string;
-            tenantTheme: Partial<BrandTheme>;
             defaultColorScheme: string;
             allowDarkModeToggle: boolean;
+            /** Custom CSS injected as-is (NOT validated for security/correctness) */
             customCss?: string;
             hideOttabaseBranding: boolean;
         }

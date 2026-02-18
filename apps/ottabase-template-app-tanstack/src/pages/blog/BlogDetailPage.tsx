@@ -10,9 +10,8 @@ import { api, isApiError } from '@/lib/api';
 import { useBlogStudio } from '@/ottabase/blog/BlogStudioContext';
 import { BlogRenderer, formatDate, type BlogPostData } from '@ottabase/ottablog';
 import type { OutputData } from '@ottabase/ottaeditor';
-import { createModelHooks } from '@ottabase/ottaorm/client';
+import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
 import { Button, Input } from '@ottabase/ui-shadcn';
-import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { ArrowLeft, ArrowRight, ChevronLeft, Loader2, Lock } from 'lucide-react';
 import { useState } from 'react';
@@ -67,19 +66,16 @@ export function BlogDetailPage() {
     const [unlockError, setUnlockError] = useState<string | null>(null);
     const [isUnlocking, setIsUnlocking] = useState(false);
 
-    // Fetch post by slug from public API (stripped for protected posts)
-    const { data: post, isLoading: isLoadingPost } = useQuery({
-        queryKey: ['blog', 'post', 'by-slug', slug],
-        queryFn: async () => {
-            const res = await fetch(`/api/blog/posts/by-slug/${encodeURIComponent(slug!)}`);
-            if (!res.ok) {
-                if (res.status === 404) return null;
-                throw new Error(await res.text());
-            }
-            return res.json() as Promise<BlogPost>;
+    // useApiQuery with entity:'posts' namespaces the key as ['posts', 'by-slug', slug].
+    // Any mutation on the posts entity auto-busts this cache via the global observer.
+    const { data: post, isLoading: isLoadingPost } = useApiQuery<BlogPost>({
+        entity: 'posts',
+        queryKey: ['by-slug', slug],
+        endpoint: `/api/blog/posts/by-slug/${encodeURIComponent(slug ?? '')}`,
+        queryOptions: {
+            enabled: !!slug,
+            ...BLOG_DETAIL_QUERY_CONFIG,
         },
-        enabled: !!slug,
-        ...BLOG_DETAIL_QUERY_CONFIG,
     });
 
     // Fetch series info if post is part of a series (using useDetail for primary key lookup)

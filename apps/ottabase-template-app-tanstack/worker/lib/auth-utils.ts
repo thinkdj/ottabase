@@ -108,7 +108,7 @@ export async function getSecurityContext(request: Request, session: any | null):
     }
 
     if (!organizationId) {
-        const orgHeader = request.headers.get('x-organization-id');
+        const orgHeader = request.headers.get('x-org-id');
         if (orgHeader && orgHeader !== 'null') {
             organizationId = orgHeader;
         }

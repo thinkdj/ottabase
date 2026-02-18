@@ -321,7 +321,7 @@ The `tenantAwareCrudMiddleware` prevents cross-tenant data leaks:
 ```typescript
 // ❌ User tries to access another org's data
 GET /api/ottaorm/organization_members/member-123
-Headers: X-Organization-Id: org-acme
+Headers: X-Org-Id: org-acme
 
 // member-123 belongs to org-beta
 // ✅ Server returns 403 Forbidden
@@ -350,7 +350,7 @@ Headers: X-Organization-Id: org-acme
 
 Extracts tenant context from:
 
-1. Header: `X-Organization-Id: org-acme`
+1. Header: `X-Org-Id: org-acme`
 2. Subdomain: `acme.yourapp.com` → `org-acme`
 3. Query: `?organizationId=org-acme`
 4. JWT: `token.organizationId`
@@ -761,7 +761,7 @@ async function getSecurityContext(request: Request, session: any | null): Promis
     // Extract organizationId from multiple sources (priority order):
     let organizationId =
         session?.user?.organizationId || // From JWT/session
-        request.headers.get('x-organization-id') || // From header
+        request.headers.get('x-org-id') || // From header
         extractFromSubdomain(request) || // From subdomain
         request.searchParams.get('organizationId'); // From query
 
@@ -805,7 +805,7 @@ if (url.pathname.startsWith('/api/auth/')) {
 The security context extractor checks multiple sources for organization ID (in priority order):
 
 1. **Session/JWT** - `session.user.organizationId` (if JWT contains org)
-2. **Header** - `X-Organization-Id: org-acme` (explicit org selection)
+2. **Header** - `X-Org-Id: org-acme` (explicit org selection)
 3. **Subdomain** - `acme.yourapp.com` → `org-acme` (multi-tenant SaaS)
 4. **Query Parameter** - `?organizationId=org-acme` (fallback)
 
@@ -853,7 +853,7 @@ const [currentOrgId, setCurrentOrgId] = useState<string | undefined>(() => {
     onOrgChange={(orgId) => {
         setCurrentOrgId(orgId);
         localStorage.setItem('currentOrgId', orgId);
-        // API calls will include: X-Organization-Id: {orgId}
+        // API calls will include: X-Org-Id: {orgId}
     }}
 />
 ```
@@ -867,7 +867,7 @@ export async function api<T = any>(url: string, options: RequestInit = {}): Prom
 
     const headers = new Headers(options.headers);
     if (orgId) {
-        headers.set('X-Organization-Id', orgId);
+        headers.set('X-Org-Id', orgId);
     }
 
     const response = await fetch(url, {

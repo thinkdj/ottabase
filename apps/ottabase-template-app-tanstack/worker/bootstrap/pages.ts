@@ -558,6 +558,7 @@ wrangler secret put MIGRATION_SECRET</pre>
       apiFetch('/__bootstrap__/api/create-owner', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email: email, password: password, name: name })
       })
         .then(function(r) { return r.json(); })
@@ -572,6 +573,28 @@ wrangler secret put MIGRATION_SECRET</pre>
 
           log('log-owner', 'Owner account created: ' + data.user.email + ' (role: ' + data.user.role + ')', 'success');
           if (data.organizationId) log('log-owner', 'Workspace created: ' + data.organizationId, 'success');
+
+          /* Pre-hydrate localStorage so ProtectedRoute.hasValidStoredSession() passes
+             and the app doesn't redirect to /login before the cookie-based session loads */
+          try {
+            var session = {
+              user: {
+                id: data.user.id,
+                email: data.user.email,
+                name: data.user.name || null,
+                role: data.user.role,
+                organizationId: data.organizationId || null,
+                roles: [data.user.role],
+                permissions: ['*:*']
+              },
+              expires: data.sessionExpires || (Date.now() + 30 * 24 * 60 * 60 * 1000)
+            };
+            localStorage.setItem('ottabase.auth-session', JSON.stringify(session));
+            if (data.organizationId) {
+              localStorage.setItem('ottabase.current-org-id', data.organizationId);
+            }
+          } catch (e) { /* ignore storage failures */ }
+
           setBtn(btnOwner, false, 'Done');
           btnOwner.disabled = true;
           emailInput.disabled = true;

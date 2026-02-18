@@ -13,6 +13,16 @@ import { useSetAtom } from 'jotai';
 import { useEffect } from 'react';
 import { APP_ID } from '@/ottabase/config/app.config';
 
+const CURRENT_ORG_KEY = 'ottabase.current-org-id';
+
+function getStoredOrganizationId(): string | null {
+    try {
+        return localStorage.getItem(CURRENT_ORG_KEY);
+    } catch {
+        return null;
+    }
+}
+
 // Re-export types
 export { type Session, type User, type UseSessionOptions } from '@ottabase/auth/react';
 
@@ -31,13 +41,18 @@ export function useSession(options?: UseSessionOptions) {
         setGlobalUser(sessionData.user);
         setGlobalIsAuthenticated(sessionData.isAuthenticated);
         setAppId(APP_ID);
-        const orgId = (sessionData.user as any)?.organizationId ?? null;
-        setOrganizationId(orgId);
+
+        const sessionOrgId = (sessionData.user as any)?.organizationId ?? null;
+        const storedOrgId = getStoredOrganizationId();
+        const effectiveOrgId = sessionOrgId ?? (sessionData.isAuthenticated ? storedOrgId : null);
+
+        setOrganizationId(effectiveOrgId);
+
         try {
-            if (orgId) {
-                localStorage.setItem('ottabase.current-org-id', orgId);
+            if (effectiveOrgId) {
+                localStorage.setItem(CURRENT_ORG_KEY, effectiveOrgId);
             } else {
-                localStorage.removeItem('ottabase.current-org-id');
+                localStorage.removeItem(CURRENT_ORG_KEY);
             }
         } catch {
             // ignore storage failures

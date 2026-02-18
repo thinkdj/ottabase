@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – API handlers for brand config
+// Brand Engine – API handlers for brand config (v2: per-app scoping)
 // GET /api/brand – full config (route mappings, layouts, all brand kits). Client resolves path locally.
 // ---------------------------------------------------------------------------
 
@@ -8,6 +8,7 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { FullBrandConfig } from '../persistence/resolveBrandConfig';
 import { resolveFullBrandConfig } from '../persistence/resolveBrandConfig';
+import { PRESET_THEMES } from '../presets';
 
 export interface BrandApiEnv {
     OBCF_D1: D1Database;
@@ -43,22 +44,25 @@ function toCompactResponse(config: FullBrandConfig): CompactBrandConfig | FullBr
  * GET /api/brand – Return full resolution data in one response.
  * Returns both light and dark themes per kit so client can switch modes without refetch.
  * When single brand kit: compact format (kit + routes). Client expands and matches path locally.
+ * Scoped by appId (not organizationId).
  */
-export async function handleGetBrand(
-    request: Request,
-    env: BrandApiEnv,
-    organizationId?: string | null,
-    appId?: string | null,
-): Promise<Response> {
+export async function handleGetBrand(request: Request, env: BrandApiEnv, appId?: string | null): Promise<Response> {
     const url = new URL(request.url);
 
     const config = await resolveFullBrandConfig(env, {
-        organizationId: organizationId ?? url.searchParams.get('organizationId') ?? null,
         appId: appId ?? url.searchParams.get('appId') ?? null,
     });
 
     if (!config) return errorResponse('Brand config not found', 404);
     return jsonResponse(toCompactResponse(config), 200);
+}
+
+/**
+ * GET /api/brand/presets - Return all available theme presets
+ * Presets are used as templates - full theme is expanded and saved to DB on selection
+ */
+export async function handleGetPresets(): Promise<Response> {
+    return jsonResponse(PRESET_THEMES, 200);
 }
 
 // Re-export layout handlers

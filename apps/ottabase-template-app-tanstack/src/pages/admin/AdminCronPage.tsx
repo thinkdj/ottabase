@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { useApiMutation } from '@ottabase/ottaorm/client';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -103,7 +104,6 @@ export function AdminCronPage() {
         title: '',
         message: '',
     });
-    const queryClient = useQueryClient();
 
     // Validate payload is valid JSON (or empty)
     const validatePayload = (payload: string): boolean => {
@@ -132,61 +132,53 @@ export function AdminCronPage() {
         refetchInterval: 30000, // Refresh every 30 seconds
     });
 
-    // Create task mutation
-    const createMutation = useMutation({
-        mutationFn: (task: typeof newTask) =>
-            api<ScheduledTask>('/api/admin/cron', {
-                method: 'POST',
-                body: JSON.stringify(task),
-            }),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['admin', 'cron'] });
-            setIsCreating(false);
-            setPayloadError(null);
-            setNewTask({
-                name: '',
-                description: '',
-                schedule: '0 0 * * *',
-                taskType: 'handler',
-                task: '',
-                payload: '',
-                isActive: true,
-            });
+    const createMutation = useApiMutation<ScheduledTask, typeof newTask>({
+        endpoint: '/api/admin/cron',
+        method: 'POST',
+        invalidateKeys: [['admin', 'cron']],
+        mutationOptions: {
+            onSuccess: () => {
+                setIsCreating(false);
+                setPayloadError(null);
+                setNewTask({
+                    name: '',
+                    description: '',
+                    schedule: '0 0 * * *',
+                    taskType: 'handler',
+                    task: '',
+                    payload: '',
+                    isActive: true,
+                });
+            },
         },
     });
 
-    // Toggle task mutation
-    const toggleMutation = useMutation({
-        mutationFn: (taskId: string) => api(`/api/admin/cron/${taskId}/toggle`, { method: 'POST' }),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['admin', 'cron'] });
+    const toggleMutation = useApiMutation<unknown, string>({
+        endpoint: (taskId) => `/api/admin/cron/${taskId}/toggle`,
+        method: 'POST',
+        invalidateKeys: [['admin', 'cron']],
+    });
+
+    const deleteMutation = useApiMutation<unknown, string>({
+        endpoint: (taskId) => `/api/admin/cron/${taskId}`,
+        method: 'DELETE',
+        invalidateKeys: [['admin', 'cron']],
+        mutationOptions: {
+            onSuccess: () => setDeleteDialog(null),
+            onError: (error) => {
+                setAlertDialog({
+                    open: true,
+                    title: 'Error',
+                    message: isApiError(error) ? error.message : 'Failed to delete task',
+                });
+            },
         },
     });
 
-    // Delete task mutation
-    const deleteMutation = useMutation({
-        mutationFn: (taskId: string) => api(`/api/admin/cron/${taskId}`, { method: 'DELETE' }),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['admin', 'cron'] });
-        },
-        onError: (error) => {
-            setAlertDialog({
-                open: true,
-                title: 'Error',
-                message: isApiError(error) ? error.message : 'Failed to delete task',
-            });
-        },
-        onSettled: () => {
-            setDeleteDialog(null);
-        },
-    });
-
-    // Run task now mutation
-    const runNowMutation = useMutation({
-        mutationFn: (taskId: string) => api(`/api/admin/cron/${taskId}/run`, { method: 'POST' }),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['admin', 'cron'] });
-        },
+    const runNowMutation = useApiMutation<unknown, string>({
+        endpoint: (taskId) => `/api/admin/cron/${taskId}/run`,
+        method: 'POST',
+        invalidateKeys: [['admin', 'cron']],
     });
 
     const handleCreateTask = (e: React.FormEvent) => {

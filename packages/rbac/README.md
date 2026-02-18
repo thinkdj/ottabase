@@ -259,7 +259,7 @@ import {
 // Extract tenant ID from request
 const orgId = await extractOrganizationId({
     request,
-    headerName: 'X-Organization-Id', // Default
+    headerName: 'X-Org-Id', // Default
     queryParam: 'organizationId', // Default
     subdomainPrefix: 'org-', // acme.app.com → org-acme
 });

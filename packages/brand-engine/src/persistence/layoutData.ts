@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Fetch layout templates and route mappings for org/app
+// Brand Engine – Fetch layout templates and route mappings for app (v2: per-app)
 // Route mappings include brandKitId per row.
 // ---------------------------------------------------------------------------
 
@@ -24,28 +24,38 @@ export interface LayoutData {
     layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }>;
 }
 
+/** Resolve the default Brand Kit ID for an app (or system default). */
+async function resolveDefaultKitIdForApp(appId: string | null): Promise<string> {
+    if (appId) {
+        const appDefault = (await BrandKit.first({ appId, isDefault: true })) as BrandKit | null;
+        if (appDefault) return appDefault.get('id') as string;
+
+        const appAny = (await BrandKit.first({ appId })) as BrandKit | null;
+        if (appAny) return appAny.get('id') as string;
+    }
+
+    const systemDefault = await BrandKit.getOrCreateDefault();
+    return systemDefault.get('id') as string;
+}
+
 /**
- * Fetch layout templates and route mappings for org/app.
- * When no mappings exist, creates default mappings using system default Brand Kit.
+ * Fetch layout templates and route mappings for an app.
+ * Falls back to system defaults (appId=null) when no app-specific mappings exist.
+ * When no mappings exist at all, creates default mappings using system default Brand Kit.
  */
-export async function getLayoutData(organizationId: string | null, appId?: string | null): Promise<LayoutData> {
+export async function getLayoutData(appId?: string | null): Promise<LayoutData> {
     let mappings: InstanceType<typeof LayoutRouteMapping>[] = [];
 
-    if (appId && organizationId) {
+    // Try app-specific mappings first
+    if (appId) {
         mappings = (await LayoutRouteMapping.where({
-            organizationId,
             appId,
         })) as InstanceType<typeof LayoutRouteMapping>[];
     }
-    if (mappings.length === 0 && organizationId) {
-        mappings = (await LayoutRouteMapping.where({
-            organizationId,
-            appId: null,
-        })) as InstanceType<typeof LayoutRouteMapping>[];
-    }
+
+    // Fall back to system default mappings (appId=null)
     if (mappings.length === 0) {
         mappings = (await LayoutRouteMapping.where({
-            organizationId: null,
             appId: null,
         })) as InstanceType<typeof LayoutRouteMapping>[];
     }
@@ -61,18 +71,19 @@ export async function getLayoutData(organizationId: string | null, appId?: strin
             tokenOverridesJson: (m.get('tokenOverridesJson') as string | null) ?? null,
         }));
     } else {
-        const defaultKit = await BrandKit.getOrCreateDefault();
-        const kitId = defaultKit.get('id') as string;
+        const kitId = await resolveDefaultKitIdForApp(appId ?? null);
         routeMappings = DEFAULT_ROUTE_MAPPINGS.map((m) => ({ ...m, brandKitId: kitId }));
     }
 
     const templateIds = [...new Set(routeMappings.map((m) => m.layoutTemplateId))];
     const layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }> = {};
 
+    // Built-in presets always available
     for (const [key, preset] of Object.entries(LAYOUT_PRESETS)) {
         layoutTemplatesMap[key] = { componentKey: key, config: preset.config };
     }
 
+    // DB-stored custom templates
     const dbTemplates = await LayoutTemplate.whereIn('id', templateIds);
     for (const template of dbTemplates as LayoutTemplate[]) {
         const id = template.get('id') as string;

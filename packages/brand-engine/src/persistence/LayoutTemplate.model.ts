@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – LayoutTemplate OttaORM Model
+// Brand Engine – LayoutTemplate OttaORM Model (v2: per-app scoping)
 // ---------------------------------------------------------------------------
 
 import type { LayoutConfig } from '@ottabase/ottalayout';
@@ -26,19 +26,12 @@ export class LayoutTemplate extends BaseModel {
     };
 
     static writable = {
-        create: ['organizationId', 'appId', 'name', 'componentKey', 'configJson', 'description'],
+        create: ['appId', 'name', 'componentKey', 'configJson', 'description'],
         update: ['name', 'componentKey', 'configJson', 'description'],
     };
 
     protected static fields: ModelFields = {
         id: { type: 'id', primaryKey: true, editable: false, uiConfig: { label: 'ID' } },
-        organizationId: {
-            type: 'string',
-            editable: false,
-            uiConfig: { label: 'Organization' },
-            formConfig: { visible: false },
-            tableConfig: { visible: false },
-        },
         appId: {
             type: 'string',
             editable: false,

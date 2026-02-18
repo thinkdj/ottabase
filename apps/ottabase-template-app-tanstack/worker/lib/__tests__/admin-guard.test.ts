@@ -103,7 +103,7 @@ describe('requireAdminAccess', () => {
     it('allows org admin for organization scope', async () => {
         const request = new Request('https://example.com/api/admin/test', {
             headers: {
-                'x-organization-id': 'org-123',
+                'x-org-id': 'org-123',
             },
         });
         const { getRequestContext } = await import('@ottabase/rbac/request-context');

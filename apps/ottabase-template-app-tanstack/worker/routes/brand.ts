@@ -1,5 +1,6 @@
 // ---------------------------------------------------------------------------
 // Brand API routes – Brand Kits, layouts, mappings, GET /api/brand (path-aware)
+// v2: All scoped by appId only – no organizationId.
 // ---------------------------------------------------------------------------
 
 import type { AdminContext, ApiRouteContext } from '@ottabase/api/types';
@@ -12,13 +13,14 @@ import {
     handleGetBrandKits,
     handleGetLayouts,
     handleGetMappings,
+    handleGetPresets,
     handlePutLayout,
     handlePutMappings,
     handleUpdateBrandKit,
     handleUploadBrandKitLogo,
 } from '@ottabase/brand-engine/handlers';
-import { requireBrandEditAccess, SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
-import { brandEnv, getOrgApp } from '../lib/brand-utils';
+import { requireBrandEditAccess } from '../lib/admin-guard';
+import { brandEnv, getAppId } from '../lib/brand-utils';
 
 function toAuditUser(guard: AdminContext): { userId?: string; userEmail?: string } | undefined {
     const u = guard.user;
@@ -29,70 +31,65 @@ function toAuditUser(guard: AdminContext): { userId?: string; userEmail?: string
     };
 }
 
-/**
- * Normalize organizationId for brand kit storage.
- * "system" and empty values become null (system-scope default kits).
- * Uses the URL-provided orgId so read & write routes operate on the same scope.
- */
-function normalizeOrgId(orgId: string | null): string | null {
-    if (!orgId || orgId === SYSTEM_ORGANIZATION_ID) return null;
-    return orgId;
-}
-
 export async function handleBrandApi(context: ApiRouteContext): Promise<Response | null> {
     const { route, request, url, env, method } = context;
     const envBrand = brandEnv(env);
-    const { orgId, appId } = getOrgApp(url, request);
+    const appId = getAppId(url, request);
 
     // GET /api/brand - path required (client passes ?path=/current/path)
     if (route === '/api/brand' && method === 'GET') {
-        return handleGetBrand(request, envBrand, orgId, appId);
+        return handleGetBrand(request, envBrand, appId);
+    }
+
+    // GET /api/brand/presets - available theme presets
+    if (route === '/api/brand/presets' && method === 'GET') {
+        return handleGetPresets();
     }
 
     // Brand Kits CRUD
     if (route === '/api/brand/kits' && method === 'GET') {
-        return handleGetBrandKits(request, envBrand, orgId);
+        return handleGetBrandKits(request, envBrand, appId);
     }
     if (route === '/api/brand/kits' && method === 'POST') {
-        const guard = await requireBrandEditAccess(context, orgId, appId);
+        const guard = await requireBrandEditAccess(context, null, appId);
         if (guard instanceof Response) return guard;
-        return handleCreateBrandKit(request, envBrand, normalizeOrgId(orgId), toAuditUser(guard));
+        return handleCreateBrandKit(request, envBrand, appId, toAuditUser(guard));
     }
 
     const kitByIdMatch = route.match(/^\/api\/brand\/kits\/([^/]+)$/);
     if (kitByIdMatch) {
         const id = kitByIdMatch[1];
         if (method === 'GET') {
-            return handleGetBrandKit(request, envBrand, id, orgId);
+            return handleGetBrandKit(request, envBrand, id, appId);
         }
         if (method === 'PUT') {
-            const guard = await requireBrandEditAccess(context, orgId, appId);
+            const guard = await requireBrandEditAccess(context, null, appId);
             if (guard instanceof Response) return guard;
-            return handleUpdateBrandKit(request, envBrand, id, normalizeOrgId(orgId), toAuditUser(guard));
+            return handleUpdateBrandKit(request, envBrand, id, appId, toAuditUser(guard));
         }
         if (method === 'DELETE') {
-            const guard = await requireBrandEditAccess(context, orgId, appId);
+            const guard = await requireBrandEditAccess(context, null, appId);
             if (guard instanceof Response) return guard;
-            return handleDeleteBrandKit(request, envBrand, id, normalizeOrgId(orgId));
+            return handleDeleteBrandKit(request, envBrand, id, appId);
         }
     }
 
     const kitCloneMatch = route.match(/^\/api\/brand\/kits\/([^/]+)\/clone$/);
     if (kitCloneMatch && method === 'POST') {
-        const guard = await requireBrandEditAccess(context, orgId, appId);
+        const guard = await requireBrandEditAccess(context, null, appId);
         if (guard instanceof Response) return guard;
-        return handleCloneBrandKit(request, envBrand, kitCloneMatch[1], normalizeOrgId(orgId), toAuditUser(guard));
+        return handleCloneBrandKit(request, envBrand, kitCloneMatch[1], appId, toAuditUser(guard));
     }
 
     const kitLogoMatch = route.match(/^\/api\/brand\/kits\/([^/]+)\/logo\/(logo|logo-dark|icon|og-image|email-logo)$/);
     if (kitLogoMatch && method === 'POST') {
-        const guard = await requireBrandEditAccess(context, orgId, appId);
+        const guard = await requireBrandEditAccess(context, null, appId);
         if (guard instanceof Response) return guard;
         return handleUploadBrandKitLogo(
             request,
             envBrand,
             kitLogoMatch[1],
-            normalizeOrgId(orgId),
+            appId,
             kitLogoMatch[2] as 'logo' | 'logo-dark' | 'icon' | 'og-image' | 'email-logo',
             toAuditUser(guard),
         );
@@ -100,22 +97,20 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
 
     // Layouts & Mappings
     if (route === '/api/brand/layouts' && method === 'GET') {
-        return handleGetLayouts(request, envBrand, orgId, appId);
+        return handleGetLayouts(request, envBrand, appId);
     }
     if (route === '/api/brand/layouts' && method === 'PUT') {
-        const guard = await requireBrandEditAccess(context, orgId, appId);
+        const guard = await requireBrandEditAccess(context, null, appId);
         if (guard instanceof Response) return guard;
-        // Use URL-provided appId (same scope as GET) — not guard.appId which defaults to 'web'
-        return handlePutLayout(request, envBrand, normalizeOrgId(orgId), appId);
+        return handlePutLayout(request, envBrand, appId);
     }
     if (route === '/api/brand/mappings' && method === 'GET') {
-        return handleGetMappings(request, envBrand, orgId, appId);
+        return handleGetMappings(request, envBrand, appId);
     }
     if (route === '/api/brand/mappings' && method === 'PUT') {
-        const guard = await requireBrandEditAccess(context, orgId, appId);
+        const guard = await requireBrandEditAccess(context, null, appId);
         if (guard instanceof Response) return guard;
-        // Use URL-provided appId (same scope as GET) — not guard.appId which defaults to 'web'
-        return handlePutMappings(request, envBrand, normalizeOrgId(orgId), appId);
+        return handlePutMappings(request, envBrand, appId);
     }
 
     return null;

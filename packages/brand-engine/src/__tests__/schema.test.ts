@@ -14,9 +14,9 @@ import { brandKitsTable, layoutRouteMappingsTable, layoutTemplatesTable } from '
 // ===========================================================================
 
 describe('Schema tables', () => {
-    it('brandKitsTable has organizationId column for multitenancy', () => {
+    it('brandKitsTable has appId column for per-app scoping', () => {
         const columns = Object.keys(brandKitsTable);
-        expect(columns).toContain('organizationId');
+        expect(columns).toContain('appId');
     });
 
     it('brandKitsTable has audit trail columns', () => {
@@ -27,9 +27,8 @@ describe('Schema tables', () => {
         expect(columns).toContain('updatedAt');
     });
 
-    it('layoutTemplatesTable has organizationId and appId for multitenancy', () => {
+    it('layoutTemplatesTable has appId for per-app scoping', () => {
         const columns = Object.keys(layoutTemplatesTable);
-        expect(columns).toContain('organizationId');
         expect(columns).toContain('appId');
     });
 
@@ -39,9 +38,8 @@ describe('Schema tables', () => {
         expect(columns).toContain('updatedBy');
     });
 
-    it('layoutRouteMappingsTable has organizationId and appId for multitenancy', () => {
+    it('layoutRouteMappingsTable has appId for per-app scoping', () => {
         const columns = Object.keys(layoutRouteMappingsTable);
-        expect(columns).toContain('organizationId');
         expect(columns).toContain('appId');
     });
 
@@ -64,8 +62,8 @@ describe('Model metadata', () => {
         expect(BrandKit.displayNamePlural).toBe('Brand Kits');
         expect(BrandKit.defaultSort).toBe('updatedAt');
         expect(BrandKit.writable).toBeDefined();
-        expect(BrandKit.writable.create).toContain('organizationId');
-        expect(BrandKit.writable.update).not.toContain('organizationId');
+        expect(BrandKit.writable.create).toContain('appId');
+        expect(BrandKit.writable.update).not.toContain('appId');
     });
 
     it('LayoutTemplate has required static properties', () => {
@@ -74,7 +72,6 @@ describe('Model metadata', () => {
         expect(LayoutTemplate.packageName).toBe('@ottabase/brand-engine');
         expect(LayoutTemplate.displayName).toBe('Layout Template');
         expect(LayoutTemplate.writable).toBeDefined();
-        expect(LayoutTemplate.writable.create).toContain('organizationId');
         expect(LayoutTemplate.writable.create).toContain('appId');
     });
 
@@ -84,7 +81,7 @@ describe('Model metadata', () => {
         expect(LayoutRouteMapping.packageName).toBe('@ottabase/brand-engine');
         expect(LayoutRouteMapping.displayName).toBe('Route Mapping');
         expect(LayoutRouteMapping.writable).toBeDefined();
-        expect(LayoutRouteMapping.writable.create).toContain('organizationId');
+        expect(LayoutRouteMapping.writable.create).toContain('appId');
     });
 
     it('all models have packageType set to package', () => {

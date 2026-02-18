@@ -3,33 +3,20 @@
 // Supports parent kit inheritance: child tokens are deep-merged on top of parent's.
 // ---------------------------------------------------------------------------
 
-import { DEFAULT_BRAND_THEME } from '../defaults';
-import { getThemeByName } from '../registry';
+import { DEFAULT_LAYOUT } from '@ottabase/ottalayout';
+import {
+    DEFAULT_COLORS_DARK,
+    DEFAULT_COLORS_LIGHT,
+    DEFAULT_CURSORS,
+    DEFAULT_MOTION,
+    DEFAULT_SHADOWS,
+    DEFAULT_SPACING,
+} from '../defaults';
 import type { ResolvedBrandTheme } from '../resolver';
-import { deepMerge, resolveTheme } from '../resolver';
+import { deepMerge } from '../resolver';
 import type { BrandTheme } from '../theme';
-import type { DesignTokens } from '../tokens';
+import type { TokenColors } from '../tokens';
 import { BrandKit } from './BrandKit.model';
-
-/**
- * When a preset is selected AND no custom color overrides exist, strip color so preset
- * fully controls the palette. If the tenant has explicit color overrides (user applied
- * custom colors), keep them so they deep-merge on top of the preset.
- */
-function tenantOverridesForPreset(tenantTheme: BrandTheme, presetId: string | null): Partial<BrandTheme> {
-    if (!presetId || !tenantTheme?.tokens) return tenantTheme;
-    const hasCustomColors = !!(
-        tenantTheme.tokens.color &&
-        typeof tenantTheme.tokens.color === 'object' &&
-        Object.keys(tenantTheme.tokens.color).length > 0
-    );
-    if (hasCustomColors) return tenantTheme;
-    const { color: _color, ...tokensWithoutColor } = tenantTheme.tokens;
-    return {
-        ...tenantTheme,
-        tokens: tokensWithoutColor as DesignTokens,
-    };
-}
 
 /** Max depth for parent chain traversal (prevents infinite loops from circular refs) */
 const MAX_INHERITANCE_DEPTH = 5;
@@ -46,13 +33,29 @@ export async function resolveInheritanceChain(kit: BrandKit): Promise<BrandTheme
     for (let depth = 0; depth < MAX_INHERITANCE_DEPTH; depth++) {
         const parentId = current.get('parentBrandKitId') as string | null;
         if (!parentId) break;
-        if (visited.has(parentId)) break; // circular ref guard
+        if (visited.has(parentId)) {
+            console.warn(
+                `[Brand Engine] Circular inheritance detected: kit "${kit.get('name')}" (${kit.get('id')}) → parent "${parentId}". Breaking cycle.`,
+            );
+            break;
+        }
         visited.add(parentId);
 
         const parent = (await BrandKit.find(parentId)) as BrandKit | null;
-        if (!parent) break;
+        if (!parent) {
+            console.warn(
+                `[Brand Engine] Parent kit "${parentId}" not found for kit "${current.get('name')}" (${current.get('id')}). Stopping inheritance chain.`,
+            );
+            break;
+        }
         chain.unshift(parent); // prepend parent so chain is root → ... → child
         current = parent;
+    }
+
+    if (chain.length > 1 && current.get('parentBrandKitId')) {
+        console.warn(
+            `[Brand Engine] Max inheritance depth (${MAX_INHERITANCE_DEPTH}) reached for kit "${kit.get('name')}" (${kit.get('id')}). Chain may be incomplete.`,
+        );
     }
 
     // Merge from root → child: each layer's tokensJson overrides the previous
@@ -70,19 +73,39 @@ export async function resolveInheritanceChain(kit: BrandKit): Promise<BrandTheme
     return merged as BrandTheme;
 }
 
-/** Build ResolvedBrandTheme from BrandKit + mode, with inheritance support */
+/** Build ResolvedBrandTheme from BrandKit + mode (simplified - no resolution needed) */
 export async function brandKitToTheme(kit: BrandKit, mode: string = 'light'): Promise<ResolvedBrandTheme> {
+    // Handle inheritance if parent exists
     const hasParent = !!(kit.get('parentBrandKitId') as string | null);
     const tenantTheme = hasParent ? await resolveInheritanceChain(kit) : kit.toBrandTheme();
-    const presetId = (kit.get('themePresetId') as string) || null;
-    const baseTheme: BrandTheme =
-        presetId && getThemeByName(presetId) ? getThemeByName(presetId)! : DEFAULT_BRAND_THEME;
-    const overrides = tenantOverridesForPreset(tenantTheme, presetId);
-    return resolveTheme({
-        base: baseTheme,
-        tenantOverrides: overrides,
-        mode,
-    });
+
+    const tokens = tenantTheme.tokens;
+
+    // Get mode-specific colors from tokensJson (now contains full expanded theme)
+    const defaultPalette = mode === 'dark' ? DEFAULT_COLORS_DARK : DEFAULT_COLORS_LIGHT;
+    const rawPalette = tokens.color?.[mode] ?? tokens.color?.light ?? defaultPalette;
+    const colors = { ...defaultPalette, ...rawPalette } as TokenColors;
+
+    // Extract other design tokens with defaults
+    const typography = tokens.typography;
+    const spacing = tokens.spacing ?? DEFAULT_SPACING;
+    const radius = tokens.radius ?? '0.5rem';
+    const shadows = { ...DEFAULT_SHADOWS, ...(tokens.shadow ?? {}) };
+    const motion = { ...DEFAULT_MOTION, ...(tokens.motion ?? {}) };
+    const cursors = tenantTheme.cursors ?? DEFAULT_CURSORS;
+    const layout = { ...DEFAULT_LAYOUT, ...(tenantTheme.layout ?? {}) };
+
+    return {
+        name: tenantTheme.name,
+        colors,
+        typography,
+        spacing,
+        radius,
+        shadows,
+        motion,
+        cursors,
+        layout,
+    };
 }
 
 /** Extract logo URLs from BrandKit */
