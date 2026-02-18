@@ -10,7 +10,7 @@ import { landingPagesTable, type LandingPageType, type NewLandingPageType } from
 export { landingPagesTable, type LandingPageType, type NewLandingPageType } from './LandingPage.schema';
 
 export class LandingPage extends BaseModel {
-    static entity = 'landing_pages';
+    static entity = 'ottalanding_pages';
     static table = landingPagesTable;
     static primaryKey = 'id';
     static packageName = '@ottabase/ottalanding';

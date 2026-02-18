@@ -20,7 +20,7 @@ export {
 } from './LandingSection.schema';
 
 export class LandingSection extends BaseModel {
-    static entity = 'landing_sections';
+    static entity = 'ottalanding_sections';
     static table = landingSectionsTable;
     static primaryKey = 'id';
     static packageName = '@ottabase/ottalanding';

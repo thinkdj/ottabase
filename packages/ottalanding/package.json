@@ -28,7 +28,8 @@
         "@ottabase/ottaorm": "workspace:*"
     },
     "dependencies": {
-        "@ottabase/ottaorm": "workspace:*"
+        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ui-marketing": "workspace:*"
     },
     "devDependencies": {
         "@types/react": "catalog:",

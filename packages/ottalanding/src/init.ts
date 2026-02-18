@@ -1,34 +1,32 @@
 /**
  * @ottabase/ottalanding — Initialization
  *
- * Call initOttaLanding() at app startup to register default themes.
+ * Call initOttaLanding() at app startup to register built-in themes.
  * Custom themes can be registered before or after init.
  */
 
-import { setActiveLandingTheme } from './themes/registry';
+import { atlasTheme } from './themes/atlas';
+import { monoTheme } from './themes/mono';
+import { registerLandingTheme, setActiveLandingTheme } from './themes/registry';
 
 export interface OttaLandingInitOptions {
-    /** Default theme ID to activate (defaults to first registered theme) */
+    /** Default theme ID to activate (defaults to 'atlas') */
     defaultThemeId?: string;
 }
 
 /**
- * Initialize ottalanding.
- *
- * This is intentionally minimal — themes are registered by the consuming
- * app via registerLandingTheme(). This function just sets the active theme.
+ * Initialize ottalanding — registers built-in themes and sets the active one.
  *
  * @example
  * ```ts
- * import { initOttaLanding, registerLandingTheme } from '@ottabase/ottalanding';
- * import { atlasTheme } from './themes/atlas';
+ * import { initOttaLanding } from '@ottabase/ottalanding';
  *
- * registerLandingTheme(atlasTheme);
- * initOttaLanding({ defaultThemeId: 'atlas' });
+ * initOttaLanding(); // registers atlas + mono, activates atlas
+ * initOttaLanding({ defaultThemeId: 'mono' }); // activates mono instead
  * ```
  */
 export function initOttaLanding(options?: OttaLandingInitOptions) {
-    if (options?.defaultThemeId) {
-        setActiveLandingTheme(options.defaultThemeId);
-    }
+    registerLandingTheme(atlasTheme);
+    registerLandingTheme(monoTheme);
+    setActiveLandingTheme(options?.defaultThemeId || 'atlas');
 }

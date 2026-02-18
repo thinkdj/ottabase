@@ -21,6 +21,7 @@
         "@ottabase/brand-engine": "workspace:*",
         "@ottabase/brand-engine-react": "workspace:*",
         "@ottabase/config": "workspace:*",
+        "@ottabase/ottalanding": "workspace:*",
         "@ottabase/ottalayout": "workspace:*",
         "@ottabase/ui-components": "workspace:*",
         "@ottabase/ui-marketing": "workspace:*",

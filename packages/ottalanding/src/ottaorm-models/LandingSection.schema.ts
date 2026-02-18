@@ -5,7 +5,7 @@ import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { landingPagesTable } from './LandingPage.schema';
 
 export const landingSectionsTable = sqliteTable(
-    'landing_sections',
+    'ottalanding_sections',
     {
         id: text('id')
             .primaryKey()
@@ -51,10 +51,10 @@ export const landingSectionsTable = sqliteTable(
             .$onUpdateFn(() => Date.now()),
     },
     (table) => [
-        index('landing_sections_page_id_idx').on(table.pageId),
-        index('landing_sections_page_order_idx').on(table.pageId, table.order),
-        index('landing_sections_type_idx').on(table.sectionType),
-        index('landing_sections_app_id_idx').on(table.appId),
+        index('ottalanding_sections_page_id_idx').on(table.pageId),
+        index('ottalanding_sections_page_order_idx').on(table.pageId, table.order),
+        index('ottalanding_sections_type_idx').on(table.sectionType),
+        index('ottalanding_sections_app_id_idx').on(table.appId),
     ],
 );
 

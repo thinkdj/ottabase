@@ -4,7 +4,7 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const landingSitesTable = sqliteTable(
-    'landing_sites',
+    'ottalanding_sites',
     {
         id: text('id')
             .primaryKey()
@@ -67,8 +67,8 @@ export const landingSitesTable = sqliteTable(
             .$onUpdateFn(() => Date.now()),
     },
     (table) => [
-        uniqueIndex('landing_sites_app_id_unique_idx').on(table.appId),
-        index('landing_sites_org_id_idx').on(table.organizationId),
+        uniqueIndex('ottalanding_sites_app_id_unique_idx').on(table.appId),
+        index('ottalanding_sites_org_id_idx').on(table.organizationId),
     ],
 );
 

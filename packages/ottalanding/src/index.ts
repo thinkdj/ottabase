@@ -94,6 +94,8 @@ export {
     renderPage,
     renderSection,
     setActiveLandingTheme,
+    atlasTheme,
+    monoTheme,
 } from './themes';
 
 // ─── OttaORM models (DB persistence) ────────────────────────────────────────
@@ -118,6 +120,9 @@ export type {
     NewLandingSiteType,
     NewLandingThemeType,
 } from './ottaorm-models';
+
+// ─── Admin form fields per section type ──────────────────────────────────────
+export { getSectionFields, SECTION_FIELDS } from './section-fields';
 
 // ─── Initialization ──────────────────────────────────────────────────────────
 export { initOttaLanding } from './init';

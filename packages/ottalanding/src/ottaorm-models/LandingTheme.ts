@@ -11,7 +11,7 @@ import { landingThemesTable, type LandingThemeType, type NewLandingThemeType } f
 export { landingThemesTable, type LandingThemeType, type NewLandingThemeType } from './LandingTheme.schema';
 
 export class LandingTheme extends BaseModel {
-    static entity = 'landing_themes';
+    static entity = 'ottalanding_themes';
     static table = landingThemesTable;
     static primaryKey = 'id';
     static packageName = '@ottabase/ottalanding';

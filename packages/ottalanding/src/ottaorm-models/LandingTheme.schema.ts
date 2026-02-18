@@ -4,7 +4,7 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const landingThemesTable = sqliteTable(
-    'landing_themes',
+    'ottalanding_themes',
     {
         id: text('id')
             .primaryKey()
@@ -39,10 +39,10 @@ export const landingThemesTable = sqliteTable(
             .$onUpdateFn(() => Date.now()),
     },
     (table) => [
-        uniqueIndex('landing_themes_app_theme_unique_idx').on(table.appId, table.themeId),
-        index('landing_themes_is_active_idx').on(table.isActive),
-        index('landing_themes_app_active_idx').on(table.appId, table.isActive),
-        index('landing_themes_theme_id_idx').on(table.themeId),
+        uniqueIndex('ottalanding_themes_app_theme_unique_idx').on(table.appId, table.themeId),
+        index('ottalanding_themes_is_active_idx').on(table.isActive),
+        index('ottalanding_themes_app_active_idx').on(table.appId, table.isActive),
+        index('ottalanding_themes_theme_id_idx').on(table.themeId),
     ],
 );
 

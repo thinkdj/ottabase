@@ -2,45 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import {
-    AtlasCTABanner,
-    AtlasFAQAccordion,
-    AtlasFeaturesGrid,
-    AtlasFooterMarketing,
-    AtlasHeroSection,
-    AtlasLogoCloud,
-    AtlasNavbar,
-    AtlasPricingTable,
-    AtlasStatsSection,
-    AtlasStepsSection,
-    AtlasTestimonialsCarousel,
-} from '@ottabase/ui-marketing/atlas';
-import {
-    MonoCTABanner,
-    MonoFAQAccordion,
-    MonoFeaturesGrid,
-    MonoFooterMarketing,
-    MonoHeroSection,
-    MonoLogoCloud,
-    MonoNavbar,
-    MonoPricingTable,
-    MonoStatsSection,
-    MonoStepsSection,
-    MonoTestimonialsCarousel,
-} from '@ottabase/ui-marketing/mono';
-import {
-    demoCtaBanner,
-    demoFaq,
-    demoFeatures,
-    demoFooter,
-    demoHero,
-    demoLogoCloud,
-    demoNavbar,
-    demoPricing,
-    demoStats,
-    demoSteps,
-    demoTestimonials,
-} from '@/lib/marketing-demo-data';
+import { getLandingTheme, initOttaLanding, renderPage } from '@ottabase/ottalanding';
+import { homePage, siteContent } from '@/config/landing.config';
+
+// Ensure themes are registered on the client
+initOttaLanding({ defaultThemeId: 'atlas' });
 
 interface ThemePreviewClientProps {
     themeName: string;
@@ -48,44 +14,10 @@ interface ThemePreviewClientProps {
     darkVars: Record<string, string>;
 }
 
-function AtlasPage() {
-    return (
-        <>
-            <AtlasNavbar {...demoNavbar} />
-            <main className="flex flex-col bg-background text-foreground">
-                <AtlasHeroSection {...demoHero} />
-                <AtlasLogoCloud {...demoLogoCloud} />
-                <AtlasFeaturesGrid {...demoFeatures} />
-                <AtlasStatsSection {...demoStats} />
-                <AtlasStepsSection {...demoSteps} />
-                <AtlasTestimonialsCarousel {...demoTestimonials} />
-                <AtlasPricingTable {...demoPricing} />
-                <AtlasFAQAccordion {...demoFaq} />
-                <AtlasCTABanner {...demoCtaBanner} />
-                <AtlasFooterMarketing {...demoFooter} />
-            </main>
-        </>
-    );
-}
-
-function MonoPage() {
-    return (
-        <>
-            <MonoNavbar {...demoNavbar} />
-            <main className="flex flex-col bg-background text-foreground">
-                <MonoHeroSection {...demoHero} />
-                <MonoLogoCloud {...demoLogoCloud} />
-                <MonoFeaturesGrid {...demoFeatures} />
-                <MonoStatsSection {...demoStats} />
-                <MonoStepsSection {...demoSteps} />
-                <MonoTestimonialsCarousel {...demoTestimonials} />
-                <MonoPricingTable {...demoPricing} />
-                <MonoFAQAccordion {...demoFaq} />
-                <MonoCTABanner {...demoCtaBanner} />
-                <MonoFooterMarketing {...demoFooter} />
-            </main>
-        </>
-    );
+function LandingPage({ themeId }: { themeId: string }) {
+    const theme = getLandingTheme(themeId);
+    if (!theme) return <div className="p-8 text-center text-muted-foreground">Theme "{themeId}" not found</div>;
+    return renderPage(theme, siteContent, homePage);
 }
 
 export function ThemePreviewClient({ themeName, lightVars, darkVars }: ThemePreviewClientProps) {
@@ -144,8 +76,9 @@ export function ThemePreviewClient({ themeName, lightVars, darkVars }: ThemePrev
 
             {/* Preview — scoped to the selected theme */}
             <div className={scheme === 'dark' ? 'dark' : ''} style={currentVars as React.CSSProperties}>
-                {/* Top padding to clear the fixed control bar */}
-                <div className="bg-background pt-12">{template === 'atlas' ? <AtlasPage /> : <MonoPage />}</div>
+                <div className="bg-background pt-12">
+                    <LandingPage themeId={template} />
+                </div>
             </div>
         </>
     );

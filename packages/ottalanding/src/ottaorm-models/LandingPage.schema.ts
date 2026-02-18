@@ -5,7 +5,7 @@ import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqli
 import { landingSitesTable } from './LandingSite.schema';
 
 export const landingPagesTable = sqliteTable(
-    'landing_pages',
+    'ottalanding_pages',
     {
         id: text('id')
             .primaryKey()
@@ -48,10 +48,10 @@ export const landingPagesTable = sqliteTable(
     },
     (table) => [
         // Unique slug per site
-        uniqueIndex('landing_pages_site_slug_unique_idx').on(table.siteId, table.slug),
-        index('landing_pages_site_id_idx').on(table.siteId),
-        index('landing_pages_site_order_idx').on(table.siteId, table.order),
-        index('landing_pages_app_id_idx').on(table.appId),
+        uniqueIndex('ottalanding_pages_site_slug_unique_idx').on(table.siteId, table.slug),
+        index('ottalanding_pages_site_id_idx').on(table.siteId),
+        index('ottalanding_pages_site_order_idx').on(table.siteId, table.order),
+        index('ottalanding_pages_app_id_idx').on(table.appId),
     ],
 );
 
