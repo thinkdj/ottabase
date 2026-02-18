@@ -39,72 +39,59 @@ const C = {
 };
 
 // ─── ASCII Art Logo ─────────────────────────────────────────────────
-// Raw logo lines (no color) - each line is 25 chars wide
-// Pattern: outer ring + inner hole + inner ring
+// Raw logo lines (no color) — the Big O
 const LOGO_RAW = [
-    '     ████████████████     ', //  0: top cap
-    '   ██████████████████████ ', //  1: upper rim (solid)
-    '  ████                ████', //  2: outer ring
-    ' ████    ██████████    ████', //  3: outer + inner ring
-    ' ████   ████████████   ████', //  4: outer + inner ring
-    ' ████   ████████████   ████', //  5: outer + inner ring
-    ' ████   ████████████   ████', //  6: outer + inner ring
-    '  ████   ██████████   ████', //  7: outer + inner ring
-    '  ████                ████', //  8: outer ring
-    '   ██████████████████████ ', //  9: lower rim (solid)
-    '     ████████████████     ', // 10: bottom cap
+    '     ████████████████     ',
+    '   ██████████████████████ ',
+    '  ████                ████',
+    ' ████    ██████████    ████',
+    ' ████   ████████████   ████',
+    ' ████   ████████████   ████',
+    ' ████   ████████████   ████',
+    '  ████   ██████████   ████',
+    '  ████                ████',
+    '   ██████████████████████ ',
+    '     ████████████████     ',
 ];
 
-const LOGO_WIDTH = 27; // visual char width of widest line
+// Center of the O for radial-reveal (row, col)
+const LOGO_CENTER_ROW = 5;
+const LOGO_CENTER_COL = 14;
 
-// Apply gradient colors to raw logo lines
-function colorizeLogo(lines: string[]): string[] {
-    const colors = [C.o1, C.o1, C.o2, C.o2, C.o3, C.o3, C.o4, C.o4, C.o5, C.o5, C.o5];
-    return lines.map((line, i) => `${colors[i] || C.o3}${line}${RESET}`);
+// Gradient palette for row-based coloring
+const ROW_COLORS = [C.o1, C.o1, C.o2, C.o2, C.o3, C.o3, C.o4, C.o4, C.o5, C.o5, C.o5];
+
+// Compute distance of each character from the center of the O
+function buildDistanceMap(): number[][] {
+    return LOGO_RAW.map((line, row) =>
+        [...line].map((_, col) => {
+            const dr = row - LOGO_CENTER_ROW;
+            const dc = (col - LOGO_CENTER_COL) * 0.55; // chars are taller than wide
+            return Math.sqrt(dr * dr + dc * dc);
+        }),
+    );
 }
 
-const LOGO_LINES = colorizeLogo(LOGO_RAW);
+const DISTANCE_MAP = buildDistanceMap();
+const MAX_DISTANCE = Math.max(...DISTANCE_MAP.flat());
 
-// ─── Coin Spin Frames ───────────────────────────────────────────────
-// Simulate a coin spinning on vertical axis by horizontally compressing
-// each line of the O. At scale 1.0 = full width, 0.0 = edge-on (thin line).
-function scaleLineHorizontally(line: string, scale: number): string {
-    if (scale <= 0.05) {
-        // Edge-on: thin vertical line
-        const pad = Math.floor(LOGO_WIDTH / 2);
-        return ' '.repeat(pad) + '▌' + ' '.repeat(pad);
-    }
-    const stripped = line;
-    const totalLen = stripped.length;
-    const newLen = Math.max(1, Math.round(totalLen * scale));
-    const result: string[] = [];
-    for (let i = 0; i < newLen; i++) {
-        const srcIdx = Math.round((i / newLen) * totalLen);
-        result.push(stripped[Math.min(srcIdx, totalLen - 1)]);
-    }
-    const padTotal = LOGO_WIDTH - newLen;
-    const padLeft = Math.floor(padTotal / 2);
-    const padRight = padTotal - padLeft;
-    return ' '.repeat(padLeft) + result.join('') + ' '.repeat(padRight);
+// Render a single frame of the radial reveal at a given threshold
+function renderRevealFrame(threshold: number, colorOverride?: string): string[] {
+    return LOGO_RAW.map((line, row) => {
+        const color = colorOverride || ROW_COLORS[row] || C.o3;
+        const chars = [...line].map((ch, col) => {
+            if (ch === ' ') return ' ';
+            return DISTANCE_MAP[row][col] <= threshold ? `${color}█${RESET}` : ' ';
+        });
+        return chars.join('');
+    });
 }
 
-function generateSpinFrame(rawLines: string[], scale: number): string[] {
-    return rawLines.map((line) => scaleLineHorizontally(line, scale));
-}
-
-// Easing for smooth spin: cosine-based for that coin-flip feel
-function coinSpinPhases(): number[] {
-    // 2 full rotations = 720 degrees, sampled at intervals
-    const phases: number[] = [];
-    const totalFrames = 32; // 16 frames per rotation × 2
-    for (let i = 0; i <= totalFrames; i++) {
-        // cos gives us: 1 → 0 → -1 → 0 → 1 per 360°
-        // abs(cos) gives: 1 → 0 → 1 → 0 → 1 (the "width" as seen)
-        const angle = (i / totalFrames) * 2 * Math.PI * 2; // 2 full rotations
-        phases.push(Math.abs(Math.cos(angle)));
-    }
-    return phases;
-}
+// Full colored logo (final resting state)
+const LOGO_LINES = LOGO_RAW.map((line, row) => {
+    const color = ROW_COLORS[row] || C.o3;
+    return `${color}${line}${RESET}`;
+});
 
 const TITLE_LINES = [
     `${C.o2}${BOLD} ╔═══════════════════════════════════╗${RESET}`,
@@ -165,68 +152,67 @@ async function typeText(text: string, delay: number = 25): Promise<void> {
 
 async function animateLogo(): Promise<void> {
     hideCursor();
-
-    const phases = coinSpinPhases();
     const logoHeight = LOGO_RAW.length;
-    const frameDelay = 35; // ms per frame - snappy like a real coin
 
-    // First, print placeholder lines we'll overwrite
+    // Print placeholder lines to reserve screen space
     for (let i = 0; i < logoHeight; i++) {
         console.log('');
     }
 
-    // Animate the coin spin (2 rotations)
-    for (let f = 0; f < phases.length; f++) {
-        const scale = phases[f];
-        const frame = generateSpinFrame(LOGO_RAW, scale);
-        const coloredFrame = colorizeLogo(frame);
+    // ── Phase 1: Radial reveal — O materializes from center outward ──
+    const revealSteps = 18;
+    for (let step = 0; step <= revealSteps; step++) {
+        // Ease-out: fast start, gentle finish
+        const t = step / revealSteps;
+        const eased = 1 - (1 - t) * (1 - t);
+        const threshold = eased * MAX_DISTANCE;
 
-        // Move cursor up to top of logo area
+        const frame = renderRevealFrame(threshold);
         process.stdout.write(`\x1b[${logoHeight}A`);
-
-        // Redraw all lines
-        for (const line of coloredFrame) {
+        for (const line of frame) {
             clearLine();
             console.log(line);
         }
-
-        await sleep(frameDelay);
+        await sleep(40);
     }
 
-    // Final frame: the full O with sparkle on top-right ✦
+    // ── Phase 2: Color-sweep glow pulse ──
+    const sweepPalette = [
+        '\x1b[38;5;195m', // white-ish highlight
+        '\x1b[38;5;159m', // light cyan glow
+        '\x1b[38;5;123m', // bright cyan
+    ];
+    for (const glow of sweepPalette) {
+        const frame = renderRevealFrame(MAX_DISTANCE, glow);
+        process.stdout.write(`\x1b[${logoHeight}A`);
+        for (const line of frame) {
+            clearLine();
+            console.log(line);
+        }
+        await sleep(60);
+    }
+
+    // ── Phase 3: Settle to final gradient colors ──
     process.stdout.write(`\x1b[${logoHeight}A`);
     for (let i = 0; i < LOGO_LINES.length; i++) {
         clearLine();
-        if (i === 0) {
-            // Add sparkle to top-right of first line
-            console.log(`${LOGO_LINES[i]} ${C.accent}${BOLD}✦${RESET}`);
-        } else {
-            console.log(LOGO_LINES[i]);
-        }
+        console.log(LOGO_LINES[i]);
     }
+    await sleep(80);
 
-    // Brief sparkle twinkle effect
-    const sparkleFrames = ['✦', '✧', '✦', '⋆', '✦'];
-    for (const sp of sparkleFrames) {
-        await sleep(100);
-        // Move up to first line, overwrite sparkle
+    // ── Phase 4: Sparkle on top-right ✦ ──
+    const sparkleSeq = ['✦', '✧', '✦', '⋆', '✦'];
+    for (const sp of sparkleSeq) {
         process.stdout.write(`\x1b[${logoHeight}A`);
         clearLine();
-        console.log(`${LOGO_LINES[0]} ${C.accent}${BOLD}${sp}${RESET}`);
-        // Move back down
+        console.log(`${LOGO_LINES[0]}  ${C.accent}${BOLD}${sp}${RESET}`);
         process.stdout.write(`\x1b[${logoHeight - 1}B`);
+        await sleep(90);
     }
-
-    // Final sparkle settled
-    await sleep(80);
-    process.stdout.write(`\x1b[${logoHeight}A`);
-    clearLine();
-    console.log(`${LOGO_LINES[0]} ${C.accent}${BOLD}✦${RESET}`);
-    process.stdout.write(`\x1b[${logoHeight - 1}B`);
 
     console.log('');
 
-    // Reveal title with a brief pause
+    // ── Reveal title ──
     for (const line of TITLE_LINES) {
         console.log(line);
         await sleep(60);
