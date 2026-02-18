@@ -5,7 +5,7 @@
  * Uses public API so protected posts return without body until unlocked.
  */
 import { SEOHead } from '@/components/SEOHead';
-import { BLOG_DETAIL_QUERY_CONFIG, BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
+import { BLOG_DETAIL_QUERY_CONFIG, BLOG_LIST_QUERY_CONFIG } from '@/ottabase/config/query.config';
 import { api, isApiError } from '@/lib/api';
 import { useBlogStudio } from '@/ottabase/blog/BlogStudioContext';
 import { BlogRenderer, formatDate, type BlogPostData } from '@ottabase/ottablog';

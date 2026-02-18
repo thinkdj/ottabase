@@ -5,7 +5,7 @@
  * Uses public API so protected posts only return excerpt (no full body).
  */
 import { SEOHead } from '@/components/SEOHead';
-import { BLOG_LIST_QUERY_CONFIG, SERIES_LIST_QUERY_CONFIG } from '@/config/queryConfig';
+import { BLOG_LIST_QUERY_CONFIG, SERIES_LIST_QUERY_CONFIG } from '@/ottabase/config/query.config';
 import { CONTENT_TYPES, formatDate, type ContentType } from '@ottabase/ottablog';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 import { Button, Card, CardContent, Input } from '@ottabase/ui-shadcn';

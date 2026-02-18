@@ -244,11 +244,17 @@ All models include a nullable `appId` column:
 ## Creating New Apps
 
 ```bash
-cp -r apps/ottabase-template-app-tanstack apps/my-app
-cd apps/my-app
-# Update package.json name
-# Delete src/pages/demo/
+# Scaffold a new app from the template (recommended)
+pnpm create-app my-app
+
+# Follow the on-screen instructions to:
+# 1. pnpm install
+# 2. Copy .env.example to .env.local
+# 3. pnpm build:pkg
+# 4. Start dev server
 ```
+
+This creates a clean app in `apps/my-app/` based on the TanStack template. Your existing apps are never modified.
 
 ## Package Fat Model Pattern
 
@@ -311,6 +317,26 @@ pnpm deploy
 curl -X POST https://your-app.workers.dev/api/ottaorm/init \
   -H "Authorization: Bearer ${MIGRATION_SECRET}"
 ```
+
+## Package Tiers
+
+Packages are organized into tiers defined in [`ottabase.manifest.json`](./ottabase.manifest.json):
+
+| Tier          | Description                                          |
+| ------------- | ---------------------------------------------------- |
+| **community** | Included in the open-source distribution. Free.      |
+| **pro**       | Available only in the PRO distribution. Licensed.    |
+
+Core packages (ottaorm, db, cf, auth, queue, config, ui-\*) are **community** tier.
+Advanced features (audit, rbac, brand-engine, cf-realtime, notifications) are **pro** tier.
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup instructions and guidelines.
+
+## License
+
+[MIT](./LICENSE)
 
 ## Docs
 

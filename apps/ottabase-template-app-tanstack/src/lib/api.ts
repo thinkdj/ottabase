@@ -9,11 +9,7 @@ import { AUTH_STORAGE_KEY, clearAuthSessionStorage } from '@ottabase/auth/react'
 import { createApiClient, type ApiError } from '@ottabase/api';
 import { toast } from 'sonner';
 import { APP_ID } from '@/ottabase/config/app.config';
-
-/**
- * localStorage key for current org (used when session not yet loaded).
- */
-const CURRENT_ORG_KEY = 'ottabase.current-org-id';
+import { API_BASE_URL, API_TIMEOUT, CURRENT_ORG_KEY } from '@/ottabase/config/api.config';
 
 /**
  * Get auth token from storage/context.
@@ -139,7 +135,7 @@ function handleApiError(error: ApiError): void {
  * ```
  */
 export const api = createApiClient({
-    baseUrl: '',
+    baseUrl: API_BASE_URL,
     getAuthToken,
     onError: handleApiError,
     onUnauthorized: () => {
@@ -159,7 +155,7 @@ export const api = createApiClient({
         }
         return headers;
     },
-    timeout: 30000,
+    timeout: API_TIMEOUT,
 });
 
 // Re-export types for convenience

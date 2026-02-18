@@ -29,11 +29,11 @@
 │  │  (users, posts, auth, etc)│   │  ├─ App migrations            │
 │  ├─ App tables                │   │  └─ Package migrations        │
 │  │  (todos, custom tables)   │   │                               │
-│  └─ Package tables            │   │  From: config.migrations.ts   │
+│  └─ Package tables            │   │  From: migrations.config.ts   │
 │     (shortlinks, etc)         │   │                               │
 │                               │   │                               │
 │  From: ottabase/db/schema.ts  │   │                               │
-│     + config.migrations.ts    │   │                               │
+│     + migrations.config.ts    │   │                               │
 └───────────────────────────────┘   └───────────────────────────────┘
                     │                               │
                     └───────────────┬───────────────┘
@@ -91,7 +91,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│              ottabase/config.migrations.ts                               │
+│              ottabase/migrations.config.ts                               │
 │                                                                          │
 │  PACKAGE_REGISTRY = {                                                    │
 │    shortlinks: {                                                        │
@@ -135,7 +135,7 @@ App-Specific Schemas (ottabase/models/*)
 └─ todosTable
 
 Package Schemas (from enabled packages)
-└─ shortlinksTable (when enabled in config.migrations.ts)
+└─ shortlinksTable (when enabled in migrations.config.ts)
 
 ALL COMBINED IN: getAllSchemas()
 ```
@@ -164,7 +164,7 @@ Developer adds new table:
 4. Table automatically created ✅
 
 Developer adds new package:
-1. Import package tables in config.migrations.ts
+1. Import package tables in migrations.config.ts
 2. Add to PACKAGE_REGISTRY
 3. Set to true in migrationConfig
 4. Call /api/ottaorm/init
