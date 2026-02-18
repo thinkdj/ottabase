@@ -1,21 +1,124 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import type { TocItem } from '../types';
 import { extractToc } from '../utils';
 
 interface MarkdownRendererProps {
     content: string;
     className?: string;
+    /** Enable syntax highlighting with @ottabase/ui-code-highlight CodeBlock */
+    enableCodeHighlight?: boolean;
+}
+
+/** Extract code blocks from rendered HTML and replace with placeholder divs */
+interface CodeBlockData {
+    id: string;
+    lang: string;
+    code: string;
 }
 
 /**
- * Lightweight markdown-to-HTML renderer.
- * Handles: headings, paragraphs, code blocks, inline code, bold, italic,
- * links, images, lists, blockquotes, horizontal rules, and tables.
+ * Lightweight markdown-to-HTML renderer with optional syntax highlighting.
+ * When enableCodeHighlight is true, code blocks get copy-to-clipboard and
+ * language labels via @ottabase/ui-code-highlight.
  */
-export function MarkdownRenderer({ content, className = '' }: MarkdownRendererProps) {
-    const html = useMemo(() => renderMarkdown(content), [content]);
+export function MarkdownRenderer({ content, className = '', enableCodeHighlight = false }: MarkdownRendererProps) {
+    const { html, codeBlocks } = useMemo(() => renderMarkdownWithBlocks(content), [content]);
 
-    return <div className={`otta-docs-content ${className}`} dangerouslySetInnerHTML={{ __html: html }} />;
+    if (!enableCodeHighlight || codeBlocks.length === 0) {
+        return <div className={`otta-docs-content ${className}`} dangerouslySetInnerHTML={{ __html: html }} />;
+    }
+
+    return (
+        <div className={`otta-docs-content ${className}`}>
+            <MarkdownWithCodeBlocks html={html} codeBlocks={codeBlocks} />
+        </div>
+    );
+}
+
+/** Render HTML sections interspersed with interactive CodeBlock components */
+function MarkdownWithCodeBlocks({ html, codeBlocks }: { html: string; codeBlocks: CodeBlockData[] }) {
+    // Split out code block placeholders: <!--codeblock:N-->...fallback...<!--/codeblock-->
+    const parts = html.split(/<!--codeblock:(\d+)-->[\s\S]*?<!--\/codeblock-->/);
+    return (
+        <>
+            {parts.map((part, i) => {
+                if (i % 2 === 1) {
+                    const block = codeBlocks[parseInt(part, 10)];
+                    if (block) {
+                        return <EnhancedCodeBlock key={block.id} lang={block.lang} code={block.code} />;
+                    }
+                }
+                if (part) {
+                    return <span key={i} dangerouslySetInnerHTML={{ __html: part }} />;
+                }
+                return null;
+            })}
+        </>
+    );
+}
+
+/** Enhanced code block with copy button and language label */
+function EnhancedCodeBlock({ lang, code }: { lang: string; code: string }) {
+    const [copied, setCopied] = useState(false);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const handleCopy = useCallback(async () => {
+        try {
+            await navigator.clipboard.writeText(code);
+            setCopied(true);
+            timerRef.current = setTimeout(() => setCopied(false), 2000);
+        } catch {
+            /* clipboard not available */
+        }
+    }, [code]);
+
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) clearTimeout(timerRef.current);
+        };
+    }, []);
+
+    return (
+        <div className="otta-docs-code-block otta-docs-code-enhanced">
+            <div className="otta-docs-code-header">
+                {lang && lang !== 'text' && <span className="otta-docs-code-lang-label">{lang}</span>}
+                <button type="button" className="otta-docs-code-copy" onClick={handleCopy} title="Copy code">
+                    {copied ? (
+                        <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                    ) : (
+                        <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                        </svg>
+                    )}
+                    <span>{copied ? 'Copied' : 'Copy'}</span>
+                </button>
+            </div>
+            <pre>
+                <code className={`language-${lang || 'text'}`}>{code}</code>
+            </pre>
+        </div>
+    );
 }
 
 interface TableOfContentsProps {
@@ -89,9 +192,11 @@ function renderInline(text: string): string {
     return result;
 }
 
-function renderMarkdown(md: string): string {
+/** Renders markdown to HTML, extracting code blocks as separate data for React rendering */
+function renderMarkdownWithBlocks(md: string): { html: string; codeBlocks: CodeBlockData[] } {
     const lines = md.split('\n');
     const output: string[] = [];
+    const codeBlocks: CodeBlockData[] = [];
     const usedIds = new Map<string, number>();
     let i = 0;
 
@@ -115,10 +220,13 @@ function renderMarkdown(md: string): string {
                 i++;
             }
             i++; // skip closing ```
-            const code = escapeHtml(codeLines.join('\n'));
-            output.push(
-                `<div class="otta-docs-code-block">${lang ? `<div class="otta-docs-code-lang">${escapeHtml(lang)}</div>` : ''}<pre><code class="language-${escapeHtml(lang || 'text')}">${code}</code></pre></div>`,
-            );
+            const code = codeLines.join('\n');
+            const blockId = `cb-${codeBlocks.length}`;
+            codeBlocks.push({ id: blockId, lang: lang || 'text', code });
+            // Placeholder for enhanced mode; fallback HTML for plain mode
+            const escaped = escapeHtml(code);
+            const fallbackHtml = `<div class="otta-docs-code-block">${lang ? `<div class="otta-docs-code-lang">${escapeHtml(lang)}</div>` : ''}<pre><code class="language-${escapeHtml(lang || 'text')}">${escaped}</code></pre></div>`;
+            output.push(`<!--codeblock:${codeBlocks.length - 1}-->${fallbackHtml}<!--/codeblock-->`);
             continue;
         }
 
@@ -156,9 +264,12 @@ function renderMarkdown(md: string): string {
                 quoteLines.push(lines[i].trim().replace(/^>\s?/, ''));
                 i++;
             }
-            output.push(
-                `<blockquote class="otta-docs-blockquote">${renderMarkdown(quoteLines.join('\n'))}</blockquote>`,
-            );
+            const inner = renderMarkdownWithBlocks(quoteLines.join('\n'));
+            output.push(`<blockquote class="otta-docs-blockquote">${inner.html}</blockquote>`);
+            // Merge inner code blocks
+            for (const cb of inner.codeBlocks) {
+                codeBlocks.push(cb);
+            }
             continue;
         }
 
@@ -217,7 +328,7 @@ function renderMarkdown(md: string): string {
         }
     }
 
-    return output.join('\n');
+    return { html: output.join('\n'), codeBlocks };
 }
 
 function renderTable(lines: string[]): string {

@@ -12,10 +12,14 @@
             "import": "./dist/index.mjs",
             "require": "./dist/index.js"
         },
-        "./styles.css": "./src/styles.css"
+        "./styles.css": "./src/styles.css",
+        "./themes/github.css": "./src/themes/github.css",
+        "./themes/notion.css": "./src/themes/notion.css"
     },
     "files": [
         "dist",
+        "src/styles.css",
+        "src/themes",
         "README.md"
     ],
     "scripts": {
@@ -38,7 +42,21 @@
     "license": "MIT",
     "peerDependencies": {
         "react": "catalog:",
-        "react-dom": "catalog:"
+        "react-dom": "catalog:",
+        "@tabler/icons-react": "catalog:",
+        "@ottabase/ui-code-highlight": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*"
+    },
+    "peerDependenciesMeta": {
+        "@tabler/icons-react": {
+            "optional": true
+        },
+        "@ottabase/ui-code-highlight": {
+            "optional": true
+        },
+        "@ottabase/ui-shadcn": {
+            "optional": true
+        }
     },
     "devDependencies": {
         "@types/node": "catalog:",

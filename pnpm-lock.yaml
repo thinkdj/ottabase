@@ -1015,6 +1015,16 @@ importers:
         version: 5.9.3
 
   packages/docs:
+    dependencies:
+      '@ottabase/ui-code-highlight':
+        specifier: workspace:*
+        version: link:../ui-code-highlight
+      '@ottabase/ui-shadcn':
+        specifier: workspace:*
+        version: link:../ui-shadcn
+      '@tabler/icons-react':
+        specifier: 'catalog:'
+        version: 3.35.0(react@19.2.4)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

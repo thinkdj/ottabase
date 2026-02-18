@@ -46,6 +46,9 @@ export interface DocsSource {
     pages: DocPage[];
 }
 
+/** Built-in theme names */
+export type DocsTheme = 'default' | 'github' | 'notion';
+
 /** Configuration for the docs viewer */
 export interface DocsConfig {
     /** Application or docs site title */
@@ -56,4 +59,8 @@ export interface DocsConfig {
     sources: DocsSource[];
     /** Base URL path (e.g. "/docs") */
     basePath?: string;
+    /** Theme name — 'default' | 'github' | 'notion' */
+    theme?: DocsTheme;
+    /** Whether to show code block copy buttons (requires @ottabase/ui-code-highlight) */
+    enableCodeHighlight?: boolean;
 }

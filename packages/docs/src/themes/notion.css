@@ -1,0 +1,268 @@
+/* ==========================================================================
+   @ottabase/docs — Notion-inspired theme
+   Warm, readable design modeled after Notion's documentation.
+   ========================================================================== */
+
+.otta-docs-theme-notion {
+    --otta-docs-font: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --otta-docs-font-mono: 'SFMono-Regular', Menlo, Consolas, 'PT Mono', 'Liberation Mono', Courier, monospace;
+    --otta-docs-sidebar-width: 240px;
+    --otta-docs-toc-width: 200px;
+    --otta-docs-content-max-width: 720px;
+    --otta-docs-color-bg: #ffffff;
+    --otta-docs-color-bg-subtle: #fbfbfa;
+    --otta-docs-color-bg-code: #f7f6f3;
+    --otta-docs-color-border: #e9e9e7;
+    --otta-docs-color-text: #37352f;
+    --otta-docs-color-text-muted: #787774;
+    --otta-docs-color-text-dimmed: #9b9a97;
+    --otta-docs-color-primary: #2eaadc;
+    --otta-docs-color-primary-light: #e8f4f8;
+    --otta-docs-color-link: #2eaadc;
+    --otta-docs-color-code-bg: #f7f6f3;
+    --otta-docs-color-code-border: #e9e9e7;
+    --otta-docs-color-blockquote-border: #37352f;
+    --otta-docs-color-blockquote-bg: transparent;
+    --otta-docs-radius: 3px;
+    --otta-docs-radius-sm: 3px;
+}
+
+.otta-docs-theme-notion .otta-docs-layout {
+    font-feature-settings: normal;
+}
+
+.otta-docs-theme-notion .otta-docs-sidebar {
+    background: var(--otta-docs-color-bg-subtle);
+    border-right-color: var(--otta-docs-color-border);
+}
+
+.otta-docs-theme-notion .otta-docs-sidebar-search {
+    background: var(--otta-docs-color-bg-subtle);
+}
+
+.otta-docs-theme-notion .otta-docs-search-input {
+    font-size: 14px;
+    border-radius: var(--otta-docs-radius);
+    background: var(--otta-docs-color-bg);
+    border-color: var(--otta-docs-color-border);
+    padding: 6px 10px;
+}
+
+.otta-docs-theme-notion .otta-docs-search-input:focus {
+    border-color: var(--otta-docs-color-primary);
+    box-shadow: none;
+}
+
+.otta-docs-theme-notion .otta-docs-nav-group-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--otta-docs-color-text-dimmed);
+    padding: 12px 4px 4px;
+}
+
+.otta-docs-theme-notion .otta-docs-nav-link {
+    font-size: 14px;
+    padding: 4px 4px;
+    border-radius: var(--otta-docs-radius);
+    color: var(--otta-docs-color-text-muted);
+}
+
+.otta-docs-theme-notion .otta-docs-nav-link:hover {
+    background: rgba(55, 53, 47, 0.04);
+    color: var(--otta-docs-color-text);
+}
+
+.otta-docs-theme-notion .otta-docs-nav-active {
+    background: rgba(55, 53, 47, 0.06) !important;
+    color: var(--otta-docs-color-text) !important;
+    font-weight: 500;
+}
+
+.otta-docs-theme-notion .otta-docs-content {
+    line-height: 1.6;
+}
+
+.otta-docs-theme-notion .otta-docs-content h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0 0 4px;
+    letter-spacing: -0.02em;
+}
+
+.otta-docs-theme-notion .otta-docs-content h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    border-bottom: none;
+    padding-bottom: 0;
+    margin: 32px 0 8px;
+}
+
+.otta-docs-theme-notion .otta-docs-content h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 24px 0 4px;
+}
+
+.otta-docs-theme-notion .otta-docs-p {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--otta-docs-color-text);
+}
+
+.otta-docs-theme-notion .otta-docs-inline-code {
+    background: var(--otta-docs-color-code-bg);
+    border: none;
+    color: #eb5757;
+    padding: 0.2em 0.4em;
+    font-size: 85%;
+    border-radius: var(--otta-docs-radius);
+}
+
+.otta-docs-theme-notion .otta-docs-code-block {
+    border: none;
+    border-radius: var(--otta-docs-radius);
+    background: var(--otta-docs-color-code-bg);
+}
+
+.otta-docs-theme-notion .otta-docs-code-lang {
+    background: transparent;
+    border-bottom: none;
+    color: var(--otta-docs-color-text-dimmed);
+    font-size: 12px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    padding: 8px 16px 0;
+}
+
+.otta-docs-theme-notion .otta-docs-code-block pre {
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 12px 16px;
+}
+
+.otta-docs-theme-notion .otta-docs-link {
+    color: var(--otta-docs-color-text);
+    text-decoration: underline;
+    text-decoration-color: var(--otta-docs-color-text-dimmed);
+    text-underline-offset: 2px;
+    border-bottom: none;
+}
+
+.otta-docs-theme-notion .otta-docs-link:hover {
+    color: var(--otta-docs-color-text);
+    text-decoration-color: var(--otta-docs-color-text);
+}
+
+.otta-docs-theme-notion .otta-docs-blockquote {
+    border-left: 3px solid var(--otta-docs-color-text);
+    background: transparent;
+    padding: 0 14px;
+    color: var(--otta-docs-color-text);
+}
+
+.otta-docs-theme-notion .otta-docs-table-wrapper {
+    border: none;
+    border-radius: 0;
+}
+
+.otta-docs-theme-notion .otta-docs-table th {
+    background: transparent;
+    border-bottom: 1px solid var(--otta-docs-color-border);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.otta-docs-theme-notion .otta-docs-table td {
+    font-size: 14px;
+    border-bottom: 1px solid var(--otta-docs-color-border);
+}
+
+.otta-docs-theme-notion .otta-docs-toc-title {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--otta-docs-color-text-dimmed);
+}
+
+.otta-docs-theme-notion .otta-docs-toc-link {
+    font-size: 13px;
+    color: var(--otta-docs-color-text-dimmed);
+    border-left: none;
+    padding: 2px 8px;
+}
+
+.otta-docs-theme-notion .otta-docs-toc-link:hover {
+    color: var(--otta-docs-color-text);
+}
+
+.otta-docs-theme-notion .otta-docs-toc-active {
+    color: var(--otta-docs-color-text) !important;
+    font-weight: 500;
+    border-left: none;
+}
+
+.otta-docs-theme-notion .otta-docs-toc-sidebar {
+    border-left: none;
+}
+
+.otta-docs-theme-notion .otta-docs-pagination-btn {
+    border-radius: var(--otta-docs-radius);
+    border-color: var(--otta-docs-color-border);
+}
+
+.otta-docs-theme-notion .otta-docs-pagination-btn:hover {
+    background: rgba(55, 53, 47, 0.04);
+    border-color: var(--otta-docs-color-border);
+}
+
+.otta-docs-theme-notion .otta-docs-pagination-title {
+    color: var(--otta-docs-color-text);
+}
+
+.otta-docs-theme-notion .otta-docs-hr {
+    background: var(--otta-docs-color-border);
+}
+
+/* Notion dark mode */
+.dark .otta-docs-theme-notion,
+.otta-docs-theme-notion.dark {
+    --otta-docs-color-bg: #191919;
+    --otta-docs-color-bg-subtle: #202020;
+    --otta-docs-color-bg-code: #2f2f2f;
+    --otta-docs-color-border: #373737;
+    --otta-docs-color-text: #e3e2e0;
+    --otta-docs-color-text-muted: #9b9a97;
+    --otta-docs-color-text-dimmed: #6b6b6b;
+    --otta-docs-color-primary: #529cca;
+    --otta-docs-color-primary-light: #1c3040;
+    --otta-docs-color-link: #529cca;
+    --otta-docs-color-code-bg: #2f2f2f;
+    --otta-docs-color-code-border: #373737;
+    --otta-docs-color-blockquote-border: #e3e2e0;
+    --otta-docs-color-blockquote-bg: transparent;
+}
+
+.dark .otta-docs-theme-notion .otta-docs-inline-code,
+.otta-docs-theme-notion.dark .otta-docs-inline-code {
+    color: #ff7369;
+}
+
+.dark .otta-docs-theme-notion .otta-docs-nav-link:hover,
+.otta-docs-theme-notion.dark .otta-docs-nav-link:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.dark .otta-docs-theme-notion .otta-docs-nav-active,
+.otta-docs-theme-notion.dark .otta-docs-nav-active {
+    background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.dark .otta-docs-theme-notion .otta-docs-blockquote,
+.otta-docs-theme-notion.dark .otta-docs-blockquote {
+    border-left-color: var(--otta-docs-color-text);
+}

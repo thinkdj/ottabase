@@ -1,0 +1,195 @@
+/* ==========================================================================
+   @ottabase/docs — GitHub-inspired theme
+   Clean, utilitarian design modeled after GitHub's documentation.
+   ========================================================================== */
+
+.otta-docs-theme-github {
+    --otta-docs-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+    --otta-docs-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    --otta-docs-sidebar-width: 256px;
+    --otta-docs-toc-width: 200px;
+    --otta-docs-content-max-width: 820px;
+    --otta-docs-color-bg: #ffffff;
+    --otta-docs-color-bg-subtle: #f6f8fa;
+    --otta-docs-color-bg-code: #f6f8fa;
+    --otta-docs-color-border: #d1d9e0;
+    --otta-docs-color-text: #1f2328;
+    --otta-docs-color-text-muted: #59636e;
+    --otta-docs-color-text-dimmed: #818b98;
+    --otta-docs-color-primary: #0969da;
+    --otta-docs-color-primary-light: #ddf4ff;
+    --otta-docs-color-link: #0969da;
+    --otta-docs-color-code-bg: #f6f8fa;
+    --otta-docs-color-code-border: #d1d9e0;
+    --otta-docs-color-blockquote-border: #d1d9e0;
+    --otta-docs-color-blockquote-bg: transparent;
+    --otta-docs-radius: 6px;
+    --otta-docs-radius-sm: 3px;
+}
+
+.otta-docs-theme-github .otta-docs-sidebar {
+    background: var(--otta-docs-color-bg);
+    border-right-color: var(--otta-docs-color-border);
+}
+
+.otta-docs-theme-github .otta-docs-sidebar-search {
+    background: var(--otta-docs-color-bg);
+}
+
+.otta-docs-theme-github .otta-docs-search-input {
+    border-radius: var(--otta-docs-radius);
+    font-size: 14px;
+    padding: 5px 12px;
+    border-color: var(--otta-docs-color-border);
+    background: var(--otta-docs-color-bg);
+}
+
+.otta-docs-theme-github .otta-docs-search-input:focus {
+    border-color: var(--otta-docs-color-primary);
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.12);
+    outline: none;
+}
+
+.otta-docs-theme-github .otta-docs-nav-group-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--otta-docs-color-text);
+    padding: 8px 8px 4px;
+}
+
+.otta-docs-theme-github .otta-docs-nav-link {
+    font-size: 14px;
+    padding: 4px 8px;
+    border-radius: var(--otta-docs-radius);
+    color: var(--otta-docs-color-text-muted);
+}
+
+.otta-docs-theme-github .otta-docs-nav-link:hover {
+    color: var(--otta-docs-color-text);
+    background: var(--otta-docs-color-bg-subtle);
+}
+
+.otta-docs-theme-github .otta-docs-nav-active {
+    background: transparent !important;
+    color: var(--otta-docs-color-text) !important;
+    font-weight: 600;
+    position: relative;
+}
+
+.otta-docs-theme-github .otta-docs-nav-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 3px;
+    background: var(--otta-docs-color-primary);
+    border-radius: 2px;
+}
+
+.otta-docs-theme-github .otta-docs-content h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--otta-docs-color-border);
+    margin-bottom: 16px;
+}
+
+.otta-docs-theme-github .otta-docs-content h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--otta-docs-color-border);
+}
+
+.otta-docs-theme-github .otta-docs-content h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.otta-docs-theme-github .otta-docs-p {
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.otta-docs-theme-github .otta-docs-inline-code {
+    padding: 0.2em 0.4em;
+    font-size: 85%;
+    background: rgba(175, 184, 193, 0.2);
+    border: none;
+    border-radius: var(--otta-docs-radius);
+}
+
+.otta-docs-theme-github .otta-docs-code-block {
+    border-radius: var(--otta-docs-radius);
+    border-color: var(--otta-docs-color-border);
+}
+
+.otta-docs-theme-github .otta-docs-code-lang {
+    font-size: 12px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--otta-docs-color-text-muted);
+    background: var(--otta-docs-color-bg-subtle);
+    padding: 8px 16px;
+}
+
+.otta-docs-theme-github .otta-docs-code-block pre {
+    font-size: 13.6px;
+    line-height: 1.45;
+}
+
+.otta-docs-theme-github .otta-docs-blockquote {
+    border-left-color: var(--otta-docs-color-border);
+    color: var(--otta-docs-color-text-muted);
+    background: transparent;
+    padding: 0 16px;
+}
+
+.otta-docs-theme-github .otta-docs-table th {
+    background: var(--otta-docs-color-bg-subtle);
+}
+
+.otta-docs-theme-github .otta-docs-toc-link {
+    font-size: 12px;
+    color: var(--otta-docs-color-primary);
+}
+
+.otta-docs-theme-github .otta-docs-toc-link:hover {
+    text-decoration: underline;
+}
+
+.otta-docs-theme-github .otta-docs-toc-active {
+    font-weight: 600;
+}
+
+.otta-docs-theme-github .otta-docs-pagination-btn {
+    border-radius: var(--otta-docs-radius);
+}
+
+/* GitHub dark mode */
+.dark .otta-docs-theme-github,
+.otta-docs-theme-github.dark {
+    --otta-docs-color-bg: #0d1117;
+    --otta-docs-color-bg-subtle: #161b22;
+    --otta-docs-color-bg-code: #161b22;
+    --otta-docs-color-border: #30363d;
+    --otta-docs-color-text: #e6edf3;
+    --otta-docs-color-text-muted: #8b949e;
+    --otta-docs-color-text-dimmed: #6e7681;
+    --otta-docs-color-primary: #4493f8;
+    --otta-docs-color-primary-light: #0d1117;
+    --otta-docs-color-link: #4493f8;
+    --otta-docs-color-code-bg: #161b22;
+    --otta-docs-color-code-border: #30363d;
+    --otta-docs-color-blockquote-border: #30363d;
+    --otta-docs-color-blockquote-bg: transparent;
+}
+
+.dark .otta-docs-theme-github .otta-docs-inline-code,
+.otta-docs-theme-github.dark .otta-docs-inline-code {
+    background: rgba(110, 118, 129, 0.2);
+}

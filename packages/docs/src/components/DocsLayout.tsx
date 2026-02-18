@@ -15,14 +15,28 @@ export interface DocsLayoutProps {
     className?: string;
 }
 
+/** Map theme name to CSS class */
+function getThemeClass(theme?: string): string {
+    switch (theme) {
+        case 'github':
+            return 'otta-docs-theme-github';
+        case 'notion':
+            return 'otta-docs-theme-notion';
+        default:
+            return '';
+    }
+}
+
 /**
  * Full documentation layout with left sidebar, markdown content, and right TOC.
- * Minimal, clean design inspired by Mantine docs.
+ * Minimal, clean design. Supports theme switching via config.theme.
  */
 export function DocsLayout({ config, activeSlug, onNavigate, className = '' }: DocsLayoutProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTocId, setActiveTocId] = useState<string>('');
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+    const themeClass = getThemeClass(config.theme);
 
     // Resolve active page
     const activePage = activeSlug ? findPageBySlug(config.sources, activeSlug) : config.sources[0]?.pages[0];
@@ -80,7 +94,7 @@ export function DocsLayout({ config, activeSlug, onNavigate, className = '' }: D
     }, [activePage]);
 
     return (
-        <div className={`otta-docs-layout ${className}`}>
+        <div className={`otta-docs-layout ${themeClass} ${className}`.trim()}>
             {/* Mobile nav toggle */}
             <button
                 type="button"
@@ -112,7 +126,10 @@ export function DocsLayout({ config, activeSlug, onNavigate, className = '' }: D
                 {activePage ? (
                     <>
                         <article className="otta-docs-article">
-                            <MarkdownRenderer content={activePage.content} />
+                            <MarkdownRenderer
+                                content={activePage.content}
+                                enableCodeHighlight={config.enableCodeHighlight}
+                            />
 
                             {/* Prev/Next navigation */}
                             {(prevPage || nextPage) && (

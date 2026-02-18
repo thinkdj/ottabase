@@ -9,7 +9,7 @@ export { useDocs } from './hooks/useDocs';
 export type { UseDocsOptions } from './hooks/useDocs';
 
 // Types
-export type { DocGroup, DocPage, DocsConfig, DocsSource, TocItem } from './types';
+export type { DocGroup, DocPage, DocsConfig, DocsSource, DocsTheme, TocItem } from './types';
 
 // Utils
 export {

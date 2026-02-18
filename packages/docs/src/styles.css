@@ -1,9 +1,10 @@
 /* ==========================================================================
    @ottabase/docs — Minimal documentation layout styles
    Clean, Mantine-docs-inspired design. CSS custom properties for theming.
+   Three built-in themes: default, github, notion.
    ========================================================================== */
 
-/* --- CSS Custom Properties (Theming) --- */
+/* --- CSS Custom Properties (Default theme) --- */
 :root {
     --otta-docs-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     --otta-docs-font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Consolas, monospace;
@@ -63,6 +64,10 @@
     --otta-docs-color-code-border: #373a40;
     --otta-docs-color-blockquote-bg: #25262b;
 }
+
+/* --- Import themes --- */
+@import './themes/github.css';
+@import './themes/notion.css';
 
 /* --- Layout --- */
 .otta-docs-layout {
@@ -317,6 +322,55 @@
 
 .otta-docs-code-block code {
     font-family: var(--otta-docs-font-mono);
+}
+
+/* Enhanced code blocks with copy button */
+.otta-docs-code-enhanced {
+    position: relative;
+}
+
+.otta-docs-code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px 6px 16px;
+    border-bottom: 1px solid var(--otta-docs-color-code-border);
+    background: var(--otta-docs-color-bg-subtle);
+    min-height: 32px;
+}
+
+.otta-docs-code-lang-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--otta-docs-color-text-muted);
+}
+
+.otta-docs-code-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border: none;
+    border-radius: var(--otta-docs-radius-sm);
+    background: transparent;
+    color: var(--otta-docs-color-text-dimmed);
+    font-size: 11px;
+    font-family: var(--otta-docs-font);
+    cursor: pointer;
+    transition:
+        color 0.15s,
+        background 0.15s;
+}
+
+.otta-docs-code-copy:hover {
+    background: var(--otta-docs-color-bg);
+    color: var(--otta-docs-color-text);
+}
+
+.otta-docs-code-copy svg {
+    flex-shrink: 0;
 }
 
 .otta-docs-ul,
