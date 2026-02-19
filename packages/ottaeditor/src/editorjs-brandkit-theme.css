@@ -1,0 +1,101 @@
+/**
+ * EditorJS Minimal Theme Override for Ottabase' Brand Kit integration.
+ */
+
+/* Plus (+) Button */
+.ce-toolbar__plus {
+    background: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    transition: all 0.15s ease;
+}
+
+.ce-toolbar__plus:hover {
+    background: hsl(var(--accent)) !important;
+    color: hsl(var(--accent-foreground)) !important;
+    border-color: hsl(var(--ring)) !important;
+}
+
+.ce-toolbar__plus svg {
+    fill: currentColor !important;
+}
+
+/* Settings Button (::) */
+.ce-toolbar__settings-btn {
+    background: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    transition: all 0.15s ease;
+}
+
+.ce-toolbar__settings-btn:hover {
+    background: hsl(var(--accent)) !important;
+    color: hsl(var(--accent-foreground)) !important;
+    border-color: hsl(var(--ring)) !important;
+}
+
+.ce-toolbar__settings-btn svg {
+    fill: currentColor !important;
+}
+
+/* Popover Item Hover - Brand color with transparency */
+.ce-popover__item:hover,
+.ce-popover-item:hover {
+    background: hsl(var(--primary) / 0.1) !important;
+}
+
+/* Selected Popover Items - Brand color with transparency */
+.ce-popover__item--selected,
+.ce-popover-item--selected {
+    background: hsl(var(--primary) / 0.15) !important;
+    color: #000 !important;
+}
+
+.ce-popover__item--selected *,
+.ce-popover-item--selected * {
+    color: #000 !important;
+}
+
+/* Active Popover Items - Brand color with transparency */
+.ce-popover__item--active,
+.ce-popover-item--active {
+    background: hsl(var(--primary) / 0.15) !important;
+    color: #000 !important;
+}
+
+.ce-popover-item--active *,
+.ce-popover__item--active * {
+    color: #000 !important;
+}
+
+/* Selected Block - Theme-aware background */
+.ce-block--selected .ce-block__content {
+    background: hsl(var(--accent)) !important;
+}
+
+/* Filter Input - Theme-aware styling */
+.cdx-search-field {
+    border: 1px solid hsl(var(--border) / 0.1) !important;
+    border-radius: 4px !important;
+}
+
+.cdx-search-field:focus-within {
+    border-color: hsl(var(--ring)) !important;
+    box-shadow: 0 0 0 1px hsl(var(--ring) / 0.2) !important;
+}
+
+.cdx-search-field__input {
+    border: none !important;
+}
+
+.cdx-search-field__input:focus {
+    outline: none !important;
+    border: none !important;
+    box-shadow: none !important; /** tw adds ring via shadow  */
+}
+
+.cdx-search-field__input::placeholder {
+}
+
+.cdx-search-field__icon svg {
+}

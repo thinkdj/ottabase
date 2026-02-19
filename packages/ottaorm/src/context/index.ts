@@ -7,8 +7,16 @@
 // Usage: registerConnection(name, driver), models specify connection via static property
 // ============================================================
 
+// IMPORTANT: Use globalThis to store connections to prevent module duplication issues
+// This ensures all module instances share the same connection registry
+declare global {
+    var __OTTAORM_CONNECTIONS__: Map<string, any> | undefined;
+}
+
 // Connection registry for multi-database support
-const connections: Map<string, any> = new Map();
+// Stored in globalThis to survive module duplication in bundlers
+const connections: Map<string, any> =
+    globalThis.__OTTAORM_CONNECTIONS__ || (globalThis.__OTTAORM_CONNECTIONS__ = new Map());
 
 /**
  * Register a named database connection
@@ -31,7 +39,7 @@ const connections: Map<string, any> = new Map();
  * ```
  */
 export function registerConnection(name: string, driver: any): void {
-  connections.set(name, driver);
+    connections.set(name, driver);
 }
 
 /**
@@ -48,13 +56,13 @@ export function registerConnection(name: string, driver: any): void {
  * ```
  */
 export function getConnection(name: string = 'default'): any {
-  if (!connections.has(name)) {
-    throw new Error(
-      `Database connection '${name}' not registered. ` +
-      `Call registerConnection('${name}', driver) before using models.`
-    );
-  }
-  return connections.get(name);
+    if (!connections.has(name)) {
+        throw new Error(
+            `Database connection '${name}' not registered. ` +
+                `Call registerConnection('${name}', driver) before using models.`,
+        );
+    }
+    return connections.get(name);
 }
 
 /**
@@ -64,7 +72,7 @@ export function getConnection(name: string = 'default'): any {
  * @returns True if connection exists
  */
 export function hasConnection(name: string): boolean {
-  return connections.has(name);
+    return connections.has(name);
 }
 
 /**
@@ -73,12 +81,12 @@ export function hasConnection(name: string): boolean {
  * @param name - Connection name
  */
 export function clearConnection(name: string): void {
-  connections.delete(name);
+    connections.delete(name);
 }
 
 /**
  * Clear all connections (useful for testing)
  */
 export function clearAllConnections(): void {
-  connections.clear();
+    connections.clear();
 }

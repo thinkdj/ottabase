@@ -1,0 +1,85 @@
+{
+    "name": "@ottabase/rbac",
+    "version": "1.0.0",
+    "description": "Role-Based Access Control (RBAC) package for Ottabase with middleware and utilities",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./middleware": {
+            "types": "./dist/middleware.d.ts",
+            "import": "./dist/middleware.mjs",
+            "require": "./dist/middleware.js"
+        },
+        "./utils": {
+            "types": "./dist/utils.d.ts",
+            "import": "./dist/utils.mjs",
+            "require": "./dist/utils.js"
+        },
+        "./context": {
+            "types": "./dist/context.d.ts",
+            "import": "./dist/context.mjs",
+            "require": "./dist/context.js"
+        },
+        "./request-context": {
+            "types": "./dist/request-context.d.ts",
+            "import": "./dist/request-context.mjs",
+            "require": "./dist/request-context.js"
+        },
+        "./admin-guard": {
+            "types": "./dist/admin-guard.d.ts",
+            "import": "./dist/admin-guard.mjs",
+            "require": "./dist/admin-guard.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup --config tsup.config.ts",
+        "dev": "tsup --config tsup.config.ts --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "rbac",
+        "authorization",
+        "permissions",
+        "roles",
+        "access-control"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/auth": "workspace:*",
+        "@ottabase/logger": "workspace:*",
+        "@ottabase/cf": "workspace:*"
+    },
+    "peerDependencies": {
+        "@cloudflare/workers-types": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "@cloudflare/workers-types": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "tsup": "catalog:",
+        "rimraf": "catalog:",
+        "eslint": "catalog:",
+        "vitest": "catalog:"
+    }
+}

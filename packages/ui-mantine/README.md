@@ -1,11 +1,12 @@
 # @ottabase/ui-mantine
 
-Mantine UI components and providers for Ottabase applications. This package provides a comprehensive Mantine integration with pre-built themes and configuration utilities.
+Mantine UI components and providers for Ottabase applications. This package provides a comprehensive Mantine integration
+with pre-built themes and configuration utilities.
 
 ## Features
 
 - **ProviderUIMantine**: Main UI provider that wires Mantine, notifications, and modal support
-- **Pre-built Themes**: ShadCN, Vercel, Ant Design, and Stripe-inspired themes
+- **Pre-built Themes**: Slate, Graphite, Azure, and Aurora presets
 - **Theme Management**: Syncs with global theme state (themeAtom from @ottabase/state)
 - **Theme Configuration**: Utilities for creating and validating custom themes
 - **FOUC Prevention**: Flash of unstyled content prevention helpers
@@ -22,129 +23,115 @@ pnpm add @ottabase/ui-mantine @ottabase/ui-base @ottabase/state
 
 ### Basic Setup
 
-**Important:** The theme (light/dark mode) is controlled by the global `themeAtom` from `@ottabase/state`. You must pass the theme value to this provider's `colorScheme` prop to keep it in sync.
+**Important:** The theme (light/dark mode) is controlled by the global `themeAtom` from `@ottabase/state`. You must pass
+the theme value to this provider's `colorScheme` prop to keep it in sync.
 
 ```tsx
-import { ProviderUIMantineBase } from '@ottabase/ui-base';
+import { ProviderUIBase } from '@ottabase/ui-base';
 import { ProviderUIMantine } from '@ottabase/ui-mantine';
 import { useAtomValue } from 'jotai';
 import { themeAtom } from '@/ottabase/state/appGlobalState'; // Adjust path as needed
 
 function App({ children }) {
-  const theme = useAtomValue(themeAtom);
+    const theme = useAtomValue(themeAtom);
 
-  return (
-    <ProviderUIMantineBase>
-      <ProviderUIMantine
-        storagePrefix="ottabase"
-        themeColors={THEME_COLORS}
-        primaryColor="blue"
-        // Pass the global theme to the provider
-        colorScheme={theme as 'light' | 'dark'}
-      >
-        {children}
-      </ProviderUIMantine>
-    </ProviderUIMantineBase>
-  );
+    return (
+        <ProviderUIBase>
+            <ProviderUIMantine
+                storagePrefix="ottabase"
+                themeColors={THEME_COLORS}
+                primaryColor="blue"
+                // Pass the global theme to the provider
+                colorScheme={theme as 'light' | 'dark'}
+            >
+                {children}
+            </ProviderUIMantine>
+        </ProviderUIBase>
+    );
 }
 ```
 
 ### Syncing with Global State
 
-This provider is a **controlled component**. It does not manage the theme state itself. Instead, you must provide the current theme via the `colorScheme` prop. This ensures that Mantine is always in sync with your application's single source of truth for theme state (e.g., a Jotai atom). The `MantineThemeSync` component is no longer needed.
+This provider is a **controlled component**. It does not manage the theme state itself. Instead, you must provide the
+current theme via the `colorScheme` prop. This ensures that Mantine is always in sync with your application's single
+source of truth for theme state (e.g., a Jotai atom). The `MantineThemeSync` component is no longer needed.
 
 ### Using Pre-built Themes
 
 ```tsx
-import { ProviderUIMantineBase } from '@ottabase/ui-base';
-import {
-  ProviderUIMantine,
-  mantineShadcn,
-  mantineVercel,
-  mantineAnt,
-  mantineStripe
-} from '@ottabase/ui-mantine';
+import { ProviderUIBase } from '@ottabase/ui-base';
+import { ProviderUIMantine, mantineSlate, mantineGraphite, mantineAzure, mantineAurora } from '@ottabase/ui-mantine';
 import { useAtomValue } from 'jotai';
 import { themeAtom } from '@/ottabase/state/appGlobalState';
 
 function App({ children }) {
-  const theme = useAtomValue(themeAtom);
+    const theme = useAtomValue(themeAtom);
 
-  return (
-    <ProviderUIMantineBase>
-      <ProviderUIMantine
-        themeOverride={mantineShadcn}
-        colorScheme={theme as 'light' | 'dark'}
-      >
-        {children}
-      </ProviderUIMantine>
-    </ProviderUIMantineBase>
-  );
+    return (
+        <ProviderUIBase>
+            <ProviderUIMantine themeOverride={mantineSlate} colorScheme={theme as 'light' | 'dark'}>
+                {children}
+            </ProviderUIMantine>
+        </ProviderUIBase>
+    );
 }
 ```
 
 ### Creating Custom Themes
 
 ```tsx
-import { ProviderUIMantineBase } from '@ottabase/ui-base';
-import {
-  ProviderUIMantine,
-  createMantineTheme,
-  mantineShadcn,
-  type MantineThemeConfig
-} from '@ottabase/ui-mantine';
+import { ProviderUIBase } from '@ottabase/ui-base';
+import { ProviderUIMantine, createMantineTheme, mantineSlate, type MantineThemeConfig } from '@ottabase/ui-mantine';
 
 const myThemeConfig: MantineThemeConfig = {
-  baseTheme: "mantine-shadcn",
-  primaryColor: "blue",
-  primaryShade: 6,
-  colors: {
-    brand: [
-      "#f0f9ff",
-      "#e0f2fe",
-      "#bae6fd",
-      "#7dd3fc",
-      "#38bdf8",
-      "#0ea5e9",
-      "#0284c7",
-      "#0369a1",
-      "#075985",
-      "#0c4a6e",
-    ],
-  },
-  components: {
-    Button: {
-      defaultProps: {
-        radius: "md",
-      },
+    baseTheme: 'mantine-slate',
+    primaryColor: 'blue',
+    primaryShade: 6,
+    colors: {
+        brand: [
+            '#f0f9ff',
+            '#e0f2fe',
+            '#bae6fd',
+            '#7dd3fc',
+            '#38bdf8',
+            '#0ea5e9',
+            '#0284c7',
+            '#0369a1',
+            '#075985',
+            '#0c4a6e',
+        ],
     },
-  },
+    components: {
+        Button: {
+            defaultProps: {
+                radius: 'md',
+            },
+        },
+    },
 };
 
-const customTheme = createMantineTheme(myThemeConfig, mantineShadcn);
+const customTheme = createMantineTheme(myThemeConfig, mantineSlate);
 
 function App({ children }) {
-  const theme = useAtomValue(themeAtom);
+    const theme = useAtomValue(themeAtom);
 
-  return (
-    <ProviderUIMantineBase>
-      <ProviderUIMantine
-        themeOverride={customTheme}
-        colorScheme={theme as 'light' | 'dark'}
-      >
-        {children}
-      </ProviderUIMantine>
-    </ProviderUIMantineBase>
-  );
+    return (
+        <ProviderUIBase>
+            <ProviderUIMantine themeOverride={customTheme} colorScheme={theme as 'light' | 'dark'}>
+                {children}
+            </ProviderUIMantine>
+        </ProviderUIBase>
+    );
 }
 ```
 
 ## Available Themes
 
-- **mantineShadcn**: ShadCN/UI inspired theme with neutral slate colors
-- **mantineVercel**: Vercel-inspired clean and modern theme
-- **mantineAnt**: Ant Design inspired theme
-- **mantineStripe**: Stripe-inspired professional theme
+- **mantineSlate**: Neutral slate theme with minimal UI patterns
+- **mantineGraphite**: High-contrast monochrome theme
+- **mantineAzure**: Structured blue theme for dashboards
+- **mantineAurora**: Luminous violet/blue theme with premium accents
 
 ## Theme System Architecture
 
@@ -193,9 +180,9 @@ ui-mantine/
 ├── provider/
 │   └── ProviderUIMantine.tsx   # Mantine provider component
 ├── themes/
-│   ├── mantine-shadcn.ts
-│   ├── mantine-vercel.ts
-│   ├── mantine-ant.ts
-│   └── mantine-stripe.ts
+│   ├── mantine-slate.ts
+│   ├── mantine-graphite.ts
+│   ├── mantine-azure.ts
+│   └── mantine-aurora.ts
 └── package.json
 ```

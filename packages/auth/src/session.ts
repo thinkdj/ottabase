@@ -7,20 +7,23 @@
 //
 // ============================================================
 
-import type { Session } from "@auth/core/types";
+import type { Session } from '@auth/core/types';
 
 /**
  * User session data
  * Extends the default Auth.js session with common fields
  */
 export interface OttabaseSession extends Session {
-  user: {
-    id: string;
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-    emailVerified?: Date | null;
-  };
+    user: {
+        id: string;
+        name?: string | null;
+        email?: string | null;
+        image?: string | null;
+        emailVerified?: number | null;
+        organizationId?: string | null;
+        roles?: string[];
+        permissions?: string[];
+    };
 }
 
 /**
@@ -40,10 +43,8 @@ export interface OttabaseSession extends Session {
  * }
  * ```
  */
-export function isAuthenticated(
-  session: Session | null,
-): session is OttabaseSession {
-  return session !== null && !!session.user && !!session.user.id;
+export function isAuthenticated(session: Session | null): session is OttabaseSession {
+    return session !== null && !!session.user && !!session.user.id;
 }
 
 /**
@@ -62,10 +63,10 @@ export function isAuthenticated(
  * ```
  */
 export function requireAuth(session: Session | null): OttabaseSession {
-  if (!isAuthenticated(session)) {
-    throw new Error("Authentication required");
-  }
-  return session;
+    if (!isAuthenticated(session)) {
+        throw new Error('Authentication required');
+    }
+    return session;
 }
 
 /**
@@ -81,12 +82,12 @@ export function requireAuth(session: Session | null): OttabaseSession {
  * const userId = getUserId(await auth());
  * if (userId) {
  *   // User is logged in
- *   const user = await prisma.user.findUnique({ where: { id: userId } });
+ *   // const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
  * }
  * ```
  */
 export function getUserId(session: Session | null): string | null {
-  return isAuthenticated(session) ? session.user.id : null;
+    return isAuthenticated(session) ? session.user.id : null;
 }
 
 /**
@@ -106,7 +107,7 @@ export function getUserId(session: Session | null): string | null {
  * ```
  */
 export function getUserEmail(session: Session | null): string | null {
-  return isAuthenticated(session) ? session.user.email ?? null : null;
+    return isAuthenticated(session) ? (session.user.email ?? null) : null;
 }
 
 /**
@@ -126,21 +127,24 @@ export function getUserEmail(session: Session | null): string | null {
  * ```
  */
 export function hasVerifiedEmail(session: Session | null): boolean {
-  return isAuthenticated(session) && !!session.user.emailVerified;
+    return isAuthenticated(session) && !!session.user.emailVerified;
 }
 
 /**
  * Session data for API responses
  */
 export interface SessionData {
-  authenticated: boolean;
-  user: {
-    id: string;
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-    emailVerified?: Date | null;
-  } | null;
+    authenticated: boolean;
+    user: {
+        id: string;
+        name?: string | null;
+        email?: string | null;
+        image?: string | null;
+        emailVerified?: number | null;
+        organizationId?: string | null;
+        roles?: string[];
+        permissions?: string[];
+    } | null;
 }
 
 /**
@@ -160,21 +164,24 @@ export interface SessionData {
  * ```
  */
 export function serializeSession(session: Session | null): SessionData {
-  if (!isAuthenticated(session)) {
-    return {
-      authenticated: false,
-      user: null,
-    };
-  }
+    if (!isAuthenticated(session)) {
+        return {
+            authenticated: false,
+            user: null,
+        };
+    }
 
-  return {
-    authenticated: true,
-    user: {
-      id: session.user.id,
-      name: session.user.name ?? null,
-      email: session.user.email ?? null,
-      image: session.user.image ?? null,
-      emailVerified: session.user.emailVerified ?? null,
-    },
-  };
+    return {
+        authenticated: true,
+        user: {
+            id: session.user.id,
+            name: session.user.name ?? null,
+            email: session.user.email ?? null,
+            image: session.user.image ?? null,
+            emailVerified: session.user.emailVerified ?? null,
+            organizationId: (session.user as any).organizationId ?? null,
+            roles: (session.user as any).roles ?? undefined,
+            permissions: (session.user as any).permissions ?? undefined,
+        },
+    };
 }

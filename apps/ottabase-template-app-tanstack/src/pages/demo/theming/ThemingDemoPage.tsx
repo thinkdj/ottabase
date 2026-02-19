@@ -1,9 +1,23 @@
-import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Input, Label, Tabs, TabsContent, TabsList, TabsTrigger } from "@ottabase/ui-shadcn";
-import { useTheme } from "@/ottabase/providers/ThemeContext";
-import { useTheme as useNextTheme } from "next-themes";
+import { useTheme } from '@/ottabase/providers/ThemeContext';
+import {
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+    Input,
+    Label,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from '@ottabase/ui-shadcn';
+import { useTheme as useNextTheme } from 'next-themes';
 
 export function ThemingDemoPage() {
-    const { theme, setTheme, config } = useTheme();
+    const { theme, config } = useTheme();
     const { setTheme: setMode, theme: mode, resolvedTheme } = useNextTheme();
     const activeMode = resolvedTheme || mode || 'light';
 
@@ -12,28 +26,18 @@ export function ThemingDemoPage() {
             <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tight">Theming Configurator</h1>
                 <p className="text-muted-foreground">
-                    Dynamic runtime theming system demonstration. Switch themes and modes instantly.
+                    Theme is set by admin in Brand Engine. You can switch light/dark mode only.
                 </p>
             </div>
 
             <div className="grid gap-theme-card md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Theme Selection</CardTitle>
-                        <CardDescription>Choose a predefined theme.</CardDescription>
+                        <CardTitle>Active theme</CardTitle>
+                        <CardDescription>App-level preset (admin-configured).</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid gap-2">
-                        {['default', 'neo', 'crisp', 'funky'].map((t) => (
-                            <Button
-                                key={t}
-                                variant={theme === t ? "default" : "outline"}
-                                className="w-full justify-start capitalize"
-                                onClick={() => setTheme(t)}
-                            >
-                                {t} Theme
-                                {theme === t && <span className="ml-auto">✓</span>}
-                            </Button>
-                        ))}
+                    <CardContent>
+                        <p className="font-mono text-sm capitalize">{theme || 'default'}</p>
                     </CardContent>
                 </Card>
 
@@ -44,14 +48,14 @@ export function ThemingDemoPage() {
                     </CardHeader>
                     <CardContent className="grid gap-2">
                         <Button
-                            variant={mode === 'light' ? "default" : "outline"}
+                            variant={mode === 'light' ? 'default' : 'outline'}
                             onClick={() => setMode('light')}
                             className="w-full justify-start"
                         >
                             Light Mode
                         </Button>
                         <Button
-                            variant={mode === 'dark' ? "default" : "outline"}
+                            variant={mode === 'dark' ? 'default' : 'outline'}
                             onClick={() => setMode('dark')}
                             className="w-full justify-start"
                         >
@@ -63,33 +67,41 @@ export function ThemingDemoPage() {
                 <Card className="col-span-2">
                     <CardHeader>
                         <CardTitle>Typography Check</CardTitle>
-                        <CardDescription>
-                            View current theme typography and spacing configuration.
-                        </CardDescription>
+                        <CardDescription>View current theme typography and spacing configuration.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Heading:</span>
-                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">{config.typography.heading.fontFamily}</span>
+                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
+                                    {config?.typography?.heading?.fontFamily ?? '—'}
+                                </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Body:</span>
-                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">{config.typography.body.fontFamily}</span>
+                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
+                                    {config?.typography?.body?.fontFamily ?? '—'}
+                                </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Cursive:</span>
-                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">{config.typography.handwriting.fontFamily}</span>
+                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
+                                    {config?.typography?.handwriting?.fontFamily ?? '—'}
+                                </span>
                             </div>
                         </div>
                         <div className="flex flex-col gap-1 pt-4 border-t">
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Radius:</span>
-                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">{config.radius}</span>
+                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
+                                    {config?.radius ?? '—'}
+                                </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground w-16">Spacing:</span>
-                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">{config.spacing?.section || 'N/A'} (Sec) / {config.spacing?.card || 'N/A'} (Card)</span>
+                                <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
+                                    {config?.spacing?.section || 'N/A'} (Sec) / {config?.spacing?.card || 'N/A'} (Card)
+                                </span>
                             </div>
                         </div>
                     </CardContent>
@@ -99,7 +111,8 @@ export function ThemingDemoPage() {
                             <h2 className="font-heading text-3xl font-semibold first:mt-0">Heading 2</h2>
                             <h3 className="font-heading text-2xl font-semibold">Heading 3</h3>
                             <p className="leading-7 [&:not(:first-child)]:mt-6">
-                                The quick brown fox jumps over the lazy dog. This paragraph demonstrates the body font readability and line height settings derived from the base design system.
+                                The quick brown fox jumps over the lazy dog. This paragraph demonstrates the body font
+                                readability and line height settings derived from the base design system.
                             </p>
                             <div className="mt-8 p-6 bg-muted/50 rounded-lg text-center">
                                 <p className="font-handwriting text-3xl text-primary">
@@ -168,18 +181,20 @@ export function ThemingDemoPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {Object.entries(config.colors[activeMode as 'light' | 'dark']).map(([key, value]) => (
-                                    <div key={key} className="space-y-1.5">
-                                        <div
-                                            className="h-12 w-full rounded border ring-offset-background transition-shadow hover:ring-2 hover:ring-ring hover:ring-offset-2"
-                                            style={{ backgroundColor: `hsl(${value})` }}
-                                        />
-                                        <div className="space-y-0.5">
-                                            <p className="text-sm font-medium leading-none">{key}</p>
-                                            <p className="text-xs text-muted-foreground">{value as string}</p>
+                                {Object.entries((config?.colors ?? {})[activeMode as 'light' | 'dark'] ?? {}).map(
+                                    ([key, value]) => (
+                                        <div key={key} className="space-y-1.5">
+                                            <div
+                                                className="h-12 w-full rounded border ring-offset-background transition-shadow hover:ring-2 hover:ring-ring hover:ring-offset-2"
+                                                style={{ backgroundColor: `hsl(${value})` }}
+                                            />
+                                            <div className="space-y-0.5">
+                                                <p className="text-sm font-medium leading-none">{key}</p>
+                                                <p className="text-xs text-muted-foreground">{value as string}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ),
+                                )}
                             </div>
                         </CardContent>
                     </Card>

@@ -3,34 +3,36 @@
 // ============================================================
 
 // Core models - Fat Model Pattern
-export { Account, accountsTable, type AccountType, type NewAccountType } from "./Account";
-export {
-  Post,
-  postTagsTable,
-  postsTable,
-  type NewPostType,
-  type PostType,
-} from "./Post";
-export { Tag, tagsTable, type NewTagType, type TagType } from "./Tag";
-export { User, usersTable, type NewUserType, type UserType } from "./User";
+export { Account, accountsTable, type AccountType, type NewAccountType } from './Account';
+export { Tag, tagsTable, type NewTagType, type TagType } from './Tag';
+export { User, usersTable, type NewUserType, type UserType } from './User';
 
 // Auth.js models
+export { Authenticator, authenticatorsTable, type AuthenticatorType, type NewAuthenticatorType } from './Authenticator';
+export { Session, sessionsTable, type NewSessionType, type SessionType } from './Session';
 export {
-  Authenticator,
-  authenticatorsTable,
-  type AuthenticatorType,
-  type NewAuthenticatorType,
-} from "./Authenticator";
-export {
-  Session,
-  sessionsTable,
-  type NewSessionType,
-  type SessionType,
-} from "./Session";
-export {
-  VerificationToken,
-  verificationTokensTable,
-  type NewVerificationTokenType,
-  type VerificationTokenType,
-} from "./VerificationToken";
+    VerificationToken,
+    verificationTokensTable,
+    type NewVerificationTokenType,
+    type VerificationTokenType,
+} from './VerificationToken';
 
+// Cron scheduler
+export { ScheduledTask, scheduledTasksTable, type NewScheduledTaskType, type ScheduledTaskType } from './ScheduledTask';
+
+// Multi-tenant organization models
+export { Organization, organizationsTable, type NewOrganizationType, type OrganizationType } from './Organization';
+export {
+    OrganizationMember,
+    organizationMembersTable,
+    type NewOrganizationMemberType,
+    type OrganizationMemberType,
+} from './OrganizationMember';
+
+// RBAC models (with tenant + app scoping)
+export { Role, rolesTable, type NewRoleType, type RoleType } from './Role';
+export { Permission, permissionsTable, type NewPermissionType, type PermissionType } from './Permission';
+export { UserRole, userRolesTable, type NewUserRoleType, type UserRoleType } from './UserRole';
+
+// Audit logging (with tenant + app scoping)
+export { AuditLog, auditLogsTable, type NewAuditLogType, type AuditLogType } from './AuditLog';

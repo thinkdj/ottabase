@@ -10,18 +10,55 @@
 // 3. Enable it in `migrationConfig`
 // ============================================================
 
-import type { Migration } from "@ottabase/ottaorm";
-import { shortlinksTable } from "@ottabase/shortlinks/schema";
+import { brandKitsTable, layoutRouteMappingsTable, layoutTemplatesTable } from '@ottabase/brand-engine/persistence';
+import {
+    categoriesTable,
+    ottablogPluginsTable,
+    ottablogThemesTable,
+    postTagLinksTable,
+    postTagsTable,
+    postVersionsTable,
+    postsTable,
+    seriesTable,
+} from '@ottabase/ottablog';
+import type { Migration } from '@ottabase/ottaorm';
+import { referralTrackingTable } from '@ottabase/referrals';
+import { shortlinksTable } from '@ottabase/shortlinks';
 
 /**
  * 1. REGISTRY
  * Map package names to their table definitions and optional migrations.
  */
 const PACKAGE_REGISTRY = {
-  shortlinks: {
-    tables: { shortlinksTable },
-    migrations: [] as Migration[], // Add package-specific migrations here if any
-  },
+    ottablog: {
+        tables: {
+            seriesTable,
+            categoriesTable,
+            postsTable,
+            postTagsTable,
+            postTagLinksTable,
+            postVersionsTable,
+            ottablogPluginsTable,
+            ottablogThemesTable,
+        },
+        migrations: [] as Migration[],
+    },
+    shortlinks: {
+        tables: { shortlinksTable },
+        migrations: [] as Migration[], // Add package-specific migrations here if any
+    },
+    referrals: {
+        tables: { referralTrackingTable },
+        migrations: [] as Migration[],
+    },
+    brandEngine: {
+        tables: {
+            brandKitsTable,
+            layoutTemplatesTable,
+            layoutRouteMappingsTable,
+        },
+        migrations: [] as Migration[],
+    },
 } as const;
 
 /**
@@ -32,7 +69,10 @@ const PACKAGE_REGISTRY = {
 export type MigrationPackageName = keyof typeof PACKAGE_REGISTRY;
 
 export const migrationConfig: Record<MigrationPackageName, boolean> = {
-  shortlinks: true,
+    ottablog: true,
+    shortlinks: true,
+    referrals: true,
+    brandEngine: true,
 };
 
 // ============================================================
@@ -44,15 +84,15 @@ export const migrationConfig: Record<MigrationPackageName, boolean> = {
  * Used by `schema.ts` (Drizzle Kit) and `config.migrations.ts` (Runtime).
  */
 export function getEnabledPackageTables() {
-  const tables: Record<string, any> = {};
+    const tables: Record<string, any> = {};
 
-  for (const [pkgName, config] of Object.entries(PACKAGE_REGISTRY)) {
-    if (migrationConfig[pkgName as MigrationPackageName]) {
-      Object.assign(tables, config.tables);
+    for (const [pkgName, config] of Object.entries(PACKAGE_REGISTRY)) {
+        if (migrationConfig[pkgName as MigrationPackageName]) {
+            Object.assign(tables, config.tables);
+        }
     }
-  }
 
-  return tables;
+    return tables;
 }
 
 /**
@@ -60,13 +100,13 @@ export function getEnabledPackageTables() {
  * Used by migration runner to execute package-specific migrations.
  */
 export function getEnabledPackageMigrations(): Migration[] {
-  const migrations: Migration[] = [];
+    const migrations: Migration[] = [];
 
-  for (const [pkgName, config] of Object.entries(PACKAGE_REGISTRY)) {
-    if (migrationConfig[pkgName as MigrationPackageName]) {
-      migrations.push(...config.migrations);
+    for (const [pkgName, config] of Object.entries(PACKAGE_REGISTRY)) {
+        if (migrationConfig[pkgName as MigrationPackageName]) {
+            migrations.push(...config.migrations);
+        }
     }
-  }
 
-  return migrations;
+    return migrations;
 }

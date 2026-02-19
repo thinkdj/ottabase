@@ -2,30 +2,10 @@
 // @ottabase/ottaorm - Tag Model
 // ============================================================
 
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
-import { BaseModel, IModelConstructorParams, ModelFields } from "../base/BaseModel";
+import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { tagsTable } from './Tag.schema';
 
-/**
- * Tag table schema
- */
-export const tagsTable = sqliteTable("tags", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .$defaultFn(() => new Date())
-    .notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .$defaultFn(() => new Date())
-    .$onUpdateFn(() => new Date())
-    .notNull(),
-});
-
-/**
- * Tag model type
- */
-export type TagType = typeof tagsTable.$inferSelect;
-export type NewTagType = typeof tagsTable.$inferInsert;
+export { tagsTable, type NewTagType, type TagType } from './Tag.schema';
 
 /**
  * Tag model - Fat Model Pattern
@@ -51,187 +31,149 @@ export type NewTagType = typeof tagsTable.$inferInsert;
  *
  * // Get all tags
  * const tags = await Tag.all({ orderBy: "name" });
+ *
+ * // Generate slug
+ * const slug = Tag.generateSlug("My New Tag");
  * ```
  */
 export class Tag extends BaseModel {
+    static entity = 'tags';
+    static table = tagsTable;
+    static primaryKey = 'id';
+    static packageName = '@ottabase/ottaorm';
+    static packageType: PackageType = 'core';
 
-  static entity = "tags";
-  static table = tagsTable;
-  static primaryKey = "id";
+    // UI/Forms metadata
+    static displayName = 'Tag';
+    static displayNamePlural = 'Tags';
+    static defaultSort = 'name';
+    static defaultSortDirection = 'asc' as const;
 
-  // UI/Forms metadata
-  static displayName = "Tag";
-  static displayNamePlural = "Tags";
-  static defaultSort = "name";
-  static defaultSortDirection = "asc" as const;
+    static casts = {
+        createdAt: 'date' as const,
+        updatedAt: 'date' as const,
+    };
 
-  static casts = {
-    createdAt: 'date' as const,
-    updatedAt: 'date' as const,
-  };
+    protected static fields: ModelFields = {
+        id: {
+            type: 'id',
+            primaryKey: true,
+            editable: false,
+            uiConfig: {
+                label: 'ID',
+            },
+        },
+        name: {
+            type: 'string',
+            editable: true,
+            searchable: true,
+            sortable: true,
+            uiConfig: {
+                label: 'Name',
+                description: 'Name of the tag',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'input',
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 'auto',
+            },
+            validation: {
+                rules: 'required',
+                messages: {
+                    required: 'Name is required',
+                },
+            },
+        },
+        slug: {
+            type: 'string',
+            unique: true,
+            editable: true,
+            searchable: true,
+            sortable: true,
+            uiConfig: {
+                label: 'Slug',
+                description: 'Slug of the tag',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'input',
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 200,
+            },
+            validation: {
+                rules: 'required|unique:tags,slug',
+                messages: {
+                    required: 'Slug is required',
+                    unique: 'This slug already exists',
+                },
+            },
+        },
+        createdAt: {
+            type: 'date',
+            editable: false,
+            sortable: true,
+            uiConfig: {
+                label: 'Created At',
+            },
+            tableConfig: {
+                visible: true,
+            },
+        },
+        updatedAt: {
+            type: 'date',
+            editable: false,
+            sortable: true,
+            uiConfig: {
+                label: 'Updated At',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+    };
 
-  protected static fields: ModelFields = {
-    id: {
-      type: 'id',
-      primaryKey: true,
-      editable: false,
-      uiConfig: {
-        label: 'ID',
-      },
-    },
-    name: {
-      type: 'string',
-      editable: true,
-      searchable: true,
-      sortable: true,
-      uiConfig: {
-        label: 'Name',
-        description: 'Name of the tag',
-      },
-      formConfig: {
-        visible: true,
-        fieldType: 'input',
-      },
-      tableConfig: {
-        visible: true,
-        colWidth: 'auto',
-      },
-      validation: {
-        rules: "required",
-        messages: {
-          required: "Name is required",
-        }
-      }
-    },
-    slug: {
-      type: 'string',
-      unique: true,
-      editable: true,
-      searchable: true,
-      sortable: true,
-      uiConfig: {
-        label: 'Slug',
-        description: 'Slug of the tag',
-      },
-      formConfig: {
-        visible: true,
-        fieldType: 'input',
-      },
-      tableConfig: {
-        visible: true,
-        colWidth: 200,
-      },
-      validation: {
-        rules: "required|unique:tags,slug",
-        messages: {
-          required: "Slug is required",
-          unique: "This slug already exists",
-        }
-      }
-    },
-    createdAt: {
-      type: 'date',
-      editable: false,
-      sortable: true,
-      uiConfig: {
-        label: 'Created At',
-      },
-      tableConfig: {
-        visible: true,
-      },
-    },
-    updatedAt: {
-      type: 'date',
-      editable: false,
-      sortable: true,
-      uiConfig: {
-        label: 'Updated At',
-      },
-      tableConfig: {
-        visible: false,
-      },
-    },
-  };
+    protected static validationRules = {
+        name: {
+            rules: 'required',
+            fieldName: 'Name',
+            messages: {
+                required: 'Name is required',
+            },
+        },
+        slug: {
+            rules: 'required',
+            fieldName: 'Slug',
+            messages: {
+                required: 'Slug is required',
+                unique: 'This slug already exists',
+            },
+        },
+    };
 
-  protected static validationRules = {
-    "name": {
-      rules: "required",
-      fieldName: "Name",
-      messages: {
-        required: "Name is required",
-      }
-    },
-    "slug": {
-      rules: "required",
-      fieldName: "Slug",
-      messages: {
-        required: "Slug is required",
-        unique: "This slug already exists",
-      }
-    },
-  };
+    // ============================================================
+    // HELPER METHODS
+    // ============================================================
 
-  constructor(data: { [key: string]: any }) {
-    const params: IModelConstructorParams = { entity: Tag.entity, data };
-    super(params);
-  }
+    /**
+     * Generate slug from name
+     */
+    static generateSlug(name: string): string {
+        return name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    }
 
-  // ============================================================
-  // RELATIONSHIPS
-  // ============================================================
-
-  /**
-   * Get posts with this tag (BelongsToMany Post via postTagsTable)
-   *
-   * @example
-   * ```typescript
-   * const tag = await Tag.first({ slug: 'javascript' });
-   *
-   * // Get all posts
-   * const posts = await tag.posts();
-   *
-   * // Get only published posts with specific fields
-   * const posts = await tag.posts({
-   *   select: ['id', 'title', 'slug', 'published'],
-   *   orderBy: 'createdAt',
-   *   orderDirection: 'desc'
-   * });
-   * ```
-   */
-  async posts(options?: {
-    select?: string[];
-    orderBy?: string;
-    orderDirection?: 'asc' | 'desc';
-  }) {
-    // Dynamic import
-    const { Post, postTagsTable } = await import("./Post");
-
-    return this.belongsToMany(Post, postTagsTable, {
-      foreignKey: 'tagId',
-      otherKey: 'postId',
-      ...options
-    });
-  }
-
-  // ============================================================
-  // HELPER METHODS
-  // ============================================================
-
-  /**
-   * Generate slug from name
-   */
-  static generateSlug(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-  }
-
-  /**
-   * Create tag with auto-generated slug
-   */
-  static async createWithSlug(name: string) {
-    const slug = this.generateSlug(name);
-    return this.create({ name, slug });
-  }
+    /**
+     * Create tag with auto-generated slug
+     */
+    static async createWithSlug(name: string) {
+        const slug = this.generateSlug(name);
+        return this.create({ name, slug });
+    }
 }

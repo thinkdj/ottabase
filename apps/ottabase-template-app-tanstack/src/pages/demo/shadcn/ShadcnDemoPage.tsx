@@ -1,94 +1,13 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
     // Layout & Structure
     Accordion,
     AccordionContent,
     AccordionItem,
     AccordionTrigger,
-    AspectRatio,
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-    Separator,
-    ResizablePanelGroup,
-    ResizablePanel,
-    ResizableHandle,
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-
     // Feedback & Status
     Alert,
     AlertDescription,
-    AlertTitle,
-    Badge,
-    Progress,
-    Skeleton,
-    Spinner,
-    toast,
-    Toaster,
-
-    // Forms & Inputs
-    Button,
-    ButtonGroup,
-    ButtonGroupSeparator,
-    ButtonGroupText,
-    Checkbox,
-    Input,
-    InputGroup,
-    InputGroupAddon,
-    InputGroupButton,
-    InputGroupInput,
-    InputGroupText,
-    InputOTP,
-    InputOTPGroup,
-    InputOTPSlot,
-    InputOTPSeparator,
-    Label,
-    NativeSelect,
-    NativeSelectOption,
-    RadioGroup,
-    RadioGroupItem,
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-    Slider,
-    Switch,
-    Textarea,
-
-    // Advanced Forms
-    Form,
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-    Field,
-    FieldContent,
-    FieldDescription,
-    FieldLabel,
-    FieldTitle,
-
-    // Navigation
-    Breadcrumb,
-    BreadcrumbItem,
-    BreadcrumbLink,
-    BreadcrumbList,
-    BreadcrumbPage,
-    BreadcrumbSeparator,
-    Pagination,
-    PaginationContent,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-
     // Overlays & Dialogs
     AlertDialog,
     AlertDialogAction,
@@ -99,6 +18,52 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
+    AlertTitle,
+    AspectRatio,
+    // Display & Media
+    Avatar,
+    AvatarFallback,
+    AvatarImage,
+    Badge,
+    // Navigation
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+    // Forms & Inputs
+    Button,
+    ButtonGroup,
+    ButtonGroupSeparator,
+    ButtonGroupText,
+    Calendar,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Carousel,
+    CarouselContent,
+    CarouselItem,
+    CarouselNext,
+    CarouselPrevious,
+    Checkbox,
+    // Utilities
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+    // Menus
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuTrigger,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -113,49 +78,39 @@ import {
     DrawerHeader,
     DrawerTitle,
     DrawerTrigger,
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
-
-    // Menus
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuTrigger,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-    Menubar,
-    MenubarContent,
-    MenubarItem,
-    MenubarMenu,
-    MenubarTrigger,
-
-    // Display & Media
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
-    Calendar,
-    Carousel,
-    CarouselContent,
-    CarouselItem,
-    CarouselNext,
-    CarouselPrevious,
     Empty,
     EmptyDescription,
     EmptyTitle,
+    Field,
+    FieldContent,
+    FieldDescription,
+    FieldLabel,
+    // Advanced Forms
+    Form,
+    FormControl,
+    FormDescription,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
     HoverCard,
     HoverCardContent,
     HoverCardTrigger,
+    Input,
+    InputGroup,
+    InputGroupAddon,
+    InputGroupButton,
+    InputGroupInput,
+    InputOTP,
+    InputOTPGroup,
+    InputOTPSeparator,
+    InputOTPSlot,
     Item,
     ItemActions,
     ItemContent,
@@ -163,52 +118,78 @@ import {
     ItemGroup,
     ItemMedia,
     ItemTitle,
+    Kbd,
+    KbdGroup,
+    Label,
+    Menubar,
+    MenubarContent,
+    MenubarItem,
+    MenubarMenu,
+    MenubarTrigger,
+    NativeSelect,
+    NativeSelectOption,
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+    Progress,
+    RadioGroup,
+    RadioGroupItem,
+    ResizableHandle,
+    ResizablePanel,
+    ResizablePanelGroup,
     ScrollArea,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Separator,
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+    Skeleton,
+    Slider,
+    Spinner,
+    Switch,
     Table,
     TableBody,
     TableCell,
     TableHead,
     TableHeader,
     TableRow,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+    Textarea,
+    toast,
+    Toaster,
+    Toggle,
+    ToggleGroup,
+    ToggleGroupItem,
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
-
-    // Utilities
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-    Kbd,
-    KbdGroup,
-    Toggle,
-    ToggleGroup,
-    ToggleGroupItem,
-} from "@ottabase/ui-shadcn";
-import {
-    AlertCircle,
-    ChevronDown,
-    Mail,
-    Menu,
-    Search,
-    Settings,
-    User,
-} from "lucide-react";
-import { Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
+} from '@ottabase/ui-shadcn';
+import { Link } from '@tanstack/react-router';
+import { AlertCircle, ChevronDown, Mail, Menu, Search, Settings, User } from 'lucide-react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
 const formSchema = z.object({
-    username: z.string().min(2, "Username must be at least 2 characters"),
-    email: z.string().email("Invalid email address"),
+    username: z.string().min(2, 'Username must be at least 2 characters'),
+    email: z.string().email('Invalid email address'),
 });
 
 export function ShadcnDemoPage() {
@@ -216,33 +197,29 @@ export function ShadcnDemoPage() {
     const [sliderValue, setSliderValue] = useState([50]);
     const [enabled, setEnabled] = useState(true);
     const [date, setDate] = useState<Date | undefined>(new Date());
-    const [otp, setOtp] = useState("");
+    const [otp, setOtp] = useState('');
     const [open, setOpen] = useState(false);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            username: "",
-            email: "",
+            username: '',
+            email: '',
         },
     });
 
     function onSubmit(values: z.infer<typeof formSchema>) {
-        toast("Form submitted!", {
+        toast('Form submitted!', {
             description: JSON.stringify(values, null, 2),
         });
     }
 
     return (
-        <div className="mx-auto w-full max-w-7xl space-y-8 pb-16">
+        <div className="space-y-8">
             {/* Header */}
             <div className="flex flex-col gap-2">
                 <div className="flex flex-wrap gap-2">
-                    <Button
-                        asChild
-                        variant="ghost"
-                        className="w-fit text-muted-foreground hover:text-foreground"
-                    >
+                    <Button asChild variant="ghost" className="w-fit text-muted-foreground hover:text-foreground">
                         <Link to="/demo">← Back to Demo Gallery</Link>
                     </Button>
                 </div>
@@ -250,13 +227,10 @@ export function ShadcnDemoPage() {
                     <Badge variant="secondary" className="uppercase">
                         shadcn/ui
                     </Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight">
-                        Complete Component Showcase
-                    </h1>
+                    <h1 className="text-3xl font-semibold tracking-tight">Complete Component Showcase</h1>
                 </div>
                 <p className="max-w-3xl text-muted-foreground">
-                    shadcn/ui components from <code>@ottabase/ui-shadcn</code> organized
-                    by category.
+                    shadcn/ui components from <code>@ottabase/ui-shadcn</code> organized by category.
                 </p>
             </div>
 
@@ -273,16 +247,12 @@ export function ShadcnDemoPage() {
                         <Alert>
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>Heads up!</AlertTitle>
-                            <AlertDescription>
-                                This is a default alert with an icon.
-                            </AlertDescription>
+                            <AlertDescription>This is a default alert with an icon.</AlertDescription>
                         </Alert>
                         <Alert variant="destructive">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>Error</AlertTitle>
-                            <AlertDescription>
-                                Something went wrong with your request.
-                            </AlertDescription>
+                            <AlertDescription>Something went wrong with your request.</AlertDescription>
                         </Alert>
                     </CardContent>
                 </Card>
@@ -363,7 +333,7 @@ export function ShadcnDemoPage() {
                             <div className="flex items-center gap-3">
                                 <Switch checked={enabled} onCheckedChange={setEnabled} />
                                 <span className="text-sm text-muted-foreground">
-                                    {enabled ? "Enabled" : "Disabled"}
+                                    {enabled ? 'Enabled' : 'Disabled'}
                                 </span>
                             </div>
                         </div>
@@ -377,9 +347,7 @@ export function ShadcnDemoPage() {
                                     max={100}
                                     className="flex-1"
                                 />
-                                <span className="w-12 text-sm text-muted-foreground">
-                                    {sliderValue[0]}
-                                </span>
+                                <span className="w-12 text-sm text-muted-foreground">{sliderValue[0]}</span>
                             </div>
                         </div>
                     </CardContent>
@@ -480,9 +448,7 @@ export function ShadcnDemoPage() {
                                             <FormControl>
                                                 <Input placeholder="johndoe" {...field} />
                                             </FormControl>
-                                            <FormDescription>
-                                                This is your public display name.
-                                            </FormDescription>
+                                            <FormDescription>This is your public display name.</FormDescription>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -516,9 +482,7 @@ export function ShadcnDemoPage() {
                             <FieldLabel>Project name</FieldLabel>
                             <FieldContent>
                                 <Input placeholder="My awesome project" />
-                                <FieldDescription>
-                                    Choose a descriptive name for your project.
-                                </FieldDescription>
+                                <FieldDescription>Choose a descriptive name for your project.</FieldDescription>
                             </FieldContent>
                         </Field>
                     </CardContent>
@@ -704,9 +668,7 @@ export function ShadcnDemoPage() {
                                 <DialogContent>
                                     <DialogHeader>
                                         <DialogTitle>Dialog Title</DialogTitle>
-                                        <DialogDescription>
-                                            This is a dialog description
-                                        </DialogDescription>
+                                        <DialogDescription>This is a dialog description</DialogDescription>
                                     </DialogHeader>
                                     <p>Dialog content goes here</p>
                                 </DialogContent>
@@ -727,9 +689,7 @@ export function ShadcnDemoPage() {
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This action cannot be undone.
-                                        </AlertDialogDescription>
+                                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -753,9 +713,7 @@ export function ShadcnDemoPage() {
                                 <DrawerContent>
                                     <DrawerHeader>
                                         <DrawerTitle>Drawer Title</DrawerTitle>
-                                        <DrawerDescription>
-                                            Drawer description
-                                        </DrawerDescription>
+                                        <DrawerDescription>Drawer description</DrawerDescription>
                                     </DrawerHeader>
                                     <div className="p-4">Drawer content</div>
                                     <DrawerFooter>
@@ -781,9 +739,7 @@ export function ShadcnDemoPage() {
                                 <SheetContent>
                                     <SheetHeader>
                                         <SheetTitle>Sheet Title</SheetTitle>
-                                        <SheetDescription>
-                                            Sheet description
-                                        </SheetDescription>
+                                        <SheetDescription>Sheet description</SheetDescription>
                                     </SheetHeader>
                                     <div className="py-4">Sheet content</div>
                                 </SheetContent>
@@ -821,9 +777,7 @@ export function ShadcnDemoPage() {
                                 <HoverCardContent>
                                     <div className="space-y-2">
                                         <h4 className="text-sm font-semibold">@username</h4>
-                                        <p className="text-sm text-muted-foreground">
-                                            User bio and details
-                                        </p>
+                                        <p className="text-sm text-muted-foreground">User bio and details</p>
                                     </div>
                                 </HoverCardContent>
                             </HoverCard>
@@ -934,12 +888,7 @@ export function ShadcnDemoPage() {
                             <CardDescription>Date picker</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Calendar
-                                mode="single"
-                                selected={date}
-                                onSelect={setDate}
-                                className="rounded-md border"
-                            />
+                            <Calendar mode="single" selected={date} onSelect={setDate} className="rounded-md border" />
                         </CardContent>
                     </Card>
 
@@ -956,9 +905,7 @@ export function ShadcnDemoPage() {
                                             <div className="p-1">
                                                 <Card>
                                                     <CardContent className="flex aspect-square items-center justify-center p-6">
-                                                        <span className="text-4xl font-semibold">
-                                                            {i}
-                                                        </span>
+                                                        <span className="text-4xl font-semibold">{i}</span>
                                                     </CardContent>
                                                 </Card>
                                             </div>
@@ -979,9 +926,7 @@ export function ShadcnDemoPage() {
                         <CardContent>
                             <Empty>
                                 <EmptyTitle>No results found</EmptyTitle>
-                                <EmptyDescription>
-                                    Try adjusting your search criteria
-                                </EmptyDescription>
+                                <EmptyDescription>Try adjusting your search criteria</EmptyDescription>
                             </Empty>
                         </CardContent>
                     </Card>
@@ -1026,15 +971,11 @@ export function ShadcnDemoPage() {
                         <Accordion type="single" collapsible>
                             <AccordionItem value="item-1">
                                 <AccordionTrigger>Section 1</AccordionTrigger>
-                                <AccordionContent>
-                                    Content for section 1
-                                </AccordionContent>
+                                <AccordionContent>Content for section 1</AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="item-2">
                                 <AccordionTrigger>Section 2</AccordionTrigger>
-                                <AccordionContent>
-                                    Content for section 2
-                                </AccordionContent>
+                                <AccordionContent>Content for section 2</AccordionContent>
                             </AccordionItem>
                         </Accordion>
                     </CardContent>
@@ -1051,9 +992,7 @@ export function ShadcnDemoPage() {
                                 <Button variant="outline" className="w-full justify-between">
                                     Toggle content
                                     <ChevronDown
-                                        className={`h-4 w-4 transition-transform ${
-                                            open ? "rotate-180" : ""
-                                        }`}
+                                        className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`}
                                     />
                                 </Button>
                             </CollapsibleTrigger>
@@ -1139,9 +1078,7 @@ export function ShadcnDemoPage() {
                     </CardHeader>
                     <CardContent>
                         <AspectRatio ratio={16 / 9} className="bg-muted rounded-md">
-                            <div className="flex h-full items-center justify-center">
-                                16:9 Aspect Ratio
-                            </div>
+                            <div className="flex h-full items-center justify-center">16:9 Aspect Ratio</div>
                         </AspectRatio>
                     </CardContent>
                 </Card>
@@ -1222,8 +1159,8 @@ export function ShadcnDemoPage() {
                         <CardContent>
                             <Button
                                 onClick={() =>
-                                    toast("Event Created", {
-                                        description: "Monday, January 3rd at 6:00pm",
+                                    toast('Event Created', {
+                                        description: 'Monday, January 3rd at 6:00pm',
                                     })
                                 }
                             >
@@ -1239,13 +1176,14 @@ export function ShadcnDemoPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="text-sm text-muted-foreground">
-                                The Toaster component renders toast notifications. Click the buttons below to see different toast types.
+                                The Toaster component renders toast notifications. Click the buttons below to see
+                                different toast types.
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 <Button
                                     onClick={() =>
-                                        toast.success("Success!", {
-                                            description: "Operation completed successfully",
+                                        toast.success('Success!', {
+                                            description: 'Operation completed successfully',
                                         })
                                     }
                                     variant="outline"
@@ -1254,8 +1192,8 @@ export function ShadcnDemoPage() {
                                 </Button>
                                 <Button
                                     onClick={() =>
-                                        toast.error("Error!", {
-                                            description: "Something went wrong",
+                                        toast.error('Error!', {
+                                            description: 'Something went wrong',
                                         })
                                     }
                                     variant="outline"
@@ -1264,8 +1202,8 @@ export function ShadcnDemoPage() {
                                 </Button>
                                 <Button
                                     onClick={() =>
-                                        toast.info("Info", {
-                                            description: "This is an informational message",
+                                        toast.info('Info', {
+                                            description: 'This is an informational message',
                                         })
                                     }
                                     variant="outline"
@@ -1274,8 +1212,8 @@ export function ShadcnDemoPage() {
                                 </Button>
                                 <Button
                                     onClick={() =>
-                                        toast.warning("Warning!", {
-                                            description: "Please be careful",
+                                        toast.warning('Warning!', {
+                                            description: 'Please be careful',
                                         })
                                     }
                                     variant="outline"
@@ -1284,8 +1222,8 @@ export function ShadcnDemoPage() {
                                 </Button>
                                 <Button
                                     onClick={() =>
-                                        toast.loading("Loading...", {
-                                            description: "Processing your request",
+                                        toast.loading('Loading...', {
+                                            description: 'Processing your request',
                                         })
                                     }
                                     variant="outline"

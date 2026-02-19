@@ -54,3 +54,19 @@ model Post {
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 }
+
+/// File model - File upload metadata and tracking
+model File {
+    id          String   @id @default(cuid())
+    key         String   @unique
+    filename    String
+    size        Int
+    contentType String
+    url         String
+    userId      String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    @@index([userId])
+    @@index([createdAt])
+}

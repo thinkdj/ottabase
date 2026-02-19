@@ -1,10 +1,8 @@
-
-// IMP TODO: SimpleImage and rendering does similar function. Unify and use only advancedImageTool in future
-// Missing functionality: better menu items with text like simple image, Paste support, 
-
 import './AdvancedImageTool.css';
 import { Icons } from './iconUtils';
 import { AdvancedImageData, UploadResponse } from './types';
+import { uploadFile } from '@ottabase/ottaupload/utils';
+import { validateFileType } from '@ottabase/ottaupload/validation';
 
 export default class AdvancedImageTool {
     private api: any;
@@ -19,8 +17,8 @@ export default class AdvancedImageTool {
 
     static get toolbox() {
         return {
-            title: 'Advanced Image',
-            icon: Icons.image
+            title: 'Image',
+            icon: Icons.image,
         };
     }
 
@@ -45,8 +43,9 @@ export default class AdvancedImageTool {
         this.config = config || {};
 
         // Config defaults
-        this.config.uploadEndpoint = this.config.uploadEndpoint || '/api/cloudflare/r2';
-        this.config.provider = this.config.provider || 'r2'; // 'r2' or 'cloudflare-images'
+        this.config.uploadEndpoint = this.config.uploadEndpoint || '/api/upload';
+        this.config.maxFileSize = this.config.maxFileSize || 10 * 1024 * 1024; // 10MB default
+        this.config.provider = this.config.provider || 'r2'; // Default to R2
 
         // Accept legacy @editorjs/image data shape: { file: { url }, caption, withBorder, withBackground, stretched }
         const legacyUrl = data?.file?.url || '';
@@ -248,31 +247,43 @@ export default class AdvancedImageTool {
     setupDragAndDrop() {
         if (!this.uploadArea) return;
 
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
             this.uploadArea.addEventListener(eventName, this.preventDefaults, false);
         });
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            this.uploadArea.addEventListener(eventName, () => {
-                this.uploadArea.classList.add('advanced-image-upload-area--dragover');
-            }, false);
+        ['dragenter', 'dragover'].forEach((eventName) => {
+            this.uploadArea.addEventListener(
+                eventName,
+                () => {
+                    this.uploadArea.classList.add('advanced-image-upload-area--dragover');
+                },
+                false,
+            );
         });
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            this.uploadArea.addEventListener(eventName, () => {
-                this.uploadArea.classList.remove('advanced-image-upload-area--dragover');
-            }, false);
+        ['dragleave', 'drop'].forEach((eventName) => {
+            this.uploadArea.addEventListener(
+                eventName,
+                () => {
+                    this.uploadArea.classList.remove('advanced-image-upload-area--dragover');
+                },
+                false,
+            );
         });
 
-        this.uploadArea.addEventListener('drop', (e) => {
-            const files = e.dataTransfer?.files;
-            if (files && files.length > 0) {
-                const file = files[0];
-                if (file.type.startsWith('image/')) {
-                    this.uploadFile(file);
+        this.uploadArea.addEventListener(
+            'drop',
+            (e) => {
+                const files = e.dataTransfer?.files;
+                if (files && files.length > 0) {
+                    const file = files[0];
+                    if (file.type.startsWith('image/')) {
+                        this.uploadFile(file);
+                    }
                 }
-            }
-        }, false);
+            },
+            false,
+        );
     }
 
     preventDefaults(e: Event) {
@@ -297,64 +308,41 @@ export default class AdvancedImageTool {
     }
 
     async uploadFile(file: File) {
-        if (!file.type.startsWith('image/')) {
+        // Validate file type
+        if (!validateFileType(file, ['image/*'])) {
             this.showError('Please select an image file');
             return;
         }
 
-        this.showLoading('Uploading image...');
+        this.showLoading('Uploading image... 0%');
 
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            // For R2, we need a key. Use filename.
-            if (this.config.provider === 'r2') {
-                formData.append('key', file.name);
-            }
-
-            // For CF Images, we don't need 'key', but we might need 'metadata' or 'requireSignedURLs'
-            // formData.append('metadata', JSON.stringify({ name: file.name }));
-
-            const response = await fetch(this.config.uploadEndpoint, {
-                method: 'POST',
-                body: formData,
+            // Use ottaupload utility for upload
+            const result = await uploadFile(file, {
+                endpoint: this.config.uploadEndpoint,
+                provider: this.config.provider,
+                maxFileSize: this.config.maxFileSize,
+                acceptedFileTypes: ['image/*'],
+                onProgress: (progress) => {
+                    this.showLoading(`Uploading image... ${progress}%`);
+                },
+                onSuccess: (response) => {
+                    if (response.url) {
+                        this.data.url = response.url;
+                        this.data.caption = file.name;
+                        // match legacy format
+                        this.data.file = { url: response.url };
+                        this.renderImage();
+                    }
+                },
+                onError: (error) => {
+                    console.error('File upload error:', error);
+                    this.showError(error.message || 'Failed to upload image');
+                },
             });
 
-            const result = await response.json();
-
-            if (result.success) {
-                // Handle different response structures
-                // R2 endpoint returns { success: true } but we need to know the public URL
-                // The current R2 endpoint implementation in worker DOES NOT return the URL in POST response!
-                // It only returns { success: true }. 
-                // We need to construct the URL or modify the worker to return it.
-                // Assuming standard R2 public access or worker serving:
-
-                let imageUrl = '';
-
-                if (this.config.provider === 'r2') {
-                    // If using the worker endpoint that writes to R2, we can usually fetch it back from the same endpoint?
-                    // GET /api/cloudflare/r2?key=...
-                    // So the URL is the endpoint + ?key=...
-                    imageUrl = `${this.config.uploadEndpoint}?key=${encodeURIComponent(file.name)}`;
-                } else if (this.config.provider === 'cloudflare-images' && result.data) {
-                    // CF Images returns data.variants or something similar
-                    // We need to implement the CF Images endpoint to return a clean structure
-                    // For now, assuming result.data.url or result.result.variants[0]
-                    imageUrl = result.data?.url || (result.data?.variants && result.data.variants[0]);
-                }
-
-                if (imageUrl) {
-                    this.data.url = imageUrl;
-                    this.data.caption = file.name;
-                    // match legacy format
-                    this.data.file = { url: imageUrl };
-                    this.renderImage();
-                } else {
-                    this.showError('Upload succeeded but failed to get image URL');
-                }
-            } else {
+            // Handle failed upload
+            if (!result.success) {
                 this.showError(result.error || 'Failed to upload image');
             }
         } catch (error) {
@@ -444,7 +432,7 @@ export default class AdvancedImageTool {
             { name: 'useNextImage', icon: Icons.image, label: 'Image optimization' },
         ];
 
-        toggleSettings.forEach(setting => {
+        toggleSettings.forEach((setting) => {
             const settingItem = document.createElement('div');
             settingItem.classList.add('ce-popover-item');
 
@@ -539,7 +527,11 @@ export default class AdvancedImageTool {
         if (!this.imageContainer) return;
 
         // Remove existing aspect ratio classes
-        this.imageContainer.classList.remove('advanced-image-container--aspect-16-9', 'advanced-image-container--aspect-4-3', 'advanced-image-container--aspect-1-1');
+        this.imageContainer.classList.remove(
+            'advanced-image-container--aspect-16-9',
+            'advanced-image-container--aspect-4-3',
+            'advanced-image-container--aspect-1-1',
+        );
 
         // Apply new aspect ratio
         const aspectRatio = this.data.aspectRatio || 'original';

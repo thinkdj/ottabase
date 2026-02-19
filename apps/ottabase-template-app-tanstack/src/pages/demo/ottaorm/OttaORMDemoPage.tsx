@@ -1,14 +1,7 @@
-import { useState } from "react";
-import { Link } from "@tanstack/react-router";
-import {
-    Button,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    Input,
-} from "@ottabase/ui-shadcn";
-import { createModelHooks, useApiMutation } from "@ottabase/ottaorm/client";
+import { createModelHooks, useApiMutation } from '@ottabase/ottaorm/client';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import { Link } from '@tanstack/react-router';
+import { useState } from 'react';
 
 // ============================================================
 // App-specific model types (defined per-app)
@@ -33,37 +26,29 @@ interface Post {
 // Uses /api/ottaorm/{entityName} automatically via generic CRUD handler
 // ============================================================
 
-const userHooks = createModelHooks<User>({ entityName: "users" });
-const postHooks = createModelHooks<Post>({ entityName: "posts" });
+const userHooks = createModelHooks<User>({ entityName: 'users' });
+const postHooks = createModelHooks<Post>({ entityName: 'posts' });
 
 // ============================================================
 // Component
 // ============================================================
 
 export function OttaORMDemoPage() {
-    const [newUserName, setNewUserName] = useState("");
-    const [newUserEmail, setNewUserEmail] = useState("");
-    const [newPostTitle, setNewPostTitle] = useState("");
-    const [selectedUserId, setSelectedUserId] = useState("");
+    const [newUserName, setNewUserName] = useState('');
+    const [newUserEmail, setNewUserEmail] = useState('');
+    const [newPostTitle, setNewPostTitle] = useState('');
+    const [selectedUserId, setSelectedUserId] = useState('');
 
     // TanStack Query hooks - automatic caching, loading states, and refetching
-    const {
-        data: users = [],
-        isLoading: usersLoading,
-        error: usersError,
-    } = userHooks.useList();
+    const { data: users = [], isLoading: usersLoading, error: usersError } = userHooks.useList();
 
-    const {
-        data: posts = [],
-        isLoading: postsLoading,
-        error: postsError,
-    } = postHooks.useList();
+    const { data: posts = [], isLoading: postsLoading, error: postsError } = postHooks.useList();
 
     // Database initialization mutation
     const initDb = useApiMutation<{ success: boolean }>({
-        endpoint: "/api/ottaorm/init",
-        method: "POST",
-        invalidateKeys: [["users"], ["posts"]],
+        endpoint: '/api/ottaorm/init',
+        method: 'POST',
+        invalidateKeys: [['users'], ['posts']],
     });
 
     // User mutations with automatic cache invalidation
@@ -88,8 +73,8 @@ export function OttaORMDemoPage() {
             name: newUserName,
             email: newUserEmail,
         });
-        setNewUserName("");
-        setNewUserEmail("");
+        setNewUserName('');
+        setNewUserEmail('');
     };
 
     const handleAddPost = async (e: React.FormEvent) => {
@@ -99,13 +84,13 @@ export function OttaORMDemoPage() {
         await createPost.mutateAsync({
             title: newPostTitle,
             authorId: selectedUserId,
-            content: "Sample post content",
+            content: 'Sample post content',
         });
-        setNewPostTitle("");
+        setNewPostTitle('');
     };
 
     return (
-        <div className="mx-auto max-w-4xl space-y-6 px-4 py-12">
+        <div className="space-y-6">
             <Button asChild variant="ghost" className="w-fit">
                 <Link to="/demo">← Back to Demos</Link>
             </Button>
@@ -113,7 +98,8 @@ export function OttaORMDemoPage() {
             <div>
                 <h1 className="mb-2 text-3xl font-semibold">OttaORM Demo</h1>
                 <p className="text-muted-foreground">
-                    Class-based Drizzle models with TanStack Query - automatic caching, loading states, and optimistic updates
+                    Class-based Drizzle models with TanStack Query - automatic caching, loading states, and optimistic
+                    updates
                 </p>
             </div>
 
@@ -129,10 +115,14 @@ export function OttaORMDemoPage() {
                         Database not initialized. Click below to set up tables.
                     </p>
                     <Button
-                        onClick={() => initDb.mutate({})}
+                        onClick={() => {
+                            const searchParams = new URLSearchParams(window.location.search);
+                            const secret = searchParams.get('secret');
+                            initDb.mutate(secret ? { secret } : {});
+                        }}
                         disabled={initDb.isPending}
                     >
-                        {initDb.isPending ? "Initializing..." : "Initialize Database"}
+                        {initDb.isPending ? 'Initializing...' : 'Initialize Database'}
                     </Button>
                 </div>
             ) : null}
@@ -144,9 +134,7 @@ export function OttaORMDemoPage() {
                             <CardTitle className="flex items-center justify-between text-base">
                                 Users
                                 {usersLoading && (
-                                    <span className="text-xs font-normal text-muted-foreground">
-                                        Loading...
-                                    </span>
+                                    <span className="text-xs font-normal text-muted-foreground">Loading...</span>
                                 )}
                             </CardTitle>
                         </CardHeader>
@@ -170,24 +158,24 @@ export function OttaORMDemoPage() {
                                     disabled={createUser.isPending || !newUserName.trim() || !newUserEmail.trim()}
                                     className="w-full"
                                 >
-                                    {createUser.isPending ? "Adding..." : "Add User"}
+                                    {createUser.isPending ? 'Adding...' : 'Add User'}
                                 </Button>
                             </form>
 
                             <div className="space-y-2">
                                 {users.length === 0 ? (
                                     <div className="rounded-lg border bg-muted/50 p-8 text-center">
-                                        <p className="text-sm text-muted-foreground">
-                                            No users yet. Add one above!
-                                        </p>
+                                        <p className="text-sm text-muted-foreground">No users yet. Add one above!</p>
                                     </div>
                                 ) : (
-                                    users.map((user) => (
-                                        <div key={user.id} className="rounded-lg border p-4">
+                                    users.map((user, index) => (
+                                        <div key={user.id || `user-${index}`} className="rounded-lg border p-4">
                                             <div className="flex items-start justify-between gap-2">
                                                 <div>
-                                                    <p className="font-medium">{user.name}</p>
-                                                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                                                    <p className="font-medium">{user.name || '(No name)'}</p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {user.email || '(No email)'}
+                                                    </p>
                                                 </div>
                                                 <Button
                                                     onClick={() => deleteUser.mutate(user.id)}
@@ -210,9 +198,7 @@ export function OttaORMDemoPage() {
                             <CardTitle className="flex items-center justify-between text-base">
                                 Posts
                                 {postsLoading && (
-                                    <span className="text-xs font-normal text-muted-foreground">
-                                        Loading...
-                                    </span>
+                                    <span className="text-xs font-normal text-muted-foreground">Loading...</span>
                                 )}
                             </CardTitle>
                         </CardHeader>
@@ -225,12 +211,18 @@ export function OttaORMDemoPage() {
                                     aria-label="Select post author"
                                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 >
-                                    <option value="">Select author...</option>
-                                    {users.map((user) => (
-                                        <option key={user.id} value={user.id}>
-                                            {user.name}
-                                        </option>
-                                    ))}
+                                    {[
+                                        <option key="_placeholder" value="">
+                                            Select author...
+                                        </option>,
+                                        ...users.map((user, index) => (
+                                            <option key={user.id || `opt-${index}`} value={user.id}>
+                                                {user.name ||
+                                                    user.email ||
+                                                    (user.id ? `User ${user.id.substring(0, 8)}` : 'Unknown User')}
+                                            </option>
+                                        )),
+                                    ]}
                                 </select>
                                 <Input
                                     value={newPostTitle}
@@ -243,7 +235,7 @@ export function OttaORMDemoPage() {
                                     disabled={createPost.isPending || !newPostTitle.trim() || !selectedUserId}
                                     className="w-full"
                                 >
-                                    {createPost.isPending ? "Adding..." : "Add Post"}
+                                    {createPost.isPending ? 'Adding...' : 'Add Post'}
                                 </Button>
                             </form>
 
@@ -255,13 +247,14 @@ export function OttaORMDemoPage() {
                                         </p>
                                     </div>
                                 ) : (
-                                    posts.map((post) => (
-                                        <div key={post.id} className="rounded-lg border p-4">
+                                    posts.map((post, index) => (
+                                        <div key={post.id || `post-${index}`} className="rounded-lg border p-4">
                                             <div className="flex items-start justify-between gap-2">
                                                 <div>
                                                     <p className="font-medium">{post.title}</p>
                                                     <p className="text-sm text-muted-foreground">
-                                                        By: {users.find((u) => u.id === post.authorId)?.name || "Unknown"}
+                                                        By:{' '}
+                                                        {users.find((u) => u.id === post.authorId)?.name || 'Unknown'}
                                                     </p>
                                                 </div>
                                                 <Button

@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import { Button, Input, Label, Alert, AlertDescription, Spinner } from "@ottabase/ui-shadcn";
+import React, { useState } from 'react';
+import { Button, Input, Label, Alert, AlertDescription, Spinner, Checkbox } from '@ottabase/ui-shadcn';
 
 export interface CredentialsFormProps {
-    onSubmit: (credentials: { email: string; password: string }) => Promise<void>;
+    onSubmit: (credentials: { email: string; password: string; rememberMe: boolean }) => Promise<void>;
     isLoading?: boolean;
     error?: string;
     emailLabel?: string;
@@ -10,6 +10,9 @@ export interface CredentialsFormProps {
     submitButtonText?: string;
     showForgotPassword?: boolean;
     onForgotPassword?: () => void;
+    showRememberMe?: boolean;
+    rememberMeLabel?: string;
+    defaultRememberMe?: boolean;
     className?: string;
 }
 
@@ -17,19 +20,23 @@ export function CredentialsForm({
     onSubmit,
     isLoading = false,
     error,
-    emailLabel = "Email",
-    passwordLabel = "Password",
-    submitButtonText = "Sign in",
+    emailLabel = 'Email',
+    passwordLabel = 'Password',
+    submitButtonText = 'Sign in',
     showForgotPassword = false,
     onForgotPassword,
-    className = "",
+    showRememberMe = true,
+    rememberMeLabel = 'Remember me',
+    defaultRememberMe = true,
+    className = '',
 }: CredentialsFormProps) {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(defaultRememberMe);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        await onSubmit({ email, password });
+        await onSubmit({ email, password, rememberMe });
     };
 
     return (
@@ -79,6 +86,20 @@ export function CredentialsForm({
                     autoComplete="current-password"
                 />
             </div>
+
+            {showRememberMe && (
+                <div className="flex items-center gap-2">
+                    <Checkbox
+                        id="rememberMe"
+                        checked={rememberMe}
+                        onCheckedChange={(value) => setRememberMe(value === true)}
+                        disabled={isLoading}
+                    />
+                    <Label htmlFor="rememberMe" className="text-sm">
+                        {rememberMeLabel}
+                    </Label>
+                </div>
+            )}
 
             <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Spinner className="mr-2 h-4 w-4" />}

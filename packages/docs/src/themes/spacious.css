@@ -1,0 +1,65 @@
+/* ==========================================================================
+   @ottabase/docs — Spacious layout theme
+   Generous layout: wide sidebar, wide content, comfortable whitespace.
+   Good for guides and long-form reading.
+   Colors come from Brand Kit.
+   ========================================================================== */
+
+.otta-docs-theme-spacious {
+    --otta-docs-sidebar-width: 280px;
+    --otta-docs-toc-width: 220px;
+    --otta-docs-content-max-width: 800px;
+    /* Radius from Brand Kit (--radius); fallback to theme default when no brand applied */
+    --otta-docs-radius: var(--radius, 6px);
+    --otta-docs-radius-sm: var(--radius, 4px);
+}
+
+.otta-docs-theme-spacious .otta-docs-nav-group-label {
+    font-size: 12px;
+    padding: 14px 8px 6px;
+}
+
+.otta-docs-theme-spacious .otta-docs-nav-link {
+    font-size: 15px;
+    padding: 6px 8px;
+}
+
+.otta-docs-theme-spacious .otta-docs-content h1 {
+    font-size: 2.75rem;
+    margin: 0 0 8px;
+}
+
+.otta-docs-theme-spacious .otta-docs-content h2 {
+    font-size: 1.65rem;
+    margin: 40px 0 12px;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.otta-docs-theme-spacious .otta-docs-content h3 {
+    font-size: 1.35rem;
+    margin: 32px 0 8px;
+}
+
+.otta-docs-theme-spacious .otta-docs-p {
+    font-size: 17px;
+    line-height: 1.7;
+}
+
+.otta-docs-theme-spacious .otta-docs-code-block pre {
+    font-size: 15px;
+    padding: 16px 20px;
+}
+
+.otta-docs-theme-spacious .otta-docs-article {
+    padding: 48px 56px 96px;
+}
+
+.otta-docs-theme-spacious .otta-docs-toc-link {
+    font-size: 14px;
+}
+
+.otta-docs-theme-spacious .otta-docs-pagination {
+    margin-top: 56px;
+    padding-top: 28px;
+}

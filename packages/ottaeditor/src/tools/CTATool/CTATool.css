@@ -1,0 +1,127 @@
+/* CTA Tool Styles */
+
+.cdx-cta__wrapper {
+    padding: 10px;
+    border-radius: 6px;
+    background: hsl(var(--muted) / 0.5);
+    border: 1px solid hsl(var(--border));
+}
+
+.cdx-cta__form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cdx-cta__form > * {
+    margin: 0;
+}
+
+/* Ensure checkbox group has same spacing as other rows */
+.cdx-cta__form > div:has(input[type='checkbox']) {
+    margin: 0;
+}
+
+.cdx-cta__input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cdx-cta__label {
+    font-size: 12px;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    margin-bottom: 2px;
+}
+
+.cdx-cta__input,
+.cdx-cta__select {
+    display: block;
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid hsl(var(--input));
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+}
+
+.cdx-cta__input:focus,
+.cdx-cta__select:focus {
+    outline: none;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+}
+
+.cdx-cta__checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.cdx-cta__checkbox {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    margin: 0;
+}
+
+.cdx-cta__checkbox-label {
+    font-size: 12px;
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    margin: 0;
+}
+
+.cdx-cta__preview {
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid hsl(var(--border));
+    text-align: center;
+}
+
+.cdx-cta__preview-button {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.cdx-cta__preview-button--primary {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+}
+
+.cdx-cta__preview-button--primary:hover {
+    opacity: 0.9;
+}
+
+.cdx-cta__preview-button--secondary {
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    border-color: hsl(var(--muted));
+}
+
+.cdx-cta__preview-button--secondary:hover {
+    opacity: 0.8;
+}
+
+.cdx-cta__preview-button--outline {
+    background: transparent;
+    color: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+}
+
+.cdx-cta__preview-button--outline:hover {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+}

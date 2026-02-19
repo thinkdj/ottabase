@@ -1,3 +1,3 @@
-"use client";
+'use client';
 
-export { default as DarkModeToggle } from "./components/DarkModeToggle";
+export { default as DarkModeToggle } from './components/DarkModeToggle';

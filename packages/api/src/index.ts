@@ -9,88 +9,85 @@
 // Error Types
 // ============================================================
 
-import { ApiErrorResponse } from "@ottabase/utils";
+import { ApiErrorResponse } from '@ottabase/utils';
 
 /**
  * Custom error class for API errors.
  * Extends Error with additional metadata from the server response.
  */
 export class ApiError extends Error {
-  public readonly code?: string;
-  public readonly details?: string;
-  public readonly hint?: string;
-  public readonly messages: string[];
-  public readonly fieldErrors?: Record<string, string[]>;
-  public readonly status: number;
-  public readonly response?: Response;
+    public readonly code?: string;
+    public readonly details?: string;
+    public readonly hint?: string;
+    public readonly messages: string[];
+    public readonly fieldErrors?: Record<string, string[]>;
+    public readonly status: number;
+    public readonly response?: Response;
 
-  constructor(
-    data: ApiErrorResponse & { status: number },
-    response?: Response,
-  ) {
-    super(data.error);
-    this.name = "ApiError";
-    this.code = data.code;
-    this.details = data.details;
-    this.hint = data.hint;
-    this.messages = data.messages ?? [data.error];
-    this.fieldErrors = data.fieldErrors;
-    this.status = data.status;
-    this.response = response;
+    constructor(data: ApiErrorResponse & { status: number }, response?: Response) {
+        super(data.error);
+        this.name = 'ApiError';
+        this.code = data.code;
+        this.details = data.details;
+        this.hint = data.hint;
+        this.messages = data.messages ?? [data.error];
+        this.fieldErrors = data.fieldErrors;
+        this.status = data.status;
+        this.response = response;
 
-    // Maintains proper stack trace for where error was thrown
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, ApiError);
+        // Maintains proper stack trace for where error was thrown
+        if (Error.captureStackTrace) {
+            Error.captureStackTrace(this, ApiError);
+        }
     }
-  }
 
-  /** Check if error is a specific status code */
-  is(status: number): boolean {
-    return this.status === status;
-  }
+    /** Check if error is a specific status code */
+    is(status: number): boolean {
+        return this.status === status;
+    }
 
-  /** Check if error is unauthorized (401) */
-  isUnauthorized(): boolean {
-    return this.status === 401;
-  }
+    /** Check if error is unauthorized (401) */
+    isUnauthorized(): boolean {
+        return this.status === 401;
+    }
 
-  /** Check if error is forbidden (403) */
-  isForbidden(): boolean {
-    return this.status === 403;
-  }
+    /** Check if error is forbidden (403) */
+    isForbidden(): boolean {
+        return this.status === 403;
+    }
 
-  /** Check if error is not found (404) */
-  isNotFound(): boolean {
-    return this.status === 404;
-  }
+    /** Check if error is not found (404) */
+    isNotFound(): boolean {
+        return this.status === 404;
+    }
 
-  /** Check if error is rate limited (429) */
-  isRateLimited(): boolean {
-    return this.status === 429;
-  }
+    /** Check if error is rate limited (429) */
+    isRateLimited(): boolean {
+        return this.status === 429;
+    }
 
-  /** Check if error is a server error (5xx) */
-  isServerError(): boolean {
-    return this.status >= 500 && this.status < 600;
-  }
+    /** Check if error is a server error (5xx) */
+    isServerError(): boolean {
+        return this.status >= 500 && this.status < 600;
+    }
 
-  /** Get all error messages as a single string */
-  getAllMessages(): string {
-    return this.messages.join(", ");
-  }
+    /** Get all error messages as a single string */
+    getAllMessages(): string {
+        return this.messages.join(', ');
+    }
 
-  /** Convert to a plain object for logging/serialization */
-  toJSON(): ApiErrorResponse & { status: number } {
-    return {
-      error: this.message,
-      code: this.code,
-      details: this.details,
-      hint: this.hint,
-      messages: this.messages,
-      fieldErrors: this.fieldErrors,
-      status: this.status,
-    };
-  }
+    /** Convert to a plain object for logging/serialization */
+    toJSON(): ApiErrorResponse & { status: number } {
+        return {
+            error: this.message,
+            code: this.code,
+            details: this.details,
+            hint: this.hint,
+            messages: this.messages,
+            fieldErrors: this.fieldErrors,
+            status: this.status,
+        };
+    }
 }
 
 // ============================================================
@@ -98,51 +95,110 @@ export class ApiError extends Error {
 // ============================================================
 
 export interface ApiClientConfig {
-  /** Base URL for all requests (e.g., "https://api.example.com") */
-  baseUrl?: string;
+    /** Base URL for all requests (e.g., "https://api.example.com") */
+    baseUrl?: string;
 
-  /** Function to get auth token. Called before each request. */
-  getAuthToken?: () => string | null | Promise<string | null>;
+    /** Function to get auth token. Called before each request. */
+    getAuthToken?: () => string | null | Promise<string | null>;
 
-  /** Global error handler. Called for all errors. */
-  onError?: (error: ApiError) => void;
+    /** Global error handler. Called for all errors. */
+    onError?: (error: ApiError) => void;
 
-  /** Called when a 401 is received. Useful for redirecting to login. */
-  onUnauthorized?: (error: ApiError) => void;
+    /** Called when a 401 is received. Useful for redirecting to login. */
+    onUnauthorized?: (error: ApiError) => void;
 
-  /** Default headers to include in all requests */
-  defaultHeaders?: Record<string, string>;
+    /** Default headers to include in all requests */
+    defaultHeaders?: Record<string, string> | (() => Record<string, string> | Promise<Record<string, string>>);
 
-  /** Default timeout in milliseconds (default: 30000) */
-  timeout?: number;
+    /** Default timeout in milliseconds (default: 30000) */
+    timeout?: number;
+
+    /** Deduplicate in-flight requests with identical inputs (default: true) */
+    dedupe?: boolean;
 }
 
-export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
-  /** Skip auth token injection for this request */
-  skipAuth?: boolean;
+export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
+    /** Skip auth token injection for this request */
+    skipAuth?: boolean;
 
-  /** URL query parameters */
-  params?: Record<string, string | number | boolean | undefined | null>;
+    /** Skip invoking the unauthorized handler (useful for local 401 handling, Protected Post unlock etc.) */
+    skipUnauthorizedHandler?: boolean;
 
-  /** Request body (will be JSON stringified if object) */
-  body?: unknown;
+    /** URL query parameters */
+    params?: Record<string, string | number | boolean | undefined | null>;
 
-  /** Request timeout in milliseconds */
-  timeout?: number;
+    /** Request body (will be JSON stringified if object) */
+    body?: unknown;
 
-  /** Custom headers for this request */
-  headers?: Record<string, string>;
+    /** Request timeout in milliseconds */
+    timeout?: number;
+
+    /** Custom headers for this request */
+    headers?: Record<string, string>;
+
+    /** Disable in-flight request deduplication for this request */
+    dedupe?: boolean;
+
+    /** Optional custom dedupe key for this request */
+    dedupeKey?: string;
+
+    /** Optional identifier for logging/debugging deduped calls */
+    callerId?: string;
 }
 
 /** HTTP methods supported by the shorthand syntax */
-export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 /** API function signature with overloads for shorthand method syntax */
 export interface ApiFunction {
-  /** Standard call with options object */
-  <T = unknown>(endpoint: string, options?: ApiRequestOptions): Promise<T>;
-  /** Shorthand call with just HTTP method */
-  <T = unknown>(endpoint: string, method: HttpMethod): Promise<T>;
+    /** Standard call with options object */
+    <T = unknown>(endpoint: string, options?: ApiRequestOptions): Promise<T>;
+    /** Shorthand call with just HTTP method */
+    <T = unknown>(endpoint: string, method: HttpMethod): Promise<T>;
+}
+
+// ============================================================
+// In-flight Request Deduplication
+// ============================================================
+
+// DO NOT REMOVE: This dedupe layer prevents duplicate in-flight requests from multiple
+// callers by sharing the same fetch Promise and cloning the Response for safe reads.
+// It builds a dedupe key from url + method + normalized headers + body + timeout +
+// fetch options (cache/credentials/mode/redirect).
+// Optional: set `callerId` per request to tag deduped logs without stack parsing.
+
+const inFlightRequests = new Map<string, Promise<Response>>();
+
+function normalizeHeaders(headers: Record<string, string>): Record<string, string> {
+    const entries = Object.entries(headers).sort(([a], [b]) => a.localeCompare(b));
+    const normalized: Record<string, string> = {};
+    for (const [key, value] of entries) {
+        normalized[key.toLowerCase()] = value;
+    }
+    return normalized;
+}
+
+function buildDedupeKey(params: {
+    url: string;
+    method: string;
+    headers: Record<string, string>;
+    body: string | FormData | undefined;
+    timeout: number;
+    fetchOptions: Pick<RequestInit, 'cache' | 'credentials' | 'mode' | 'redirect'>;
+}): string {
+    return JSON.stringify({
+        url: params.url,
+        method: params.method,
+        headers: normalizeHeaders(params.headers),
+        // FormData can't be meaningfully serialized; use a placeholder so
+        // multipart uploads are never deduped against each other.
+        body: params.body instanceof FormData ? '__formdata__' : (params.body ?? null),
+        timeout: params.timeout,
+        cache: params.fetchOptions.cache ?? null,
+        credentials: params.fetchOptions.credentials ?? null,
+        mode: params.fetchOptions.mode ?? null,
+        redirect: params.fetchOptions.redirect ?? null,
+    });
 }
 
 // ============================================================
@@ -172,172 +228,222 @@ export interface ApiFunction {
  * ```
  */
 export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
-  const {
-    baseUrl = "",
-    getAuthToken,
-    onError,
-    onUnauthorized,
-    defaultHeaders = {},
-    timeout: defaultTimeout = 30000,
-  } = config;
-
-  return async function api<T = unknown>(
-    endpoint: string,
-    optionsOrMethod: ApiRequestOptions | HttpMethod = {},
-  ): Promise<T> {
-    // Handle shorthand method syntax: api("/path", "DELETE")
-    const options: ApiRequestOptions =
-      typeof optionsOrMethod === "string"
-        ? { method: optionsOrMethod }
-        : optionsOrMethod;
-
     const {
-      skipAuth = false,
-      params,
-      body,
-      timeout = defaultTimeout,
-      headers: requestHeaders = {},
-      ...fetchOptions
-    } = options;
+        baseUrl = '',
+        getAuthToken,
+        onError,
+        onUnauthorized,
+        defaultHeaders = {},
+        timeout: defaultTimeout = 30000,
+        dedupe: dedupeDefault = true,
+    } = config;
 
-    // Build URL with query params
-    let url = endpoint.startsWith("http") ? endpoint : `${baseUrl}${endpoint}`;
+    return async function api<T = unknown>(
+        endpoint: string,
+        optionsOrMethod: ApiRequestOptions | HttpMethod = {},
+    ): Promise<T> {
+        // Handle shorthand method syntax: api("/path", "DELETE")
+        const options: ApiRequestOptions =
+            typeof optionsOrMethod === 'string' ? { method: optionsOrMethod } : optionsOrMethod;
 
-    if (params) {
-      const searchParams = new URLSearchParams();
-      for (const [key, value] of Object.entries(params)) {
-        if (value !== undefined && value !== null) {
-          searchParams.append(key, String(value));
+        const {
+            skipAuth = false,
+            skipUnauthorizedHandler = false,
+            params,
+            body,
+            timeout = defaultTimeout,
+            headers: requestHeaders = {},
+            dedupe,
+            dedupeKey,
+            callerId,
+            ...fetchOptions
+        } = options;
+
+        // Build URL with query params
+        let url = endpoint.startsWith('http') ? endpoint : `${baseUrl}${endpoint}`;
+
+        if (params) {
+            const searchParams = new URLSearchParams();
+            for (const [key, value] of Object.entries(params)) {
+                if (value !== undefined && value !== null) {
+                    searchParams.append(key, String(value));
+                }
+            }
+            const queryString = searchParams.toString();
+            if (queryString) {
+                url += (url.includes('?') ? '&' : '?') + queryString;
+            }
         }
-      }
-      const queryString = searchParams.toString();
-      if (queryString) {
-        url += (url.includes("?") ? "&" : "?") + queryString;
-      }
-    }
 
-    // Build headers
-    const headers: Record<string, string> = {
-      ...defaultHeaders,
-      ...requestHeaders,
-    };
+        // Build headers
+        const resolvedDefaultHeaders = typeof defaultHeaders === 'function' ? await defaultHeaders() : defaultHeaders;
+        const headers: Record<string, string> = {
+            ...resolvedDefaultHeaders,
+            ...requestHeaders,
+        };
 
-    // Add auth token if available
-    if (!skipAuth && getAuthToken) {
-      const token = await getAuthToken();
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-    }
+        // Add auth token if available
+        if (!skipAuth && getAuthToken) {
+            const token = await getAuthToken();
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+        }
 
-    // Add Content-Type for JSON body
-    if (body !== undefined && !headers["Content-Type"]) {
-      headers["Content-Type"] = "application/json";
-    }
+        // Detect FormData – skip Content-Type (browser sets multipart boundary)
+        // and skip JSON.stringify so the raw FormData is sent as-is.
+        const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 
-    // Create abort controller for timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+        // Add Content-Type for JSON body (skip for FormData)
+        if (body !== undefined && !isFormData && !headers['Content-Type']) {
+            headers['Content-Type'] = 'application/json';
+        }
 
-    try {
-      const response = await fetch(url, {
-        ...fetchOptions,
-        headers,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
-        signal: controller.signal,
-      });
+        const requestBody = body !== undefined ? (isFormData ? body : JSON.stringify(body)) : undefined;
 
-      clearTimeout(timeoutId);
+        const shouldDedupe = dedupe ?? dedupeDefault;
+        const inFlightKey = shouldDedupe
+            ? (dedupeKey ??
+              buildDedupeKey({
+                  url,
+                  method: fetchOptions.method ?? 'GET',
+                  headers,
+                  body: requestBody,
+                  timeout,
+                  fetchOptions,
+              }))
+            : null;
 
-      // Handle non-OK responses
-      if (!response.ok) {
-        let errorData: ApiErrorResponse;
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        const executeFetch = async (): Promise<Response> => {
+            const response = await fetch(url, {
+                ...fetchOptions,
+                headers,
+                body: requestBody,
+                signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            return response;
+        };
 
         try {
-          errorData = await response.json();
-        } catch {
-          errorData = {
-            error: response.statusText || `HTTP ${response.status}`,
-          };
+            let response: Response;
+            if (shouldDedupe && inFlightKey) {
+                const existing = inFlightRequests.get(inFlightKey);
+                if (existing) {
+                    console.log('[ottabase/api] Deduped in-flight request', {
+                        url,
+                        method: fetchOptions.method ?? 'GET',
+                        inFlightCount: inFlightRequests.size,
+                        callerId,
+                    });
+                    clearTimeout(timeoutId);
+                    response = await existing;
+                } else {
+                    const fetchPromise = executeFetch().finally(() => {
+                        inFlightRequests.delete(inFlightKey);
+                    });
+                    inFlightRequests.set(inFlightKey, fetchPromise);
+                    response = await fetchPromise;
+                }
+            } else {
+                response = await executeFetch();
+            }
+
+            const responseForRead = shouldDedupe ? response.clone() : response;
+
+            // Handle non-OK responses
+            if (!responseForRead.ok) {
+                let errorData: ApiErrorResponse;
+
+                try {
+                    errorData = await responseForRead.json();
+                } catch {
+                    errorData = {
+                        error: responseForRead.statusText || `HTTP ${responseForRead.status}`,
+                    };
+                }
+
+                const apiError = new ApiError(
+                    {
+                        ...errorData,
+                        error: errorData.error || responseForRead.statusText,
+                        status: responseForRead.status,
+                    },
+                    responseForRead,
+                );
+
+                // Call error handlers
+                if (onUnauthorized && apiError.isUnauthorized() && !skipUnauthorizedHandler) {
+                    onUnauthorized(apiError);
+                }
+
+                if (onError) {
+                    onError(apiError);
+                }
+
+                throw apiError;
+            }
+
+            // Handle empty responses
+            const contentType = responseForRead.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                // For non-JSON responses, there is no typed payload. Callers should use
+                // a union type (e.g. `T | void`) when invoking this helper for endpoints
+                // that may return non-JSON or empty bodies.
+                return undefined as unknown as T;
+            }
+
+            // Handle 204 No Content
+            if (responseForRead.status === 204) {
+                // 204 responses are defined to have no body. Callers should use a union
+                // type (e.g. `T | void`) for endpoints that may return 204.
+                return undefined as unknown as T;
+            }
+
+            return await responseForRead.json();
+        } catch (error) {
+            clearTimeout(timeoutId);
+
+            // Re-throw ApiError as-is
+            if (error instanceof ApiError) {
+                throw error;
+            }
+
+            // Handle abort/timeout
+            if (error instanceof DOMException && error.name === 'AbortError') {
+                const timeoutError = new ApiError({
+                    error: 'Request timeout',
+                    code: 'TIMEOUT',
+                    details: `Request to ${endpoint} timed out after ${timeout}ms`,
+                    status: 0,
+                });
+
+                if (onError) {
+                    onError(timeoutError);
+                }
+
+                throw timeoutError;
+            }
+
+            // Handle network errors
+            const networkError = new ApiError({
+                error: error instanceof Error ? error.message : 'Network error',
+                code: 'NETWORK_ERROR',
+                details: 'Unable to connect to the server',
+                status: 0,
+            });
+
+            if (onError) {
+                onError(networkError);
+            }
+
+            throw networkError;
         }
-
-        const apiError = new ApiError(
-          {
-            ...errorData,
-            error: errorData.error || response.statusText,
-            status: response.status,
-          },
-          response,
-        );
-
-        // Call error handlers
-        if (onUnauthorized && apiError.isUnauthorized()) {
-          onUnauthorized(apiError);
-        }
-
-        if (onError) {
-          onError(apiError);
-        }
-
-        throw apiError;
-      }
-
-      // Handle empty responses
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        // For non-JSON responses, there is no typed payload. Callers should use
-        // a union type (e.g. `T | void`) when invoking this helper for endpoints
-        // that may return non-JSON or empty bodies.
-        return undefined as unknown as T;
-      }
-
-      // Handle 204 No Content
-      if (response.status === 204) {
-        // 204 responses are defined to have no body. Callers should use a union
-        // type (e.g. `T | void`) for endpoints that may return 204.
-        return undefined as unknown as T;
-      }
-
-      return await response.json();
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      // Re-throw ApiError as-is
-      if (error instanceof ApiError) {
-        throw error;
-      }
-
-      // Handle abort/timeout
-      if (error instanceof DOMException && error.name === "AbortError") {
-        const timeoutError = new ApiError({
-          error: "Request timeout",
-          code: "TIMEOUT",
-          details: `Request to ${endpoint} timed out after ${timeout}ms`,
-          status: 0,
-        });
-
-        if (onError) {
-          onError(timeoutError);
-        }
-
-        throw timeoutError;
-      }
-
-      // Handle network errors
-      const networkError = new ApiError({
-        error: error instanceof Error ? error.message : "Network error",
-        code: "NETWORK_ERROR",
-        details: "Unable to connect to the server",
-        status: 0,
-      });
-
-      if (onError) {
-        onError(networkError);
-      }
-
-      throw networkError;
-    }
-  };
+    };
 }
 
 // ============================================================
@@ -372,31 +478,31 @@ export const api: ApiFunction = createApiClient();
  * Type guard to check if an error is an ApiError
  */
 export function isApiError(error: unknown): error is ApiError {
-  return error instanceof ApiError;
+    return error instanceof ApiError;
 }
 
 /**
  * Helper to safely extract error message from any error
  */
 export function getErrorMessage(error: unknown): string {
-  if (isApiError(error)) {
-    return error.message;
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  if (typeof error === "string") {
-    return error;
-  }
-  return "An unknown error occurred";
+    if (isApiError(error)) {
+        return error.message;
+    }
+    if (error instanceof Error) {
+        return error.message;
+    }
+    if (typeof error === 'string') {
+        return error;
+    }
+    return 'An unknown error occurred';
 }
 
 /**
  * Helper to safely extract all messages from an error
  */
 export function getErrorMessages(error: unknown): string[] {
-  if (isApiError(error)) {
-    return error.messages;
-  }
-  return [getErrorMessage(error)];
+    if (isApiError(error)) {
+        return error.messages;
+    }
+    return [getErrorMessage(error)];
 }

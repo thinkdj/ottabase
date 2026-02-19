@@ -4,40 +4,36 @@
 // Optimized QueryClient configuration for OttaORM apps
 // ============================================================
 
-import React, { useState, createContext, useContext } from "react";
-import {
-  QueryClient,
-  QueryClientProvider,
-  type QueryClientConfig,
-} from "@tanstack/react-query";
-import type { ApiClientFunction } from "./types";
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import { QueryClient, QueryClientProvider, type QueryClientConfig } from '@tanstack/react-query';
+import type { ApiClientFunction } from './types';
 
 /**
  * Default query client configuration optimized for OttaORM
  */
 export const defaultQueryConfig: QueryClientConfig = {
-  defaultOptions: {
-    queries: {
-      // Stale time: 30 seconds - data is considered fresh for this duration
-      staleTime: 30 * 1000,
-      // Cache time: 5 minutes - unused data is garbage collected after this
-      gcTime: 5 * 60 * 1000,
-      // Retry 3 times with exponential backoff
-      retry: 3,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      // Refetch on window focus for real-time feel
-      refetchOnWindowFocus: true,
-      // Don't refetch on mount if data is fresh
-      refetchOnMount: true,
-      // Refetch on reconnect for offline support
-      refetchOnReconnect: true,
+    defaultOptions: {
+        queries: {
+            // Stale time: 30 seconds - data is considered fresh for this duration
+            staleTime: 30 * 1000,
+            // Cache time: 5 minutes - unused data is garbage collected after this
+            gcTime: 5 * 60 * 1000,
+            // Retry 3 times with exponential backoff
+            retry: 3,
+            retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+            // Refetch on window focus for real-time feel
+            refetchOnWindowFocus: true,
+            // Don't refetch on mount if data is fresh
+            refetchOnMount: true,
+            // Refetch on reconnect for offline support
+            refetchOnReconnect: true,
+        },
+        mutations: {
+            // Retry mutations once
+            retry: 1,
+            retryDelay: 1000,
+        },
     },
-    mutations: {
-      // Retry mutations once
-      retry: 1,
-      retryDelay: 1000,
-    },
-  },
 };
 
 /**
@@ -49,20 +45,20 @@ const ApiClientContext = createContext<ApiClientFunction | undefined>(undefined)
  * Hook to access the injected API client
  */
 export function useApiClient(): ApiClientFunction | undefined {
-  return useContext(ApiClientContext);
+    return useContext(ApiClientContext);
 }
 
 /**
  * Configuration options for OttaQueryProvider
  */
 export interface OttaQueryProviderProps {
-  children: React.ReactNode;
-  /** Override default query client configuration */
-  config?: Partial<QueryClientConfig>;
-  /** Provide your own QueryClient instance */
-  client?: QueryClient;
-  /** Provide a custom API client function (e.g., from @ottabase/api) */
-  apiClient?: ApiClientFunction;
+    children: React.ReactNode;
+    /** Override default query client configuration */
+    config?: Partial<QueryClientConfig>;
+    /** Provide your own QueryClient instance */
+    client?: QueryClient;
+    /** Provide a custom API client function (e.g., from @ottabase/api) */
+    apiClient?: ApiClientFunction;
 }
 
 /**
@@ -98,40 +94,55 @@ export interface OttaQueryProviderProps {
  * </OttaQueryProvider>
  * ```
  */
-export function OttaQueryProvider({
-  children,
-  config,
-  client,
-  apiClient,
-}: OttaQueryProviderProps) {
-  const [queryClient] = useState(
-    () =>
-      client ??
-      new QueryClient({
-        ...defaultQueryConfig,
-        ...config,
-        defaultOptions: {
-          ...defaultQueryConfig.defaultOptions,
-          ...config?.defaultOptions,
-          queries: {
-            ...defaultQueryConfig.defaultOptions?.queries,
-            ...config?.defaultOptions?.queries,
-          },
-          mutations: {
-            ...defaultQueryConfig.defaultOptions?.mutations,
-            ...config?.defaultOptions?.mutations,
-          },
-        },
-      })
-  );
+export function OttaQueryProvider({ children, config, client, apiClient }: OttaQueryProviderProps) {
+    const [queryClient] = useState(
+        () =>
+            client ??
+            new QueryClient({
+                ...defaultQueryConfig,
+                ...config,
+                defaultOptions: {
+                    ...defaultQueryConfig.defaultOptions,
+                    ...config?.defaultOptions,
+                    queries: {
+                        ...defaultQueryConfig.defaultOptions?.queries,
+                        ...config?.defaultOptions?.queries,
+                    },
+                    mutations: {
+                        ...defaultQueryConfig.defaultOptions?.mutations,
+                        ...config?.defaultOptions?.mutations,
+                    },
+                },
+            }),
+    );
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ApiClientContext.Provider value={apiClient}>
-        {children}
-      </ApiClientContext.Provider>
-    </QueryClientProvider>
-  );
+    // Global mutation observer: automatically invalidates entity query namespaces
+    // when any mutation that has meta.entity set succeeds.
+    //
+    // This is the SWR-like "it just works" layer — any mutation anywhere in the
+    // app that declares meta.entity will bust the right cache without the caller
+    // needing to know about query key structures.
+    //
+    // createModelHooks sets meta.entity on all its mutations automatically.
+    // useApiMutation does NOT use meta.entity — it invalidates directly via onSuccess.
+    // Custom useMutation callers can opt in by setting meta: { entity: 'posts' }.
+    useEffect(() => {
+        return queryClient.getMutationCache().subscribe((event) => {
+            if (event.type !== 'updated') return;
+            if (event.mutation.state.status !== 'success') return;
+
+            const entity = event.mutation.options.meta?.entity as string | undefined;
+            if (!entity) return;
+
+            queryClient.invalidateQueries({ queryKey: [entity] });
+        });
+    }, [queryClient]);
+
+    return (
+        <QueryClientProvider client={queryClient}>
+            <ApiClientContext.Provider value={apiClient}>{children}</ApiClientContext.Provider>
+        </QueryClientProvider>
+    );
 }
 
 /**
@@ -149,20 +160,20 @@ export function OttaQueryProvider({
  * ```
  */
 export function createQueryClient(config?: Partial<QueryClientConfig>): QueryClient {
-  return new QueryClient({
-    ...defaultQueryConfig,
-    ...config,
-    defaultOptions: {
-      ...defaultQueryConfig.defaultOptions,
-      ...config?.defaultOptions,
-      queries: {
-        ...defaultQueryConfig.defaultOptions?.queries,
-        ...config?.defaultOptions?.queries,
-      },
-      mutations: {
-        ...defaultQueryConfig.defaultOptions?.mutations,
-        ...config?.defaultOptions?.mutations,
-      },
-    },
-  });
+    return new QueryClient({
+        ...defaultQueryConfig,
+        ...config,
+        defaultOptions: {
+            ...defaultQueryConfig.defaultOptions,
+            ...config?.defaultOptions,
+            queries: {
+                ...defaultQueryConfig.defaultOptions?.queries,
+                ...config?.defaultOptions?.queries,
+            },
+            mutations: {
+                ...defaultQueryConfig.defaultOptions?.mutations,
+                ...config?.defaultOptions?.mutations,
+            },
+        },
+    });
 }

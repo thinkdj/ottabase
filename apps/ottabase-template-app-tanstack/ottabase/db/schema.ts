@@ -17,35 +17,51 @@
 // CORE TABLES (from @ottabase/ottaorm)
 // ============================================================
 import {
-  accountsTable,
-  authenticatorsTable,
-  postsTable,
-  postTagsTable,
-  sessionsTable,
-  tagsTable,
-  usersTable,
-  verificationTokensTable,
-} from "@ottabase/ottaorm";
+    accountsTable,
+    authenticatorsTable,
+    sessionsTable,
+    usersTable,
+    verificationTokensTable,
+} from '@ottabase/ottaorm';
+import {
+    categoriesTable,
+    ottablogPluginsTable,
+    ottablogThemesTable,
+    postTagLinksTable,
+    postTagsTable,
+    postVersionsTable,
+    postsTable,
+    seriesTable,
+} from '@ottabase/ottablog';
+import { referralTrackingTable } from '@ottabase/referrals';
+import { shortlinksTable } from '@ottabase/shortlinks';
 
-export {
-  accountsTable,
-  authenticatorsTable,
-  postsTable,
-  postTagsTable,
-  sessionsTable,
-  tagsTable,
-  usersTable,
-  verificationTokensTable,
-};
+export { accountsTable, authenticatorsTable, sessionsTable, usersTable, verificationTokensTable };
 
 // ============================================================
 // APP-SPECIFIC TABLES
 // ============================================================
-export { todosTable } from "../models/Todo";
+export { todosTable } from '../models/Todo';
+
+// ============================================================
+// PACKAGE TABLES (from enabled packages)
+// ============================================================
+export {
+    categoriesTable,
+    ottablogPluginsTable,
+    ottablogThemesTable,
+    postTagLinksTable,
+    postTagsTable,
+    postVersionsTable,
+    postsTable,
+    seriesTable,
+    referralTrackingTable,
+    shortlinksTable,
+};
 
 // ============================================================
 // DYNAMIC PACKAGE TABLES (Configured in config.migrations.ts)
 // ============================================================
-import { getEnabledPackageTables } from "../config.migrations";
+import { getEnabledPackageTables } from '../config.migrations';
 
 export const packageTables = getEnabledPackageTables();

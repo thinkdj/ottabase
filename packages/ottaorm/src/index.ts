@@ -3,35 +3,48 @@
 // ============================================================
 
 // Connection management (multi-database support)
-export {
-  registerConnection,
-  getConnection,
-  hasConnection,
-  clearConnection,
-  clearAllConnections
-} from "./context";
+export { clearAllConnections, clearConnection, getConnection, hasConnection, registerConnection } from './context';
 
 // Model registry (for dynamic model lookup)
 export {
-  registerModel,
-  registerModels,
-  getModel,
-  hasModel,
-  getRegisteredModels,
-  clearModelRegistry,
-} from "./registry";
+    clearModelRegistry,
+    getAllModelsMetadata,
+    getModel,
+    getModelWithMetadata,
+    getRegisteredModels,
+    hasModel,
+    registerModel,
+    registerModels,
+} from './registry';
+export type { ModelMetadata, ModelRegistryEntry } from './registry';
 
 // Generic CRUD handler
-export { handleCrud, parseCrudRequest } from "./crud";
-export type { CrudRequest, CrudResponse } from "./crud";
+export { handleCrud, parseCrudRequest } from './crud';
+export type { CrudRequest, CrudResponse } from './crud';
+
+// Row-Level Security (RLS)
+export {
+    RLSError,
+    RLSPolicies,
+    executeSecureCrudRequest,
+    extractSecurityContext,
+    getRegisteredModels as getRLSModels,
+    globalRLS,
+    initRLS,
+    logSecurityViolation,
+    registerPolicy,
+    rlsMiddleware,
+    secureCrud,
+} from './rls';
+export type { ModelRLSConfig, RLSPolicy, RLSViolation, SecureCrudOptions, SecurityContext, SecurityLevel } from './rls';
 
 // Migrations
-export { runMigrations, rollbackMigrations, coreMigrations } from "./migrations";
-export type { Migration } from "./migrations";
+export { coreMigrations, rollbackMigrations, runMigrations } from './migrations';
+export type { Migration } from './migrations';
 
 // Automated migrations (NEW!)
-export { autoInit, collectTableSchemas, runAutoMigrations } from "./migrations";
-export type { AutoInitConfig, RuntimeMigrationConfig } from "./migrations";
+export { autoInit, collectTableSchemas, runAutoMigrations } from './migrations';
+export type { AutoInitConfig, RuntimeMigrationConfig } from './migrations';
 
 /**
  * Base models (Edge-safe)
@@ -39,15 +52,20 @@ export type { AutoInitConfig, RuntimeMigrationConfig } from "./migrations";
  * Note: MongoDB-related exports are intentionally NOT exported from this entrypoint
  * because they pull in the `mongodb` package (Node-only) which breaks Next.js Edge runtime.
  */
-export { AbstractBaseModel, BaseModel } from "./base";
+export { AbstractBaseModel, BaseModel } from './base';
 export type {
-  IModelConstructorParams,
-  ModelFieldType,
-  ModelFieldDescriptor,
-  ModelFields,
-  PaginationResult,
-  RelationshipConfig,
-} from "./base";
+    IModelConstructorParams,
+    ModelFieldDescriptor,
+    ModelFieldType,
+    ModelFields,
+    PackageType,
+    PaginationResult,
+    RelationshipConfig,
+} from './base';
+
+// Validation (Zod schema builder from field metadata)
+export { buildZodSchema, validateField, validateWithSchema, ValidationError } from './validation';
+export type { ValidationResult } from './validation';
 
 /**
  * Core models (SQL only - Edge-safe)
@@ -55,36 +73,59 @@ export type {
  * These exports are safe for Next.js Edge runtime.
  */
 export {
-  User,
-  usersTable,
-  Account,
-  accountsTable,
-  Post,
-  postsTable,
-  postTagsTable,
-  Tag,
-  tagsTable,
-  // Auth.js SQL models (Edge-safe)
-  Authenticator,
-  authenticatorsTable,
-  Session,
-  sessionsTable,
-  VerificationToken,
-  verificationTokensTable,
-} from "./models";
+    Account,
+    AuditLog,
+    // Auth.js SQL models (Edge-safe)
+    Authenticator,
+    // Multi-tenant/RBAC models and tables
+    Organization,
+    OrganizationMember,
+    Permission,
+    Role,
+    ScheduledTask,
+    Session,
+    Tag,
+    User,
+    UserRole,
+    VerificationToken,
+    accountsTable,
+    auditLogsTable,
+    authenticatorsTable,
+    organizationMembersTable,
+    organizationsTable,
+    permissionsTable,
+    rolesTable,
+    scheduledTasksTable,
+    sessionsTable,
+    tagsTable,
+    userRolesTable,
+    usersTable,
+    verificationTokensTable,
+} from './models';
 export type {
-  UserType,
-  NewUserType,
-  AccountType,
-  NewAccountType,
-  PostType,
-  NewPostType,
-  TagType,
-  NewTagType,
-  AuthenticatorType,
-  NewAuthenticatorType,
-  SessionType,
-  NewSessionType,
-  VerificationTokenType,
-  NewVerificationTokenType,
-} from "./models";
+    AccountType,
+    AuditLogType,
+    AuthenticatorType,
+    NewAccountType,
+    NewAuditLogType,
+    NewAuthenticatorType,
+    NewOrganizationMemberType,
+    NewOrganizationType,
+    NewPermissionType,
+    NewRoleType,
+    NewSessionType,
+    NewTagType,
+    NewUserRoleType,
+    NewUserType,
+    NewVerificationTokenType,
+    OrganizationMemberType,
+    // Multi-tenant/RBAC types
+    OrganizationType,
+    PermissionType,
+    RoleType,
+    SessionType,
+    TagType,
+    UserRoleType,
+    UserType,
+    VerificationTokenType,
+} from './models';

@@ -1,0 +1,57 @@
+{
+    "name": "@ottabase/ui-split-pane",
+    "version": "1.0.0",
+    "description": "Minimal, clean split-pane component for Ottabase applications",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts --format cjs,esm --dts --clean --treeshake",
+        "dev": "tsup src/index.ts --format cjs,esm --dts --watch --treeshake",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "react",
+        "ui",
+        "split-pane",
+        "resizable",
+        "layout"
+    ],
+    "author": "",
+    "license": "MIT",
+    "peerDependencies": {
+        "react": "catalog:",
+        "react-dom": "catalog:"
+    },
+    "devDependencies": {
+        "@testing-library/react": "^16.3.2",
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "@vitejs/plugin-react": "catalog:",
+        "eslint": "catalog:",
+        "jsdom": "^27.4.0",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    }
+}

@@ -1,58 +1,105 @@
-import { useState } from "react";
-import { useNavigate, Link } from "@tanstack/react-router";
-import { RegisterForm, type RegisterFormData } from "@ottabase/auth/components";
-import { useSession } from "@/lib/auth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@ottabase/ui-shadcn";
-import { ArrowLeft } from "lucide-react";
+import { useSession } from '@/lib/auth';
+import { registerWithCredentials, requestEmailVerification, signInWithCredentials } from '@/lib/auth-api';
+import { resolveAuthRedirect } from '@/lib/auth-redirect';
+import { clearStoredReferralCode, getReferralExpiryInfo, getStoredReferralCode } from '@/lib/referrals';
+import { RegisterForm, type RegisterFormData } from '@ottabase/auth/components';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { ArrowLeft } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 export function RegisterPage() {
     const navigate = useNavigate();
-    const { login } = useSession();
+    const { login } = useSession({ skipAutoSync: true });
     const [error, setError] = useState<string>();
     const [isLoading, setIsLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [referralCode, setReferralCode] = useState<string | null>(null);
+    const [referralExpiry, setReferralExpiry] = useState<{ daysRemaining: number } | null>(null);
+    const [verificationRequired, setVerificationRequired] = useState(false);
+    const [verificationSent, setVerificationSent] = useState(false);
+    const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
+    const hasNavigated = useRef(false);
+    const redirectTarget = useRef(resolveAuthRedirect());
+
+    // Check for stored referral code on mount
+    useEffect(() => {
+        const code = getStoredReferralCode();
+        if (code) {
+            setReferralCode(code);
+            const expiry = getReferralExpiryInfo();
+            setReferralExpiry({ daysRemaining: expiry.daysRemaining || 0 });
+        }
+    }, []);
 
     const handleRegister = async (data: RegisterFormData) => {
         setIsLoading(true);
         setError(undefined);
 
         try {
-            // TODO: Implement actual registration when Auth.js is setup
-            console.log("Registering user:", data);
+            const registerResult = await registerWithCredentials({
+                name: data.name,
+                email: data.email,
+                password: data.password,
+                referralCode: referralCode || undefined,
+            });
 
-            // Simulated API call
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-
-            // Demo-only: simulated "email already exists" check.
-            // This runs in development builds to mimic backend validation.
-            // In production, real uniqueness checks must be performed on the server.
-            if (import.meta.env?.DEV) {
-                const simulatedExistingEmails = ["existing@example.com"];
-                if (simulatedExistingEmails.includes(data.email)) {
-                    throw new Error("An account with this email already exists");
-                }
+            if (!registerResult.success) {
+                throw new Error(registerResult.error || 'Registration failed');
             }
 
-            // Simulated successful registration
-            const mockSession = {
-                user: {
-                    id: Math.random().toString(36).substring(7),
-                    email: data.email,
-                    name: data.name,
-                },
-                expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            };
+            if (registerResult.requiresEmailVerification) {
+                setVerificationRequired(true);
+                setVerificationSent(!!registerResult.verificationSent);
+                setRegisteredEmail(data.email);
+                clearStoredReferralCode();
+                setSuccess(true);
+                setIsLoading(false);
+                return;
+            }
 
-            // Log them in immediately after registration
-            login(mockSession);
+            const signInResult = await signInWithCredentials(
+                { email: data.email, password: data.password },
+                { redirect: false },
+            );
+
+            if (!signInResult.success) {
+                throw new Error(signInResult.error || 'Registration succeeded, but sign in failed');
+            }
+
+            if (signInResult.session) {
+                login(signInResult.session);
+            }
+
+            clearStoredReferralCode();
             setSuccess(true);
+            setIsLoading(false);
 
-            // Redirect to dashboard after a brief success message
+            // Redirect after brief delay to show success message
             setTimeout(() => {
-                navigate({ to: "/dashboard" });
-            }, 1500);
+                if (hasNavigated.current) return;
+                hasNavigated.current = true;
+                navigate({ to: redirectTarget.current, replace: true });
+            }, 1000);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Registration failed");
+            setError(err instanceof Error ? err.message : 'Registration failed');
+            setIsLoading(false);
+        }
+    };
+
+    const handleResendVerification = async () => {
+        if (!registeredEmail) return;
+        setIsLoading(true);
+        setError(undefined);
+        try {
+            const result = await requestEmailVerification(registeredEmail);
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to resend verification email');
+            }
+            setVerificationSent(true);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to resend verification email');
+        } finally {
             setIsLoading(false);
         }
     };
@@ -71,39 +118,68 @@ export function RegisterPage() {
 
                 <div className="text-center space-y-2">
                     <h1 className="text-3xl font-bold">Create Account</h1>
-                    <p className="text-muted-foreground">
-                        Sign up to get started
-                    </p>
+                    <p className="text-muted-foreground">Sign up to get started</p>
+                    {referralCode && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-sm">
+                            <p className="font-medium">
+                                You were referred by: <strong>{referralCode}</strong>
+                            </p>
+                            {referralExpiry && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Referral expires in {referralExpiry.daysRemaining} days
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <Card>
                     <CardHeader>
                         <CardTitle>Registration</CardTitle>
-                        <CardDescription>
-                            Fill in your details to create a new account
-                        </CardDescription>
+                        <CardDescription>Fill in your details to create a new account</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <RegisterForm
-                            onSubmit={handleRegister}
-                            isLoading={isLoading}
-                            error={error}
-                            success={success}
-                            successMessage="Account created! Redirecting to dashboard..."
-                            showTermsCheckbox
-                            termsText="I agree to the Terms of Service and Privacy Policy"
-                            onTermsClick={() => {
-                                // TODO: Open terms modal or navigate to terms page
-                                console.log("Show terms");
-                            }}
-                        />
+                        {verificationRequired ? (
+                            <div className="space-y-4 text-sm">
+                                <div className="rounded-lg border border-muted bg-muted/40 p-4">
+                                    <p className="font-medium">Check your email to verify your account</p>
+                                    <p className="text-muted-foreground mt-1">
+                                        We sent a verification link to <strong>{registeredEmail}</strong>. You must
+                                        verify your email before signing in.
+                                    </p>
+                                </div>
+                                {error && <p className="text-sm text-destructive">{error}</p>}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={handleResendVerification}
+                                    disabled={isLoading}
+                                >
+                                    {verificationSent ? 'Resend verification email' : 'Send verification email'}
+                                </Button>
+                            </div>
+                        ) : (
+                            <RegisterForm
+                                onSubmit={handleRegister}
+                                isLoading={isLoading}
+                                error={error}
+                                success={success}
+                                successMessage="Account created! Redirecting to dashboard..."
+                                showTermsCheckbox
+                                termsText="I agree to the Terms of Service and Privacy Policy"
+                                onTermsClick={() => {
+                                    window.open('/terms', '_blank');
+                                }}
+                            />
+                        )}
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardContent className="pt-6">
                         <p className="text-center text-sm">
-                            Already have an account?{" "}
+                            Already have an account?{' '}
                             <Link to="/login" className="font-medium text-primary hover:underline">
                                 Sign in
                             </Link>
@@ -113,22 +189,19 @@ export function RegisterPage() {
 
                 <Card className="mt-4">
                     <CardHeader>
-                        <CardTitle className="text-sm">Demo Info</CardTitle>
-                        <CardDescription className="text-xs">
-                            This is a demo implementation with simulated registration
-                        </CardDescription>
+                        <CardTitle className="text-sm">Security</CardTitle>
+                        <CardDescription className="text-xs">Your credentials are stored securely</CardDescription>
                     </CardHeader>
                     <CardContent className="text-xs space-y-2">
                         <p>
-                            <strong>Password requirements:</strong> 8+ chars with uppercase,
-                            lowercase, and number
+                            <strong>Password requirements:</strong> 8+ chars with uppercase, lowercase, number, and
+                            symbol
                         </p>
                         <p>
-                            <strong>Registration:</strong> Creates account and logs you in
-                            automatically
+                            <strong>Registration:</strong> Creates your account and signs you in automatically
                         </p>
                         <p className="text-muted-foreground">
-                            In production, you'd send a verification email
+                            Email verification can be enabled via worker configuration
                         </p>
                     </CardContent>
                 </Card>

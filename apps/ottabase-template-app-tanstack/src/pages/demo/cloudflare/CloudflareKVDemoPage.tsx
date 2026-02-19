@@ -1,20 +1,12 @@
-import { useState } from "react";
-import { Link } from "@tanstack/react-router";
-import {
-    Button,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    Input,
-    Textarea,
-} from "@ottabase/ui-shadcn";
-import { api, isApiError } from "@/lib/api";
+import { api, isApiError } from '@/lib/api';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea } from '@ottabase/ui-shadcn';
+import { Link } from '@tanstack/react-router';
+import { useState } from 'react';
 
 export function CloudflareKVDemoPage() {
-    const [key, setKey] = useState("");
-    const [value, setValue] = useState("");
-    const [ttl, setTtl] = useState("");
+    const [key, setKey] = useState('');
+    const [value, setValue] = useState('');
+    const [ttl, setTtl] = useState('');
     const [result, setResult] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -27,8 +19,8 @@ export function CloudflareKVDemoPage() {
             setLoading(true);
             setError(null);
 
-            await api("/api/cloudflare/kv", {
-                method: "POST",
+            await api('/api/cloudflare/kv', {
+                method: 'POST',
                 body: {
                     key,
                     value,
@@ -36,11 +28,11 @@ export function CloudflareKVDemoPage() {
                 },
             });
 
-            setResult("Value set successfully!");
-            setValue("");
-            setTtl("");
+            setResult('Value set successfully!');
+            setValue('');
+            setTtl('');
         } catch (err) {
-            setError(isApiError(err) ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -53,13 +45,13 @@ export function CloudflareKVDemoPage() {
             setLoading(true);
             setError(null);
 
-            const data = await api<{ value?: string | null }>("/api/cloudflare/kv", {
+            const data = await api<{ value?: string | null }>('/api/cloudflare/kv', {
                 params: { key },
             });
 
-            setResult(data.value ? `Value: ${data.value}` : "Key not found");
+            setResult(data.value ? `Value: ${data.value}` : 'Key not found');
         } catch (err) {
-            setError(isApiError(err) ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -72,31 +64,29 @@ export function CloudflareKVDemoPage() {
             setLoading(true);
             setError(null);
 
-            await api("/api/cloudflare/kv", {
-                method: "DELETE",
+            await api('/api/cloudflare/kv', {
+                method: 'DELETE',
                 params: { key },
             });
 
-            setResult("Value deleted successfully!");
-            setKey("");
+            setResult('Value deleted successfully!');
+            setKey('');
         } catch (err) {
-            setError(isApiError(err) ? err.message : "Unknown error");
+            setError(isApiError(err) ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="mx-auto max-w-2xl space-y-6 px-4 py-12">
+        <div className="space-y-6">
             <Button asChild variant="ghost" className="w-fit">
                 <Link to="/demo/cloudflare">← Back to Cloudflare Features</Link>
             </Button>
 
             <div>
                 <h1 className="mb-2 text-3xl font-semibold">KV Storage Demo</h1>
-                <p className="text-muted-foreground">
-                    Key-value storage with optional TTL (Time To Live)
-                </p>
+                <p className="text-muted-foreground">Key-value storage with optional TTL (Time To Live)</p>
             </div>
 
             {error ? (
@@ -156,12 +146,7 @@ export function CloudflareKVDemoPage() {
                     </form>
 
                     <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={handleGet}
-                            disabled={loading || !key}
-                            className="flex-1"
-                        >
+                        <Button variant="outline" onClick={handleGet} disabled={loading || !key} className="flex-1">
                             Get Value
                         </Button>
                         <Button

@@ -3,18 +3,54 @@
  * - Automatic error toast notifications
  * - Auth token injection (when implemented)
  * - Type-safe error handling
+ * - x-app-id and x-org-id headers from global state
  */
 
-import { createApiClient, type ApiError } from "@ottabase/api";
-import { toast } from "sonner";
+import { appIdAtom, globalStore, organizationIdAtom } from '@/ottabase/state/appState';
+import { createApiClient, type ApiError } from '@ottabase/api';
+import { AUTH_STORAGE_KEY, clearAuthSessionStorage } from '@ottabase/auth/react';
+import { toast } from 'sonner';
 
 /**
  * Get auth token from storage/context.
- * TODO: Implement when auth is added.
  */
 function getAuthToken(): string | null {
-  // Future: return localStorage.getItem("authToken") or session token
-  return null;
+    // Cookie-based Auth.js sessions do not require a bearer token by default.
+    return null;
+}
+
+/**
+ * Get current app ID from global state.
+ * Falls back to reading from atom if available.
+ */
+function getAppId(): string | null {
+    try {
+        return globalStore.get(appIdAtom) ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Get current organization ID from global state.
+ * Falls back to localStorage if state not yet initialized.
+ */
+function getOrganizationId(): string | null {
+    try {
+        const orgId = globalStore.get(organizationIdAtom);
+        if (orgId) return orgId;
+    } catch {
+        // State not yet initialized, try localStorage fallback
+    }
+
+    try {
+        const sessionRaw = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (!sessionRaw) return null;
+        const session = JSON.parse(sessionRaw) as { user?: { organizationId?: string | null } };
+        return session.user?.organizationId ?? null;
+    } catch {
+        return null;
+    }
 }
 
 /**
@@ -22,42 +58,63 @@ function getAuthToken(): string | null {
  * Shows toast notifications for errors.
  */
 function handleApiError(error: ApiError): void {
-  // Skip toast for certain error types that are handled locally
-  if (error.code === "HANDLED") {
-    return;
-  }
+    // Skip toast for certain error types that are handled locally
+    if (error.code === 'HANDLED') {
+        return;
+    }
 
-  // Show different toast styles based on error type
-  if (error.isUnauthorized()) {
-    toast.error("Session expired", {
-      description: "Please log in again",
-    });
-    // TODO: Redirect to login
-    return;
-  }
+    if (error.status === 503) {
+        const code = (error.code || '').toUpperCase();
 
-  if (error.isRateLimited()) {
-    toast.error("Too many requests", {
-      description: error.hint || "Please wait a moment and try again",
-    });
-    return;
-  }
+        // Platform not initialized → redirect to bootstrap wizard
+        if (code === 'PLATFORM_NOT_READY') {
+            if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/__bootstrap__')) {
+                window.location.href = '/__bootstrap__';
+            }
+            return;
+        }
 
-  if (error.isServerError()) {
+        const message =
+            code === 'READONLY_MODE'
+                ? 'The platform is in read-only mode'
+                : error.message?.toLowerCase().includes('lockdown')
+                  ? 'Lockdown enforced'
+                  : 'Service temporarily unavailable';
+        toast.error(message, {
+            description: error.hint || 'Please try again shortly.',
+        });
+        return;
+    }
+
+    // Show different toast styles based on error type
+    if (error.isUnauthorized()) {
+        toast.error('Session expired', {
+            description: 'Please log in again',
+        });
+        return;
+    }
+
+    if (error.isRateLimited()) {
+        toast.error('Too many requests', {
+            description: error.hint || 'Please wait a moment and try again',
+        });
+        return;
+    }
+
+    if (error.isServerError()) {
+        toast.error(error.message, {
+            description:
+                error.messages.length > 1
+                    ? error.messages.join(' • ')
+                    : error.details || error.hint || 'Something went wrong',
+        });
+        return;
+    }
+
+    // Default error toast
     toast.error(error.message, {
-      description: error.messages.length > 1
-        ? error.messages.join(" • ")
-        : error.details || error.hint || "Something went wrong",
+        description: error.messages.length > 1 ? error.messages.join(' • ') : error.details || error.hint,
     });
-    return;
-  }
-
-  // Default error toast
-  toast.error(error.message, {
-    description: error.messages.length > 1
-      ? error.messages.join(" • ")
-      : error.details || error.hint,
-  });
 }
 
 /**
@@ -94,31 +151,37 @@ function handleApiError(error: ApiError): void {
  * ```
  */
 export const api = createApiClient({
-  baseUrl: "",
-  getAuthToken,
-  onError: handleApiError,
-  onUnauthorized: (error) => {
-    // TODO: Clear auth state and redirect to login
-    console.log("Unauthorized:", error.message);
-  },
-  defaultHeaders: {
-    Accept: "application/json",
-  },
-  timeout: 30000,
+    baseUrl: '',
+    getAuthToken,
+    onError: handleApiError,
+    onUnauthorized: () => {
+        clearAuthSessionStorage();
+        if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+        }
+    },
+    defaultHeaders: () => {
+        const headers: Record<string, string> = {
+            Accept: 'application/json',
+        };
+
+        // Read appId from global state
+        const appId = getAppId();
+        if (appId) {
+            headers['X-App-Id'] = appId;
+        }
+
+        // Read organizationId from global state
+        const organizationId = getOrganizationId();
+        if (organizationId) {
+            headers['X-Org-Id'] = organizationId;
+        }
+
+        return headers;
+    },
+    timeout: 30000,
 });
 
 // Re-export types for convenience
-export {
-  ApiError,
-  getErrorMessage,
-  getErrorMessages,
-  isApiError,
-} from "@ottabase/api";
-export type {
-  ApiClientConfig,
-  ApiErrorResponse,
-  ApiFunction,
-  ApiRequestOptions,
-  HttpMethod,
-} from "@ottabase/api";
-
+export { ApiError, getErrorMessage, getErrorMessages, isApiError } from '@ottabase/api';
+export type { ApiClientConfig, ApiErrorResponse, ApiFunction, ApiRequestOptions, HttpMethod } from '@ottabase/api';

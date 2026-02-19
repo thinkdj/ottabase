@@ -1,0 +1,82 @@
+{
+    "name": "@ottabase/notifications",
+    "version": "0.1.0",
+    "description": "Minimalistic notifications engine for Ottabase - multi-channel user notifications, system alerts, and real-time updates",
+    "type": "module",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        },
+        "./channels": {
+            "types": "./dist/channels/index.d.ts",
+            "import": "./dist/channels/index.js",
+            "require": "./dist/channels/index.cjs"
+        },
+        "./models": {
+            "types": "./dist/models/index.d.ts",
+            "import": "./dist/models/index.js",
+            "require": "./dist/models/index.cjs"
+        },
+        "./manager": {
+            "types": "./dist/manager.d.ts",
+            "import": "./dist/manager.js",
+            "require": "./dist/manager.cjs"
+        }
+    },
+    "sideEffects": false,
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "notifications",
+        "alerts",
+        "email",
+        "websocket",
+        "realtime",
+        "pubsub",
+        "cloudflare",
+        "ottabase"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@ottabase/cf": "workspace:*",
+        "@ottabase/email": "workspace:*",
+        "@ottabase/cf-realtime": "workspace:*",
+        "@ottabase/queue": "workspace:*",
+        "@ottabase/ottaorm": "workspace:*",
+        "drizzle-orm": "catalog:"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "@types/node": "catalog:",
+        "eslint": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "peerDependencies": {
+        "@cloudflare/workers-types": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "@cloudflare/workers-types": {
+            "optional": true
+        }
+    }
+}

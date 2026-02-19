@@ -1,0 +1,88 @@
+{
+    "name": "@ottabase/logger",
+    "version": "0.0.1",
+    "description": "Extensible logger for Ottabase with support for multiple transports and formatters",
+    "author": "Ottabase",
+    "license": "MIT",
+    "type": "module",
+    "sideEffects": false,
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        },
+        "./transports": {
+            "types": "./dist/transports.d.ts",
+            "import": "./dist/transports.js",
+            "require": "./dist/transports.cjs"
+        },
+        "./formatters": {
+            "types": "./dist/formatters.d.ts",
+            "import": "./dist/formatters.js",
+            "require": "./dist/formatters.cjs"
+        },
+        "./config": {
+            "types": "./dist/config.d.ts",
+            "import": "./dist/config.js",
+            "require": "./dist/config.cjs"
+        },
+        "./audit-transport": {
+            "types": "./dist/audit-transport.d.ts",
+            "import": "./dist/audit-transport.js",
+            "require": "./dist/audit-transport.cjs"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "keywords": [
+        "logger",
+        "logging",
+        "transport",
+        "formatter",
+        "ottabase"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "lint": "eslint src --ext .ts",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage",
+        "clean": "rimraf dist"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "eslint": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "dependencies": {
+        "@ottabase/ottaorm": "workspace:*"
+    },
+    "peerDependencies": {
+        "@sentry/browser": "*",
+        "@sentry/node": "*"
+    },
+    "peerDependenciesMeta": {
+        "@sentry/browser": {
+            "optional": true
+        },
+        "@sentry/node": {
+            "optional": true
+        },
+        "@ottabase/ottaorm": {
+            "optional": true
+        }
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}

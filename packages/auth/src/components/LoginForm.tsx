@@ -1,8 +1,18 @@
-import React, { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Tabs, TabsContent, TabsList, TabsTrigger } from "@ottabase/ui-shadcn";
-import { SocialLoginButtons, SocialLoginDivider, type SocialProvider } from "./SocialLoginButtons";
-import { CredentialsForm } from "./CredentialsForm";
-import { MagicLinkForm } from "./MagicLinkForm";
+import React, { useState } from 'react';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from '@ottabase/ui-shadcn';
+import { SocialLoginButtons, SocialLoginDivider, type SocialProvider } from './SocialLoginButtons';
+import { CredentialsForm } from './CredentialsForm';
+import { MagicLinkForm } from './MagicLinkForm';
 
 export interface LoginFormProps {
     // Title and description
@@ -15,11 +25,11 @@ export interface LoginFormProps {
     showMagicLink?: boolean;
 
     // Default tab
-    defaultTab?: "credentials" | "magic-link";
+    defaultTab?: 'credentials' | 'magic-link';
 
     // Callbacks
     onSocialLogin?: (providerId: string) => void;
-    onCredentialsLogin?: (credentials: { email: string; password: string }) => Promise<void>;
+    onCredentialsLogin?: (credentials: { email: string; password: string; rememberMe: boolean }) => Promise<void>;
     onMagicLinkSend?: (email: string) => Promise<void>;
     onForgotPassword?: () => void;
 
@@ -32,15 +42,18 @@ export interface LoginFormProps {
     className?: string;
     showSignUp?: boolean;
     onSignUpClick?: () => void;
+    showRememberMe?: boolean;
+    rememberMeLabel?: string;
+    defaultRememberMe?: boolean;
 }
 
 export function LoginForm({
-    title = "Welcome back",
-    description = "Sign in to your account",
+    title = 'Welcome back',
+    description = 'Sign in to your account',
     socialProviders = [],
     showCredentials = true,
     showMagicLink = false,
-    defaultTab = "credentials",
+    defaultTab = 'credentials',
     onSocialLogin,
     onCredentialsLogin,
     onMagicLinkSend,
@@ -48,9 +61,12 @@ export function LoginForm({
     isLoading = false,
     error,
     magicLinkSuccess = false,
-    className = "",
+    className = '',
     showSignUp = false,
     onSignUpClick,
+    showRememberMe = true,
+    rememberMeLabel = 'Remember me',
+    defaultRememberMe = true,
 }: LoginFormProps) {
     const [activeTab, setActiveTab] = useState(defaultTab);
 
@@ -72,9 +88,7 @@ export function LoginForm({
                             onProviderClick={onSocialLogin}
                             isLoading={isLoading}
                         />
-                        {(showCredentials || showMagicLink) && (
-                            <SocialLoginDivider text="or" />
-                        )}
+                        {(showCredentials || showMagicLink) && <SocialLoginDivider text="or" />}
                     </>
                 )}
 
@@ -82,14 +96,13 @@ export function LoginForm({
                 {(showCredentials || showMagicLink) && (
                     <>
                         {hasMultipleMethods ? (
-                            <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as "credentials" | "magic-link")}>
+                            <Tabs
+                                value={activeTab}
+                                onValueChange={(v: string) => setActiveTab(v as 'credentials' | 'magic-link')}
+                            >
                                 <TabsList className="grid w-full grid-cols-2">
-                                    {showCredentials && (
-                                        <TabsTrigger value="credentials">Email & Password</TabsTrigger>
-                                    )}
-                                    {showMagicLink && (
-                                        <TabsTrigger value="magic-link">Magic Link</TabsTrigger>
-                                    )}
+                                    {showCredentials && <TabsTrigger value="credentials">Email & Password</TabsTrigger>}
+                                    {showMagicLink && <TabsTrigger value="magic-link">Magic Link</TabsTrigger>}
                                 </TabsList>
 
                                 {showCredentials && onCredentialsLogin && (
@@ -100,6 +113,9 @@ export function LoginForm({
                                             error={error}
                                             showForgotPassword={!!onForgotPassword}
                                             onForgotPassword={onForgotPassword}
+                                            showRememberMe={showRememberMe}
+                                            rememberMeLabel={rememberMeLabel}
+                                            defaultRememberMe={defaultRememberMe}
                                         />
                                     </TabsContent>
                                 )}
@@ -124,6 +140,9 @@ export function LoginForm({
                                         error={error}
                                         showForgotPassword={!!onForgotPassword}
                                         onForgotPassword={onForgotPassword}
+                                        showRememberMe={showRememberMe}
+                                        rememberMeLabel={rememberMeLabel}
+                                        defaultRememberMe={defaultRememberMe}
                                     />
                                 )}
 
@@ -143,7 +162,7 @@ export function LoginForm({
                 {/* Sign up link */}
                 {showSignUp && onSignUpClick && (
                     <div className="text-center text-sm">
-                        Don't have an account?{" "}
+                        Don't have an account?{' '}
                         <button
                             type="button"
                             onClick={onSignUpClick}

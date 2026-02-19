@@ -7,8 +7,8 @@
  * @see https://www.prisma.io/docs/orm/overview/databases/cloudflare-d1
  */
 
-import type { D1Database } from "@cloudflare/workers-types";
-import { CloudflareError } from "./types";
+import type { D1Database } from '@cloudflare/workers-types';
+import { CloudflareError } from './types';
 
 // ============================================================
 // TYPES
@@ -18,13 +18,13 @@ import { CloudflareError } from "./types";
  * Options for creating a Prisma D1 client
  */
 export interface PrismaD1ClientOptions {
-  /**
-   * Enable query logging
-   * - `true`: Enable all log levels
-   * - `false`: Disable logging
-   * - Array: Specific log levels to enable
-   */
-  log?: boolean | ("query" | "info" | "warn" | "error")[];
+    /**
+     * Enable query logging
+     * - `true`: Enable all log levels
+     * - `false`: Disable logging
+     * - Array: Specific log levels to enable
+     */
+    log?: boolean | ('query' | 'info' | 'warn' | 'error')[];
 }
 
 /**
@@ -49,54 +49,54 @@ let PrismaClientClass: any;
  * Called lazily when first client is created
  */
 async function initPrismaDependencies(): Promise<void> {
-  if (PrismaD1Adapter && PrismaClientClass) return;
+    if (PrismaD1Adapter && PrismaClientClass) return;
 
-  try {
-    const adapterModule = await import("@prisma/adapter-d1");
-    PrismaD1Adapter = adapterModule.PrismaD1;
-  } catch {
-    throw new CloudflareError(
-      "@prisma/adapter-d1 is not installed. Install with: pnpm add @prisma/adapter-d1",
-      "PRISMA_ADAPTER_MISSING",
-    );
-  }
+    try {
+        const adapterModule = await import('@prisma/adapter-d1');
+        PrismaD1Adapter = adapterModule.PrismaD1;
+    } catch {
+        throw new CloudflareError(
+            '@prisma/adapter-d1 is not installed. Install with: pnpm add @prisma/adapter-d1',
+            'PRISMA_ADAPTER_MISSING',
+        );
+    }
 
-  try {
-    const clientModule = await import("@prisma/client");
-    PrismaClientClass = clientModule.PrismaClient;
-  } catch {
-    throw new CloudflareError(
-      "@prisma/client is not installed. Install with: pnpm add @prisma/client",
-      "PRISMA_CLIENT_MISSING",
-    );
-  }
+    try {
+        const clientModule = await import('@prisma/client');
+        PrismaClientClass = clientModule.PrismaClient;
+    } catch {
+        throw new CloudflareError(
+            '@prisma/client is not installed. Install with: pnpm add @prisma/client',
+            'PRISMA_CLIENT_MISSING',
+        );
+    }
 }
 
 /**
  * Synchronous initialization (for CommonJS compatibility)
  */
 function initPrismaDependenciesSync(): void {
-  if (PrismaD1Adapter && PrismaClientClass) return;
+    if (PrismaD1Adapter && PrismaClientClass) return;
 
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    PrismaD1Adapter = require("@prisma/adapter-d1").PrismaD1;
-  } catch {
-    throw new CloudflareError(
-      "@prisma/adapter-d1 is not installed. Install with: pnpm add @prisma/adapter-d1",
-      "PRISMA_ADAPTER_MISSING",
-    );
-  }
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        PrismaD1Adapter = require('@prisma/adapter-d1').PrismaD1;
+    } catch {
+        throw new CloudflareError(
+            '@prisma/adapter-d1 is not installed. Install with: pnpm add @prisma/adapter-d1',
+            'PRISMA_ADAPTER_MISSING',
+        );
+    }
 
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    PrismaClientClass = require("@prisma/client").PrismaClient;
-  } catch {
-    throw new CloudflareError(
-      "@prisma/client is not installed. Install with: pnpm add @prisma/client",
-      "PRISMA_CLIENT_MISSING",
-    );
-  }
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        PrismaClientClass = require('@prisma/client').PrismaClient;
+    } catch {
+        throw new CloudflareError(
+            '@prisma/client is not installed. Install with: pnpm add @prisma/client',
+            'PRISMA_CLIENT_MISSING',
+        );
+    }
 }
 
 // ============================================================
@@ -136,37 +136,31 @@ function initPrismaDependenciesSync(): void {
  * const prisma = createPrismaD1Client(env.OBCF_D1, { log: ["query", "error"] });
  * ```
  */
-export function createPrismaD1Client<T = PrismaClientType>(
-  d1: D1Database,
-  options: PrismaD1ClientOptions = {},
-): T {
-  // Initialize dependencies synchronously
-  initPrismaDependenciesSync();
+export function createPrismaD1Client<T = PrismaClientType>(d1: D1Database, options: PrismaD1ClientOptions = {}): T {
+    // Initialize dependencies synchronously
+    initPrismaDependenciesSync();
 
-  // Validate D1 binding
-  if (!isD1Database(d1)) {
-    throw new CloudflareError(
-      "Invalid D1 database binding. Ensure the D1 binding is configured in wrangler.toml.",
-      "D1_INVALID_BINDING",
-    );
-  }
+    // Validate D1 binding
+    if (!isD1Database(d1)) {
+        throw new CloudflareError(
+            'Invalid D1 database binding. Ensure the D1 binding is configured in wrangler.toml.',
+            'D1_INVALID_BINDING',
+        );
+    }
 
-  // Create the D1 adapter
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adapter = new PrismaD1Adapter(d1 as any);
+    // Create the D1 adapter
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adapter = new PrismaD1Adapter(d1 as any);
 
-  // Configure logging
-  const logConfig =
-    options.log === true
-      ? (["query", "info", "warn", "error"] as const)
-      : options.log || [];
+    // Configure logging
+    const logConfig = options.log === true ? (['query', 'info', 'warn', 'error'] as const) : options.log || [];
 
-  // Create and return the client
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return new PrismaClientClass({
-    adapter,
-    log: logConfig.length > 0 ? [...logConfig] : undefined,
-  } as any) as T;
+    // Create and return the client
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return new PrismaClientClass({
+        adapter,
+        log: logConfig.length > 0 ? [...logConfig] : undefined,
+    } as any) as T;
 }
 
 /**
@@ -179,36 +173,33 @@ export function createPrismaD1Client<T = PrismaClientType>(
  * @returns A Promise resolving to a configured PrismaClient instance
  */
 export async function createPrismaD1ClientAsync<T = PrismaClientType>(
-  d1: D1Database,
-  options: PrismaD1ClientOptions = {},
+    d1: D1Database,
+    options: PrismaD1ClientOptions = {},
 ): Promise<T> {
-  // Initialize dependencies asynchronously
-  await initPrismaDependencies();
+    // Initialize dependencies asynchronously
+    await initPrismaDependencies();
 
-  // Validate D1 binding
-  if (!isD1Database(d1)) {
-    throw new CloudflareError(
-      "Invalid D1 database binding. Ensure the D1 binding is configured in wrangler.toml.",
-      "D1_INVALID_BINDING",
-    );
-  }
+    // Validate D1 binding
+    if (!isD1Database(d1)) {
+        throw new CloudflareError(
+            'Invalid D1 database binding. Ensure the D1 binding is configured in wrangler.toml.',
+            'D1_INVALID_BINDING',
+        );
+    }
 
-  // Create the D1 adapter
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adapter = new PrismaD1Adapter(d1 as any);
+    // Create the D1 adapter
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adapter = new PrismaD1Adapter(d1 as any);
 
-  // Configure logging
-  const logConfig =
-    options.log === true
-      ? (["query", "info", "warn", "error"] as const)
-      : options.log || [];
+    // Configure logging
+    const logConfig = options.log === true ? (['query', 'info', 'warn', 'error'] as const) : options.log || [];
 
-  // Create and return the client
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return new PrismaClientClass({
-    adapter,
-    log: logConfig.length > 0 ? [...logConfig] : undefined,
-  } as any) as T;
+    // Create and return the client
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return new PrismaClientClass({
+        adapter,
+        log: logConfig.length > 0 ? [...logConfig] : undefined,
+    } as any) as T;
 }
 
 // ============================================================
@@ -266,18 +257,15 @@ const clientCache = new WeakMap<D1Database, PrismaClientType>();
  * }
  * ```
  */
-export function getPrismaD1Client<T = PrismaClientType>(
-  d1: D1Database,
-  options: PrismaD1ClientOptions = {},
-): T {
-  let client = clientCache.get(d1) as T | undefined;
+export function getPrismaD1Client<T = PrismaClientType>(d1: D1Database, options: PrismaD1ClientOptions = {}): T {
+    let client = clientCache.get(d1) as T | undefined;
 
-  if (!client) {
-    client = createPrismaD1Client<T>(d1, options);
-    clientCache.set(d1, client);
-  }
+    if (!client) {
+        client = createPrismaD1Client<T>(d1, options);
+        clientCache.set(d1, client);
+    }
 
-  return client;
+    return client;
 }
 
 // ============================================================
@@ -293,16 +281,16 @@ export function getPrismaD1Client<T = PrismaClientType>(
  * @returns True if the value appears to be a D1 database binding
  */
 export function isD1Database(value: unknown): value is D1Database {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "prepare" in value &&
-    "batch" in value &&
-    "exec" in value &&
-    typeof (value as D1Database).prepare === "function" &&
-    typeof (value as D1Database).batch === "function" &&
-    typeof (value as D1Database).exec === "function"
-  );
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'prepare' in value &&
+        'batch' in value &&
+        'exec' in value &&
+        typeof (value as D1Database).prepare === 'function' &&
+        typeof (value as D1Database).batch === 'function' &&
+        typeof (value as D1Database).exec === 'function'
+    );
 }
 
 /**
@@ -332,18 +320,15 @@ export function isD1Database(value: unknown): value is D1Database {
  * }
  * ```
  */
-export function createPrismaD1ClientSafe<T = PrismaClientType>(
-  d1: unknown,
-  options: PrismaD1ClientOptions = {},
-): T {
-  if (!isD1Database(d1)) {
-    throw new CloudflareError(
-      "Invalid D1 database binding. Make sure the D1 binding is configured in wrangler.toml and passed correctly.",
-      "D1_INVALID_BINDING",
-    );
-  }
+export function createPrismaD1ClientSafe<T = PrismaClientType>(d1: unknown, options: PrismaD1ClientOptions = {}): T {
+    if (!isD1Database(d1)) {
+        throw new CloudflareError(
+            'Invalid D1 database binding. Make sure the D1 binding is configured in wrangler.toml and passed correctly.',
+            'D1_INVALID_BINDING',
+        );
+    }
 
-  return createPrismaD1Client<T>(d1, options);
+    return createPrismaD1Client<T>(d1, options);
 }
 
 // ============================================================
@@ -373,12 +358,10 @@ export function createPrismaD1ClientSafe<T = PrismaClientType>(
  * }
  * ```
  */
-export async function disconnectPrismaClient(
-  client: PrismaClientType,
-): Promise<void> {
-  if (client && typeof client.$disconnect === "function") {
-    await client.$disconnect();
-  }
+export async function disconnectPrismaClient(client: PrismaClientType): Promise<void> {
+    if (client && typeof client.$disconnect === 'function') {
+        await client.$disconnect();
+    }
 }
 
 /**
@@ -399,20 +382,20 @@ export async function disconnectPrismaClient(
  * ```
  */
 export async function clearPrismaClientCache(): Promise<void> {
-  // WeakMap doesn't have iteration, so we can't disconnect cached clients
-  // This is a limitation but acceptable since:
-  // 1. In Workers, the runtime handles cleanup
-  // 2. In dev/test, you can manage clients manually
-  // 3. WeakMap allows GC when D1 bindings are no longer referenced
+    // WeakMap doesn't have iteration, so we can't disconnect cached clients
+    // This is a limitation but acceptable since:
+    // 1. In Workers, the runtime handles cleanup
+    // 2. In dev/test, you can manage clients manually
+    // 3. WeakMap allows GC when D1 bindings are no longer referenced
 
-  // Note: We can't iterate WeakMap, but we can let GC handle cleanup
-  // If you need explicit cleanup, use disconnectPrismaClient on individual clients
+    // Note: We can't iterate WeakMap, but we can let GC handle cleanup
+    // If you need explicit cleanup, use disconnectPrismaClient on individual clients
 
-  // This function is kept for API consistency and documentation
-  console.warn(
-    "[d1-prisma] clearPrismaClientCache: WeakMap-based cache cannot be manually cleared. " +
-      "Clients will be garbage collected when D1 bindings are no longer referenced.",
-  );
+    // This function is kept for API consistency and documentation
+    console.warn(
+        '[d1-prisma] clearPrismaClientCache: WeakMap-based cache cannot be manually cleared. ' +
+            'Clients will be garbage collected when D1 bindings are no longer referenced.',
+    );
 }
 
 /**
@@ -441,15 +424,15 @@ export async function clearPrismaClientCache(): Promise<void> {
  * ```
  */
 export function createDisposablePrismaD1Client<T = PrismaClientType>(
-  d1: D1Database,
-  options: PrismaD1ClientOptions = {},
+    d1: D1Database,
+    options: PrismaD1ClientOptions = {},
 ): T & AsyncDisposable {
-  const client = createPrismaD1Client<T>(d1, options);
+    const client = createPrismaD1Client<T>(d1, options);
 
-  // Add AsyncDisposable support (TC39 proposal - Stage 3)
-  (client as any)[Symbol.asyncDispose] = async () => {
-    await disconnectPrismaClient(client);
-  };
+    // Add AsyncDisposable support (TC39 proposal - Stage 3)
+    (client as any)[Symbol.asyncDispose] = async () => {
+        await disconnectPrismaClient(client);
+    };
 
-  return client as T & AsyncDisposable;
+    return client as T & AsyncDisposable;
 }

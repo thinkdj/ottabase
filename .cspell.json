@@ -1,27 +1,21 @@
 {
-  "version": "0.2",
-  "language": "en",
-  "words": [
-    "Deepak",
-    "Hyperdrive",
-    "jotai",
-    "mantine",
-    "nextjs",
-    "Otta",
-    "Ottabase",
-    "ottaeditor",
-    "ottaselect",
-    "pnpm",
-    "tailwind",
-    "thinkdj",
-    "tsup",
-    "typescript"
-  ],
-  "ignorePaths": [
-    "**/node_modules/**",
-    "**/dist/**",
-    "**.svg",
-    "**.lock",
-    "**.log"
-  ]
+    "version": "0.2",
+    "language": "en",
+    "words": [
+        "Deepak",
+        "Hyperdrive",
+        "jotai",
+        "mantine",
+        "nextjs",
+        "Otta",
+        "Ottabase",
+        "ottaeditor",
+        "ottaselect",
+        "pnpm",
+        "tailwind",
+        "thinkdj",
+        "tsup",
+        "typescript"
+    ],
+    "ignorePaths": ["**/node_modules/**", "**/dist/**", "**.svg", "**.lock", "**.log"]
 }

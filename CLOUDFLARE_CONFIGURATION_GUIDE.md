@@ -1,6 +1,7 @@
 # Cloudflare Configuration Guide for Ottabase
 
-Complete guide for configuring your Ottabase application to work 100% with Cloudflare Workers using **OBCF\_\*** binding names.
+Complete guide for configuring your Ottabase application to work 100% with Cloudflare Workers using **OBCF\_\*** binding
+names.
 
 **OBCF = Ottabase Cloudflare** - A unique naming convention to avoid conflicts with other libraries and frameworks.
 
@@ -52,12 +53,7 @@ The following Cloudflare resources must be created and configured:
 Create `apps/ottabase-template-app/.env.local` with the following:
 
 ```bash
-# ============================================================
-# DATABASE CONFIGURATION
-# ============================================================
-# Local SQLite for Prisma CLI (migrations/schema generation)
-# Runtime uses D1 binding from wrangler.jsonc
-DATABASE_URL="file:./prisma/dev.db"
+
 
 # ============================================================
 # AUTHENTICATION (Optional - Auth.js v5)
@@ -137,70 +133,50 @@ wrangler secret put CF_R2_SECRET_ACCESS_KEY
 
 ```jsonc
 {
-  "d1_databases": [
-    {
-      "binding": "OBCF_D1",
-      "database_name": "ottabase-db",
-      "database_id": "YOUR_D1_DATABASE_ID" // Set by cloudflare:setup
-    }
-  ],
-  "kv_namespaces": [
-    {
-      "binding": "OBCF_KV",
-      "id": "YOUR_KV_NAMESPACE_ID" // Set by cloudflare:setup
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "OBCF_R2",
-      "bucket_name": "ottabase-bucket" // Set by cloudflare:setup
-    }
-  ],
-  "queues": {
-    "producers": [
-      {
-        "binding": "OBCF_QUEUE",
-        "queue": "ottabase-queue" // Set by cloudflare:setup
-      }
-    ]
-  },
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "OBCF_REALTIME",
-        "class_name": "RealtimeActor"
-      }
-    ]
-  },
-  "unsafe": {
-    "bindings": [
-      {
-        "name": "OBCF_RATE_LIMITER",
-        "type": "ratelimit"
-      }
-    ]
-  }
+    "d1_databases": [
+        {
+            "binding": "OBCF_D1",
+            "database_name": "ottabase-db",
+            "database_id": "YOUR_D1_DATABASE_ID", // Set by cloudflare:setup
+        },
+    ],
+    "kv_namespaces": [
+        {
+            "binding": "OBCF_KV",
+            "id": "YOUR_KV_NAMESPACE_ID", // Set by cloudflare:setup
+        },
+    ],
+    "r2_buckets": [
+        {
+            "binding": "OBCF_R2",
+            "bucket_name": "ottabase-bucket", // Set by cloudflare:setup
+        },
+    ],
+    "queues": {
+        "producers": [
+            {
+                "binding": "OBCF_QUEUE",
+                "queue": "ottabase-queue", // Set by cloudflare:setup
+            },
+        ],
+    },
+    "durable_objects": {
+        "bindings": [
+            {
+                "name": "OBCF_REALTIME",
+                "class_name": "RealtimeActor",
+            },
+        ],
+    },
+    "unsafe": {
+        "bindings": [
+            {
+                "name": "OBCF_RATE_LIMITER",
+                "type": "ratelimit",
+            },
+        ],
+    },
 }
-```
-
-### 2. `apps/ottabase-template-app/db.config.ts`
-
-**Status:** ✅ Already configured
-
-**Configuration:**
-
-```typescript
-import { defineAppDbConfig } from "@ottabase/db/prisma";
-
-export default defineAppDbConfig({
-  appId: "ottabase-template-app",
-  dbProvider: "d1",
-  features: [
-    // "auth",  // Uncomment to enable auth models
-  ],
-  d1Database: "OBCF_D1", // Must match wrangler.jsonc binding
-  wranglerConfig: "wrangler.jsonc",
-});
 ```
 
 ### 3. `apps/ottabase-template-app/types/cloudflare.d.ts`
@@ -211,28 +187,28 @@ export default defineAppDbConfig({
 
 ```typescript
 export interface CloudflareEnv {
-  // D1 Database (OBCF = Ottabase Cloudflare)
-  OBCF_D1?: D1Database;
+    // D1 Database (OBCF = Ottabase Cloudflare)
+    OBCF_D1?: D1Database;
 
-  // KV Namespace
-  OBCF_KV?: KVNamespace;
+    // KV Namespace
+    OBCF_KV?: KVNamespace;
 
-  // R2 Bucket
-  OBCF_R2?: R2Bucket;
+    // R2 Bucket
+    OBCF_R2?: R2Bucket;
 
-  // Queue
-  OBCF_QUEUE?: Queue;
+    // Queue
+    OBCF_QUEUE?: Queue;
 
-  // Hyperdrive (uncomment when configured)
-  // OBCF_HYPERDRIVE?: Hyperdrive;
+    // Hyperdrive (uncomment when configured)
+    // OBCF_HYPERDRIVE?: Hyperdrive;
 
-  // Rate Limiter
-  OBCF_RATE_LIMITER?: RateLimiter;
+    // Rate Limiter
+    OBCF_RATE_LIMITER?: RateLimiter;
 
-  // Durable Objects
-  OBCF_REALTIME?: DurableObjectNamespace;
+    // Durable Objects
+    OBCF_REALTIME?: DurableObjectNamespace;
 
-  // Add more bindings as needed
+    // Add more bindings as needed
 }
 ```
 
@@ -251,65 +227,23 @@ export { RealtimeActor } from '@ottabase/cf-realtime/server';
 
 ## 🗄️ Database Setup
 
-### Using Prisma with D1
+### Using Drizzle with D1
 
-The app uses `@ottabase/db` package with Prisma adapter for D1.
-
-#### 1. Generate Prisma Schema
-
-```bash
-cd apps/ottabase-template-app
-pnpm db:generate
-```
-
-This creates `prisma/schema.prisma` from your configuration.
-
-#### 2. Create Migrations
-
-```bash
-# Generate migration from schema changes
-pnpm db:migrate
-
-# Apply migrations to local D1
-wrangler d1 migrations apply ottabase-db --local
-
-# Apply migrations to production D1
-wrangler d1 migrations apply ottabase-db --remote
-```
-
-#### 3. Using in Code
-
-```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { createPrismaD1Client } from '@ottabase/cf/d1-prisma';
-
-export async function GET() {
-  const { env } = await getCloudflareContext();
-
-  // Create Prisma client with D1 binding
-  const prisma = createPrismaD1Client(env.OBCF_D1);
-
-  const users = await prisma.user.findMany();
-
-  return Response.json(users);
-}
-```
-
-### Using Drizzle with D1 (Alternative)
+The app uses `@ottabase/db` package with Drizzle adapter for D1.
 
 ```typescript
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 
 export async function GET() {
-  const { env } = await getCloudflareContext();
+    const { env } = await getCloudflareContext();
 
-  const driver = createD1Driver(env.OBCF_D1);
-  const db = driver.getDb();
+    const driver = createD1Driver(env.OBCF_D1);
+    const db = driver.getDb();
 
-  const users = await db.select().from(usersTable);
+    const users = await db.select().from(usersTable);
 
-  return Response.json(users);
+    return Response.json(users);
 }
 ```
 
@@ -321,48 +255,35 @@ The `@ottabase/auth` package provides Auth.js v5 integration with D1.
 
 ### 1. Enable Auth Feature
 
-Edit `apps/ottabase-template-app/db.config.ts`:
+Ensure `@ottabase/auth` is installed and configured in your application.
+
+### 2. Configure Auth
 
 ```typescript
-export default defineAppDbConfig({
-  appId: "ottabase-template-app",
-  features: ["auth"], // Add auth feature
+// app/auth.ts
+import { createOttabaseAuthConfig, createGoogleProvider } from '@ottabase/auth';
+
+export const authConfig = createOttabaseAuthConfig({
+    d1: env.OBCF_D1,
+    providers: [
+        createGoogleProvider(env),
+        // Add more providers
+    ],
 });
-```
-
-### 2. Regenerate Schema
-
-```bash
-pnpm db:generate
-```
-
-This adds auth tables: `User`, `Account`, `Session`, `VerificationToken`, `Authenticator`
-
-### 3. Run Migrations
-
-```bash
-# Generate migration with auth tables
-pnpm db:migrate
-
-# Apply to local D1
-wrangler d1 migrations apply ottabase-db --local
-
-# Apply to production D1
-wrangler d1 migrations apply ottabase-db --remote
 ```
 
 ### 4. Configure Auth
 
 ```typescript
 // app/auth.ts
-import { createOttabaseAuthConfig, createGoogleProvider } from "@ottabase/auth";
+import { createOttabaseAuthConfig, createGoogleProvider } from '@ottabase/auth';
 
 export const authConfig = createOttabaseAuthConfig({
-  d1: env.OBCF_D1,
-  providers: [
-    createGoogleProvider(env),
-    // Add more providers
-  ],
+    d1: env.OBCF_D1,
+    providers: [
+        createGoogleProvider(env),
+        // Add more providers
+    ],
 });
 ```
 
@@ -383,35 +304,27 @@ AUTH_GOOGLE_SECRET=your-google-client-secret
 ### Pre-Deployment Checklist
 
 - [ ] **Cloudflare Resources Created**
-
-  - [ ] D1 Database exists: `wrangler d1 list`
-  - [ ] KV Namespace exists: `wrangler kv:namespace list`
-  - [ ] R2 Bucket exists: `wrangler r2 bucket list`
-  - [ ] Queue exists: `wrangler queues list`
+    - [ ] D1 Database exists: `wrangler d1 list`
+    - [ ] KV Namespace exists: `wrangler kv:namespace list`
+    - [ ] R2 Bucket exists: `wrangler r2 bucket list`
+    - [ ] Queue exists: `wrangler queues list`
 
 - [ ] **Configuration Files Updated**
-
-  - [ ] `wrangler.jsonc` has resource IDs (not placeholders)
-  - [ ] `db.config.ts` has correct `d1Database` binding name (`OBCF_D1`)
-  - [ ] `types/cloudflare.d.ts` includes all OBCF\_\* bindings
+    - [ ] `wrangler.jsonc` has resource IDs (not placeholders)
+    - [ ] `types/cloudflare.d.ts` includes all OBCF\_\* bindings
 
 - [ ] **Environment Variables Set**
-
-  - [ ] `.env.local` created for local development
-  - [ ] Production secrets set via `wrangler secret put`
+    - [ ] `.env.local` created for local development
+    - [ ] Production secrets set via `wrangler secret put`
 
 - [ ] **Database Schema Generated**
-
-  - [ ] `pnpm db:generate` run successfully
-  - [ ] `prisma/schema.prisma` exists
-  - [ ] Migrations created: `pnpm db:migrate`
-  - [ ] Migrations applied to D1: `wrangler d1 migrations apply`
+    - [ ] Migrations applied to D1: `wrangler d1 migrations apply`
 
 - [ ] **Build & Deploy**
-  - [ ] Local build works: `pnpm build`
-  - [ ] Worker build works: `pnpm build:worker`
-  - [ ] Preview works: `pnpm preview`
-  - [ ] Deploy successful: `pnpm deploy`
+    - [ ] Local build works: `pnpm build`
+    - [ ] Worker build works: `pnpm build:worker`
+    - [ ] Preview works: `pnpm preview`
+    - [ ] Deploy successful: `pnpm deploy`
 
 ### Post-Deployment Verification
 
@@ -438,19 +351,19 @@ curl https://your-app.workers.dev/api/cloudflare/r2/list
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export async function GET() {
-  const { env } = await getCloudflareContext();
+    const { env } = await getCloudflareContext();
 
-  // Access bindings with OBCF_* names
-  const db = env.OBCF_D1;           // D1 Database
-  const kv = env.OBCF_KV;           // KV Namespace
-  const r2 = env.OBCF_R2;           // R2 Bucket
-  const queue = env.OBCF_QUEUE;     // Queue
-  const realtime = env.OBCF_REALTIME; // Durable Object
+    // Access bindings with OBCF_* names
+    const db = env.OBCF_D1; // D1 Database
+    const kv = env.OBCF_KV; // KV Namespace
+    const r2 = env.OBCF_R2; // R2 Bucket
+    const queue = env.OBCF_QUEUE; // Queue
+    const realtime = env.OBCF_REALTIME; // Durable Object
 
-  // Use with @ottabase/cf package
-  const prisma = createPrismaD1Client(db);
-  const kvClient = createKVClient({ namespace: kv });
-  const r2Client = createR2Client({ bucket: r2 });
+    // Use with @ottabase/cf package
+    const prisma = createPrismaD1Client(db);
+    const kvClient = createKVClient({ namespace: kv });
+    const r2Client = createR2Client({ bucket: r2 });
 }
 ```
 
@@ -509,22 +422,20 @@ Replace all `YOUR_*_ID` placeholders with actual resource IDs and ensure binding
 ## 📚 Additional Resources
 
 - **Packages Documentation:**
-
-  - `@ottabase/db` - [packages/db/README.md](packages/db/README.md)
-  - `@ottabase/cf` - [packages/cf/README.md](packages/cf/README.md)
-  - `@ottabase/auth` - [packages/auth/README.md](packages/auth/README.md)
+    - `@ottabase/db` - [packages/db/README.md](packages/db/README.md)
+    - `@ottabase/cf` - [packages/cf/README.md](packages/cf/README.md)
+    - `@ottabase/auth` - [packages/auth/README.md](packages/auth/README.md)
 
 - **Cloudflare Documentation:**
-
-  - [D1 Database](https://developers.cloudflare.com/d1/)
-  - [KV Storage](https://developers.cloudflare.com/kv/)
-  - [R2 Storage](https://developers.cloudflare.com/r2/)
-  - [Queues](https://developers.cloudflare.com/queues/)
-  - [Durable Objects](https://developers.cloudflare.com/durable-objects/)
+    - [D1 Database](https://developers.cloudflare.com/d1/)
+    - [KV Storage](https://developers.cloudflare.com/kv/)
+    - [R2 Storage](https://developers.cloudflare.com/r2/)
+    - [Queues](https://developers.cloudflare.com/queues/)
+    - [Durable Objects](https://developers.cloudflare.com/durable-objects/)
 
 - **Project Documentation:**
-  - [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md) - Complete deployment guide with CI/CD setup
-  - [AGENTS.MD](AGENTS.MD) - Monorepo architecture
+    - [CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md) - Complete deployment guide with CI/CD setup
+    - [AGENTS.MD](AGENTS.MD) - Monorepo architecture
 
 ---
 
@@ -539,17 +450,6 @@ Replace all `YOUR_*_ID` placeholders with actual resource IDs and ensure binding
 1. Check `wrangler.jsonc` has `d1_databases` with binding `"OBCF_D1"`
 2. Verify `database_id` is not a placeholder
 3. Run `wrangler d1 list` to verify database exists
-
-### "Prisma client not generated"
-
-**Cause:** Schema not generated or out of sync.
-
-**Solution:**
-
-```bash
-cd apps/ottabase-template-app
-pnpm db:generate
-```
 
 ### "Migration not applied"
 

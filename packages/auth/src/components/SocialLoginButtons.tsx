@@ -1,5 +1,5 @@
-import React from "react";
-import { Button, Separator } from "@ottabase/ui-shadcn";
+import React from 'react';
+import { Button, Separator } from '@ottabase/ui-shadcn';
 
 export interface SocialProvider {
     id: string;
@@ -54,7 +54,7 @@ export function SocialLoginButtons({
     onProviderClick,
     isLoading = false,
     disabled = false,
-    className = "",
+    className = '',
 }: SocialLoginButtonsProps) {
     return (
         <div className={`flex flex-col gap-3 ${className}`}>
@@ -80,10 +80,7 @@ export interface SocialLoginDividerProps {
     className?: string;
 }
 
-export function SocialLoginDivider({
-    text = "or continue with",
-    className = "",
-}: SocialLoginDividerProps) {
+export function SocialLoginDivider({ text = 'or continue with', className = '' }: SocialLoginDividerProps) {
     return (
         <div className={`relative my-6 ${className}`}>
             <div className="absolute inset-0 flex items-center">

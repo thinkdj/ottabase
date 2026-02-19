@@ -2,7 +2,7 @@ import React from 'react';
 import { RenderFn } from 'editorjs-blocks-react-renderer';
 import { AdvancedImageData } from './advancedimage.types';
 
-const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = "" }) => {
+const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' }) => {
     // Support both AdvancedImage (data.url) and legacy @editorjs/image (data.file.url)
     const resolvedUrl = data?.url || (data as any)?.file?.url;
     if (!resolvedUrl) {
@@ -19,7 +19,7 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = "" 
         width,
         height,
         featuredImage = false,
-        aspectRatio = 'original'
+        aspectRatio = 'original',
     } = data;
 
     // Base Tailwind classes for the figure (includes image-block container styles)
@@ -53,7 +53,11 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = "" 
     }
 
     // Handle featured image styling
-    if (featuredImage || className.includes('advanced-image-block--featured-image') || className.includes('image-block--featured-image')) {
+    if (
+        featuredImage ||
+        className.includes('advanced-image-block--featured-image') ||
+        className.includes('image-block--featured-image')
+    ) {
         figureTailwindClasses.push('shadow-lg', 'dark:shadow-gray-700/50', 'relative');
     }
 
@@ -112,13 +116,7 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = "" 
         }
     }
 
-    const imageComponent = (
-        <img
-            src={resolvedUrl}
-            alt={altFinal}
-            className={imageClasses}
-        />
-    );
+    const imageComponent = <img src={resolvedUrl} alt={altFinal} className={imageClasses} />;
 
     return (
         <>
@@ -142,9 +140,7 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = "" 
                     imageComponent
                 )}
                 {caption && (
-                    <figcaption
-                        className="mt-2 text-sm italic text-center text-gray-600 dark:text-gray-400"
-                    >
+                    <figcaption className="mt-2 text-sm italic text-center text-gray-600 dark:text-gray-400">
                         {caption}
                     </figcaption>
                 )}

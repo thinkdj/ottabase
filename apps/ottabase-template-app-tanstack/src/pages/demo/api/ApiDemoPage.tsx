@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@ottabase/ui-shadcn";
-import { api, isApiError } from "@/lib/api";
+import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { api, isApiError } from '@/lib/api';
 
 interface DemoResponse {
     message: string;
@@ -30,7 +30,9 @@ export function ApiDemoPage() {
                     messages: err.messages,
                     fieldErrors: err.fieldErrors,
                 };
-                setResult(`Error ${err.status}: ${err.message}\n\nAPI Response:\n${JSON.stringify(errorDetails, null, 2)}`);
+                setResult(
+                    `Error ${err.status}: ${err.message}\n\nAPI Response:\n${JSON.stringify(errorDetails, null, 2)}`,
+                );
             } else {
                 setResult(`Unexpected error: ${err instanceof Error ? err.message : String(err)}`);
             }
@@ -40,7 +42,7 @@ export function ApiDemoPage() {
     };
 
     return (
-        <div className="mx-auto max-w-2xl space-y-6 px-4 py-12">
+        <div className="space-y-6">
             <Button asChild variant="ghost" className="w-fit">
                 <Link to="/demo">← Back to Demos</Link>
             </Button>
@@ -56,31 +58,32 @@ export function ApiDemoPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex flex-wrap gap-2">
-                        <Button
-                            onClick={() => runRequest(() => api<DemoResponse>("/api/demo"))}
-                            disabled={loading}
-                        >
+                        <Button onClick={() => runRequest(() => api<DemoResponse>('/api/demo'))} disabled={loading}>
                             GET
                         </Button>
                         <Button
-                            onClick={() => runRequest(() => api<DemoResponse>("/api/demo", {
-                                method: "POST",
-                                body: { name: "Ottabase" },
-                            }))}
+                            onClick={() =>
+                                runRequest(() =>
+                                    api<DemoResponse>('/api/demo', {
+                                        method: 'POST',
+                                        body: { name: 'Ottabase' },
+                                    }),
+                                )
+                            }
                             disabled={loading}
                             variant="secondary"
                         >
                             POST
                         </Button>
                         <Button
-                            onClick={() => runRequest(() => api<DemoResponse>("/api/demo", "DELETE"))}
+                            onClick={() => runRequest(() => api<DemoResponse>('/api/demo', 'DELETE'))}
                             disabled={loading}
                             variant="outline"
                         >
                             DELETE (shorthand)
                         </Button>
                         <Button
-                            onClick={() => runRequest(() => api<DemoResponse>("/api/demo/error"))}
+                            onClick={() => runRequest(() => api<DemoResponse>('/api/demo/error'))}
                             disabled={loading}
                             variant="destructive"
                         >
@@ -88,11 +91,7 @@ export function ApiDemoPage() {
                         </Button>
                     </div>
 
-                    {result && (
-                        <pre className="rounded-lg bg-muted p-4 text-sm overflow-auto">
-                            {result}
-                        </pre>
-                    )}
+                    {result && <pre className="rounded-lg bg-muted p-4 text-sm overflow-auto">{result}</pre>}
                 </CardContent>
             </Card>
 
