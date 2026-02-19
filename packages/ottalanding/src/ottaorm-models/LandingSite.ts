@@ -140,6 +140,17 @@ export class LandingSite extends BaseModel {
             formConfig: { visible: true, fieldType: 'select' },
             tableConfig: { visible: true, colWidth: 150 },
         },
+        homePageId: {
+            type: 'string',
+            editable: true,
+            filterable: true,
+            uiConfig: {
+                label: 'Homepage',
+                description: 'Which page shows at / (leave empty for first page or slug "home")',
+            },
+            formConfig: { visible: false },
+            tableConfig: { visible: false },
+        },
         appId: {
             type: 'string',
             editable: false,
@@ -221,9 +232,7 @@ export class LandingSite extends BaseModel {
                     title: string;
                     links: Array<{ label: string; href: string }>;
                 }>) || [],
-            socialLinks:
-                (this.get('socialLinks') as Array<{ name: string; href: string; icon?: string }>) ||
-                [],
+            socialLinks: (this.get('socialLinks') as Array<{ name: string; href: string; icon?: string }>) || [],
             legal: this.get('legal') as
                 | { copyright?: string; links?: Array<{ label: string; href: string }> }
                 | undefined,

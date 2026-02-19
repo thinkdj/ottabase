@@ -3,9 +3,22 @@
 import { useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-    Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Input,
 } from '@ottabase/ui-shadcn';
 import { Globe, Plus, Settings, Trash2 } from 'lucide-react';
 import { landingSiteHooks, type LandingSiteItem } from '@/hooks/landingHooks';
@@ -18,7 +31,7 @@ export function AdminLandingSitesPage() {
 
     const [deleteTarget, setDeleteTarget] = useState<LandingSiteItem | null>(null);
 
-    const sites = (data?.data ?? []) as LandingSiteItem[];
+    const sites = (Array.isArray(data) ? data : []) as LandingSiteItem[];
 
     const handleCreate = async () => {
         try {
@@ -83,7 +96,9 @@ export function AdminLandingSitesPage() {
                         <div className="text-center py-12">
                             <Globe className="mx-auto h-12 w-12 text-muted-foreground/50" />
                             <h3 className="mt-4 text-lg font-semibold">No sites yet</h3>
-                            <p className="mt-2 text-sm text-muted-foreground">Create your first landing site to get started.</p>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                                Create your first landing site to get started.
+                            </p>
                             <Button className="mt-4" onClick={handleCreate} disabled={createMutation.isPending}>
                                 <Plus className="mr-2 h-4 w-4" />
                                 Create Site
@@ -104,19 +119,20 @@ export function AdminLandingSitesPage() {
                                         <div className="flex items-center gap-3">
                                             <Globe className="h-5 w-5 text-muted-foreground shrink-0" />
                                             <div className="min-w-0">
-                                                <p className="text-sm font-semibold text-foreground truncate">{site.name}</p>
+                                                <p className="text-sm font-semibold text-foreground truncate">
+                                                    {site.name}
+                                                </p>
                                                 {site.tagline && (
-                                                    <p className="text-xs text-muted-foreground truncate">{site.tagline}</p>
+                                                    <p className="text-xs text-muted-foreground truncate">
+                                                        {site.tagline}
+                                                    </p>
                                                 )}
                                             </div>
                                         </div>
                                     </Link>
                                     <div className="flex items-center gap-2 ml-4 shrink-0">
                                         <Badge variant="secondary">{site.themeId}</Badge>
-                                        <Link
-                                            to="/admin/landing/sites/$siteId"
-                                            params={{ siteId: site.id }}
-                                        >
+                                        <Link to="/admin/landing/sites/$siteId" params={{ siteId: site.id }}>
                                             <Button variant="ghost" size="icon" className="h-8 w-8">
                                                 <Settings className="h-4 w-4" />
                                             </Button>
@@ -143,12 +159,16 @@ export function AdminLandingSitesPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete site?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete "{deleteTarget?.name}" and all its pages and sections. This action cannot be undone.
+                            This will permanently delete "{deleteTarget?.name}" and all its pages and sections. This
+                            action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
                             Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>

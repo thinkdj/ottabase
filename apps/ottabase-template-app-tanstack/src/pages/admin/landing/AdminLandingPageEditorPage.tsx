@@ -3,16 +3,33 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-    Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle,
-    Input, Label, Switch, Textarea,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Input,
+    Label,
+    Switch,
+    Textarea,
 } from '@ottabase/ui-shadcn';
 import { ArrowLeft, Eye, EyeOff, GripVertical, Layers, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { SECTION_TYPES } from '@ottabase/ottalanding';
 import {
-    landingPageHooks, landingSectionHooks,
-    type LandingPageItem, type LandingSectionItem,
+    landingPageHooks,
+    landingSectionHooks,
+    type LandingPageItem,
+    type LandingSectionItem,
 } from '@/hooks/landingHooks';
 
 // ─── Section type display names ─────────────────────────────────────────────
@@ -80,11 +97,21 @@ function PageSettingsCard({ page, onSave }: { page: LandingPageItem; onSave: () 
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="metaDescription">Meta Description</Label>
-                    <Textarea id="metaDescription" rows={2} value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} />
+                    <Textarea
+                        id="metaDescription"
+                        rows={2}
+                        value={metaDescription}
+                        onChange={(e) => setMetaDescription(e.target.value)}
+                    />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="ogImage">OG Image URL</Label>
-                    <Input id="ogImage" value={ogImage} onChange={(e) => setOgImage(e.target.value)} placeholder="https://..." />
+                    <Input
+                        id="ogImage"
+                        value={ogImage}
+                        onChange={(e) => setOgImage(e.target.value)}
+                        placeholder="https://..."
+                    />
                 </div>
                 <div className="flex items-center gap-3">
                     <Switch checked={isPublished} onCheckedChange={setIsPublished} id="published" />
@@ -116,7 +143,7 @@ function SectionsCard({ pageId }: { pageId: string }) {
     const [addingType, setAddingType] = useState<string | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<LandingSectionItem | null>(null);
 
-    const sections = ((data?.data ?? []) as LandingSectionItem[]).sort((a, b) => a.order - b.order);
+    const sections = ((Array.isArray(data) ? data : []) as LandingSectionItem[]).sort((a, b) => a.order - b.order);
 
     const handleAdd = async (sectionType: string) => {
         try {
@@ -209,7 +236,9 @@ function SectionsCard({ pageId }: { pageId: string }) {
                     <div className="text-center py-12 rounded-lg border border-dashed">
                         <Layers className="mx-auto h-10 w-10 text-muted-foreground/50" />
                         <h3 className="mt-3 text-sm font-semibold">No sections</h3>
-                        <p className="mt-1 text-xs text-muted-foreground">Add sections like Hero, Features, Pricing, etc.</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            Add sections like Hero, Features, Pricing, etc.
+                        </p>
                     </div>
                 ) : (
                     <div className="space-y-2">
@@ -230,7 +259,9 @@ function SectionsCard({ pageId }: { pageId: string }) {
                                     </p>
                                 </Link>
                                 <div className="flex items-center gap-1 shrink-0">
-                                    <Badge variant="outline" className="text-[10px]">{section.sectionType}</Badge>
+                                    <Badge variant="outline" className="text-[10px]">
+                                        {section.sectionType}
+                                    </Badge>
                                     <Button
                                         variant="ghost"
                                         size="icon"
@@ -238,7 +269,11 @@ function SectionsCard({ pageId }: { pageId: string }) {
                                         onClick={() => handleToggleVisible(section)}
                                         title={section.visible ? 'Hide section' : 'Show section'}
                                     >
-                                        {section.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
+                                        {section.visible ? (
+                                            <Eye className="h-3.5 w-3.5" />
+                                        ) : (
+                                            <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                                        )}
                                     </Button>
                                     <Link to="/admin/landing/sections/$sectionId" params={{ sectionId: section.id }}>
                                         <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -265,12 +300,16 @@ function SectionsCard({ pageId }: { pageId: string }) {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete section?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete the "{SECTION_LABELS[deleteTarget?.sectionType ?? ''] ?? deleteTarget?.sectionType}" section.
+                            This will permanently delete the "
+                            {SECTION_LABELS[deleteTarget?.sectionType ?? ''] ?? deleteTarget?.sectionType}" section.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
                             Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>

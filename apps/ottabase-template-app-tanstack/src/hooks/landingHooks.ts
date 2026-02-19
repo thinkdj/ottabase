@@ -18,6 +18,7 @@ export interface LandingSiteItem {
     socialLinks: Array<{ name: string; href: string; icon?: string }>;
     legal?: { copyright?: string; links?: Array<{ label: string; href: string }> } | null;
     themeId: string;
+    homePageId?: string | null;
     appId?: string;
     organizationId?: string;
     createdAt: number;

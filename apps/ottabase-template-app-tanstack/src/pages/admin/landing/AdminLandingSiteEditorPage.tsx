@@ -3,15 +3,32 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-    Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle,
-    Input, Label, Tabs, TabsContent, TabsList, TabsTrigger, Textarea,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Input,
+    Label,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+    Textarea,
 } from '@ottabase/ui-shadcn';
 import { ArrowLeft, Eye, EyeOff, FileText, GripVertical, Pencil, Plus, Save, Trash2 } from 'lucide-react';
-import {
-    landingSiteHooks, landingPageHooks, type LandingSiteItem, type LandingPageItem,
-} from '@/hooks/landingHooks';
+import { landingSiteHooks, landingPageHooks, type LandingSiteItem, type LandingPageItem } from '@/hooks/landingHooks';
+import { LandingPreviewModal } from './LandingPreviewModal';
 
 // ─── Site Settings Tab ──────────────────────────────────────────────────────
 
@@ -58,7 +75,12 @@ function SiteSettingsTab({ site, onSave }: { site: LandingSiteItem; onSave: () =
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
                             <Label htmlFor="name">Site Name</Label>
-                            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="My Website" />
+                            <Input
+                                id="name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="My Website"
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="themeId">Template Theme</Label>
@@ -76,11 +98,21 @@ function SiteSettingsTab({ site, onSave }: { site: LandingSiteItem; onSave: () =
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="tagline">Tagline</Label>
-                        <Input id="tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="A short description" />
+                        <Input
+                            id="tagline"
+                            value={tagline}
+                            onChange={(e) => setTagline(e.target.value)}
+                            placeholder="A short description"
+                        />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="logoUrl">Logo URL</Label>
-                        <Input id="logoUrl" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
+                        <Input
+                            id="logoUrl"
+                            value={logoUrl}
+                            onChange={(e) => setLogoUrl(e.target.value)}
+                            placeholder="https://..."
+                        />
                     </div>
                 </CardContent>
             </Card>
@@ -88,24 +120,46 @@ function SiteSettingsTab({ site, onSave }: { site: LandingSiteItem; onSave: () =
             <Card>
                 <CardHeader>
                     <CardTitle>Navigation</CardTitle>
-                    <CardDescription>JSON arrays for nav links, CTA button, footer sections, and legal info.</CardDescription>
+                    <CardDescription>
+                        JSON arrays for nav links, CTA button, footer sections, and legal info.
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <Label>Nav Links (JSON)</Label>
-                        <Textarea rows={4} value={navLinksJson} onChange={(e) => setNavLinksJson(e.target.value)} className="font-mono text-xs" />
+                        <Textarea
+                            rows={4}
+                            value={navLinksJson}
+                            onChange={(e) => setNavLinksJson(e.target.value)}
+                            className="font-mono text-xs"
+                        />
                     </div>
                     <div className="space-y-2">
                         <Label>Nav CTA (JSON)</Label>
-                        <Textarea rows={2} value={navCtaJson} onChange={(e) => setNavCtaJson(e.target.value)} className="font-mono text-xs" />
+                        <Textarea
+                            rows={2}
+                            value={navCtaJson}
+                            onChange={(e) => setNavCtaJson(e.target.value)}
+                            className="font-mono text-xs"
+                        />
                     </div>
                     <div className="space-y-2">
                         <Label>Footer Sections (JSON)</Label>
-                        <Textarea rows={6} value={footerJson} onChange={(e) => setFooterJson(e.target.value)} className="font-mono text-xs" />
+                        <Textarea
+                            rows={6}
+                            value={footerJson}
+                            onChange={(e) => setFooterJson(e.target.value)}
+                            className="font-mono text-xs"
+                        />
                     </div>
                     <div className="space-y-2">
                         <Label>Legal (JSON)</Label>
-                        <Textarea rows={3} value={legalJson} onChange={(e) => setLegalJson(e.target.value)} className="font-mono text-xs" />
+                        <Textarea
+                            rows={3}
+                            value={legalJson}
+                            onChange={(e) => setLegalJson(e.target.value)}
+                            className="font-mono text-xs"
+                        />
                     </div>
                 </CardContent>
             </Card>
@@ -122,7 +176,15 @@ function SiteSettingsTab({ site, onSave }: { site: LandingSiteItem; onSave: () =
 
 // ─── Pages Tab ──────────────────────────────────────────────────────────────
 
-function PagesTab({ siteId }: { siteId: string }) {
+function PagesTab({
+    siteId,
+    homePageId,
+    onSetHomepage,
+}: {
+    siteId: string;
+    homePageId?: string | null;
+    onSetHomepage: () => void;
+}) {
     const navigate = useNavigate();
     const { data, isLoading, refetch } = landingPageHooks.useList({
         perPage: 50,
@@ -130,10 +192,11 @@ function PagesTab({ siteId }: { siteId: string }) {
     });
     const createMutation = landingPageHooks.useCreate();
     const deleteMutation = landingPageHooks.useDelete();
+    const siteUpdateMutation = landingSiteHooks.useUpdate();
 
     const [deleteTarget, setDeleteTarget] = useState<LandingPageItem | null>(null);
 
-    const pages = (data?.data ?? []) as LandingPageItem[];
+    const pages = (Array.isArray(data) ? data : []) as LandingPageItem[];
 
     const handleCreate = async () => {
         try {
@@ -165,10 +228,21 @@ function PagesTab({ siteId }: { siteId: string }) {
         }
     };
 
+    const handleSetHomepage = async (pageId: string) => {
+        try {
+            await siteUpdateMutation.mutateAsync({ id: siteId, data: { homePageId: pageId } });
+            onSetHomepage();
+        } catch {
+            // handled
+        }
+    };
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Pages in this site, ordered by position.</p>
+                <p className="text-sm text-muted-foreground">
+                    Pages in this site. Click &quot;Set as homepage&quot; to choose which page shows at /.
+                </p>
                 <Button size="sm" onClick={handleCreate} disabled={createMutation.isPending}>
                     <Plus className="mr-2 h-3.5 w-3.5" />
                     Add Page
@@ -181,7 +255,9 @@ function PagesTab({ siteId }: { siteId: string }) {
                 <div className="text-center py-12 rounded-lg border border-dashed">
                     <FileText className="mx-auto h-10 w-10 text-muted-foreground/50" />
                     <h3 className="mt-3 text-sm font-semibold">No pages</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">Add a page to start building your landing site.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        Add a page to start building your landing site.
+                    </p>
                     <Button size="sm" className="mt-3" onClick={handleCreate}>
                         <Plus className="mr-2 h-3.5 w-3.5" />
                         Add Page
@@ -206,6 +282,21 @@ function PagesTab({ siteId }: { siteId: string }) {
                                     <p className="text-xs text-muted-foreground">/{page.slug}</p>
                                 </Link>
                                 <div className="flex items-center gap-2 shrink-0">
+                                    {homePageId === page.id ? (
+                                        <Badge variant="outline" className="text-xs">
+                                            Homepage
+                                        </Badge>
+                                    ) : (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 text-xs"
+                                            onClick={() => handleSetHomepage(page.id)}
+                                            disabled={siteUpdateMutation.isPending}
+                                        >
+                                            Set as homepage
+                                        </Button>
+                                    )}
                                     <Badge variant={page.isPublished ? 'default' : 'secondary'}>
                                         {page.isPublished ? 'Published' : 'Draft'}
                                     </Badge>
@@ -238,7 +329,10 @@ function PagesTab({ siteId }: { siteId: string }) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
                             Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -253,6 +347,7 @@ function PagesTab({ siteId }: { siteId: string }) {
 export function AdminLandingSiteEditorPage() {
     const { siteId } = useParams({ from: '/admin/landing/sites/$siteId' as any });
     const { data: siteData, isLoading, refetch } = landingSiteHooks.useDetail(siteId);
+    const [previewOpen, setPreviewOpen] = useState(false);
 
     const site = siteData as LandingSiteItem | undefined;
 
@@ -285,7 +380,13 @@ export function AdminLandingSiteEditorPage() {
                     <h1 className="text-2xl font-bold tracking-tight">{site.name}</h1>
                     <p className="text-sm text-muted-foreground">Site settings, pages, and content management.</p>
                 </div>
-                <Badge variant="secondary" className="ml-auto">{site.themeId}</Badge>
+                <div className="ml-auto flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
+                        <Eye className="mr-2 h-3.5 w-3.5" />
+                        Preview
+                    </Button>
+                    <Badge variant="secondary">{site.themeId}</Badge>
+                </div>
             </div>
 
             {/* Tabs */}
@@ -296,13 +397,14 @@ export function AdminLandingSiteEditorPage() {
                 </TabsList>
 
                 <TabsContent value="pages" className="mt-6">
-                    <PagesTab siteId={site.id} />
+                    <PagesTab siteId={site.id} homePageId={site.homePageId} onSetHomepage={() => refetch()} />
                 </TabsContent>
 
                 <TabsContent value="settings" className="mt-6">
                     <SiteSettingsTab site={site} onSave={() => refetch()} />
                 </TabsContent>
             </Tabs>
+            <LandingPreviewModal siteId={site.id} open={previewOpen} onOpenChange={setPreviewOpen} />
         </div>
     );
 }

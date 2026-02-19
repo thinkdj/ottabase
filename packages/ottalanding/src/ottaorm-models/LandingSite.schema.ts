@@ -51,6 +51,9 @@ export const landingSitesTable = sqliteTable(
         /** Active theme ID (references theme registry) */
         themeId: text('theme_id').notNull().default('atlas'),
 
+        /** Homepage — which page shows at / (null = use slug "home" or first by order) */
+        homePageId: text('home_page_id'),
+
         /** Multi-app scoping */
         appId: text('app_id'),
 
