@@ -7,6 +7,7 @@
 
 import { atlasTheme } from './themes/atlas';
 import { monoTheme } from './themes/mono';
+import { saasTheme } from './themes/saas';
 import { registerLandingTheme, setActiveLandingTheme } from './themes/registry';
 
 export interface OttaLandingInitOptions {
@@ -28,5 +29,6 @@ export interface OttaLandingInitOptions {
 export function initOttaLanding(options?: OttaLandingInitOptions) {
     registerLandingTheme(atlasTheme);
     registerLandingTheme(monoTheme);
+    registerLandingTheme(saasTheme);
     setActiveLandingTheme(options?.defaultThemeId || 'atlas');
 }

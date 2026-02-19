@@ -15,3 +15,4 @@ export {
 export { renderPage, renderSection } from './renderer';
 export { atlasTheme } from './atlas';
 export { monoTheme } from './mono';
+export { saasTheme } from './saas';

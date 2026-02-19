@@ -6,8 +6,11 @@
  */
 
 import {
+    MonoAboutSection,
     MonoCTABanner,
+    MonoContactSection,
     MonoFAQAccordion,
+    MonoFeatureHighlight,
     MonoFeaturesGrid,
     MonoFooterMarketing,
     MonoHeroSection,
@@ -17,10 +20,14 @@ import {
     MonoStatsSection,
     MonoStepsSection,
     MonoTestimonialsCarousel,
+    MonoTimelineSection,
 } from '@ottabase/ui-marketing/mono';
 import type {
+    AboutContent,
     CTAContent,
+    ContactContent,
     FAQContent,
+    FeatureHighlightContent,
     FeaturesContent,
     HeroContent,
     LogoCloudContent,
@@ -29,6 +36,7 @@ import type {
     StatsContent,
     StepsContent,
     TestimonialsContent,
+    TimelineContent,
 } from '../types';
 import type { LandingTheme, SectionProps } from './types';
 
@@ -68,6 +76,22 @@ function MonoStats({ content, className }: SectionProps<StatsContent>) {
 
 function MonoSteps({ content, className }: SectionProps<StepsContent>) {
     return <MonoStepsSection {...content} className={className} />;
+}
+
+function MonoFeatureHL({ content, className }: SectionProps<FeatureHighlightContent>) {
+    return <MonoFeatureHighlight {...content} className={className} />;
+}
+
+function MonoAbout({ content, className }: SectionProps<AboutContent>) {
+    return <MonoAboutSection {...content} className={className} />;
+}
+
+function MonoContact({ content, className }: SectionProps<ContactContent>) {
+    return <MonoContactSection {...content} className={className} />;
+}
+
+function MonoTimeline({ content, className }: SectionProps<TimelineContent>) {
+    return <MonoTimelineSection {...content} className={className} />;
 }
 
 // ─── Layout adapters ─────────────────────────────────────────────────────────
@@ -115,6 +139,10 @@ export const monoTheme: LandingTheme = {
         cta: MonoCta,
         stats: MonoStats,
         steps: MonoSteps,
+        'feature-highlight': MonoFeatureHL,
+        about: MonoAbout,
+        contact: MonoContact,
+        timeline: MonoTimeline,
     },
     navbar: MonoNavbarAdapter,
     footer: MonoFooterAdapter,

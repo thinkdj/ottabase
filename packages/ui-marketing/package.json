@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/ui-marketing",
     "version": "0.1.0",
-    "description": "Marketing section components — Atlas and Mono templates — for ottabase homepages and apps",
+    "description": "Marketing section components — Atlas, Mono, and SaaS templates — for ottabase homepages and apps",
     "license": "MIT",
     "main": "dist/index.js",
     "module": "dist/index.mjs",
@@ -137,6 +137,66 @@
             "types": "./dist/mono/StepsSection.d.ts",
             "import": "./dist/mono/StepsSection.mjs",
             "require": "./dist/mono/StepsSection.js"
+        },
+        "./saas": {
+            "types": "./dist/saas/index.d.ts",
+            "import": "./dist/saas/index.mjs",
+            "require": "./dist/saas/index.js"
+        },
+        "./saas/hero": {
+            "types": "./dist/saas/HeroSection.d.ts",
+            "import": "./dist/saas/HeroSection.mjs",
+            "require": "./dist/saas/HeroSection.js"
+        },
+        "./saas/features": {
+            "types": "./dist/saas/FeaturesGrid.d.ts",
+            "import": "./dist/saas/FeaturesGrid.mjs",
+            "require": "./dist/saas/FeaturesGrid.js"
+        },
+        "./saas/pricing": {
+            "types": "./dist/saas/PricingTable.d.ts",
+            "import": "./dist/saas/PricingTable.mjs",
+            "require": "./dist/saas/PricingTable.js"
+        },
+        "./saas/testimonials": {
+            "types": "./dist/saas/TestimonialsCarousel.d.ts",
+            "import": "./dist/saas/TestimonialsCarousel.mjs",
+            "require": "./dist/saas/TestimonialsCarousel.js"
+        },
+        "./saas/faq": {
+            "types": "./dist/saas/FAQAccordion.d.ts",
+            "import": "./dist/saas/FAQAccordion.mjs",
+            "require": "./dist/saas/FAQAccordion.js"
+        },
+        "./saas/logo-cloud": {
+            "types": "./dist/saas/LogoCloud.d.ts",
+            "import": "./dist/saas/LogoCloud.mjs",
+            "require": "./dist/saas/LogoCloud.js"
+        },
+        "./saas/cta": {
+            "types": "./dist/saas/CTABanner.d.ts",
+            "import": "./dist/saas/CTABanner.mjs",
+            "require": "./dist/saas/CTABanner.js"
+        },
+        "./saas/footer": {
+            "types": "./dist/saas/FooterMarketing.d.ts",
+            "import": "./dist/saas/FooterMarketing.mjs",
+            "require": "./dist/saas/FooterMarketing.js"
+        },
+        "./saas/navbar": {
+            "types": "./dist/saas/Navbar.d.ts",
+            "import": "./dist/saas/Navbar.mjs",
+            "require": "./dist/saas/Navbar.js"
+        },
+        "./saas/stats": {
+            "types": "./dist/saas/StatsSection.d.ts",
+            "import": "./dist/saas/StatsSection.mjs",
+            "require": "./dist/saas/StatsSection.js"
+        },
+        "./saas/steps": {
+            "types": "./dist/saas/StepsSection.d.ts",
+            "import": "./dist/saas/StepsSection.mjs",
+            "require": "./dist/saas/StepsSection.js"
         }
     },
     "scripts": {

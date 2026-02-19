@@ -50,7 +50,7 @@ export default function ThemeGalleryPage() {
                                 <h2 className="font-heading text-base font-semibold text-foreground capitalize">
                                     {theme.name}
                                 </h2>
-                                <p className="text-xs text-muted-foreground">Preview Atlas &amp; Mono templates →</p>
+                                <p className="text-xs text-muted-foreground">Preview Atlas, Mono &amp; SaaS templates →</p>
                             </div>
                         </Link>
                     ))}

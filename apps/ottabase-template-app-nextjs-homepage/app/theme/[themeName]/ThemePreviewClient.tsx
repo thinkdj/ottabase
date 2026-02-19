@@ -21,7 +21,7 @@ function LandingPage({ themeId }: { themeId: string }) {
 }
 
 export function ThemePreviewClient({ themeName, lightVars, darkVars }: ThemePreviewClientProps) {
-    const [template, setTemplate] = useState<'atlas' | 'mono'>('atlas');
+    const [template, setTemplate] = useState<'atlas' | 'mono' | 'saas'>('atlas');
     const [scheme, setScheme] = useState<'light' | 'dark'>('light');
 
     const currentVars = scheme === 'light' ? lightVars : darkVars;
@@ -61,6 +61,16 @@ export function ThemePreviewClient({ themeName, lightVars, darkVars }: ThemePrev
                             }`}
                         >
                             Mono
+                        </button>
+                        <button
+                            onClick={() => setTemplate('saas')}
+                            className={`px-3 py-1.5 transition-colors ${
+                                template === 'saas'
+                                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+                                    : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800'
+                            }`}
+                        >
+                            SaaS
                         </button>
                     </div>
 
