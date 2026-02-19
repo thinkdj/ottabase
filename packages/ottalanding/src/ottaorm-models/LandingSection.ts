@@ -64,7 +64,7 @@ export class LandingSection extends BaseModel {
             formConfig: {
                 visible: true,
                 fieldType: 'select',
-                options: SECTION_TYPES.map((t) => ({ label: t, value: t })),
+                options: SECTION_TYPES.map((t) => ({ id: t, name: t, label: t, value: t })),
             },
             tableConfig: { visible: true, colWidth: 150 },
         },
