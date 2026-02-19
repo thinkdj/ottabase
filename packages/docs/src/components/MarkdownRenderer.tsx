@@ -265,7 +265,16 @@ function renderMarkdownWithBlocks(md: string): { html: string; codeBlocks: CodeB
                 i++;
             }
             const inner = renderMarkdownWithBlocks(quoteLines.join('\n'));
-            output.push(`<blockquote class="otta-docs-blockquote">${inner.html}</blockquote>`);
+            // Reindex inner placeholders to align with the outer codeBlocks array
+            const offset = codeBlocks.length;
+            const reindexedHtml =
+                inner.codeBlocks.length > 0
+                    ? inner.html.replace(
+                          /<!--codeblock:(\d+)-->/g,
+                          (_, idx) => `<!--codeblock:${parseInt(idx, 10) + offset}-->`,
+                      )
+                    : inner.html;
+            output.push(`<blockquote class="otta-docs-blockquote">${reindexedHtml}</blockquote>`);
             // Merge inner code blocks
             for (const cb of inner.codeBlocks) {
                 codeBlocks.push(cb);

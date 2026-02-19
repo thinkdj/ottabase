@@ -48,9 +48,7 @@ export function DocsLayout({ config, activeSlug, onNavigate, className = '' }: D
             title: page.title,
         })),
     );
-    const currentIndex = allPages.findIndex(
-        (p) => p.slug === activeSlug || (activePage && p.title === activePage.title),
-    );
+    const currentIndex = allPages.findIndex((p) => p.slug === activeSlug);
     const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : undefined;
     const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : undefined;
 
