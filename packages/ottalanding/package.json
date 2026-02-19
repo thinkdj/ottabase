@@ -19,7 +19,7 @@
     },
     "scripts": {
         "clean": "rm -rf .turbo node_modules",
-        "test": "vitest",
+        "test": "vitest --passWithNoTests",
         "test:coverage": "vitest --coverage"
     },
     "peerDependencies": {

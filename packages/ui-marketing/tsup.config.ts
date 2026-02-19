@@ -20,6 +20,10 @@ const entries: Record<string, string> = {
     'atlas/Navbar': 'src/atlas/Navbar.tsx',
     'atlas/StatsSection': 'src/atlas/StatsSection.tsx',
     'atlas/StepsSection': 'src/atlas/StepsSection.tsx',
+    'atlas/FeatureHighlight': 'src/atlas/FeatureHighlight.tsx',
+    'atlas/AboutSection': 'src/atlas/AboutSection.tsx',
+    'atlas/ContactSection': 'src/atlas/ContactSection.tsx',
+    'atlas/TimelineSection': 'src/atlas/TimelineSection.tsx',
     // Mono barrel
     'mono/index': 'src/mono/index.ts',
     // Mono components
@@ -34,6 +38,10 @@ const entries: Record<string, string> = {
     'mono/Navbar': 'src/mono/Navbar.tsx',
     'mono/StatsSection': 'src/mono/StatsSection.tsx',
     'mono/StepsSection': 'src/mono/StepsSection.tsx',
+    'mono/FeatureHighlight': 'src/mono/FeatureHighlight.tsx',
+    'mono/AboutSection': 'src/mono/AboutSection.tsx',
+    'mono/ContactSection': 'src/mono/ContactSection.tsx',
+    'mono/TimelineSection': 'src/mono/TimelineSection.tsx',
     // SaaS barrel
     'saas/index': 'src/saas/index.ts',
     // SaaS components

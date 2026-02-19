@@ -78,6 +78,26 @@
             "import": "./dist/atlas/StepsSection.mjs",
             "require": "./dist/atlas/StepsSection.js"
         },
+        "./atlas/feature-highlight": {
+            "types": "./dist/atlas/FeatureHighlight.d.ts",
+            "import": "./dist/atlas/FeatureHighlight.mjs",
+            "require": "./dist/atlas/FeatureHighlight.js"
+        },
+        "./atlas/about": {
+            "types": "./dist/atlas/AboutSection.d.ts",
+            "import": "./dist/atlas/AboutSection.mjs",
+            "require": "./dist/atlas/AboutSection.js"
+        },
+        "./atlas/contact": {
+            "types": "./dist/atlas/ContactSection.d.ts",
+            "import": "./dist/atlas/ContactSection.mjs",
+            "require": "./dist/atlas/ContactSection.js"
+        },
+        "./atlas/timeline": {
+            "types": "./dist/atlas/TimelineSection.d.ts",
+            "import": "./dist/atlas/TimelineSection.mjs",
+            "require": "./dist/atlas/TimelineSection.js"
+        },
         "./mono": {
             "types": "./dist/mono/index.d.ts",
             "import": "./dist/mono/index.mjs",
@@ -137,6 +157,26 @@
             "types": "./dist/mono/StepsSection.d.ts",
             "import": "./dist/mono/StepsSection.mjs",
             "require": "./dist/mono/StepsSection.js"
+        },
+        "./mono/feature-highlight": {
+            "types": "./dist/mono/FeatureHighlight.d.ts",
+            "import": "./dist/mono/FeatureHighlight.mjs",
+            "require": "./dist/mono/FeatureHighlight.js"
+        },
+        "./mono/about": {
+            "types": "./dist/mono/AboutSection.d.ts",
+            "import": "./dist/mono/AboutSection.mjs",
+            "require": "./dist/mono/AboutSection.js"
+        },
+        "./mono/contact": {
+            "types": "./dist/mono/ContactSection.d.ts",
+            "import": "./dist/mono/ContactSection.mjs",
+            "require": "./dist/mono/ContactSection.js"
+        },
+        "./mono/timeline": {
+            "types": "./dist/mono/TimelineSection.d.ts",
+            "import": "./dist/mono/TimelineSection.mjs",
+            "require": "./dist/mono/TimelineSection.js"
         },
         "./saas": {
             "types": "./dist/saas/index.d.ts",
