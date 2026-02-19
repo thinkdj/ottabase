@@ -7,17 +7,9 @@
  */
 import { BaseModel, type ModelFields, type PackageType } from '@ottabase/ottaorm';
 import { SECTION_TYPES, type SectionType } from '../types';
-import {
-    landingSectionsTable,
-    type LandingSectionType,
-    type NewLandingSectionType,
-} from './LandingSection.schema';
+import { landingSectionsTable, type LandingSectionType, type NewLandingSectionType } from './LandingSection.schema';
 
-export {
-    landingSectionsTable,
-    type LandingSectionType,
-    type NewLandingSectionType,
-} from './LandingSection.schema';
+export { landingSectionsTable, type LandingSectionType, type NewLandingSectionType } from './LandingSection.schema';
 
 export class LandingSection extends BaseModel {
     static entity = 'ottalanding_sections';
@@ -37,6 +29,12 @@ export class LandingSection extends BaseModel {
         order: 0,
         visible: true,
         content: {},
+    };
+
+    /** pageId writable on create only (parent FK); appId injected by RLS */
+    static writable = {
+        create: ['pageId', 'sectionType', 'content', 'order', 'visible', 'appId'],
+        update: ['sectionType', 'content', 'order', 'visible'],
     };
 
     protected static fields: ModelFields = {
@@ -150,18 +148,12 @@ export class LandingSection extends BaseModel {
 
     /** Get visible sections for a page, ordered */
     static async findVisibleByPage(pageId: string) {
-        return this.where(
-            { pageId, visible: true },
-            { orderBy: 'order', orderDirection: 'asc' },
-        );
+        return this.where({ pageId, visible: true }, { orderBy: 'order', orderDirection: 'asc' });
     }
 
     /** Find sections of a specific type within a page */
     static async findByType(pageId: string, sectionType: SectionType) {
-        return this.where(
-            { pageId, sectionType },
-            { orderBy: 'order', orderDirection: 'asc' },
-        );
+        return this.where({ pageId, sectionType }, { orderBy: 'order', orderDirection: 'asc' });
     }
 
     // ─── Instance methods ────────────────────────────────────────────

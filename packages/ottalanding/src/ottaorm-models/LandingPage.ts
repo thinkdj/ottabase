@@ -27,6 +27,12 @@ export class LandingPage extends BaseModel {
         order: 0,
     };
 
+    /** siteId writable on create only (parent FK); appId injected by RLS */
+    static writable = {
+        create: ['siteId', 'slug', 'title', 'metaDescription', 'ogImage', 'order', 'isPublished', 'appId'],
+        update: ['slug', 'title', 'metaDescription', 'ogImage', 'order', 'isPublished'],
+    };
+
     protected static fields: ModelFields = {
         id: {
             type: 'id',
@@ -167,9 +173,6 @@ export class LandingPage extends BaseModel {
 
     /** Get all published pages for a site */
     static async findPublished(siteId: string) {
-        return this.where(
-            { siteId, isPublished: true },
-            { orderBy: 'order', orderDirection: 'asc' },
-        );
+        return this.where({ siteId, isPublished: true }, { orderBy: 'order', orderDirection: 'asc' });
     }
 }
