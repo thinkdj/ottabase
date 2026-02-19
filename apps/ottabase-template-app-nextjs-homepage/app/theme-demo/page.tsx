@@ -31,7 +31,7 @@ export default function ThemeDemo() {
                     </Button>
                 </div>
 
-                <h1 className="font-heading text-4xl font-bold text-foreground">Theme Demo: {config.themeBase}</h1>
+                <h1 className="font-heading text-4xl font-bold text-foreground">Theme Demo: {config.theme.name}</h1>
 
                 {/* Typography Demo */}
                 <section className="space-y-4 rounded-lg border border-border bg-card p-6">
