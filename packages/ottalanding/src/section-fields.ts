@@ -370,6 +370,189 @@ const stepsFields: ModelFields = {
     },
 };
 
+// ─── Feature Highlight ──────────────────────────────────────────────────────
+
+const featureHighlightFields: ModelFields = {
+    eyebrow: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Eyebrow', placeholder: 'Why choose us' },
+        formConfig: { visible: true, fieldType: 'input', order: 1 },
+    },
+    headline: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Headline', placeholder: 'Built for modern teams' },
+        formConfig: { visible: true, fieldType: 'input', order: 2 },
+        validation: { rules: 'required', messages: { required: 'Headline is required' } },
+    },
+    description: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Description' },
+        formConfig: { visible: true, fieldType: 'textarea', order: 3 },
+        validation: { rules: 'required', messages: { required: 'Description is required' } },
+    },
+    imagePosition: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Image Position', defaultValue: 'right' },
+        formConfig: {
+            visible: true,
+            fieldType: 'select',
+            options: [
+                { label: 'Right', value: 'right' },
+                { label: 'Left', value: 'left' },
+            ],
+            order: 4,
+        },
+    },
+    'image.src': {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Image URL', placeholder: 'https://...' },
+        formConfig: { visible: true, fieldType: 'input', order: 5 },
+    },
+    'image.alt': {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Image Alt Text', placeholder: 'Feature screenshot' },
+        formConfig: { visible: true, fieldType: 'input', order: 6 },
+    },
+    bullets: {
+        type: 'json',
+        editable: true,
+        uiConfig: { label: 'Bullet Points', description: 'Array of items — each has icon (optional), text' },
+        formConfig: { visible: true, fieldType: 'json', order: 7 },
+    },
+    'cta.label': {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'CTA Label', placeholder: 'Learn more' },
+        formConfig: { visible: true, fieldType: 'input', order: 8 },
+    },
+    'cta.href': {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'CTA Link', placeholder: '/features' },
+        formConfig: { visible: true, fieldType: 'input', order: 9 },
+    },
+};
+
+// ─── About ──────────────────────────────────────────────────────────────────
+
+const aboutFields: ModelFields = {
+    eyebrow: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Eyebrow', placeholder: 'About us' },
+        formConfig: { visible: true, fieldType: 'input', order: 1 },
+    },
+    headline: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Headline', placeholder: 'Our story' },
+        formConfig: { visible: true, fieldType: 'input', order: 2 },
+        validation: { rules: 'required', messages: { required: 'Headline is required' } },
+    },
+    mission: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Mission Statement' },
+        formConfig: { visible: true, fieldType: 'textarea', order: 3 },
+    },
+    story: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Our Story' },
+        formConfig: { visible: true, fieldType: 'textarea', order: 4 },
+    },
+    values: {
+        type: 'json',
+        editable: true,
+        uiConfig: { label: 'Values', description: 'Array of values — each has icon (optional), title, description' },
+        formConfig: { visible: true, fieldType: 'json', order: 5 },
+    },
+    team: {
+        type: 'json',
+        editable: true,
+        uiConfig: { label: 'Team Members', description: 'Array — each has name, role, avatar, bio, social links' },
+        formConfig: { visible: true, fieldType: 'json', order: 6 },
+    },
+};
+
+// ─── Contact ────────────────────────────────────────────────────────────────
+
+const contactFields: ModelFields = {
+    eyebrow: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Eyebrow', placeholder: 'Contact' },
+        formConfig: { visible: true, fieldType: 'input', order: 1 },
+    },
+    headline: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Headline', placeholder: 'Get in touch' },
+        formConfig: { visible: true, fieldType: 'input', order: 2 },
+        validation: { rules: 'required', messages: { required: 'Headline is required' } },
+    },
+    subheadline: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Subheadline' },
+        formConfig: { visible: true, fieldType: 'textarea', order: 3 },
+    },
+    contactInfo: {
+        type: 'json',
+        editable: true,
+        uiConfig: { label: 'Contact Info', description: 'Array — each has icon, label, value, href (optional)' },
+        formConfig: { visible: true, fieldType: 'json', order: 4 },
+    },
+    showForm: {
+        type: 'boolean',
+        editable: true,
+        uiConfig: { label: 'Show Contact Form', defaultValue: true },
+        formConfig: { visible: true, fieldType: 'boolean', order: 5 },
+    },
+    formAction: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Form Action URL', placeholder: '/api/contact' },
+        formConfig: { visible: true, fieldType: 'input', order: 6 },
+    },
+};
+
+// ─── Timeline ───────────────────────────────────────────────────────────────
+
+const timelineFields: ModelFields = {
+    eyebrow: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Eyebrow', placeholder: 'Our journey' },
+        formConfig: { visible: true, fieldType: 'input', order: 1 },
+    },
+    headline: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Headline', placeholder: 'Milestones' },
+        formConfig: { visible: true, fieldType: 'input', order: 2 },
+        validation: { rules: 'required', messages: { required: 'Headline is required' } },
+    },
+    subheadline: {
+        type: 'string',
+        editable: true,
+        uiConfig: { label: 'Subheadline' },
+        formConfig: { visible: true, fieldType: 'textarea', order: 3 },
+    },
+    events: {
+        type: 'json',
+        editable: true,
+        uiConfig: { label: 'Timeline Events', description: 'Array — each has date, title, description, icon, tag' },
+        formConfig: { visible: true, fieldType: 'json', order: 4 },
+    },
+};
+
 // ─── Registry ────────────────────────────────────────────────────────────────
 
 /** Admin form field definitions for each section type */
@@ -383,6 +566,10 @@ export const SECTION_FIELDS: Record<SectionType, ModelFields> = {
     cta: ctaFields,
     stats: statsFields,
     steps: stepsFields,
+    'feature-highlight': featureHighlightFields,
+    about: aboutFields,
+    contact: contactFields,
+    timeline: timelineFields,
 };
 
 /** Get admin form fields for a section type */

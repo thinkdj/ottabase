@@ -7,6 +7,7 @@ import {
     Clock,
     Database,
     FileText,
+    Globe,
     Layers,
     Layout,
     Palette,
@@ -45,6 +46,13 @@ export function AdminIndexPage() {
             description: 'Manage blog themes and plugins (activate theme, enable/disable plugins).',
             href: '/admin/blog/studio',
             icon: Palette,
+            disabled: false,
+        },
+        {
+            title: 'Landing Pages',
+            description: 'Create and manage marketing landing pages, sections, and content.',
+            href: '/admin/landing',
+            icon: Globe,
             disabled: false,
         },
         {

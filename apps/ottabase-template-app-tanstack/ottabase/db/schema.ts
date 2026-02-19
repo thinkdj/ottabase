@@ -33,6 +33,12 @@ import {
     postsTable,
     seriesTable,
 } from '@ottabase/ottablog';
+import {
+    landingPagesTable,
+    landingSectionsTable,
+    landingSitesTable,
+    landingThemesTable,
+} from '@ottabase/ottalanding';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 
@@ -57,6 +63,10 @@ export {
     seriesTable,
     referralTrackingTable,
     shortlinksTable,
+    landingSitesTable,
+    landingPagesTable,
+    landingSectionsTable,
+    landingThemesTable,
 };
 
 // ============================================================
