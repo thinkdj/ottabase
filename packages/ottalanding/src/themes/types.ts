@@ -15,8 +15,11 @@
 
 import type { ComponentType } from 'react';
 import type {
+    AboutContent,
     CTAContent,
+    ContactContent,
     FAQContent,
+    FeatureHighlightContent,
     FeaturesContent,
     HeroContent,
     LogoCloudContent,
@@ -25,6 +28,7 @@ import type {
     StatsContent,
     StepsContent,
     TestimonialsContent,
+    TimelineContent,
 } from '../types';
 
 // ─── Theme metadata ──────────────────────────────────────────────────────────
@@ -67,6 +71,10 @@ export interface LandingThemeSections {
     cta: ComponentType<SectionProps<CTAContent>>;
     stats: ComponentType<SectionProps<StatsContent>>;
     steps: ComponentType<SectionProps<StepsContent>>;
+    'feature-highlight': ComponentType<SectionProps<FeatureHighlightContent>>;
+    about: ComponentType<SectionProps<AboutContent>>;
+    contact: ComponentType<SectionProps<ContactContent>>;
+    timeline: ComponentType<SectionProps<TimelineContent>>;
 }
 
 // ─── Layout components ───────────────────────────────────────────────────────

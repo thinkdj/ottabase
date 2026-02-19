@@ -42,9 +42,13 @@
 
 // ─── Content types (the semantic layer) ──────────────────────────────────────
 export type {
+    AboutContent,
     CTAContent,
+    ContactContent,
+    ContactInfoItem,
     FAQContent,
     FAQItemContent,
+    FeatureHighlightContent,
     FeatureItem,
     FeaturesContent,
     FooterSectionContent,
@@ -67,8 +71,12 @@ export type {
     StatsContent,
     StepItemContent,
     StepsContent,
+    TeamMemberItem,
     TestimonialItem,
     TestimonialsContent,
+    TimelineContent,
+    TimelineEventItem,
+    ValueItem,
 } from './types';
 
 export { DEFAULT_HOME_SECTIONS, DEFAULT_NAV_LINKS, SECTION_TYPES } from './types';

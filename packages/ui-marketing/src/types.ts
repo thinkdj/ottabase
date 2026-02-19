@@ -194,6 +194,88 @@ export interface StepsSectionProps {
     className?: string;
 }
 
+// ─── FeatureHighlight ────────────────────────────────────────────────────────
+
+export interface FeatureHighlightBullet {
+    icon?: ReactNode;
+    text: string;
+}
+
+export interface FeatureHighlightProps {
+    eyebrow?: string;
+    headline: string;
+    description: string;
+    image?: { src: string; alt: string };
+    imagePosition?: 'left' | 'right';
+    bullets?: FeatureHighlightBullet[];
+    cta?: CtaButton;
+    className?: string;
+}
+
+// ─── AboutSection ───────────────────────────────────────────────────────────
+
+export interface TeamMember {
+    name: string;
+    role: string;
+    avatar?: string;
+    bio?: string;
+    social?: { label: string; href: string }[];
+}
+
+export interface ValueCard {
+    icon?: ReactNode;
+    title: string;
+    description: string;
+}
+
+export interface AboutSectionProps {
+    eyebrow?: string;
+    headline: string;
+    mission?: string;
+    story?: string;
+    values?: ValueCard[];
+    team?: TeamMember[];
+    className?: string;
+}
+
+// ─── ContactSection ─────────────────────────────────────────────────────────
+
+export interface ContactInfo {
+    icon?: ReactNode;
+    label: string;
+    value: string;
+    href?: string;
+}
+
+export interface ContactSectionProps {
+    eyebrow?: string;
+    headline: string;
+    subheadline?: string;
+    contactInfo?: ContactInfo[];
+    formAction?: string;
+    showForm?: boolean;
+    mapEmbed?: string;
+    className?: string;
+}
+
+// ─── TimelineSection ────────────────────────────────────────────────────────
+
+export interface TimelineEvent {
+    date: string;
+    title: string;
+    description: string;
+    icon?: ReactNode;
+    tag?: string;
+}
+
+export interface TimelineSectionProps {
+    eyebrow?: string;
+    headline: string;
+    subheadline?: string;
+    events: TimelineEvent[];
+    className?: string;
+}
+
 // ─── FooterMarketing ──────────────────────────────────────────────────────────
 
 export interface SocialLink {

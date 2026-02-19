@@ -9,3 +9,7 @@ export { AtlasFooterMarketing } from './FooterMarketing';
 export { AtlasNavbar } from './Navbar';
 export { AtlasStatsSection } from './StatsSection';
 export { AtlasStepsSection } from './StepsSection';
+export { AtlasFeatureHighlight } from './FeatureHighlight';
+export { AtlasAboutSection } from './AboutSection';
+export { AtlasContactSection } from './ContactSection';
+export { AtlasTimelineSection } from './TimelineSection';

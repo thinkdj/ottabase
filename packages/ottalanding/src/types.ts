@@ -191,6 +191,80 @@ export interface StepsContent {
     steps: StepItemContent[];
 }
 
+// ─── Feature Highlight (single-feature deep dive) ──────────────────────────
+
+export interface FeatureHighlightContent {
+    eyebrow?: string;
+    headline: string;
+    description: string;
+    image?: ImageItem;
+    /** Layout: image left or right */
+    imagePosition?: 'left' | 'right';
+    bullets?: Array<{ icon?: string; text: string }>;
+    cta?: LinkItem;
+}
+
+// ─── About (team / mission / values) ────────────────────────────────────────
+
+export interface TeamMemberItem {
+    name: string;
+    role: string;
+    avatar?: string;
+    bio?: string;
+    social?: LinkItem[];
+}
+
+export interface ValueItem {
+    icon?: string;
+    title: string;
+    description: string;
+}
+
+export interface AboutContent {
+    eyebrow?: string;
+    headline: string;
+    mission?: string;
+    story?: string;
+    values?: ValueItem[];
+    team?: TeamMemberItem[];
+}
+
+// ─── Contact ────────────────────────────────────────────────────────────────
+
+export interface ContactInfoItem {
+    icon?: string;
+    label: string;
+    value: string;
+    href?: string;
+}
+
+export interface ContactContent {
+    eyebrow?: string;
+    headline: string;
+    subheadline?: string;
+    contactInfo?: ContactInfoItem[];
+    formAction?: string;
+    showForm?: boolean;
+    mapEmbed?: string;
+}
+
+// ─── Timeline (milestones / roadmap) ────────────────────────────────────────
+
+export interface TimelineEventItem {
+    date: string;
+    title: string;
+    description: string;
+    icon?: string;
+    tag?: string;
+}
+
+export interface TimelineContent {
+    eyebrow?: string;
+    headline: string;
+    subheadline?: string;
+    events: TimelineEventItem[];
+}
+
 // ─── Section type union & content map ────────────────────────────────────────
 
 /** All supported section types */
@@ -204,6 +278,10 @@ export const SECTION_TYPES = [
     'cta',
     'stats',
     'steps',
+    'feature-highlight',
+    'about',
+    'contact',
+    'timeline',
 ] as const;
 
 export type SectionType = (typeof SECTION_TYPES)[number];
@@ -219,6 +297,10 @@ export interface SectionContentMap {
     cta: CTAContent;
     stats: StatsContent;
     steps: StepsContent;
+    'feature-highlight': FeatureHighlightContent;
+    about: AboutContent;
+    contact: ContactContent;
+    timeline: TimelineContent;
 }
 
 // ─── Page structure ──────────────────────────────────────────────────────────
