@@ -323,6 +323,28 @@ describe('resolveTheme', () => {
         expect(resolved.motion.durationNormal).toBe(DEFAULT_MOTION.durationNormal);
     });
 
+    it('merges new motion tokens (easingSpring, scaleFrom, etc.) with defaults', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: DEFAULT_COLORS_LIGHT, dark: DEFAULT_COLORS_DARK },
+                typography: {
+                    heading: { fontFamily: 'Inter' },
+                    body: { fontFamily: 'Inter' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+                motion: { easingSpring: 'cubic-bezier(0.2, 1.8, 0.4, 1)', scaleFrom: '0.9' },
+            },
+        });
+        const resolved = resolveTheme({ base: theme });
+        expect(resolved.motion.easingSpring).toBe('cubic-bezier(0.2, 1.8, 0.4, 1)');
+        expect(resolved.motion.scaleFrom).toBe('0.9');
+        // Other new tokens should fall back to defaults
+        expect(resolved.motion.scaleTo).toBe(DEFAULT_MOTION.scaleTo);
+        expect(resolved.motion.slideOffset).toBe(DEFAULT_MOTION.slideOffset);
+        expect(resolved.motion.opacityFrom).toBe(DEFAULT_MOTION.opacityFrom);
+        expect(resolved.motion.reducedMotion).toBe(DEFAULT_MOTION.reducedMotion);
+    });
+
     it('resolves custom color scheme when defined', () => {
         const highContrastColors: typeof DEFAULT_COLORS_LIGHT = {
             ...DEFAULT_COLORS_LIGHT,
@@ -496,6 +518,22 @@ describe('buildCSSVarMap', () => {
         expect(vars['--ease']).toBeDefined();
         expect(vars['--ease-enter']).toBeDefined();
         expect(vars['--ease-exit']).toBeDefined();
+        expect(vars['--ease-spring']).toBeDefined();
+        expect(vars['--scale-from']).toBeDefined();
+        expect(vars['--scale-to']).toBeDefined();
+        expect(vars['--slide-offset']).toBeDefined();
+        expect(vars['--opacity-from']).toBeDefined();
+        expect(vars['--reduced-motion']).toBeDefined();
+    });
+
+    it('maps new motion tokens to correct CSS variables', () => {
+        const vars = buildCSSVarMap(resolved);
+        expect(vars['--ease-spring']).toBe(DEFAULT_MOTION.easingSpring);
+        expect(vars['--scale-from']).toBe(DEFAULT_MOTION.scaleFrom);
+        expect(vars['--scale-to']).toBe(DEFAULT_MOTION.scaleTo);
+        expect(vars['--slide-offset']).toBe(DEFAULT_MOTION.slideOffset);
+        expect(vars['--opacity-from']).toBe(DEFAULT_MOTION.opacityFrom);
+        expect(vars['--reduced-motion']).toBe(DEFAULT_MOTION.reducedMotion);
     });
 
     it('dark mode produces different colour vars than light', () => {
