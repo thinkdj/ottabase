@@ -19,7 +19,9 @@ describe('Ottabase CLI (ottabase / ob)', () => {
             const output = runCli(CLI_PATH, '--help');
             expect(output).toContain('ottabase');
             expect(output).toContain('ob');
-            expect(output).toContain('Commands');
+            expect(output).toContain('Command Tabs');
+            expect(output).toContain('Dev');
+            expect(output).toContain('Build');
             expect(output).toContain('dev');
             expect(output).toContain('build');
             expect(output).toContain('test');
@@ -28,12 +30,12 @@ describe('Ottabase CLI (ottabase / ob)', () => {
         it('should display help via ob --help', () => {
             const output = runCli(OB_PATH, '--help');
             expect(output).toContain('ottabase');
-            expect(output).toContain('Commands');
+            expect(output).toContain('Command Tabs');
         });
 
         it('should display help via help subcommand', () => {
             const output = runCli(CLI_PATH, 'help');
-            expect(output).toContain('Commands');
+            expect(output).toContain('Command Tabs');
             expect(output).toContain('Interactive');
         });
     });
@@ -66,13 +68,28 @@ describe('Ottabase CLI (ottabase / ob)', () => {
             const output = runCli(CLI_PATH, '--help');
             const expectedCommands = [
                 'dev',
+                'dev:fe',
+                'dev:be',
+                'dev:ui',
+                'dev:pkg',
                 'build',
+                'build:app',
                 'build:pkg',
                 'test',
+                'test:all',
+                'test:packages',
+                'test:apps',
+                'test:coverage',
                 'lint',
                 'type-check',
+                'format',
                 'clean',
                 'clean:cache',
+                'clean:reset',
+                'clean:db',
+                'clean:kv',
+                'storybook',
+                'storybook:build',
                 'cloudflare:setup',
                 'cloudflare:validate',
             ];

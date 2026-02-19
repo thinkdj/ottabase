@@ -232,6 +232,7 @@ async function animateWelcome(): Promise<void> {
 interface Command {
     name: string;
     description: string;
+    group: 'Dev' | 'Build' | 'Test' | 'Quality' | 'Clean' | 'Tooling' | 'Cloudflare';
     action: () => void | Promise<void>;
 }
 
@@ -258,51 +259,175 @@ const COMMANDS: Command[] = [
     {
         name: 'dev',
         description: 'Start development server (Vite + Wrangler)',
+        group: 'Dev',
         action: () => runPnpm('dev'),
+    },
+    {
+        name: 'dev:fe',
+        description: 'Start frontend dev server only',
+        group: 'Dev',
+        action: () => runPnpm('dev:fe'),
+    },
+    {
+        name: 'dev:be',
+        description: 'Start worker/backend dev only',
+        group: 'Dev',
+        action: () => runPnpm('dev:be'),
+    },
+    {
+        name: 'dev:ui',
+        description: 'Start app + UI packages in dev mode',
+        group: 'Dev',
+        action: () => runPnpm('dev:ui'),
+    },
+    {
+        name: 'dev:pkg',
+        description: 'Start all packages in dev mode',
+        group: 'Dev',
+        action: () => runPnpm('dev:pkg'),
+    },
+    {
+        name: 'dev:full',
+        description: 'Install, build, test, then start dev',
+        group: 'Dev',
+        action: () => runPnpm('dev:full'),
     },
     {
         name: 'build',
         description: 'Build all packages and apps',
+        group: 'Build',
         action: () => runPnpm('build'),
+    },
+    {
+        name: 'build:app',
+        description: 'Build app only',
+        group: 'Build',
+        action: () => runPnpm('build:app'),
     },
     {
         name: 'build:pkg',
         description: 'Build packages only',
+        group: 'Build',
         action: () => runPnpm('build:pkg'),
     },
     {
         name: 'test',
         description: 'Run test suite',
+        group: 'Test',
         action: () => runPnpm('test'),
+    },
+    {
+        name: 'test:all',
+        description: 'Run tests for packages and apps',
+        group: 'Test',
+        action: () => runPnpm('test:all'),
+    },
+    {
+        name: 'test:packages',
+        description: 'Run package tests only',
+        group: 'Test',
+        action: () => runPnpm('test:packages'),
+    },
+    {
+        name: 'test:apps',
+        description: 'Run app tests only',
+        group: 'Test',
+        action: () => runPnpm('test:apps'),
+    },
+    {
+        name: 'test:tanstack',
+        description: 'Run TanStack app tests',
+        group: 'Test',
+        action: () => runPnpm('test:tanstack'),
+    },
+    {
+        name: 'test:coverage',
+        description: 'Run tests with coverage',
+        group: 'Test',
+        action: () => runPnpm('test:coverage'),
+    },
+    {
+        name: 'test:watch',
+        description: 'Run tests in watch mode',
+        group: 'Test',
+        action: () => runPnpm('test:watch'),
+    },
+    {
+        name: 'test:ui',
+        description: 'Run tests with Vitest UI',
+        group: 'Test',
+        action: () => runPnpm('test:ui'),
     },
     {
         name: 'lint',
         description: 'Lint all packages',
+        group: 'Quality',
         action: () => runPnpm('lint'),
     },
     {
         name: 'type-check',
         description: 'Run TypeScript type checking',
+        group: 'Quality',
         action: () => runPnpm('type-check'),
+    },
+    {
+        name: 'format',
+        description: 'Format files with Prettier',
+        group: 'Quality',
+        action: () => runPnpm('format'),
     },
     {
         name: 'clean',
         description: 'Clean build artifacts',
+        group: 'Clean',
         action: () => runPnpm('clean'),
     },
     {
         name: 'clean:cache',
         description: 'Clear Turborepo cache',
+        group: 'Clean',
         action: () => runPnpm('clean:cache'),
+    },
+    {
+        name: 'clean:reset',
+        description: 'Reset local build/cache state',
+        group: 'Clean',
+        action: () => runPnpm('clean:reset'),
+    },
+    {
+        name: 'clean:db',
+        description: 'Clean local database resources',
+        group: 'Clean',
+        action: () => runPnpm('clean:db'),
+    },
+    {
+        name: 'clean:kv',
+        description: 'Clean local KV resources',
+        group: 'Clean',
+        action: () => runPnpm('clean:kv'),
+    },
+    {
+        name: 'storybook',
+        description: 'Start Storybook',
+        group: 'Tooling',
+        action: () => runPnpm('storybook'),
+    },
+    {
+        name: 'storybook:build',
+        description: 'Build Storybook static output',
+        group: 'Tooling',
+        action: () => runPnpm('storybook:build'),
     },
     {
         name: 'cloudflare:setup',
         description: 'Setup Cloudflare resources (D1, KV, R2, Queues)',
+        group: 'Cloudflare',
         action: () => runPnpm('cloudflare:setup'),
     },
     {
         name: 'cloudflare:validate',
         description: 'Validate Cloudflare configuration',
+        group: 'Cloudflare',
         action: () => runPnpm('cloudflare:validate'),
     },
 ];
@@ -313,16 +438,23 @@ function showHelp(): void {
         `  ${C.o2}${BOLD}Usage:${RESET}  ${WHITE}ottabase${RESET} ${C.muted}<command>${RESET}  ${DIM}or${RESET}  ${WHITE}ob${RESET} ${C.muted}<command>${RESET}`,
     );
     console.log('');
-    console.log(`  ${C.o3}${BOLD}Commands:${RESET}`);
+    const GROUP_ORDER: Command['group'][] = ['Dev', 'Build', 'Test', 'Quality', 'Clean', 'Tooling', 'Cloudflare'];
+    const tabLine = GROUP_ORDER.map((group) => `${C.o2}[${group}]${RESET}`).join(` ${C.muted}|${RESET} `);
+    console.log(`  ${C.o3}${BOLD}Command Tabs:${RESET} ${tabLine}`);
     console.log('');
 
     const maxLen = Math.max(...COMMANDS.map((c) => c.name.length));
-    for (const cmd of COMMANDS) {
-        const padded = cmd.name.padEnd(maxLen + 2);
-        console.log(`    ${C.o1}${padded}${RESET}${C.muted}${cmd.description}${RESET}`);
+    for (const group of GROUP_ORDER) {
+        const groupCommands = COMMANDS.filter((c) => c.group === group);
+        if (groupCommands.length === 0) continue;
+        console.log(`  ${C.o4}${BOLD}${group}${RESET}`);
+        for (const cmd of groupCommands) {
+            const padded = cmd.name.padEnd(maxLen + 2);
+            console.log(`    ${C.o1}${padded}${RESET}${C.muted}${cmd.description}${RESET}`);
+        }
+        console.log('');
     }
 
-    console.log('');
     console.log(`    ${C.o1}${'help'.padEnd(maxLen + 2)}${RESET}${C.muted}Show this help message${RESET}`);
     console.log(`    ${C.o1}${'version'.padEnd(maxLen + 2)}${RESET}${C.muted}Show version information${RESET}`);
     console.log('');
