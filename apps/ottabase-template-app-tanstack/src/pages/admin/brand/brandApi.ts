@@ -1,25 +1,21 @@
 /**
  * Brand API helpers – Brand Kits, layouts, route mappings
+ *
+ * Uses the configured `api` client from `@/lib/api` (X-App-Id, auth, error handling).
+ * brandConfigApi.get uses raw fetch (for SSR/prefetch outside api context).
  */
+
+import { api } from '@/lib/api';
 
 const BASE = '/api/brand';
 
-function brandUrl(path: string, params?: Record<string, string>) {
-    const url = new URL(path, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
-    if (params) {
-        Object.entries(params).forEach(([k, v]) => {
-            if (v != null && v !== '') url.searchParams.set(k, v);
-        });
-    }
-    return url.pathname + url.search;
-}
-
-/** Default fetch options for brand API – ensures auth cookies are sent (needed for mutating routes) */
-const fetchOpts = { credentials: 'include' as RequestCredentials };
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export interface BrandKitItem {
     id: string;
-    organizationId?: string | null;
+    appId?: string | null;
     isDefault?: boolean;
     /** Parent Brand Kit ID for inheritance */
     parentBrandKitId?: string | null;
@@ -46,73 +42,6 @@ export interface BrandKitItem {
     updatedAt?: number;
 }
 
-export const brandKitApi = {
-    list: (params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BASE}/kits`, params as Record<string, string>), fetchOpts).then((r) =>
-            r.ok ? r.json() : Promise.reject(r),
-        ) as Promise<BrandKitItem[]>,
-
-    get: (id: string, params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BASE}/kits/${id}`, params as Record<string, string>), fetchOpts).then((r) =>
-            r.ok ? r.json() : Promise.reject(r),
-        ) as Promise<BrandKitItem>,
-
-    create: (body: Record<string, unknown>, params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BASE}/kits`, params as Record<string, string>), {
-            ...fetchOpts,
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        }).then((r) => (r.ok ? r.json() : Promise.reject(r))) as Promise<BrandKitItem>,
-
-    update: (
-        id: string,
-        body: Record<string, unknown>,
-        params?: { organizationId?: string | null; appId?: string | null },
-    ) =>
-        fetch(brandUrl(`${BASE}/kits/${id}`, params as Record<string, string>), {
-            ...fetchOpts,
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        }).then((r) => (r.ok ? r.json() : Promise.reject(r))) as Promise<BrandKitItem>,
-
-    delete: (id: string, params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BASE}/kits/${id}`, params as Record<string, string>), {
-            ...fetchOpts,
-            method: 'DELETE',
-        }).then((r) => (r.ok ? Promise.resolve() : Promise.reject(r))),
-
-    clone: (id: string, name?: string, params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BASE}/kits/${id}/clone`, params as Record<string, string>), {
-            ...fetchOpts,
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name ?? undefined }),
-        }).then((r) => (r.ok ? r.json() : Promise.reject(r))) as Promise<BrandKitItem>,
-
-    uploadLogo: (
-        kitId: string,
-        logoType: 'logo' | 'logo-dark' | 'icon' | 'og-image' | 'email-logo',
-        file: File,
-        params?: { organizationId?: string | null; appId?: string | null },
-    ) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        return fetch(brandUrl(`${BASE}/kits/${kitId}/logo/${logoType}`, params as Record<string, string>), {
-            ...fetchOpts,
-            method: 'POST',
-            body: formData,
-        }).then((r) => (r.ok ? r.json() : Promise.reject(r))) as Promise<{ key: string; url: string }>;
-    },
-};
-
-/** GET /api/brand – full config (route mappings, layouts, all brand kits). Client resolves path locally. */
-export const brandConfigApi = {
-    get: (params?: { organizationId?: string | null; appId?: string | null; mode?: 'light' | 'dark' }) =>
-        fetch(brandUrl(BASE, params as Record<string, string>)).then((r) => (r.ok ? r.json() : Promise.reject(r))),
-};
-
 export interface LayoutTemplateItem {
     id: string;
     name: string;
@@ -130,41 +59,88 @@ export interface LayoutMappingItem {
     tokenOverridesJson?: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// Brand Kit API
+// ---------------------------------------------------------------------------
+
+export const brandKitApi = {
+    list: () => api<BrandKitItem[]>(`${BASE}/kits`),
+
+    get: (id: string) => api<BrandKitItem>(`${BASE}/kits/${id}`),
+
+    create: (body: Record<string, unknown>) => api<BrandKitItem>(`${BASE}/kits`, { method: 'POST', body }),
+
+    update: (id: string, body: Record<string, unknown>) =>
+        api<BrandKitItem>(`${BASE}/kits/${id}`, { method: 'PUT', body }),
+
+    delete: (id: string) => api<void>(`${BASE}/kits/${id}`, { method: 'DELETE' }),
+
+    clone: (id: string, name?: string) =>
+        api<BrandKitItem>(`${BASE}/kits/${id}/clone`, {
+            method: 'POST',
+            body: { name: name ?? undefined },
+        }),
+
+    /** Upload a logo file. FormData is handled natively by createApiClient. */
+    uploadLogo: (kitId: string, logoType: 'logo' | 'logo-dark' | 'icon' | 'og-image' | 'email-logo', file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return api<{ key: string; url: string }>(`${BASE}/kits/${kitId}/logo/${logoType}`, {
+            method: 'POST',
+            body: formData,
+        });
+    },
+};
+
+// ---------------------------------------------------------------------------
+// Brand Config API
+// Used for fetching full brand config (e.g. SSR, prefetch). Matches BrandProvider
+// fetch behavior: appId in query + X-App-Id header, cache: no-store.
+// BrandProvider uses its own fetch because it runs outside api client context.
+// ---------------------------------------------------------------------------
+
+function buildBrandConfigUrl(params?: Record<string, string>): string {
+    const path = `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost'}${BASE}`;
+    const url = new URL(path);
+    if (params) {
+        Object.entries(params).forEach(([k, v]) => {
+            if (v != null && v !== '') url.searchParams.set(k, v);
+        });
+    }
+    return url.toString();
+}
+
+/** GET /api/brand – full config (route mappings, layouts, all brand kits). Client resolves path locally. */
+export const brandConfigApi = {
+    get: async (params?: { appId?: string | null; mode?: 'light' | 'dark' }) => {
+        const effectiveParams = params as Record<string, string> | undefined;
+        const url = buildBrandConfigUrl(effectiveParams);
+        const headers: Record<string, string> = {};
+        if (effectiveParams?.appId) headers['X-App-Id'] = effectiveParams.appId;
+        const res = await fetch(url, { cache: 'no-store', headers });
+        if (!res.ok) throw new Error(`Brand config failed: ${res.status}`);
+        return res.json();
+    },
+};
+
+// ---------------------------------------------------------------------------
+// Layout API
+// ---------------------------------------------------------------------------
+
 export const layoutApi = {
-    getTemplates: (params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BASE}/layouts`, params as Record<string, string>), fetchOpts).then((r) =>
-            r.ok ? r.json() : Promise.reject(r),
-        ) as Promise<LayoutTemplateItem[]>,
+    getTemplates: () => api<LayoutTemplateItem[]>(`${BASE}/layouts`),
 
-    putTemplate: (body: Record<string, unknown>, params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BASE}/layouts`, params as Record<string, string>), {
-            ...fetchOpts,
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        }).then((r) => (r.ok ? r.json() : Promise.reject(r))),
+    putTemplate: (body: Record<string, unknown>) => api(`${BASE}/layouts`, { method: 'PUT', body }),
 
-    getMappings: (params?: { organizationId?: string | null; appId?: string | null }) =>
-        fetch(brandUrl(`${BASE}/mappings`, params as Record<string, string>), fetchOpts).then((r) =>
-            r.ok ? r.json() : Promise.reject(r),
-        ) as Promise<LayoutMappingItem[]>,
+    getMappings: () => api<LayoutMappingItem[]>(`${BASE}/mappings`),
 
-    putMappings: (
-        body: {
-            mappings: Array<{
-                pathPattern: string;
-                layoutTemplateId: string;
-                brandKitId: string;
-                priority?: number;
-                tokenOverridesJson?: string | null;
-            }>;
-        },
-        params?: { organizationId?: string | null; appId?: string | null },
-    ) =>
-        fetch(brandUrl(`${BASE}/mappings`, params as Record<string, string>), {
-            ...fetchOpts,
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        }).then((r) => (r.ok ? r.json() : Promise.reject(r))),
+    putMappings: (body: {
+        mappings: Array<{
+            pathPattern: string;
+            layoutTemplateId: string;
+            brandKitId: string;
+            priority?: number;
+            tokenOverridesJson?: string | null;
+        }>;
+    }) => api(`${BASE}/mappings`, { method: 'PUT', body }),
 };

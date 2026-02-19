@@ -30,10 +30,11 @@ import {
     Switch,
 } from '@ottabase/ui-shadcn';
 import { IconAdjustments, IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { brandKitApi, layoutApi, type LayoutMappingItem, type LayoutTemplateItem } from './brandApi';
+import { brandKitApi, layoutApi, type BrandKitItem, type LayoutMappingItem, type LayoutTemplateItem } from './brandApi';
 
 const PRESET_IDS = Object.keys(LAYOUT_PRESETS) as LayoutPresetId[];
 
@@ -281,26 +282,30 @@ export function LayoutEditorTab() {
     const queryClient = useQueryClient();
     const { refresh } = useBrand();
 
-    const { data: templates = [], isLoading: loadingTemplates } = useQuery<LayoutTemplateItem[]>({
-        queryKey: ['brand', 'layouts'],
-        queryFn: () => layoutApi.getTemplates(),
+    const { data: templates = [], isLoading: loadingTemplates } = useApiQuery<LayoutTemplateItem[]>({
+        entity: 'layout_templates',
+        queryKey: ['list'],
+        endpoint: '/api/brand/layouts',
     });
 
-    const { data: kits = [], isLoading: loadingKits } = useQuery({
-        queryKey: ['brand', 'kits'],
-        queryFn: () => brandKitApi.list(),
+    const { data: kits = [], isLoading: loadingKits } = useApiQuery<BrandKitItem[]>({
+        entity: 'brand_kits',
+        queryKey: ['list'],
+        endpoint: '/api/brand/kits',
     });
 
-    const { data: mappings = [], isLoading: loadingMappings } = useQuery<LayoutMappingItem[]>({
-        queryKey: ['brand', 'mappings'],
-        queryFn: () => layoutApi.getMappings(),
+    const { data: mappings = [], isLoading: loadingMappings } = useApiQuery<LayoutMappingItem[]>({
+        entity: 'layout_mappings',
+        queryKey: ['list'],
+        endpoint: '/api/brand/mappings',
     });
 
     const putMappingsMutation = useMutation({
+        meta: { entity: 'layout_mappings' },
         mutationFn: layoutApi.putMappings,
         onSuccess: () => {
             toast.success('Mappings saved');
-            queryClient.invalidateQueries({ queryKey: ['brand', 'mappings'] });
+            queryClient.invalidateQueries({ queryKey: ['layout_mappings'] });
             refresh();
         },
         onError: () => toast.error('Failed to save mappings'),
@@ -417,10 +422,11 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
     }, [basePreset]);
 
     const putMutation = useMutation({
+        meta: { entity: 'layout_templates' },
         mutationFn: (body: { name: string; componentKey: string; config: object }) => layoutApi.putTemplate(body),
         onSuccess: () => {
             toast.success('Template created');
-            queryClient.invalidateQueries({ queryKey: ['brand', 'layouts'] });
+            queryClient.invalidateQueries({ queryKey: ['layout_templates'] });
             refresh();
             setName('');
             setBasePreset('app-shell');
@@ -511,11 +517,12 @@ function EditTemplateDialog({ template }: { template: LayoutTemplateItem }) {
     }, [open, template]);
 
     const putMutation = useMutation({
+        meta: { entity: 'layout_templates' },
         mutationFn: (body: { id: string; name: string; componentKey: string; config: object }) =>
             layoutApi.putTemplate(body) as Promise<unknown>,
         onSuccess: () => {
             toast.success('Template updated');
-            queryClient.invalidateQueries({ queryKey: ['brand', 'layouts'] });
+            queryClient.invalidateQueries({ queryKey: ['layout_templates'] });
             refresh();
             setOpen(false);
         },

@@ -1,47 +1,10 @@
-import {
-    AtlasCTABanner,
-    AtlasFAQAccordion,
-    AtlasFeaturesGrid,
-    AtlasFooterMarketing,
-    AtlasHeroSection,
-    AtlasLogoCloud,
-    AtlasNavbar,
-    AtlasPricingTable,
-    AtlasStatsSection,
-    AtlasStepsSection,
-    AtlasTestimonialsCarousel,
-} from '@ottabase/ui-marketing/atlas';
+import { getLandingTheme, initOttaLanding, renderPage } from '@ottabase/ottalanding';
+import { homePage, landingThemeId, siteContent } from '@/config/landing.config';
 
-import {
-    demoCtaBanner,
-    demoFaq,
-    demoFeatures,
-    demoFooter,
-    demoHero,
-    demoLogoCloud,
-    demoNavbar,
-    demoPricing,
-    demoStats,
-    demoSteps,
-    demoTestimonials,
-} from '@/lib/marketing-demo-data';
+// Register built-in themes (atlas + mono) and set active
+initOttaLanding({ defaultThemeId: landingThemeId });
 
 export default function HomePage() {
-    return (
-        <>
-            <AtlasNavbar {...demoNavbar} />
-            <main className="flex min-h-screen flex-col bg-background text-foreground">
-                <AtlasHeroSection {...demoHero} />
-                <AtlasLogoCloud {...demoLogoCloud} />
-                <AtlasFeaturesGrid {...demoFeatures} />
-                <AtlasStatsSection {...demoStats} />
-                <AtlasStepsSection {...demoSteps} />
-                <AtlasTestimonialsCarousel {...demoTestimonials} />
-                <AtlasPricingTable {...demoPricing} />
-                <AtlasFAQAccordion {...demoFaq} />
-                <AtlasCTABanner {...demoCtaBanner} />
-                <AtlasFooterMarketing {...demoFooter} />
-            </main>
-        </>
-    );
+    const theme = getLandingTheme(landingThemeId)!;
+    return renderPage(theme, siteContent, homePage);
 }

@@ -64,7 +64,7 @@ to 60 minutes. For a "design layer" product, this is a poor experience.
 **What I'd add:**
 
 - **Active cache purge on write.** Every `handleUpdateBrandKit` / `handleCreateBrandKit` handler should call
-  `cache.invalidate(orgId, appId)` for both light and dark modes.
+  `cache.invalidate(appId)` for both light and dark modes.
 - **A version or etag field** on brand kits. The client sends `If-None-Match` on `/api/brand` requests, and the server
   returns 304 when unchanged. This lets you drop the TTL to something much shorter (or use stale-while-revalidate)
   without hammering the DB.

@@ -187,6 +187,26 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
+    // Ottalanding - app-scoped (sites, pages, sections)
+    {
+        model: 'ottalanding_sites',
+        policy: RLSPolicies.AppScoped(),
+        contextFields: ['appId', 'organizationId'],
+        auditEnabled: true,
+    },
+    {
+        model: 'ottalanding_pages',
+        policy: RLSPolicies.AppScoped(),
+        contextFields: ['appId'],
+        auditEnabled: true,
+    },
+    {
+        model: 'ottalanding_sections',
+        policy: RLSPolicies.AppScoped(),
+        contextFields: ['appId'],
+        auditEnabled: true,
+    },
+
     // Referral tracking - app-scoped
     {
         model: 'referral_tracking',

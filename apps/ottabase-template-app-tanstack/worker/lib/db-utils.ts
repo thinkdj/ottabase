@@ -23,6 +23,7 @@ import {
     UserRole,
     VerificationToken,
 } from '@ottabase/ottaorm/models';
+import { LandingPage, LandingSection, LandingSite } from '@ottabase/ottalanding';
 import { ReferralTracking } from '@ottabase/referrals';
 import { Shortlink } from '@ottabase/shortlinks';
 import { errorResponse } from '@ottabase/utils/http-errors';
@@ -100,6 +101,10 @@ export function initDbConnection(env: CloudflareEnv): void {
         // Package models
         Shortlink,
         ReferralTracking,
+        // Landing page models
+        LandingSite,
+        LandingPage,
+        LandingSection,
         // Brand engine models
         BrandKit,
         LayoutTemplate,

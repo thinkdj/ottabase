@@ -9,3 +9,7 @@ export { MonoFooterMarketing } from './FooterMarketing';
 export { MonoNavbar } from './Navbar';
 export { MonoStatsSection } from './StatsSection';
 export { MonoStepsSection } from './StepsSection';
+export { MonoFeatureHighlight } from './FeatureHighlight';
+export { MonoAboutSection } from './AboutSection';
+export { MonoContactSection } from './ContactSection';
+export { MonoTimelineSection } from './TimelineSection';

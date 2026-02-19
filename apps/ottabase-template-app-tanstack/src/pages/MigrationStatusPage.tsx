@@ -1,7 +1,5 @@
-import { api } from '@/lib/api';
-import { useApiMutation } from '@ottabase/ottaorm/client';
+import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import { Button, Card, CardContent, CardHeader, CardTitle, Checkbox, Label } from '@ottabase/ui-shadcn';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
@@ -47,12 +45,10 @@ export function MigrationStatusPage() {
         method: 'POST',
     });
 
-    // Fetch models metadata
-    const { data: modelsMetadata } = useQuery<ModelsMetadataResponse>({
-        queryKey: ['models-metadata'],
-        queryFn: async () => {
-            return api<ModelsMetadataResponse>('/api/ottaorm/models-metadata');
-        },
+    const { data: modelsMetadata } = useApiQuery<ModelsMetadataResponse>({
+        entity: 'models',
+        queryKey: ['metadata'],
+        endpoint: '/api/ottaorm/models-metadata',
     });
 
     // Auto-run on mount

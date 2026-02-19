@@ -7,9 +7,8 @@
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_LIST_QUERY_CONFIG, SERIES_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { CONTENT_TYPES, formatDate, type ContentType } from '@ottabase/ottablog';
-import { createModelHooks } from '@ottabase/ottaorm/client';
+import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
 import { Button, Card, CardContent, Input } from '@ottabase/ui-shadcn';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Calendar, ChevronLeft, ChevronRight, Clock, Lock, Search, User } from 'lucide-react';
 import { useState } from 'react';
@@ -55,20 +54,21 @@ export function BlogListPage() {
     const [seriesFilter, setSeriesFilter] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
 
-    // Fetch published posts from public API (stripped for protected posts)
-    const { data: listResponse, isLoading } = useQuery({
-        queryKey: ['blog', 'posts', currentPage, contentType, seriesFilter],
-        queryFn: async () => {
-            const params = new URLSearchParams();
-            params.set('page', String(currentPage));
-            params.set('perPage', String(POSTS_PER_PAGE));
-            if (contentType) params.set('contentType', contentType);
-            if (seriesFilter) params.set('seriesId', seriesFilter);
-            const res = await fetch(`/api/blog/posts?${params.toString()}`);
-            if (!res.ok) throw new Error(await res.text());
-            return res.json() as Promise<BlogListResponse>;
-        },
-        ...BLOG_LIST_QUERY_CONFIG,
+    // Build query params for the public blog API
+    const blogListParams = new URLSearchParams();
+    blogListParams.set('page', String(currentPage));
+    blogListParams.set('perPage', String(POSTS_PER_PAGE));
+    if (contentType) blogListParams.set('contentType', contentType);
+    if (seriesFilter) blogListParams.set('seriesId', seriesFilter);
+
+    // useApiQuery with entity:'posts' namespaces the key as ['posts', 'list', { ... }].
+    // Any mutation on the posts entity (admin create/update/delete) auto-busts this cache
+    // via the global mutation observer in OttaQueryProvider — no manual coordination needed.
+    const { data: listResponse, isLoading } = useApiQuery<BlogListResponse>({
+        entity: 'posts',
+        queryKey: ['list', { page: currentPage, contentType, seriesFilter }],
+        endpoint: `/api/blog/posts?${blogListParams.toString()}`,
+        queryOptions: BLOG_LIST_QUERY_CONFIG,
     });
 
     // Fetch series for filter dropdown

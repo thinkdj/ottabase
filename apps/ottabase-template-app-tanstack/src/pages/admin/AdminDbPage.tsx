@@ -1,4 +1,5 @@
 import { api, isApiError } from '@/lib/api';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -71,12 +72,10 @@ export function AdminDbPage() {
         },
     });
 
-    // Fetch models metadata
-    const { data: modelsMetadata } = useQuery<ModelsMetadataResponse>({
-        queryKey: ['models-metadata'],
-        queryFn: async () => {
-            return api<ModelsMetadataResponse>('/api/ottaorm/models-metadata');
-        },
+    const { data: modelsMetadata } = useApiQuery<ModelsMetadataResponse>({
+        entity: 'models',
+        queryKey: ['metadata'],
+        endpoint: '/api/ottaorm/models-metadata',
     });
 
     // Load table data
@@ -95,6 +94,7 @@ export function AdminDbPage() {
 
     // Delete row mutation
     const deleteRowMutation = useMutation({
+        meta: { entity: 'admin_db' },
         mutationFn: async ({ id, pkField }: { id: string | number; pkField: string }) => {
             return api(`/api/admin/db/tables/${selectedTable}/${id}?pk=${pkField}`, {
                 method: 'DELETE',
@@ -102,9 +102,7 @@ export function AdminDbPage() {
         },
         onSuccess: () => {
             toast.success('Row deleted');
-            queryClient.invalidateQueries({
-                queryKey: ['admin', 'db', 'table', selectedTable],
-            });
+            queryClient.invalidateQueries({ queryKey: ['admin', 'db', 'table', selectedTable] });
         },
         onError: (err) => {
             toast.error(isApiError(err) ? err.message : 'Failed to delete row');
@@ -113,25 +111,18 @@ export function AdminDbPage() {
 
     // Delete table mutation
     const deleteTableMutation = useMutation({
+        meta: { entity: 'admin_db' },
         mutationFn: async (tableName: string) => {
-            return api(`/api/admin/db/tables/${tableName}`, {
-                method: 'DELETE',
-            });
+            return api(`/api/admin/db/tables/${tableName}`, { method: 'DELETE' });
         },
         onSuccess: () => {
             toast.success('Table dropped successfully');
             setIsDropTableDialogOpen(false);
-            queryClient.invalidateQueries({
-                queryKey: ['admin', 'db', 'tables'],
-            });
-            navigate({
-                to: '/admin/db',
-                search: { table: '', page: 1, perPage: 25 },
-            });
+            queryClient.invalidateQueries({ queryKey: ['admin', 'db', 'tables'] });
+            navigate({ to: '/admin/db', search: { table: '', page: 1, perPage: 25 } });
         },
         onError: (err) => {
             toast.error(isApiError(err) ? err.message : 'Failed to drop table');
-            // Keep dialog open on error so user can retry or cancel
         },
     });
 

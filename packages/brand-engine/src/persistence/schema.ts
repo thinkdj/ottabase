@@ -1,19 +1,23 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Persistence Schema (D1)
-// Brand Kit model: self-contained look-and-feel. Route mappings: path → layout + brandKit.
+// Brand Engine – Persistence Schema (D1) – v2: Per-App scoping
+// Brand Kit: scoped to appId (not org). One app = one brand/theme/layout.
+// When users switch orgs, the app's brand stays the same.
 // ---------------------------------------------------------------------------
 
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 // ═══════════════════════════════════════════════════════════════════
 // BRAND KITS – Self-contained: identity, logos, colors, fonts, theme
+// Scoped by appId. System default has appId=null.
 // ═══════════════════════════════════════════════════════════════════
 
 export const brandKitsTable = sqliteTable('brand_kits', {
     id: text('id')
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
-    organizationId: text('organization_id'),
+
+    /** App this brand kit belongs to. null = system default fallback. */
+    appId: text('app_id'),
 
     isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
 
@@ -57,14 +61,13 @@ export type BrandKitType = typeof brandKitsTable.$inferSelect;
 export type NewBrandKitType = typeof brandKitsTable.$inferInsert;
 
 // ═══════════════════════════════════════════════════════════════════
-// LAYOUT TEMPLATES
+// LAYOUT TEMPLATES – Scoped by appId only
 // ═══════════════════════════════════════════════════════════════════
 
 export const layoutTemplatesTable = sqliteTable('layout_templates', {
     id: text('id')
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
-    organizationId: text('organization_id'),
     appId: text('app_id'),
 
     name: text('name').notNull(),
@@ -88,14 +91,13 @@ export type LayoutTemplateType = typeof layoutTemplatesTable.$inferSelect;
 export type NewLayoutTemplateType = typeof layoutTemplatesTable.$inferInsert;
 
 // ═══════════════════════════════════════════════════════════════════
-// ROUTE MAPPINGS – path → layout + brandKit per row
+// ROUTE MAPPINGS – path → layout + brandKit per row, scoped by appId
 // ═══════════════════════════════════════════════════════════════════
 
 export const layoutRouteMappingsTable = sqliteTable('layout_route_mappings', {
     id: text('id')
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
-    organizationId: text('organization_id'),
     appId: text('app_id'),
 
     pathPattern: text('path_pattern').notNull(),

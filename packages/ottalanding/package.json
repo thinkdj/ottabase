@@ -1,0 +1,49 @@
+{
+    "name": "@ottabase/ottalanding",
+    "version": "0.0.1",
+    "description": "Semantic landing page layer for Ottabase — structured content types, theme registry, and DB-backed page builder",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./types": {
+            "types": "./src/types.ts",
+            "default": "./src/types.ts"
+        },
+        "./themes": {
+            "types": "./src/themes/index.ts",
+            "default": "./src/themes/index.ts"
+        }
+    },
+    "scripts": {
+        "clean": "rm -rf .turbo node_modules",
+        "test": "vitest --passWithNoTests",
+        "test:coverage": "vitest --coverage"
+    },
+    "peerDependencies": {
+        "drizzle-orm": "catalog:",
+        "react": "catalog:",
+        "@ottabase/ottaorm": "workspace:*"
+    },
+    "dependencies": {
+        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ui-marketing": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/react": "catalog:",
+        "drizzle-orm": "catalog:",
+        "react": "catalog:",
+        "typescript": "catalog:"
+    },
+    "keywords": [
+        "landing-page",
+        "themes",
+        "cms",
+        "semantic",
+        "ottabase",
+        "cloudflare",
+        "d1"
+    ]
+}

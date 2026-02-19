@@ -45,8 +45,8 @@ This template ships with Auth.js + D1 integration and tighter session handling:
 - **Credentials storage**: PBKDF2 hashes in `users.password_hash`, email verification/roles stored alongside.
 - **Session sync tip**: If you mutate `/api/users/me`, call `refreshSession()` (or `updateUser()`) so the cached local
   session picks up the KV-triggered profile version bump immediately.
-- **Tenant/app headers**: The client now sets `X-App-Id: ottabase-template-app` and, when available, `X-Organization-Id`
-  from the current session into all API calls; these values are also mirrored in global state atoms for UI needs.
+- **Tenant/app headers**: The client now sets `X-App-Id: ottabase-template-app` and, when available, `X-Org-Id` from the
+  current session into all API calls; these values are also mirrored in global state atoms for UI needs.
 
 ### Auth API Endpoints
 
@@ -144,6 +144,91 @@ via `registerModels()`.
 
 See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details.
 
+## Brand Engine
+
+**Per-app theme customization with preset templates and custom color overrides.**
+
+### Features
+
+- **Theme Presets** - 8 built-in presets (Default, Neo, Crisp, Funky, Artisan, Midnight, Rose, Verdant)
+- **Color Customization** - Override individual colors on top of presets
+- **Light + Dark Modes** - Separate color palettes for each mode
+- **Logo Upload** - Support for logo, dark logo, icon, and OG image
+- **CSS Variable Injection** - Automatic theme application via CSS custom properties
+- **KV Cache** - 1-hour TTL cache for fast brand config reads
+- **Preset as Template** - Presets expanded at save time (no runtime resolution)
+
+### Admin UI
+
+Access brand customization at `/admin/brand-kits/[id]`:
+
+1. **Theme Tab** - Select preset, generate palette, override colors
+2. **Identity Tab** - Upload logos, customize name/tagline
+3. **Typography Tab** - Configure font families
+4. **Advanced Tab** - Spacing, radius, shadows, motion settings
+
+### Architecture
+
+**Preset-as-Template Flow**:
+
+```
+User selects "Verdant" preset
+  ↓
+Backend expands preset to full tokens (color.light, color.dark, typography, etc.)
+  ↓
+Merge custom color overrides on top
+  ↓
+Save complete theme to DB (tokensJson column)
+  ↓
+Cache in KV (1-hour TTL)
+  ↓
+Runtime reads directly from DB/cache (no resolution needed)
+  ↓
+Apply to document via CSS variables
+```
+
+**Key Benefits**:
+
+- ✅ Database is single source of truth
+- ✅ No runtime theme registry lookups
+- ✅ Works reliably in Cloudflare Workers (no isolate state issues)
+- ✅ Custom color overrides merge cleanly on preset base
+- ✅ Atomic updates (what you save = what renders)
+
+### API Endpoints
+
+| Endpoint                   | Method   | Description                           |
+| -------------------------- | -------- | ------------------------------------- |
+| `/api/brand`               | `GET`    | Resolved brand config for current app |
+| `/api/brand/presets`       | `GET`    | List available theme presets (JSON)   |
+| `/api/brand/kits`          | `GET`    | List brand kits for app               |
+| `/api/brand/kits`          | `POST`   | Create brand kit                      |
+| `/api/brand/kits/:id`      | `PUT`    | Update brand kit (re-expands preset)  |
+| `/api/brand/kits/:id`      | `DELETE` | Delete brand kit                      |
+| `/api/brand/kits/:id/logo` | `POST`   | Upload logo (type: logo/dark/icon/og) |
+
+### Client Usage
+
+```typescript
+import { BrandProvider, useBrand } from '@ottabase/brand-engine-react';
+
+function App() {
+  return (
+    <BrandProvider appId="my-app" apiEndpoint="/api/brand">
+      <MyContent />
+    </BrandProvider>
+  );
+}
+
+function MyContent() {
+  const { config, isLoading } = useBrand();
+  // Brand theme automatically applied to document
+  return <div>{config?.brandName}</div>;
+}
+```
+
+See [@ottabase/brand-engine](../../packages/brand-engine/README.md) for detailed documentation.
+
 ## Scripts
 
 | Command           | Description                                             |
@@ -191,6 +276,8 @@ apps/ottabase-template-app-tanstack/
 - `/login` - Login (OAuth / Magic Link / Credentials)
 - `/register` - Registration (Credentials)
 - `/dashboard` - Protected route
+- `/admin/brand-kits` - Brand kit management (admin only)
+- `/admin/brand-kits/:id` - Brand kit editor (Theme/Identity/Typography/Advanced tabs)
 - `/demo/mantine` - Mantine UI components demo
 - `/demo/shadcn` - shadcn/ui components demo
 - `/demo/ottaeditor` - Rich text editor demo
@@ -207,6 +294,7 @@ apps/ottabase-template-app-tanstack/
 ### API Endpoints
 
 - `/api/health` - Worker health check
+- `/api/brand/*` - Brand Engine API (presets, kits, logos)
 - `/api/cloudflare/*` - Cloudflare service demos
 - `/api/auth/*` - Auth.js routes (signin, signout, session, callbacks)
 - `/api/auth/register` - Credentials registration

@@ -21,6 +21,12 @@ import {
     postsTable,
     seriesTable,
 } from '@ottabase/ottablog';
+import {
+    landingPagesTable,
+    landingSectionsTable,
+    landingSitesTable,
+    landingThemesTable,
+} from '@ottabase/ottalanding';
 import type { Migration } from '@ottabase/ottaorm';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
@@ -59,6 +65,15 @@ const PACKAGE_REGISTRY = {
         },
         migrations: [] as Migration[],
     },
+    ottalanding: {
+        tables: {
+            landingSitesTable,
+            landingPagesTable,
+            landingSectionsTable,
+            landingThemesTable,
+        },
+        migrations: [] as Migration[],
+    },
 } as const;
 
 /**
@@ -73,6 +88,7 @@ export const migrationConfig: Record<MigrationPackageName, boolean> = {
     shortlinks: true,
     referrals: true,
     brandEngine: true,
+    ottalanding: true,
 };
 
 // ============================================================

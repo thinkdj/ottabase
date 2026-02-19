@@ -5,11 +5,10 @@
 // Prevents cross-tenant data leaks by automatically scoping queries
 // ============================================================
 
-import type { AppContext } from '@ottabase/rbac';
-import { extractOrganizationId, extractAppId } from '@ottabase/rbac';
-import type { User } from '@ottabase/ottaorm/models';
-import { handleCrud, type CrudRequest, type CrudResponse } from './index';
 import logger from '@ottabase/logger';
+import type { User } from '@ottabase/ottaorm/models';
+import { extractOrganizationId } from '@ottabase/rbac';
+import { handleCrud, type CrudRequest, type CrudResponse } from './index';
 
 /**
  * Models that require tenant scoping (have organizationId field)
@@ -164,7 +163,7 @@ export async function handleTenantAwareCrud(options: TenantAwareCrudOptions): Pr
             return {
                 success: false,
                 error: 'Organization context required. Please provide organizationId via header, subdomain, or query parameter.',
-                hint: 'Use X-Organization-Id header, subdomain (org.example.com), or ?organizationId=xxx',
+                hint: 'Use X-Org-Id header, subdomain (org.example.com), or ?organizationId=xxx',
                 status: 403,
             };
         }

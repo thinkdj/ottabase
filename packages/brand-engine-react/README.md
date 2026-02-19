@@ -9,7 +9,7 @@ import { BrandProvider, useBrand } from '@ottabase/brand-engine-react';
 
 function App() {
     return (
-        <BrandProvider apiEndpoint="/api/brand" organizationId={orgId} appId="my-app">
+        <BrandProvider apiEndpoint="/api/brand" appId="my-app">
             <MyContent />
         </BrandProvider>
     );

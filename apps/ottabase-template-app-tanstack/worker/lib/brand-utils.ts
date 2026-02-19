@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Shared route helpers for worker
+// Brand Engine – Shared route helpers for worker (v2: per-app scoping)
 // ---------------------------------------------------------------------------
 
 import type { CloudflareEnv } from '../../cloudflare-env';
@@ -21,12 +21,9 @@ export function brandEnv(env: CloudflareEnv): BrandEnv {
 }
 
 /**
- * Extract organizationId and appId from request.
- * Checks query params first, then X-Organization-Id / X-App-Id headers (RBAC convention).
+ * Extract appId from request.
+ * Checks query params first, then X-App-Id header.
  */
-export function getOrgApp(url: URL, request?: Request): { orgId: string | null; appId: string | null } {
-    return {
-        orgId: url.searchParams.get('organizationId') ?? request?.headers.get('x-organization-id') ?? null,
-        appId: url.searchParams.get('appId') ?? request?.headers.get('x-app-id') ?? null,
-    };
+export function getAppId(url: URL, request?: Request): string | null {
+    return url.searchParams.get('appId') ?? request?.headers.get('x-app-id') ?? null;
 }

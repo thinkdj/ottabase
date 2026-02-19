@@ -410,16 +410,14 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
     // ============================================================
 
     function useCreate(mutationOptions?: Partial<UseMutationOptions<T, Error, Partial<T>, MutationContext<T>>>) {
-        const queryClient = useQueryClient();
         const apiClient = useApiClient();
         const fetchers = useMemo(() => createFetchers(apiClient), [apiClient]);
 
         return useMutation<T, Error, Partial<T>, MutationContext<T>>({
+            // meta.entity feeds the global mutation observer in OttaQueryProvider,
+            // which invalidates ['entityName'] on success — no onSettled needed here.
+            meta: { entity: entityName },
             mutationFn: fetchers.createItem,
-            onSettled: (...args) => {
-                queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
-                mutationOptions?.onSettled?.(...args);
-            },
             ...mutationOptions,
         });
     }
@@ -429,19 +427,12 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
             UseMutationOptions<T, Error, { id: string | number; data: Partial<T> }, MutationContext<T>>
         >,
     ) {
-        const queryClient = useQueryClient();
         const apiClient = useApiClient();
         const fetchers = useMemo(() => createFetchers(apiClient), [apiClient]);
 
         return useMutation<T, Error, { id: string | number; data: Partial<T> }, MutationContext<T>>({
+            meta: { entity: entityName },
             mutationFn: ({ id, data }) => fetchers.updateItem(id, data),
-            onSettled: (...args) => {
-                if (args[2]) {
-                    queryClient.invalidateQueries({ queryKey: queryKeys.detail(args[2].id) });
-                }
-                queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
-                mutationOptions?.onSettled?.(...args);
-            },
             ...mutationOptions,
         });
     }
@@ -449,16 +440,12 @@ export function createModelHooks<T extends { id: string | number }>(config: Mode
     function useDelete(
         mutationOptions?: Partial<UseMutationOptions<boolean, Error, string | number, MutationContext<T>>>,
     ) {
-        const queryClient = useQueryClient();
         const apiClient = useApiClient();
         const fetchers = useMemo(() => createFetchers(apiClient), [apiClient]);
 
         return useMutation<boolean, Error, string | number, MutationContext<T>>({
+            meta: { entity: entityName },
             mutationFn: fetchers.deleteItem,
-            onSettled: (...args) => {
-                queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
-                mutationOptions?.onSettled?.(...args);
-            },
             ...mutationOptions,
         });
     }

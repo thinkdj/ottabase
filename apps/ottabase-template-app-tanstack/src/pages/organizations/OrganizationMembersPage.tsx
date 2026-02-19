@@ -3,6 +3,7 @@ import { TableSkeleton } from '@/components/LoadingSkeletons';
 import { useInviteMember, useOrganizationMembers, useRemoveMember, useUpdateMemberRole } from '@/hooks/useRBAC';
 import { useRBACToast } from '@/hooks/useToast';
 import { isApiError } from '@/lib/api';
+import { organizationIdAtom } from '@/ottabase/state/appState';
 import type { BadgeVariant, MemberRole, OrganizationMemberRecord } from '@/types/rbac';
 import {
     AlertDialog,
@@ -37,13 +38,17 @@ import {
     TableRow,
 } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
+import { useSetAtom } from 'jotai';
 import { Edit, Trash2, UserPlus } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { InviteMemberForm, type InviteMemberFormData } from './components/InviteMemberForm';
+
+const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 
 export function OrganizationMembersPage() {
     const toast = useRBACToast();
     const { organizationId } = useParams({ from: '/organizations/$organizationId/members' });
+    const setOrganizationId = useSetAtom(organizationIdAtom);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingMember, setEditingMember] = useState<OrganizationMemberRecord | null>(null);
     const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
@@ -53,6 +58,16 @@ export function OrganizationMembersPage() {
     const inviteMutation = useInviteMember();
     const updateRoleMutation = useUpdateMemberRole();
     const removeMutation = useRemoveMember();
+
+    useEffect(() => {
+        if (!organizationId) return;
+        setOrganizationId(organizationId);
+        try {
+            localStorage.setItem(CURRENT_ORG_KEY, organizationId);
+        } catch {
+            // ignore storage failures
+        }
+    }, [organizationId, setOrganizationId]);
 
     const handleInvite = () => {
         setEditingMember(null);

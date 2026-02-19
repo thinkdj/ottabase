@@ -1,5 +1,5 @@
 import { IconGitBranch, IconX } from '@tabler/icons-react';
-import { useQuery } from '@tanstack/react-query';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@ottabase/ui-shadcn';
 import { brandKitApi, type BrandKitItem } from './brandApi';
 
@@ -23,10 +23,10 @@ export function BrandKitBrandTab({
     onChange,
     nameReadOnly,
 }: BrandKitBrandTabProps) {
-    // Fetch all kits for the parent picker (exclude self to prevent circular)
-    const { data: allKits } = useQuery<BrandKitItem[]>({
-        queryKey: ['brand', 'kits'],
-        queryFn: () => brandKitApi.list(),
+    const { data: allKits } = useApiQuery<BrandKitItem[]>({
+        entity: 'brand_kits',
+        queryKey: ['list'],
+        endpoint: '/api/brand/kits',
     });
     const availableParents = (allKits ?? []).filter((k) => k.id !== currentKitId);
 

@@ -157,19 +157,33 @@ incremented — all old cache keys become misses instantly without scanning or d
 // New keys: rbac:org:acme:v2:usr:user-123:roles  → computed on next access
 ```
 
-### 2. Eager Rewrite (Brand Engine)
+### 2. Eager Rewrite with Surgical Invalidation (Brand Engine)
 
 Brand data is performance-critical — after a mutation, the cache is invalidated **then immediately re-resolved** so the
-next request is a cache hit:
+next request is a cache hit. Brand kits use **per-kit caching** for surgical invalidation:
 
 ```typescript
-// After brand kit mutation (handled by warmBrandCache in brand-kit-api)
-await cache.invalidate(orgId, appId);
-await Promise.all([
-    resolveFullBrandConfig(env, { organizationId: orgId, appId, mode: 'light' }),
-    resolveFullBrandConfig(env, { organizationId: orgId, appId, mode: 'dark' }),
-]);
+// Per-kit invalidation (when editing a single kit)
+await warmBrandCache(env, { kitId: 'kit-123' });
+// → Invalidates: brand:kit:kit-123:resolved
+// → All other kits remain cached
+
+// App-level invalidation (when route mappings change)
+await warmBrandCache(env, { appId: 'web' });
+// → Invalidates: brand:app:web:meta, brand:app:web:resolved:*
+// → Re-resolves route mappings + layouts, kits lazily loaded
+
+// Cache keys:
+// - brand:kit:{kitId}:resolved                     → Per-kit (light + dark themes)
+// - brand:app:{appId}:meta                         → Route mappings + layouts
+// - brand:app:{appId}:resolved:{mode} (legacy)     → Full app config (backward compat)
 ```
+
+**Benefits:**
+
+- Editing 1 kit doesn't invalidate 50 other kits
+- Client-side token override merges are memoized (LRU cache, max 500 entries)
+- Route matching uses LRU cache (max 1000 paths)
 
 ### 3. Prefix-Based Invalidation (Bulk)
 

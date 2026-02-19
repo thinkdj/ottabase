@@ -1,6 +1,5 @@
-import { api } from '@/lib/api';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { useQuery } from '@tanstack/react-query';
 import { Activity, CheckCircle, Clock, XCircle } from 'lucide-react';
 
 interface ReferralStats {
@@ -24,20 +23,16 @@ interface ReferralTrackingData {
 }
 
 export function AdminReferralTrackingPage() {
-    const { data: stats, isLoading: statsLoading } = useQuery<ReferralStats>({
-        queryKey: ['referral-stats'],
-        queryFn: async () => {
-            const response = await api<ReferralStats>('/api/referrals/stats');
-            return response;
-        },
+    const { data: stats, isLoading: statsLoading } = useApiQuery<ReferralStats>({
+        entity: 'referrals',
+        queryKey: ['stats'],
+        endpoint: '/api/referrals/stats',
     });
 
-    const { data: recentTracking, isLoading: trackingLoading } = useQuery<ReferralTrackingData[]>({
-        queryKey: ['referral-tracking-recent'],
-        queryFn: async () => {
-            const response = await api<ReferralTrackingData[]>('/api/referrals/tracking/recent?limit=20');
-            return response;
-        },
+    const { data: recentTracking, isLoading: trackingLoading } = useApiQuery<ReferralTrackingData[]>({
+        entity: 'referrals',
+        queryKey: ['tracking', 'recent'],
+        endpoint: '/api/referrals/tracking/recent?limit=20',
     });
 
     return (

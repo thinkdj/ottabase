@@ -20,6 +20,10 @@ const entries: Record<string, string> = {
     'atlas/Navbar': 'src/atlas/Navbar.tsx',
     'atlas/StatsSection': 'src/atlas/StatsSection.tsx',
     'atlas/StepsSection': 'src/atlas/StepsSection.tsx',
+    'atlas/FeatureHighlight': 'src/atlas/FeatureHighlight.tsx',
+    'atlas/AboutSection': 'src/atlas/AboutSection.tsx',
+    'atlas/ContactSection': 'src/atlas/ContactSection.tsx',
+    'atlas/TimelineSection': 'src/atlas/TimelineSection.tsx',
     // Mono barrel
     'mono/index': 'src/mono/index.ts',
     // Mono components
@@ -34,6 +38,28 @@ const entries: Record<string, string> = {
     'mono/Navbar': 'src/mono/Navbar.tsx',
     'mono/StatsSection': 'src/mono/StatsSection.tsx',
     'mono/StepsSection': 'src/mono/StepsSection.tsx',
+    'mono/FeatureHighlight': 'src/mono/FeatureHighlight.tsx',
+    'mono/AboutSection': 'src/mono/AboutSection.tsx',
+    'mono/ContactSection': 'src/mono/ContactSection.tsx',
+    'mono/TimelineSection': 'src/mono/TimelineSection.tsx',
+    // SaaS barrel
+    'saas/index': 'src/saas/index.ts',
+    // SaaS components
+    'saas/HeroSection': 'src/saas/HeroSection.tsx',
+    'saas/FeaturesGrid': 'src/saas/FeaturesGrid.tsx',
+    'saas/PricingTable': 'src/saas/PricingTable.tsx',
+    'saas/TestimonialsCarousel': 'src/saas/TestimonialsCarousel.tsx',
+    'saas/FAQAccordion': 'src/saas/FAQAccordion.tsx',
+    'saas/LogoCloud': 'src/saas/LogoCloud.tsx',
+    'saas/CTABanner': 'src/saas/CTABanner.tsx',
+    'saas/FooterMarketing': 'src/saas/FooterMarketing.tsx',
+    'saas/Navbar': 'src/saas/Navbar.tsx',
+    'saas/StatsSection': 'src/saas/StatsSection.tsx',
+    'saas/StepsSection': 'src/saas/StepsSection.tsx',
+    'saas/FeatureHighlight': 'src/saas/FeatureHighlight.tsx',
+    'saas/AboutSection': 'src/saas/AboutSection.tsx',
+    'saas/ContactSection': 'src/saas/ContactSection.tsx',
+    'saas/TimelineSection': 'src/saas/TimelineSection.tsx',
 };
 
 export default defineConfig({

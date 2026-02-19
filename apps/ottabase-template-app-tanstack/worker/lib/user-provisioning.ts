@@ -1,3 +1,5 @@
+import { DEFAULT_ROUTE_MAPPINGS } from '@ottabase/brand-engine';
+import { BrandKit, LayoutRouteMapping } from '@ottabase/brand-engine/persistence';
 import { Organization, OrganizationMember, Role } from '@ottabase/ottaorm/models';
 import { makeSlug } from '@ottabase/utils/url';
 
@@ -6,6 +8,54 @@ type UserLike = {
     get: (key: string) => unknown;
     assignRole: (roleId: string, assignedBy?: string, organizationId?: string) => Promise<void>;
 };
+
+/**
+ * Ensure the system-level (appId=null) brand defaults exist.
+ * Brand kits are per-app, not per-org. This creates the system default
+ * brand kit and route mappings if they don't exist yet.
+ */
+async function ensureAppBrandDefaults(fallbackBrandName: string) {
+    // Ensure system-default kit exists (appId=null)
+    await BrandKit.getOrCreateDefault();
+
+    let systemKit = (await BrandKit.first({ appId: null, isDefault: true })) as BrandKit | null;
+    if (!systemKit) {
+        systemKit = (await BrandKit.first({ appId: null })) as BrandKit | null;
+    }
+
+    if (!systemKit) {
+        systemKit = (await BrandKit.create({
+            appId: null,
+            isDefault: true,
+            name: 'Default',
+            brandName: fallbackBrandName || 'My App',
+            themePresetId: 'default',
+            defaultColorScheme: 'system',
+            allowDarkModeToggle: true,
+        })) as BrandKit;
+    }
+
+    const existingMappings = (await LayoutRouteMapping.where({
+        appId: null,
+    })) as LayoutRouteMapping[];
+
+    if (existingMappings.length === 0) {
+        const brandKitId = String(systemKit.get('id') || '');
+        if (!brandKitId) {
+            throw new Error('Failed to resolve default brand kit id');
+        }
+
+        for (const mapping of DEFAULT_ROUTE_MAPPINGS) {
+            await LayoutRouteMapping.create({
+                appId: null,
+                pathPattern: mapping.pathPattern,
+                layoutTemplateId: mapping.layoutTemplateId,
+                brandKitId,
+                priority: mapping.priority,
+            });
+        }
+    }
+}
 
 export async function provisionDefaultOrganizationForUser(params: {
     user: UserLike;
@@ -31,6 +81,7 @@ export async function provisionDefaultOrganizationForUser(params: {
 
     let organizationId: string | null = null;
     let resolvedOrganizationRole: 'owner' | 'member' = organizationRole;
+    const fallbackBrandName = (name || email?.split('@')[0] || 'My App').trim() || 'My App';
 
     const existingMembership = await OrganizationMember.first({ userId, status: 'active' });
     if (existingMembership) {
@@ -71,6 +122,14 @@ export async function provisionDefaultOrganizationForUser(params: {
             role: resolvedOrganizationRole,
             status: 'active',
         });
+    }
+
+    if (organizationId) {
+        try {
+            await ensureAppBrandDefaults(fallbackBrandName);
+        } catch (brandError) {
+            console.warn('[user-provisioning] Default brand setup failed:', brandError);
+        }
     }
 
     await Role.ensureDefaultRoles();

@@ -989,6 +989,96 @@ function BlogDetailPage() {
 - `useDelete()` - Delete record
 - `useInfiniteList()` - Infinite scroll pagination
 
+### Cache & Invalidation
+
+Ottabase uses **entity-namespaced query keys** and a **global mutation observer** to make cache invalidation automatic —
+similar to SWR, but layered on TanStack Query.
+
+#### How it works
+
+Every query that belongs to an entity is namespaced under `[entityName, ...]`. Every mutation that changes an entity
+broadcasts `meta: { entity: entityName }`. The `OttaQueryProvider` subscribes to the mutation cache and calls
+`invalidateQueries([entity])` on success, which TanStack propagates to all matching queries via prefix matching —
+regardless of which endpoint they hit.
+
+This means a delete in the admin panel automatically busts the public blog list, the detail page, infinite scroll — any
+query for that entity, anywhere in the app.
+
+#### `createModelHooks` — automatic, zero config
+
+All mutations from `createModelHooks` carry `meta.entity` automatically. No extra config needed.
+
+```typescript
+const blogPostHooks = createModelHooks<BlogPost>({ entityName: 'posts' });
+
+// Deleting a post invalidates ALL ['posts', ...] queries everywhere
+const deletePost = blogPostHooks.useDelete();
+await deletePost.mutateAsync(id);
+```
+
+#### `useApiQuery` — custom endpoints, same invalidation
+
+Use the `entity` option for any custom endpoint query. The key is namespaced as `[entity, ...queryKey]`, so it's busted
+by mutations on that entity automatically.
+
+```typescript
+// Key becomes ['posts', 'list', { page, contentType }]
+const { data } = useApiQuery<BlogListResponse>({
+    entity: 'posts',
+    queryKey: ['list', { page, contentType }],
+    endpoint: `/api/blog/posts?page=${page}`,
+    queryOptions: BLOG_LIST_QUERY_CONFIG,
+});
+```
+
+#### `useEntityQuery` — custom queryFn, same invalidation
+
+When you need a fully custom `queryFn` (not just an endpoint string), use `useEntityQuery`. The hook always provides a
+non-null `api` function — the injected client when available, a raw fetch adapter otherwise. No null-guarding needed.
+
+```typescript
+const { data } = useEntityQuery<BlogPost>('posts', (api) => api(`/api/blog/posts/by-slug/${slug}`), {
+    subKey: ['by-slug', slug],
+    enabled: !!slug,
+    ...BLOG_DETAIL_QUERY_CONFIG,
+});
+```
+
+#### `useApiMutation` — custom mutations with entity invalidation
+
+Invalidation runs on **success only** — failed mutations leave the cache untouched.
+
+```typescript
+const publishAll = useApiMutation({
+    endpoint: '/api/blog/publish-all',
+    method: 'POST',
+    invalidateEntities: ['posts'], // busts all ['posts', ...] queries on success
+});
+```
+
+#### Opting in from raw `useMutation`
+
+Any `useMutation` call participates in automatic invalidation by setting `meta.entity`:
+
+```typescript
+useMutation({
+    meta: { entity: 'posts' }, // observer picks this up
+    mutationFn: (id) => api(`/api/posts/${id}`, { method: 'DELETE' }),
+});
+```
+
+#### Convention: always declare `entity`
+
+| Scenario                        | Correct hook                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------- |
+| Standard CRUD on a model        | `createModelHooks`                                                              |
+| Custom endpoint, standard fetch | `useApiQuery({ entity, queryKey, endpoint })`                                   |
+| Custom endpoint, custom queryFn | `useEntityQuery(entity, queryFn, { subKey })`                                   |
+| Custom mutation                 | `useApiMutation({ invalidateEntities })` or `useMutation({ meta: { entity } })` |
+
+Queries without an `entity` declaration are not invalidated by any mutation. This is intentional for truly static or
+cross-entity data (e.g. config, stats).
+
 ## Complete Example: API Route
 
 ```typescript

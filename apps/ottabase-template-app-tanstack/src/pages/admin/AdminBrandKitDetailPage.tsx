@@ -4,6 +4,7 @@
 
 import { buildCSSVarMap, buildPreviewTheme, injectFont } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ottabase/ui-shadcn';
 import {
     IconArrowLeft,
@@ -14,7 +15,7 @@ import {
     IconTrash,
     IconTypography,
 } from '@tabler/icons-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -133,12 +134,11 @@ export function AdminBrandKitDetailPage() {
     const navigate = useNavigate();
     const isNew = !kitId || kitId === 'new';
 
-    const { data: kit, isLoading } = useQuery<BrandKitItem>({
-        queryKey: ['brand', 'kit', kitId],
-        queryFn: () => brandKitApi.get(kitId!),
-        enabled: !!kitId && kitId !== 'new',
-        // Trust cached data from create/clone for 5s to avoid D1 eventual consistency
-        staleTime: 5000,
+    const { data: kit, isLoading } = useApiQuery<BrandKitItem>({
+        entity: 'brand_kits',
+        queryKey: ['detail', kitId],
+        endpoint: `/api/brand/kits/${kitId}`,
+        queryOptions: { enabled: !!kitId && kitId !== 'new', staleTime: 5000 },
     });
 
     // Draft state – updates preview in realtime
@@ -184,22 +184,22 @@ export function AdminBrandKitDetailPage() {
     }, [kit]);
 
     const updateMutation = useMutation({
+        meta: { entity: 'brand_kits' },
         mutationFn: (body: Record<string, unknown>) => brandKitApi.update(kitId!, body),
         onSuccess: () => {
             toast.success('Brand Kit saved');
-            queryClient.invalidateQueries({ queryKey: ['brand', 'kit', kitId] });
-            queryClient.invalidateQueries({ queryKey: ['brand', 'kits'] });
+            queryClient.invalidateQueries({ queryKey: ['brand_kits'] });
             refresh();
         },
         onError: () => toast.error('Failed to save'),
     });
 
     const createMutation = useMutation({
+        meta: { entity: 'brand_kits' },
         mutationFn: (body: Record<string, unknown>) => brandKitApi.create(body),
         onSuccess: (created) => {
             toast.success('Brand Kit created');
-            queryClient.invalidateQueries({ queryKey: ['brand', 'kits'] });
-            queryClient.setQueryData(['brand', 'kit', created.id], created);
+            queryClient.invalidateQueries({ queryKey: ['brand_kits'] });
             refresh();
             navigate({ to: '/admin/brand-engine/kits/$kitId', params: { kitId: created.id } });
         },
@@ -207,16 +207,14 @@ export function AdminBrandKitDetailPage() {
     });
 
     const deleteMutation = useMutation({
+        meta: { entity: 'brand_kits' },
         mutationFn: () => brandKitApi.delete(kitId!),
-        onSuccess: () =>
-            Promise.all([
-                queryClient.invalidateQueries({ queryKey: ['brand', 'kit', kitId] }),
-                queryClient.invalidateQueries({ queryKey: ['brand', 'kits'] }),
-            ]).then(() => {
-                toast.success('Brand Kit deleted');
-                refresh();
-                navigate({ to: '/admin/brand-engine' });
-            }),
+        onSuccess: () => {
+            toast.success('Brand Kit deleted');
+            queryClient.invalidateQueries({ queryKey: ['brand_kits'] });
+            refresh();
+            navigate({ to: '/admin/brand-engine' });
+        },
         onError: () => toast.error('Failed to delete'),
     });
 
@@ -282,7 +280,7 @@ export function AdminBrandKitDetailPage() {
         kit ??
         ({
             id: 'new',
-            organizationId: null,
+            appId: null,
             name: draft.name || 'New Brand Kit',
             brandName: draft.brandName || 'My App',
             tagline: draft.tagline || null,
@@ -384,7 +382,7 @@ export function AdminBrandKitDetailPage() {
                             parentBrandKitId={draft.parentBrandKitId}
                             currentKitId={isNew ? undefined : kitId}
                             onChange={handleDraftMerge}
-                            nameReadOnly={!isNew && kitForView.organizationId === null}
+                            nameReadOnly={!isNew && kitForView.appId === null}
                         />
                     </TabsContent>
                     <TabsContent value="logo">

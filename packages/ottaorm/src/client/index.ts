@@ -14,6 +14,9 @@ export { createModelHooks } from './createModelHooks';
 // Generic API hooks for custom endpoints
 export { useApiQuery, useApiMutation, useBatchMutation } from './useApiQuery';
 
+// Entity-namespaced query hook (framework standard for custom-endpoint queries)
+export { useEntityQuery } from './useEntityQuery';
+
 // Provider
 export { OttaQueryProvider, createQueryClient, defaultQueryConfig, type OttaQueryProviderProps } from './QueryProvider';
 

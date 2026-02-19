@@ -3,15 +3,14 @@
 // ---------------------------------------------------------------------------
 
 import {
-    buildPreviewTheme,
     generatePalette,
     generateSemanticDefaults,
     generateSemanticDefaultsDark,
-    getThemePresetItems,
     hexToHsl,
     THEME_PRESET_ITEMS,
     type SemanticPalette,
 } from '@ottabase/brand-engine';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import { OttaSelect, type ItemRendererProps, type OttaSelectItem } from '@ottabase/ottaselect';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@ottabase/ui-shadcn';
 import { IconPalette, IconRefresh } from '@tabler/icons-react';
@@ -149,21 +148,54 @@ export function BrandKitThemeTab({
     hasParent,
 }: BrandKitThemeTabProps) {
     // ── Preset picker state ──────────────────────────────────────────────
+    // Fetch presets from API
+    const { data: apiPresets } = useApiQuery<
+        Array<{ name: string; colors: { light: Record<string, string>; dark: Record<string, string> } }>
+    >({
+        entity: 'brand_presets',
+        queryKey: ['presets'],
+        endpoint: '/api/brand/presets',
+        queryOptions: { staleTime: Infinity }, // Presets are static
+    });
+
     const themePresetItems = useMemo(() => {
-        const runtimeItems = getThemePresetItems();
-        if (runtimeItems.length <= 1) return THEME_PRESET_ITEMS;
-        const palettes = runtimeItems.map((item) => item.colors.join('|'));
-        return new Set(palettes).size > 1 ? runtimeItems : THEME_PRESET_ITEMS;
-    }, []);
+        if (!apiPresets || apiPresets.length === 0) return THEME_PRESET_ITEMS;
+
+        // Convert API presets to dropdown items
+        return apiPresets.map((preset) => {
+            const light = preset.colors.light;
+            return {
+                id: preset.name,
+                name: preset.name.charAt(0).toUpperCase() + preset.name.slice(1),
+                colors: [
+                    light.primary || '221.2 83.2% 53.3%',
+                    light.secondary || '210 40% 96.1%',
+                    light.accent || '210 40% 96.1%',
+                    light.muted || '210 40% 96.1%',
+                    light.destructive || '0 84.2% 60.2%',
+                ] as [string, string, string, string, string],
+            };
+        });
+    }, [apiPresets]);
 
     const selectedId = themePresetId ?? 'default';
     const selectedItem = themePresetItems.find((t) => t.id === selectedId) ?? themePresetItems[0];
 
-    // Resolve the full color palette for the selected preset (light mode)
+    // Get full preset data for color expansion
+    const selectedPreset = apiPresets?.find((p) => p.name === selectedId);
+
+    // Resolve the full color palette from tokensJson (contains expanded theme)
     const resolvedColors = useMemo(() => {
-        const theme = buildPreviewTheme({ tokensJson, themePresetId }, 'light');
-        return theme.colors;
-    }, [tokensJson, themePresetId]);
+        try {
+            const parsed = JSON.parse(tokensJson || '{}') as { color?: { light?: Record<string, string> } };
+            if (parsed.color?.light) {
+                return parsed.color.light;
+            }
+        } catch {}
+
+        // Fallback to preset colors if no custom colors in tokensJson
+        return selectedPreset?.colors.light || {};
+    }, [tokensJson, selectedPreset]);
 
     // The semantic token keys we want to show, grouped for display
     const DISPLAY_TOKENS = [
@@ -253,7 +285,7 @@ export function BrandKitThemeTab({
         if (hsl) setBaseColor(`${hsl.h} ${hsl.s}% ${hsl.l}%`);
     }, []);
 
-    /** Generate both light + dark palettes from the base color */
+    /** Generate both light + dark palettes from the base color and auto-apply */
     const handleGenerate = useCallback(() => {
         const hsl = parseHsl(baseColor);
         if (!hsl) return;
@@ -261,7 +293,19 @@ export function BrandKitThemeTab({
         const dark = generateSemanticDefaultsDark(hsl.h, hsl.s, hsl.l);
         setLightTokens(light);
         setDarkTokens(dark);
-    }, [baseColor]);
+
+        // Auto-apply to tokensJson for immediate persistence
+        try {
+            const existing = JSON.parse(tokensJson || '{}') as Record<string, unknown>;
+            const color: Record<string, unknown> = { light, dark };
+            onTokensChange(JSON.stringify({ ...existing, color }, null, 2));
+            toast.success('Color palette generated and applied');
+        } catch {
+            const color: Record<string, unknown> = { light, dark };
+            onTokensChange(JSON.stringify({ color }, null, 2));
+            toast.success('Color palette generated and applied');
+        }
+    }, [baseColor, tokensJson, onTokensChange]);
 
     /** Update a single token in either light or dark palette */
     const handleTokenEdit = useCallback((mode: 'light' | 'dark', token: string, hex: string) => {
@@ -321,11 +365,48 @@ export function BrandKitThemeTab({
                     mode="single"
                     items={themePresetItems}
                     value={selectedItem ? { id: selectedItem.id, name: selectedItem.name, ...selectedItem } : null}
-                    onChange={(v) =>
-                        onThemePresetChange(
-                            v && (v as OttaSelectItem).id !== 'default' ? (v as OttaSelectItem).id : null,
-                        )
-                    }
+                    onChange={(v) => {
+                        const presetId = v && (v as OttaSelectItem).id !== 'default' ? (v as OttaSelectItem).id : null;
+
+                        // Update preset ID
+                        onThemePresetChange(presetId);
+
+                        // Expand preset and update tokensJson for immediate preview
+                        if (presetId && apiPresets) {
+                            const preset = apiPresets.find((p) => p.name === presetId);
+                            if (preset) {
+                                try {
+                                    // Parse existing tokens to preserve custom overrides
+                                    const existing = JSON.parse(tokensJson || '{}') as Record<string, unknown>;
+
+                                    // Build expanded tokens with preset colors
+                                    const expanded = {
+                                        color: {
+                                            light: preset.colors.light,
+                                            dark: preset.colors.dark,
+                                        },
+                                        // Preserve existing typography, spacing, etc.
+                                        typography: existing.typography,
+                                        spacing: existing.spacing,
+                                        radius: existing.radius,
+                                        shadow: existing.shadow,
+                                        motion: existing.motion,
+                                    };
+
+                                    onTokensChange(JSON.stringify(expanded, null, 2));
+                                } catch {
+                                    // If parsing fails, just use preset colors
+                                    const expanded = {
+                                        color: {
+                                            light: preset.colors.light,
+                                            dark: preset.colors.dark,
+                                        },
+                                    };
+                                    onTokensChange(JSON.stringify(expanded, null, 2));
+                                }
+                            }
+                        }
+                    }}
                     placeholder="Select preset"
                     searchable={false}
                     clearable={false}
