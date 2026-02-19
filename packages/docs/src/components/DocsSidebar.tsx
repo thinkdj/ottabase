@@ -49,6 +49,7 @@ export function DocsSidebar({
                 <input
                     type="text"
                     placeholder="Search docs..."
+                    aria-label="Search documentation"
                     value={searchQuery}
                     onChange={(e) => onSearchChange(e.target.value)}
                     className="otta-docs-search-input"

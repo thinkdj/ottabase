@@ -61,6 +61,6 @@ export interface DocsConfig {
     basePath?: string;
     /** Theme name — 'default' | 'github' | 'notion' */
     theme?: DocsTheme;
-    /** Whether to show code block copy buttons (requires @ottabase/ui-code-highlight) */
+    /** Whether to enable built-in code highlighting with copy buttons */
     enableCodeHighlight?: boolean;
 }

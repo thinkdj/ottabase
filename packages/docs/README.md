@@ -13,7 +13,7 @@ table of contents. Three built-in themes inspired by GitHub, Notion, and Mantine
 - ⬅️➡️ Previous/Next page navigation
 - 🎨 Three built-in themes: `default`, `github`, `notion`
 - 📋 Enhanced code blocks with copy-to-clipboard
-- 🔌 Extensible — optional integration with `@ottabase/ui-code-highlight`, `@ottabase/ui-shadcn`, `@tabler/icons-react`
+- 🔌 Extensible — CSS custom properties and composable config for easy customization
 - 📦 Zero required runtime dependencies (only React peer dep)
 
 ## Installation
@@ -25,6 +25,7 @@ pnpm add @ottabase/docs
 ## Quick Start
 
 ```tsx
+import { useState } from 'react';
 import { DocsLayout } from '@ottabase/docs';
 import '@ottabase/docs/styles.css';
 
