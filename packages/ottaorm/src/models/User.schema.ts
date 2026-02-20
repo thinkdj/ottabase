@@ -16,6 +16,8 @@ export const usersTable = sqliteTable('users', {
     emailVerified: integer('email_verified'),
     image: text('image'),
     passwordHash: text('password_hash'),
+    // Username (public handle, separate from referral username)
+    username: text('username').unique(),
     // Referral fields
     referralUsername: text('referral_username').unique(),
     referredById: text('referred_by_id'),

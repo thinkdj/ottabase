@@ -24,7 +24,7 @@ import {
     Label,
     Separator,
 } from '@ottabase/ui-shadcn';
-import { Calendar, Check, Loader2, Mail, User } from 'lucide-react';
+import { AtSign, Calendar, Check, Loader2, Mail, User } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 interface LinkedAccountRecord {
@@ -40,7 +40,14 @@ export function UserProfilePage() {
     const [formData, setFormData] = useState({
         name: user?.name || '',
         email: user?.email || '',
+        username: userUsername || '',
     });
+
+    const [usernameError, setUsernameError] = useState<string | null>(null);
+
+    // Convenience accessor — the auth User type uses an index signature so extra
+    // properties like `username` are present at runtime but not statically typed.
+    const userUsername: string = user?.username ?? '';
 
     const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccountRecord[]>([]);
     const [isAccountsLoading, setIsAccountsLoading] = useState(true);
@@ -53,21 +60,28 @@ export function UserProfilePage() {
     const normalize = useCallback((value: string) => value.trim(), []);
 
     const computeHasChanges = useCallback(
-        (next: { name: string; email: string }) => {
+        (next: { name: string; email: string; username: string }) => {
             const currentName = normalize(user?.name ?? '');
             const currentEmail = normalize(user?.email ?? '');
-            return normalize(next.name) !== currentName || normalize(next.email) !== currentEmail;
+            const currentUsername = normalize(userUsername ?? '');
+            return (
+                normalize(next.name) !== currentName ||
+                normalize(next.email) !== currentEmail ||
+                normalize(next.username) !== currentUsername
+            );
         },
-        [normalize, user?.email, user?.name],
+        [normalize, user?.email, user?.name, userUsername],
     );
 
     useEffect(() => {
         setFormData({
             name: user?.name || '',
             email: user?.email || '',
+            username: userUsername || '',
         });
         setHasChanges(false);
-    }, [user?.name, user?.email]);
+        setUsernameError(null);
+    }, [user?.name, user?.email, userUsername]);
 
     useEffect(() => {
         let cancelled = false;
@@ -104,12 +118,13 @@ export function UserProfilePage() {
               .toUpperCase()
         : user?.email?.[0]?.toUpperCase() || '?';
 
-    const handleChange = (field: 'name' | 'email', value: string) => {
+    const handleChange = (field: 'name' | 'email' | 'username', value: string) => {
         setFormData((prev) => {
             const next = { ...prev, [field]: value };
             setHasChanges(computeHasChanges(next));
             return next;
         });
+        if (field === 'username') setUsernameError(null);
     };
 
     const handleSave = async () => {
@@ -122,9 +137,16 @@ export function UserProfilePage() {
 
             const trimmedName = normalize(formData.name);
             const trimmedEmail = normalize(formData.email);
+            const trimmedUsername = normalize(formData.username);
 
             if (!trimmedName) {
                 toast.error('Name is required', 'Please enter your full name.');
+                return;
+            }
+
+            // Basic client-side username validation (same rules as server)
+            if (trimmedUsername && !/^[a-zA-Z0-9_]{3,20}$/.test(trimmedUsername)) {
+                setUsernameError('Username must be 3-20 characters: letters, numbers, underscores only');
                 return;
             }
 
@@ -137,8 +159,14 @@ export function UserProfilePage() {
             if (trimmedEmail !== normalize(user.email ?? '')) {
                 toast.warning('Email changes are disabled', 'Contact support to update your login email.');
                 setFormData((prev) => ({ ...prev, email: user.email ?? '' }));
-                setHasChanges(computeHasChanges({ name: trimmedName, email: user.email ?? '' }));
+                setHasChanges(
+                    computeHasChanges({ name: trimmedName, email: user.email ?? '', username: trimmedUsername }),
+                );
                 return;
+            }
+
+            if (trimmedUsername !== normalize(userUsername ?? '')) {
+                updates.username = trimmedUsername;
             }
 
             if (Object.keys(updates).length === 0) {
@@ -165,6 +193,7 @@ export function UserProfilePage() {
             if (updatedUser?.emailVerified !== undefined) safeUpdates.emailVerified = updatedUser.emailVerified;
             if (updatedUser?.createdAt !== undefined) safeUpdates.createdAt = updatedUser.createdAt;
             if (updatedUser?.updatedAt !== undefined) safeUpdates.updatedAt = updatedUser.updatedAt;
+            if (updatedUser?.username !== undefined) safeUpdates.username = updatedUser.username;
 
             if (Object.keys(safeUpdates).length > 0) {
                 updateUser(safeUpdates);
@@ -173,6 +202,7 @@ export function UserProfilePage() {
             setFormData({
                 name: updatedUser?.name ?? user.name ?? '',
                 email: updatedUser?.email ?? user.email ?? '',
+                username: updatedUser?.username ?? userUsername ?? '',
             });
             if (updatedUser?.linkedAccounts) {
                 setLinkedAccounts(updatedUser.linkedAccounts);
@@ -182,8 +212,13 @@ export function UserProfilePage() {
             }
             setHasChanges(false);
             toast.success('Profile updated', 'Your profile has been updated successfully');
-        } catch (error) {
-            toast.error('Update failed', 'Failed to update profile');
+        } catch (error: any) {
+            const fieldErrors = error?.fieldErrors;
+            if (fieldErrors?.username) {
+                setUsernameError(fieldErrors.username[0]);
+            } else {
+                toast.error('Update failed', 'Failed to update profile');
+            }
         } finally {
             setIsSaving(false);
         }
@@ -262,6 +297,25 @@ export function UserProfilePage() {
                             placeholder="Enter your full name"
                             disabled={isSaving}
                         />
+                    </div>
+
+                    {/* Username */}
+                    <div className="space-y-2">
+                        <Label htmlFor="username" className="flex items-center gap-1">
+                            <AtSign className="h-4 w-4" />
+                            Username
+                        </Label>
+                        <Input
+                            id="username"
+                            value={formData.username}
+                            onChange={(e) => handleChange('username', e.target.value)}
+                            placeholder="e.g. johndoe"
+                            disabled={isSaving}
+                        />
+                        {usernameError && <p className="text-sm text-destructive">{usernameError}</p>}
+                        <p className="text-sm text-muted-foreground">
+                            3–20 characters: letters, numbers and underscores only. Can be changed at any time.
+                        </p>
                     </div>
 
                     {/* Email */}

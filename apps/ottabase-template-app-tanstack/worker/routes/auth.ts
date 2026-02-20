@@ -362,7 +362,7 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
     }
 
     if (request.method === 'PATCH') {
-        const body = await readJson<{ name?: string; image?: string | null }>(request);
+        const body = await readJson<{ name?: string; image?: string | null; username?: string }>(request);
 
         const updates: Record<string, any> = {};
         const fieldErrors: Record<string, string[]> = {};
@@ -386,6 +386,23 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
                 fieldErrors.image = ['Image must be a valid URL'];
             } else {
                 updates.image = image;
+            }
+        }
+
+        if (body.username !== undefined) {
+            const { validateReferralUsername } = await import('@ottabase/referrals');
+            const candidate = typeof body.username === 'string' ? body.username.trim() : '';
+            const validation = validateReferralUsername(candidate);
+            if (!validation.valid) {
+                fieldErrors.username = [validation.error ?? 'Invalid username'];
+            } else {
+                // Check uniqueness (exclude current user)
+                const existing = await User.findByUsername(candidate);
+                if (existing && existing.get('id') !== userId) {
+                    fieldErrors.username = ['Username is already taken'];
+                } else {
+                    updates.username = candidate;
+                }
             }
         }
 
@@ -514,21 +531,36 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
 
         const newUserId = newUser.get('id') as string;
 
-        // Auto-generate a referral username from the email if none is set yet.
+        // Auto-generate username and referral username from the email.
+        // Both use the same candidate; each loops independently to find a unique slot.
         try {
             const { generateReferralUsername } = await import('@ottabase/referrals');
             const candidate = generateReferralUsername(email);
-            // Find a unique username by appending a numeric suffix when needed.
+
+            // Determine unique username (public handle)
             let username = candidate;
-            let attempt = 1;
-            while (await User.findByReferralUsername(username)) {
-                username = `${candidate}_${++attempt}`;
+            let uAttempt = 1;
+            while (await User.findByUsername(username)) {
+                username = `${candidate}_${++uAttempt}`;
             }
-            newUser.set('referralUsername', username);
+
+            // Determine unique referral username — try same value as username first
+            let referralUsername = username;
+            if (await User.findByReferralUsername(referralUsername)) {
+                // username was already taken as referral — find next available
+                let rAttempt = uAttempt + 1;
+                referralUsername = `${candidate}_${rAttempt}`;
+                while (await User.findByReferralUsername(referralUsername)) {
+                    referralUsername = `${candidate}_${++rAttempt}`;
+                }
+            }
+
+            newUser.set('username', username);
+            newUser.set('referralUsername', referralUsername);
             await newUser.save();
         } catch (autoGenError) {
             // Non-fatal: user can always set it manually from the dashboard.
-            console.warn('Failed to auto-generate referral username:', autoGenError);
+            console.warn('Failed to auto-generate username:', autoGenError);
         }
 
         let organizationId: string | null = null;
