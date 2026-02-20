@@ -85,6 +85,7 @@ Added to `packages/ottaorm/src/models/User.ts`:
 {
   referralUsername: text("referral_username").unique(),
   referredById: text("referred_by_id"),
+  referralUsernameChanges: integer("referral_username_changes").default(0).notNull(),
 }
 ```
 
@@ -216,6 +217,8 @@ Response: 200
 - Letters, numbers, underscores only
 - Must be unique
 - Returns 400 with error if validation fails
+- Returns 400 with `USERNAME_CHANGE_LIMIT_REACHED` code if the user has already changed their username the maximum
+  number of times (configurable via `REFERRAL_SYSTEM_USERNAME_CHANGE` env var, default: 1)
 
 ### Register with Referral Attribution
 
@@ -308,6 +311,16 @@ features: {
 - **Description:** Number of days a stored referral code remains valid
 - **Behavior:** Expired codes are automatically cleared from localStorage
 - **Common values:** 30, 60, 90, 180, 365
+
+### Environment Variables
+
+#### `REFERRAL_SYSTEM_USERNAME_CHANGE` (default: `1`)
+
+- **Type:** `string` (parsed as integer)
+- **Description:** How many times a user can change their referral username **after initial setup**
+- **Default:** `"1"` — users may set the username once and change it one more time
+- **`"0"`** — username is locked after initial setup (no changes allowed)
+- **Set in:** `wrangler.jsonc` `vars` section or as a Worker secret
 
 ### Example Configurations
 
@@ -604,6 +617,7 @@ When a user changes their referral username:
 - Pending referrals with old code may not convert
 - A warning is shown in the UI
 - Completed conversions remain linked
+- **Change limit is enforced** (configurable via `REFERRAL_SYSTEM_USERNAME_CHANGE` env var, default: 1)
 
 ## Testing Checklist
 

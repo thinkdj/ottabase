@@ -166,6 +166,20 @@ export class User extends BaseModel {
                 visible: true,
             },
         },
+        referralUsernameChanges: {
+            type: 'number',
+            editable: false,
+            uiConfig: {
+                label: 'Referral Username Changes',
+                description: 'Number of times the referral username has been changed after initial setup',
+            },
+            formConfig: {
+                visible: false,
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
         referredById: {
             type: 'string',
             editable: false,

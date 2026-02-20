@@ -42,11 +42,13 @@ interface ReferralUser {
     email?: string;
     referralUsername?: string;
     referredById?: string;
+    referralUsernameChanges?: number;
 }
 
 interface ReferralData {
     user: ReferralUser;
     stats: ReferralStats;
+    usernameChangeLimit?: number;
 }
 
 interface TrackingData {
@@ -242,35 +244,72 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
                     <CardDescription>Choose a unique username for your referral links</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <div className="flex gap-2">
-                            <Input
-                                type="text"
-                                value={newUsername}
-                                onChange={(e) => setNewUsername(e.target.value)}
-                                placeholder="e.g., johndoe"
-                                className="flex-1"
-                            />
-                            <Button onClick={handleUpdateUsername} disabled={updating || !newUsername}>
-                                {updating ? 'Updating...' : 'Update'}
-                            </Button>
-                        </div>
-                        {usernameError && <p className="text-sm text-destructive">{usernameError}</p>}
-                        <p className="text-sm text-muted-foreground">
-                            3-20 characters, letters/numbers/underscore only
-                        </p>
-                    </div>
+                    {(() => {
+                        // usernameChangeLimit is always included in the API response;
+                        // the fallback of 1 matches the server-side default (REFERRAL_SYSTEM_USERNAME_CHANGE).
+                        const maxChanges = data.usernameChangeLimit ?? 1;
+                        const changesMade = data.user.referralUsernameChanges ?? 0;
+                        const hasUsername = !!data.user.referralUsername;
+                        const changesRemaining = hasUsername ? Math.max(0, maxChanges - changesMade) : null;
+                        const atLimit = hasUsername && changesRemaining === 0;
 
-                    {data.user.referralUsername && (
-                        <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
-                            <CardContent className="pt-4">
-                                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                                    <strong>Warning:</strong> Changing your username will invalidate your old referral
-                                    links and may affect pending conversions.
-                                </p>
-                            </CardContent>
-                        </Card>
-                    )}
+                        return (
+                            <>
+                                <div className="space-y-2">
+                                    <div className="flex gap-2">
+                                        <Input
+                                            type="text"
+                                            value={newUsername}
+                                            onChange={(e) => setNewUsername(e.target.value)}
+                                            placeholder="e.g., johndoe"
+                                            className="flex-1"
+                                            disabled={atLimit}
+                                        />
+                                        <Button
+                                            onClick={handleUpdateUsername}
+                                            disabled={updating || !newUsername || atLimit}
+                                        >
+                                            {updating ? 'Updating...' : hasUsername ? 'Change' : 'Set'}
+                                        </Button>
+                                    </div>
+                                    {usernameError && <p className="text-sm text-destructive">{usernameError}</p>}
+                                    <p className="text-sm text-muted-foreground">
+                                        3-20 characters, letters/numbers/underscore only
+                                    </p>
+                                    {hasUsername && changesRemaining !== null && (
+                                        <p className="text-sm text-muted-foreground">
+                                            {atLimit ? (
+                                                <span className="text-destructive">
+                                                    Username change limit reached. You cannot change your username
+                                                    again.
+                                                </span>
+                                            ) : (
+                                                <>
+                                                    You have{' '}
+                                                    <strong>
+                                                        {changesRemaining} change
+                                                        {changesRemaining !== 1 ? 's' : ''}
+                                                    </strong>{' '}
+                                                    remaining.
+                                                </>
+                                            )}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {hasUsername && !atLimit && (
+                                    <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+                                        <CardContent className="pt-4">
+                                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                                <strong>Warning:</strong> Changing your username will invalidate your
+                                                old referral links and may affect pending conversions.
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+                                )}
+                            </>
+                        );
+                    })()}
                 </CardContent>
             </Card>
 

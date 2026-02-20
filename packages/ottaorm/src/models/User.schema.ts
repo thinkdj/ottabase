@@ -19,6 +19,7 @@ export const usersTable = sqliteTable('users', {
     // Referral fields
     referralUsername: text('referral_username').unique(),
     referredById: text('referred_by_id'),
+    referralUsernameChanges: integer('referral_username_changes').default(0).notNull(),
     // App identifier for multi-app database sharing (nullable, opt-in)
     appId: text('app_id'),
     createdAt: integer('created_at')

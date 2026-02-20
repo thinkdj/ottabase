@@ -18,6 +18,11 @@ export interface ReferralRouteContext {
     url: URL;
 }
 
+/** Returns the maximum number of post-setup username changes allowed (default: 1). */
+function getMaxUsernameChanges(env: CloudflareEnv): number {
+    return parseInt((env as any).REFERRAL_SYSTEM_USERNAME_CHANGE ?? '1', 10);
+}
+
 export async function handleReferralTrack(context: ReferralRouteContext): Promise<Response> {
     const { request, env } = context;
     if (!env.OBCF_D1) {
@@ -125,7 +130,9 @@ export async function handleReferralUser(context: ReferralRouteContext): Promise
             email: user.get('email'),
             referralUsername: user.get('referralUsername'),
             referredById: user.get('referredById'),
+            referralUsernameChanges: (user.get('referralUsernameChanges') as number) ?? 0,
         },
+        usernameChangeLimit: getMaxUsernameChanges(env),
         stats,
         tracking: trackingRecords.map((t) => t.toJson()),
     });
@@ -171,6 +178,22 @@ export async function handleReferralUsernameUpdate(context: ReferralRouteContext
     const user = await User.find(userId);
     if (!user) {
         return errorResponse('User not found', 404);
+    }
+
+    // Enforce change limit: first-time setting is free; subsequent changes are limited.
+    const maxChanges = getMaxUsernameChanges(env);
+    const currentUsername = user.get('referralUsername');
+    if (currentUsername) {
+        // This is a change (not initial setup)
+        const changesMade = (user.get('referralUsernameChanges') as number) ?? 0;
+        if (changesMade >= maxChanges) {
+            return errorResponse(
+                `Referral username can only be changed ${maxChanges} time${maxChanges === 1 ? '' : 's'} after initial setup`,
+                400,
+                { code: 'USERNAME_CHANGE_LIMIT_REACHED' },
+            );
+        }
+        user.set('referralUsernameChanges', changesMade + 1);
     }
 
     user.set('referralUsername', body.referralUsername);
