@@ -66,6 +66,12 @@ export function buildCSSVarMap(theme: ResolvedBrandTheme): Record<string, string
     vars['--ease'] = theme.motion.easing;
     vars['--ease-enter'] = theme.motion.easingEnter;
     vars['--ease-exit'] = theme.motion.easingExit;
+    vars['--ease-spring'] = theme.motion.easingSpring;
+    vars['--scale-from'] = theme.motion.scaleFrom;
+    vars['--scale-to'] = theme.motion.scaleTo;
+    vars['--slide-offset'] = theme.motion.slideOffset;
+    vars['--opacity-from'] = theme.motion.opacityFrom;
+    vars['--reduced-motion'] = theme.motion.reducedMotion;
 
     // -- Layout tokens (as CSS vars for component contracts) -----------------
     applyLayoutVars(vars, theme.layout);

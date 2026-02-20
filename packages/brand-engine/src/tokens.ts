@@ -80,6 +80,18 @@ export interface TokenMotion {
     easingEnter?: string;
     /** Easing curve for exit animations */
     easingExit?: string;
+    /** Spring / bounce easing curve for playful enter effects */
+    easingSpring?: string;
+    /** Initial scale factor for enter animations (e.g. 0.95 → 1) */
+    scaleFrom?: string;
+    /** Final scale factor for exit animations (e.g. 1 → 0.95) */
+    scaleTo?: string;
+    /** Default slide offset in CSS length for slide-in/out animations */
+    slideOffset?: string;
+    /** Opacity used as the starting point for fade-in animations */
+    opacityFrom?: string;
+    /** Behaviour when the user prefers reduced motion: 'reduce' | 'no-preference' */
+    reducedMotion?: string;
 }
 
 /** Cursor appearance map */

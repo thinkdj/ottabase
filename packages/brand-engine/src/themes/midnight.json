@@ -33,7 +33,13 @@
         "durationSlow": "360ms",
         "easing": "cubic-bezier(0.22, 0.68, 0, 1)",
         "easingEnter": "cubic-bezier(0, 0, 0.15, 1)",
-        "easingExit": "cubic-bezier(0.55, 0, 1, 0.45)"
+        "easingExit": "cubic-bezier(0.55, 0, 1, 0.45)",
+        "easingSpring": "cubic-bezier(0.3, 1.3, 0.5, 1)",
+        "scaleFrom": "0.96",
+        "scaleTo": "0.96",
+        "slideOffset": "6px",
+        "opacityFrom": "0",
+        "reducedMotion": "reduce"
     },
     "colors": {
         "light": {
