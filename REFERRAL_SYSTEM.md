@@ -714,15 +714,26 @@ When a user changes their referral username:
 
 ## Future Enhancements
 
-- [ ] Email notifications for conversions
-- [ ] Reward/incentive system
-- [ ] Admin analytics dashboard
-- [ ] Referral leaderboard
-- [ ] Custom referral link URLs (e.g., `/r/{username}`)
-- [ ] Multi-level referrals (referral of referral)
-- [ ] Export referral data (CSV/JSON)
-- [ ] Webhook notifications for conversions
-- [ ] A/B testing for referral campaigns
+See **[REFERRAL_FEATURES_ROADMAP.md](./REFERRAL_FEATURES_ROADMAP.md)** for a full list of
+candidate features, split into:
+
+- **Tier 1 — Simple, good-to-have** (10 ideas, each buildable in a single PR)
+- **Tier 2 — High-level / larger features** (5 strategic ideas)
+
+Quick reference of items not yet started:
+
+| Tier 1 (simple) | Tier 2 (high-level) |
+|---|---|
+| Auto-generate referral username on signup | Rewards & incentives engine |
+| Conversion rate stat in dashboard | Multi-tier / chain referrals |
+| One-click social sharing buttons | Campaign management |
+| Source label in activity feed | Fraud detection & risk scoring |
+| QR code for referral link | White-label `/invite/{username}` page |
+| Referred-by on user profile | |
+| Milestone badges / in-app notifications | |
+| Duplicate-click deduplication | |
+| CSV export | |
+| `/r/{username}` vanity URL | |
 
 ## License
 
