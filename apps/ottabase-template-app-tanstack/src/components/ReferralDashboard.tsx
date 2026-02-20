@@ -26,7 +26,7 @@ import {
     CardTitle,
     Input,
 } from '@ottabase/ui-shadcn';
-import { Copy, X } from 'lucide-react';
+import { Copy, Download, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -172,6 +172,22 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
     const handleClearStoredReferral = () => {
         clearStoredReferralCode();
         window.location.reload();
+    };
+
+    const handleDownloadCsv = async () => {
+        try {
+            const res = await fetch('/api/referrals/export?format=csv', { credentials: 'include' });
+            if (!res.ok) throw new Error('Export failed');
+            const blob = await res.blob();
+            const today = new Date().toISOString().slice(0, 10);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `referrals-${today}.csv`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        } catch {
+            toast.error('Failed to download CSV');
+        }
     };
 
     if (loading) {
@@ -382,8 +398,16 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
             {/* Recent Tracking with Pagination */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Recent Activity</CardTitle>
-                    <CardDescription>Your referral click and conversion history</CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Recent Activity</CardTitle>
+                            <CardDescription>Your referral click and conversion history</CardDescription>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleDownloadCsv}>
+                            <Download className="h-4 w-4 mr-2" />
+                            Download CSV
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {trackingLoading ? (

@@ -67,6 +67,7 @@ import { handleEmailProviders, handleEmailTest } from './email';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
 import {
+    handleReferralExport,
     handleReferralStats,
     handleReferralTrack,
     handleReferralTrackingList,
@@ -193,6 +194,10 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
 
     if (route === '/api/referrals/user') {
         return handleReferralUser(context);
+    }
+
+    if (route === '/api/referrals/export') {
+        return handleReferralExport(context);
     }
 
     if (route === '/api/referrals/tracking') {

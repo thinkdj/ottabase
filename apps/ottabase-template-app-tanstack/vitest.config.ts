@@ -43,6 +43,8 @@ export default defineConfig({
             '@ottabase/ottaorm/models': path.resolve(__dirname, '../../packages/ottaorm/src/models'),
             '@ottabase/auth/backend': path.resolve(__dirname, '../../packages/auth/src/backend-handler'),
             '@ottabase/cf/cache-keys': path.resolve(__dirname, '../../packages/cf/src/cache-keys'),
+            '@ottabase/cf/kv-cache': path.resolve(__dirname, '../../packages/cf/src/kv-cache'),
+            '@ottabase/referrals/validation': path.resolve(__dirname, '../../packages/referrals/src/validation'),
             '@ottabase/utils/http-response': path.resolve(__dirname, '../../packages/utils/src/http-response'),
             '@ottabase/utils/http-errors': path.resolve(__dirname, '../../packages/utils/src/http-errors'),
             '@ottabase/utils/pagination': path.resolve(__dirname, '../../packages/utils/src/pagination'),

@@ -23,6 +23,14 @@ vi.mock('@ottabase/referrals', () => ({
 vi.mock('@ottabase/ottaorm/models', () => ({
     User: { findByReferralUsername: vi.fn(), find: vi.fn() },
 }));
+// Prevent Vite from trying to resolve email sub-path exports during test transform
+vi.mock('@ottabase/email', () => ({
+    createResendMailer: vi.fn(),
+    createSESMailer: vi.fn(),
+    sendTemplatedEmail: vi.fn(),
+}));
+vi.mock('@ottabase/email/providers/nodemailer', () => ({ createNodemailerMailer: vi.fn() }));
+vi.mock('@ottabase/cf/kv-cache', () => ({ invalidateCacheByPrefix: vi.fn() }));
 
 const { getSession } = await import('@ottabase/auth/backend');
 const { readJson } = await import('../../lib/utils');

@@ -514,6 +514,23 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
 
         const newUserId = newUser.get('id') as string;
 
+        // Auto-generate a referral username from the email if none is set yet.
+        try {
+            const { generateReferralUsername } = await import('@ottabase/referrals');
+            const candidate = generateReferralUsername(email);
+            // Find a unique username by appending a numeric suffix when needed.
+            let username = candidate;
+            let attempt = 1;
+            while (await User.findByReferralUsername(username)) {
+                username = `${candidate}_${++attempt}`;
+            }
+            newUser.set('referralUsername', username);
+            await newUser.save();
+        } catch (autoGenError) {
+            // Non-fatal: user can always set it manually from the dashboard.
+            console.warn('Failed to auto-generate referral username:', autoGenError);
+        }
+
         let organizationId: string | null = null;
         let organizationRole: string | null = null;
         let assignedRole: string | null = null;
