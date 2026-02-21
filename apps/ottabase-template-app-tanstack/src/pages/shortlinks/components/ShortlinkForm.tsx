@@ -1,4 +1,5 @@
 import { api, isApiError } from '@/lib/api';
+import { APP_ID } from '@/ottabase/config/app.config';
 import type { ShortlinkRecord } from '@ottabase/shortlinks';
 import { ShortlinkTypes } from '@ottabase/shortlinks';
 import {
@@ -26,7 +27,7 @@ export function ShortlinkForm({ shortlink, onSuccess, onCancel }: ShortlinkFormP
         fullUrl: '',
         shortCode: '',
         type: 'redirect',
-        appId: 'default',
+        appId: APP_ID,
         expiryDate: '',
         interstitialEnabled: false,
         interstitialSeconds: 10,
@@ -38,11 +39,13 @@ export function ShortlinkForm({ shortlink, onSuccess, onCancel }: ShortlinkFormP
                 fullUrl: shortlink.fullUrl,
                 shortCode: shortlink.shortCode,
                 type: shortlink.type,
-                appId: shortlink.appId || 'default',
+                appId: shortlink.appId || APP_ID,
                 expiryDate: shortlink.expiryDate ? new Date(shortlink.expiryDate).toISOString().slice(0, 16) : '',
                 interstitialEnabled: shortlink.interstitialEnabled ?? false,
                 interstitialSeconds: shortlink.interstitialSeconds ?? 10,
             });
+        } else {
+            setFormData((prev) => ({ ...prev, appId: APP_ID }));
         }
     }, [shortlink]);
 
@@ -56,7 +59,7 @@ export function ShortlinkForm({ shortlink, onSuccess, onCancel }: ShortlinkFormP
                 fullUrl: formData.fullUrl.trim(),
                 shortCode: formData.shortCode.trim(),
                 type: formData.type,
-                appId: formData.appId.trim(),
+                appId: (formData.appId || APP_ID).trim(),
                 expiryDate: formData.expiryDate ? formData.expiryDate : null,
                 interstitialEnabled: formData.interstitialEnabled,
                 interstitialSeconds: formData.interstitialEnabled ? formData.interstitialSeconds : null,
@@ -165,11 +168,13 @@ export function ShortlinkForm({ shortlink, onSuccess, onCancel }: ShortlinkFormP
                     <Label htmlFor="appId">App ID</Label>
                     <Input
                         id="appId"
-                        placeholder="default"
+                        placeholder={APP_ID}
                         value={formData.appId}
-                        onChange={(e) => setFormData({ ...formData, appId: e.target.value })}
-                        disabled={loading}
+                        readOnly
+                        disabled
+                        className="cursor-not-allowed bg-muted"
                     />
+                    <p className="text-xs text-muted-foreground">Scoped to current app (from config)</p>
                 </div>
             </div>
 

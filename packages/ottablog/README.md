@@ -130,7 +130,6 @@ await post.publish();
 await post.unpublish();
 await post.archive();
 await post.toggleFeatured();
-await post.incrementViews();
 post.updateReadingStats(); // Calc reading time from content
 post.generateSlug(); // Auto-generate from title
 post.generateExcerpt(); // Auto-generate from content
@@ -156,7 +155,6 @@ post.generateExcerpt(); // Auto-generate from content
 - `readingTimeMinutes`, `wordCount` - Auto-calculated stats
 - `isFeatured` - Pin to top
 - `allowComments` - Enable comments
-- `viewCount` - View counter
 - `publishAt`, `publishedAt`, `postedAt` - Dates
 - `appId` - Multi-app identifier
 - `maxVersionsToKeep` - Version retention setting

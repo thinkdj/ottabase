@@ -5,6 +5,7 @@ cloudflare-env.d.ts
 /wrangler.toml.backup
 /wrangler.jsonc.backup
 wrangler.production.jsonc
+wrangler.preview.jsonc
 .open-next
 .dev.vars
 .wrangler/

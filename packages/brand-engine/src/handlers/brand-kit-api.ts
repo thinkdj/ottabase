@@ -37,6 +37,9 @@ function expandPresetToTokens(presetId: string | null, existingTokensJson: strin
 
     const preset = PRESET_MAP[presetId];
 
+    // Cursors: user overrides take precedence; fall back to preset cursors (e.g. artisan/funky have registry cursors)
+    const effectiveCursors = existing.cursors ?? (preset as { cursors?: Record<string, string> }).cursors;
+
     // Build full tokens with preset colors as base
     const expanded: Record<string, unknown> = {
         // Preset colors (light + dark)
@@ -50,6 +53,8 @@ function expandPresetToTokens(presetId: string | null, existingTokensJson: strin
         radius: existing.radius || preset.radius,
         shadow: existing.shadow || preset.shadows,
         motion: existing.motion || preset.motion,
+        // Cursors: user-configured or preset default (artisan/funky have registry cursors)
+        ...(effectiveCursors !== undefined && { cursors: effectiveCursors }),
     };
 
     // Merge custom color overrides on top of preset
@@ -113,7 +118,16 @@ export async function handleGetBrandKits(
     if (appId === null) {
         await BrandKit.getOrCreateDefault();
     }
-    const kits = (await BrandKit.where({ appId: appId ?? null }, { orderBy: 'name' })) as BrandKit[];
+    const appKits = (await BrandKit.where({ appId: appId ?? null }, { orderBy: 'name' })) as BrandKit[];
+    // Include system default (appId=null) so it appears in the list — it's the fallback used by all apps
+    let kits = appKits;
+    if (appId !== null) {
+        const systemDefault = (await BrandKit.first({ appId: null })) as BrandKit | null;
+        if (systemDefault && !appKits.some((k) => k.get('id') === systemDefault.get('id'))) {
+            kits = [systemDefault, ...appKits];
+            kits.sort((a, b) => ((a.get('name') as string) || '').localeCompare((b.get('name') as string) || ''));
+        }
+    }
     const data = kits.map(serializeKit);
     // Resolve parent kit names for display
     const kitNameMap = new Map(data.map((k) => [k.id, k.name]));

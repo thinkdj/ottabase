@@ -5,6 +5,7 @@
 
 import type { D1Database, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
 import { resolveRouteForPath } from '@ottabase/ottalayout';
+import type { ResolvedBrandTheme } from '../resolver';
 import { deepMerge } from '../resolver';
 import { BrandKit } from './BrandKit.model';
 import { brandKitLogos, brandKitToTheme } from './brandKitToConfig';
@@ -41,32 +42,37 @@ export type FullBrandConfig = BrandResolutionCache & { mode?: string; r2PublicUr
 async function loadBrandKitsMap(brandKitIds: string[], r2Url: string): Promise<BrandResolutionCache['brandKitsMap']> {
     const brandKitsMap: BrandResolutionCache['brandKitsMap'] = {};
 
-    for (const kitId of brandKitIds) {
-        const kit = (await BrandKit.find(kitId)) as BrandKit | null;
-        if (!kit) continue;
-        const [lightTheme, darkTheme] = await Promise.all([
-            brandKitToTheme(kit, 'light'),
-            brandKitToTheme(kit, 'dark'),
-        ]);
-        const logos = brandKitLogos(kit, r2Url);
-        brandKitsMap[kitId] = {
-            brandName: (kit.get('brandName') as string) || 'My App',
-            tagline: (kit.get('tagline') as string) || undefined,
-            logos: {
-                primary: logos.logo,
-                dark: logos.logoDark,
-                icon: logos.icon,
-                ogImage: logos.ogImage,
-                emailLogo: logos.emailLogo,
-            } as Record<string, string>,
-            theme: lightTheme,
-            darkTheme,
-            defaultColorScheme: (kit.get('defaultColorScheme') as string) || 'system',
-            allowDarkModeToggle: (kit.get('allowDarkModeToggle') as boolean) ?? true,
-            customCss: (kit.get('customCss') as string) || undefined,
-            hideOttabaseBranding: (kit.get('hideOttabaseBranding') as boolean) ?? false,
-        };
-    }
+    await Promise.all(
+        brandKitIds.map(async (kitId) => {
+            const kit = (await BrandKit.find(kitId)) as BrandKit | null;
+            if (!kit) return;
+
+            const [lightTheme, darkTheme] = await Promise.all([
+                brandKitToTheme(kit, 'light'),
+                brandKitToTheme(kit, 'dark'),
+            ]);
+
+            const logos = brandKitLogos(kit, r2Url);
+
+            brandKitsMap[kitId] = {
+                brandName: (kit.get('brandName') as string) || 'My App',
+                tagline: (kit.get('tagline') as string) || undefined,
+                logos: {
+                    primary: logos.logo,
+                    dark: logos.logoDark,
+                    icon: logos.icon,
+                    ogImage: logos.ogImage,
+                    emailLogo: logos.emailLogo,
+                } as Record<string, string>,
+                theme: lightTheme as ResolvedBrandTheme,
+                darkTheme,
+                defaultColorScheme: (kit.get('defaultColorScheme') as string) || 'system',
+                allowDarkModeToggle: (kit.get('allowDarkModeToggle') as boolean) ?? true,
+                customCss: (kit.get('customCss') as string) || undefined,
+                hideOttabaseBranding: (kit.get('hideOttabaseBranding') as boolean) ?? false,
+            };
+        }),
+    );
 
     // Ensure system default exists if no kits loaded
     if (Object.keys(brandKitsMap).length === 0) {
@@ -87,7 +93,7 @@ async function loadBrandKitsMap(brandKitIds: string[], r2Url: string): Promise<B
                 ogImage: logos.ogImage,
                 emailLogo: logos.emailLogo,
             } as Record<string, string>,
-            theme: lightTheme,
+            theme: lightTheme as ResolvedBrandTheme,
             darkTheme,
             defaultColorScheme: (defaultKit.get('defaultColorScheme') as string) || 'system',
             allowDarkModeToggle: (defaultKit.get('allowDarkModeToggle') as boolean) ?? true,
@@ -183,7 +189,13 @@ export async function resolveBrandConfig(
     if (!kitData) return null;
 
     // Pick mode-appropriate theme
-    const baseTheme = mode === 'dark' && kitData.darkTheme ? kitData.darkTheme : kitData.theme;
+    const baseTheme =
+        mode === 'dark' && kitData.darkTheme
+            ? (deepMerge(
+                  kitData.theme as unknown as Record<string, unknown>,
+                  kitData.darkTheme as Record<string, unknown>,
+              ) as unknown as typeof kitData.theme)
+            : kitData.theme;
 
     // Apply per-route token overrides when present
     let resolvedTheme = baseTheme;
@@ -229,7 +241,13 @@ function buildConfigFromCache(
     mode: string,
 ): ResolvedBrandConfig {
     // Pick mode-appropriate theme
-    let theme = mode === 'dark' && kitData.darkTheme ? kitData.darkTheme : kitData.theme;
+    let theme =
+        mode === 'dark' && kitData.darkTheme
+            ? (deepMerge(
+                  kitData.theme as unknown as Record<string, unknown>,
+                  kitData.darkTheme as Record<string, unknown>,
+              ) as unknown as typeof kitData.theme)
+            : kitData.theme;
 
     // Apply per-route token overrides when present
     if (match.tokenOverridesJson) {

@@ -131,7 +131,7 @@ jobs:
                         echo "⚠️  Warning: No cloudflare-config.json or wrangler.jsonc for ${APP_FOLDER}, skipping"
                         continue
                       fi
-                      CONFIG='{"deployable":true,"appType":"tanstack","buildCommand":"build","workerBuildCommand":null,"outputDirectory":"dist","verifyPaths":["dist","cloudflare-worker.ts"],"wranglerConfig":"wrangler.jsonc","wranglerEnv":"production","healthCheckPath":"/","requiresSecrets":["CLOUDFLARE_API_TOKEN","CLOUDFLARE_ACCOUNT_ID","D1_DATABASE_ID","KV_NAMESPACE_ID"]}'
+                      CONFIG='{"deployable":true,"appType":"tanstack","buildCommand":"build","workerBuildCommand":null,"outputDirectory":"dist","verifyPaths":["dist","cloudflare-worker.ts"],"wranglerConfig":"wrangler.jsonc","wranglerEnv":"production","healthCheckPath":"/"}'
                     fi
 
                     DEPLOYABLE=$(echo "$CONFIG" | jq -r '.deployable // true')
@@ -216,55 +216,43 @@ jobs:
                   echo "${VERIFY_PATHS}" >> $GITHUB_OUTPUT
                   echo "EOF" >> $GITHUB_OUTPUT
 
-                  REQUIRED_SECRETS=$(echo "${CONFIG}" | jq -r '.requiresSecrets[]?' | tr '\n' ' ')
-                  echo "required-secrets=${REQUIRED_SECRETS}" >> $GITHUB_OUTPUT
+                  # Optional: extra secrets from config (merged with derived placeholders in Verify step)
+                  EXTRA=$(echo "${CONFIG}" | jq -r '.requiresPreviewSecrets[]?' | tr '\n' ' ')
+                  echo "extra-secrets=${EXTRA}" >> $GITHUB_OUTPUT
 
                   echo "📋 Configuration loaded for ${{ matrix.name }} (preview)"
 
+            # Secrets derived from wrangler.jsonc env.preview + base + optional extra (single source of truth; no drift)
             - name: Verify required secrets
+              working-directory: apps/${{ matrix.folder }}
+              env:
+                  SECRETS_JSON: ${{ toJson(secrets) }}
+                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
+                  TARGET_ENV: preview
               run: |
                   echo "🔍 Verifying required secrets for ${{ matrix.name }}..."
-                  MISSING_SECRETS=()
-                  REQUIRED="${{ steps.config.outputs.required-secrets }}"
 
+                  # Base secrets (wrangler-action needs these)
+                  BASE="CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID"
+
+                  # Derive placeholders from wrangler.jsonc env.preview (single source of truth; no drift)
+                  PLACEHOLDERS=$(python ../../.github/scripts/substitute-wrangler-secrets.py --list-only)
+
+                  # Optional extra from cloudflare-config.json requiresPreviewSecrets
+                  EXTRA="${{ steps.config.outputs.extra-secrets }}"
+
+                  # Merge: base + placeholders + extra, deduplicate, drop empty
+                  REQUIRED=$(echo "$BASE $PLACEHOLDERS $EXTRA" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')
+
+                  MISSING_SECRETS=()
                   for SECRET_NAME in $REQUIRED; do
-                    case "$SECRET_NAME" in
-                      "CLOUDFLARE_API_TOKEN")
-                        if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ CLOUDFLARE_API_TOKEN is not set"
-                        else
-                          echo "  ✅ CLOUDFLARE_API_TOKEN is configured"
-                        fi
-                        ;;
-                      "CLOUDFLARE_ACCOUNT_ID")
-                        if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ CLOUDFLARE_ACCOUNT_ID is not set"
-                        else
-                          echo "  ✅ CLOUDFLARE_ACCOUNT_ID is configured"
-                        fi
-                        ;;
-                      "D1_DATABASE_ID")
-                        if [ -z "${{ secrets.D1_DATABASE_ID }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ D1_DATABASE_ID is not set"
-                        else
-                          echo "  ✅ D1_DATABASE_ID is configured"
-                        fi
-                        ;;
-                      "KV_NAMESPACE_ID")
-                        if [ -z "${{ secrets.KV_NAMESPACE_ID }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ KV_NAMESPACE_ID is not set"
-                        else
-                          echo "  ✅ KV_NAMESPACE_ID is configured"
-                        fi
-                        ;;
-                      *)
-                        echo "  ⚠️  Warning: Unknown secret $SECRET_NAME - cannot verify"
-                        ;;
-                    esac
+                    VAL=$(echo "$SECRETS_JSON" | jq -r --arg k "$SECRET_NAME" '.[$k] // empty')
+                    if [ -z "$VAL" ]; then
+                      MISSING_SECRETS+=("$SECRET_NAME")
+                      echo "  ❌ $SECRET_NAME is not set (run pnpm cf:setup, add to GitHub Secrets)"
+                    else
+                      echo "  ✅ $SECRET_NAME is configured"
+                    fi
                   done
 
                   if [ ${#MISSING_SECRETS[@]} -ne 0 ]; then
@@ -469,29 +457,22 @@ jobs:
             - name: Generate preview wrangler config
               working-directory: apps/${{ matrix.folder }}
               run: |
-                  WRANGLER_CONFIG="${{ steps.config.outputs.wrangler-config }}"
-                  echo "🔧 Generating preview wrangler configuration from ${WRANGLER_CONFIG}..."
-
-                  if [ ! -f "${WRANGLER_CONFIG}" ]; then
-                    echo "❌ ERROR: Wrangler configuration file not found"
-                    exit 1
-                  fi
-
-                    python -c $'import os\nimport pathlib\n\nconfig_path = pathlib.Path(os.environ["WRANGLER_CONFIG"])\ncontent = config_path.read_text()\n\nreplacements = {\n    "PRODUCTION_D1_DATABASE_ID": os.environ.get("D1_DATABASE_ID", ""),\n    "PRODUCTION_KV_NAMESPACE_ID": os.environ.get("KV_NAMESPACE_ID", ""),\n    "YOUR_CLOUDFLARE_ACCOUNT_ID": os.environ.get("CLOUDFLARE_ACCOUNT_ID", ""),\n}\n\nfor key, value in replacements.items():\n    content = content.replace(key, value)\n\npathlib.Path("wrangler.preview.jsonc").write_text(content)\n'
-
-                  if grep -q "PRODUCTION_" wrangler.preview.jsonc; then
-                    echo "❌ ERROR: Secret substitution incomplete"
-                    rm -f wrangler.preview.jsonc
-                    exit 1
-                  fi
-
-                  echo "✅ Preview configuration generated successfully"
+                  echo "🔧 Generating preview wrangler config..."
+                  python ../../.github/scripts/substitute-wrangler-secrets.py
               env:
-                  D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
-                  KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
-                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
                   WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
-                  PREVIEW_WORKER_NAME: ${{ steps.preview-name.outputs.preview-name }}
+                  OUTPUT_FILE: wrangler.preview.jsonc
+                  TARGET_ENV: preview
+                  SECRETS_JSON: ${{ toJson(secrets) }}
+
+            - name: Verify preview wrangler config
+              working-directory: apps/${{ matrix.folder }}
+              run: |
+                  if [ ! -f "wrangler.preview.jsonc" ]; then
+                    echo "❌ ERROR: wrangler.preview.jsonc not found - Generate step must run first"
+                    exit 1
+                  fi
+                  echo "✅ wrangler.preview.jsonc ready for deploy"
 
             - name: Deploy preview to Cloudflare Workers
               uses: cloudflare/wrangler-action@v3
@@ -500,8 +481,8 @@ jobs:
                   accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
                   workingDirectory: apps/${{ matrix.folder }}
                   command:
-                      deploy --env ${{ steps.config.outputs.wrangler-env }} --name ${{
-                      steps.preview-name.outputs.preview-name }} --config wrangler.preview.jsonc
+                      deploy --env preview --name ${{ steps.preview-name.outputs.preview-name }} --config
+                      wrangler.preview.jsonc
               continue-on-error: false
 
             - name: Preview deployment summary

@@ -189,6 +189,11 @@ export function renderWizardPage(state: PlatformStateResult): string {
 
   <!-- STEP 0: Bindings + DB Init -->
   <div class="step-panel active" id="panel-0">
+    <div class="card" id="cache-clear-card" style="display:none">
+      <h2>Previous login in browser cache</h2>
+      <p>It seems you have a previous login in browser cache. This can cause conflicts during setup. Clear it before proceeding.</p>
+      <button class="btn btn-outline btn-sm" id="btn-clear-cache">Clear all ottabase.* entries</button>
+    </div>
     <div class="card">
 
       <div class="form-group">
@@ -344,6 +349,34 @@ wrangler secret put MIGRATION_SECRET</pre>
     if (secretInput && secret) {
       secretInput.value = secret;
     }
+
+    /* Check for ottabase.* in localStorage — show clear section only if non-allowlisted keys exist */
+    (function() {
+      var allowlist = ['ottabase.sidebar-state', 'ottabase.language', 'ottabase.i18n'];
+      var keys = [];
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('ottabase.') === 0 && allowlist.indexOf(k) === -1) keys.push(k);
+        }
+      } catch (e) { /* ignore */ }
+      var card = document.getElementById('cache-clear-card');
+      var btn = document.getElementById('btn-clear-cache');
+      if (card && btn && keys.length > 0) {
+        card.style.display = 'block';
+        btn.onclick = function() {
+          try {
+            var toRemove = [];
+            for (var j = 0; j < localStorage.length; j++) {
+              var k = localStorage.key(j);
+              if (k && k.indexOf('ottabase.') === 0 && allowlist.indexOf(k) === -1) toRemove.push(k);
+            }
+            toRemove.forEach(function(k) { localStorage.removeItem(k); });
+            card.style.display = 'none';
+          } catch (e) { /* ignore */ }
+        };
+      }
+    })();
 
     function apiFetch(url, options) {
       options = options || {};

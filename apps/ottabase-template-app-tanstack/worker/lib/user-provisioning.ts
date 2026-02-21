@@ -10,22 +10,25 @@ type UserLike = {
 };
 
 /**
- * Ensure the system-level (appId=null) brand defaults exist.
- * Brand kits are per-app, not per-org. This creates the system default
- * brand kit and route mappings if they don't exist yet.
+ * Ensure brand defaults exist for the given app.
+ * Uses BrandKit + DEFAULT_ROUTE_MAPPINGS — saves to DB via ORM.
+ * Call after tables exist and ORM connection is registered.
+ *
+ * @param fallbackBrandName — Used when creating a new kit
+ * @param appId — App to seed. When provided, creates app-scoped kit + mappings.
+ *               When null, creates system fallback (appId=null). Pass env.APP_ID for current app.
  */
-async function ensureAppBrandDefaults(fallbackBrandName: string) {
-    // Ensure system-default kit exists (appId=null)
-    await BrandKit.getOrCreateDefault();
+export async function ensureAppBrandDefaults(fallbackBrandName: string, appId: string | null = null): Promise<void> {
+    const targetAppId = appId ?? null;
 
-    let systemKit = (await BrandKit.first({ appId: null, isDefault: true })) as BrandKit | null;
-    if (!systemKit) {
-        systemKit = (await BrandKit.first({ appId: null })) as BrandKit | null;
+    let kit = (await BrandKit.first({ appId: targetAppId, isDefault: true })) as BrandKit | null;
+    if (!kit) {
+        kit = (await BrandKit.first({ appId: targetAppId })) as BrandKit | null;
     }
 
-    if (!systemKit) {
-        systemKit = (await BrandKit.create({
-            appId: null,
+    if (!kit) {
+        kit = (await BrandKit.create({
+            appId: targetAppId,
             isDefault: true,
             name: 'Default',
             brandName: fallbackBrandName || 'My App',
@@ -36,18 +39,18 @@ async function ensureAppBrandDefaults(fallbackBrandName: string) {
     }
 
     const existingMappings = (await LayoutRouteMapping.where({
-        appId: null,
+        appId: targetAppId,
     })) as LayoutRouteMapping[];
 
     if (existingMappings.length === 0) {
-        const brandKitId = String(systemKit.get('id') || '');
+        const brandKitId = String(kit.get('id') || '');
         if (!brandKitId) {
             throw new Error('Failed to resolve default brand kit id');
         }
 
         for (const mapping of DEFAULT_ROUTE_MAPPINGS) {
             await LayoutRouteMapping.create({
-                appId: null,
+                appId: targetAppId,
                 pathPattern: mapping.pathPattern,
                 layoutTemplateId: mapping.layoutTemplateId,
                 brandKitId,
@@ -64,6 +67,8 @@ export async function provisionDefaultOrganizationForUser(params: {
     organizationRole?: 'owner' | 'member';
     assignedBy?: string;
     roleFallbacks?: ProvisionRoleName[];
+    /** App ID for brand kit seeding — when provided, ensures app-scoped default kit exists */
+    appId?: string | null;
 }): Promise<{ organizationId: string; organizationRole: 'owner' | 'member'; assignedRole: string | null }> {
     const {
         user,
@@ -72,6 +77,7 @@ export async function provisionDefaultOrganizationForUser(params: {
         organizationRole = 'owner',
         assignedBy,
         roleFallbacks = ['member', 'viewer'],
+        appId = null,
     } = params;
 
     const userId = String(user.get('id') || '');
@@ -126,7 +132,7 @@ export async function provisionDefaultOrganizationForUser(params: {
 
     if (organizationId) {
         try {
-            await ensureAppBrandDefaults(fallbackBrandName);
+            await ensureAppBrandDefaults(fallbackBrandName, appId ?? null);
         } catch (brandError) {
             console.warn('[user-provisioning] Default brand setup failed:', brandError);
         }

@@ -1,6 +1,8 @@
+import { handleAnalyticsTrack } from '@ottabase/analytics/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { getKillSwitchStatus } from '../lib/killswitch';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import {
     handleAdminDbRowDelete,
@@ -47,6 +49,7 @@ import {
     handleBlogStudioPluginEnable,
     handleBlogStudioState,
 } from './blog';
+import { handleBrandApi } from './brand';
 import { handleD1Init, handleD1TodoById, handleD1Todos } from './cloudflare-d1';
 import { handleCloudflareQueue } from './cloudflare-queue';
 import { handleRateLimiting } from './cloudflare-rate';
@@ -58,25 +61,26 @@ import {
     handleUpload,
     handleUploadFile,
 } from './cloudflare-storage';
+import { handleCoreAnalytics } from './core-analytics';
 import { handleAuditLogs, handleDemo, handleDemoError } from './demo';
 import { handleEmailProviders, handleEmailTest } from './email';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
-import { checkKillSwitches, getKillSwitchStatus } from '../lib/killswitch';
 import {
     handleReferralStats,
     handleReferralTrack,
     handleReferralTrackingList,
     handleReferralUser,
     handleReferralUsernameUpdate,
+    handleReferralsAnalytics,
 } from './referrals';
 import {
     handleShortlinkById,
     handleShortlinkExplicitGo,
+    handleShortlinksAnalytics,
     handleShortlinksCreate,
     handleShortlinksList,
 } from './shortlinks';
-import { handleBrandApi } from './brand';
 
 export interface ApiRouteContext {
     request: Request;
@@ -175,6 +179,10 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleShortlinksList(context);
     }
 
+    if (route === '/api/shortlinks/analytics') {
+        return handleShortlinksAnalytics(context);
+    }
+
     if (route === '/shortlinks/go') {
         return handleShortlinkExplicitGo(context);
     }
@@ -189,6 +197,14 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
 
     if (route === '/api/referrals/tracking') {
         return handleReferralTrackingList(context);
+    }
+
+    if (route === '/api/referrals/analytics') {
+        return handleReferralsAnalytics(context);
+    }
+
+    if (route === '/api/analytics/core') {
+        return handleCoreAnalytics(context);
     }
 
     if (route === '/api/audit/logs') {
@@ -314,6 +330,14 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
 
     if (route === '/api/referrals/track') {
         return handleReferralTrack(context);
+    }
+
+    if (route === '/api/analytics/track') {
+        return handleAnalyticsTrack({
+            request: context.request,
+            dataset: context.env.OBCF_ANALYTICS_CORE,
+            defaultAppId: 'ottabase-template',
+        });
     }
 
     if (route === '/api/auth/register') {

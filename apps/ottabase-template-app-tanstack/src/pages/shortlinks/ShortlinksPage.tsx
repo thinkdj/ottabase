@@ -35,8 +35,20 @@ import {
     TableHeader,
     TableRow,
 } from '@ottabase/ui-shadcn';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, Edit, Link2, Plus, Trash2 } from 'lucide-react';
+import {
+    BarChart3,
+    ChevronLeft,
+    ChevronRight,
+    ChevronsLeft,
+    ChevronsRight,
+    Copy,
+    Edit,
+    Link2,
+    Plus,
+    Trash2,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import { ShortlinkForm } from './components/ShortlinkForm';
 
 type ShortlinksResponse = PaginatedResponse<ShortlinkRecord>;
@@ -190,29 +202,37 @@ export function ShortlinksPage() {
                     </div>
                     <p className="text-muted-foreground">Create and manage short URLs for easy sharing</p>
                 </div>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button onClick={handleCreate} size="lg">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create Link
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                            <DialogTitle>{editingShortlink ? 'Edit Shortlink' : 'Create Shortlink'}</DialogTitle>
-                            <DialogDescription>
-                                {editingShortlink
-                                    ? 'Update your shortlink details'
-                                    : 'Create a new shortlink to share with others'}
-                            </DialogDescription>
-                        </DialogHeader>
-                        <ShortlinkForm
-                            shortlink={editingShortlink}
-                            onSuccess={handleSuccess}
-                            onCancel={() => setIsDialogOpen(false)}
-                        />
-                    </DialogContent>
-                </Dialog>
+                <div className="flex gap-2">
+                    <Button variant="outline" asChild>
+                        <Link to="/analytics" search={{ tab: 'shortlinks' }}>
+                            <BarChart3 className="mr-2 h-4 w-4" />
+                            Click Analytics
+                        </Link>
+                    </Button>
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button onClick={handleCreate} size="lg">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create Link
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                                <DialogTitle>{editingShortlink ? 'Edit Shortlink' : 'Create Shortlink'}</DialogTitle>
+                                <DialogDescription>
+                                    {editingShortlink
+                                        ? 'Update your shortlink details'
+                                        : 'Create a new shortlink to share with others'}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <ShortlinkForm
+                                shortlink={editingShortlink}
+                                onSuccess={handleSuccess}
+                                onCancel={() => setIsDialogOpen(false)}
+                            />
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             {/* Error Display */}
@@ -223,23 +243,13 @@ export function ShortlinksPage() {
             )}
 
             {/* Stats */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium">Total Links</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{pagination?.total ?? shortlinks.length}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Total Clicks</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {shortlinks.reduce((sum, link) => sum + (link.clicks || 0), 0)}
-                        </div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -294,7 +304,6 @@ export function ShortlinksPage() {
                                             <TableHead>Link</TableHead>
                                             <TableHead>Type</TableHead>
                                             <TableHead>App</TableHead>
-                                            <TableHead className="text-right">Clicks</TableHead>
                                             <TableHead>Expires</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
@@ -395,11 +404,6 @@ export function ShortlinksPage() {
                                                 {/* App - simple text */}
                                                 <TableCell className="text-sm text-muted-foreground">
                                                     {link.appId || 'default'}
-                                                </TableCell>
-
-                                                {/* Clicks */}
-                                                <TableCell className="text-right font-mono">
-                                                    {link.clicks || 0}
                                                 </TableCell>
 
                                                 {/* Expires */}

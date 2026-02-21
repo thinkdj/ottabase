@@ -29,7 +29,11 @@ export default defineConfig({
             branches: 65,
             statements: 70,
         },
-        include: ['src/**/*.{test,spec}.{ts,tsx}', '__tests__/**/*.{test,spec}.{ts,tsx}'],
+        include: [
+            'src/**/*.{test,spec}.{ts,tsx}',
+            '__tests__/**/*.{test,spec}.{ts,tsx}',
+            'ottabase/**/*.{test,spec}.{ts,tsx}',
+        ],
         testTimeout: 10000,
     },
     resolve: {

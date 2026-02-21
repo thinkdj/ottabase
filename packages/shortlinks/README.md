@@ -45,8 +45,6 @@ The package exports a `shortlinksTable` Drizzle schema with the following fields
 - `interstitialEnabled` - Whether to show the interstitial countdown page
 - `interstitialSeconds` - Countdown duration (seconds) when interstitial is enabled
 - `expiryDate` - Optional expiry timestamp
-- `clicks` - Click counter
-- `lastClickedAt` - Last click timestamp
 - `createdAt` - Creation timestamp
 - `updatedAt` - Last update timestamp
 

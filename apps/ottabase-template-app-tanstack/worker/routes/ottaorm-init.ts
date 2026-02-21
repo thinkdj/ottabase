@@ -5,7 +5,8 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
-import { checkMigrationAuth } from '../lib/db-utils';
+import { checkMigrationAuth, initDbConnection } from '../lib/db-utils';
+import { ensureAppBrandDefaults } from '../lib/user-provisioning';
 
 export interface OttaormInitContext {
     request: Request;
@@ -56,6 +57,13 @@ export async function handleOttaormInit(context: OttaormInitContext): Promise<Re
             env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === '1' ||
             env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === 'true',
     });
+
+    // Seed default brand kit + route mappings for current app (brand kits are always app-scoped)
+    if (result.success) {
+        initDbConnection(env);
+        const appId = (env as { APP_ID?: string }).APP_ID ?? 'ottabase-template-app';
+        await ensureAppBrandDefaults('Ottabase', appId);
+    }
 
     return jsonResponse(result);
 }

@@ -2,6 +2,8 @@
 @import '@ottabase/ui-tailwind/styles/tailwind.base.css';
 /* Import: ShadCN */
 @import '@ottabase/ui-shadcn/styles.css';
+/* Import: Code highlight (syntax colors for docs & CodeBlock) */
+@import '@ottabase/ui-code-highlight/styles.css';
 
 /* App-specific styles */
 

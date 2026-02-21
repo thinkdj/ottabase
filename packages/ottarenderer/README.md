@@ -16,6 +16,12 @@ React renderer for [Editor.js](https://editorjs.io/) content and generic HTML.
 pnpm add @ottabase/ottarenderer
 ```
 
+Code blocks use `@ottabase/ui-code-highlight`. Import its styles in your app (e.g. in `globals.css`):
+
+```css
+@import '@ottabase/ui-code-highlight/styles.css';
+```
+
 ## Usage
 
 ### Rendering Editor.js Data
