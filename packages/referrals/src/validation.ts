@@ -1,67 +1,26 @@
 /**
- * Referral username validation rules
- */
-export const REFERRAL_USERNAME_MIN_LENGTH = 3;
-export const REFERRAL_USERNAME_MAX_LENGTH = 20;
-export const REFERRAL_USERNAME_PATTERN = /^[a-zA-Z0-9_]+$/;
-
-export interface ValidationResult {
-    valid: boolean;
-    error?: string;
-}
-
-/**
- * Validates a username (public handle or referral username).
+ * Referral-specific validation and username generation helpers.
  *
- * Rules:
- * - 3-20 characters
- * - Letters, numbers, and underscores only
- * - Cannot be empty or just whitespace
+ * Core username validation has been moved to `@ottabase/utils/user`.
+ * This module re-exports it for backward compatibility and adds the
+ * referral-domain helpers (generation, expiry).
  */
-export function validateUsername(username: string): ValidationResult {
-    if (!username || username.trim().length === 0) {
-        return {
-            valid: false,
-            error: 'Username is required',
-        };
-    }
-
-    const trimmed = username.trim();
-
-    if (trimmed.length < REFERRAL_USERNAME_MIN_LENGTH) {
-        return {
-            valid: false,
-            error: `Username must be at least ${REFERRAL_USERNAME_MIN_LENGTH} characters`,
-        };
-    }
-
-    if (trimmed.length > REFERRAL_USERNAME_MAX_LENGTH) {
-        return {
-            valid: false,
-            error: `Username must be at most ${REFERRAL_USERNAME_MAX_LENGTH} characters`,
-        };
-    }
-
-    if (!REFERRAL_USERNAME_PATTERN.test(trimmed)) {
-        return {
-            valid: false,
-            error: 'Username can only contain letters, numbers, and underscores',
-        };
-    }
-
-    return {
-        valid: true,
-    };
-}
+export type { UsernameValidationResult as ValidationResult } from '@ottabase/utils/user';
+export {
+    validateUsername,
+    USERNAME_MIN_LENGTH as REFERRAL_USERNAME_MIN_LENGTH,
+    USERNAME_MAX_LENGTH as REFERRAL_USERNAME_MAX_LENGTH,
+    USERNAME_PATTERN as REFERRAL_USERNAME_PATTERN,
+} from '@ottabase/utils/user';
 
 /**
- * @deprecated Use {@link validateUsername} instead.
+ * @deprecated Use {@link validateUsername} from `@ottabase/utils/user` instead.
  * Kept for backward compatibility — validates a referral username using the same rules.
  */
-export const validateReferralUsername = validateUsername;
+export { validateUsername as validateReferralUsername } from '@ottabase/utils/user';
 
 /**
- * Generate a candidate referral username from an email address (and optional display name).
+ * Generate a candidate referral username from an email address.
  *
  * Rules:
  * - Uses the part of the email before `@`

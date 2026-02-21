@@ -1638,6 +1638,9 @@ importers:
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@ottabase/config':
         specifier: workspace:*

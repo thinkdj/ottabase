@@ -48,6 +48,7 @@ export default defineConfig({
             '@ottabase/utils/http-response': path.resolve(__dirname, '../../packages/utils/src/http-response'),
             '@ottabase/utils/http-errors': path.resolve(__dirname, '../../packages/utils/src/http-errors'),
             '@ottabase/utils/pagination': path.resolve(__dirname, '../../packages/utils/src/pagination'),
+            '@ottabase/utils/user': path.resolve(__dirname, '../../packages/utils/src/user'),
             '@ottabase/analytics/query': path.resolve(__dirname, '../../packages/analytics/src/query'),
             '@ottabase/analytics/track': path.resolve(__dirname, '../../packages/analytics/src/track'),
             '@ottabase/rbac/admin-guard': path.resolve(__dirname, '../../packages/rbac/src/admin-guard.ts'),

@@ -412,7 +412,7 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
         }
 
         if (body.username !== undefined) {
-            const { validateUsername } = await import('@ottabase/referrals');
+            const { validateUsername } = await import('@ottabase/utils/user');
             const candidate = typeof body.username === 'string' ? body.username.trim() : '';
             const validation = validateUsername(candidate);
             if (!validation.valid) {

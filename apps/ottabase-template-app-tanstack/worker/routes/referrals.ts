@@ -182,7 +182,7 @@ export async function handleReferralUsernameUpdate(context: ReferralRouteContext
         return errorResponse('referralUsername is required', 400);
     }
 
-    const { validateUsername } = await import('@ottabase/referrals');
+    const { validateUsername } = await import('@ottabase/utils/user');
     const validation = validateUsername(body.referralUsername);
 
     if (!validation.valid) {

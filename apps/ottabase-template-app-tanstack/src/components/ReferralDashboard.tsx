@@ -6,7 +6,7 @@
 
 import { api } from '@/lib/api';
 import { clearStoredReferralCode, getReferralExpiryInfo, getStoredReferralCode } from '@/lib/referrals';
-import { validateUsername } from '@ottabase/referrals';
+import { validateUsername } from '@ottabase/utils/user';
 import {
     AlertDialog,
     AlertDialogAction,
