@@ -25,11 +25,11 @@ vi.mock('@ottabase/utils/pagination', () => ({
     parsePaginationParams: vi.fn(),
     paginatedJsonResponse: vi.fn(),
 }));
-vi.mock('@ottabase/utils/user', () => ({
-    validateUsername: vi.fn(() => ({ valid: true })),
-}));
+vi.mock('@ottabase/utils/user', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@ottabase/utils/user')>();
+    return { ...actual, validateUsername: vi.fn(() => ({ valid: true })) };
+});
 vi.mock('@ottabase/referrals', () => ({
-    validateReferralUsername: vi.fn(() => ({ valid: true })),
     ReferralTracking: {
         getStats: vi.fn(),
         forUser: vi.fn(),
