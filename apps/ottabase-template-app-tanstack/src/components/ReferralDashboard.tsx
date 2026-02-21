@@ -6,7 +6,7 @@
 
 import { api } from '@/lib/api';
 import { clearStoredReferralCode, getReferralExpiryInfo, getStoredReferralCode } from '@/lib/referrals';
-import { validateReferralUsername } from '@ottabase/referrals';
+import { validateUsername } from '@ottabase/referrals';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -134,7 +134,7 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
     const handleUpdateUsername = async () => {
         const trimmed = newUsername.trim();
         // Validate
-        const validation = validateReferralUsername(trimmed);
+        const validation = validateUsername(trimmed);
         if (!validation.valid) {
             setUsernameError(validation.error || 'Invalid username');
             return;

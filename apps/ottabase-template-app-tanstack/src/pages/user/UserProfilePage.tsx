@@ -10,9 +10,6 @@ import { api } from '@/lib/api';
 import { useSession } from '@/lib/auth';
 import { requestEmailVerification } from '@/lib/auth-api';
 import {
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
     Badge,
     Button,
     Card,
@@ -26,6 +23,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { AtSign, Calendar, Check, Loader2, Mail, User } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { ProfilePhotoUploader } from '@/components/ProfilePhotoUploader';
 
 interface LinkedAccountRecord {
     provider: string;
@@ -44,6 +42,8 @@ export function UserProfilePage() {
     });
 
     const [usernameError, setUsernameError] = useState<string | null>(null);
+    const [currentImage, setCurrentImage] = useState<string | null>(user?.image ?? null);
+    const [isPhotoUploading, setIsPhotoUploading] = useState(false);
 
     // Convenience accessor — the auth User type uses an index signature so extra
     // properties like `username` are present at runtime but not statically typed.
@@ -127,6 +127,22 @@ export function UserProfilePage() {
         if (field === 'username') setUsernameError(null);
     };
 
+    const handlePhotoUploaded = async (url: string) => {
+        setIsPhotoUploading(true);
+        setCurrentImage(url);
+        // Persist to the user profile immediately; this only updates `image`,
+        // which is separate from the name/username save below.
+        try {
+            await api('/api/users/me', { method: 'PATCH', body: { image: url } });
+            updateUser({ image: url });
+            toast.success('Photo updated', 'Your profile photo has been updated successfully.');
+        } catch {
+            toast.error('Photo update failed', 'Could not save the new photo to your profile.');
+        } finally {
+            setIsPhotoUploading(false);
+        }
+    };
+
     const handleSave = async () => {
         setIsSaving(true);
         try {
@@ -197,6 +213,9 @@ export function UserProfilePage() {
 
             if (Object.keys(safeUpdates).length > 0) {
                 updateUser(safeUpdates);
+            }
+            if (updatedUser?.image !== undefined) {
+                setCurrentImage(updatedUser.image ?? null);
             }
 
             setFormData({
@@ -270,13 +289,15 @@ export function UserProfilePage() {
                     <CardDescription>Your profile information visible to others</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {/* Avatar */}
-                    <div className="flex items-center gap-4">
-                        <Avatar className="h-20 w-20">
-                            <AvatarImage src={user.image || undefined} />
-                            <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
-                        </Avatar>
-                        <div className="space-y-2">
+                    {/* Avatar + photo uploader */}
+                    <div className="flex items-start gap-4">
+                        <ProfilePhotoUploader
+                            currentImageUrl={currentImage}
+                            initials={userInitials}
+                            onUploaded={handlePhotoUploaded}
+                            disabled={isSaving || isPhotoUploading}
+                        />
+                        <div className="space-y-1 pt-1">
                             <h3 className="font-semibold">{formData.name || 'No name set'}</h3>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Mail className="h-4 w-4" />
@@ -338,7 +359,11 @@ export function UserProfilePage() {
                     {/* Save Button */}
                     {hasChanges && (
                         <div className="pt-2">
-                            <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
+                            <Button
+                                onClick={handleSave}
+                                disabled={isSaving || isPhotoUploading}
+                                className="w-full sm:w-auto"
+                            >
                                 {isSaving ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

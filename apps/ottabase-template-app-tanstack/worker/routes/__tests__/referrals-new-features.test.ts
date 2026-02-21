@@ -26,6 +26,7 @@ vi.mock('@ottabase/utils/pagination', () => ({
     paginatedJsonResponse: vi.fn(),
 }));
 vi.mock('@ottabase/referrals', () => ({
+    validateUsername: vi.fn(() => ({ valid: true })),
     validateReferralUsername: vi.fn(() => ({ valid: true })),
     ReferralTracking: {
         getStats: vi.fn(),

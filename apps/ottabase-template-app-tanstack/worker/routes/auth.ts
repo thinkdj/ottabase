@@ -37,6 +37,28 @@ export function handleAuthConfig(context: AuthRouteContext): Response {
     return withAuthCors(response);
 }
 
+/**
+ * Finds a unique value for a given field by appending numeric suffixes.
+ *
+ * @param candidate - The base value to try first (e.g. "johndoe")
+ * @param exists - Async predicate: returns true if the value is already taken
+ * @returns The first available value: `candidate`, `candidate_2`, `candidate_3`, …
+ *
+ * @example
+ * ```ts
+ * const username = await findUniqueHandle('johndoe', (v) => User.findByUsername(v).then(Boolean));
+ * const refName  = await findUniqueHandle(username,  (v) => User.findByReferralUsername(v).then(Boolean));
+ * ```
+ */
+async function findUniqueHandle(candidate: string, exists: (value: string) => Promise<boolean>): Promise<string> {
+    let value = candidate;
+    let attempt = 1;
+    while (await exists(value)) {
+        value = `${candidate}_${++attempt}`;
+    }
+    return value;
+}
+
 export async function handleVerifyEmailResend(context: AuthRouteContext): Promise<Response> {
     const { request, env, withAuthCors } = context;
     const ip = getClientIpAddress(request);
@@ -390,9 +412,9 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
         }
 
         if (body.username !== undefined) {
-            const { validateReferralUsername } = await import('@ottabase/referrals');
+            const { validateUsername } = await import('@ottabase/referrals');
             const candidate = typeof body.username === 'string' ? body.username.trim() : '';
-            const validation = validateReferralUsername(candidate);
+            const validation = validateUsername(candidate);
             if (!validation.valid) {
                 fieldErrors.username = [validation.error ?? 'Invalid username'];
             } else {
@@ -532,28 +554,18 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
         const newUserId = newUser.get('id') as string;
 
         // Auto-generate username and referral username from the email.
-        // Both use the same candidate; each loops independently to find a unique slot.
+        // Both use the same candidate; findUniqueHandle loops until a free slot is found.
         try {
             const { generateReferralUsername } = await import('@ottabase/referrals');
             const candidate = generateReferralUsername(email);
 
-            // Determine unique username (public handle)
-            let username = candidate;
-            let uAttempt = 1;
-            while (await User.findByUsername(username)) {
-                username = `${candidate}_${++uAttempt}`;
-            }
+            // Public username — first available slot
+            const username = await findUniqueHandle(candidate, (v) => User.findByUsername(v).then(Boolean));
 
-            // Determine unique referral username — try same value as username first
-            let referralUsername = username;
-            if (await User.findByReferralUsername(referralUsername)) {
-                // username was already taken as referral — find next available
-                let rAttempt = uAttempt + 1;
-                referralUsername = `${candidate}_${rAttempt}`;
-                while (await User.findByReferralUsername(referralUsername)) {
-                    referralUsername = `${candidate}_${++rAttempt}`;
-                }
-            }
+            // Referral username — try same value as username first
+            const referralUsername = await findUniqueHandle(username, (v) =>
+                User.findByReferralUsername(v).then(Boolean),
+            );
 
             newUser.set('username', username);
             newUser.set('referralUsername', referralUsername);
