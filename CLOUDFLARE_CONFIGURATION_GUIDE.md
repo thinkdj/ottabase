@@ -192,7 +192,7 @@ multi-app: same placeholder name = shared resource; different names = isolated (
 }
 ```
 
-### 3. `apps/ottabase-template-app-tanstack/types/cloudflare.d.ts`
+### 2. `apps/ottabase-template-app-tanstack/types/cloudflare.d.ts`
 
 **Status:** ✅ Already configured
 
@@ -225,7 +225,7 @@ export interface CloudflareEnv {
 }
 ```
 
-### 4. `apps/ottabase-template-app-tanstack/cloudflare-worker.ts`
+### 3. `apps/ottabase-template-app-tanstack/cloudflare-worker.ts`
 
 **Status:** ✅ Already configured
 
@@ -242,22 +242,24 @@ export { RealtimeActor } from '@ottabase/cf-realtime/server';
 
 ### Using Drizzle with D1
 
-The app uses `@ottabase/db` package with Drizzle adapter for D1.
+The app uses `@ottabase/db` package with Drizzle adapter for D1. Access `env` directly from your Worker fetch handler:
 
 ```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { setDriver } from '@ottabase/ottaorm';
 
-export async function GET() {
-    const { env } = await getCloudflareContext();
+// cloudflare-worker.ts
+export default {
+    async fetch(request: Request, env: CloudflareEnv) {
+        const driver = createD1Driver(env.OBCF_D1);
+        setDriver(driver);
 
-    const driver = createD1Driver(env.OBCF_D1);
-    const db = driver.getDb();
+        const db = driver.getDb();
+        const users = await db.select().from(usersTable);
 
-    const users = await db.select().from(usersTable);
-
-    return Response.json(users);
-}
+        return Response.json(users);
+    },
+};
 ```
 
 ---
@@ -285,22 +287,7 @@ export const authConfig = createOttabaseAuthConfig({
 });
 ```
 
-### 4. Configure Auth
-
-```typescript
-// app/auth.ts
-import { createOttabaseAuthConfig, createGoogleProvider } from '@ottabase/auth';
-
-export const authConfig = createOttabaseAuthConfig({
-    d1: env.OBCF_D1,
-    providers: [
-        createGoogleProvider(env),
-        // Add more providers
-    ],
-});
-```
-
-### 5. Set Environment Variables
+### 3. Set Environment Variables
 
 Add to `.env.local`:
 
@@ -318,7 +305,7 @@ AUTH_GOOGLE_SECRET=your-google-client-secret
 
 - [ ] **Cloudflare Resources Created**
     - [ ] D1 Database exists: `wrangler d1 list`
-    - [ ] KV Namespace exists: `wrangler kv:namespace list`
+    - [ ] KV Namespace exists: `wrangler kv namespace list`
     - [ ] R2 Bucket exists: `wrangler r2 bucket list`
     - [ ] Queue exists: `wrangler queues list`
 
@@ -359,28 +346,26 @@ curl https://your-app.workers.dev/api/cloudflare/r2/list
 
 ## 🔍 Accessing Cloudflare Bindings in Code
 
-### App Router (Server Components & Route Handlers)
+### Cloudflare Worker (Fetch Handler)
 
 ```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
+// cloudflare-worker.ts
+export default {
+    async fetch(request: Request, env: CloudflareEnv) {
+        // Access bindings with OBCF_* names
+        const db = env.OBCF_D1; // D1 Database
+        const kv = env.OBCF_KV; // KV Namespace
+        const r2 = env.OBCF_R2; // R2 Bucket
+        const queue = env.OBCF_QUEUE; // Queue
+        const realtime = env.OBCF_REALTIME; // Durable Object
 
-export async function GET() {
-    const { env } = await getCloudflareContext();
-
-    // Access bindings with OBCF_* names
-    const db = env.OBCF_D1; // D1 Database
-    const kv = env.OBCF_KV; // KV Namespace
-    const r2 = env.OBCF_R2; // R2 Bucket
-    const queue = env.OBCF_QUEUE; // Queue
-    const realtime = env.OBCF_REALTIME; // Durable Object
-
-    // Use with @ottabase packages
-    // D1 via OttaORM (preferred):
-    // import { createD1Driver } from '@ottabase/db/drizzle-d1';
-    // const driver = createD1Driver(db); setDriver(driver);
-    const kvClient = createKVClient({ namespace: kv });
-    const r2Client = createR2Client({ bucket: r2 });
-}
+        // D1 via OttaORM (preferred):
+        // import { createD1Driver } from '@ottabase/db/drizzle-d1';
+        // const driver = createD1Driver(db); setDriver(driver);
+        const kvClient = createKVClient({ namespace: kv });
+        const r2Client = createR2Client({ bucket: r2 });
+    },
+};
 ```
 
 ### Package Usage

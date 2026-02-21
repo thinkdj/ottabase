@@ -8,25 +8,47 @@ Durable Objects.
 ```
 ottabase/
 ├── apps/
-│   └── ottabase-template-app-tanstack/  # TanStack Router + Vite + Workers (primary)
+│   ├── ottabase-template-app-tanstack/       # TanStack Router + Vite + Workers (primary)
+│   └── ottabase-template-app-nextjs-homepage/ # Next.js + OpenNext (homepage/landing)
 ├── packages/
-│   ├── ottaorm/       # Fat models, auto-migrations, CRUD
-│   ├── db/            # Drizzle D1 driver
-│   ├── cf/            # Cloudflare bindings (D1, KV, R2, Queues)
-│   ├── queue/         # Job queue (Laravel-style dispatch/handlers)
-│   ├── auth/          # Auth.js v5 with D1
-│   ├── rbac/          # Role-based access control with KV caching
-│   ├── audit/         # Audit logging middleware & utilities
-│   ├── logger/        # Structured logging with context
-│   ├── state/         # Global state (Jotai)
-│   ├── ui-shadcn/     # shadcn/ui components
-│   ├── ui-mantine/    # Mantine provider + themes
-│   ├── ottaupload/    # File uploads (R2, CF Images)
-│   ├── ottaeditor/    # EditorJS wrapper
-│   ├── cf-realtime/   # WebSocket pub/sub (Durable Objects)
-│   ├── shortlinks/    # URL shortener schema
-│   ├── referrals/     # Referral tracking
-│   └── utils/         # Utilities (timezone, string, file, etc.)
+│   ├── ottaorm/          # Fat models, auto-migrations, CRUD, RLS
+│   ├── db/               # Drizzle D1 driver
+│   ├── cf/               # Cloudflare bindings (D1, KV, R2, Queues, Cache Keys)
+│   ├── cf-realtime/      # WebSocket pub/sub (Durable Objects)
+│   ├── queue/            # Job queue (dispatch, handlers, priority)
+│   ├── auth/             # Auth.js v5 with D1
+│   ├── rbac/             # Role-based access control with KV caching
+│   ├── audit/            # Audit logging with change tracking
+│   ├── analytics/        # Cloudflare Analytics Engine (WAE)
+│   ├── notifications/    # Multi-channel notifications (email, WebSocket)
+│   ├── shortlinks/       # URL shortener with interstitial + WAE tracking
+│   ├── referrals/        # Referral tracking (first-touch, WAE)
+│   ├── brand-engine/     # Design tokens, preset expansion, CSS injection
+│   ├── brand-engine-react/ # BrandProvider, LayoutResolver, useBrand()
+│   ├── ottalayout/       # Layout types, presets, path resolver, React slots
+│   ├── ottablog/         # Blog/CMS (Post, Category, Tag, Series, Studio)
+│   ├── email/            # Email sending (Resend, SES, MailChannels, SMTP)
+│   ├── cron/             # Cron handlers (static + DB scheduler)
+│   ├── logger/           # Structured logging (multi-transport)
+│   ├── config/           # App config, env vars, storage keys
+│   ├── scripts/          # CLI: cf:setup, cf:validate, cf:login, clean:*, db:*
+│   ├── state/            # Jotai atoms (theme, user, sidebar)
+│   ├── ui-shadcn/        # shadcn/ui components
+│   ├── ui-mantine/       # Mantine provider + themes
+│   ├── ui-components/    # Shared components (DarkModeToggle, Logo)
+│   ├── ui-code-highlight/ # Code syntax highlighting
+│   ├── ui-split-pane/    # Resizable split pane
+│   ├── ottaeditor/       # EditorJS wrapper with 15+ plugins
+│   ├── ottaupload/       # File uploads (R2, CF Images)
+│   ├── ottarenderer/     # EditorJS block renderer
+│   ├── ottaselect/       # Headless select/combobox
+│   ├── cropper/          # Vanilla JS image cropper (~3-4 KB)
+│   ├── spotlight/        # Command palette
+│   ├── docs/             # Markdown doc viewer
+│   ├── forms/            # Auto-generated CRUD forms from OttaORM models
+│   ├── i18n/             # i18next wrapper (en, es, fr, de)
+│   ├── api/              # Type-safe fetch wrapper
+│   └── utils/            # Timezone, string, file, URL utilities
 └── turbo.json
 ```
 
@@ -164,43 +186,69 @@ createTodo.mutate({ title: 'New Todo' });
 
 ## Packages
 
-### Database & ORM
+### Database, Auth & Infrastructure
 
-| Package             | Purpose                                                                  |
-| ------------------- | ------------------------------------------------------------------------ |
-| `@ottabase/ottaorm` | Fat models, CRUD, relationships, auto-migrations                         |
-| `@ottabase/db`      | Drizzle D1 driver (`createD1Driver`)                                     |
-| `@ottabase/cf`      | D1, KV, R2, Queues, Rate Limiting, Cache Keys, read-through cache        |
-| `@ottabase/queue`   | Job queue system (dispatch, handlers, deduplication, chaining, priority) |
-| `@ottabase/auth`    | Auth.js v5 with D1 adapter                                               |
-| `@ottabase/rbac`    | Role-based access control with per-org KV caching                        |
-| `@ottabase/audit`   | Audit logging middleware with event tracking                             |
-| `@ottabase/logger`  | Structured logging with context (replaces console.log)                   |
+| Package               | Purpose                                                                  |
+| --------------------- | ------------------------------------------------------------------------ |
+| `@ottabase/ottaorm`   | Fat models, CRUD, relationships, RLS, auto-migrations                    |
+| `@ottabase/db`        | Drizzle D1 driver (`createD1Driver`)                                     |
+| `@ottabase/cf`        | D1, KV, R2, Queues, Rate Limiting, Cache Keys, read-through KV cache     |
+| `@ottabase/queue`     | Job queue (dispatch, handlers, deduplication, chaining, priority)        |
+| `@ottabase/auth`      | Auth.js v5 with D1 adapter, OAuth, Credentials, Magic Link               |
+| `@ottabase/rbac`      | Role-based access control with per-org KV caching                        |
+| `@ottabase/audit`     | Audit logging with change tracking and RBAC context                      |
+| `@ottabase/logger`    | Structured logging (Console, HTTP, Sentry, Memory, Buffer transports)    |
+| `@ottabase/analytics` | Cloudflare Analytics Engine (WAE) — write events, query, funnel, top-K  |
+| `@ottabase/config`    | App config, env vars, storage key utilities                              |
+| `@ottabase/cron`      | Cron handlers — static code-defined and DB scheduler (Laravel-style)     |
+| `@ottabase/scripts`   | CLI tools: `cf:login`, `cf:setup`, `cf:validate`, `clean:*`, `db:*`     |
 
-### UI
+### UI Components
 
-| Package                | Purpose                               |
-| ---------------------- | ------------------------------------- |
-| `@ottabase/ui-shadcn`  | shadcn/ui components, ShadcnProviders |
-| `@ottabase/ui-mantine` | Mantine provider, pre-built themes    |
-| `@ottabase/ui-base`    | Framework-agnostic base styles        |
-| `@ottabase/ottaeditor` | EditorJS with 15 plugins              |
-| `@ottabase/ottaupload` | File upload (R2, CF Images)           |
+| Package                       | Purpose                                                  |
+| ----------------------------- | -------------------------------------------------------- |
+| `@ottabase/ui-shadcn`         | shadcn/ui components, ShadcnProviders                    |
+| `@ottabase/ui-mantine`        | Mantine provider, pre-built themes                       |
+| `@ottabase/ui-base`           | Framework-agnostic base styles                           |
+| `@ottabase/ui-components`     | Shared components: DarkModeToggle, Logo                  |
+| `@ottabase/ui-code-highlight` | Code syntax highlighting (Prism/Shiki)                   |
+| `@ottabase/ui-split-pane`     | Resizable split-pane layout component                    |
+| `@ottabase/ottaeditor`        | EditorJS wrapper with 15+ plugins (Spoiler, CTA, Review) |
+| `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)            |
+| `@ottabase/ottarenderer`      | EditorJS block renderer for React                        |
+| `@ottabase/ottaselect`        | Headless select/combobox component                       |
+| `@ottabase/cropper`           | Vanilla JS image cropper (~3-4 KB, zero deps)            |
+| `@ottabase/spotlight`         | Spotlight/command palette component                      |
+| `@ottabase/docs`              | Markdown doc viewer with layout themes                   |
+| `@ottabase/forms`             | Auto-generated CRUD forms from OttaORM models            |
 
-### State & Utils
+### Brand, Layout & Content
 
-| Package           | Purpose                                    |
-| ----------------- | ------------------------------------------ |
-| `@ottabase/state` | Jotai atoms (theme, user, sidebar)         |
-| `@ottabase/utils` | timezone, string, file, url, git utilities |
+| Package                         | Purpose                                                                |
+| ------------------------------- | ---------------------------------------------------------------------- |
+| `@ottabase/brand-engine`        | Design tokens, preset expansion, CSS injection, email branding         |
+| `@ottabase/brand-engine-react`  | `BrandProvider`, `LayoutResolver`, `useBrand()` React bindings         |
+| `@ottabase/ottalayout`          | Layout types, 10 presets, path resolver, React slots, LayoutMeta       |
+| `@ottabase/ottablog`            | Blog/CMS models (Post, Category, Tag, Series, Version) + Blog Studio   |
 
-### Features
+### Features & Realtime
 
-| Package                 | Purpose                             |
-| ----------------------- | ----------------------------------- |
-| `@ottabase/shortlinks`  | URL shortener schema + model        |
-| `@ottabase/referrals`   | Referral tracking system            |
-| `@ottabase/cf-realtime` | WebSocket pub/sub (Durable Objects) |
+| Package                 | Purpose                                                  |
+| ----------------------- | -------------------------------------------------------- |
+| `@ottabase/cf-realtime` | WebSocket pub/sub via Durable Objects (Pusher alternative) |
+| `@ottabase/shortlinks`  | URL shortener: short codes, interstitial, expiry, WAE clicks |
+| `@ottabase/referrals`   | Referral tracking — first-touch attribution, WAE clicks  |
+| `@ottabase/notifications` | Multi-channel notifications (email, WebSocket, system)  |
+
+### Utilities & Integrations
+
+| Package           | Purpose                                               |
+| ----------------- | ----------------------------------------------------- |
+| `@ottabase/state` | Jotai atoms (theme, user, sidebar, org)               |
+| `@ottabase/utils` | Timezone, string, file, URL, git utilities            |
+| `@ottabase/api`   | Type-safe fetch wrapper with deduping and error types |
+| `@ottabase/email` | Email sending (Resend, SES, MailChannels, Nodemailer) |
+| `@ottabase/i18n`  | i18next wrapper (en, es, fr, de)                      |
 
 ## Multi-App Database Sharing
 
@@ -243,11 +291,22 @@ All models include a nullable `appId` column:
 
 ## Creating New Apps
 
+**Full-stack SPA** (TanStack Router, OttaORM, Auth, RBAC, all CF bindings):
+
 ```bash
 cp -r apps/ottabase-template-app-tanstack apps/my-app
 cd apps/my-app
 # Update package.json name
-# Delete src/pages/demo/
+# Delete src/pages/demo/  (optional — remove demo pages)
+```
+
+**Marketing homepage** (Next.js, OpenNext, Brand Engine):
+
+```bash
+cp -r apps/ottabase-template-app-nextjs-homepage apps/my-homepage
+cd apps/my-homepage
+# Update package.json name
+# Edit config/brand.config.ts to customize theme
 ```
 
 ## Package Fat Model Pattern

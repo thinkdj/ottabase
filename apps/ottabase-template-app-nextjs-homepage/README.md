@@ -1,32 +1,27 @@
 # Ottabase Next.js Homepage Template
 
-A barebone Next.js homepage template with OpenNext and Cloudflare Workers deployment. Perfect for creating beautiful,
-dynamic homepages with modern web technologies.
+A barebone Next.js homepage template with OpenNext and Cloudflare Workers deployment. Perfect for marketing homepages,
+landing pages, and company websites.
 
-## ✨ Features
+## Features
 
-- **Next.js 16** with App Router and React Server Components
+- **Next.js App Router** with React Server Components
 - **OpenNext** for seamless Cloudflare Workers deployment
-- **Brand Engine** - Configuration-driven theming with 8+ built-in presets
+- **Brand Engine** — Configuration-driven theming with 8+ built-in presets
 - **TypeScript** for type safety
 - **Tailwind CSS** for rapid styling
 - **Dark Mode** support out of the box
 - **Fully Responsive** design
-- **Production Ready** configuration
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Start dev server
 pnpm dev
-
 # Visit http://localhost:3000
 ```
 
-## 📦 Project Structure
+## Project Structure
 
 ```
 apps/ottabase-template-app-nextjs-homepage/
@@ -45,26 +40,27 @@ apps/ottabase-template-app-nextjs-homepage/
 └── next.config.js            # Next.js configuration
 ```
 
-## 🎨 Brand Customization
+## Brand Customization
 
-This template includes Brand Engine integration for easy theming. Edit `config/brand.config.ts` to customize your brand:
+Edit `config/brand.config.ts` to set your theme preset and color overrides:
 
 ```typescript
+import type { BrandTheme } from '@ottabase/brand-engine';
+
 // config/brand.config.ts
 export const brandConfig: Partial<BrandTheme> = {
     name: 'my-brand',
     // Customize colors, typography, spacing, etc.
 };
 
-// Choose from built-in presets
+// Choose from 8 built-in presets:
+// 'default', 'neo', 'crisp', 'funky', 'artisan', 'midnight', 'rose', 'verdant'
 export const themePreset = 'default';
-// Available: 'default', 'neo', 'crisp', 'funky', 'artisan', 'midnight', 'rose', 'verdant'
 ```
 
-The Brand Engine is integrated at the worker level, so themes are automatically registered and available throughout your
-app.
+The Brand Engine registers and applies the theme at the worker level via CSS custom properties.
 
-## 🛠️ Scripts
+## Scripts
 
 | Command           | Description                                    |
 | ----------------- | ---------------------------------------------- |
@@ -76,142 +72,70 @@ app.
 | `pnpm test`       | Run tests                                      |
 | `pnpm lint`       | Run ESLint                                     |
 
-## 🌐 Deployment
+## Deployment
 
 ### Local Development
 
+No Cloudflare account needed for local development:
+
 ```bash
-# No Cloudflare account needed for local development
 pnpm dev
 ```
 
 ### Production Deployment
 
-#### 1. Login to Cloudflare
-
 ```bash
 pnpm wrangler login
-```
-
-#### 2. Deploy
-
-```bash
-# Build and deploy to Cloudflare Workers
 pnpm deploy
 ```
 
 Your app will be deployed to `https://ottabase-template-app-nextjs-homepage.your-subdomain.workers.dev`
 
-### CI/CD Deployment
+### CI/CD
 
-The template includes GitHub Actions workflow support. Configure the following secrets in your repository:
+Configure these secrets in your GitHub repository for automatic deployments on push to main:
 
-- `CLOUDFLARE_API_TOKEN` - Your Cloudflare API token
-- `CLOUDFLARE_ACCOUNT_ID` - Your Cloudflare account ID
+- `CLOUDFLARE_API_TOKEN` — API token with Edit Workers permissions
+- `CLOUDFLARE_ACCOUNT_ID` — Your Cloudflare account ID
 
-The app will be automatically deployed when changes are pushed to the main branch.
+## Customization
 
-## 📝 Customization Guide
+### Update Content
 
-### 1. Update Content
+- `app/page.tsx` — Homepage content
+- `app/about/page.tsx` — About page content
+- `app/layout.tsx` — Site metadata (title, description, etc.)
 
-Edit the following files to customize your homepage:
-
-- `app/page.tsx` - Homepage content
-- `app/about/page.tsx` - About page content
-- `app/layout.tsx` - Site metadata (title, description, etc.)
-
-### 2. Configure Brand
-
-Edit `config/brand.config.ts` to set your brand theme:
-
-```typescript
-export const themePreset = 'neo'; // Choose your preset
-```
-
-### 3. Add New Pages
-
-Create new pages in the `app/` directory:
+### Add New Pages
 
 ```bash
-# Create a new page
 mkdir -p app/contact
 echo "export default function Contact() { return <div>Contact</div> }" > app/contact/page.tsx
 ```
 
-### 4. Update Metadata
-
-Edit `app/layout.tsx` to update site metadata:
+### Update Metadata
 
 ```typescript
+// app/layout.tsx
 export const metadata: Metadata = {
     title: 'Your Site Title',
     description: 'Your site description',
-    // ... more metadata
 };
 ```
 
-## 🔧 Configuration
+## Configuration Notes
 
-### Next.js Configuration
+- **Next.js standalone output** — Used for optimal Cloudflare Workers deployment (see `next.config.js`)
+- **OpenNext** — Converts Next.js output to Cloudflare Workers format (see `open-next.config.ts`)
+- **wrangler.jsonc** — Cloudflare Workers config with asset serving and compatibility flags
 
-The template uses Next.js standalone output mode for optimal Cloudflare Workers deployment. See `next.config.js` for
-configuration details.
+## Related Templates
 
-### OpenNext Configuration
+- [Ottabase Template App (TanStack)](../ottabase-template-app-tanstack) — Full-featured SPA with OttaORM, Auth, RBAC, and
+  all Cloudflare bindings
 
-OpenNext converts Next.js apps to Cloudflare Workers format. The configuration is in `open-next.config.ts`.
+## Documentation
 
-### Wrangler Configuration
-
-Cloudflare Workers configuration is in `wrangler.jsonc`. The template includes:
-
-- Asset serving
-- Environment variables
-- Compatibility flags for Node.js APIs
-
-## 🎯 Use Cases
-
-This template is perfect for:
-
-- Marketing homepages
-- Product landing pages
-- Portfolio websites
-- Company websites
-- Documentation homepages
-- Project showcase pages
-
-## 🧪 Testing
-
-```bash
-# Run tests
-pnpm test
-
-# Run tests with coverage
-pnpm test:coverage
-```
-
-## 📚 Documentation
-
-- [Next.js Documentation](https://nextjs.org/docs)
+- [Brand Engine](../../packages/brand-engine/README.md)
 - [OpenNext Documentation](https://opennext.js.org/)
 - [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
-- [Brand Engine Documentation](../../packages/brand-engine/README.md)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
-
-## 🤝 Contributing
-
-This template is part of the Ottabase monorepo. For contributions, please refer to the main repository guidelines.
-
-## 📄 License
-
-Open Source - See the main repository for license details.
-
-## 🔗 Related Templates
-
-- [Ottabase Template App (TanStack)](../ottabase-template-app-tanstack) - Full-featured SPA template
-- [Ottabase Template App](../ottabase-template-app) - Legacy Next.js template (deprecated)
-
----
-
-**Built with ❤️ by the Ottabase team**

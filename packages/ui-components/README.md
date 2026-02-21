@@ -94,7 +94,8 @@ This component requires:
 
 - `@mantine/core` - For UI components and layout
 - `@ottabase/config` - For configuration management
-- `next/link` - For optional link functionality
+- `next/link` - For optional link functionality (**Next.js only**; if using TanStack Router or another framework,
+  wrap the Logo in your router's `<Link>` component instead and omit `linkUrl`)
 - Internal DarkModeToggle component (if darkModeSwitcher is true)
 
 ## Tree Shaking
@@ -116,8 +117,12 @@ import { DarkModeToggle } from '@ottabase/ui-components';
 
 ## Installation
 
-This package is part of the Ottabase monorepo and should be installed via the workspace dependencies.
-
 ```bash
-pnpm install @ottabase/ui-components
+pnpm add @ottabase/ui-components
+```
+
+For monorepo workspaces, use `workspace:*`:
+
+```json
+{ "dependencies": { "@ottabase/ui-components": "workspace:*" } }
 ```

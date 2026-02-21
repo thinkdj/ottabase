@@ -24,36 +24,9 @@ pnpm add @ottabase/cf
 
 ## Usage
 
-### Prisma D1 (Recommended)
-
-Use Prisma ORM with Cloudflare D1 for type-safe database access:
-
-```typescript
-import { createPrismaD1Client, getPrismaD1Client } from '@ottabase/cf/d1-prisma';
-
-export default {
-    async fetch(request: Request, env: Env) {
-        // Create a new client
-        const prisma = createPrismaD1Client(env.DB);
-
-        // Or use cached client (recommended for multiple queries)
-        const prisma = getPrismaD1Client(env.DB);
-
-        // Type-safe queries with Prisma
-        const users = await prisma.user.findMany({
-            where: { email: { contains: '@example.com' } },
-            include: { posts: true },
-        });
-
-        return Response.json(users);
-    },
-};
-```
-
-**Requirements:**
-
-- `@prisma/client` and `@prisma/adapter-d1` as peer dependencies
-- Generated Prisma client (run `pnpm db:generate`)
+> **Note:** For database access in Ottabase apps, use `@ottabase/db/drizzle-d1` with `@ottabase/ottaorm` (the standard
+> path). The raw D1 client and other helpers in this package are for direct Cloudflare binding access when OttaORM is not
+> being used.
 
 ### D1 Raw SQL
 
