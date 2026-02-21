@@ -1,6 +1,6 @@
 // @ts-nocheck - EditorJS plugins have inconsistent type definitions
 import CheckList from '@editorjs/checklist';
-import CodeTool from '@editorjs/code';
+import CodeTool from './tools/CodeTool/CodeTool';
 import Delimiter from '@editorjs/delimiter';
 import Embed from '@editorjs/embed';
 import Header from '@editorjs/header';

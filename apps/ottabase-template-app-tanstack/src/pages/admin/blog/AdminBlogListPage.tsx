@@ -49,7 +49,6 @@ interface BlogPost {
     status: PostStatus;
     authorName: string | null;
     isFeatured: boolean;
-    viewCount: number;
     readingTimeMinutes: number | null;
     publishedAt: string | null;
     createdAt: string;
@@ -302,10 +301,6 @@ export function AdminBlogListPage() {
                                             <span className="flex items-center gap-1">
                                                 <Clock className="h-3 w-3" />
                                                 {post.readingTimeMinutes ? `${post.readingTimeMinutes} min read` : '—'}
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <Eye className="h-3 w-3" />
-                                                {post.viewCount} views
                                             </span>
                                             {post.authorName && <span>by {post.authorName}</span>}
                                             <span>

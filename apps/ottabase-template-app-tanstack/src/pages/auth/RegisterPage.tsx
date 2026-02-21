@@ -1,7 +1,12 @@
 import { useSession } from '@/lib/auth';
 import { registerWithCredentials, requestEmailVerification, signInWithCredentials } from '@/lib/auth-api';
 import { resolveAuthRedirect } from '@/lib/auth-redirect';
-import { clearStoredReferralCode, getReferralExpiryInfo, getStoredReferralCode } from '@/lib/referrals';
+import {
+    clearStoredReferralCode,
+    extractUtmParams,
+    getReferralExpiryInfo,
+    getStoredReferralCode,
+} from '@/lib/referrals';
 import { RegisterForm, type RegisterFormData } from '@ottabase/auth/components';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -37,11 +42,13 @@ export function RegisterPage() {
         setError(undefined);
 
         try {
+            const utm = extractUtmParams();
             const registerResult = await registerWithCredentials({
                 name: data.name,
                 email: data.email,
                 password: data.password,
                 referralCode: referralCode || undefined,
+                ...utm,
             });
 
             if (!registerResult.success) {

@@ -26,7 +26,7 @@ import {
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
-import { provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
+import { ensureAppBrandDefaults, provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
 import { renderBindingsErrorPage, renderLockedPage, renderMaintenancePage, renderWizardPage } from './pages';
 import { ensureMetaTable, probeBindings, writeDBState, writeKVState } from './state-resolver';
 import type { PlatformStateResult } from './types';
@@ -381,6 +381,10 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
     try {
         ensureOrmConnection(env);
 
+        // Seed default brand kit + route mappings for current app (brand kits are always app-scoped)
+        const appId = (env as { APP_ID?: string }).APP_ID ?? 'ottabase-template-app';
+        await ensureAppBrandDefaults('Ottabase', appId);
+
         // Seed default roles (owner, admin, editor, viewer, member)
         const createdRoles = await Role.ensureDefaultRoles();
         const roleNames = createdRoles.map((r: any) => r.get('name') as string);
@@ -486,6 +490,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 organizationRole: 'owner',
                 assignedBy: 'system',
                 roleFallbacks: ['owner'],
+                appId: (env as { APP_ID?: string }).APP_ID ?? 'ottabase-template-app',
             });
             organizationId = provisioned.organizationId;
             assignedRole = provisioned.assignedRole;
@@ -506,6 +511,8 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         let sessionToken: string | null = null;
 
         // Primary path: JWT session strategy (default)
+        // Owner role gets *:* permissions; Auth.js callbacks will enrich from DB on /session, but JWT must have them for immediate use
+        const ownerPermissions = assignedRole === 'owner' ? ['*:*'] : [];
         try {
             const nowSeconds = Math.floor(Date.now() / 1000);
             const authSecret = (env as any).AUTH_SECRET || 'dev-secret-change-in-production';
@@ -518,7 +525,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                     emailVerified: Date.now(),
                     organizationId: organizationId || undefined,
                     roles: assignedRole ? [assignedRole] : undefined,
-                    permissions: [],
+                    permissions: ownerPermissions,
                     jti: crypto.randomUUID(),
                     iat: nowSeconds,
                     exp: nowSeconds + maxAgeSeconds,

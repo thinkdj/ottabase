@@ -6,6 +6,9 @@
 export interface TokenTypography {
     fontFamily: string;
     url?: string;
+    lineHeight?: string;
+    letterSpacing?: string;
+    fontWeight?: string | number;
 }
 
 /** Semantic color tokens shared across light and dark palettes (HSL channels) */
@@ -80,6 +83,8 @@ export interface TokenMotion {
     easingEnter?: string;
     /** Easing curve for exit animations */
     easingExit?: string;
+    /** Disable all animations – sets animation: none, transition: 0s */
+    disableAnimations?: boolean;
 }
 
 /** Cursor appearance map */
@@ -113,6 +118,19 @@ export type TokenAliases = Record<string, string>;
 // ---------------------------------------------------------------------------
 
 /**
+ * A token value that can optionally be overridden per color scheme (light, dark, etc.)
+ * If provided as a single value `T`, it applies to all modes.
+ * If provided as an object with `light`/`dark` keys, the resolver extracts the active mode.
+ */
+export type ModeValue<T> =
+    | T
+    | {
+          light?: T;
+          dark?: T;
+          [scheme: string]: T | undefined;
+      };
+
+/**
  * Named color scheme identifier.
  * `light` and `dark` are always present. Additional custom schemes
  * (e.g. `'high-contrast'`, `'colorblind-deuteranopia'`) can be added
@@ -137,15 +155,15 @@ export type ColorPalettes = {
  */
 export interface DesignTokens {
     color: ColorPalettes;
-    typography: {
+    typography?: ModeValue<{
         heading: TokenTypography;
         body: TokenTypography;
         handwriting: TokenTypography;
-    };
-    spacing?: TokenSpacing;
-    radius?: string;
-    shadow?: TokenShadows;
-    motion?: TokenMotion;
+    }>;
+    spacing?: ModeValue<TokenSpacing>;
+    radius?: ModeValue<string>;
+    shadow?: ModeValue<TokenShadows>;
+    motion?: ModeValue<TokenMotion>;
     /** Token aliases – remap semantic names to other token keys */
     aliases?: TokenAliases;
 }

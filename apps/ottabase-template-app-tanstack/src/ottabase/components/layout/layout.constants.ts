@@ -9,6 +9,7 @@ export const NAV_LINKS: NavLink[] = [
     { to: '/blog', label: 'Blog' },
     { to: '/demo', label: 'Demo' },
     { to: '/shortlinks', label: 'Links' },
+    { to: '/analytics', label: 'Analytics', authRequired: true },
     { to: '/admin', label: 'Admin' },
     { to: '/dashboard', label: 'Dashboard', authRequired: true },
     { to: '/referrals', label: 'Referrals', authRequired: true },

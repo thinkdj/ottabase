@@ -76,5 +76,5 @@ jobs:
               run: pnpm install --frozen-lockfile
 
             - name: Validate Cloudflare Configuration
-              run: pnpm cloudflare:validate
+              run: pnpm cf:validate -- --force
               continue-on-error: true

@@ -118,7 +118,7 @@ export interface BrandResolutionCache {
             /** Light-mode resolved theme (fully merged: preset + tenant overrides) */
             theme: ResolvedBrandTheme;
             /** Dark-mode resolved theme (returned alongside light so client picks at runtime) */
-            darkTheme?: ResolvedBrandTheme;
+            darkTheme?: Partial<ResolvedBrandTheme>;
             defaultColorScheme: string;
             allowDarkModeToggle: boolean;
             /** Custom CSS injected as-is (NOT validated for security/correctness) */

@@ -40,7 +40,7 @@ import { expandPresetToTokens } from '@ottabase/brand-engine/handlers';
 const tokensJson = expandPresetToTokens('verdant', null);
 await brandKit.set('tokensJson', tokensJson).save();
 
-// Custom color overrides are merged on top of preset
+// Custom color overrides are merged; cursors (not in presets) are preserved
 const customTokensJson = expandPresetToTokens('verdant', existingTokensJson);
 ```
 
@@ -159,6 +159,7 @@ const expanded = {
   shadow: preset.shadows,
   motion: preset.motion
 };
+// User-configured cursors (not in presets) are preserved during expansion
 
 // 3. MERGE: Custom overrides on top of preset
 if (existingCustomColors) {
@@ -185,14 +186,7 @@ applyBrandTheme({ colors, typography, ... });
 
 - ✅ **Single Source of Truth**: Database contains complete theme
 - ✅ **No Runtime Resolution**: No registry lookups, no theme merging
+- ✅ **Cursors Preserved**: User-configured cursors persist when switching presets (not in preset templates)
 - ✅ **Atomic Updates**: What you save = what renders
 - ✅ **Works in Cloudflare Workers**: No module-level state dependencies
 - ✅ **Self-Contained Kits**: Each kit independent, no preset dependencies
-
-**Old Architecture (Removed)**:
-
-- ❌ Stored only `themePresetId` in DB
-- ❌ Runtime registry lookup for preset colors
-- ❌ Complex resolution pipeline
-- ❌ Cloudflare Workers isolate state resets cleared registry
-- ❌ Race conditions between theme registration and usage

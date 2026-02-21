@@ -39,7 +39,6 @@
     "dependencies": {
         "@editorjs/editorjs": "^2.30.7",
         "@editorjs/checklist": "^1.6.0",
-        "@editorjs/code": "^2.9.3",
         "@editorjs/delimiter": "^1.4.2",
         "@editorjs/embed": "^2.7.6",
         "@editorjs/header": "^2.8.8",

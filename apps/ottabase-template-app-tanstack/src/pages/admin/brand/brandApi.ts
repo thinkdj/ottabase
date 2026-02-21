@@ -112,7 +112,7 @@ function buildBrandConfigUrl(params?: Record<string, string>): string {
 
 /** GET /api/brand – full config (route mappings, layouts, all brand kits). Client resolves path locally. */
 export const brandConfigApi = {
-    get: async (params?: { appId?: string | null; mode?: 'light' | 'dark' }) => {
+    get: async (params?: { appId?: string | null }) => {
         const effectiveParams = params as Record<string, string> | undefined;
         const url = buildBrandConfigUrl(effectiveParams);
         const headers: Record<string, string> = {};

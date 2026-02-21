@@ -10,5 +10,7 @@
     "wranglerConfig": "wrangler.jsonc",
     "wranglerEnv": "production",
     "healthCheckPath": "/",
-    "requiresSecrets": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
+    "requiresSecrets": [],
+    "requiresPreviewSecrets": [],
+    "$comment": "requiresSecrets/requiresPreviewSecrets are optional — wrangler.jsonc placeholders are auto-detected. Add here only for non-wrangler secrets (e.g. build-time)."
 }

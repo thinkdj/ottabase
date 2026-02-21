@@ -57,6 +57,11 @@
     color: var(--code-fg);
 }
 
+/* Space between header and code content */
+.code-block-wrapper:has(.code-block-header) .code-block-content {
+    padding-top: 0.25rem;
+}
+
 /* Syntax highlighting classes */
 .hljs {
     background: var(--code-bg) !important;
@@ -135,11 +140,38 @@
     font-weight: bold;
 }
 
-/* Line numbers */
-.code-block-line-numbers {
-    user-select: none;
+/* Line numbers (inline with code so they scroll together) */
+.code-block-wrapper pre.code-block-with-lines,
+.code-block-wrapper pre:not(.code-block-with-lines) {
+    padding: 1rem;
+}
+
+.code-block-with-lines .code-block-line {
+    display: flex;
+    min-height: 1.5em;
+}
+
+.code-block-with-lines .code-block-line-num {
+    flex-shrink: 0;
+    width: 2.5rem;
+    padding-right: 0.5rem;
     text-align: right;
     font-variant-numeric: tabular-nums;
+    color: hsl(var(--muted-foreground) / 0.5);
+}
+
+.code-block-with-lines .code-block-line > span:last-child {
+    flex: 1;
+    min-width: 0;
+}
+
+.code-line-highlight {
+    color: hsl(var(--primary)) !important;
+}
+
+/* Collapsible long code */
+.code-block-collapse-btn {
+    transition: opacity 0.15s;
 }
 
 /* Copy button styling */

@@ -87,6 +87,8 @@ export {
     type ThemePresetItem,
 } from './themes';
 
+export { PRESET_MAP, PRESET_THEMES, type PresetTheme } from './presets';
+
 // ── Preview (admin) ────────────────────────────────────────────────────────
 export { buildPreviewTheme, type PreviewKitData } from './previewTheme';
 

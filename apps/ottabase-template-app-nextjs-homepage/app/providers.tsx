@@ -24,9 +24,7 @@ export function Providers({
 
             if (brandKit) {
                 // Use stored light/dark themes if available
-                const themeToApply = isDark
-                    ? brandKit._darkTheme || brandKit.theme
-                    : brandKit._lightTheme || brandKit.theme;
+                const themeToApply = isDark ? brandKit.darkTheme || brandKit.theme : brandKit.theme;
 
                 applyBrandTheme(themeToApply);
             }

@@ -222,7 +222,7 @@ export interface FullBrandConfig {
             /** Light-mode resolved theme */
             theme: ResolvedBrandTheme;
             /** Dark-mode resolved theme */
-            darkTheme?: ResolvedBrandTheme;
+            darkTheme?: Partial<ResolvedBrandTheme>;
             defaultColorScheme: string;
             allowDarkModeToggle: boolean;
             customCss?: string;
@@ -304,11 +304,21 @@ function resolveConfigForPath(
     const match = routeMatcher(pathname);
     const kitId = match?.brandKitId ?? full.kit ?? Object.keys(full.brandKitsMap)[0];
     const layoutId = match?.layoutTemplateId ?? 'homepage';
-    const kit = kitId ? full.brandKitsMap[kitId] : Object.values(full.brandKitsMap)[0];
+    // When route's brandKitId references a deleted kit, use `default` from API response
+    const kit =
+        (kitId ? full.brandKitsMap[kitId] : null) ??
+        full.brandKitsMap[full.kit ?? Object.keys(full.brandKitsMap)[0]] ??
+        Object.values(full.brandKitsMap)[0];
     if (!kit) return null;
 
     // Pick mode-appropriate theme (dark-mode theme if available, else fall back to light)
-    let theme = mode === 'dark' && kit.darkTheme ? kit.darkTheme : kit.theme;
+    let theme =
+        mode === 'dark' && kit.darkTheme
+            ? (deepMerge(
+                  kit.theme as unknown as Record<string, unknown>,
+                  kit.darkTheme as Record<string, unknown>,
+              ) as unknown as ResolvedBrandTheme)
+            : kit.theme;
 
     // Apply per-route token overrides if present
     if (match?.tokenOverridesJson) {

@@ -17,7 +17,7 @@ describe('mergeLayoutConfig', () => {
 
     it('preserves valid partial values', () => {
         const partial = { header: 'minimal', density: 'compact' } as unknown;
-        const result = mergeLayoutConfig(partial);
+        const result = mergeLayoutConfig(partial as any);
         expect(result.header).toBe('minimal');
         expect(result.density).toBe('compact');
         expect(result.navigation).toBe(DEFAULT_LAYOUT.navigation);
@@ -26,12 +26,12 @@ describe('mergeLayoutConfig', () => {
     });
 
     it('defaults invalid header to default', () => {
-        const result = mergeLayoutConfig({ header: 'invalid' } as unknown);
+        const result = mergeLayoutConfig({ header: 'invalid' } as any);
         expect(result.header).toBe(DEFAULT_LAYOUT.header);
     });
 
     it('defaults invalid footer to default', () => {
-        const result = mergeLayoutConfig({ footer: 'yes' } as unknown);
+        const result = mergeLayoutConfig({ footer: 'yes' } as any);
         expect(result.footer).toBe(DEFAULT_LAYOUT.footer);
     });
 

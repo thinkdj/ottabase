@@ -6,6 +6,7 @@ import {
     type LayoutConfig,
     type LayoutPresetId,
 } from '@ottabase/ottalayout';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import {
     Badge,
     Button,
@@ -31,10 +32,9 @@ import {
 } from '@ottabase/ui-shadcn';
 import { IconAdjustments, IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useApiQuery } from '@ottabase/ottaorm/client';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { brandKitApi, layoutApi, type BrandKitItem, type LayoutMappingItem, type LayoutTemplateItem } from './brandApi';
+import { layoutApi, type BrandKitItem, type LayoutMappingItem, type LayoutTemplateItem } from './brandApi';
 
 const PRESET_IDS = Object.keys(LAYOUT_PRESETS) as LayoutPresetId[];
 
@@ -347,6 +347,12 @@ export function LayoutEditorTab() {
                         Higher priorities win. This form builds the list of patterns that the router evaluates every
                         request against.
                     </CardDescription>
+                    <p className="text-xs text-muted-foreground mt-2">
+                        <strong className="pl-1.5">*</strong> = one segment (e.g. <code>/docs/*</code> matches{' '}
+                        <code>/docs/config</code> but not <code>/docs/packages/config</code>).
+                        <br />
+                        <strong>**</strong> = any depth (e.g. <code>/docs/**</code> matches all docs routes).
+                    </p>
                 </CardHeader>
                 <CardContent>
                     <MappingsEditor

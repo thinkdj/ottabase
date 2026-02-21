@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { BrandTheme } from './theme';
-import type { DesignTokens, TokenColors, TokenCursors, TokenMotion, TokenShadows, TokenSpacing } from './tokens';
+import type { TokenColors, TokenCursors, TokenMotion, TokenShadows, TokenSpacing, TokenTypography } from './tokens';
 
 /** Default light-mode colour palette */
 export const DEFAULT_COLORS_LIGHT: TokenColors = {
@@ -102,6 +102,7 @@ export const DEFAULT_MOTION: Required<TokenMotion> = {
     easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
     easingEnter: 'cubic-bezier(0, 0, 0.2, 1)',
     easingExit: 'cubic-bezier(0.4, 0, 1, 1)',
+    disableAnimations: false,
 };
 
 /** Default cursor map */
@@ -119,7 +120,7 @@ export const DEFAULT_SPACING: TokenSpacing = {
 };
 
 /** Default typography for base theme */
-export const DEFAULT_TYPOGRAPHY: DesignTokens['typography'] = {
+export const DEFAULT_TYPOGRAPHY: { heading: TokenTypography; body: TokenTypography; handwriting: TokenTypography } = {
     heading: { fontFamily: 'Inter' },
     body: { fontFamily: 'Inter' },
     handwriting: { fontFamily: 'cursive' },
