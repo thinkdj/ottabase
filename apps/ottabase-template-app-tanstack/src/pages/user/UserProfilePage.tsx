@@ -35,19 +35,19 @@ export function UserProfilePage() {
     const { user, updateUser, refreshSession } = useSession({ skipAutoSync: true });
     const toast = useRBACToast();
 
+    // Convenience accessor — the auth User type uses an index signature so extra
+    // properties like `username` are present at runtime but not statically typed.
+    const userUsername: string = user?.username ?? '';
+
     const [formData, setFormData] = useState({
         name: user?.name || '',
         email: user?.email || '',
-        username: userUsername || '',
+        username: userUsername,
     });
 
     const [usernameError, setUsernameError] = useState<string | null>(null);
     const [currentImage, setCurrentImage] = useState<string | null>(user?.image ?? null);
     const [isPhotoUploading, setIsPhotoUploading] = useState(false);
-
-    // Convenience accessor — the auth User type uses an index signature so extra
-    // properties like `username` are present at runtime but not statically typed.
-    const userUsername: string = user?.username ?? '';
 
     const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccountRecord[]>([]);
     const [isAccountsLoading, setIsAccountsLoading] = useState(true);

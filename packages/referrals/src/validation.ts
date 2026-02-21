@@ -22,7 +22,8 @@ export { validateUsername, USERNAME_MIN_LENGTH, USERNAME_MAX_LENGTH, USERNAME_PA
  * and append a numeric suffix (e.g. `_2`, `_3` …) when a conflict is found.
  */
 export function generateReferralUsername(email: string): string {
-    const prefix = email.split('@')[0] ?? email;
+    const atIndex = email.indexOf('@');
+    const prefix = atIndex >= 0 ? email.slice(0, atIndex) : email;
     const slug = prefix
         .toLowerCase()
         .replace(/[^a-z0-9_]/g, '_') // replace invalid chars
