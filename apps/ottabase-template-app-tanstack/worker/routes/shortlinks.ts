@@ -1,3 +1,6 @@
+import { AnalyticsQueryError, queryEvents, validateAnalyticsConfig } from '@ottabase/analytics/query';
+import { trackEvent } from '@ottabase/analytics/track';
+import { getSession } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
 import { Shortlink, buildRedirectResponse } from '@ottabase/shortlinks';
@@ -5,12 +8,28 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { getAuthOptions } from '../lib/auth-utils';
 import { readJson } from '../lib/utils';
 
 export interface ShortlinkContext {
     request: Request;
     env: CloudflareEnv;
     url: URL;
+}
+
+/** Push shortlink click to Analytics Engine (non-blocking; never throws) */
+function pushShortlinkClick(env: CloudflareEnv, request: Request, shortCode: string, fullUrl: string): void {
+    if (!env.OBCF_ANALYTICS_SHORTLINKS) return;
+    trackEvent({
+        dataset: env.OBCF_ANALYTICS_SHORTLINKS,
+        index: shortCode,
+        blobs: [
+            request.headers.get('cf-connecting-country') ?? 'unknown',
+            (request.headers.get('user-agent') ?? '').slice(0, 200),
+            request.headers.get('referer') ?? '',
+            fullUrl ?? '',
+        ],
+    });
 }
 
 export async function handleShortlinksList(context: ShortlinkContext): Promise<Response> {
@@ -191,10 +210,7 @@ export async function handleShortlinkExplicitGo(context: ShortlinkContext): Prom
             });
         }
 
-        shortlink.trackClick().catch((err) => {
-            console.error('Failed to track shortlink click:', err);
-        });
-
+        pushShortlinkClick(env, request, shortlink.get('shortCode') ?? 'unknown', shortlink.get('fullUrl') ?? '');
         return buildRedirectResponse(shortlink);
     } catch (error) {
         console.error('Shortlink explicit redirect error:', error);
@@ -222,9 +238,68 @@ export async function handleShortlinkFallback(context: ShortlinkContext): Promis
         return null;
     }
 
-    shortlink.trackClick().catch((error) => {
-        console.error('Shortlink click tracking error:', error);
-    });
-
+    pushShortlinkClick(env, request, shortlink.get('shortCode') ?? 'unknown', shortlink.get('fullUrl') ?? '');
     return buildRedirectResponse(shortlink);
+}
+
+/**
+ * Handle GET /api/shortlinks/analytics - query WAE for click analytics
+ * Requires auth. Params: shortCode (optional), days (default 7), groupBy (country|shortCode|day)
+ */
+export async function handleShortlinksAnalytics(context: ShortlinkContext): Promise<Response> {
+    const { env, request, url } = context;
+
+    const session = await getSession(request, env as any, getAuthOptions(env));
+    const userId = session?.user?.id;
+    const isDev =
+        !env.ENVIRONMENT ||
+        env.ENVIRONMENT === 'development' ||
+        env.ENVIRONMENT === 'dev' ||
+        env.ENVIRONMENT === 'test';
+
+    if (!userId && !isDev) {
+        return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+    }
+
+    const configErr = validateAnalyticsConfig({
+        accountId: env.CLOUDFLARE_ACCOUNT_ID,
+        apiToken: env.CLOUDFLARE_ANALYTICS_API_TOKEN,
+    });
+    if (configErr) {
+        return errorResponse(configErr, 503, { code: 'ANALYTICS_NOT_CONFIGURED' });
+    }
+
+    const shortCode = url.searchParams.get('shortCode') ?? '';
+    const days = Math.min(90, Math.max(1, parseInt(url.searchParams.get('days') ?? '7', 10)));
+    const groupBy = url.searchParams.get('groupBy') ?? 'country';
+
+    // Map shortCode-specific groupBy to generic groupBy shortcuts
+    const groupByMap: Record<string, string> = { country: 'country', shortCode: 'index', day: 'day' };
+    const resolvedGroupBy = groupByMap[groupBy];
+    if (!resolvedGroupBy) {
+        return errorResponse('Invalid groupBy: use country, shortCode, or day', 400, { code: 'INVALID_GROUPBY' });
+    }
+
+    try {
+        const result = await queryEvents(
+            { accountId: env.CLOUDFLARE_ACCOUNT_ID!, apiToken: env.CLOUDFLARE_ANALYTICS_API_TOKEN! },
+            {
+                dataset: 'shortlink_clicks',
+                indexFilter: shortCode || undefined,
+                days,
+                groupBy: resolvedGroupBy,
+                limit: groupBy === 'day' ? 90 : 100,
+            },
+        );
+
+        return jsonResponse({
+            data: result.data,
+            meta: { groupBy, days, shortCode: shortCode || null },
+        });
+    } catch (e) {
+        if (e instanceof AnalyticsQueryError) {
+            return errorResponse('Analytics query failed', 502, { code: 'ANALYTICS_ERROR', details: e.detail });
+        }
+        throw e;
+    }
 }

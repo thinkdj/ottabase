@@ -38,10 +38,6 @@ export const shortlinksTable = sqliteTable('shortlinks', {
         .default(false),
     interstitialSeconds: integer('interstitial_seconds').default(10),
 
-    // Analytics
-    clicks: integer('clicks').notNull().default(0),
-    lastClickedAt: integer('last_clicked_at'),
-
     // Metadata
     createdAt: integer('created_at')
         .notNull()

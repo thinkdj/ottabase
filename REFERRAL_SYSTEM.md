@@ -36,7 +36,7 @@ tracking logs, and user-managed referral usernames.
 │ 4. Server (processReferralAttribution):                        │
 │    - Looks up User by referralUsername                         │
 │    - Sets new user's referredById                              │
-│    - Updates ReferralTracking: pending → completed             │
+│    - Creates ReferralTracking record (completed) + full context │
 │    ↓                                                            │
 │ 5. Done! ✅                                                     │
 └─────────────────────────────────────────────────────────────────┘
@@ -431,20 +431,26 @@ const referralCode = getStoredReferralCode(); // Or from registration form data
 const result = await processReferralAttribution({
     newUserId: user.id,
     referralCode: referralCode,
+    ipAddress: getClientIpAddress(request),
+    userAgent: request.headers.get('user-agent'),
+    referer: request.headers.get('referer'),
+    meta: { utm: { source: body.utm_source, ... }, headers: { ... } },
 });
 
 if (result.attributed) {
     console.log(`User referred by ${result.referrerId}`);
-    console.log(`Updated ${result.trackingRecordsUpdated} tracking records`);
+    console.log(`Created ${result.trackingRecordsUpdated} conversion record(s)`);
 }
 ```
+
+**Options:** `ipAddress`, `userAgent`, `referer`, `meta` — passed from request at signup for full conversion context.
 
 **What it does:**
 
 1. Validates referralCode is provided
 2. Looks up referrer by referralUsername
 3. Sets new user's `referredById` field
-4. Updates ReferralTracking records: `pending` → `completed`
+4. Creates ReferralTracking record (status `completed`) with ipAddress, userAgent, referer, meta
 5. Prevents self-referral
 
 ### Model Methods
@@ -489,15 +495,19 @@ For production Auth.js integration, you have two options:
 
 ```typescript
 // In your registration form
+import { extractUtmParams, getStoredReferralCode } from '@/lib/referrals';
+
 const referralCode = getStoredReferralCode();
 
-// Send to server
+// Send to server (include UTM params from URL for conversion context)
+const utm = extractUtmParams();
 await fetch('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify({
         email,
         password,
         referralCode, // Pass from localStorage
+        ...utm, // utm_source, utm_medium, utm_campaign, etc.
     }),
 });
 ```
@@ -507,14 +517,17 @@ await fetch('/api/auth/register', {
 ```typescript
 // In auth.config.ts or similar
 callbacks: {
-  async signIn({ user, account, profile }) {
-    // Get referral code from request/session context
+  async signIn({ user, account, profile }, request) {
     const referralCode = /* extract from request */;
 
     if (user.id && referralCode) {
       await processReferralAttribution({
         newUserId: user.id,
         referralCode,
+        ipAddress: getClientIpAddress(request),
+        userAgent: request.headers?.get?.('user-agent'),
+        referer: request.headers?.get?.('referer'),
+        meta: { utm: {...}, headers: {...} }, // optional
       });
     }
     return true;

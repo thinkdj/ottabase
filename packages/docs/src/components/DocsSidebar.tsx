@@ -37,9 +37,7 @@ export const DocsSidebar = memo(function DocsSidebar({
         return all
             .map((group) => ({
                 ...group,
-                pages: group.pages.filter(
-                    (page) => page.title.toLowerCase().includes(query) || page.content.toLowerCase().includes(query),
-                ),
+                pages: group.pages.filter((page) => page.title.toLowerCase().includes(query)),
             }))
             .filter((group) => group.pages.length > 0);
     }, [config.sources, searchQuery]);

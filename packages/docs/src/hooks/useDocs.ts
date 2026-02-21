@@ -33,9 +33,7 @@ export function useDocs({ config, activeSlug }: UseDocsOptions) {
         return groups
             .map((group) => ({
                 ...group,
-                pages: group.pages.filter(
-                    (page) => page.title.toLowerCase().includes(query) || page.content.toLowerCase().includes(query),
-                ),
+                pages: group.pages.filter((page) => page.title.toLowerCase().includes(query)),
             }))
             .filter((group) => group.pages.length > 0);
     }, [groups, searchQuery]);

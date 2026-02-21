@@ -27,6 +27,7 @@
         "@mantine/hooks": "catalog:",
         "@mantine/modals": "catalog:",
         "@mantine/notifications": "catalog:",
+        "@ottabase/analytics": "workspace:*",
         "@ottabase/api": "workspace:*",
         "@ottabase/auth": "workspace:*",
         "@ottabase/brand-engine": "workspace:*",

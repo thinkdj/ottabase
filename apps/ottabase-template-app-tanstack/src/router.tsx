@@ -1,4 +1,7 @@
+import { NotFoundPage } from '@/components/NotFoundPage';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { RouteLoadingFallback } from '@/components/RouteLoadingFallback';
+import { usePageViewTracking } from '@/hooks/usePageViewTracking';
 import { api, isApiError } from '@/lib/api';
 import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { APP_META } from '@/ottabase/config/app.config';
@@ -21,6 +24,10 @@ const ADMIN_REQUIRED_PERMISSIONS = ['admin'];
 
 function RootLayout() {
     const pathname = tanstackRouterAdapter.usePathname();
+
+    // Track page views automatically
+    usePageViewTracking();
+
     return (
         <>
             <BrandPathSync pathname={pathname} />
@@ -54,7 +61,7 @@ function HomeRouteComponent() {
     };
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-theme-section">
             <h1 className="text-4xl font-bold">{APP_META.appName}</h1>
             <p className="text-muted-foreground">{APP_META.description}</p>
 
@@ -64,13 +71,15 @@ function HomeRouteComponent() {
                 Worker).
             </p>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-theme-card">
                 <div className="flex flex-wrap gap-2">
                     <Button asChild variant="outline">
                         <Link to="/demo">Go to Demo</Link>
                     </Button>
                     <Button asChild variant="outline">
-                        <Link to="/docs/">Docs</Link>
+                        <Link to="/docs/$" params={{ _splat: '' }}>
+                            Docs
+                        </Link>
                     </Button>
                     <Button variant="outline" onClick={checkHealth} disabled={loading}>
                         {loading ? 'Checking...' : '/api/health'}
@@ -105,14 +114,8 @@ function renderAdminRoute(children: ReactNode) {
 
 const rootRoute = new RootRoute({
     component: RootLayout,
-    notFoundComponent: () => (
-        <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-semibold">Not found</h2>
-            <Button asChild variant="outline">
-                <Link to="/">Back home</Link>
-            </Button>
-        </div>
-    ),
+    loader: () => undefined, // Triggers pending state so pendingComponent shows during lazy route load
+    notFoundComponent: NotFoundPage,
 });
 
 const indexRoute = new Route({
@@ -499,6 +502,25 @@ const shortlinksRoute = new Route({
     component: lazyRouteComponent(() =>
         import('@/pages/shortlinks/ShortlinksPage').then((m) => ({
             default: m.ShortlinksPage,
+        })),
+    ),
+});
+
+// Unified analytics (Core + Shortlinks + Referrals tabs)
+const analyticsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/analytics',
+    validateSearch: (search: Record<string, unknown>) => ({
+        tab:
+            (search.tab as string) === 'referrals'
+                ? 'referrals'
+                : (search.tab as string) === 'shortlinks'
+                  ? 'shortlinks'
+                  : 'core',
+    }),
+    component: lazyRouteComponent(() =>
+        import('@/pages/analytics/AnalyticsPage').then((m) => ({
+            default: m.AnalyticsPage,
         })),
     ),
 });
@@ -893,6 +915,7 @@ const routeTree = rootRoute.addChildren([
     resetPasswordRoute,
     dashboardRoute,
     shortlinksRoute,
+    analyticsRoute,
     migrationStatusRoute,
     referralsRoute,
     adminRoute,
@@ -932,6 +955,9 @@ const browserHistory = createBrowserHistory();
 export const router = new Router({
     routeTree,
     history: browserHistory,
+    defaultPendingComponent: RouteLoadingFallback,
+    defaultPendingMs: 0,
+    defaultPendingMinMs: 0,
 });
 
 declare module '@tanstack/react-router' {

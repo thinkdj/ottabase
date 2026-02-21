@@ -38,6 +38,8 @@ export function DocsLayout({ config, activeSlug, onNavigate, className = '' }: D
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTocId, setActiveTocId] = useState<string>('');
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
+    const [resolvedContent, setResolvedContent] = useState<string>('');
+    const [isLoadingContent, setIsLoadingContent] = useState(false);
 
     const [themeOverride, setThemeOverride] = useState<DocsTheme | null>(null);
     const effectiveTheme: DocsTheme = themeOverride ?? config.theme ?? 'standard';
@@ -58,6 +60,30 @@ export function DocsLayout({ config, activeSlug, onNavigate, className = '' }: D
         [config.sources, activeSlug],
     );
 
+    useEffect(() => {
+        if (!activePage) {
+            setResolvedContent('');
+            return;
+        }
+
+        if (typeof activePage.content === 'string') {
+            setResolvedContent(activePage.content);
+        } else if (typeof activePage.content === 'function') {
+            setIsLoadingContent(true);
+            activePage
+                .content()
+                .then((mod) => {
+                    setResolvedContent(typeof mod === 'string' ? mod : mod.default);
+                    setIsLoadingContent(false);
+                })
+                .catch((err) => {
+                    console.error('Failed to load markdown', err);
+                    setResolvedContent('# Error loading content\\n\\nPlease try again later.');
+                    setIsLoadingContent(false);
+                });
+        }
+    }, [activePage]);
+
     const { prevPage, nextPage } = useMemo(() => {
         const allPages = config.sources.flatMap((source) =>
             source.pages.map((page) => ({
@@ -75,6 +101,7 @@ export function DocsLayout({ config, activeSlug, onNavigate, className = '' }: D
     const handleNavigate = useCallback(
         (slug: string) => {
             setMobileNavOpen(false);
+            setActiveTocId('');
             onNavigate?.(slug);
         },
         [onNavigate],
@@ -142,12 +169,19 @@ export function DocsLayout({ config, activeSlug, onNavigate, className = '' }: D
             />
 
             {/* Main content */}
-            <main className="otta-docs-main">
-                {activePage ? (
+            <main
+                className="otta-docs-main"
+                style={{
+                    opacity: isLoadingContent ? 0.25 : 1,
+                    transition: 'opacity 0.2s ease-in-out',
+                    pointerEvents: isLoadingContent ? 'none' : 'auto',
+                }}
+            >
+                {activePage && resolvedContent ? (
                     <>
                         <article className="otta-docs-article">
                             <MarkdownRenderer
-                                content={activePage.content}
+                                content={resolvedContent}
                                 codeRenderMode={config.codeRenderMode ?? 'ui-code-highlight'}
                             />
 
@@ -184,7 +218,7 @@ export function DocsLayout({ config, activeSlug, onNavigate, className = '' }: D
 
                         {/* Right TOC */}
                         <TableOfContents
-                            content={activePage.content}
+                            content={resolvedContent}
                             activeId={activeTocId}
                             onItemClick={handleTocClick}
                             className="otta-docs-toc-sidebar"

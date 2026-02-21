@@ -91,6 +91,11 @@ AUTH_SESSION_MAX_AGE=2592000
 ALLOW_NULL_TENANT=true            # allow system-scope (single-founder) admin
 MULTI_TENANT_ENABLED=true         # create personal org on first user (default true)
 BOOTSTRAP_OWNER_SECRET=supersecret-token
+
+# Analytics (for /analytics - shortlinks + referrals WAE queries)
+CLOUDFLARE_ACCOUNT_ID=            # 32-char account ID (wrangler vars)
+CLOUDFLARE_ANALYTICS_API_TOKEN=  # Secret: Account Analytics Read; set via: pnpm wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN
+# Bindings: OBCF_ANALYTICS_SHORTLINKS (shortlink_clicks), OBCF_ANALYTICS_REFERRALS (referral_clicks)
 ```
 
 ### First-user + admin guard
@@ -153,6 +158,7 @@ See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details
 - **Theme Presets** - 8 built-in presets (Default, Neo, Crisp, Funky, Artisan, Midnight, Rose, Verdant)
 - **Color Customization** - Override individual colors on top of presets
 - **Light + Dark Modes** - Separate color palettes for each mode
+- **Cursors** - Custom SVG or native cursors, persisted across preset changes
 - **Logo Upload** - Support for logo, dark logo, icon, and OG image
 - **CSS Variable Injection** - Automatic theme application via CSS custom properties
 - **KV Cache** - 1-hour TTL cache for fast brand config reads
@@ -160,12 +166,15 @@ See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details
 
 ### Admin UI
 
-Access brand customization at `/admin/brand-kits/[id]`:
+Access brand customization at `/admin/brand-engine/kits/[id]`:
 
 1. **Theme Tab** - Select preset, generate palette, override colors
-2. **Identity Tab** - Upload logos, customize name/tagline
-3. **Typography Tab** - Configure font families
-4. **Advanced Tab** - Spacing, radius, shadows, motion settings
+2. **Brand Tab** - Name, tagline, parent kit
+3. **Logo Tab** - Upload logos (primary, dark, icon, OG image)
+4. **Fonts Tab** - Typography for heading, body, handwriting
+5. **Motion Tab** - Duration, easing (light/dark split)
+6. **Cursors Tab** - Custom cursors per state (shared or light/dark split)
+7. **Advanced Tab** - Spacing, radius, shadows, custom CSS
 
 ### Architecture
 
@@ -193,6 +202,7 @@ Apply to document via CSS variables
 - ✅ No runtime theme registry lookups
 - ✅ Works reliably in Cloudflare Workers (no isolate state issues)
 - ✅ Custom color overrides merge cleanly on preset base
+- ✅ Cursors persist when switching presets (user-configured, not in presets)
 - ✅ Atomic updates (what you save = what renders)
 
 ### API Endpoints
@@ -263,7 +273,7 @@ apps/ottabase-template-app-tanstack/
 │   └── providers/         # App providers wrapper
 ├── index.html             # HTML template
 ├── vite.config.ts         # Vite configuration
-├── wrangler.jsonc         # Cloudflare Workers config
+├── wrangler.jsonc         # Cloudflare Workers config (template; CI substitutes placeholders)
 └── tailwind.config.cjs    # Tailwind CSS config
 ```
 
@@ -276,8 +286,8 @@ apps/ottabase-template-app-tanstack/
 - `/login` - Login (OAuth / Magic Link / Credentials)
 - `/register` - Registration (Credentials)
 - `/dashboard` - Protected route
-- `/admin/brand-kits` - Brand kit management (admin only)
-- `/admin/brand-kits/:id` - Brand kit editor (Theme/Identity/Typography/Advanced tabs)
+- `/admin/brand-engine` - Brand kit list (admin only)
+- `/admin/brand-engine/kits/:id` - Brand kit editor (Theme, Brand, Logo, Fonts, Motion, Cursors, Advanced tabs)
 - `/demo/mantine` - Mantine UI components demo
 - `/demo/shadcn` - shadcn/ui components demo
 - `/demo/ottaeditor` - Rich text editor demo
@@ -290,6 +300,8 @@ apps/ottabase-template-app-tanstack/
 - `/demo/cloudflare/queues` - Queues demo
 - `/demo/cloudflare/rate-limiting` - Rate limiting demo
 - `/demo/cloudflare/realtime` - Durable Objects realtime demo
+- `/shortlinks` - Shortlink management
+- `/analytics` - Unified analytics (Shortlinks + Referrals tabs, WAE)
 
 ### API Endpoints
 
@@ -300,6 +312,8 @@ apps/ottabase-template-app-tanstack/
 - `/api/auth/register` - Credentials registration
 - `/api/auth/config` - Auth UI configuration
 - `/api/ottaorm/*` - OttaORM CRUD endpoints
+- `/api/shortlinks/analytics` - Shortlink clicks (powers /analytics Shortlinks tab)
+- `/api/referrals/analytics` - Referral clicks (powers /analytics Referrals tab)
 
 ## Using Cloudflare Bindings
 
@@ -376,7 +390,22 @@ Update the IDs in `wrangler.jsonc` with your actual:
 - R2 bucket name
 - Queue name
 
-#### 3. Deploy
+#### 3. Analytics (optional)
+
+Shortlink and referral click tracking uses **Cloudflare Analytics Engine** (WAE). Clicks are written automatically; the
+unified analytics page at `/analytics` requires:
+
+1. **CLOUDFLARE_ACCOUNT_ID** – Set in `wrangler.jsonc` vars (32-char account ID from Cloudflare dashboard).
+
+2. **CLOUDFLARE_ANALYTICS_API_TOKEN** – Create a token with **Account | Account Analytics | Read**:
+
+    ```bash
+    pnpm wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN
+    ```
+
+    When prompted, paste your token. Without this, `/analytics` returns 503.
+
+#### 4. Deploy
 
 ```bash
 # Deploy to Cloudflare Workers

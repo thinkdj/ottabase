@@ -4,8 +4,8 @@ export interface DocPage {
     slug: string;
     /** Display title */
     title: string;
-    /** Raw markdown/MDX content */
-    content: string;
+    /** Raw markdown/MDX content, or a lazily evaluated async function that returns it */
+    content: string | (() => Promise<string | { default: string }>);
     /** Optional group/category for sidebar organization */
     group?: string;
     /** Sort order within group (lower = first) */

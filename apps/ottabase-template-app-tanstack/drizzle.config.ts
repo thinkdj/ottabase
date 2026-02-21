@@ -29,7 +29,7 @@ export default defineConfig({
     // D1 credentials (set via environment variables or wrangler)
     dbCredentials: {
         accountId: process.env.CLOUDFLARE_ACCOUNT_ID || '',
-        databaseId: process.env.CLOUDFLARE_D1_DATABASE_ID || '',
+        databaseId: process.env.D1_DATABASE_ID || '',
         token: process.env.CLOUDFLARE_API_TOKEN || '',
     },
 

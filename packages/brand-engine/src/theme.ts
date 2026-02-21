@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { LayoutConfig } from '@ottabase/ottalayout';
-import type { DesignTokens, TokenCursors } from './tokens';
+import type { DesignTokens, ModeValue, TokenCursors } from './tokens';
 
 /**
  * A complete BrandTheme – the union of design tokens, layout configuration,
@@ -22,5 +22,5 @@ export interface BrandTheme {
     layout?: LayoutConfig;
 
     /** Cursor appearance overrides */
-    cursors?: TokenCursors;
+    cursors?: ModeValue<TokenCursors>;
 }

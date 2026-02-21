@@ -117,9 +117,6 @@ export const postsTable = sqliteTable(
         passwordHash: text('password_hash'),
         passwordHint: text('password_hint'),
 
-        // View count
-        viewCount: integer('view_count').notNull().default(0),
-
         // Scheduled publish date (for scheduled posts)
         publishAt: integer('publish_at'),
 

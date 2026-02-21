@@ -1,5 +1,22 @@
 # Ottabase Monorepo - AI Coding Agent Instructions
 
+> **Reference:** See `AGENTS.MD` at repo root for full architecture and package details.
+
+## AI Guidelines (MUST FOLLOW)
+
+1. **OttaORM First**: All data models MUST inherit from `BaseModel`. Do not write raw SQL or vanilla Drizzle queries
+   unless absolutely necessary for performance. Logic belongs in the Model class, not in "Controllers" or "Services".
+2. **Schema Integrity**: Drizzle schema lives in `apps/*/ottabase/db/schema.ts`. Export all tables there. Package tables
+   come from package schemas (e.g. `@ottabase/shortlinks/schema`) and are wired via `schemas-helper.ts`.
+3. **Workspace Protocol**: Always use `workspace:*` for internal package dependencies. Use `catalog:` for shared
+   external dependencies (React, Drizzle, etc.).
+4. **Don't Reinvent**: Check `@ottabase/utils` for internal helpers (date, string, currency) and `@ottabase/ui-shadcn`
+   for UI components before creating new ones.
+5. **Edge Runtime**: This is a Cloudflare Workers project. Avoid Node.js-only APIs (fs, child_process) in app code.
+6. **Fat Models**: Encapsulate logic in models. E.g., `user.activate()` instead of `authService.activate(user)`.
+
+---
+
 ## Architecture Overview
 
 Monorepo using **pnpm workspaces** + **Turborepo**. TanStack Router + Vite app with Cloudflare Workers deployment.
@@ -8,8 +25,7 @@ Monorepo using **pnpm workspaces** + **Turborepo**. TanStack Router + Vite app w
 ottabase/
 ├── apps/
 │   └── ottabase-template-app-tanstack/  # Primary app (TanStack + Workers)
-├── packages/                            # Shared code
-└── turbo.json
+└── packages/                            # Shared code
 ```
 
 ## Local Development
@@ -112,10 +128,10 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 
 **Capabilities:**
 
-- ✅ Create new tables
-- ✅ Add columns to existing tables
-- ⚠️ New NOT NULL columns need DEFAULT values
-- ❌ Cannot rename/drop columns (use custom migration)
+- Create new tables
+- Add columns to existing tables
+- New NOT NULL columns need DEFAULT values
+- Cannot rename/drop columns (use custom migration)
 
 ## Client Hooks (TanStack Query)
 
@@ -126,11 +142,14 @@ import { createModelHooks } from '@ottabase/ottaorm/client';
 export const {
     useList: useTodos,
     useDetail: useTodo,
+    useFind: useTodoBySlug, // Find by field/value (e.g., slug, email)
     useCreate: useCreateTodo,
     useUpdate: useUpdateTodo,
     useDelete: useDeleteTodo,
     useInfiniteList: useTodosInfinite,
 } = createModelHooks<TodoType>({ entity: 'todos' });
+
+// Usage: const { data: todo } = useTodoBySlug("slug", "my-todo-slug");
 ```
 
 ## Key Packages
@@ -140,12 +159,13 @@ export const {
 | `@ottabase/ottaorm`     | Fat models, CRUD, relationships, auto-migrations                  |
 | `@ottabase/db`          | Drizzle D1 driver (`createD1Driver`)                              |
 | `@ottabase/cf`          | D1, KV, R2, Queues, Rate Limiting wrappers                        |
-| `@ottabase/queue`       | Job queue (dispatch, handlers, deduplication, chaining, priority) |
 | `@ottabase/auth`        | Auth.js v5 with D1 adapter                                        |
-| `@ottabase/ui-shadcn`   | shadcn/ui components                                              |
+| `@ottabase/ui-shadcn`   | shadcn/ui components - use before custom UI                       |
 | `@ottabase/ui-mantine`  | Mantine provider, pre-built themes                                |
 | `@ottabase/state`       | Jotai atoms (theme, user, sidebar)                                |
-| `@ottabase/utils`       | timezone, string, file, url utilities                             |
+| `@ottabase/utils`       | timezone, string, file, url - check before new helpers            |
+| `@ottabase/queue`       | Job queue (dispatch, handlers, deduplication, chaining, priority) |
+| `@ottabase/ottablog`    | Blog engine (Post, Tag)                                           |
 | `@ottabase/ottaupload`  | File upload (R2, CF Images)                                       |
 | `@ottabase/cf-realtime` | WebSocket pub/sub (Durable Objects)                               |
 | `@ottabase/shortlinks`  | URL shortener schema                                              |
@@ -163,16 +183,16 @@ export const {
 
 Add to catalog when:
 
-- ✅ Used by 2+ packages/apps (react, typescript, drizzle-orm)
-- ✅ Core framework libraries (mantine, tanstack, jotai)
-- ✅ Shared tooling (tsup, vitest, eslint)
+- Used by 2+ packages/apps (react, typescript, drizzle-orm)
+- Core framework libraries (mantine, tanstack, jotai)
+- Shared tooling (tsup, vitest, eslint)
 
 ```yaml
 # pnpm-workspace.yaml
 catalog:
-    react: ^19.1.0
-    typescript: ~5.8.4
-    drizzle-orm: ^0.44.2
+    react: ^19.2.4
+    typescript: ^5.9.3
+    drizzle-orm: ^0.38.3
 ```
 
 Then reference in package.json:
@@ -185,16 +205,30 @@ Then reference in package.json:
 
 Add locally when:
 
-- ✅ Package-specific utility (e.g., `editorjs` only in `ottaeditor`)
-- ✅ App-specific tool not needed elsewhere
-- ✅ Experimental/testing before promoting to catalog
+- Package-specific utility (e.g., `editorjs` only in `ottaeditor`)
+- App-specific tool not needed elsewhere
+- Experimental/testing before promoting to catalog
 
 ```bash
 # Add to specific package
 pnpm add --filter @ottabase/ottaeditor @editorjs/editorjs
 
 # Add to specific app
-pnpm add --filter @ottabase/template-app-tanstack some-package
+pnpm add --filter @ottabase/ottabase-template-app-tanstack some-package
+```
+
+### Adding to Catalog Steps
+
+```bash
+# 1. Add to pnpm-workspace.yaml catalog section
+# 2. Add to root package.json if needed for scripts
+pnpm add -w new-package
+
+# 3. Reference in consuming package.json
+{ "new-package": "catalog:" }
+
+# 4. Install
+pnpm install
 ```
 
 ### Workspace Protocol
@@ -308,10 +342,6 @@ pnpm dev:worker                   # Worker only
 # Build
 pnpm build                        # Everything
 pnpm build:pkg                    # Packages only
-pnpm build --filter=@ottabase/ui-mantine
-
-# Test
-pnpm test
 pnpm test --filter=@ottabase/ottaorm
 
 # Quality
@@ -322,36 +352,70 @@ pnpm type-check
 pnpm storybook
 ```
 
+---
+
+## IMPORTANT NOTES FOR CODING AGENTS
+
+- **Build commands:** Agents should only run build and test commands for a particular package using the `--filter` flag
+  (e.g., `pnpm build:pkg --filter=<package>` or `pnpm test --filter=<package>`). Do not run full app builds
+  (`pnpm build`, `pnpm dev`, etc.) unless you are a cloud agent; only cloud agents may execute full builds or dev
+  workflows. Local development user is responsible for running full app builds, and shall share output with the agent as
+  required.
+- Do not make stray .MD files after a task (like SUMMARY.MD).
+- Add comments in code snippets to explain what they do, especially for complex logic.
+- `README.MD`s should be concise, with examples. Don't be too verbose. Keep text sharply focused on the task at hand. Do
+  not add Possible Issues or Troubleshooting sections unless directly relevant.
+- Use consistent formatting and indentation in code snippets (check `.prettierrc`).
+- Make tests for new features, modify existing ones if needed, and ensure they pass before marking a task as complete.
+- When adding new packages, ensure they follow the same structure and conventions as existing ones.
+- **UI:** Minimal design; use components from `@ottabase/ui-shadcn` where possible. Add tailwind classes in components;
+  avoid new CSS files unless absolutely necessary. New UI should feel native (GitHub/Notion style - simple, clean,
+  functional). Always add dark mode classes.
+- **Golden Rule:** KISS, DRY, SIMPLEST SOLUTIONS. Think about developer experience for future maintainers.
+- Code snippets in documentation: complete and copy-paste ready; include necessary imports and context.
+
 ## Agent Workflow Checklist
 
-1. **Review documentation first** - Read this file and `AGENTS.MD` before making changes to confirm architecture and
-   dependency rules.
+1. **Review documentation first** - Read this file and `AGENTS.MD` before making changes.
 2. **Install dependencies** with `pnpm install` if needed; never use npm or yarn.
 3. **Build packages first** with `pnpm build:pkg` when working with shared code.
 4. **For code changes**, run quality checks:
     - `pnpm lint` - Lint all packages
     - `pnpm type-check` - TypeScript validation
-    - `pnpm test` - Run tests (use `--filter` to scope: `pnpm test --filter=@ottabase/ottaorm`)
-5. **When adding dependencies**, follow the decision flow:
-    - Multiple packages/apps will use it → Add to `pnpm-workspace.yaml` catalog first, then reference as `"catalog:"`
-    - Single package/app only → Add directly to that package's `package.json`
-    - Internal packages → Use `"workspace:*"`
-6. **Validate shared changes** don't break `apps/ottabase-template-app-tanstack`:
-    - Build the app: `pnpm build --filter=ottabase-template-app-tanstack`
-    - Run dev: `pnpm dev` and test affected features
-7. **For model changes**, ensure:
+    - `pnpm test --filter=<package>` - Run tests scoped to the package you changed
+5. **When adding dependencies**, follow the decision flow above.
+6. **For model changes**, ensure:
     - Model has `static entity` and `static table`
     - Table is exported in `ottabase/db/schema.ts`
     - Model is registered with `registerModels()` if CRUD API needed
     - Run `curl -X POST http://localhost:3004/api/ottaorm/init` to apply migrations
 
+## CI / PR Checklist
+
+- **CI:** Run `pnpm build:pkg && pnpm test --filter=@ottabase/ottaorm` before opening a PR.
+- **Checks:** Ensure `pnpm lint` and `pnpm type-check` pass locally or in CI.
+- **Formatting:** Ensure Prettier formatting is applied (`pnpm format`). Enforce via pre-commit (husky + lint-staged).
+- **PR Description:** Short summary, list affected packages, testing notes, migration steps if any.
+
+## Formatting / Pre-commit
+
+- **Format command:** `pnpm format` (runs `prettier --write .` on the whole repo).
+- **Pre-commit:** Husky + lint-staged run format and basic lint on staged files.
+
 ## Anti-Patterns
 
-❌ Circular deps between packages  
-❌ Direct file imports across package boundaries  
-❌ Framework-specific code in generic packages  
-❌ Package-specific lock files  
-❌ Implicit dependencies  
-❌ Missing type definitions  
-❌ Models without `static entity` and `static table`  
-❌ Using npm or yarn instead of pnpm
+- Circular deps between packages
+- Direct file imports across package boundaries
+- Framework-specific code in generic packages
+- Package-specific lock files
+- Implicit dependencies
+- Missing type definitions
+- Models without `static entity` and `static table`
+- Using npm or yarn instead of pnpm
+- Logic in Controllers/Services instead of models
+- Stray SUMMARY.MD or noise docs after tasks
+
+## Maintainers
+
+- **Maintainer:** @thinkdj - architecture questions & exceptions.
+- **Escalation:** Open an issue with the `architecture` label or ping `#dev-ops` for urgent infra problems.

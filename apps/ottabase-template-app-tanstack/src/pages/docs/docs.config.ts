@@ -1,5 +1,5 @@
 import type { DocsConfig, DocsSource } from '@ottabase/docs';
-import { extractTitle, fileNameToSlug } from '@ottabase/docs';
+import { extractTitle, fileNameToSlug, slugToTitle } from '@ottabase/docs';
 
 /**
  * Load markdown files from Vite's import.meta.glob result into a DocsSource.
@@ -7,14 +7,18 @@ import { extractTitle, fileNameToSlug } from '@ottabase/docs';
  */
 export function createDocsSource(
     label: string,
-    modules: Record<string, string>,
+    modules: Record<string, string | (() => Promise<string>)>,
     options?: { basePath?: string; order?: number },
 ): DocsSource {
     const pages = Object.entries(modules)
         .map(([filePath, content]) => {
             const fileName = filePath.split('/').pop() || '';
             const slug = fileNameToSlug(fileName);
-            const title = extractTitle(content) || fileName.replace(/\.(md|mdx)$/i, '');
+            let title = slugToTitle(slug);
+            if (typeof content === 'string') {
+                const extracted = extractTitle(content);
+                if (extracted !== 'Untitled') title = extracted;
+            }
             return { slug, title, content, sourcePath: filePath, order: slug === 'index' ? 0 : 50 };
         })
         .sort((a, b) => a.order - b.order);
@@ -34,7 +38,7 @@ export function createDocsSource(
  * @param options.order - Sort order for this source
  */
 export function createPackageSource(
-    modules: Record<string, string>,
+    modules: Record<string, string | (() => Promise<string>)>,
     options?: { prefix?: string; order?: number },
 ): DocsSource {
     const prefix = options?.prefix ?? '@ottabase/';
@@ -43,8 +47,13 @@ export function createPackageSource(
             const parts = filePath.split('/');
             const pkgIndex = parts.indexOf('packages');
             const pkgName = pkgIndex >= 0 ? parts[pkgIndex + 1] : 'unknown';
-            const extracted = extractTitle(content);
-            const title = extracted !== 'Untitled' ? extracted : `${prefix}${pkgName}`;
+
+            let title = `${prefix}${pkgName}`;
+            if (typeof content === 'string') {
+                const extracted = extractTitle(content);
+                if (extracted !== 'Untitled') title = extracted;
+            }
+
             return { slug: pkgName, title, content, sourcePath: filePath, order: 50 };
         })
         .sort((a, b) => a.title.localeCompare(b.title));
@@ -60,17 +69,16 @@ export function createPackageSource(
 // --- Load documentation sources ---
 
 // 1. Docs directory (repo root /docs/)
-const guidesModules = import.meta.glob('/../../docs/*.md', { eager: true, query: '?raw', import: 'default' }) as Record<
+const guidesModules = import.meta.glob('/../../docs/*.md', { query: '?raw', import: 'default' }) as Record<
     string,
-    string
+    () => Promise<string>
 >;
 
 // 2. Package READMEs (toggle on/off by commenting this line)
 const packageModules = import.meta.glob('/../../packages/*/README.md', {
-    eager: true,
     query: '?raw',
     import: 'default',
-}) as Record<string, string>;
+}) as Record<string, () => Promise<string>>;
 
 export const docsConfig: DocsConfig = {
     title: 'Ottabase Docs',

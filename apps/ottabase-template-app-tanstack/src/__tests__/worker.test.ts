@@ -172,8 +172,6 @@ describe('Cloudflare Worker API', () => {
                     type: 'redirect',
                     appId: null,
                     expiryDate: null,
-                    clicks: 0,
-                    lastClickedAt: null,
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 },
@@ -197,9 +195,7 @@ describe('Cloudflare Worker API', () => {
                 fullUrl: 'https://example.com',
                 type: 'redirect',
                 appId: 'test',
-                clicks: 0,
                 expiryDate: null,
-                lastClickedAt: null,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
             };

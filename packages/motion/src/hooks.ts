@@ -41,6 +41,7 @@ export function readMotionTokens(): Required<TokenMotion> {
         slideOffset: getCSSVar('--slide-offset', DEFAULT_MOTION.slideOffset),
         opacityFrom: getCSSVar('--opacity-from', DEFAULT_MOTION.opacityFrom),
         reducedMotion: getCSSVar('--reduced-motion', DEFAULT_MOTION.reducedMotion),
+        disableAnimations: DEFAULT_MOTION.disableAnimations,
     };
 }
 

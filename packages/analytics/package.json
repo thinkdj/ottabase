@@ -1,0 +1,59 @@
+{
+    "name": "@ottabase/analytics",
+    "version": "1.0.0",
+    "description": "Cloudflare Workers Analytics Engine wrapper — track events, query aggregated data",
+    "type": "module",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        },
+        "./track": {
+            "types": "./dist/track.d.ts",
+            "import": "./dist/track.js",
+            "require": "./dist/track.cjs"
+        },
+        "./query": {
+            "types": "./dist/query.d.ts",
+            "import": "./dist/query.js",
+            "require": "./dist/query.cjs"
+        },
+        "./identity": {
+            "types": "./dist/identity.d.ts",
+            "import": "./dist/identity.js",
+            "require": "./dist/identity.cjs"
+        },
+        "./server": {
+            "types": "./dist/server.d.ts",
+            "import": "./dist/server.js",
+            "require": "./dist/server.cjs"
+        }
+    },
+    "sideEffects": false,
+    "scripts": {
+        "build": "tsup src/index.ts src/track.ts src/query.ts src/identity.ts src/server.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/track.ts src/query.ts src/identity.ts src/server.ts --format cjs,esm --dts --watch",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "@types/node": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "peerDependencies": {
+        "@cloudflare/workers-types": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "@cloudflare/workers-types": {
+            "optional": true
+        }
+    }
+}
