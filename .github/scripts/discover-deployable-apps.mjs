@@ -23,7 +23,7 @@ const DEFAULT_CONFIG = {
     wranglerConfig: 'wrangler.jsonc',
     wranglerEnv: 'production',
     healthCheckPath: '/',
-    requiresSecrets: ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'D1_DATABASE_ID', 'KV_NAMESPACE_ID'],
+    requiresSecrets: ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID'],
 };
 
 function discoverApps() {

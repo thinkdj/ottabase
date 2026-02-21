@@ -22,7 +22,17 @@ import {
     DEFAULT_TYPOGRAPHY,
 } from './defaults';
 import type { BrandTheme } from './theme';
-import type { ColorScheme, DesignTokens, TokenAliases, TokenColors } from './tokens';
+import type {
+    ColorScheme,
+    ModeValue,
+    TokenAliases,
+    TokenColors,
+    TokenCursors,
+    TokenMotion,
+    TokenShadows,
+    TokenSpacing,
+    TokenTypography,
+} from './tokens';
 
 // ---------------------------------------------------------------------------
 // Deep-merge utility
@@ -76,6 +86,25 @@ export function resolveAliases(palette: TokenColors, aliases?: TokenAliases): To
 }
 
 // ---------------------------------------------------------------------------
+// Mode extraction utility
+// ---------------------------------------------------------------------------
+
+/**
+ * Safely extracts the value for the active mode from a ModeValue token.
+ */
+export function resolveModeValue<T>(
+    val: ModeValue<T> | undefined,
+    mode: ColorScheme,
+    isBase: (v: unknown) => boolean,
+): T | undefined {
+    if (val === undefined || val === null) return undefined;
+    if (isBase(val)) return val as T;
+
+    const modeVal = val as { [scheme: string]: T | undefined };
+    return modeVal[mode] ?? modeVal['light'] ?? modeVal['system'];
+}
+
+// ---------------------------------------------------------------------------
 // ResolvedBrandTheme – the fully-flattened output of the resolver
 // ---------------------------------------------------------------------------
 
@@ -83,12 +112,16 @@ export function resolveAliases(palette: TokenColors, aliases?: TokenAliases): To
 export interface ResolvedBrandTheme {
     name: string;
     colors: TokenColors;
-    typography: DesignTokens['typography'];
-    spacing: NonNullable<DesignTokens['spacing']>;
+    typography: {
+        heading: TokenTypography;
+        body: TokenTypography;
+        handwriting: TokenTypography;
+    };
+    spacing: TokenSpacing;
     radius: string;
-    shadows: Required<NonNullable<DesignTokens['shadow']>>;
-    motion: Required<NonNullable<DesignTokens['motion']>>;
-    cursors: NonNullable<BrandTheme['cursors']>;
+    shadows: Required<TokenShadows>;
+    motion: Required<TokenMotion>;
+    cursors: TokenCursors;
     layout: LayoutConfig;
 }
 
@@ -129,18 +162,36 @@ export function resolveTheme(options: ResolveOptions): ResolvedBrandTheme {
     // 3. Resolve token aliases
     const colors = resolveAliases(palette, merged.tokens?.aliases);
 
-    // 4. Merge remaining tokens with defaults (tokens can be partial/missing after clean reset)
-    const rawTypo = merged.tokens?.typography;
+    // 4. Merge remaining tokens with defaults, applying mode overrides
+    const rawTypo = resolveModeValue(
+        merged.tokens?.typography,
+        mode,
+        (v: any) => 'heading' in v || 'body' in v || 'handwriting' in v,
+    );
     const typography = {
-        heading: { ...DEFAULT_TYPOGRAPHY.heading, ...rawTypo?.heading },
-        body: { ...DEFAULT_TYPOGRAPHY.body, ...rawTypo?.body },
-        handwriting: { ...DEFAULT_TYPOGRAPHY.handwriting, ...rawTypo?.handwriting },
+        heading: { ...DEFAULT_TYPOGRAPHY.heading, ...rawTypo?.heading } as TokenTypography,
+        body: { ...DEFAULT_TYPOGRAPHY.body, ...rawTypo?.body } as TokenTypography,
+        handwriting: { ...DEFAULT_TYPOGRAPHY.handwriting, ...rawTypo?.handwriting } as TokenTypography,
     };
-    const spacing = { ...DEFAULT_SPACING, ...merged.tokens?.spacing };
-    const radius = merged.tokens?.radius ?? '0.5rem';
-    const shadows = { ...DEFAULT_SHADOWS, ...(merged.tokens?.shadow ?? {}) };
-    const motion = { ...DEFAULT_MOTION, ...(merged.tokens?.motion ?? {}) };
-    const cursors = merged.cursors ?? DEFAULT_CURSORS;
+
+    const isStringMap = (v: any) =>
+        typeof v === 'object' && v !== null && Object.values(v).every((x) => typeof x === 'string');
+
+    const rawSpacing = resolveModeValue(merged.tokens?.spacing, mode, isStringMap);
+    const spacing = { ...DEFAULT_SPACING, ...rawSpacing };
+
+    const rawRadius = resolveModeValue(merged.tokens?.radius, mode, (v) => typeof v === 'string');
+    const radius = rawRadius ?? '0.5rem';
+
+    const rawShadows = resolveModeValue(merged.tokens?.shadow, mode, isStringMap);
+    const shadows = { ...DEFAULT_SHADOWS, ...(rawShadows ?? {}) };
+
+    const rawMotion = resolveModeValue(merged.tokens?.motion, mode, isStringMap);
+    const motion = { ...DEFAULT_MOTION, ...(rawMotion ?? {}) };
+
+    const rawCursors = resolveModeValue(merged.cursors, mode, isStringMap);
+    const cursors = rawCursors ?? DEFAULT_CURSORS;
+
     const layout = { ...DEFAULT_LAYOUT, ...merged.layout };
 
     return {

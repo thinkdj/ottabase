@@ -37,6 +37,9 @@ function expandPresetToTokens(presetId: string | null, existingTokensJson: strin
 
     const preset = PRESET_MAP[presetId];
 
+    // Cursors: user overrides take precedence; fall back to preset cursors (e.g. artisan/funky have registry cursors)
+    const effectiveCursors = existing.cursors ?? (preset as { cursors?: Record<string, string> }).cursors;
+
     // Build full tokens with preset colors as base
     const expanded: Record<string, unknown> = {
         // Preset colors (light + dark)
@@ -50,6 +53,8 @@ function expandPresetToTokens(presetId: string | null, existingTokensJson: strin
         radius: existing.radius || preset.radius,
         shadow: existing.shadow || preset.shadows,
         motion: existing.motion || preset.motion,
+        // Cursors: user-configured or preset default (artisan/funky have registry cursors)
+        ...(effectiveCursors !== undefined && { cursors: effectiveCursors }),
     };
 
     // Merge custom color overrides on top of preset

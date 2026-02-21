@@ -15,10 +15,21 @@ import {
 } from '@ottabase/brand-engine';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { OttaSelect, type ItemRendererProps, type OttaSelectItem } from '@ottabase/ottaselect';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@ottabase/ui-shadcn';
+import {
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Input,
+    Label,
+    Switch,
+} from '@ottabase/ui-shadcn';
 import { IconPalette, IconRefresh } from '@tabler/icons-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { expandPresetPreservingCursors } from './presetUtils';
 import { OverrideSection } from './OverrideSection';
 
 /** Convert HSL string "221 83% 53%" to CSS hsl() */
@@ -266,39 +277,43 @@ export function BrandKitThemeTab({
     }, [tokensJson, selectedPreset, selectedId]);
 
     // Resolved spacing, radius, shadow from tokensJson (with preset defaults)
-    const resolvedSpacing = useMemo(() => {
+    const { parsedSpacing, parsedRadius, parsedShadow } = useMemo(() => {
         try {
-            const parsed = JSON.parse(tokensJson || '{}') as { spacing?: Record<string, string> };
-            return { ...DEFAULT_SPACING, ...parsed.spacing } as Record<string, string>;
+            const p = JSON.parse(tokensJson || '{}');
+            return {
+                parsedSpacing: p.spacing,
+                parsedRadius: p.radius,
+                parsedShadow: p.shadow,
+            };
         } catch {
-            return { ...DEFAULT_SPACING };
-        }
-    }, [tokensJson]);
-    const resolvedRadius = useMemo(() => {
-        try {
-            const parsed = JSON.parse(tokensJson || '{}') as { radius?: string };
-            return parsed.radius ?? '0.5rem';
-        } catch {
-            return '0.5rem';
-        }
-    }, [tokensJson]);
-    const resolvedShadows = useMemo(() => {
-        try {
-            const parsed = JSON.parse(tokensJson || '{}') as { shadow?: Record<string, string> };
-            return { ...DEFAULT_SHADOWS, ...parsed.shadow } as Record<string, string>;
-        } catch {
-            return { ...DEFAULT_SHADOWS };
+            return {};
         }
     }, [tokensJson]);
 
-    const hasSpacingRadiusShadowOverrides = useMemo(() => {
-        try {
-            const parsed = JSON.parse(tokensJson || '{}') as Record<string, unknown>;
-            return !!(parsed.spacing || parsed.radius || parsed.shadow);
-        } catch {
-            return false;
+    const isSplitLayout = useMemo(() => {
+        const hasLight = (v: any) =>
+            v && typeof v === 'object' && ('light' in v || 'dark' in v) && !('xs' in v) && !('section' in v);
+        return hasLight(parsedSpacing) || hasLight(parsedRadius) || hasLight(parsedShadow);
+    }, [parsedSpacing, parsedRadius, parsedShadow]);
+
+    const extractMode = (v: any, fallback: any) => {
+        if (!v) return fallback;
+        if (typeof v === 'object' && ('light' in v || 'dark' in v) && !('xs' in v) && !('section' in v)) {
+            return { ...fallback, ...(v.light || {}) };
         }
-    }, [tokensJson]);
+        return { ...fallback, ...v };
+    };
+
+    const resolvedSpacing = useMemo(() => extractMode(parsedSpacing, DEFAULT_SPACING), [parsedSpacing]);
+    const resolvedRadius = useMemo(() => {
+        if (!parsedRadius) return '0.5rem';
+        if (typeof parsedRadius === 'object' && ('light' in parsedRadius || 'dark' in parsedRadius))
+            return parsedRadius.light || '0.5rem';
+        return parsedRadius as string;
+    }, [parsedRadius]);
+    const resolvedShadows = useMemo(() => extractMode(parsedShadow, DEFAULT_SHADOWS), [parsedShadow]);
+
+    const hasSpacingRadiusShadowOverrides = !!(parsedSpacing || parsedRadius || parsedShadow);
 
     const handleRestorePresetColors = () => {
         try {
@@ -437,23 +452,55 @@ export function BrandKitThemeTab({
         [tokensJson, onTokensChange],
     );
 
+    const handleSplitLayoutToggle = useCallback(
+        (enabled: boolean) => {
+            try {
+                const p = JSON.parse(tokensJson || '{}');
+                if (enabled) {
+                    // Duplicate into light and dark
+                    if (p.spacing) p.spacing = { light: { ...p.spacing }, dark: { ...p.spacing } };
+                    if (p.radius) p.radius = { light: p.radius, dark: p.radius };
+                    if (p.shadow) p.shadow = { light: { ...p.shadow }, dark: { ...p.shadow } };
+                } else {
+                    // Revert to shared
+                    if (p.spacing?.light) p.spacing = { ...p.spacing.light };
+                    if (p.radius?.light) p.radius = p.radius.light;
+                    if (p.shadow?.light) p.shadow = { ...p.shadow.light };
+                }
+                onTokensChange(JSON.stringify(p, null, 2));
+            } catch {}
+        },
+        [tokensJson, onTokensChange],
+    );
+
     /** Apply spacing/radius/shadow override to tokensJson */
     const handleSpacingRadiusShadowChange = useCallback(
-        (updates: { spacing?: Record<string, string>; radius?: string; shadow?: Record<string, string> }) => {
+        (
+            mode: 'light' | 'dark' | 'shared',
+            updates: { spacing?: Record<string, string>; radius?: string; shadow?: Record<string, string> },
+        ) => {
             try {
                 const existing = JSON.parse(tokensJson || '{}') as Record<string, unknown>;
-                if (updates.spacing)
-                    existing.spacing = { ...(existing.spacing as object), ...updates.spacing } as Record<
-                        string,
-                        string
-                    >;
-                if (updates.radius !== undefined) existing.radius = updates.radius;
-                if (updates.shadow)
-                    existing.shadow = { ...(existing.shadow as object), ...updates.shadow } as Record<string, string>;
+
+                const applyUpdate = (key: 'spacing' | 'radius' | 'shadow', val: any) => {
+                    if (val === undefined) return;
+                    if (mode === 'shared') {
+                        if (key === 'radius') existing.radius = val;
+                        else existing[key] = { ...((existing[key] as object) || {}), ...val };
+                    } else {
+                        existing[key] = existing[key] || {};
+                        const modeObj = existing[key] as any;
+                        if (key === 'radius') modeObj[mode] = val;
+                        else modeObj[mode] = { ...(modeObj[mode] || {}), ...val };
+                    }
+                };
+
+                applyUpdate('spacing', updates.spacing);
+                applyUpdate('radius', updates.radius);
+                applyUpdate('shadow', updates.shadow);
+
                 onTokensChange(JSON.stringify(existing, null, 2));
-            } catch {
-                onTokensChange(JSON.stringify(updates, null, 2));
-            }
+            } catch {}
         },
         [tokensJson, onTokensChange],
     );
@@ -499,7 +546,7 @@ export function BrandKitThemeTab({
                 <OttaSelect
                     mode="single"
                     items={themePresetItems}
-                    value={selectedItem ? { id: selectedItem.id, name: selectedItem.name, ...selectedItem } : null}
+                    value={selectedItem ? { ...selectedItem, id: selectedItem.id, name: selectedItem.name } : null}
                     onChange={(v) => {
                         const selectedId = (v as OttaSelectItem)?.id as string | null | undefined;
                         const presetId = selectedId && selectedId !== 'default' ? selectedId : null;
@@ -522,18 +569,7 @@ export function BrandKitThemeTab({
                                   }
                                 | undefined;
                             if (preset) {
-                                // Full reset: use preset values only (no merge of previous custom overrides)
-                                const expanded: Record<string, unknown> = {
-                                    color: {
-                                        light: { ...preset.colors.light },
-                                        dark: { ...preset.colors.dark },
-                                    },
-                                    typography: preset.typography ?? undefined,
-                                    spacing: preset.spacing ?? undefined,
-                                    radius: preset.radius ?? '0.5rem',
-                                    shadow: preset.shadows ?? undefined,
-                                    motion: preset.motion ?? undefined,
-                                };
+                                const expanded = expandPresetPreservingCursors(preset, tokensJson);
                                 onTokensChange(JSON.stringify(expanded, null, 2));
                             }
                         }
@@ -723,21 +759,195 @@ export function BrandKitThemeTab({
 
     // ── Spacing, radius & shadows override section ───────────────────────
     const RADIUS_OPTIONS = ['0', '0.125rem', '0.25rem', '0.5rem', '0.75rem', '1rem', '1.5rem', '9999px'];
+
+    const SHADOW_PRESETS = [
+        { label: 'Flat', desc: 'No shadows', value: { xs: 'none', sm: 'none', md: 'none', lg: 'none', xl: 'none' } },
+        {
+            label: 'Soft',
+            desc: 'Smooth, dispersed',
+            value: {
+                xs: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+                sm: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+                md: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+                lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+                xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+            },
+        },
+        {
+            label: 'Sharp',
+            desc: 'Harsh offsets',
+            value: {
+                xs: '1px 1px 0px 0 rgb(0 0 0 / 0.15)',
+                sm: '2px 2px 0px 0 rgb(0 0 0 / 0.15)',
+                md: '4px 4px 0px 0 rgb(0 0 0 / 0.15)',
+                lg: '8px 8px 0px 0 rgb(0 0 0 / 0.15)',
+                xl: '12px 12px 0px 0 rgb(0 0 0 / 0.15)',
+            },
+        },
+        {
+            label: 'Deep',
+            desc: 'High elevation',
+            value: {
+                xs: '0 4px 8px 0 rgb(0 0 0 / 0.15)',
+                sm: '0 8px 16px 0 rgb(0 0 0 / 0.15)',
+                md: '0 12px 24px 0 rgb(0 0 0 / 0.15)',
+                lg: '0 24px 48px 0 rgb(0 0 0 / 0.15)',
+                xl: '0 32px 64px 0 rgb(0 0 0 / 0.15)',
+            },
+        },
+    ];
+
+    const matchesPreset = (sh: any, pre: (typeof SHADOW_PRESETS)[0]) => {
+        if (!sh) return false;
+        return (
+            (sh.xs || DEFAULT_SHADOWS.xs) === pre.value.xs &&
+            (sh.sm || DEFAULT_SHADOWS.sm) === pre.value.sm &&
+            (sh.md || DEFAULT_SHADOWS.md) === pre.value.md &&
+            (sh.lg || DEFAULT_SHADOWS.lg) === pre.value.lg &&
+            (sh.xl || DEFAULT_SHADOWS.xl) === pre.value.xl
+        );
+    };
+
+    const renderSRSConfig = (mode: 'light' | 'dark' | 'shared') => {
+        const getActive = (modeObj: any, defaultObj: any) => {
+            if (!isSplitLayout) return extractMode(modeObj, defaultObj);
+            return extractMode(modeObj?.[mode], defaultObj);
+        };
+        const s = getActive(parsedSpacing, DEFAULT_SPACING);
+        const sh = getActive(parsedShadow, DEFAULT_SHADOWS);
+        const rRaw = !isSplitLayout ? extractMode(parsedRadius, '0.5rem') : extractMode(parsedRadius?.[mode], '0.5rem');
+        const r = typeof rRaw === 'string' ? rRaw : '0.5rem';
+
+        const isDark = mode === 'dark';
+        const isShared = mode === 'shared';
+
+        return (
+            <div
+                className={`space-y-6 flex-1 px-4 max-w-full ${!isShared ? (isDark ? 'bg-zinc-950/20 text-white rounded-r-lg' : 'bg-white text-zinc-900 rounded-l-lg') : ''}`}
+            >
+                {!isShared && <h3 className="font-semibold text-sm capitalize">{mode} Mode Overrides</h3>}
+
+                <div className="grid gap-6">
+                    <div className="space-y-2">
+                        <Label className={isDark ? 'text-zinc-200' : ''}>Spacing</Label>
+                        <div className="space-y-2">
+                            {(['section', 'card', 'element'] as const).map((key) => (
+                                <div key={key} className="flex items-center gap-2">
+                                    <span className="w-16 shrink-0 text-xs text-muted-foreground capitalize">
+                                        {key}
+                                    </span>
+                                    <Input
+                                        value={s[key] ?? ''}
+                                        onChange={(e) =>
+                                            handleSpacingRadiusShadowChange(mode, {
+                                                spacing: { [key]: e.target.value.trim() || DEFAULT_SPACING[key] },
+                                            })
+                                        }
+                                        placeholder={DEFAULT_SPACING[key]}
+                                        className={`font-mono text-sm ${isDark ? 'border-zinc-800 bg-zinc-900' : ''}`}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className={isDark ? 'text-zinc-200' : ''}>Border radius</Label>
+                        <div className="flex flex-wrap gap-2">
+                            {RADIUS_OPTIONS.map((rad) => (
+                                <button
+                                    key={rad}
+                                    type="button"
+                                    onClick={() => handleSpacingRadiusShadowChange(mode, { radius: rad })}
+                                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                                        r === rad
+                                            ? 'border-primary bg-primary/10 text-primary'
+                                            : isDark
+                                              ? 'border-zinc-800 hover:bg-zinc-800'
+                                              : 'border-input hover:bg-accent'
+                                    }`}
+                                    style={{ borderRadius: rad === '9999px' ? '9999px' : rad }}
+                                >
+                                    {rad === '9999px' ? 'pill' : rad}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className={isDark ? 'text-zinc-200' : ''}>Shadow elevation</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {SHADOW_PRESETS.map((pre) => {
+                                const active = matchesPreset(sh, pre);
+                                return (
+                                    <button
+                                        key={pre.label}
+                                        type="button"
+                                        onClick={() => handleSpacingRadiusShadowChange(mode, { shadow: pre.value })}
+                                        className={`flex flex-col items-start p-2 rounded-md border text-left transition-colors ${
+                                            active
+                                                ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                                                : `${isDark ? 'border-zinc-800 hover:border-zinc-600' : 'border-input hover:bg-accent'}`
+                                        }`}
+                                    >
+                                        <span className={`text-sm font-semibold ${isDark ? 'text-zinc-200' : ''}`}>
+                                            {pre.label}
+                                        </span>
+                                        <span
+                                            className={`text-[10px] ${isDark ? 'text-zinc-400' : 'text-muted-foreground'}`}
+                                        >
+                                            {pre.desc}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <details className="mt-2 text-xs">
+                            <summary
+                                className={`cursor-pointer ${isDark ? 'text-zinc-400' : 'text-muted-foreground'} hover:text-primary`}
+                            >
+                                Advanced CSS Overrides
+                            </summary>
+                            <div
+                                className={`space-y-2 mt-2 pl-2 border-l-2 ${isDark ? 'border-zinc-800' : 'border-muted'}`}
+                            >
+                                {(['xs', 'sm', 'md', 'lg', 'xl'] as const).map((level) => (
+                                    <div key={level} className="flex items-center gap-2">
+                                        <span className="w-6 shrink-0 text-[10px] text-muted-foreground">{level}</span>
+                                        <Input
+                                            value={sh[level] ?? ''}
+                                            onChange={(e) =>
+                                                handleSpacingRadiusShadowChange(mode, {
+                                                    shadow: {
+                                                        [level]: e.target.value.trim() || DEFAULT_SHADOWS[level],
+                                                    },
+                                                })
+                                            }
+                                            placeholder={DEFAULT_SHADOWS[level]}
+                                            className={`font-mono text-[10px] h-6 px-1.5 ${isDark ? 'border-zinc-800 bg-zinc-900' : ''}`}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const spacingRadiusShadowSection = (
         <Card>
             <CardHeader>
                 <CardTitle>Spacing, radius &amp; shadows</CardTitle>
-                <CardDescription>
-                    Override layout spacing, border radius, and shadow elevation. Preset values apply until you
-                    customize.
-                </CardDescription>
+                <CardDescription>Override layout spacing, border radius, and shadow elevation.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 {hasSpacingRadiusShadowOverrides && (
                     <div className="rounded-md border border-amber-300/50 bg-amber-50/70 p-3 text-sm dark:border-amber-700/40 dark:bg-amber-950/20">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="font-medium">Custom spacing/radius/shadows active</p>
+                                <p className="font-medium">Custom overrides active</p>
                                 <p className="text-muted-foreground mt-0.5">Overriding preset values.</p>
                             </div>
                             <Button
@@ -752,80 +962,24 @@ export function BrandKitThemeTab({
                     </div>
                 )}
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {/* Spacing */}
-                    <div className="space-y-2">
-                        <Label>Spacing</Label>
-                        <div className="space-y-2">
-                            {(['section', 'card', 'element'] as const).map((key) => (
-                                <div key={key} className="flex items-center gap-2">
-                                    <span className="w-16 shrink-0 text-xs text-muted-foreground capitalize">
-                                        {key}
-                                    </span>
-                                    <Input
-                                        value={resolvedSpacing[key] ?? ''}
-                                        onChange={(e) =>
-                                            handleSpacingRadiusShadowChange({
-                                                spacing: { [key]: e.target.value.trim() || DEFAULT_SPACING[key] },
-                                            })
-                                        }
-                                        placeholder={DEFAULT_SPACING[key]}
-                                        className="font-mono text-sm"
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">
-                            Section: page gaps. Card: panel padding. Element: button/input gaps.
+                <div className="flex items-center justify-between rounded-lg border p-4 bg-accent/50">
+                    <div>
+                        <Label>Different for dark mode</Label>
+                        <p className="text-xs text-muted-foreground max-w-sm">
+                            Dark mode environments often need lighter colored shadows to have any visible depth.
                         </p>
                     </div>
-
-                    {/* Radius */}
-                    <div className="space-y-2">
-                        <Label>Border radius</Label>
-                        <div className="flex flex-wrap gap-2">
-                            {RADIUS_OPTIONS.map((r) => (
-                                <button
-                                    key={r}
-                                    type="button"
-                                    onClick={() => handleSpacingRadiusShadowChange({ radius: r })}
-                                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
-                                        resolvedRadius === r
-                                            ? 'border-primary bg-primary/10 text-primary'
-                                            : 'border-input hover:bg-accent'
-                                    }`}
-                                    style={{ borderRadius: r === '9999px' ? '9999px' : r }}
-                                >
-                                    {r === '9999px' ? 'pill' : r}
-                                </button>
-                            ))}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">Applied to buttons, cards, inputs.</p>
-                    </div>
-
-                    {/* Shadows */}
-                    <div className="space-y-2">
-                        <Label>Shadow elevation</Label>
-                        <div className="space-y-2">
-                            {(['xs', 'sm', 'md', 'lg', 'xl'] as const).map((level) => (
-                                <div key={level} className="flex items-center gap-2">
-                                    <span className="w-6 shrink-0 text-xs text-muted-foreground">{level}</span>
-                                    <Input
-                                        value={resolvedShadows[level] ?? ''}
-                                        onChange={(e) =>
-                                            handleSpacingRadiusShadowChange({
-                                                shadow: { [level]: e.target.value.trim() || DEFAULT_SHADOWS[level] },
-                                            })
-                                        }
-                                        placeholder={DEFAULT_SHADOWS[level]}
-                                        className="font-mono text-[11px]"
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">xs→xl: light to heavy elevation.</p>
-                    </div>
+                    <Switch checked={isSplitLayout} onCheckedChange={handleSplitLayoutToggle} />
                 </div>
+
+                {!isSplitLayout ? (
+                    <div className="-mx-4 pb-4">{renderSRSConfig('shared')}</div>
+                ) : (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-0 divide-y xl:divide-y-0 xl:divide-x border border-border rounded-lg dark:divide-zinc-800 dark:border-zinc-800">
+                        <div className="py-4 bg-white/50">{renderSRSConfig('light')}</div>
+                        <div className="py-4 bg-black/5">{renderSRSConfig('dark')}</div>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

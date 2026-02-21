@@ -15,7 +15,21 @@ import {
     DEFAULT_TYPOGRAPHY,
 } from './defaults';
 import type { ResolvedBrandTheme } from './resolver';
-import type { DesignTokens, TokenColors } from './tokens';
+import type { DesignTokens, ModeValue, TokenColors } from './tokens';
+
+/**
+ * Extracts the mode-specific value from a ModeValue token.
+ * Falls back to `light` or the value itself if not split by mode.
+ */
+function extractMode<T>(val: ModeValue<T> | undefined, mode: string, isBase: (v: unknown) => boolean): T | undefined {
+    if (val === undefined || val === null) return undefined;
+    if (isBase(val)) return val as T;
+    const split = val as { [k: string]: T | undefined };
+    return split[mode] ?? split['light'];
+}
+
+const isStringMap = (v: unknown): boolean =>
+    typeof v === 'object' && v !== null && Object.values(v as object).every((x) => typeof x === 'string');
 
 export interface PreviewKitData {
     tokensJson?: string | null;
@@ -32,12 +46,19 @@ export interface PreviewKitData {
 export function buildPreviewTheme(kitData: PreviewKitData, mode: string = 'light'): ResolvedBrandTheme {
     let tokens: Partial<DesignTokens> = {};
 
+    let parsedCursors: Record<string, string> | undefined;
+
     // Parse tokensJson (contains expanded theme if preset was selected)
     if (kitData.tokensJson) {
         try {
             const parsed = JSON.parse(kitData.tokensJson) as Record<string, unknown>;
-            const { cursors: _cursors, colors: legacyColors, ...tokenRest } = parsed;
+            // Extract cursors separately – they live at root of tokensJson, not inside DesignTokens
+            const { cursors, colors: legacyColors, ...tokenRest } = parsed;
             tokens = { ...tokenRest } as Partial<DesignTokens>;
+
+            if (cursors && typeof cursors === 'object') {
+                parsedCursors = cursors as Record<string, string>;
+            }
 
             // Handle legacy colors -> color migration
             if (legacyColors && typeof legacyColors === 'object' && !tokens.color) {
@@ -54,17 +75,35 @@ export function buildPreviewTheme(kitData: PreviewKitData, mode: string = 'light
     const rawPalette = tokens.color?.[mode] ?? tokens.color?.light ?? defaultPalette;
     const colors = { ...defaultPalette, ...rawPalette } as TokenColors;
 
-    // Extract other design tokens with defaults (merge partial over defaults)
-    const rawTypo = tokens.typography;
+    // Extract other design tokens with defaults, resolving ModeValue split (light/dark)
+    const rawTypoFull = tokens.typography;
+    const rawTypo = extractMode(
+        rawTypoFull,
+        mode,
+        (v: unknown) => typeof v === 'object' && v !== null && ('heading' in (v as object) || 'body' in (v as object)),
+    );
     const typography = {
         heading: { ...DEFAULT_TYPOGRAPHY.heading, ...rawTypo?.heading },
         body: { ...DEFAULT_TYPOGRAPHY.body, ...rawTypo?.body },
         handwriting: { ...DEFAULT_TYPOGRAPHY.handwriting, ...rawTypo?.handwriting },
     };
-    const spacing = { ...DEFAULT_SPACING, ...tokens.spacing };
-    const radius = tokens.radius ?? '0.5rem';
-    const shadows = { ...DEFAULT_SHADOWS, ...(tokens.shadow ?? {}) };
-    const motion = { ...DEFAULT_MOTION, ...(tokens.motion ?? {}) };
+
+    const rawSpacing = extractMode(tokens.spacing, mode, isStringMap);
+    const spacing = { ...DEFAULT_SPACING, ...(rawSpacing ?? {}) };
+
+    const rawRadius = extractMode(tokens.radius, mode, (v) => typeof v === 'string');
+    const radius = rawRadius ?? '0.5rem';
+
+    const rawShadows = extractMode(tokens.shadow, mode, isStringMap);
+    const shadows = { ...DEFAULT_SHADOWS, ...(rawShadows ?? {}) };
+
+    const rawMotion = extractMode(tokens.motion, mode, isStringMap);
+    const motion = { ...DEFAULT_MOTION, ...(rawMotion ?? {}) };
+
+    // Resolve cursors: prefer parsed cursors from tokensJson, then resolve for mode if split
+    const resolvedCursors = parsedCursors
+        ? (extractMode(parsedCursors as ModeValue<Record<string, string>>, mode, isStringMap) ?? parsedCursors)
+        : DEFAULT_CURSORS;
 
     return {
         name: kitData.themePresetId || 'custom',
@@ -74,7 +113,7 @@ export function buildPreviewTheme(kitData: PreviewKitData, mode: string = 'light
         radius,
         shadows,
         motion,
-        cursors: DEFAULT_CURSORS,
+        cursors: resolvedCursors,
         layout: DEFAULT_LAYOUT,
     };
 }

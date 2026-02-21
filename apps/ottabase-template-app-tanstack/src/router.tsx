@@ -61,7 +61,7 @@ function HomeRouteComponent() {
     };
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-theme-section">
             <h1 className="text-4xl font-bold">{APP_META.appName}</h1>
             <p className="text-muted-foreground">{APP_META.description}</p>
 
@@ -71,7 +71,7 @@ function HomeRouteComponent() {
                 Worker).
             </p>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-theme-card">
                 <div className="flex flex-wrap gap-2">
                     <Button asChild variant="outline">
                         <Link to="/demo">Go to Demo</Link>

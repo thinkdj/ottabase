@@ -318,4 +318,110 @@ describe('buildPreviewTheme', () => {
             expect(theme.name).toBe('nonexistent');
         });
     });
+
+    describe('Cursors', () => {
+        it('applies custom cursors from tokensJson root', () => {
+            const tokensJson = JSON.stringify({
+                cursors: {
+                    default: 'crosshair',
+                    pointer: 'url("data:image/svg+xml,..."), pointer',
+                },
+            });
+            const theme = buildPreviewTheme({ tokensJson }, 'light');
+            expect(theme.cursors.default).toBe('crosshair');
+            expect(theme.cursors.pointer).toBe('url("data:image/svg+xml,..."), pointer');
+        });
+
+        it('resolves mode-split cursors correctly for light mode', () => {
+            const tokensJson = JSON.stringify({
+                cursors: {
+                    light: { default: 'auto', pointer: 'pointer' },
+                    dark: { default: 'crosshair', pointer: 'crosshair' },
+                },
+            });
+            const light = buildPreviewTheme({ tokensJson }, 'light');
+            const dark = buildPreviewTheme({ tokensJson }, 'dark');
+            expect(light.cursors.default).toBe('auto');
+            expect(dark.cursors.default).toBe('crosshair');
+        });
+
+        it('falls back to DEFAULT_CURSORS when no cursors in tokensJson', () => {
+            const theme = buildPreviewTheme({ tokensJson: '{}' }, 'light');
+            expect(theme.cursors).toBeDefined();
+        });
+    });
+
+    describe('ModeValue token resolution', () => {
+        it('resolves mode-split typography for dark mode', () => {
+            const tokensJson = JSON.stringify({
+                typography: {
+                    light: {
+                        heading: { fontFamily: 'Inter', fontWeight: '600' },
+                        body: { fontFamily: 'Inter', fontWeight: '400' },
+                        handwriting: { fontFamily: 'Caveat' },
+                    },
+                    dark: {
+                        heading: { fontFamily: 'Inter', fontWeight: '300' },
+                        body: { fontFamily: 'Inter', fontWeight: '300' },
+                        handwriting: { fontFamily: 'Caveat' },
+                    },
+                },
+            });
+            const light = buildPreviewTheme({ tokensJson }, 'light');
+            const dark = buildPreviewTheme({ tokensJson }, 'dark');
+            expect(light.typography.heading.fontWeight).toBe('600');
+            expect(dark.typography.heading.fontWeight).toBe('300');
+        });
+
+        it('resolves mode-split shadows for dark mode', () => {
+            const tokensJson = JSON.stringify({
+                shadow: {
+                    light: { sm: '0 2px 4px rgb(0 0 0 / 0.1)' },
+                    dark: { sm: '0 2px 4px rgb(0 0 0 / 0.4)' },
+                },
+            });
+            const light = buildPreviewTheme({ tokensJson }, 'light');
+            const dark = buildPreviewTheme({ tokensJson }, 'dark');
+            expect(light.shadows.sm).toBe('0 2px 4px rgb(0 0 0 / 0.1)');
+            expect(dark.shadows.sm).toBe('0 2px 4px rgb(0 0 0 / 0.4)');
+        });
+
+        it('resolves mode-split motion for dark mode', () => {
+            const tokensJson = JSON.stringify({
+                motion: {
+                    light: { durationFast: '150ms' },
+                    dark: { durationFast: '80ms' },
+                },
+            });
+            const light = buildPreviewTheme({ tokensJson }, 'light');
+            const dark = buildPreviewTheme({ tokensJson }, 'dark');
+            expect(light.motion.durationFast).toBe('150ms');
+            expect(dark.motion.durationFast).toBe('80ms');
+        });
+
+        it('preserves easingEnter and easingExit from mode-split motion', () => {
+            const tokensJson = JSON.stringify({
+                motion: {
+                    light: {
+                        durationFast: '100ms',
+                        easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                        easingEnter: 'cubic-bezier(0, 0, 0.2, 1)',
+                        easingExit: 'cubic-bezier(0.4, 0, 1, 1)',
+                    },
+                    dark: {
+                        durationFast: '80ms',
+                        easing: 'linear',
+                        easingEnter: 'linear',
+                        easingExit: 'linear',
+                    },
+                },
+            });
+            const light = buildPreviewTheme({ tokensJson }, 'light');
+            const dark = buildPreviewTheme({ tokensJson }, 'dark');
+            expect(light.motion.easingEnter).toBe('cubic-bezier(0, 0, 0.2, 1)');
+            expect(light.motion.easingExit).toBe('cubic-bezier(0.4, 0, 1, 1)');
+            expect(dark.motion.easingEnter).toBe('linear');
+            expect(dark.motion.easingExit).toBe('linear');
+        });
+    });
 });

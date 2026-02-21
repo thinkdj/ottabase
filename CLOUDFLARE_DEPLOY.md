@@ -1,6 +1,6 @@
 # Deploy Ottabase to Cloudflare Workers
 
-Complete guide for deploying `ottabase-template-app` to Cloudflare Workers with automated CI/CD.
+Complete guide for deploying `ottabase-template-app-tanstack` to Cloudflare Workers with automated CI/CD.
 
 ## Prerequisites
 
@@ -17,22 +17,36 @@ Complete guide for deploying `ottabase-template-app` to Cloudflare Workers with 
 ```bash
 npm install -g wrangler
 wrangler login
+# Or use project auth: pnpm cf:login
 ```
 
 ### Create Resources (Automated)
 
 ```bash
-pnpm cloudflare:setup
-pnpm cloudflare:validate
+pnpm cf:login   # If not authenticated (required before cf:setup)
+pnpm cf:setup   # Interactive: select D1, KV, R2, Queue (use --force for all)
+pnpm cf:validate
 ```
 
-**What this creates:**
+**What cf:setup creates:**
 
 - D1 Database: `ottabase-db`
 - KV Namespace: `OBCF_KV` (+ preview)
 - R2 Buckets: `ottabase-bucket` (+ preview)
 - Queue: `ottabase-queue`
-- Updates `wrangler.jsonc` with resource IDs
+- **Does NOT modify wrangler.jsonc** (it's a template). Copy the output IDs for GitHub Secrets below.
+
+**Resource overview (prod vs preview):**
+
+| Resource | cf:setup creates (prod) | cf:setup creates (preview) | wrangler placeholder (prod) | wrangler placeholder (preview)      | GitHub Secrets                           |
+| -------- | ----------------------- | -------------------------- | --------------------------- | ----------------------------------- | ---------------------------------------- |
+| D1       | ottabase-db             | ottabase-db-preview        | `D1_DATABASE_ID`            | `D1_PREVIEW_DATABASE_ID`            | D1_DATABASE_ID, D1_PREVIEW_DATABASE_ID   |
+| KV       | OBCF_KV                 | OBCF_KV_preview            | `KV_NAMESPACE_ID`           | `KV_PREVIEW_NAMESPACE_ID`           | KV_NAMESPACE_ID, KV_PREVIEW_NAMESPACE_ID |
+| R2       | ottabase-bucket         | ottabase-bucket-preview    | `ottabase-bucket` (literal) | `ottabase-bucket-preview` (literal) | none                                     |
+| Queue    | ottabase-queue          | ottabase-queue-preview     | `ottabase-queue` (literal)  | `ottabase-queue-preview` (literal)  | none                                     |
+
+D1 and KV placeholder values = GitHub Secret names (auto-detected and substituted by CI). R2 and Queue use literal names
+(no substitution needed).
 
 ---
 
@@ -55,12 +69,15 @@ Or find it at: https://dash.cloudflare.com → Workers & Pages (right sidebar)
 
 ### Get Resource IDs
 
+Copy from **cf:setup output** (printed at the end), or run:
+
 ```bash
 wrangler d1 list              # Get D1_DATABASE_ID
-wrangler kv:namespace list    # Get KV_NAMESPACE_ID
+wrangler kv namespace list    # Get KV_NAMESPACE_ID
 ```
 
-Or extract from `apps/ottabase-template-app/wrangler.jsonc`
+Note: `wrangler.jsonc` contains `ALL_CAPS_SNAKE_CASE` placeholder values that are auto-detected and substituted from
+GitHub Secrets at deploy time. No explicit key list needed.
 
 ---
 
@@ -68,18 +85,26 @@ Or extract from `apps/ottabase-template-app/wrangler.jsonc`
 
 Go to: GitHub repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
 
-Add these **4 required secrets:**
+**Production (main deploy):**
 
-| Secret Name             | Description                | Where to Get                 |
-| ----------------------- | -------------------------- | ---------------------------- |
-| `CLOUDFLARE_API_TOKEN`  | API token for deployments  | Step 2 above                 |
-| `CLOUDFLARE_ACCOUNT_ID` | Your account ID            | `wrangler whoami`            |
-| `D1_DATABASE_ID`        | Production D1 database ID  | `wrangler d1 list`           |
-| `KV_NAMESPACE_ID`       | Production KV namespace ID | `wrangler kv:namespace list` |
+| Secret Name             | Description                | Where to Get                                    |
+| ----------------------- | -------------------------- | ----------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | API token for deployments  | Step 2 above                                    |
+| `CLOUDFLARE_ACCOUNT_ID` | Your account ID            | `wrangler whoami`                               |
+| `D1_DATABASE_ID`        | Production D1 database ID  | cf:setup output or `wrangler d1 list`           |
+| `KV_NAMESPACE_ID`       | Production KV namespace ID | cf:setup output or `wrangler kv namespace list` |
 
-**Optional:**
+**PR preview (uses isolated preview D1/KV/R2):**
 
-- `D1_DATABASE_NAME` (defaults to `ottabase-db`)
+| Secret Name               | Description                      | Where to Get    |
+| ------------------------- | -------------------------------- | --------------- |
+| `D1_PREVIEW_DATABASE_ID`  | Preview D1 (ottabase-db-preview) | cf:setup output |
+| `KV_PREVIEW_NAMESPACE_ID` | Preview KV (OBCF_KV_preview)     | cf:setup output |
+
+> **Multi-app:** Same placeholder name across apps → same GitHub Secret → shared resource. Different names → isolated.
+> Prefixing (e.g. `APP_1_D1_DATABASE_ID`) is a convention for clarity, not a requirement. Only 2 steps: set the
+> placeholder in `wrangler.jsonc`, add the matching GitHub Secret. CI auto-detects the rest. See
+> [.github/DEPLOYMENT.md](.github/DEPLOYMENT.md#extending-the-system) for a walkthrough.
 
 ---
 
@@ -124,19 +149,19 @@ Watch in GitHub Actions:
 ### Find Your Worker URL
 
 ```bash
-wrangler deployments list --name ottabase-template-app
+wrangler deployments list --name ottabase-template-app-tanstack
 ```
 
-Or: https://dash.cloudflare.com → Workers & Pages → ottabase-template-app
+Or: https://dash.cloudflare.com → Workers & Pages → ottabase-template-app-tanstack
 
 ### Test Your App
 
 ```bash
 # Visit in browser
-https://ottabase-template-app.your-subdomain.workers.dev
+https://ottabase-template-app-tanstack.your-subdomain.workers.dev
 
 # Check logs
-wrangler tail ottabase-template-app
+wrangler tail ottabase-template-app-tanstack
 ```
 
 ---
@@ -146,8 +171,8 @@ wrangler tail ottabase-template-app
 ### "Resource not found" errors
 
 ```bash
-pnpm cloudflare:setup
-pnpm cloudflare:validate
+pnpm cf:setup
+pnpm cf:validate
 ```
 
 Then update GitHub secrets with new IDs.
@@ -183,11 +208,11 @@ pnpm install
 pnpm dev
 
 # Manual deployment (bypass CI)
-cd apps/ottabase-template-app
-pnpm build && pnpm build:worker && pnpm wrangler deploy --env production
+cd apps/ottabase-template-app-tanstack
+pnpm build && pnpm wrangler deploy --env production
 
 # View logs
-wrangler tail ottabase-template-app
+wrangler tail ottabase-template-app-tanstack
 
 # Execute D1 commands
 wrangler d1 execute ottabase-db --remote --command="SELECT * FROM User LIMIT 5"
@@ -210,9 +235,10 @@ Defined in `.github/workflows/deploy.yml` - triggers on push to `main`:
 
 ### Important Files
 
-- `.github/workflows/deploy.yml` - CI/CD workflow
-- `apps/ottabase-template-app/wrangler.jsonc` - Cloudflare config
-- `apps/ottabase-template-app/db.config.ts` - Database config
+- `.github/workflows/deploy.yml` - CI/CD workflow (auto-detects placeholders in wrangler.jsonc and substitutes from
+  GitHub Secrets via substitute-wrangler-secrets.py)
+- `apps/ottabase-template-app-tanstack/wrangler.jsonc` - Cloudflare config (template with `ALL_CAPS` placeholder values;
+  CI generates wrangler.production.jsonc)
 
 ### Cloudflare Bindings
 
@@ -232,11 +258,11 @@ See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for u
 ## Setup Checklist
 
 - [ ] Install wrangler: `npm install -g wrangler`
-- [ ] Login: `wrangler login`
-- [ ] Create resources: `pnpm cloudflare:setup`
-- [ ] Validate: `pnpm cloudflare:validate`
-- [ ] Get credentials (Account ID, API Token, Resource IDs)
-- [ ] Add 4 GitHub secrets
+- [ ] Login: `wrangler login` or `pnpm cf:login`
+- [ ] Create resources: `pnpm cf:setup` (copy output IDs for GitHub Secrets)
+- [ ] Validate: `pnpm cf:validate`
+- [ ] Add production secrets (D1_DATABASE_ID, KV_NAMESPACE_ID)
+- [ ] Add PR preview secrets (D1_PREVIEW_DATABASE_ID, KV_PREVIEW_NAMESPACE_ID)
 - [ ] Push to main branch
 - [ ] Verify deployment
 

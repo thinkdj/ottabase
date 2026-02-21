@@ -158,6 +158,7 @@ See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details
 - **Theme Presets** - 8 built-in presets (Default, Neo, Crisp, Funky, Artisan, Midnight, Rose, Verdant)
 - **Color Customization** - Override individual colors on top of presets
 - **Light + Dark Modes** - Separate color palettes for each mode
+- **Cursors** - Custom SVG or native cursors, persisted across preset changes
 - **Logo Upload** - Support for logo, dark logo, icon, and OG image
 - **CSS Variable Injection** - Automatic theme application via CSS custom properties
 - **KV Cache** - 1-hour TTL cache for fast brand config reads
@@ -165,12 +166,15 @@ See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details
 
 ### Admin UI
 
-Access brand customization at `/admin/brand-kits/[id]`:
+Access brand customization at `/admin/brand-engine/kits/[id]`:
 
 1. **Theme Tab** - Select preset, generate palette, override colors
-2. **Identity Tab** - Upload logos, customize name/tagline
-3. **Typography Tab** - Configure font families
-4. **Advanced Tab** - Spacing, radius, shadows, motion settings
+2. **Brand Tab** - Name, tagline, parent kit
+3. **Logo Tab** - Upload logos (primary, dark, icon, OG image)
+4. **Fonts Tab** - Typography for heading, body, handwriting
+5. **Motion Tab** - Duration, easing (light/dark split)
+6. **Cursors Tab** - Custom cursors per state (shared or light/dark split)
+7. **Advanced Tab** - Spacing, radius, shadows, custom CSS
 
 ### Architecture
 
@@ -198,6 +202,7 @@ Apply to document via CSS variables
 - ✅ No runtime theme registry lookups
 - ✅ Works reliably in Cloudflare Workers (no isolate state issues)
 - ✅ Custom color overrides merge cleanly on preset base
+- ✅ Cursors persist when switching presets (user-configured, not in presets)
 - ✅ Atomic updates (what you save = what renders)
 
 ### API Endpoints
@@ -268,7 +273,7 @@ apps/ottabase-template-app-tanstack/
 │   └── providers/         # App providers wrapper
 ├── index.html             # HTML template
 ├── vite.config.ts         # Vite configuration
-├── wrangler.jsonc         # Cloudflare Workers config
+├── wrangler.jsonc         # Cloudflare Workers config (template; CI substitutes placeholders)
 └── tailwind.config.cjs    # Tailwind CSS config
 ```
 
@@ -281,8 +286,8 @@ apps/ottabase-template-app-tanstack/
 - `/login` - Login (OAuth / Magic Link / Credentials)
 - `/register` - Registration (Credentials)
 - `/dashboard` - Protected route
-- `/admin/brand-kits` - Brand kit management (admin only)
-- `/admin/brand-kits/:id` - Brand kit editor (Theme/Identity/Typography/Advanced tabs)
+- `/admin/brand-engine` - Brand kit list (admin only)
+- `/admin/brand-engine/kits/:id` - Brand kit editor (Theme, Brand, Logo, Fonts, Motion, Cursors, Advanced tabs)
 - `/demo/mantine` - Mantine UI components demo
 - `/demo/shadcn` - shadcn/ui components demo
 - `/demo/ottaeditor` - Rich text editor demo

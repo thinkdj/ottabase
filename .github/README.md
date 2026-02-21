@@ -51,7 +51,10 @@ Already configured; push to `main` or open PRs as usual.
 | `outputDirectory`    | `"dist"`                           | Dir to verify after build                                          |
 | `verifyPaths`        | `["dist", "cloudflare-worker.ts"]` | Paths that must exist after build                                  |
 | `wranglerConfig`     | `"wrangler.jsonc"`                 | Wrangler config file                                               |
-| `requiresSecrets`    | See below                          | GitHub secrets required for this app                               |
+| `requiresSecrets`    | `[]`                               | _(Optional)_ Extra secrets not in wrangler.jsonc (e.g. build-time) |
+
+> **SSOT:** Placeholders in `wrangler.jsonc` `env.production` / `env.preview` are auto-detected. `requiresSecrets` is
+> only for secrets that don't appear in wrangler.
 
 ### Minimal examples
 
@@ -84,33 +87,45 @@ Already configured; push to `main` or open PRs as usual.
     "buildCommand": "build",
     "outputDirectory": "dist",
     "verifyPaths": ["dist", "cloudflare-worker.ts"],
-    "wranglerConfig": "wrangler.jsonc",
-    "requiresSecrets": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "D1_DATABASE_ID", "KV_NAMESPACE_ID"]
+    "wranglerConfig": "wrangler.jsonc"
 }
 ```
 
 ### Wrangler placeholders
 
-In `wrangler.jsonc` use placeholders; the workflow substitutes them from GitHub secrets:
+In `wrangler.jsonc`, `ALL_CAPS_SNAKE_CASE` placeholder values in `env.production` and `env.preview` are
+**auto-detected** by `substitute-wrangler-secrets.py` and substituted from GitHub Secrets. No explicit key list or
+per-secret workflow wiring needed — just set the placeholder and the secret.
 
-- `PRODUCTION_D1_DATABASE_ID` → `D1_DATABASE_ID`
-- `PRODUCTION_KV_NAMESPACE_ID` → `KV_NAMESPACE_ID`
-- `YOUR_CLOUDFLARE_ACCOUNT_ID` → `CLOUDFLARE_ACCOUNT_ID`
+**Default (env.production):** `D1_DATABASE_ID`, `KV_NAMESPACE_ID` **Default (env.preview):** `D1_PREVIEW_DATABASE_ID`,
+`KV_PREVIEW_NAMESPACE_ID`
 
-Generated file is `wrangler.production.jsonc` (or `wrangler.preview.jsonc` for PR preview); source file is not modified.
+**Multi-app:** Same placeholder name across apps → same GitHub Secret → shared resource. Different names → isolated.
+Prefixing (e.g. `APP_1_D1_DATABASE_ID`) is a convention for clarity, not a requirement.
+
+Generated files: `wrangler.production.jsonc` / `wrangler.preview.jsonc` (gitignored).
 
 ## Secrets
 
 **Settings → Secrets and variables → Actions**
 
-### Required (production and PR preview)
+### Required for production deploy
 
-| Secret                  | Where to get it                                     |
-| ----------------------- | --------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`  | Cloudflare → My Profile → API Tokens                |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare → Workers & Pages                        |
-| `D1_DATABASE_ID`        | `wrangler d1 create <name>` (if using D1)           |
-| `KV_NAMESPACE_ID`       | `wrangler kv:namespace create <name>` (if using KV) |
+| Secret                  | Where to get it                      |
+| ----------------------- | ------------------------------------ |
+| `CLOUDFLARE_API_TOKEN`  | Cloudflare → My Profile → API Tokens |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare → Workers & Pages         |
+| `D1_DATABASE_ID`        | `pnpm cf:setup` output (ottabase-db) |
+| `KV_NAMESPACE_ID`       | `pnpm cf:setup` output (OBCF_KV)     |
+
+### Required for PR preview deploy
+
+| Secret                    | Where to get it                              |
+| ------------------------- | -------------------------------------------- |
+| `D1_PREVIEW_DATABASE_ID`  | `pnpm cf:setup` output (ottabase-db-preview) |
+| `KV_PREVIEW_NAMESPACE_ID` | `pnpm cf:setup` output (OBCF_KV_preview)     |
+
+PR preview uses isolated preview D1/KV/R2 so production data is never touched.
 
 ### Optional
 
@@ -143,9 +158,10 @@ Generated file is `wrangler.production.jsonc` (or `wrangler.preview.jsonc` for P
 ## PR preview (pr-preview.yml)
 
 - **Triggers:** PR opened, synchronized, reopened, or closed.
-- **Open/sync/reopen:** Builds packages, builds app(s), deploys preview worker(s) named e.g. `my-app-pr-123`. Preview
-  URL: `https://<preview-name>.<CF_WORKER_SUBDOMAIN>.workers.dev`.
-- **Closed:** Deletes the preview worker for that PR.
+- **Open/sync/reopen:** Builds packages, builds app(s), deploys preview worker(s) named e.g. `my-app-pr-123` using
+  **env.preview** bindings (ottabase-db-preview D1, OBCF_KV_preview, ottabase-bucket-preview). Preview URL:
+  `https://<preview-name>.<CF_WORKER_SUBDOMAIN>.workers.dev`.
+- **Closed:** Deletes the preview worker (preview D1/KV persist; shared across PRs).
 - **Skip:** If PR title or description contains `#skippr` or `#skipdeploy`, preview build and deploy are skipped. See
   [Skip deployment](#skip-deployment).
 
@@ -190,7 +206,7 @@ pnpm preview       # if available
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | App not discovered  | `deployable: true` in `cloudflare-config.json`; `package.json` has required scripts; `wrangler.jsonc` present if no cloudflare-config |
 | Build fails         | Actions logs; locally: `pnpm --filter=@ottabase/my-app run build`                                                                     |
-| Deploy fails        | Required secrets set; `wrangler.jsonc` valid; no remaining `PRODUCTION_*` in generated config                                         |
+| Deploy fails        | Required secrets set; `wrangler.jsonc` valid; no unsubstituted placeholders in generated config                                       |
 | Preview not created | PR without `#skippr` / `#skipdeploy`; secrets set; app in `APPS_TO_DEPLOY` or default                                                 |
 
 Errors in workflows include what failed, why, and how to fix (e.g. missing secrets with links to Cloudflare).
@@ -205,7 +221,8 @@ Errors in workflows include what failed, why, and how to fix (e.g. missing secre
 │   ├── build-packages.yml   # Reusable: build packages
 │   └── ci.yml               # Lint, type-check, test, build
 ├── scripts/
-│   └── discover-deployable-apps.mjs
+│   ├── discover-deployable-apps.mjs
+│   └── substitute-wrangler-secrets.py   # Substitutes secrets into wrangler config
 ├── README.md                # This file
 └── DEPLOYMENT.md            # Full reference (config, errors, extending)
 ```

@@ -7,8 +7,8 @@ Monorepo using **pnpm workspaces** + **Turborepo**. TanStack Router + Vite app w
 
 1. **OttaORM First**: All data models MUST inherit from `BaseModel`. Do not write raw SQL or vanilla Drizzle queries
    unless absolutely necessary for performance. Logic belongs in the Model class, not in "Controllers" or "Services".
-2. **Schema Integrity**: NEVER edit `schema.prisma` directly. Use the modular schema system in
-   `packages/db/prisma/schemas/` and run `db:generate`.
+2. **Schema Integrity**: Drizzle schema lives in `apps/*/ottabase/db/schema.ts`. Export all tables there. Package tables
+   come from package schemas (e.g. `@ottabase/shortlinks/schema`) and are wired via `schemas-helper.ts`.
 3. **Workspace Protocol**: Always use `workspace:*` for internal package dependencies. Use `catalog:` for shared
    external dependencies (React, Drizzle, etc.).
 4. **Don't Reinvent**: Check `@ottabase/utils` for internal helpers (date, string, currency) and `@ottabase/ui-shadcn`
@@ -342,9 +342,9 @@ Add to catalog when:
 ```yaml
 # pnpm-workspace.yaml
 catalog:
-    react: ^19.1.0
-    typescript: ~5.8.4
-    drizzle-orm: ^0.44.2
+    react: ^19.2.4
+    typescript: ^5.9.3
+    drizzle-orm: ^0.38.3
 ```
 
 Then reference in package.json:
@@ -366,7 +366,7 @@ Add locally when:
 pnpm add --filter @ottabase/ottaeditor @editorjs/editorjs
 
 # Add to specific app
-pnpm add --filter @ottabase/template-app-tanstack some-package
+pnpm add --filter @ottabase/ottabase-template-app-tanstack some-package
 ```
 
 ### Workspace Protocol
@@ -488,7 +488,7 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 
 ### Formatting / Pre-commit
 
-- **Format command:** `pnpm -w prettier:check` (or `pnpm -w prettier:fix` to fix).
+- **Format command:** `pnpm format` (runs `prettier --write .` on the whole repo).
 - **Pre-commit:** We recommend `husky` + `lint-staged` to run format and basic lint on staged files.
 
 </INSTRUCTIONS>

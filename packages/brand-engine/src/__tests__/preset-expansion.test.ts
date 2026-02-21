@@ -25,6 +25,8 @@ function expandPresetToTokens(presetId: string | null, existingTokensJson: strin
     }
 
     const preset = PRESET_MAP[presetId];
+    const presetWithCursors = preset as { cursors?: Record<string, string> };
+    const effectiveCursors = existing.cursors ?? presetWithCursors.cursors;
 
     const expanded: Record<string, unknown> = {
         color: {
@@ -36,6 +38,7 @@ function expandPresetToTokens(presetId: string | null, existingTokensJson: strin
         radius: existing.radius || preset.radius,
         shadow: existing.shadow || preset.shadows,
         motion: existing.motion || preset.motion,
+        ...(effectiveCursors !== undefined && { cursors: effectiveCursors }),
     };
 
     if (existing.color && typeof existing.color === 'object') {
@@ -474,6 +477,79 @@ describe('Preset Expansion', () => {
 
             expect(parsed.color.light.primary).toBe('200 80% 60%');
             expect(parsed.color.light['primary-foreground']).toBe('0 0% 100%');
+        });
+
+        it('preserves cursors when expanding preset', () => {
+            const customTokens = {
+                color: { light: { primary: '180 80% 50%' }, dark: { primary: '180 80% 60%' } },
+                cursors: { default: 'pointer', pointer: 'url("data:image/svg+xml,..."), pointer' },
+            };
+
+            const result = expandPresetToTokens('verdant', JSON.stringify(customTokens));
+            const parsed = JSON.parse(result);
+
+            expect(parsed.cursors).toBeDefined();
+            expect(parsed.cursors.default).toBe('pointer');
+            expect(parsed.cursors.pointer).toContain('data:image/svg+xml');
+        });
+
+        it('returns existing tokens including cursors when no preset selected', () => {
+            const existingTokens = JSON.stringify({
+                typography: { heading: { fontFamily: 'Inter' } },
+                cursors: { default: 'crosshair', pointer: 'pointer' },
+            });
+
+            const result = expandPresetToTokens(null, existingTokens);
+            const parsed = JSON.parse(result);
+
+            expect(parsed.cursors).toBeDefined();
+            expect(parsed.cursors.default).toBe('crosshair');
+            expect(parsed.cursors.pointer).toBe('pointer');
+            expect(parsed.typography.heading.fontFamily).toBe('Inter');
+        });
+
+        it('preserves mode-split cursors (light/dark) when expanding preset', () => {
+            const customTokens = {
+                cursors: {
+                    light: { default: 'auto', pointer: 'pointer' },
+                    dark: { default: 'crosshair', pointer: 'pointer' },
+                },
+            };
+
+            const result = expandPresetToTokens('neo', JSON.stringify(customTokens));
+            const parsed = JSON.parse(result);
+
+            expect(parsed.cursors).toBeDefined();
+            expect(parsed.cursors.light).toEqual({ default: 'auto', pointer: 'pointer' });
+            expect(parsed.cursors.dark).toEqual({ default: 'crosshair', pointer: 'pointer' });
+        });
+
+        it('includes preset registry cursors when existing has none (artisan/funky)', () => {
+            const resultArtisan = expandPresetToTokens('artisan', null);
+            const parsedArtisan = JSON.parse(resultArtisan);
+
+            expect(parsedArtisan.cursors).toBeDefined();
+            expect(parsedArtisan.cursors.default).toBe('registry:arrow-crimson');
+            expect(parsedArtisan.cursors.pointer).toBe('registry:hand-crimson');
+
+            const resultFunky = expandPresetToTokens('funky', null);
+            const parsedFunky = JSON.parse(resultFunky);
+
+            expect(parsedFunky.cursors).toBeDefined();
+            expect(parsedFunky.cursors.default).toBe('registry:arrow-emerald');
+            expect(parsedFunky.cursors.pointer).toBe('registry:hand-emerald');
+        });
+
+        it('user cursors override preset cursors when both exist', () => {
+            const customTokens = {
+                cursors: { default: 'pointer', pointer: 'grab' },
+            };
+
+            const result = expandPresetToTokens('artisan', JSON.stringify(customTokens));
+            const parsed = JSON.parse(result);
+
+            expect(parsed.cursors.default).toBe('pointer');
+            expect(parsed.cursors.pointer).toBe('grab');
         });
     });
 });

@@ -19,6 +19,33 @@ import type { ResolvedBrandTheme } from './resolver';
 import type { TokenColors } from './tokens';
 
 // ---------------------------------------------------------------------------
+// Typography weight: semantic keywords → numeric CSS values
+// ---------------------------------------------------------------------------
+
+const FONT_WEIGHT_MAP: Record<string, string> = {
+    normal: '400',
+    bold: '700',
+    medium: '500',
+    semibold: '600',
+    black: '900',
+    '100': '100',
+    '200': '200',
+    '300': '300',
+    '400': '400',
+    '500': '500',
+    '600': '600',
+    '700': '700',
+    '800': '800',
+    '900': '900',
+};
+
+function toCssFontWeight(val: string | number | undefined): string {
+    if (val === undefined || val === null) return '400';
+    const s = String(val).toLowerCase();
+    return FONT_WEIGHT_MAP[s] ?? (Number.isNaN(Number(s)) ? '400' : s);
+}
+
+// ---------------------------------------------------------------------------
 // Pure token → CSS-var map builder (no DOM dependency)
 // ---------------------------------------------------------------------------
 
@@ -59,13 +86,32 @@ export function buildCSSVarMap(theme: ResolvedBrandTheme): Record<string, string
         vars[`--shadow-${level}`] = val;
     }
 
+    // -- Typography extended properties (weight, line-height, letter-spacing) ---
+    vars['--typography-heading-weight'] = toCssFontWeight(typo.heading?.fontWeight ?? 700);
+    vars['--typography-heading-line-height'] = typo.heading?.lineHeight ?? '1.2';
+    vars['--typography-heading-spacing'] = typo.heading?.letterSpacing ?? 'normal';
+    vars['--typography-body-weight'] = toCssFontWeight(typo.body?.fontWeight ?? 400);
+    vars['--typography-body-line-height'] = typo.body?.lineHeight ?? '1.5';
+    vars['--typography-body-spacing'] = typo.body?.letterSpacing ?? 'normal';
+
     // -- Motion / transition presets -----------------------------------------
-    vars['--duration-fast'] = theme.motion.durationFast;
-    vars['--duration-normal'] = theme.motion.durationNormal;
-    vars['--duration-slow'] = theme.motion.durationSlow;
+    // When disableAnimations: true, set durations to 0s (simpler than data-attr + global CSS)
+    const noMotion = theme.motion.disableAnimations;
+    vars['--duration-fast'] = noMotion ? '0s' : theme.motion.durationFast;
+    vars['--duration-normal'] = noMotion ? '0s' : theme.motion.durationNormal;
+    vars['--duration-slow'] = noMotion ? '0s' : theme.motion.durationSlow;
     vars['--ease'] = theme.motion.easing;
     vars['--ease-enter'] = theme.motion.easingEnter;
     vars['--ease-exit'] = theme.motion.easingExit;
+    // Semantic --motion-* aliases match the component-level convention
+    vars['--motion-duration-fast'] = noMotion ? '0s' : theme.motion.durationFast;
+    vars['--motion-duration-normal'] = noMotion ? '0s' : theme.motion.durationNormal;
+    vars['--motion-duration-slow'] = noMotion ? '0s' : theme.motion.durationSlow;
+    vars['--motion-ease-default'] = theme.motion.easing;
+    vars['--motion-ease-enter'] = theme.motion.easingEnter;
+    vars['--motion-ease-exit'] = theme.motion.easingExit;
+    // Bouncy is a fixed preset easing curve (not brand-configurable)
+    vars['--motion-ease-bouncy'] = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
 
     // -- Layout tokens (as CSS vars for component contracts) -----------------
     applyLayoutVars(vars, theme.layout);
@@ -141,6 +187,7 @@ export function injectFont(url: string): void {
  * to `document.documentElement`.
  *
  * This is the main runtime entry point for browser environments.
+ * When motion.disableAnimations is true, duration vars are set to 0s in buildCSSVarMap.
  */
 export function applyBrandTheme(theme: ResolvedBrandTheme): void {
     if (typeof document === 'undefined') return; // SSR guard
@@ -150,7 +197,7 @@ export function applyBrandTheme(theme: ResolvedBrandTheme): void {
     const fontUrls = new Set([typo.heading?.url, typo.body?.url, typo.handwriting?.url].filter(Boolean) as string[]);
     fontUrls.forEach(injectFont);
 
-    // Build & inject CSS vars
+    // Build & inject CSS vars (disableAnimations → duration vars become 0s)
     const varMap = buildCSSVarMap(theme);
     injectCSSVars(document.documentElement.style, varMap);
 }

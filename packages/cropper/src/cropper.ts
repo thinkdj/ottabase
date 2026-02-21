@@ -215,9 +215,9 @@ export class Cropper {
         const cw = Math.round(rotW * scale);
         const ch = Math.round(rotH * scale);
 
-        // Apply smooth transition to wrapper for rotation animation
+        // Apply smooth transition to wrapper for rotation animation (uses theme vars when available)
         if (this.options.transitions && !this.drag.active && !this.resizeHandle.active) {
-            this.wrap.style.transition = `all ${this.options.transitionDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+            this.wrap.style.transition = `all var(--duration-normal, ${this.options.transitionDuration}ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1))`;
         } else {
             this.wrap.style.transition = 'none';
         }

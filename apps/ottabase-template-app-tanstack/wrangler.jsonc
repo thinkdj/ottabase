@@ -1,5 +1,20 @@
 {
+    // ─── SINGLE SOURCE OF TRUTH FOR SECRETS ───
+    // This file drives CI secret detection. The env.production / env.preview sections
+    // contain ALL_CAPS_SNAKE_CASE placeholder values (e.g. "D1_DATABASE_ID") that are:
+    //   1. Auto-detected by substitute-wrangler-secrets.py at deploy time
+    //   2. Verified against GitHub Secrets (missing → CI fails early with clear error)
+    //   3. Substituted into wrangler.production.jsonc / wrangler.preview.jsonc
+    //
+    // To add a new secret:  set the placeholder value here → add matching GitHub Secret → done.
+    // To share a resource:  use the same placeholder value across apps → maps to the same GitHub Secret → same real ID injected.
+    // To isolate:            use different values (e.g. APP_1_D1_DATABASE_ID); prefixing is a convention, not required.
+    //
+    // Top-level YOUR_* values are for reference only (local dev uses simulators).
+    // See CLOUDFLARE_DEPLOY.md for full walkthrough.
+
     "$schema": "node_modules/wrangler/config-schema.json",
+
     // Wrangler configuration for TanStack Router app with Cloudflare bindings
     // Supports dev (local with HMR), preview (workerd), and prod (real CF resources)
 
@@ -16,26 +31,31 @@
         "enabled": true,
     },
 
+    // TOP LEVEL BINDINGS (available in all environments unless overridden in env.*)
+    // This is required for local development to define the shape of bindings and enable Wrangler features (e.g. `wrangler dev` with real D1/KV/R2/Queue emulation).
+    // Preview and prod would use env.production/env.preview overrides to substitute real Cloudflare resource IDs from GitHub Secrets
+    // This replacement would be automatically done by CI/CD during deployment, so placeholders are intentional and should not be edited.
+
     // D1 Database bindings
     // Local dev: Uses local SQLite file (.wrangler/state/v3/d1)
-    // Preview/Prod: Uses real Cloudflare D1 database
+    // Preview/Prod: CI substitutes from GitHub Secrets – do not edit placeholder values
     "d1_databases": [
         {
             "binding": "OBCF_D1",
             "database_name": "ottabase-db",
-            "database_id": "YOUR_D1_DATABASE_ID", // Replace with: wrangler d1 create ottabase-db
+            "database_id": "YOUR_D1_DATABASE_ID", // Local dev only; env sections have real placeholders for CI
             "preview_database_id": "preview", // Uses preview DB for `wrangler dev --remote`
         },
     ],
 
     // KV Namespace bindings
     // Local dev: Uses local KV storage (.wrangler/state/v3/kv)
-    // Preview/Prod: Uses real Cloudflare KV namespace
+    // Preview/Prod: CI substitutes from GitHub Secrets – do not edit placeholder values
     "kv_namespaces": [
         {
             "binding": "OBCF_KV",
-            "id": "YOUR_KV_NAMESPACE_ID", // Replace with: wrangler kv:namespace create OBCF_KV
-            "preview_id": "YOUR_KV_PREVIEW_ID", // Replace with: wrangler kv:namespace create OBCF_KV --preview
+            "id": "YOUR_KV_NAMESPACE_ID", // Local dev only; env sections have real placeholders for CI
+            "preview_id": "YOUR_KV_PREVIEW_ID", // Local dev only; CI substitutes in env.preview
         },
     ],
 
@@ -101,7 +121,7 @@
         "bindings": [
             {
                 "name": "OBCF_REALTIME",
-                "class_name": "RealtimeActor",
+                "class_name": "RealtimeActor", // DOs are scoped per-worker. So inherently isolated
             },
         ],
     },
@@ -119,7 +139,7 @@
     // Vite build outputs to dist/ directory
     "assets": {
         "directory": "dist",
-        "binding": "OBCF_ASSETS",
+        "binding": "OBCF_ASSETS", // Per-deployment binding
     },
 
     // Environment variables
@@ -130,8 +150,7 @@
         // R2 proxy path - works in dev and production (same origin)
         // For custom R2 domain, set to: https://cdn.yourdomain.com
         "R2_PUBLIC_URL": "/api/upload/file",
-        // For /analytics page (WAE queries) - set your 32-char account ID (Cloudflare dashboard)
-        //"CLOUDFLARE_ACCOUNT_ID": "YOUR_CLOUDFLARE_ACCOUNT_ID",
+        // CLOUDFLARE_ACCOUNT_ID: // Set in env.production/env.preview vars (substituted from GitHub Secret)
     },
 
     // Local development settings
@@ -147,13 +166,15 @@
             "vars": {
                 "ENVIRONMENT": "production",
                 "NODE_ENV": "production",
+                // For Analytics (Workers Analytics Engine): Substituted from GitHub Secret at deploy; add CLOUDFLARE_ANALYTICS_API_TOKEN via wrangler secret put or CF Dash > Worker > Settings > Secrets
+                "CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID",
             },
             "unsafe": {
                 "bindings": [
                     {
                         "name": "OBCF_RATE_LIMITER",
                         "type": "ratelimit",
-                        "namespace_id": "1001", // INT ID for production rate limiter
+                        "namespace_id": "1001", // INT ID for production rate limiter. Ensure to change for diff app
                         "simple": {
                             "limit": 10,
                             "period": 60,
@@ -174,26 +195,28 @@
                 "binding": "OBCF_ASSETS",
                 "directory": "dist",
             },
-            // Production D1 Database - set via CI/CD substitution or manually
+            // Production D1 – placeholder value = GitHub Secret name; CI substitutes the real UUID at deploy time
+            // Any value works (e.g. "MY_DB_ID") — just add a matching GitHub Secret with the real UUID
+            // Two apps using the same value → same secret → same real ID → shared DB; different values → isolated
             "d1_databases": [
                 {
                     "binding": "OBCF_D1",
                     "database_name": "ottabase-db",
-                    "database_id": "PRODUCTION_D1_DATABASE_ID",
+                    "database_id": "D1_DATABASE_ID",
                 },
             ],
-            // Production KV Namespace - set via CI/CD substitution or manually
+            // Production KV – placeholder = GitHub Secret name; CI substitutes at deploy time
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",
-                    "id": "PRODUCTION_KV_NAMESPACE_ID",
+                    "id": "KV_NAMESPACE_ID",
                 },
             ],
             // Production R2 Bucket
             "r2_buckets": [
                 {
                     "binding": "OBCF_R2",
-                    "bucket_name": "ottabase-bucket",
+                    "bucket_name": "ottabase-bucket", // Update if using a different bucket or app-prefixed bucket for isolation (e.g. app1-ottabase-bucket)
                 },
             ],
             // Production Queue
@@ -201,10 +224,89 @@
                 "producers": [
                     {
                         "binding": "OBCF_QUEUE",
-                        "queue": "ottabase-queue",
+                        "queue": "ottabase-queue", // Update if using a different queue or app-prefixed queue for isolation (e.g. app1-ottabase-queue)
                     },
                 ],
             },
+        },
+        // PR preview – placeholders = GitHub Secret names; CI substitutes at deploy time
+        "preview": {
+            "vars": {
+                "ENVIRONMENT": "preview",
+                "NODE_ENV": "production",
+                // For Analytics (WAE): substituted from GitHub Secret at deploy
+                "CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID",
+            },
+            "unsafe": {
+                "bindings": [
+                    {
+                        "name": "OBCF_RATE_LIMITER",
+                        "type": "ratelimit",
+                        "namespace_id": "1002", // Ensure to use a different namespace_id for preview (and also for another app) to avoid conflicts with prod rate limiter
+                        "simple": {
+                            "limit": 10,
+                            "period": 60,
+                        },
+                    },
+                ],
+            },
+            "durable_objects": {
+                "bindings": [
+                    {
+                        "name": "OBCF_REALTIME",
+                        "class_name": "RealtimeActor",
+                    },
+                ],
+            },
+            "assets": {
+                "binding": "OBCF_ASSETS",
+                "directory": "dist",
+            },
+            // Preview D1 – placeholder = GitHub Secret name; CI substitutes at deploy time
+            "d1_databases": [
+                {
+                    "binding": "OBCF_D1",
+                    "database_name": "ottabase-db-preview",
+                    "database_id": "D1_PREVIEW_DATABASE_ID",
+                },
+            ],
+            // Preview KV – placeholder = GitHub Secret name; CI substitutes at deploy time
+            "kv_namespaces": [
+                {
+                    "binding": "OBCF_KV",
+                    "id": "KV_PREVIEW_NAMESPACE_ID",
+                },
+            ],
+            "r2_buckets": [
+                {
+                    "binding": "OBCF_R2",
+                    "bucket_name": "ottabase-bucket-preview",
+                },
+            ],
+            // Preview queue - create with: wrangler queues create ottabase-queue-preview
+            "queues": {
+                "producers": [
+                    {
+                        "binding": "OBCF_QUEUE",
+                        "queue": "ottabase-queue-preview",
+                    },
+                ],
+            },
+            // Preview analytics datasets (auto-created on first write; isolated from production)
+            "analytics_engine_datasets": [
+                {
+                    "binding": "OBCF_ANALYTICS_CORE",
+                    "dataset": "core_events_preview",
+                },
+                {
+                    "binding": "OBCF_ANALYTICS_SHORTLINKS",
+                    "dataset": "shortlink_clicks_preview",
+                },
+                {
+                    "binding": "OBCF_ANALYTICS_REFERRALS",
+                    "dataset": "referral_clicks_preview",
+                },
+            ],
         },
     },
 }
