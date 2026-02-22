@@ -44,8 +44,13 @@ export default {
             return stub.fetch(request);
         }
 
-        // Broadcast endpoint
+        // Broadcast endpoint — server-to-server only, requires a shared secret
         if (url.pathname === '/api/broadcast' && request.method === 'POST') {
+            const token = request.headers.get('Authorization');
+            if (!token || token !== `Bearer ${env.BROADCAST_SECRET}`) {
+                return new Response('Unauthorized', { status: 401 });
+            }
+
             const broadcaster = new RealtimeBroadcaster(env.OBCF_REALTIME);
             const body = await request.json<any>();
 
@@ -75,6 +80,28 @@ export default {
     "migrations": [{ "tag": "v1", "new_classes": ["RealtimeActor"] }]
 }
 ```
+
+Set the broadcast secret as a Worker secret (never commit it):
+
+```bash
+wrangler secret put BROADCAST_SECRET
+```
+
+Then call the broadcast endpoint from your backend with the `Authorization` header:
+
+```typescript
+await fetch('https://your-worker.workers.dev/api/broadcast', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.BROADCAST_SECRET}`,
+    },
+    body: JSON.stringify({ channels: ['org-1201'], event: 'update', data: {} }),
+});
+```
+
+> **Never expose `/api/broadcast` without authentication.** Anyone who can reach the endpoint could inject
+> arbitrary events into any channel.
 
 ### 3. Client Usage (Browser/Node.js)
 
