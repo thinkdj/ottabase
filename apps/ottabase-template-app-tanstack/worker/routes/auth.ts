@@ -37,6 +37,28 @@ export function handleAuthConfig(context: AuthRouteContext): Response {
     return withAuthCors(response);
 }
 
+/**
+ * Finds a unique value for a given field by appending numeric suffixes.
+ *
+ * @param candidate - The base value to try first (e.g. "johndoe")
+ * @param exists - Async predicate: returns true if the value is already taken
+ * @returns The first available value: `candidate`, `candidate_2`, `candidate_3`, …
+ *
+ * @example
+ * ```ts
+ * const username = await findUniqueHandle('johndoe', (v) => User.findByUsername(v).then(Boolean));
+ * const refName  = await findUniqueHandle(username,  (v) => User.findByReferralUsername(v).then(Boolean));
+ * ```
+ */
+async function findUniqueHandle(candidate: string, exists: (value: string) => Promise<boolean>): Promise<string> {
+    let value = candidate;
+    let attempt = 1;
+    while (await exists(value)) {
+        value = `${candidate}_${++attempt}`;
+    }
+    return value;
+}
+
 export async function handleVerifyEmailResend(context: AuthRouteContext): Promise<Response> {
     const { request, env, withAuthCors } = context;
     const ip = getClientIpAddress(request);
@@ -362,7 +384,7 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
     }
 
     if (request.method === 'PATCH') {
-        const body = await readJson<{ name?: string; image?: string | null }>(request);
+        const body = await readJson<{ name?: string; image?: string | null; username?: string }>(request);
 
         const updates: Record<string, any> = {};
         const fieldErrors: Record<string, string[]> = {};
@@ -386,6 +408,23 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
                 fieldErrors.image = ['Image must be a valid URL'];
             } else {
                 updates.image = image;
+            }
+        }
+
+        if (body.username !== undefined) {
+            const { validateUsername } = await import('@ottabase/utils/user');
+            const candidate = typeof body.username === 'string' ? body.username.trim() : '';
+            const validation = validateUsername(candidate);
+            if (!validation.valid) {
+                fieldErrors.username = [validation.error ?? 'Invalid username'];
+            } else {
+                // Check uniqueness (exclude current user)
+                const existing = await User.findByUsername(candidate);
+                if (existing && existing.get('id') !== userId) {
+                    fieldErrors.username = ['Username is already taken'];
+                } else {
+                    updates.username = candidate;
+                }
             }
         }
 
@@ -513,6 +552,28 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
         });
 
         const newUserId = newUser.get('id') as string;
+
+        // Auto-generate username and referral username from the email.
+        // Both use the same candidate; findUniqueHandle loops until a free slot is found.
+        try {
+            const { generateReferralUsername } = await import('@ottabase/referrals');
+            const candidate = generateReferralUsername(email);
+
+            // Public username — first available slot
+            const username = await findUniqueHandle(candidate, (v) => User.findByUsername(v).then(Boolean));
+
+            // Referral username — try same value as username first
+            const referralUsername = await findUniqueHandle(username, (v) =>
+                User.findByReferralUsername(v).then(Boolean),
+            );
+
+            newUser.set('username', username);
+            newUser.set('referralUsername', referralUsername);
+            await newUser.save();
+        } catch (autoGenError) {
+            // Non-fatal: user can always set it manually from the dashboard.
+            console.warn('Failed to auto-generate username:', autoGenError);
+        }
 
         let organizationId: string | null = null;
         let organizationRole: string | null = null;

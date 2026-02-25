@@ -10,9 +10,6 @@ import { api } from '@/lib/api';
 import { useSession } from '@/lib/auth';
 import { requestEmailVerification } from '@/lib/auth-api';
 import {
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
     Badge,
     Button,
     Card,
@@ -24,8 +21,9 @@ import {
     Label,
     Separator,
 } from '@ottabase/ui-shadcn';
-import { Calendar, Check, Loader2, Mail, User } from 'lucide-react';
+import { AtSign, Calendar, Check, Loader2, Mail, User } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { ProfilePhotoUploader } from '@/components/ProfilePhotoUploader';
 
 interface LinkedAccountRecord {
     provider: string;
@@ -37,10 +35,19 @@ export function UserProfilePage() {
     const { user, updateUser, refreshSession } = useSession({ skipAutoSync: true });
     const toast = useRBACToast();
 
+    // Convenience accessor — the auth User type uses an index signature so extra
+    // properties like `username` are present at runtime but not statically typed.
+    const userUsername: string = user?.username ?? '';
+
     const [formData, setFormData] = useState({
         name: user?.name || '',
         email: user?.email || '',
+        username: userUsername,
     });
+
+    const [usernameError, setUsernameError] = useState<string | null>(null);
+    const [currentImage, setCurrentImage] = useState<string | null>(user?.image ?? null);
+    const [isPhotoUploading, setIsPhotoUploading] = useState(false);
 
     const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccountRecord[]>([]);
     const [isAccountsLoading, setIsAccountsLoading] = useState(true);
@@ -53,21 +60,28 @@ export function UserProfilePage() {
     const normalize = useCallback((value: string) => value.trim(), []);
 
     const computeHasChanges = useCallback(
-        (next: { name: string; email: string }) => {
+        (next: { name: string; email: string; username: string }) => {
             const currentName = normalize(user?.name ?? '');
             const currentEmail = normalize(user?.email ?? '');
-            return normalize(next.name) !== currentName || normalize(next.email) !== currentEmail;
+            const currentUsername = normalize(userUsername ?? '');
+            return (
+                normalize(next.name) !== currentName ||
+                normalize(next.email) !== currentEmail ||
+                normalize(next.username) !== currentUsername
+            );
         },
-        [normalize, user?.email, user?.name],
+        [normalize, user?.email, user?.name, userUsername],
     );
 
     useEffect(() => {
         setFormData({
             name: user?.name || '',
             email: user?.email || '',
+            username: userUsername || '',
         });
         setHasChanges(false);
-    }, [user?.name, user?.email]);
+        setUsernameError(null);
+    }, [user?.name, user?.email, userUsername]);
 
     useEffect(() => {
         let cancelled = false;
@@ -104,12 +118,29 @@ export function UserProfilePage() {
               .toUpperCase()
         : user?.email?.[0]?.toUpperCase() || '?';
 
-    const handleChange = (field: 'name' | 'email', value: string) => {
+    const handleChange = (field: 'name' | 'email' | 'username', value: string) => {
         setFormData((prev) => {
             const next = { ...prev, [field]: value };
             setHasChanges(computeHasChanges(next));
             return next;
         });
+        if (field === 'username') setUsernameError(null);
+    };
+
+    const handlePhotoUploaded = async (url: string) => {
+        setIsPhotoUploading(true);
+        setCurrentImage(url);
+        // Persist to the user profile immediately; this only updates `image`,
+        // which is separate from the name/username save below.
+        try {
+            await api('/api/users/me', { method: 'PATCH', body: { image: url } });
+            updateUser({ image: url });
+            toast.success('Photo updated', 'Your profile photo has been updated successfully.');
+        } catch {
+            toast.error('Photo update failed', 'Could not save the new photo to your profile.');
+        } finally {
+            setIsPhotoUploading(false);
+        }
     };
 
     const handleSave = async () => {
@@ -122,9 +153,16 @@ export function UserProfilePage() {
 
             const trimmedName = normalize(formData.name);
             const trimmedEmail = normalize(formData.email);
+            const trimmedUsername = normalize(formData.username);
 
             if (!trimmedName) {
                 toast.error('Name is required', 'Please enter your full name.');
+                return;
+            }
+
+            // Basic client-side username validation (same rules as server)
+            if (trimmedUsername && !/^[a-zA-Z0-9_]{3,20}$/.test(trimmedUsername)) {
+                setUsernameError('Username must be 3-20 characters: letters, numbers, underscores only');
                 return;
             }
 
@@ -137,8 +175,14 @@ export function UserProfilePage() {
             if (trimmedEmail !== normalize(user.email ?? '')) {
                 toast.warning('Email changes are disabled', 'Contact support to update your login email.');
                 setFormData((prev) => ({ ...prev, email: user.email ?? '' }));
-                setHasChanges(computeHasChanges({ name: trimmedName, email: user.email ?? '' }));
+                setHasChanges(
+                    computeHasChanges({ name: trimmedName, email: user.email ?? '', username: trimmedUsername }),
+                );
                 return;
+            }
+
+            if (trimmedUsername !== normalize(userUsername ?? '')) {
+                updates.username = trimmedUsername;
             }
 
             if (Object.keys(updates).length === 0) {
@@ -165,14 +209,19 @@ export function UserProfilePage() {
             if (updatedUser?.emailVerified !== undefined) safeUpdates.emailVerified = updatedUser.emailVerified;
             if (updatedUser?.createdAt !== undefined) safeUpdates.createdAt = updatedUser.createdAt;
             if (updatedUser?.updatedAt !== undefined) safeUpdates.updatedAt = updatedUser.updatedAt;
+            if (updatedUser?.username !== undefined) safeUpdates.username = updatedUser.username;
 
             if (Object.keys(safeUpdates).length > 0) {
                 updateUser(safeUpdates);
+            }
+            if (updatedUser?.image !== undefined) {
+                setCurrentImage(updatedUser.image ?? null);
             }
 
             setFormData({
                 name: updatedUser?.name ?? user.name ?? '',
                 email: updatedUser?.email ?? user.email ?? '',
+                username: updatedUser?.username ?? userUsername ?? '',
             });
             if (updatedUser?.linkedAccounts) {
                 setLinkedAccounts(updatedUser.linkedAccounts);
@@ -182,8 +231,13 @@ export function UserProfilePage() {
             }
             setHasChanges(false);
             toast.success('Profile updated', 'Your profile has been updated successfully');
-        } catch (error) {
-            toast.error('Update failed', 'Failed to update profile');
+        } catch (error: any) {
+            const fieldErrors = error?.fieldErrors;
+            if (fieldErrors?.username) {
+                setUsernameError(fieldErrors.username[0]);
+            } else {
+                toast.error('Update failed', 'Failed to update profile');
+            }
         } finally {
             setIsSaving(false);
         }
@@ -235,13 +289,15 @@ export function UserProfilePage() {
                     <CardDescription>Your profile information visible to others</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {/* Avatar */}
-                    <div className="flex items-center gap-4">
-                        <Avatar className="h-20 w-20">
-                            <AvatarImage src={user.image || undefined} />
-                            <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
-                        </Avatar>
-                        <div className="space-y-2">
+                    {/* Avatar + photo uploader */}
+                    <div className="flex items-start gap-4">
+                        <ProfilePhotoUploader
+                            currentImageUrl={currentImage}
+                            initials={userInitials}
+                            onUploaded={handlePhotoUploaded}
+                            disabled={isSaving || isPhotoUploading}
+                        />
+                        <div className="space-y-1 pt-1">
                             <h3 className="font-semibold">{formData.name || 'No name set'}</h3>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Mail className="h-4 w-4" />
@@ -264,6 +320,25 @@ export function UserProfilePage() {
                         />
                     </div>
 
+                    {/* Username */}
+                    <div className="space-y-2">
+                        <Label htmlFor="username" className="flex items-center gap-1">
+                            <AtSign className="h-4 w-4" />
+                            Username
+                        </Label>
+                        <Input
+                            id="username"
+                            value={formData.username}
+                            onChange={(e) => handleChange('username', e.target.value)}
+                            placeholder="e.g. johndoe"
+                            disabled={isSaving}
+                        />
+                        {usernameError && <p className="text-sm text-destructive">{usernameError}</p>}
+                        <p className="text-sm text-muted-foreground">
+                            3–20 characters: letters, numbers and underscores only. Can be changed at any time.
+                        </p>
+                    </div>
+
                     {/* Email */}
                     <div className="space-y-2">
                         <Label htmlFor="email">Email Address</Label>
@@ -284,7 +359,11 @@ export function UserProfilePage() {
                     {/* Save Button */}
                     {hasChanges && (
                         <div className="pt-2">
-                            <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
+                            <Button
+                                onClick={handleSave}
+                                disabled={isSaving || isPhotoUploading}
+                                className="w-full sm:w-auto"
+                            >
                                 {isSaving ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -28,9 +28,9 @@ import { ReferralTracking } from '@ottabase/referrals';
 ### Validation
 
 ```typescript
-import { validateReferralUsername } from '@ottabase/referrals';
+import { validateUsername } from '@ottabase/utils/user';
 
-const result = validateReferralUsername('myusername');
+const result = validateUsername('myusername');
 if (!result.valid) {
     console.error(result.error);
 }

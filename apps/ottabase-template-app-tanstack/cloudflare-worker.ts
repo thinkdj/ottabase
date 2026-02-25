@@ -6,6 +6,7 @@ import { handleBootstrapRoute, interceptIfNotReady, resolvePlatformState } from 
 import { injectBrandCriticalCSS } from './worker/lib/brand-html-inject';
 import { initDbConnection } from './worker/lib/db-utils';
 import { checkKillSwitches } from './worker/lib/killswitch';
+import { handleReferralVanityRedirect } from './worker/routes/referrals';
 import { resolveApiRoute } from './worker/routes/router';
 import { handleShortlinkFallback } from './worker/routes/shortlinks';
 
@@ -116,6 +117,16 @@ export default {
             const shortlinkFallbackResponse = await handleShortlinkFallback({ request, env, url });
             if (shortlinkFallbackResponse) {
                 return shortlinkFallbackResponse;
+            }
+
+            // /r/{username} vanity referral redirect
+            const vanityMatch = normalizedPathname.match(/^\/r\/([^/]+)$/);
+            if (vanityMatch) {
+                const vanityRes = await handleReferralVanityRedirect(
+                    { request, env, url },
+                    decodeURIComponent(vanityMatch[1]),
+                );
+                if (vanityRes) return vanityRes;
             }
 
             if (!env.OBCF_ASSETS) {

@@ -18,6 +18,11 @@ export interface ReferralRouteContext {
     url: URL;
 }
 
+/** Returns the maximum number of post-setup username changes allowed (default: 1). */
+function getMaxUsernameChanges(env: CloudflareEnv): number {
+    return parseInt((env as any).REFERRAL_SYSTEM_USERNAME_CHANGE ?? '1', 10);
+}
+
 export async function handleReferralTrack(context: ReferralRouteContext): Promise<Response> {
     const { request, env } = context;
     if (!env.OBCF_D1) {
@@ -43,6 +48,29 @@ export async function handleReferralTrack(context: ReferralRouteContext): Promis
         return errorResponse('Invalid referral code', 404, {
             code: 'INVALID_REFERRAL_CODE',
         });
+    }
+
+    // Duplicate-click deduplication via KV
+    const dedupWindowMin = parseInt((env as any).REFERRAL_DEDUP_WINDOW_MINUTES ?? '20', 10);
+    if (dedupWindowMin > 0 && env.OBCF_KV) {
+        const ip = request.headers.get('CF-Connecting-IP') ?? request.headers.get('X-Forwarded-For') ?? 'unknown';
+        const dedupKey = `ref:dedup:${ip}:${body.referralCode}`;
+        try {
+            const existing = await env.OBCF_KV.get(dedupKey);
+            if (existing !== null) {
+                // Duplicate within window – return success silently (don't count the click twice)
+                return jsonResponse({
+                    success: true,
+                    tracking: { referralCode: body.referralCode, recorded: false, deduplicated: true },
+                });
+            }
+            // Store dedup marker – fire-and-forget, don't let KV failure block tracking
+            env.OBCF_KV.put(dedupKey, '1', { expirationTtl: dedupWindowMin * 60 }).catch((e) => {
+                console.warn('ref:dedup KV write failed:', e);
+            });
+        } catch {
+            // KV unavailable – proceed without dedup
+        }
     }
 
     // Analytics Engine: write click event (non-blocking, no D1 write per click)
@@ -125,7 +153,9 @@ export async function handleReferralUser(context: ReferralRouteContext): Promise
             email: user.get('email'),
             referralUsername: user.get('referralUsername'),
             referredById: user.get('referredById'),
+            referralUsernameChanges: (user.get('referralUsernameChanges') as number) ?? 0,
         },
+        usernameChangeLimit: getMaxUsernameChanges(env),
         stats,
         tracking: trackingRecords.map((t) => t.toJson()),
     });
@@ -152,8 +182,8 @@ export async function handleReferralUsernameUpdate(context: ReferralRouteContext
         return errorResponse('referralUsername is required', 400);
     }
 
-    const { validateReferralUsername } = await import('@ottabase/referrals');
-    const validation = validateReferralUsername(body.referralUsername);
+    const { validateUsername } = await import('@ottabase/utils/user');
+    const validation = validateUsername(body.referralUsername);
 
     if (!validation.valid) {
         return errorResponse(validation.error || 'Invalid username', 400, {
@@ -171,6 +201,22 @@ export async function handleReferralUsernameUpdate(context: ReferralRouteContext
     const user = await User.find(userId);
     if (!user) {
         return errorResponse('User not found', 404);
+    }
+
+    // Enforce change limit: first-time setting is free; subsequent changes are limited.
+    const maxChanges = getMaxUsernameChanges(env);
+    const currentUsername = user.get('referralUsername');
+    if (currentUsername) {
+        // This is a change (not initial setup)
+        const changesMade = (user.get('referralUsernameChanges') as number) ?? 0;
+        if (changesMade >= maxChanges) {
+            return errorResponse(
+                `Referral username can only be changed ${maxChanges} time${maxChanges === 1 ? '' : 's'} after initial setup`,
+                400,
+                { code: 'USERNAME_CHANGE_LIMIT_REACHED' },
+            );
+        }
+        user.set('referralUsernameChanges', changesMade + 1);
     }
 
     user.set('referralUsername', body.referralUsername);
@@ -219,6 +265,63 @@ export async function handleReferralTrackingList(context: ReferralRouteContext):
         page,
         perPage,
         path: '/api/referrals/tracking',
+    });
+}
+
+/** Escape a CSV field (quote if it contains comma, newline or double-quote). */
+function csvField(value: unknown): string {
+    const str = value == null ? '' : String(value);
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+}
+
+/**
+ * Handle GET /api/referrals/export?format=csv
+ * Downloads all of the authenticated user's referral tracking records as a CSV file.
+ */
+export async function handleReferralExport(context: ReferralRouteContext): Promise<Response> {
+    const { request, env } = context;
+    if (!env.OBCF_D1) {
+        return errorResponse('D1 database binding not configured', 500, { code: 'CONFIG_ERROR' });
+    }
+
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+
+    const session = await getSession(request, env as any, getAuthOptions(env));
+    const userId = session?.user?.id;
+
+    if (!userId) {
+        return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+    }
+
+    const records = await ReferralTracking.forUser(userId);
+
+    const header = 'id,referralCode,referredUserId,status,ipAddress,userAgent,referer,createdAt,conversionAt\r\n';
+    const rows = records.map((t) => {
+        const d = t.toJson() as Record<string, unknown>;
+        return [
+            csvField(d.id),
+            csvField(d.referralCode),
+            csvField(d.referredUserId),
+            csvField(d.status),
+            csvField(d.ipAddress),
+            csvField(d.userAgent),
+            csvField(d.referer),
+            csvField(d.createdAt),
+            csvField(d.conversionAt),
+        ].join(',');
+    });
+
+    const csv = header + rows.join('\r\n');
+    const today = new Date().toISOString().slice(0, 10);
+    return new Response(csv, {
+        status: 200,
+        headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename="referrals-${today}.csv"`,
+        },
     });
 }
 
@@ -282,4 +385,66 @@ export async function handleReferralsAnalytics(context: ReferralRouteContext): P
         }
         throw e;
     }
+}
+
+/**
+ * Handle GET /r/{username} — vanity referral redirect
+ *
+ * Returns a lightweight HTML page with:
+ * - Open Graph meta tags (for social link previews)
+ * - <meta http-equiv="refresh"> redirect
+ * - JavaScript redirect fallback
+ *
+ * This makes `/r/johndoe` work like `/?ref=johndoe` while giving clean,
+ * shareable URLs with proper social preview cards.
+ */
+export async function handleReferralVanityRedirect(
+    context: { request: Request; env: CloudflareEnv; url: URL },
+    username: string,
+): Promise<Response | null> {
+    const { env, url } = context;
+
+    if (!username || !env.OBCF_D1) return null;
+
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+
+    const user = await User.findByReferralUsername(username);
+    if (!user) return null; // fall through to 404 / SPA
+
+    const displayName: string = (user.get('name') as string | null) || username;
+    const origin = url.origin;
+    const destination = `${origin}/?ref=${encodeURIComponent(username)}`;
+
+    // Escape helper – avoid XSS in injected content
+    const esc = (s: string) =>
+        s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const title = esc(`Join ${displayName}'s referral`);
+    const description = esc(`${displayName} invited you. Sign up using their referral link.`);
+    const escapedDest = esc(destination);
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>${title}</title>
+<meta name="description" content="${description}">
+<meta property="og:title" content="${title}">
+<meta property="og:description" content="${description}">
+<meta property="og:url" content="${esc(url.toString())}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="${title}">
+<meta name="twitter:description" content="${description}">
+<meta http-equiv="refresh" content="0;url=${escapedDest}">
+</head>
+<body>
+<p>Redirecting… <a href="${escapedDest}">Click here if not redirected</a></p>
+<script>window.location.replace(${JSON.stringify(destination)});</script>
+</body>
+</html>`;
+
+    return new Response(html, {
+        status: 200,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
 }

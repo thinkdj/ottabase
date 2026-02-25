@@ -85,6 +85,7 @@ Added to `packages/ottaorm/src/models/User.ts`:
 {
   referralUsername: text("referral_username").unique(),
   referredById: text("referred_by_id"),
+  referralUsernameChanges: integer("referral_username_changes").default(0).notNull(),
 }
 ```
 
@@ -216,6 +217,8 @@ Response: 200
 - Letters, numbers, underscores only
 - Must be unique
 - Returns 400 with error if validation fails
+- Returns 400 with `USERNAME_CHANGE_LIMIT_REACHED` code if the user has already changed their username the maximum
+  number of times (configurable via `REFERRAL_SYSTEM_USERNAME_CHANGE` env var, default: 1)
 
 ### Register with Referral Attribution
 
@@ -308,6 +311,16 @@ features: {
 - **Description:** Number of days a stored referral code remains valid
 - **Behavior:** Expired codes are automatically cleared from localStorage
 - **Common values:** 30, 60, 90, 180, 365
+
+### Environment Variables
+
+#### `REFERRAL_SYSTEM_USERNAME_CHANGE` (default: `1`)
+
+- **Type:** `string` (parsed as integer)
+- **Description:** How many times a user can change their referral username **after initial setup**
+- **Default:** `"1"` — users may set the username once and change it one more time
+- **`"0"`** — username is locked after initial setup (no changes allowed)
+- **Set in:** `wrangler.jsonc` `vars` section or as a Worker secret
 
 ### Example Configurations
 
@@ -547,9 +560,9 @@ Referral usernames must follow these rules (enforced in `@ottabase/referrals/val
 Example validation:
 
 ```typescript
-import { validateReferralUsername } from '@ottabase/referrals';
+import { validateUsername } from '@ottabase/utils/user';
 
-const result = validateReferralUsername('john_doe123');
+const result = validateUsername('john_doe123');
 if (!result.valid) {
     console.error(result.error);
 }
@@ -604,6 +617,7 @@ When a user changes their referral username:
 - Pending referrals with old code may not convert
 - A warning is shown in the UI
 - Completed conversions remain linked
+- **Change limit is enforced** (configurable via `REFERRAL_SYSTEM_USERNAME_CHANGE` env var, default: 1)
 
 ## Testing Checklist
 
@@ -700,15 +714,26 @@ When a user changes their referral username:
 
 ## Future Enhancements
 
-- [ ] Email notifications for conversions
-- [ ] Reward/incentive system
-- [ ] Admin analytics dashboard
-- [ ] Referral leaderboard
-- [ ] Custom referral link URLs (e.g., `/r/{username}`)
-- [ ] Multi-level referrals (referral of referral)
-- [ ] Export referral data (CSV/JSON)
-- [ ] Webhook notifications for conversions
-- [ ] A/B testing for referral campaigns
+See **[REFERRAL_FEATURES_ROADMAP.md](./REFERRAL_FEATURES_ROADMAP.md)** for a full list of candidate features, split
+into:
+
+- **Tier 1 — Simple, good-to-have** (10 ideas, each buildable in a single PR)
+- **Tier 2 — High-level / larger features** (5 strategic ideas)
+
+Quick reference of items not yet started:
+
+| Tier 1 (simple)                           | Tier 2 (high-level)                   |
+| ----------------------------------------- | ------------------------------------- |
+| Auto-generate referral username on signup | Rewards & incentives engine           |
+| Conversion rate stat in dashboard         | Multi-tier / chain referrals          |
+| One-click social sharing buttons          | Campaign management                   |
+| Source label in activity feed             | Fraud detection & risk scoring        |
+| QR code for referral link                 | White-label `/invite/{username}` page |
+| Referred-by on user profile               |                                       |
+| Milestone badges / in-app notifications   |                                       |
+| Duplicate-click deduplication             |                                       |
+| CSV export                                |                                       |
+| `/r/{username}` vanity URL                |                                       |
 
 ## License
 

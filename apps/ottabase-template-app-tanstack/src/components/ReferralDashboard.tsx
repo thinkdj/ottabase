@@ -6,7 +6,7 @@
 
 import { api } from '@/lib/api';
 import { clearStoredReferralCode, getReferralExpiryInfo, getStoredReferralCode } from '@/lib/referrals';
-import { validateReferralUsername } from '@ottabase/referrals';
+import { validateUsername } from '@ottabase/utils/user';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -26,7 +26,7 @@ import {
     CardTitle,
     Input,
 } from '@ottabase/ui-shadcn';
-import { Copy, X } from 'lucide-react';
+import { Copy, Download, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -42,11 +42,13 @@ interface ReferralUser {
     email?: string;
     referralUsername?: string;
     referredById?: string;
+    referralUsernameChanges?: number;
 }
 
 interface ReferralData {
     user: ReferralUser;
     stats: ReferralStats;
+    usernameChangeLimit?: number;
 }
 
 interface TrackingData {
@@ -132,7 +134,7 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
     const handleUpdateUsername = async () => {
         const trimmed = newUsername.trim();
         // Validate
-        const validation = validateReferralUsername(trimmed);
+        const validation = validateUsername(trimmed);
         if (!validation.valid) {
             setUsernameError(validation.error || 'Invalid username');
             return;
@@ -170,6 +172,22 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
     const handleClearStoredReferral = () => {
         clearStoredReferralCode();
         window.location.reload();
+    };
+
+    const handleDownloadCsv = async () => {
+        try {
+            const res = await fetch('/api/referrals/export?format=csv', { credentials: 'include' });
+            if (!res.ok) throw new Error('Export failed');
+            const blob = await res.blob();
+            const today = new Date().toISOString().slice(0, 10);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `referrals-${today}.csv`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        } catch {
+            toast.error('Failed to download CSV');
+        }
     };
 
     if (loading) {
@@ -242,35 +260,72 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
                     <CardDescription>Choose a unique username for your referral links</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <div className="flex gap-2">
-                            <Input
-                                type="text"
-                                value={newUsername}
-                                onChange={(e) => setNewUsername(e.target.value)}
-                                placeholder="e.g., johndoe"
-                                className="flex-1"
-                            />
-                            <Button onClick={handleUpdateUsername} disabled={updating || !newUsername}>
-                                {updating ? 'Updating...' : 'Update'}
-                            </Button>
-                        </div>
-                        {usernameError && <p className="text-sm text-destructive">{usernameError}</p>}
-                        <p className="text-sm text-muted-foreground">
-                            3-20 characters, letters/numbers/underscore only
-                        </p>
-                    </div>
+                    {(() => {
+                        // usernameChangeLimit is always included in the API response;
+                        // the fallback of 1 matches the server-side default (REFERRAL_SYSTEM_USERNAME_CHANGE).
+                        const maxChanges = data.usernameChangeLimit ?? 1;
+                        const changesMade = data.user.referralUsernameChanges ?? 0;
+                        const hasUsername = !!data.user.referralUsername;
+                        const changesRemaining = hasUsername ? Math.max(0, maxChanges - changesMade) : null;
+                        const atLimit = hasUsername && changesRemaining === 0;
 
-                    {data.user.referralUsername && (
-                        <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
-                            <CardContent className="pt-4">
-                                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                                    <strong>Warning:</strong> Changing your username will invalidate your old referral
-                                    links and may affect pending conversions.
-                                </p>
-                            </CardContent>
-                        </Card>
-                    )}
+                        return (
+                            <>
+                                <div className="space-y-2">
+                                    <div className="flex gap-2">
+                                        <Input
+                                            type="text"
+                                            value={newUsername}
+                                            onChange={(e) => setNewUsername(e.target.value)}
+                                            placeholder="e.g., johndoe"
+                                            className="flex-1"
+                                            disabled={atLimit}
+                                        />
+                                        <Button
+                                            onClick={handleUpdateUsername}
+                                            disabled={updating || !newUsername || atLimit}
+                                        >
+                                            {updating ? 'Updating...' : hasUsername ? 'Change' : 'Set'}
+                                        </Button>
+                                    </div>
+                                    {usernameError && <p className="text-sm text-destructive">{usernameError}</p>}
+                                    <p className="text-sm text-muted-foreground">
+                                        3-20 characters, letters/numbers/underscore only
+                                    </p>
+                                    {hasUsername && changesRemaining !== null && (
+                                        <p className="text-sm text-muted-foreground">
+                                            {atLimit ? (
+                                                <span className="text-destructive">
+                                                    Username change limit reached. You cannot change your username
+                                                    again.
+                                                </span>
+                                            ) : (
+                                                <>
+                                                    You have{' '}
+                                                    <strong>
+                                                        {changesRemaining} change
+                                                        {changesRemaining !== 1 ? 's' : ''}
+                                                    </strong>{' '}
+                                                    remaining.
+                                                </>
+                                            )}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {hasUsername && !atLimit && (
+                                    <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+                                        <CardContent className="pt-4">
+                                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                                <strong>Warning:</strong> Changing your username will invalidate your
+                                                old referral links and may affect pending conversions.
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+                                )}
+                            </>
+                        );
+                    })()}
                 </CardContent>
             </Card>
 
@@ -343,8 +398,16 @@ export function ReferralDashboard({ userId }: ReferralDashboardProps) {
             {/* Recent Tracking with Pagination */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Recent Activity</CardTitle>
-                    <CardDescription>Your referral click and conversion history</CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Recent Activity</CardTitle>
+                            <CardDescription>Your referral click and conversion history</CardDescription>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleDownloadCsv}>
+                            <Download className="h-4 w-4 mr-2" />
+                            Download CSV
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {trackingLoading ? (

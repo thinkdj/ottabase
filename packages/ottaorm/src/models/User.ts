@@ -48,8 +48,8 @@ export class User extends BaseModel {
     };
 
     static writable = {
-        create: ['name', 'email', 'image', 'referralUsername'],
-        update: ['name', 'image'],
+        create: ['name', 'email', 'image', 'username', 'referralUsername'],
+        update: ['name', 'image', 'username'],
     };
 
     protected static fields: ModelFields = {
@@ -150,6 +150,23 @@ export class User extends BaseModel {
                 visible: false,
             },
         },
+        username: {
+            type: 'string',
+            editable: true,
+            unique: true,
+            searchable: true,
+            uiConfig: {
+                label: 'Username',
+                description: 'Your unique public handle (3-20 chars, letters/numbers/underscore)',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'input',
+            },
+            tableConfig: {
+                visible: true,
+            },
+        },
         referralUsername: {
             type: 'string',
             editable: true,
@@ -164,6 +181,20 @@ export class User extends BaseModel {
             },
             tableConfig: {
                 visible: true,
+            },
+        },
+        referralUsernameChanges: {
+            type: 'number',
+            editable: false,
+            uiConfig: {
+                label: 'Referral Username Changes',
+                description: 'Number of times the referral username has been changed after initial setup',
+            },
+            formConfig: {
+                visible: false,
+            },
+            tableConfig: {
+                visible: false,
             },
         },
         referredById: {
@@ -331,6 +362,13 @@ export class User extends BaseModel {
         limit?: number;
     }) {
         return this.hasMany(User, 'referredById', options);
+    }
+
+    /**
+     * Find user by username (public handle)
+     */
+    static async findByUsername(username: string) {
+        return this.first({ username });
     }
 
     /**
