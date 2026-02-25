@@ -4,7 +4,9 @@ import AdvancedImageBlock from './components/AdvancedImage/AdvancedImage';
 import Checklist from './components/Checklist';
 import Code from './components/Code';
 import CTA from './components/CTA';
+import Layout from './components/Layout';
 import List from './components/List';
+import Map from './components/Map';
 import Quote from './components/Quote';
 import Review from './components/Review';
 import Spoiler from './components/Spoiler';
@@ -24,6 +26,8 @@ export const customRenderers = {
     spoiler: Spoiler,
     cta: CTA,
     review: Review,
+    map: Map,
+    layout: Layout,
 };
 
 export const blockClass = 'cdc-content-block';
@@ -93,6 +97,12 @@ export const defaultEJSRConfigs = {
     },
     review: {
         className: `${blockClass} cdc-content-review`,
+    },
+    map: {
+        className: `${blockClass} cdc-content-map`,
+    },
+    layout: {
+        className: `${blockClass} cdc-content-layout`,
     },
 };
 

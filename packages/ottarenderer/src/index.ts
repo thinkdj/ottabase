@@ -7,7 +7,9 @@ export { default as AdvancedImageBlock } from './components/AdvancedImage/Advanc
 export { default as Checklist } from './components/Checklist';
 export { default as Code } from './components/Code';
 export { default as CTA } from './components/CTA';
+export { default as Layout } from './components/Layout';
 export { default as List } from './components/List';
+export { default as Map } from './components/Map';
 export { default as Quote } from './components/Quote';
 export { default as Review } from './components/Review';
 export { default as Spoiler } from './components/Spoiler';
@@ -18,6 +20,8 @@ export { default as Warning } from './components/Warning';
 export type { AdvancedImageData, UploadResponse } from './components/AdvancedImage/advancedimage.types';
 export type { ChecklistItem } from './components/Checklist';
 export type { CTAData } from './components/CTA';
+export type { LayoutData, LayoutPreset } from './components/Layout';
+export type { MapData, MapProvider, MapTheme } from './components/Map';
 export type { QuoteData } from './components/Quote';
 export type { ReviewData } from './components/Review';
 

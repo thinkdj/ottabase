@@ -1,0 +1,125 @@
+import { RenderFn } from 'editorjs-blocks-react-renderer';
+import { useMemo } from 'react';
+
+export type MapProvider = 'gmaps' | 'openstreetmap';
+export type MapTheme = 'default' | 'dark' | 'satellite' | 'terrain';
+
+export interface MapData {
+    url?: string;
+    provider?: MapProvider;
+    theme?: MapTheme;
+    height?: number;
+    caption?: string;
+    zoom?: number;
+}
+
+/**
+ * Convert a plain map URL to an embed-friendly src.
+ * Mirrors the logic in MapTool.ts (kept in sync).
+ */
+function toEmbedUrl(url: string, provider: MapProvider, theme: MapTheme, zoom: number): string {
+    if (!url) return '';
+
+    // Already an embed URL
+    if (url.includes('/embed') || url.includes('output=embed') || url.includes('export/embed')) {
+        return url;
+    }
+
+    if (provider === 'gmaps') {
+        return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
+    }
+
+    if (provider === 'openstreetmap') {
+        const mapMatch = url.match(/#map=(\d+)\/([-\d.]+)\/([-\d.]+)/);
+        const latMatch = url.match(/[?&#]mlat=([-\d.]+)/);
+        const lngMatch = url.match(/[?&#]mlon=([-\d.]+)/);
+
+        const buildBbox = (lat: number, lng: number, z: number) => {
+            const delta = (360 / Math.pow(2, z)) * 3;
+            return `${(lng - delta).toFixed(6)}%2C${(lat - delta * 0.5).toFixed(6)}%2C${(lng + delta).toFixed(6)}%2C${(lat + delta * 0.5).toFixed(6)}`;
+        };
+
+        const layerMap: Record<MapTheme, string> = {
+            default: 'M',
+            dark: 'HOT',
+            satellite: 'C',
+            terrain: 'C',
+        };
+        const layer = layerMap[theme] || 'M';
+
+        if (mapMatch) {
+            const [, z, lat, lng] = mapMatch;
+            const bbox = buildBbox(parseFloat(lat), parseFloat(lng), parseInt(z, 10));
+            return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=${layer}&marker=${lat}%2C${lng}`;
+        }
+
+        if (latMatch && lngMatch) {
+            const bbox = buildBbox(parseFloat(latMatch[1]), parseFloat(lngMatch[1]), zoom);
+            return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=${layer}&marker=${latMatch[1]}%2C${lngMatch[1]}`;
+        }
+    }
+
+    return url;
+}
+
+const Map: RenderFn<MapData> = ({ data, className = '' }) => {
+    const url = data?.url || '';
+    const provider = data?.provider || 'openstreetmap';
+    const theme = data?.theme || 'default';
+    const height = data?.height || 400;
+    const caption = data?.caption;
+    const zoom = data?.zoom ?? 13;
+
+    const embedUrl = useMemo(() => toEmbedUrl(url, provider, theme, zoom), [url, provider, theme, zoom]);
+
+    if (!url) return null;
+
+    // Dark-mode inversion filter for maps that don't have native dark tiles
+    const isDarkTheme = theme === 'dark';
+
+    const themeLabel =
+        provider === 'gmaps'
+            ? 'Google Maps'
+            : theme === 'satellite' || theme === 'terrain'
+              ? 'OpenStreetMap (Cycle)'
+              : 'OpenStreetMap';
+
+    return (
+        <figure className={`${className} my-6 cdc-content-map not-prose`} itemScope itemType="https://schema.org/Map">
+            <div
+                className="relative rounded-lg overflow-hidden border border-border shadow-sm"
+                style={isDarkTheme ? { filter: 'invert(90%) hue-rotate(180deg)' } : undefined}
+            >
+                <iframe
+                    src={embedUrl}
+                    width="100%"
+                    height={height}
+                    style={{ display: 'block', border: 'none' }}
+                    loading="lazy"
+                    allowFullScreen
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title={caption || `${themeLabel} map`}
+                    aria-label={caption || `Interactive ${themeLabel} map`}
+                    itemProp="url"
+                />
+            </div>
+
+            {caption && (
+                <figcaption className="mt-2 text-center text-sm text-muted-foreground italic" itemProp="name">
+                    {caption}
+                </figcaption>
+            )}
+
+            {/* Noscript fallback */}
+            <noscript>
+                <p className="text-sm text-muted-foreground">
+                    <a href={url} target="_blank" rel="noopener noreferrer">
+                        {caption || 'View map'}
+                    </a>
+                </p>
+            </noscript>
+        </figure>
+    );
+};
+
+export default Map;

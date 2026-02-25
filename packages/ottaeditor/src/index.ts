@@ -17,7 +17,9 @@ export {
     Embed,
     Header,
     InlineCode,
+    LayoutTool,
     LinkTool,
+    MapTool,
     Marker,
     NestedList,
     Paragraph,
@@ -38,6 +40,8 @@ export { default as AdvancedImageRenderer } from './tools/AdvancedImageTool/Adva
 export { default as AdvancedImageTool } from './tools/AdvancedImageTool/AdvancedImageTool';
 export type { AdvancedImageData } from './tools/AdvancedImageTool/types';
 export { default as MediaLibraryTool } from './tools/MediaLibraryTool/MediaLibraryTool';
+export type { LayoutData, LayoutPreset, LayoutColumnData, LayoutToolConfig } from './tools/LayoutTool/LayoutTool';
+export type { MapData, MapProvider, MapTheme, MapToolConfig } from './tools/MapTool/MapTool';
 
 export type { DefaultPluginName } from './defaultPlugins';
 

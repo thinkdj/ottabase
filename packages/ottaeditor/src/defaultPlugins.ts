@@ -15,6 +15,8 @@ import Table from '@editorjs/table';
 import Underline from '@editorjs/underline';
 import Warning from '@editorjs/warning';
 import CTATool from './tools/CTATool/CTATool';
+import LayoutTool from './tools/LayoutTool/LayoutTool';
+import MapTool from './tools/MapTool/MapTool';
 import ReviewTool from './tools/ReviewTool/ReviewTool';
 import SpoilerTool from './tools/SpoilerTool/SpoilerTool';
 import type { OttaEditorPlugin } from './types';
@@ -41,6 +43,8 @@ export const DEFAULT_PLUGIN_NAMES = {
     SPOILER: 'spoiler',
     CTA: 'cta',
     REVIEW: 'review',
+    MAP: 'map',
+    LAYOUT: 'layout',
 } as const;
 
 /**
@@ -171,6 +175,20 @@ export const defaultPlugins: OttaEditorPlugin[] = [
         tool: ReviewTool as any,
         config: {} as any,
     },
+    {
+        name: DEFAULT_PLUGIN_NAMES.MAP,
+        tool: MapTool as any,
+        config: {
+            defaultProvider: 'openstreetmap',
+            defaultHeight: 400,
+            defaultTheme: 'default',
+        } as any,
+    },
+    {
+        name: DEFAULT_PLUGIN_NAMES.LAYOUT,
+        tool: LayoutTool as any,
+        config: {} as any,
+    },
 ];
 
 /**
@@ -207,7 +225,9 @@ export {
     Embed,
     Header,
     InlineCode,
+    LayoutTool,
     LinkTool,
+    MapTool,
     Marker,
     NestedList,
     Paragraph,
