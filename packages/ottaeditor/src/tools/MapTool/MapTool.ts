@@ -300,27 +300,60 @@ export default class MapTool implements BlockTool {
     static toEmbedUrl(url: string, provider: MapProvider, theme: MapTheme, zoom: number): string {
         if (!url) return '';
 
-        // Already an embed URL – use as-is
+        let parsed: URL;
+        try {
+            parsed = new URL(url);
+        } catch {
+            return '';
+        }
+
+        const protocol = parsed.protocol.toLowerCase();
+        if (protocol !== 'http:' && protocol !== 'https:') {
+            return '';
+        }
+
+        const host = parsed.hostname.toLowerCase();
+        const isGMapsHost = [
+            'google.com',
+            'www.google.com',
+            'maps.google.com',
+            'goo.gl',
+            'www.goo.gl',
+            'maps.app.goo.gl',
+        ].some((h) => host === h || host.endsWith(`.${h}`));
+        const isOsmHost = ['openstreetmap.org', 'www.openstreetmap.org', 'osm.org', 'www.osm.org'].some(
+            (h) => host === h || host.endsWith(`.${h}`),
+        );
+
+        // Already an embed URL – allow only for known hosts
         if (url.includes('/embed') || url.includes('output=embed') || url.includes('export/embed')) {
-            return url;
+            if ((provider === 'gmaps' && isGMapsHost) || (provider === 'openstreetmap' && isOsmHost)) {
+                return url;
+            }
+            return '';
         }
 
         if (provider === 'gmaps') {
-            // Google Maps share URL: https://goo.gl/maps/... or https://www.google.com/maps/place/...
-            // Convert to embed format
+            if (!isGMapsHost) return '';
+
+            // https://goo.gl/maps/... short links – wrap in embed
             if (url.includes('goo.gl/maps/')) {
                 return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
             }
-            // https://www.google.com/maps/@lat,lng,zoomz => embed
+
+            // https://www.google.com/maps/place/.../@lat,lng,zoomz => embed without API key
             const placeMatch = url.match(/\/maps\/place\/([^/@]+)\/@(-?[\d.]+),(-?[\d.]+)/);
             if (placeMatch) {
-                return `https://www.google.com/maps/embed/v1/place?key=&q=${encodeURIComponent(placeMatch[1])}&zoom=${zoom}`;
+                return `https://maps.google.com/maps?q=${encodeURIComponent(placeMatch[1])}&output=embed&z=${zoom}`;
             }
+
             // Fallback: wrap in standard iframe embed
             return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
         }
 
         if (provider === 'openstreetmap') {
+            if (!isOsmHost) return '';
+
             // https://www.openstreetmap.org/?mlat=51.5&mlon=-0.1#map=13/51.5/-0.1
             const latMatch = url.match(/[?&#]mlat=([-\d.]+)/);
             const lngMatch = url.match(/[?&#]mlon=([-\d.]+)/);
@@ -341,11 +374,11 @@ export default class MapTool implements BlockTool {
                 return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=${layer}&marker=${lat}%2C${lng}`;
             }
 
-            // Generic OSM URL – link to standard embed
-            return url.replace('openstreetmap.org/', 'openstreetmap.org/export/embed.html?').replace('?', '?');
+            // Unknown OSM shape – refuse to embed
+            return '';
         }
 
-        return url;
+        return '';
     }
 
     /** Compute a bounding-box string for OpenStreetMap embed from a center + zoom */

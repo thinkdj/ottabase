@@ -37,6 +37,10 @@ describe('LayoutTool', () => {
         vi.spyOn(Date, 'now').mockReturnValue(1000);
     });
 
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     describe('Toolbox', () => {
         it('should have correct toolbox configuration', () => {
             expect(LayoutTool.toolbox.title).toBe('Layout');

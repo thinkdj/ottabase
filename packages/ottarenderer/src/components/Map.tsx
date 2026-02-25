@@ -14,22 +14,62 @@ export interface MapData {
 }
 
 /**
- * Convert a plain map URL to an embed-friendly src.
- * Mirrors the logic in MapTool.ts (kept in sync).
+ * Convert a plain map URL to an embed-friendly src for the given provider.
+ * Mirrors the validation and shaping rules used in the editor MapTool.
  */
 function toEmbedUrl(url: string, provider: MapProvider, theme: MapTheme, zoom: number): string {
     if (!url) return '';
 
-    // Already an embed URL
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return '';
+    }
+
+    const protocol = parsed.protocol.toLowerCase();
+    if (protocol !== 'http:' && protocol !== 'https:') return '';
+
+    const host = parsed.hostname.toLowerCase();
+    const isGMapsHost = [
+        'google.com',
+        'www.google.com',
+        'maps.google.com',
+        'goo.gl',
+        'www.goo.gl',
+        'maps.app.goo.gl',
+    ].some((h) => host === h || host.endsWith(`.${h}`));
+    const isOsmHost = ['openstreetmap.org', 'www.openstreetmap.org', 'osm.org', 'www.osm.org'].some(
+        (h) => host === h || host.endsWith(`.${h}`),
+    );
+
+    // Already an embed URL – allow only for known hosts
     if (url.includes('/embed') || url.includes('output=embed') || url.includes('export/embed')) {
-        return url;
+        if ((provider === 'gmaps' && isGMapsHost) || (provider === 'openstreetmap' && isOsmHost)) {
+            return url;
+        }
+        return '';
     }
 
     if (provider === 'gmaps') {
+        if (!isGMapsHost) return '';
+
+        // https://goo.gl/maps/... short links – wrap in embed
+        if (url.includes('goo.gl/maps/')) {
+            return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
+        }
+
+        const placeMatch = url.match(/\/maps\/place\/([^/@]+)\/@(-?[\d.]+),(-?[\d.]+)/);
+        if (placeMatch) {
+            return `https://maps.google.com/maps?q=${encodeURIComponent(placeMatch[1])}&output=embed&z=${zoom}`;
+        }
+
         return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
     }
 
     if (provider === 'openstreetmap') {
+        if (!isOsmHost) return '';
+
         const mapMatch = url.match(/#map=(\d+)\/([-\d.]+)\/([-\d.]+)/);
         const latMatch = url.match(/[?&#]mlat=([-\d.]+)/);
         const lngMatch = url.match(/[?&#]mlon=([-\d.]+)/);
@@ -57,9 +97,11 @@ function toEmbedUrl(url: string, provider: MapProvider, theme: MapTheme, zoom: n
             const bbox = buildBbox(parseFloat(latMatch[1]), parseFloat(lngMatch[1]), zoom);
             return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=${layer}&marker=${latMatch[1]}%2C${lngMatch[1]}`;
         }
+
+        return '';
     }
 
-    return url;
+    return '';
 }
 
 const Map: RenderFn<MapData> = ({ data, className = '' }) => {
