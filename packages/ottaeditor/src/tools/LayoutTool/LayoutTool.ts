@@ -262,24 +262,33 @@ export default class LayoutTool implements BlockTool {
         }
     }
 
-    /** Minimal default tools for nested editors (header + paragraph) */
+    /**
+     * Default tools for nested editors.
+     * Includes common block types but excludes Layout to prevent infinite nesting.
+     */
     private buildDefaultTools(): Record<string, any> {
-        // Dynamically import basic tools to avoid circular deps
-        try {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const Header = require('@editorjs/header').default;
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const Paragraph = require('@editorjs/paragraph').default;
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const NestedList = require('@editorjs/nested-list').default;
-            return {
-                header: { class: Header },
-                paragraph: { class: Paragraph },
-                list: { class: NestedList },
-            };
-        } catch {
-            return {};
+        // Dynamically import tools to avoid circular deps
+        const tools: Record<string, any> = {};
+        const toolImports: Array<{ name: string; module: string; config?: Record<string, any> }> = [
+            { name: 'paragraph', module: '@editorjs/paragraph' },
+            { name: 'header', module: '@editorjs/header', config: { levels: [1, 2, 3, 4, 5, 6], defaultLevel: 2 } },
+            { name: 'delimiter', module: '@editorjs/delimiter' },
+            { name: 'list', module: '@editorjs/nested-list', config: { defaultStyle: 'unordered' } },
+            { name: 'checklist', module: '@editorjs/checklist' },
+            { name: 'table', module: '@editorjs/table', config: { rows: 2, cols: 3 } },
+        ];
+
+        for (const { name, module, config } of toolImports) {
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-var-requires
+                const Tool = require(module).default || require(module);
+                tools[name] = config ? { class: Tool, config } : { class: Tool };
+            } catch {
+                // Tool not available – skip silently
+            }
         }
+
+        return tools;
     }
 
     private destroyNestedEditors(): void {

@@ -3,7 +3,6 @@
 .cdx-layout__wrapper {
     border-radius: 6px;
     border: 1px solid hsl(var(--border));
-    overflow: hidden;
 }
 
 /* Toolbar */
@@ -14,6 +13,7 @@
     padding: 6px 10px;
     background: hsl(var(--muted) / 0.5);
     border-bottom: 1px solid hsl(var(--border));
+    border-radius: 6px 6px 0 0;
     flex-wrap: wrap;
 }
 

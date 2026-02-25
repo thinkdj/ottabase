@@ -1,6 +1,5 @@
 // @ts-nocheck - EditorJS plugins have inconsistent type definitions
 import CheckList from '@editorjs/checklist';
-import CodeTool from './tools/CodeTool/CodeTool';
 import Delimiter from '@editorjs/delimiter';
 import Embed from '@editorjs/embed';
 import Header from '@editorjs/header';
@@ -14,6 +13,8 @@ import Raw from '@editorjs/raw';
 import Table from '@editorjs/table';
 import Underline from '@editorjs/underline';
 import Warning from '@editorjs/warning';
+import AdvancedImageTool from './tools/AdvancedImageTool/AdvancedImageTool';
+import CodeTool from './tools/CodeTool/CodeTool';
 import CTATool from './tools/CTATool/CTATool';
 import LayoutTool from './tools/LayoutTool/LayoutTool';
 import MapTool from './tools/MapTool/MapTool';
@@ -51,6 +52,23 @@ export const DEFAULT_PLUGIN_NAMES = {
  * Type representing all available default plugin names
  */
 export type DefaultPluginName = (typeof DEFAULT_PLUGIN_NAMES)[keyof typeof DEFAULT_PLUGIN_NAMES];
+
+/**
+ * Build the tools config for nested Layout editors.
+ * Includes all default block tools except Layout itself (prevents infinite nesting).
+ */
+function buildLayoutNestedTools(): Record<string, any> {
+    return {
+        paragraph: { class: Paragraph, config: { placeholder: 'Start writing…' } },
+        header: { class: Header, config: { levels: [1, 2, 3, 4, 5, 6], defaultLevel: 2 } },
+        image: { class: AdvancedImageTool },
+        delimiter: { class: Delimiter },
+        code: { class: CodeTool, config: { placeholder: 'Enter your code here…' } },
+        list: { class: NestedList, config: { defaultStyle: 'unordered' } },
+        checklist: { class: CheckList },
+        table: { class: Table, config: { rows: 2, cols: 3 } },
+    };
+}
 
 /**
  * Default EditorJS plugins configuration
@@ -187,7 +205,9 @@ export const defaultPlugins: OttaEditorPlugin[] = [
     {
         name: DEFAULT_PLUGIN_NAMES.LAYOUT,
         tool: LayoutTool as any,
-        config: {} as any,
+        config: {
+            tools: buildLayoutNestedTools(),
+        } as any,
     },
 ];
 

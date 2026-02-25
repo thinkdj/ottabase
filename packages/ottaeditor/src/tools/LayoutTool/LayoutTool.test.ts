@@ -15,10 +15,13 @@ vi.mock('@editorjs/editorjs', () => {
     return { default: MockEditorJS };
 });
 
-// Mock optional nested tool imports
-vi.mock('@editorjs/header', () => ({ default: {} }));
+// Mock optional nested tool imports (matches buildDefaultTools fallback list)
 vi.mock('@editorjs/paragraph', () => ({ default: {} }));
+vi.mock('@editorjs/header', () => ({ default: {} }));
+vi.mock('@editorjs/delimiter', () => ({ default: {} }));
 vi.mock('@editorjs/nested-list', () => ({ default: {} }));
+vi.mock('@editorjs/checklist', () => ({ default: {} }));
+vi.mock('@editorjs/table', () => ({ default: {} }));
 
 const createMockAPI = () => ({
     blocks: { getCurrentBlockIndex: vi.fn(() => 0) },
