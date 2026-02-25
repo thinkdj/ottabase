@@ -31,6 +31,67 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 # Done! Visit http://localhost:3004
 ```
 
+## Customising Your App
+
+All user-owned settings live in a **single file**: `ottabase.config.ts` at the app root. Edit it to set your app
+identity, toggle packages, add premium features, and tune UI defaults.
+
+```typescript
+// ottabase.config.ts
+import { defineOttabaseConfig } from '@ottabase/config';
+
+export default defineOttabaseConfig({
+    appId: 'my-saas-app',
+    appName: 'My SaaS App',
+    packages: { ottablog: true, shortlinks: true, referrals: true, brandEngine: false },
+    features: { referrals: { enabled: true, expiryDays: 90 } },
+    theme: { colorDefault: 'tremorBlue' },
+});
+```
+
+### File Ownership
+
+| File                            | Owner                  | Notes                                          |
+| ------------------------------- | ---------------------- | ---------------------------------------------- |
+| `ottabase.config.ts`            | **You**                | Single source of truth for your customisations |
+| `ottabase/models/`              | **You**                | Your domain models                             |
+| `ottabase/db/schema.ts`         | **You**                | Your table schema exports                      |
+| `ottabase/migrations/`          | **You**                | Your SQL migrations                            |
+| `ottabase/config.migrations.ts` | **You** (user section) | Add custom/premium packages here               |
+| `packages/`                     | Framework              | Shared packages — update via `git pull`        |
+| `worker/routes/`                | Framework              | API route handlers                             |
+| `cloudflare-worker.ts`          | Framework              | Worker entry point                             |
+
+### Updating the Framework
+
+```bash
+# Fork workflow
+git pull upstream main
+
+# Zip workflow (replace everything except your owned files)
+# 1. Back up: ottabase.config.ts, ottabase/models/, ottabase/db/schema.ts,
+#             ottabase/migrations/, ottabase/config.migrations.ts
+# 2. Unzip new release over the repo
+# 3. Restore your backed-up files
+# 4. Run: pnpm install && pnpm build:pkg
+```
+
+### Adding a Premium Package
+
+1. Install: `pnpm add --filter <app> @myorg/premium-feature`
+2. Register tables in `ottabase/config.migrations.ts` (user section at the top):
+    ```typescript
+    import { premiumTable } from '@myorg/premium-feature/schema';
+    const USER_PACKAGE_REGISTRY: Record<string, PackageEntry> = {
+        premiumFeature: { tables: { premiumTable }, migrations: [] },
+    };
+    ```
+3. Enable in `ottabase.config.ts`:
+    ```typescript
+    customPackages: { premiumFeature: { tables: { premiumTable } } },
+    ```
+4. Run migrations: `curl -X POST http://localhost:3004/api/ottaorm/init`
+
 ## Authentication
 
 This template ships with Auth.js + D1 integration and tighter session handling:

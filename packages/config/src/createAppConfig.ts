@@ -1,4 +1,4 @@
-import { AppConfig, AppMeta, ConfigOptions, SupportedUIFramework, ThemeColors } from './types';
+import { AppConfig, AppMeta, ConfigOptions, OttabaseUserConfig, SupportedUIFramework, ThemeColors } from './types';
 
 /**
  * Creates app configuration by merging environment variables with defaults
@@ -218,4 +218,50 @@ export function createThemeColors(colors: ThemeColors = {}): ThemeColors {
     };
 
     return { ...defaultColors, ...colors };
+}
+
+/**
+ * Identity helper for `ottabase.config.ts`.
+ * Provides full TypeScript autocomplete and validation with zero runtime cost.
+ *
+ * @example
+ * ```ts
+ * // ottabase.config.ts
+ * import { defineOttabaseConfig } from '@ottabase/config';
+ *
+ * export default defineOttabaseConfig({
+ *   appId: 'my-app',
+ *   appName: 'My SaaS App',
+ *   packages: { ottablog: true, shortlinks: true, referrals: true },
+ * });
+ * ```
+ */
+export function defineOttabaseConfig<T extends OttabaseUserConfig>(config: T): T {
+    return config;
+}
+
+/**
+ * Converts an `OttabaseUserConfig` into `ConfigOptions` accepted by `createAppConfig`.
+ * Use this inside `src/ottabase/config/app.config.ts` to bridge the two.
+ */
+export function userConfigToOptions(userConfig: OttabaseUserConfig): ConfigOptions {
+    return {
+        appId: userConfig.appId,
+        appName: userConfig.appName,
+        defaults: {
+            meta: userConfig.meta,
+            ui: userConfig.ui,
+            theme: userConfig.theme,
+            storage: userConfig.storage,
+            features: userConfig.features
+                ? {
+                      referrals: userConfig.features.referrals,
+                      spotlight: userConfig.features.spotlight,
+                      pagination: userConfig.features.pagination,
+                      crudHub: userConfig.features.crudHub,
+                      auth: userConfig.features.auth,
+                  }
+                : undefined,
+        },
+    };
 }

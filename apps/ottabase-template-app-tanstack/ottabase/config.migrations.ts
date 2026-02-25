@@ -1,13 +1,25 @@
 // ============================================================
-// PACKAGE MIGRATION CONFIGURATION
+// PACKAGE MIGRATION CONFIGURATION  (Framework-managed)
 // ============================================================
-// Register external packages (like @ottabase/shortlinks) here to
-// automatically include their database tables and migrations.
+// This file wires up the built-in PACKAGE_REGISTRY and merges
+// any custom/premium packages declared in `../ottabase.config.ts`.
 //
-// HOW TO ADD A PACKAGE:
-// 1. Import the package's table schema and migrations
-// 2. Add it to `PACKAGE_REGISTRY` below
-// 3. Enable it in `migrationConfig`
+// ── To enable/disable a built-in package ────────────────────
+//   Edit `packages` in ottabase.config.ts (no change needed here).
+//
+// ── To add a custom or premium package ──────────────────────
+//   1. Install the package and import its table schema below.
+//   2. Add it to USER_PACKAGE_REGISTRY with { tables, migrations }.
+//   3. Toggle it on in `customPackages` in ottabase.config.ts.
+//
+// Example:
+//   import { myPremiumTable } from '@myorg/premium-feature/schema';
+//   const USER_PACKAGE_REGISTRY: Record<string, PackageEntry> = {
+//     myPremiumFeature: {
+//       tables: { myPremiumTable },
+//       migrations: [],
+//     },
+//   };
 // ============================================================
 
 import { brandKitsTable, layoutRouteMappingsTable, layoutTemplatesTable } from '@ottabase/brand-engine/persistence';
@@ -24,12 +36,20 @@ import {
 import type { Migration } from '@ottabase/ottaorm';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
+import userConfig from '../ottabase.config';
 
-/**
- * 1. REGISTRY
- * Map package names to their table definitions and optional migrations.
- */
-const PACKAGE_REGISTRY = {
+// ── Internal types ───────────────────────────────────────────────────────────
+
+interface PackageEntry {
+    tables: Record<string, unknown>;
+    migrations: Migration[];
+}
+
+// ── 1. BUILT-IN REGISTRY (framework-maintained) ──────────────────────────────
+// Do not edit this section. Add new built-in packages here when the framework
+// ships new packages.
+
+const BUILTIN_PACKAGE_REGISTRY: Record<string, PackageEntry> = {
     ottablog: {
         tables: {
             seriesTable,
@@ -41,15 +61,15 @@ const PACKAGE_REGISTRY = {
             ottablogPluginsTable,
             ottablogThemesTable,
         },
-        migrations: [] as Migration[],
+        migrations: [],
     },
     shortlinks: {
         tables: { shortlinksTable },
-        migrations: [] as Migration[], // Add package-specific migrations here if any
+        migrations: [],
     },
     referrals: {
         tables: { referralTrackingTable },
-        migrations: [] as Migration[],
+        migrations: [],
     },
     brandEngine: {
         tables: {
@@ -57,23 +77,54 @@ const PACKAGE_REGISTRY = {
             layoutTemplatesTable,
             layoutRouteMappingsTable,
         },
-        migrations: [] as Migration[],
+        migrations: [],
     },
-} as const;
-
-/**
- * 2. CONFIGURATION
- * Toggle packages ON (true) or OFF (false).
- * Only enabled packages will have their tables created/migrated.
- */
-export type MigrationPackageName = keyof typeof PACKAGE_REGISTRY;
-
-export const migrationConfig: Record<MigrationPackageName, boolean> = {
-    ottablog: true,
-    shortlinks: true,
-    referrals: true,
-    brandEngine: true,
 };
+
+// ── 2. USER / PREMIUM REGISTRY (add custom packages here) ────────────────────
+// Import your premium package table schemas above, then register them here.
+// The key must match an entry in `customPackages` in ottabase.config.ts.
+//
+// Example:
+//   import { premiumTable } from '@myorg/premium-feature/schema';
+//   const USER_PACKAGE_REGISTRY: Record<string, PackageEntry> = {
+//     myPremiumFeature: { tables: { premiumTable }, migrations: [] },
+//   };
+
+const USER_PACKAGE_REGISTRY: Record<string, PackageEntry> = {};
+
+// ── 3. COMBINED REGISTRY ─────────────────────────────────────────────────────
+
+const PACKAGE_REGISTRY: Record<string, PackageEntry> = {
+    ...BUILTIN_PACKAGE_REGISTRY,
+    ...USER_PACKAGE_REGISTRY,
+};
+
+// ── 4. TOGGLES (read from ottabase.config.ts) ────────────────────────────────
+// Built-in packages: sourced from `packages` in ottabase.config.ts.
+// Custom packages:   sourced from `customPackages` keys (all enabled when listed).
+
+export type MigrationPackageName = string;
+
+function buildMigrationConfig(): Record<string, boolean> {
+    const cfg: Record<string, boolean> = {};
+
+    // Built-in packages
+    const pkgs = userConfig.packages ?? {};
+    for (const name of Object.keys(BUILTIN_PACKAGE_REGISTRY)) {
+        cfg[name] = (pkgs as Record<string, boolean>)[name] ?? false;
+    }
+
+    // Custom/premium packages (present in USER_PACKAGE_REGISTRY → enabled)
+    const custom = userConfig.customPackages ?? {};
+    for (const name of Object.keys(USER_PACKAGE_REGISTRY)) {
+        cfg[name] = name in custom ? true : false;
+    }
+
+    return cfg;
+}
+
+export const migrationConfig: Record<MigrationPackageName, boolean> = buildMigrationConfig();
 
 // ============================================================
 // PRIVATE UTILITY (Do not edit below this line)
@@ -81,14 +132,14 @@ export const migrationConfig: Record<MigrationPackageName, boolean> = {
 
 /**
  * Merges tables from all enabled packages into a single object.
- * Used by `schema.ts` (Drizzle Kit) and `config.migrations.ts` (Runtime).
+ * Used by `schema.ts` (Drizzle Kit) and the runtime migration init.
  */
-export function getEnabledPackageTables() {
-    const tables: Record<string, any> = {};
+export function getEnabledPackageTables(): Record<string, unknown> {
+    const tables: Record<string, unknown> = {};
 
-    for (const [pkgName, config] of Object.entries(PACKAGE_REGISTRY)) {
-        if (migrationConfig[pkgName as MigrationPackageName]) {
-            Object.assign(tables, config.tables);
+    for (const [pkgName, entry] of Object.entries(PACKAGE_REGISTRY)) {
+        if (migrationConfig[pkgName]) {
+            Object.assign(tables, entry.tables);
         }
     }
 
@@ -97,14 +148,14 @@ export function getEnabledPackageTables() {
 
 /**
  * Merges migrations from all enabled packages into a single array.
- * Used by migration runner to execute package-specific migrations.
+ * Used by the migration runner for package-specific SQL migrations.
  */
 export function getEnabledPackageMigrations(): Migration[] {
     const migrations: Migration[] = [];
 
-    for (const [pkgName, config] of Object.entries(PACKAGE_REGISTRY)) {
-        if (migrationConfig[pkgName as MigrationPackageName]) {
-            migrations.push(...config.migrations);
+    for (const [pkgName, entry] of Object.entries(PACKAGE_REGISTRY)) {
+        if (migrationConfig[pkgName]) {
+            migrations.push(...entry.migrations);
         }
     }
 

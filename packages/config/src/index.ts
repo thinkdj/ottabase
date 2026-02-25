@@ -3,8 +3,11 @@ export type {
     AppConfig,
     AppMeta,
     AuthConfig,
+    BuiltinPackageName,
     ConfigOptions,
     CrudHubConfig,
+    OttabaseCustomPackage,
+    OttabaseUserConfig,
     PaginationConfig,
     ReferralsConfig,
     SpotlightConfig,
@@ -14,7 +17,14 @@ export type {
 } from './types';
 
 // Export main functions
-export { createAppConfig, createStorageKey, createThemeColors, getCurrentYear } from './createAppConfig';
+export {
+    createAppConfig,
+    createStorageKey,
+    createThemeColors,
+    defineOttabaseConfig,
+    getCurrentYear,
+    userConfigToOptions,
+} from './createAppConfig';
 
 // Import for internal use
 import type { SupportedUIFramework, ThemeColors } from './types';
