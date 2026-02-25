@@ -224,7 +224,7 @@ export default class LayoutTool implements BlockTool {
 
     private async initNestedEditors(): Promise<void> {
         // Destroy stale editors if any
-        await this.destroyNestedEditors();
+        this.destroyNestedEditors();
 
         const presetDef = PRESETS.find((p) => p.key === this.data.preset) || PRESETS[0];
 
@@ -282,12 +282,15 @@ export default class LayoutTool implements BlockTool {
         }
     }
 
-    private async destroyNestedEditors(): Promise<void> {
-        const destroyPromises: Promise<void>[] = [];
+    private destroyNestedEditors(): void {
+        // EditorJS.destroy() is typed as void (not Promise<void>), so use try/catch
         this.nestedEditors.forEach((editor) => {
-            destroyPromises.push(editor.destroy().catch(() => {}));
+            try {
+                editor.destroy();
+            } catch {
+                // ignore errors during cleanup
+            }
         });
-        await Promise.all(destroyPromises);
         this.nestedEditors.clear();
     }
 
@@ -357,7 +360,7 @@ export default class LayoutTool implements BlockTool {
     validate(savedData: LayoutData): boolean {
         return (
             typeof savedData.preset === 'string' &&
-            savedData.preset !== '' &&
+            PRESETS.some((p) => p.key === savedData.preset) &&
             Array.isArray(savedData.columns) &&
             savedData.columns.length >= 2
         );
