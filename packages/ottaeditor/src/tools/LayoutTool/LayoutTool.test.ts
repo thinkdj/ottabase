@@ -100,6 +100,18 @@ describe('LayoutTool', () => {
                 expect(data.columns[0]).toBeDefined();
             });
         });
+
+        it('should fall back to 1-1 preset for invalid preset key', () => {
+            const tool = new LayoutTool({
+                data: { preset: 'invalid-key' as any, columns: [] } as any,
+                config: {},
+                api: mockAPI as any,
+            });
+            const el = tool.render();
+            const cols = el.querySelectorAll('[data-col]');
+            // Falls back to PRESETS[0] (1-1) which has 2 columns
+            expect(cols.length).toBe(2);
+        });
     });
 
     describe('Rendering', () => {
@@ -159,6 +171,52 @@ describe('LayoutTool', () => {
             expect(cols[0].style.flexBasis).toBe('25%');
             expect(cols[1].style.flexBasis).toBe('75%');
         });
+
+        it('should set correct flex-basis for all presets', () => {
+            const presetExpectations: Array<{ preset: string; widths: string[] }> = [
+                { preset: '1-1', widths: ['50%', '50%'] },
+                { preset: '3-1', widths: ['75%', '25%'] },
+                { preset: '1-2', widths: ['33%', '67%'] },
+                { preset: '2-1', widths: ['67%', '33%'] },
+                { preset: '1-1-1', widths: ['33%', '33%', '34%'] },
+            ];
+            for (const { preset, widths } of presetExpectations) {
+                const tool = new LayoutTool({
+                    data: { preset } as any,
+                    config: {},
+                    api: mockAPI as any,
+                });
+                const el = tool.render();
+                const cols = el.querySelectorAll('[data-col]') as NodeListOf<HTMLElement>;
+                expect(cols.length).toBe(widths.length);
+                widths.forEach((w, i) => {
+                    expect(cols[i].style.flexBasis).toBe(w);
+                });
+            }
+        });
+
+        it('should render column header labels and width text', () => {
+            const tool = new LayoutTool({
+                data: { preset: '1-3' } as any,
+                config: {},
+                api: mockAPI as any,
+            });
+            const el = tool.render();
+            const labels = el.querySelectorAll('.cdx-layout__col-label');
+            const widths = el.querySelectorAll('.cdx-layout__col-width');
+            expect(labels[0].textContent).toBe('Column 1');
+            expect(labels[1].textContent).toBe('Column 2');
+            expect(widths[0].textContent).toBe('25%');
+            expect(widths[1].textContent).toBe('75%');
+        });
+
+        it('should render placeholder text in editor holders', () => {
+            const tool = new LayoutTool({ data: {} as any, config: {}, api: mockAPI as any } as any);
+            const el = tool.render();
+            const placeholders = el.querySelectorAll('.cdx-layout__col-placeholder');
+            expect(placeholders.length).toBe(2);
+            expect(placeholders[0].textContent).toContain('Type or press');
+        });
     });
 
     describe('Validation', () => {
@@ -190,6 +248,88 @@ describe('LayoutTool', () => {
                     columns: [{ content: { blocks: [] } }, { content: { blocks: [] } }],
                 }),
             ).toBe(false);
+        });
+
+        it('should fail validation when column count mismatches preset', () => {
+            const tool = new LayoutTool({ data: {} as any, config: {}, api: mockAPI as any } as any);
+            // 1-1-1 expects 3 columns, but only 2 provided
+            expect(
+                tool.validate({
+                    preset: '1-1-1',
+                    columns: [{ content: { blocks: [] } }, { content: { blocks: [] } }],
+                }),
+            ).toBe(false);
+            // 1-1 expects 2 columns, but 3 provided
+            expect(
+                tool.validate({
+                    preset: '1-1',
+                    columns: [{ content: { blocks: [] } }, { content: { blocks: [] } }, { content: { blocks: [] } }],
+                }),
+            ).toBe(false);
+        });
+
+        it('should pass validation for 3-column preset with 3 columns', () => {
+            const tool = new LayoutTool({ data: {} as any, config: {}, api: mockAPI as any } as any);
+            expect(
+                tool.validate({
+                    preset: '1-1-1',
+                    columns: [{ content: { blocks: [] } }, { content: { blocks: [] } }, { content: { blocks: [] } }],
+                }),
+            ).toBe(true);
+        });
+
+        it('should fail validation with unknown preset key', () => {
+            const tool = new LayoutTool({ data: {} as any, config: {}, api: mockAPI as any } as any);
+            expect(
+                tool.validate({
+                    preset: 'unknown' as any,
+                    columns: [{ content: { blocks: [] } }, { content: { blocks: [] } }],
+                }),
+            ).toBe(false);
+        });
+
+        it('should fail validation with non-array columns', () => {
+            const tool = new LayoutTool({ data: {} as any, config: {}, api: mockAPI as any } as any);
+            expect(
+                tool.validate({
+                    preset: '1-1',
+                    columns: 'not-an-array' as any,
+                }),
+            ).toBe(false);
+        });
+    });
+
+    describe('Save', () => {
+        it('should return a shallow copy of data, not the same reference', async () => {
+            const tool = new LayoutTool({ data: {} as any, config: {}, api: mockAPI as any } as any);
+            const saved1 = await tool.save();
+            const saved2 = await tool.save();
+            expect(saved1).not.toBe(saved2);
+            expect(saved1.columns).not.toBe(saved2.columns);
+        });
+
+        it('should return correct preset and column count', async () => {
+            const tool = new LayoutTool({
+                data: { preset: '2-1', columns: [] } as any,
+                config: {},
+                api: mockAPI as any,
+            });
+            const saved = await tool.save();
+            expect(saved.preset).toBe('2-1');
+            expect(saved.columns).toHaveLength(2);
+        });
+    });
+
+    describe('Destroy', () => {
+        it('should not throw when calling destroy', () => {
+            const tool = new LayoutTool({ data: {} as any, config: {}, api: mockAPI as any } as any);
+            tool.render();
+            expect(() => tool.destroy()).not.toThrow();
+        });
+
+        it('should not throw when calling destroy before render', () => {
+            const tool = new LayoutTool({ data: {} as any, config: {}, api: mockAPI as any } as any);
+            expect(() => tool.destroy()).not.toThrow();
         });
     });
 });

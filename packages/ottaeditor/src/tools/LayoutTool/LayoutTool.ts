@@ -367,11 +367,12 @@ export default class LayoutTool implements BlockTool {
     }
 
     validate(savedData: LayoutData): boolean {
+        const presetDef = PRESETS.find((p) => p.key === savedData.preset);
         return (
             typeof savedData.preset === 'string' &&
-            PRESETS.some((p) => p.key === savedData.preset) &&
+            !!presetDef &&
             Array.isArray(savedData.columns) &&
-            savedData.columns.length >= 2
+            savedData.columns.length === presetDef.widths.length
         );
     }
 
