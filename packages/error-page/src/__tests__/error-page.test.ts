@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { Youch } from '../index';
+import { ErrorPage } from '../index';
 
-describe('Youch', () => {
+describe('ErrorPage', () => {
     it('should create an instance', () => {
-        const youch = new Youch();
-        expect(youch).toBeInstanceOf(Youch);
+        const errorPage = new ErrorPage();
+        expect(errorPage).toBeInstanceOf(ErrorPage);
     });
 
     it('should render error to HTML', () => {
-        const youch = new Youch();
-        const html = youch.toHTML(new Error('Test error'));
+        const errorPage = new ErrorPage();
+        const html = errorPage.toHTML(new Error('Test error'));
 
         expect(html).toContain('<!DOCTYPE html>');
         expect(html).toContain('Test error');
@@ -17,15 +17,15 @@ describe('Youch', () => {
     });
 
     it('should accept metadata groups', () => {
-        const youch = new Youch();
-        youch.group('Request', {
+        const errorPage = new ErrorPage();
+        errorPage.group('Request', {
             info: [
                 { key: 'Method', value: 'POST' },
                 { key: 'URL', value: '/api/users' },
             ],
         });
 
-        const html = youch.toHTML(new Error('Not found'));
+        const html = errorPage.toHTML(new Error('Not found'));
 
         expect(html).toContain('Request');
         expect(html).toContain('POST');
@@ -33,15 +33,15 @@ describe('Youch', () => {
     });
 
     it('should merge metadata groups with the same name', () => {
-        const youch = new Youch();
-        youch.group('Request', {
+        const errorPage = new ErrorPage();
+        errorPage.group('Request', {
             info: [{ key: 'Method', value: 'GET' }],
         });
-        youch.group('Request', {
+        errorPage.group('Request', {
             headers: [{ key: 'Host', value: 'example.com' }],
         });
 
-        const html = youch.toHTML(new Error('Test'));
+        const html = errorPage.toHTML(new Error('Test'));
 
         expect(html).toContain('Method');
         expect(html).toContain('Host');
@@ -49,15 +49,15 @@ describe('Youch', () => {
     });
 
     it('should support chaining on group()', () => {
-        const youch = new Youch();
-        const result = youch.group('Test', { a: [{ key: 'k', value: 'v' }] });
+        const errorPage = new ErrorPage();
+        const result = errorPage.group('Test', { a: [{ key: 'k', value: 'v' }] });
 
-        expect(result).toBe(youch);
+        expect(result).toBe(errorPage);
     });
 
     it('should parse errors independently via parse()', () => {
-        const youch = new Youch();
-        const parsed = youch.parse(new TypeError('Cannot read'));
+        const errorPage = new ErrorPage();
+        const parsed = errorPage.parse(new TypeError('Cannot read'));
 
         expect(parsed.type).toBe('TypeError');
         expect(parsed.message).toBe('Cannot read');
@@ -65,8 +65,8 @@ describe('Youch', () => {
     });
 
     it('should pass HTML options through', () => {
-        const youch = new Youch();
-        const html = youch.toHTML(new Error('Test'), {
+        const errorPage = new ErrorPage();
+        const html = errorPage.toHTML(new Error('Test'), {
             title: 'Custom Title',
             ide: 'sublime',
             cspNonce: 'test-nonce',
@@ -78,17 +78,17 @@ describe('Youch', () => {
     });
 
     it('should handle non-Error values', () => {
-        const youch = new Youch();
-        const html = youch.toHTML('string error');
+        const errorPage = new ErrorPage();
+        const html = errorPage.toHTML('string error');
 
         expect(html).toContain('string error');
     });
 
     it('should handle error with cause', () => {
-        const youch = new Youch();
+        const errorPage = new ErrorPage();
         const cause = new Error('Database connection failed');
         const error = new Error('Service unavailable', { cause });
-        const html = youch.toHTML(error);
+        const html = errorPage.toHTML(error);
 
         expect(html).toContain('Service unavailable');
         expect(html).toContain('Database connection failed');
@@ -96,19 +96,19 @@ describe('Youch', () => {
     });
 
     it('should handle error with extra properties', () => {
-        const youch = new Youch();
+        const errorPage = new ErrorPage();
         const error = new Error('Bad request');
         (error as Record<string, unknown>).status = 400;
         (error as Record<string, unknown>).code = 'VALIDATION_ERROR';
 
-        const html = youch.toHTML(error);
+        const html = errorPage.toHTML(error);
 
         expect(html).toContain('400');
         expect(html).toContain('VALIDATION_ERROR');
     });
 
     it('should add request metadata from Request object', () => {
-        const youch = new Youch();
+        const errorPage = new ErrorPage();
         const request = new Request('https://example.com/api/test?q=1', {
             method: 'POST',
             headers: {
@@ -117,8 +117,8 @@ describe('Youch', () => {
             },
         });
 
-        youch.addRequestMetadata(request);
-        const html = youch.toHTML(new Error('Test'));
+        errorPage.addRequestMetadata(request);
+        const html = errorPage.toHTML(new Error('Test'));
 
         expect(html).toContain('POST');
         expect(html).toContain('/api/test');
@@ -126,15 +126,15 @@ describe('Youch', () => {
     });
 
     it('should mask sensitive headers in request metadata', () => {
-        const youch = new Youch();
+        const errorPage = new ErrorPage();
         const request = new Request('https://example.com/', {
             headers: {
                 authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.secret',
             },
         });
 
-        youch.addRequestMetadata(request);
-        const html = youch.toHTML(new Error('Test'));
+        errorPage.addRequestMetadata(request);
+        const html = errorPage.toHTML(new Error('Test'));
 
         // Should mask the middle of the token
         expect(html).toContain('Bear');
@@ -143,10 +143,10 @@ describe('Youch', () => {
     });
 
     it('should support offset option to skip frames', () => {
-        const youch = new Youch();
+        const errorPage = new ErrorPage();
 
-        const htmlNoOffset = youch.toHTML(new Error('Test'), { offset: 0 });
-        const htmlWithOffset = youch.toHTML(new Error('Test'), { offset: 5 });
+        const htmlNoOffset = errorPage.toHTML(new Error('Test'), { offset: 0 });
+        const htmlWithOffset = errorPage.toHTML(new Error('Test'), { offset: 5 });
 
         // Both should be valid HTML, but offset version may have fewer frames
         expect(htmlNoOffset).toContain('<!DOCTYPE html>');

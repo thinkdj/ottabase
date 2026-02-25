@@ -48,102 +48,102 @@ function safeStringify(value: unknown, indent: number = 2): string {
 function getStyles(): string {
     return `
     :root {
-        --youch-bg: #fafafa;
-        --youch-fg: #1a1a1a;
-        --youch-muted: #6b7280;
-        --youch-border: #e5e7eb;
-        --youch-accent: #dc2626;
-        --youch-accent-bg: #fef2f2;
-        --youch-app-bg: #eff6ff;
-        --youch-app-border: #3b82f6;
-        --youch-frame-bg: #ffffff;
-        --youch-frame-hover: #f9fafb;
-        --youch-code-bg: #f3f4f6;
-        --youch-code-fg: #374151;
-        --youch-badge-bg: #e5e7eb;
-        --youch-badge-fg: #374151;
-        --youch-cause-bg: #fffbeb;
-        --youch-cause-border: #f59e0b;
-        --youch-meta-bg: #f0fdf4;
-        --youch-meta-border: #22c55e;
-        --youch-link: #2563eb;
-        --youch-raw-bg: #f8fafc;
-        --youch-tab-active: #2563eb;
-        --youch-tab-inactive: #9ca3af;
+        --ep-bg: #fafafa;
+        --ep-fg: #1a1a1a;
+        --ep-muted: #6b7280;
+        --ep-border: #e5e7eb;
+        --ep-accent: #dc2626;
+        --ep-accent-bg: #fef2f2;
+        --ep-app-bg: #eff6ff;
+        --ep-app-border: #3b82f6;
+        --ep-frame-bg: #ffffff;
+        --ep-frame-hover: #f9fafb;
+        --ep-code-bg: #f3f4f6;
+        --ep-code-fg: #374151;
+        --ep-badge-bg: #e5e7eb;
+        --ep-badge-fg: #374151;
+        --ep-cause-bg: #fffbeb;
+        --ep-cause-border: #f59e0b;
+        --ep-meta-bg: #f0fdf4;
+        --ep-meta-border: #22c55e;
+        --ep-link: #2563eb;
+        --ep-raw-bg: #f8fafc;
+        --ep-tab-active: #2563eb;
+        --ep-tab-inactive: #9ca3af;
     }
     html.dark {
-        --youch-bg: #0f0f0f;
-        --youch-fg: #e5e5e5;
-        --youch-muted: #9ca3af;
-        --youch-border: #2d2d2d;
-        --youch-accent: #ef4444;
-        --youch-accent-bg: #1c0d0d;
-        --youch-app-bg: #0c1929;
-        --youch-app-border: #3b82f6;
-        --youch-frame-bg: #161616;
-        --youch-frame-hover: #1e1e1e;
-        --youch-code-bg: #1e1e1e;
-        --youch-code-fg: #d1d5db;
-        --youch-badge-bg: #2d2d2d;
-        --youch-badge-fg: #d1d5db;
-        --youch-cause-bg: #1a1400;
-        --youch-cause-border: #d97706;
-        --youch-meta-bg: #0a1a0a;
-        --youch-meta-border: #16a34a;
-        --youch-link: #60a5fa;
-        --youch-raw-bg: #111111;
-        --youch-tab-active: #60a5fa;
-        --youch-tab-inactive: #6b7280;
+        --ep-bg: #0f0f0f;
+        --ep-fg: #e5e5e5;
+        --ep-muted: #9ca3af;
+        --ep-border: #2d2d2d;
+        --ep-accent: #ef4444;
+        --ep-accent-bg: #1c0d0d;
+        --ep-app-bg: #0c1929;
+        --ep-app-border: #3b82f6;
+        --ep-frame-bg: #161616;
+        --ep-frame-hover: #1e1e1e;
+        --ep-code-bg: #1e1e1e;
+        --ep-code-fg: #d1d5db;
+        --ep-badge-bg: #2d2d2d;
+        --ep-badge-fg: #d1d5db;
+        --ep-cause-bg: #1a1400;
+        --ep-cause-border: #d97706;
+        --ep-meta-bg: #0a1a0a;
+        --ep-meta-border: #16a34a;
+        --ep-link: #60a5fa;
+        --ep-raw-bg: #111111;
+        --ep-tab-active: #60a5fa;
+        --ep-tab-inactive: #6b7280;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        background: var(--youch-bg);
-        color: var(--youch-fg);
+        background: var(--ep-bg);
+        color: var(--ep-fg);
         line-height: 1.6;
         -webkit-font-smoothing: antialiased;
     }
-    .youch-container {
+    .ep-container {
         max-width: 960px;
         margin: 0 auto;
         padding: 32px 24px;
     }
     /* ─── Header ───────────────────────────────── */
-    .youch-header {
+    .ep-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         margin-bottom: 24px;
     }
-    .youch-logo {
+    .ep-logo {
         font-size: 13px;
         font-weight: 600;
-        color: var(--youch-muted);
+        color: var(--ep-muted);
         letter-spacing: 0.5px;
         text-transform: uppercase;
     }
-    .youch-theme-toggle {
-        background: var(--youch-badge-bg);
-        border: 1px solid var(--youch-border);
-        color: var(--youch-fg);
+    .ep-theme-toggle {
+        background: var(--ep-badge-bg);
+        border: 1px solid var(--ep-border);
+        color: var(--ep-fg);
         border-radius: 6px;
         padding: 4px 10px;
         font-size: 12px;
         cursor: pointer;
         transition: background 0.15s;
     }
-    .youch-theme-toggle:hover { opacity: 0.8; }
+    .ep-theme-toggle:hover { opacity: 0.8; }
     /* ─── Error Info ───────────────────────────── */
-    .youch-error-info {
-        background: var(--youch-accent-bg);
-        border: 1px solid var(--youch-accent);
+    .ep-error-info {
+        background: var(--ep-accent-bg);
+        border: 1px solid var(--ep-accent);
         border-radius: 8px;
         padding: 20px 24px;
         margin-bottom: 24px;
     }
-    .youch-error-type {
+    .ep-error-type {
         display: inline-block;
-        background: var(--youch-accent);
+        background: var(--ep-accent);
         color: #fff;
         font-size: 12px;
         font-weight: 600;
@@ -151,48 +151,48 @@ function getStyles(): string {
         border-radius: 4px;
         margin-bottom: 8px;
     }
-    .youch-error-message {
+    .ep-error-message {
         font-size: 18px;
         font-weight: 600;
-        color: var(--youch-accent);
+        color: var(--ep-accent);
         word-break: break-word;
     }
-    .youch-error-title {
+    .ep-error-title {
         font-size: 13px;
-        color: var(--youch-muted);
+        color: var(--ep-muted);
         margin-top: 4px;
     }
     /* ─── Properties ───────────────────────────── */
-    .youch-props {
+    .ep-props {
         margin-top: 12px;
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
     }
-    .youch-prop-badge {
+    .ep-prop-badge {
         display: inline-flex;
         align-items: center;
         gap: 4px;
         font-size: 12px;
-        background: var(--youch-badge-bg);
-        color: var(--youch-badge-fg);
+        background: var(--ep-badge-bg);
+        color: var(--ep-badge-fg);
         padding: 2px 8px;
         border-radius: 4px;
         font-family: 'SF Mono', Monaco, Consolas, monospace;
     }
-    .youch-prop-key { font-weight: 600; }
+    .ep-prop-key { font-weight: 600; }
     /* ─── Tabs ─────────────────────────────────── */
-    .youch-tabs {
+    .ep-tabs {
         display: flex;
         gap: 0;
-        border-bottom: 1px solid var(--youch-border);
+        border-bottom: 1px solid var(--ep-border);
         margin-bottom: 16px;
     }
-    .youch-tab {
+    .ep-tab {
         padding: 8px 16px;
         font-size: 13px;
         font-weight: 500;
-        color: var(--youch-tab-inactive);
+        color: var(--ep-tab-inactive);
         cursor: pointer;
         border-bottom: 2px solid transparent;
         background: none;
@@ -201,126 +201,126 @@ function getStyles(): string {
         border-right: none;
         transition: color 0.15s, border-color 0.15s;
     }
-    .youch-tab:hover { color: var(--youch-fg); }
-    .youch-tab.active {
-        color: var(--youch-tab-active);
-        border-bottom-color: var(--youch-tab-active);
+    .ep-tab:hover { color: var(--ep-fg); }
+    .ep-tab.active {
+        color: var(--ep-tab-active);
+        border-bottom-color: var(--ep-tab-active);
     }
-    .youch-tab-panel { display: none; }
-    .youch-tab-panel.active { display: block; }
+    .ep-tab-panel { display: none; }
+    .ep-tab-panel.active { display: block; }
     /* ─── Stack Frames ─────────────────────────── */
-    .youch-frames { display: flex; flex-direction: column; gap: 2px; }
-    .youch-frame {
-        border: 1px solid var(--youch-border);
+    .ep-frames { display: flex; flex-direction: column; gap: 2px; }
+    .ep-frame {
+        border: 1px solid var(--ep-border);
         border-radius: 6px;
         overflow: hidden;
         transition: border-color 0.15s;
     }
-    .youch-frame.is-app {
-        border-left: 3px solid var(--youch-app-border);
+    .ep-frame.is-app {
+        border-left: 3px solid var(--ep-app-border);
     }
-    .youch-frame-header {
+    .ep-frame-header {
         display: flex;
         align-items: center;
         gap: 8px;
         padding: 10px 14px;
-        background: var(--youch-frame-bg);
+        background: var(--ep-frame-bg);
         cursor: pointer;
         user-select: none;
         transition: background 0.15s;
         font-size: 13px;
     }
-    .youch-frame-header:hover { background: var(--youch-frame-hover); }
-    .youch-frame-chevron {
+    .ep-frame-header:hover { background: var(--ep-frame-hover); }
+    .ep-frame-chevron {
         width: 16px;
         height: 16px;
         flex-shrink: 0;
         transition: transform 0.15s;
-        color: var(--youch-muted);
+        color: var(--ep-muted);
     }
-    .youch-frame.open .youch-frame-chevron { transform: rotate(90deg); }
-    .youch-frame-fn {
+    .ep-frame.open .ep-frame-chevron { transform: rotate(90deg); }
+    .ep-frame-fn {
         font-weight: 600;
-        color: var(--youch-fg);
+        color: var(--ep-fg);
         font-family: 'SF Mono', Monaco, Consolas, monospace;
         font-size: 12.5px;
     }
-    .youch-frame-file {
-        color: var(--youch-muted);
+    .ep-frame-file {
+        color: var(--ep-muted);
         font-size: 12px;
         margin-left: auto;
         text-align: right;
         flex-shrink: 0;
     }
-    .youch-frame-file a {
-        color: var(--youch-link);
+    .ep-frame-file a {
+        color: var(--ep-link);
         text-decoration: none;
     }
-    .youch-frame-file a:hover { text-decoration: underline; }
-    .youch-frame-body {
+    .ep-frame-file a:hover { text-decoration: underline; }
+    .ep-frame-body {
         display: none;
         padding: 0;
-        background: var(--youch-code-bg);
+        background: var(--ep-code-bg);
         font-family: 'SF Mono', Monaco, Consolas, monospace;
         font-size: 12px;
         overflow-x: auto;
-        border-top: 1px solid var(--youch-border);
+        border-top: 1px solid var(--ep-border);
     }
-    .youch-frame.open .youch-frame-body { display: block; }
-    .youch-frame-raw {
+    .ep-frame.open .ep-frame-body { display: block; }
+    .ep-frame-raw {
         padding: 12px 16px;
-        color: var(--youch-code-fg);
+        color: var(--ep-code-fg);
         white-space: pre-wrap;
         word-break: break-all;
     }
-    .youch-app-badge {
+    .ep-app-badge {
         font-size: 10px;
         font-weight: 600;
         text-transform: uppercase;
-        background: var(--youch-app-border);
+        background: var(--ep-app-border);
         color: #fff;
         padding: 1px 5px;
         border-radius: 3px;
         flex-shrink: 0;
     }
     /* ─── Raw Output ───────────────────────────── */
-    .youch-raw {
-        background: var(--youch-raw-bg);
-        border: 1px solid var(--youch-border);
+    .ep-raw {
+        background: var(--ep-raw-bg);
+        border: 1px solid var(--ep-border);
         border-radius: 6px;
         padding: 16px;
         overflow-x: auto;
     }
-    .youch-raw pre {
+    .ep-raw pre {
         font-family: 'SF Mono', Monaco, Consolas, monospace;
         font-size: 12px;
         line-height: 1.5;
-        color: var(--youch-code-fg);
+        color: var(--ep-code-fg);
         white-space: pre-wrap;
         word-break: break-word;
     }
     /* ─── Error Cause ──────────────────────────── */
-    .youch-cause {
-        background: var(--youch-cause-bg);
-        border: 1px solid var(--youch-cause-border);
+    .ep-cause {
+        background: var(--ep-cause-bg);
+        border: 1px solid var(--ep-cause-border);
         border-radius: 8px;
         padding: 16px 20px;
         margin-top: 24px;
     }
-    .youch-cause-title {
+    .ep-cause-title {
         font-size: 13px;
         font-weight: 600;
-        color: var(--youch-cause-border);
+        color: var(--ep-cause-border);
         margin-bottom: 8px;
     }
-    .youch-cause-message {
+    .ep-cause-message {
         font-size: 14px;
         font-weight: 500;
         margin-bottom: 8px;
     }
-    .youch-cause-type {
+    .ep-cause-type {
         display: inline-block;
-        background: var(--youch-cause-border);
+        background: var(--ep-cause-border);
         color: #fff;
         font-size: 11px;
         font-weight: 600;
@@ -328,78 +328,100 @@ function getStyles(): string {
         border-radius: 3px;
         margin-right: 6px;
     }
-    .youch-cause-frames {
+    .ep-cause-frames {
         margin-top: 8px;
         font-family: 'SF Mono', Monaco, Consolas, monospace;
         font-size: 11px;
-        color: var(--youch-muted);
+        color: var(--ep-muted);
         max-height: 150px;
         overflow-y: auto;
     }
-    .youch-cause-frames div { padding: 1px 0; }
+    .ep-cause-frames div { padding: 1px 0; }
     /* ─── Metadata ─────────────────────────────── */
-    .youch-metadata {
+    .ep-metadata {
         margin-top: 24px;
     }
-    .youch-meta-group {
-        background: var(--youch-meta-bg);
-        border: 1px solid var(--youch-meta-border);
+    .ep-meta-group {
+        background: var(--ep-meta-bg);
+        border: 1px solid var(--ep-meta-border);
         border-radius: 8px;
         margin-bottom: 12px;
         overflow: hidden;
     }
-    .youch-meta-group-title {
+    .ep-meta-group-title {
         font-size: 13px;
         font-weight: 600;
-        color: var(--youch-meta-border);
+        color: var(--ep-meta-border);
         padding: 10px 16px;
-        border-bottom: 1px solid var(--youch-meta-border);
+        border-bottom: 1px solid var(--ep-meta-border);
         cursor: pointer;
         user-select: none;
     }
-    .youch-meta-group-title:hover { opacity: 0.8; }
-    .youch-meta-section {
+    .ep-meta-group-title:hover { opacity: 0.8; }
+    .ep-meta-section {
         padding: 8px 16px;
     }
-    .youch-meta-section-title {
+    .ep-meta-section-title {
         font-size: 11px;
         font-weight: 600;
         text-transform: uppercase;
-        color: var(--youch-muted);
+        color: var(--ep-muted);
         letter-spacing: 0.5px;
         padding: 4px 0;
     }
-    .youch-meta-row {
+    .ep-meta-row {
         display: flex;
         gap: 12px;
         padding: 3px 0;
         font-size: 12.5px;
-        border-bottom: 1px solid var(--youch-border);
+        border-bottom: 1px solid var(--ep-border);
     }
-    .youch-meta-row:last-child { border-bottom: none; }
-    .youch-meta-key {
+    .ep-meta-row:last-child { border-bottom: none; }
+    .ep-meta-key {
         font-weight: 600;
         min-width: 120px;
         flex-shrink: 0;
-        color: var(--youch-muted);
+        color: var(--ep-muted);
         font-family: 'SF Mono', Monaco, Consolas, monospace;
         font-size: 11.5px;
     }
-    .youch-meta-value {
-        color: var(--youch-fg);
+    .ep-meta-value {
+        color: var(--ep-fg);
         word-break: break-all;
         font-family: 'SF Mono', Monaco, Consolas, monospace;
         font-size: 11.5px;
     }
     /* ─── Footer ───────────────────────────────── */
-    .youch-footer {
+    .ep-footer {
         margin-top: 32px;
         padding-top: 16px;
-        border-top: 1px solid var(--youch-border);
+        border-top: 1px solid var(--ep-border);
         font-size: 12px;
-        color: var(--youch-muted);
+        color: var(--ep-muted);
         text-align: center;
     }
+    .ep-timestamp {
+        font-size: 12px;
+        color: var(--ep-muted);
+        font-family: 'SF Mono', Monaco, Consolas, monospace;
+    }
+    /* ─── Copy Button ──────────────────────────── */
+    .ep-copy-btn {
+        background: var(--ep-badge-bg);
+        border: 1px solid var(--ep-border);
+        color: var(--ep-fg);
+        border-radius: 6px;
+        padding: 4px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: background 0.15s, opacity 0.15s;
+        margin-bottom: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .ep-copy-btn:hover { opacity: 0.8; }
+    .ep-copy-btn.copied { background: var(--ep-meta-border); color: #fff; border-color: var(--ep-meta-border); }
     `;
 }
 
@@ -409,7 +431,7 @@ function getScript(): string {
     (function() {
         // Theme toggle
         var html = document.documentElement;
-        var toggle = document.getElementById('youch-theme-toggle');
+        var toggle = document.getElementById('ep-theme-toggle');
         var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (prefersDark) html.classList.add('dark');
         if (toggle) {
@@ -421,7 +443,7 @@ function getScript(): string {
         }
 
         // Frame accordion
-        document.querySelectorAll('.youch-frame-header').forEach(function(header) {
+        document.querySelectorAll('.ep-frame-header').forEach(function(header) {
             header.addEventListener('click', function() {
                 var frame = header.parentElement;
                 frame.classList.toggle('open');
@@ -429,12 +451,12 @@ function getScript(): string {
         });
 
         // Tabs
-        document.querySelectorAll('.youch-tab').forEach(function(tab) {
+        document.querySelectorAll('.ep-tab').forEach(function(tab) {
             tab.addEventListener('click', function() {
                 var target = tab.getAttribute('data-tab');
-                var container = tab.closest('.youch-container');
-                container.querySelectorAll('.youch-tab').forEach(function(t) { t.classList.remove('active'); });
-                container.querySelectorAll('.youch-tab-panel').forEach(function(p) { p.classList.remove('active'); });
+                var container = tab.closest('.ep-container');
+                container.querySelectorAll('.ep-tab').forEach(function(t) { t.classList.remove('active'); });
+                container.querySelectorAll('.ep-tab-panel').forEach(function(p) { p.classList.remove('active'); });
                 tab.classList.add('active');
                 var panel = container.querySelector('[data-panel="' + target + '"]');
                 if (panel) panel.classList.add('active');
@@ -442,40 +464,58 @@ function getScript(): string {
         });
 
         // Auto-open first app frame
-        var firstAppFrame = document.querySelector('.youch-frame.is-app');
+        var firstAppFrame = document.querySelector('.ep-frame.is-app');
         if (firstAppFrame) firstAppFrame.classList.add('open');
+
+        // Copy-to-clipboard for raw view
+        var copyBtn = document.getElementById('ep-copy-raw');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function() {
+                var raw = document.querySelector('.ep-raw pre');
+                if (raw && navigator.clipboard) {
+                    navigator.clipboard.writeText(raw.textContent || '').then(function() {
+                        copyBtn.textContent = '✓ Copied';
+                        copyBtn.classList.add('copied');
+                        setTimeout(function() {
+                            copyBtn.textContent = '📋 Copy';
+                            copyBtn.classList.remove('copied');
+                        }, 2000);
+                    });
+                }
+            });
+        }
     })();
     `;
 }
 
 // ─── Chevron SVG ──────────────────────────────────────────────────────────
-const CHEVRON_SVG = `<svg class="youch-frame-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 4 10 8 6 12"/></svg>`;
+const CHEVRON_SVG = `<svg class="ep-frame-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 4 10 8 6 12"/></svg>`;
 
 // ─── Frame Rendering ──────────────────────────────────────────────────────
 function renderFrame(frame: StackFrame, ide: string): string {
     const fnName = esc(frame.function || '(anonymous)');
     const appClass = frame.isApp ? ' is-app' : '';
-    const appBadge = frame.isApp ? `<span class="youch-app-badge">app</span>` : '';
+    const appBadge = frame.isApp ? `<span class="ep-app-badge">app</span>` : '';
 
     let fileInfo = '';
     if (frame.file) {
         const loc = `${esc(frame.file)}:${frame.line ?? '?'}:${frame.column ?? '?'}`;
         const url = editorUrl(ide, frame.file, frame.line, frame.column);
-        fileInfo = `<span class="youch-frame-file"><a href="${esc(url)}" title="Open in ${esc(ide)}">${loc}</a></span>`;
+        fileInfo = `<span class="ep-frame-file"><a href="${esc(url)}" title="Open in ${esc(ide)}">${loc}</a></span>`;
     }
 
     const rawContent = esc(frame.raw.trim());
 
     return `
-    <div class="youch-frame${appClass}">
-        <div class="youch-frame-header">
+    <div class="ep-frame${appClass}">
+        <div class="ep-frame-header">
             ${CHEVRON_SVG}
             ${appBadge}
-            <span class="youch-frame-fn">${fnName}</span>
+            <span class="ep-frame-fn">${fnName}</span>
             ${fileInfo}
         </div>
-        <div class="youch-frame-body">
-            <div class="youch-frame-raw">${rawContent}</div>
+        <div class="ep-frame-body">
+            <div class="ep-frame-raw">${rawContent}</div>
         </div>
     </div>`;
 }
@@ -483,15 +523,15 @@ function renderFrame(frame: StackFrame, ide: string): string {
 // ─── Cause Chain Rendering ────────────────────────────────────────────────
 function renderCause(cause: ParsedError): string {
     let html = `
-    <div class="youch-cause">
-        <div class="youch-cause-title">⚡ Error Cause</div>
+    <div class="ep-cause">
+        <div class="ep-cause-title">⚡ Error Cause</div>
         <div>
-            <span class="youch-cause-type">${esc(cause.type)}</span>
-            <span class="youch-cause-message">${esc(cause.message)}</span>
+            <span class="ep-cause-type">${esc(cause.type)}</span>
+            <span class="ep-cause-message">${esc(cause.message)}</span>
         </div>`;
 
     if (cause.frames.length > 0) {
-        html += `<div class="youch-cause-frames">`;
+        html += `<div class="ep-cause-frames">`;
         for (const f of cause.frames.slice(0, 10)) {
             html += `<div>${esc(f.raw.trim())}</div>`;
         }
@@ -515,11 +555,11 @@ function renderProperties(properties: Record<string, unknown>): string {
     const keys = Object.keys(properties);
     if (keys.length === 0) return '';
 
-    let html = `<div class="youch-props">`;
+    let html = `<div class="ep-props">`;
     for (const key of keys) {
         const val = properties[key];
         const display = typeof val === 'object' ? JSON.stringify(val) : String(val);
-        html += `<span class="youch-prop-badge"><span class="youch-prop-key">${esc(key)}:</span> ${esc(display)}</span>`;
+        html += `<span class="ep-prop-badge"><span class="ep-prop-key">${esc(key)}:</span> ${esc(display)}</span>`;
     }
     html += `</div>`;
     return html;
@@ -529,19 +569,19 @@ function renderProperties(properties: Record<string, unknown>): string {
 function renderMetadata(groups: MetadataGroup[]): string {
     if (groups.length === 0) return '';
 
-    let html = `<div class="youch-metadata">`;
+    let html = `<div class="ep-metadata">`;
     for (const group of groups) {
-        html += `<div class="youch-meta-group">`;
-        html += `<div class="youch-meta-group-title">📋 ${esc(group.name)}</div>`;
+        html += `<div class="ep-meta-group">`;
+        html += `<div class="ep-meta-group-title">📋 ${esc(group.name)}</div>`;
 
         for (const [sectionName, rows] of Object.entries(group.sections)) {
-            html += `<div class="youch-meta-section">`;
-            html += `<div class="youch-meta-section-title">${esc(sectionName)}</div>`;
+            html += `<div class="ep-meta-section">`;
+            html += `<div class="ep-meta-section-title">${esc(sectionName)}</div>`;
             for (const row of rows) {
                 const val = typeof row.value === 'object' ? safeStringify(row.value) : esc(String(row.value ?? ''));
-                html += `<div class="youch-meta-row">
-                    <span class="youch-meta-key">${esc(row.key)}</span>
-                    <span class="youch-meta-value">${typeof row.value === 'object' ? `<pre>${esc(safeStringify(row.value))}</pre>` : val}</span>
+                html += `<div class="ep-meta-row">
+                    <span class="ep-meta-key">${esc(row.key)}</span>
+                    <span class="ep-meta-value">${typeof row.value === 'object' ? `<pre>${esc(safeStringify(row.value))}</pre>` : val}</span>
                 </div>`;
             }
             html += `</div>`;
@@ -577,16 +617,16 @@ export function renderHTML(
 
     // Error info section
     const errorInfo = `
-    <div class="youch-error-info">
-        <span class="youch-error-type">${esc(error.type)}</span>
-        <div class="youch-error-message">${esc(error.message)}</div>
-        <div class="youch-error-title">${esc(title)}</div>
+    <div class="ep-error-info">
+        <span class="ep-error-type">${esc(error.type)}</span>
+        <div class="ep-error-message">${esc(error.message)}</div>
+        <div class="ep-error-title">${esc(title)}</div>
         ${renderProperties(error.properties)}
     </div>`;
 
     // Stack tab
     const stackFrames = error.frames.map((f) => renderFrame(f, ide)).join('');
-    const stackTab = `<div class="youch-frames">${stackFrames || '<p style="color:var(--youch-muted);font-size:13px;">No stack frames available.</p>'}</div>`;
+    const stackTab = `<div class="ep-frames">${stackFrames || '<p style="color:var(--ep-muted);font-size:13px;">No stack frames available.</p>'}</div>`;
 
     // Raw tab
     const rawContent = safeStringify(
@@ -598,13 +638,15 @@ export function renderHTML(
         },
         2,
     );
-    const rawTab = `<div class="youch-raw"><pre>${esc(rawContent)}</pre></div>`;
+    const rawTab = `<button id="ep-copy-raw" class="ep-copy-btn">📋 Copy</button><div class="ep-raw"><pre>${esc(rawContent)}</pre></div>`;
 
     // Cause section
     const causeSection = error.cause ? renderCause(error.cause) : '';
 
     // Metadata section
     const metadataSection = renderMetadata(metadata);
+
+    const timestamp = new Date().toISOString();
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -615,26 +657,27 @@ export function renderHTML(
     <style${nonce}>${getStyles()}</style>
 </head>
 <body>
-<div class="youch-container">
-    <div class="youch-header">
-        <span class="youch-logo">⚡ Youch</span>
-        <button id="youch-theme-toggle" class="youch-theme-toggle">● Dark</button>
+<div class="ep-container">
+    <div class="ep-header">
+        <span class="ep-logo">⚡ Error</span>
+        <span class="ep-timestamp">${esc(timestamp)}</span>
+        <button id="ep-theme-toggle" class="ep-theme-toggle">● Dark</button>
     </div>
 
     ${errorInfo}
 
-    <div class="youch-tabs">
-        <button class="youch-tab active" data-tab="stack">Stack Trace</button>
-        <button class="youch-tab" data-tab="raw">Raw</button>
+    <div class="ep-tabs">
+        <button class="ep-tab active" data-tab="stack">Stack Trace</button>
+        <button class="ep-tab" data-tab="raw">Raw</button>
     </div>
-    <div class="youch-tab-panel active" data-panel="stack">${stackTab}</div>
-    <div class="youch-tab-panel" data-panel="raw">${rawTab}</div>
+    <div class="ep-tab-panel active" data-panel="stack">${stackTab}</div>
+    <div class="ep-tab-panel" data-panel="raw">${rawTab}</div>
 
     ${causeSection}
     ${metadataSection}
 
-    <div class="youch-footer">
-        @ottabase/youch &middot; Pretty error reporting for edge runtimes
+    <div class="ep-footer">
+        @ottabase/error-page &middot; Pretty error reporting for edge runtimes
     </div>
 </div>
 <script${nonce}>${getScript()}</script>

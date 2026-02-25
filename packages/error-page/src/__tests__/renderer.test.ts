@@ -55,7 +55,7 @@ describe('renderHTML', () => {
         const html = renderHTML(makeParsedError());
 
         expect(html).toContain('is-app');
-        expect(html).toContain('youch-app-badge');
+        expect(html).toContain('ep-app-badge');
     });
 
     it('should include editor links with vscode by default', () => {
@@ -73,7 +73,7 @@ describe('renderHTML', () => {
     it('should include dark/light theme toggle', () => {
         const html = renderHTML(makeParsedError());
 
-        expect(html).toContain('youch-theme-toggle');
+        expect(html).toContain('ep-theme-toggle');
         expect(html).toContain('html.dark');
     });
 

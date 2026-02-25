@@ -1,5 +1,5 @@
 /**
- * Types for the @ottabase/youch error renderer.
+ * Types for the @ottabase/error-page renderer.
  */
 
 /** A single parsed stack frame */
@@ -50,7 +50,7 @@ export interface MetadataGroup {
 }
 
 /** Options for HTML rendering */
-export interface YouchHTMLOptions {
+export interface ErrorPageHTMLOptions {
     /** Page title (default: "An error has occurred") */
     title?: string;
     /** Number of stack frames to skip from the top */

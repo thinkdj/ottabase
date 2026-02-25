@@ -1,20 +1,20 @@
-import type { MetadataGroup, MetadataSection, YouchHTMLOptions, ParsedError, StackFrame } from './types.js';
+import type { MetadataGroup, MetadataSection, ErrorPageHTMLOptions, ParsedError, StackFrame } from './types.js';
 import { parseError } from './parser.js';
 import { renderHTML } from './renderer.js';
 
 /**
- * Youch — Pretty print JavaScript errors as self-contained HTML pages.
+ * ErrorPage — Pretty print JavaScript errors as self-contained HTML pages.
  *
- * Edge-runtime compatible (no Node.js `fs`). Inspired by poppinss/youch.
+ * Edge-runtime compatible (no Node.js `fs`).
  *
  * @example
  * ```ts
- * import { Youch } from '@ottabase/youch';
+ * import { ErrorPage } from '@ottabase/error-page';
  *
- * const youch = new Youch();
+ * const errorPage = new ErrorPage();
  *
  * // Add request metadata
- * youch.group('Request', {
+ * errorPage.group('Request', {
  *     headers: [
  *         { key: 'host', value: request.headers.get('host') },
  *         { key: 'user-agent', value: request.headers.get('user-agent') },
@@ -22,14 +22,14 @@ import { renderHTML } from './renderer.js';
  * });
  *
  * // Render error to HTML
- * const html = youch.toHTML(error);
+ * const html = errorPage.toHTML(error);
  * return new Response(html, {
  *     status: 500,
  *     headers: { 'Content-Type': 'text/html' },
  * });
  * ```
  */
-export class Youch {
+export class ErrorPage {
     #metadata: MetadataGroup[] = [];
 
     /**
@@ -109,7 +109,7 @@ export class Youch {
      * @param options - HTML rendering options
      * @returns Complete HTML document string
      */
-    toHTML(error: unknown, options?: YouchHTMLOptions): string {
+    toHTML(error: unknown, options?: ErrorPageHTMLOptions): string {
         const parsed = parseError(error, options?.offset);
         return renderHTML(parsed, this.#metadata, {
             title: options?.title,
@@ -136,5 +136,5 @@ export type {
     MetadataGroup,
     MetadataSection,
     MetadataRow,
-    YouchHTMLOptions,
+    ErrorPageHTMLOptions,
 } from './types.js';

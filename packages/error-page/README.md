@@ -1,22 +1,33 @@
-# @ottabase/youch
+# @ottabase/error-page
 
 Pretty print JavaScript errors as self-contained HTML pages — edge-runtime compatible.
 
-Inspired by [poppinss/youch](https://github.com/poppinss/youch), built for Cloudflare Workers and other edge runtimes
-where Node.js `fs` is unavailable.
+Built for Cloudflare Workers and other edge runtimes where Node.js `fs` is unavailable.
+
+## Features
+
+- 🔥 Beautiful error pages with error type badges, expandable stack frames, and "Open in editor" links
+- 🌗 Dark/light theme toggle (respects `prefers-color-scheme`)
+- 📋 Request metadata display (method, URL, headers with sensitive masking)
+- ⛓️ Error cause chain rendering (recursive)
+- 🏷️ Extra error properties shown as inline badges
+- 📄 Stack Trace / Raw JSON tab switching with copy-to-clipboard
+- 🕒 Timestamp display for when the error occurred
+- 🛡️ XSS-safe HTML escaping, circular reference handling
+- ☁️ Zero Node.js dependencies — works in Cloudflare Workers and other edge runtimes
 
 ## Usage
 
 ```ts
-import { Youch } from '@ottabase/youch';
+import { ErrorPage } from '@ottabase/error-page';
 
 try {
     await handleRequest();
 } catch (error) {
-    const youch = new Youch();
-    youch.addRequestMetadata(request);
+    const errorPage = new ErrorPage();
+    errorPage.addRequestMetadata(request);
 
-    const html = youch.toHTML(error, { title: 'Worker Error' });
+    const html = errorPage.toHTML(error, { title: 'Worker Error' });
     return new Response(html, {
         status: 500,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -26,21 +37,22 @@ try {
 
 ## API
 
-### `new Youch()`
+### `new ErrorPage()`
 
-Create a new Youch instance.
+Create a new ErrorPage instance.
 
-### `youch.toHTML(error, options?)`
+### `errorPage.toHTML(error, options?)`
 
 Render an error to a self-contained HTML page with:
 
 - Error type badge and message
 - Expandable stack trace frames (app frames highlighted)
-- Raw JSON error view
+- Raw JSON error view with copy-to-clipboard
 - Error cause chain
 - Metadata sections
 - Dark/light theme toggle
 - "Open in editor" links
+- Timestamp
 
 **Options:**
 
@@ -54,12 +66,12 @@ Render an error to a self-contained HTML page with:
 Supported editors: `vscode`, `sublime`, `atom`, `phpstorm`, `textmate`, `emacs`, `macvim`, or a custom URL template with
 `%f`, `%l`, `%c` placeholders.
 
-### `youch.group(name, sections)`
+### `errorPage.group(name, sections)`
 
 Add metadata sections (e.g., request info, environment).
 
 ```ts
-youch.group('Request', {
+errorPage.group('Request', {
     info: [
         { key: 'Method', value: 'POST' },
         { key: 'URL', value: '/api/users' },
@@ -71,12 +83,12 @@ youch.group('Request', {
 });
 ```
 
-### `youch.addRequestMetadata(request)`
+### `errorPage.addRequestMetadata(request)`
 
 Automatically extract method, URL, and common headers from a `Request` object. Sensitive headers (`authorization`,
 `cookie`) are automatically masked.
 
-### `youch.parse(error, offset?)`
+### `errorPage.parse(error, offset?)`
 
 Parse an error into a structured `ParsedError` object without rendering HTML.
 
@@ -91,7 +103,7 @@ Standalone function to render a `ParsedError` to HTML.
 ## Integration with Cloudflare Worker
 
 ```ts
-import { Youch } from '@ottabase/youch';
+import { ErrorPage } from '@ottabase/error-page';
 
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
@@ -101,9 +113,9 @@ export default {
             const isDev = env.ENVIRONMENT === 'development';
 
             if (isDev) {
-                const youch = new Youch();
-                youch.addRequestMetadata(request);
-                const html = youch.toHTML(err, { title: 'Worker Error' });
+                const errorPage = new ErrorPage();
+                errorPage.addRequestMetadata(request);
+                const html = errorPage.toHTML(err, { title: 'Worker Error' });
                 return new Response(html, {
                     status: 500,
                     headers: { 'Content-Type': 'text/html; charset=utf-8' },

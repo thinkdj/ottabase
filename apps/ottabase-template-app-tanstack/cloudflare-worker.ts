@@ -1,6 +1,6 @@
 import { RealtimeActor } from '@ottabase/cf-realtime/server';
 import { errorResponse, ServiceError } from '@ottabase/utils/http-errors';
-import { Youch } from '@ottabase/youch';
+import { ErrorPage } from '@ottabase/error-page';
 import type { CloudflareEnv } from './cloudflare-env';
 import { queueHandler } from './ottabase/queue';
 import { handleBootstrapRoute, interceptIfNotReady, resolvePlatformState } from './worker/bootstrap';
@@ -141,16 +141,16 @@ export default {
         } catch (err) {
             console.error('Worker unhandled error:', err);
 
-            // In dev mode, return a pretty HTML error page via Youch
+            // In dev mode, return a pretty HTML error page
             const isDev =
                 !(env as Record<string, unknown>).ENVIRONMENT ||
                 (env as Record<string, unknown>).ENVIRONMENT === 'development' ||
                 (env as Record<string, unknown>).ENVIRONMENT === 'dev';
 
             if (isDev && isHtmlRequest(request)) {
-                const youch = new Youch();
-                youch.addRequestMetadata(request);
-                const html = youch.toHTML(err, { title: 'Worker Error' });
+                const errorPage = new ErrorPage();
+                errorPage.addRequestMetadata(request);
+                const html = errorPage.toHTML(err, { title: 'Worker Error' });
                 return new Response(html, {
                     status: err instanceof ServiceError ? err.status : 500,
                     headers: { 'Content-Type': 'text/html; charset=utf-8' },

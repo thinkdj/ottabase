@@ -1,7 +1,7 @@
 {
-    "name": "@ottabase/youch",
+    "name": "@ottabase/error-page",
     "version": "0.0.1",
-    "description": "Pretty print JavaScript errors as HTML — edge-runtime compatible, inspired by poppinss/youch",
+    "description": "Pretty print JavaScript errors as self-contained HTML pages — edge-runtime compatible",
     "author": "Ottabase",
     "license": "MIT",
     "type": "module",
@@ -22,7 +22,6 @@
     ],
     "keywords": [
         "error",
-        "youch",
         "pretty-error",
         "error-page",
         "edge-runtime",
