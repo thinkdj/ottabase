@@ -86,6 +86,18 @@ describe('MapTool', () => {
             expect(input).toBeTruthy();
         });
 
+        it('auto-detects Google provider for maps.app.goo.gl links', () => {
+            const el = tool.render();
+            const input = el.querySelector('input[type="url"]') as HTMLInputElement;
+            const providerSelect = el.querySelector('[data-key="provider"]') as HTMLSelectElement;
+
+            input.value = 'https://maps.app.goo.gl/example';
+            input.dispatchEvent(new Event('change'));
+
+            expect(providerSelect.value).toBe('gmaps');
+            expect(tool.save().provider).toBe('gmaps');
+        });
+
         it('should render provider select', () => {
             const el = tool.render();
             const select = el.querySelector('[data-key="provider"]') as HTMLSelectElement;

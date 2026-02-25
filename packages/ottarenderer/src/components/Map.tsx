@@ -114,7 +114,7 @@ const Map: RenderFn<MapData> = ({ data, className = '' }) => {
 
     const embedUrl = useMemo(() => toEmbedUrl(url, provider, theme, zoom), [url, provider, theme, zoom]);
 
-    if (!url) return null;
+    if (!url || !embedUrl) return null;
 
     // Dark-mode inversion filter for maps that don't have native dark tiles
     const isDarkTheme = theme === 'dark';

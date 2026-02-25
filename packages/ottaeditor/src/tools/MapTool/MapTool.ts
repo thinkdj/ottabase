@@ -124,7 +124,11 @@ export default class MapTool implements BlockTool {
         input.addEventListener('change', () => {
             this.data.url = input.value.trim();
             // Auto-detect provider from URL
-            if (this.data.url.includes('google.com/maps') || this.data.url.includes('goo.gl/maps')) {
+            if (
+                this.data.url.includes('google.com/maps') ||
+                this.data.url.includes('goo.gl/maps') ||
+                this.data.url.includes('maps.app.goo.gl')
+            ) {
                 this.data.provider = 'gmaps';
                 const providerSelect = this.wrapper?.querySelector(
                     '.cdx-map__select[data-key="provider"]',
