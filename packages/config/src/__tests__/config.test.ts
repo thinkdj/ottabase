@@ -62,6 +62,33 @@ describe('Configuration Utilities', () => {
             expect(userConfig.features?.referrals?.enabled).toBe(true);
             expect(userConfig.features?.spotlight?.shortcuts).toEqual(['/']);
         });
+
+        it('should accept email config (non-secret)', () => {
+            const userConfig = defineOttabaseConfig({
+                appId: 'email-test',
+                appName: 'Email Test',
+                email: { from: 'noreply@my-app.com', sesRegion: 'eu-west-1' },
+            });
+            expect(userConfig.email?.from).toBe('noreply@my-app.com');
+            expect(userConfig.email?.sesRegion).toBe('eu-west-1');
+        });
+
+        it('should accept authBehavior flags (non-secret)', () => {
+            const userConfig = defineOttabaseConfig({
+                appId: 'auth-test',
+                appName: 'Auth Test',
+                features: {
+                    authBehavior: {
+                        sessionMaxAge: 7 * 24 * 3600,
+                        requireEmailVerified: true,
+                        disableCredentials: false,
+                        verbose: false,
+                    },
+                },
+            });
+            expect(userConfig.features?.authBehavior?.sessionMaxAge).toBe(7 * 24 * 3600);
+            expect(userConfig.features?.authBehavior?.requireEmailVerified).toBe(true);
+        });
     });
 
     describe('userConfigToOptions', () => {

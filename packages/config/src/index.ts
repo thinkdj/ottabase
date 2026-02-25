@@ -2,10 +2,12 @@
 export type {
     AppConfig,
     AppMeta,
+    AuthBehaviorConfig,
     AuthConfig,
     BuiltinPackageName,
     ConfigOptions,
     CrudHubConfig,
+    EmailConfig,
     OttabaseCustomPackage,
     OttabaseUserConfig,
     PaginationConfig,

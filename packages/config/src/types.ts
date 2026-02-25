@@ -39,6 +39,26 @@ export interface AuthConfig {
     preLaunchOptIn: boolean;
 }
 
+/** Email/mailer configuration (non-secret settings only – API keys stay in env vars) */
+export interface EmailConfig {
+    /** Default "From" address for outbound emails. e.g. "noreply@yourdomain.com" */
+    from: string;
+    /** AWS region used for SES. Default: "us-east-1" */
+    sesRegion: string;
+}
+
+/** Server-side auth behaviour flags (non-secret – values that don't require a secret) */
+export interface AuthBehaviorConfig {
+    /** Session cookie max-age in seconds. Default: 2592000 (30 days) */
+    sessionMaxAge: number;
+    /** Require email verification before login is allowed. Default: false */
+    requireEmailVerified: boolean;
+    /** Disable credentials (email/password) login. Default: false */
+    disableCredentials: boolean;
+    /** Enable verbose auth logging. Default: false */
+    verbose: boolean;
+}
+
 export interface PaginationConfig {
     defaultPageSize: number;
     maxPageSize: number;
@@ -201,5 +221,13 @@ export interface OttabaseUserConfig {
         pagination?: Partial<PaginationConfig>;
         crudHub?: Partial<CrudHubConfig>;
         auth?: Partial<AuthConfig>;
+        /** Server-side auth behaviour (session length, verification gate, etc.) */
+        authBehavior?: Partial<AuthBehaviorConfig>;
     };
+
+    /**
+     * Email/mailer settings (non-secret).
+     * Secrets (API keys, SMTP passwords) must remain in environment variables.
+     */
+    email?: Partial<EmailConfig>;
 }

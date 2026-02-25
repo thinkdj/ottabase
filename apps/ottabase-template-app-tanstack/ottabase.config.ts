@@ -91,6 +91,24 @@ export default defineOttabaseConfig({
             urlBase: 'crudhub',
             urlBaseListing: 'browse',
         },
+        // ── Auth behaviour (non-secret flags) ──────────────────
+        // These replace the AUTH_SESSION_MAX_AGE, AUTH_REQUIRE_EMAIL_VERIFIED,
+        // AUTH_DISABLE_CREDENTIALS, and AUTH_VERBOSE env vars.
+        // Secrets (AUTH_SECRET, OAuth credentials) still go in env vars.
+        authBehavior: {
+            sessionMaxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+            requireEmailVerified: false,
+            disableCredentials: false,
+            verbose: false,
+        },
+    },
+
+    // ── Email (non-secret settings) ───────────────────────────
+    // Replaces EMAIL_FROM and AWS_REGION env vars.
+    // Secrets (EMAIL_RESEND_API_KEY, AWS_ACCESS_KEY_ID, etc.) stay in env vars.
+    email: {
+        from: 'noreply@example.com', // Change to your domain: noreply@yourdomain.com
+        sesRegion: 'us-east-1', // AWS SES region (only needed when using SES)
     },
 
     // ── UI ────────────────────────────────────────────────────

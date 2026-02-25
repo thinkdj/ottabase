@@ -5,6 +5,7 @@ import { readJson } from '../lib/utils';
 import { registerAppEmailTemplates } from '../../src/email/templates';
 import type { TemplateContent, TemplateVariables } from '@ottabase/email';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { EMAIL_FROM_DEFAULT, EMAIL_SES_REGION } from '../lib/worker-config';
 
 export interface EmailRouteContext {
     request: Request;
@@ -46,7 +47,8 @@ export async function handleEmailTest(context: EmailRouteContext): Promise<Respo
         provider?: 'auto' | 'resend' | 'ses' | 'nodemailer';
     }>(request);
 
-    const from = env.EMAIL_FROM || 'noreply@example.com';
+    // EMAIL_FROM is now configured in ottabase.config.ts; env var no longer needed
+    const from = EMAIL_FROM_DEFAULT;
     const recipients = body.recipients || [];
 
     if (!recipients.length) {
@@ -74,7 +76,8 @@ export async function handleEmailTest(context: EmailRouteContext): Promise<Respo
             mailer = createSESMailer({
                 accessKeyId: env.AWS_ACCESS_KEY_ID,
                 secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
-                region: env.AWS_REGION || 'us-east-1',
+                // AWS region configured in ottabase.config.ts (non-secret)
+                region: EMAIL_SES_REGION,
             });
         } else if (selectedProvider === 'ses') {
             return errorResponse(

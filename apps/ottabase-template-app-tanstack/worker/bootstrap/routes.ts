@@ -27,6 +27,7 @@ import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
 import { ensureAppBrandDefaults, provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
+import { APP_ID, APP_NAME } from '../lib/worker-config';
 import { renderBindingsErrorPage, renderLockedPage, renderMaintenancePage, renderWizardPage } from './pages';
 import { ensureMetaTable, probeBindings, writeDBState, writeKVState } from './state-resolver';
 import type { PlatformStateResult } from './types';
@@ -382,8 +383,8 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
         ensureOrmConnection(env);
 
         // Seed default brand kit + route mappings for current app (brand kits are always app-scoped)
-        const appId = (env as { APP_ID?: string }).APP_ID ?? 'ottabase-template-app';
-        await ensureAppBrandDefaults('Ottabase', appId);
+        // APP_ID and APP_NAME are now configured in ottabase.config.ts
+        await ensureAppBrandDefaults(APP_NAME, APP_ID);
 
         // Seed default roles (owner, admin, editor, viewer, member)
         const createdRoles = await Role.ensureDefaultRoles();
@@ -490,7 +491,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 organizationRole: 'owner',
                 assignedBy: 'system',
                 roleFallbacks: ['owner'],
-                appId: (env as { APP_ID?: string }).APP_ID ?? 'ottabase-template-app',
+                appId: APP_ID,
             });
             organizationId = provisioned.organizationId;
             assignedRole = provisioned.assignedRole;
