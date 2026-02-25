@@ -44,18 +44,26 @@ export default {
             return stub.fetch(request);
         }
 
-        // Broadcast endpoint — server-to-server only, requires a shared secret
+        // Broadcast endpoint — requires authentication + channel-level authorization
         if (url.pathname === '/api/broadcast' && request.method === 'POST') {
-            const token = request.headers.get('Authorization');
-            if (!token || token !== `Bearer ${env.BROADCAST_SECRET}`) {
+            const publisher = await validatePublisher(request, env);
+            if (!publisher) {
                 return new Response('Unauthorized', { status: 401 });
             }
 
-            const broadcaster = new RealtimeBroadcaster(env.OBCF_REALTIME);
             const body = await request.json<any>();
+            const channels = Array.isArray(body.channels) ? body.channels : [];
+            const allowedChannels = new Set(publisher.allowedChannels);
+
+            // Enforce per-channel publish permissions derived from the caller's session/API key
+            if (channels.some((channel) => !allowedChannels.has(channel))) {
+                return new Response('Forbidden', { status: 403 });
+            }
+
+            const broadcaster = new RealtimeBroadcaster(env.OBCF_REALTIME);
 
             const result = await broadcaster.broadcast({
-                channels: body.channels,
+                channels,
                 event: body.event,
                 data: body.data,
                 persistForOffline: body.persistForOffline ?? false,
@@ -67,6 +75,19 @@ export default {
         return new Response('Not Found', { status: 404 });
     },
 };
+
+type Publisher = { allowedChannels: string[] };
+
+// Validate an API key/session and return which channels the caller may publish to
+async function validatePublisher(request: Request, env: CloudflareEnv): Promise<Publisher | null> {
+    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
+    if (!token) return null;
+
+    // Example: look up an API key that encodes allowed channels (KV/DB/custom auth)
+    // Return null to reject callers without publish permissions.
+    const apiKey = await env.API_KEYS?.get<Publisher>(token, 'json');
+    return apiKey ?? null;
+}
 ```
 
 ### 2. Wrangler Configuration
@@ -77,31 +98,33 @@ export default {
     "durable_objects": {
         "bindings": [{ "name": "OBCF_REALTIME", "class_name": "RealtimeActor" }]
     },
+    "kv_namespaces": [{ "binding": "API_KEYS", "id": "your-api-keys-kv" }],
     "migrations": [{ "tag": "v1", "new_classes": ["RealtimeActor"] }]
 }
 ```
 
-Set the broadcast secret as a Worker secret (never commit it):
+Provision a KV namespace for publisher API keys (each value should include `allowedChannels`):
 
 ```bash
-wrangler secret put BROADCAST_SECRET
+wrangler kv namespace create API_KEYS
+wrangler kv key put --binding=API_KEYS "server-1" '{"allowedChannels":["org-1201","system"]}'
 ```
 
-Then call the broadcast endpoint from your backend with the `Authorization` header:
+Then call the broadcast endpoint from your backend with the API key:
 
 ```typescript
 await fetch('https://your-worker.workers.dev/api/broadcast', {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.BROADCAST_SECRET}`,
+        Authorization: `Bearer ${process.env.REALTIME_PUBLISH_KEY}`,
     },
     body: JSON.stringify({ channels: ['org-1201'], event: 'update', data: {} }),
 });
 ```
 
-> **Never expose `/api/broadcast` without authentication.** Anyone who can reach the endpoint could inject
-> arbitrary events into any channel.
+> **Never expose `/api/broadcast` without authentication and channel-level authorization.** Anyone who can reach the
+> endpoint could inject arbitrary events into any channel unless you enforce publish scopes.
 
 ### 3. Client Usage (Browser/Node.js)
 
