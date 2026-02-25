@@ -54,17 +54,19 @@ function toEmbedUrl(url: string, provider: MapProvider, theme: MapTheme, zoom: n
     if (provider === 'gmaps') {
         if (!isGMapsHost) return '';
 
+        const mapType = theme === 'satellite' ? 'k' : theme === 'terrain' ? 'p' : 'm';
+
         // https://goo.gl/maps/... short links – wrap in embed
         if (url.includes('goo.gl/maps/')) {
-            return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
+            return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed&t=${mapType}`;
         }
 
         const placeMatch = url.match(/\/maps\/place\/([^/@]+)\/@(-?[\d.]+),(-?[\d.]+)/);
         if (placeMatch) {
-            return `https://maps.google.com/maps?q=${encodeURIComponent(placeMatch[1])}&output=embed&z=${zoom}`;
+            return `https://maps.google.com/maps?q=${encodeURIComponent(placeMatch[1])}&output=embed&z=${zoom}&t=${mapType}`;
         }
 
-        return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
+        return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed&t=${mapType}`;
     }
 
     if (provider === 'openstreetmap') {
@@ -114,10 +116,10 @@ const Map: RenderFn<MapData> = ({ data, className = '' }) => {
 
     const embedUrl = useMemo(() => toEmbedUrl(url, provider, theme, zoom), [url, provider, theme, zoom]);
 
-    if (!url || !embedUrl) return null;
+    if (!url) return null;
 
-    // Dark-mode inversion filter for maps that don't have native dark tiles
-    const isDarkTheme = theme === 'dark';
+    // Apply inversion only when dark theme is requested for providers without dark tiles (Google)
+    const shouldInvert = theme === 'dark' && provider === 'gmaps';
 
     const themeLabel =
         provider === 'gmaps'
@@ -126,11 +128,41 @@ const Map: RenderFn<MapData> = ({ data, className = '' }) => {
               ? 'OpenStreetMap (Cycle)'
               : 'OpenStreetMap';
 
+    if (!embedUrl) {
+        return (
+            <figure
+                className={`${className} my-6 cdc-content-map not-prose`}
+                itemScope
+                itemType="https://schema.org/Map"
+            >
+                <div className="relative rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground shadow-sm">
+                    <p className="font-medium text-foreground mb-1">Map preview unavailable</p>
+                    <p className="mb-3">The link could not be embedded safely. You can still open it in a new tab.</p>
+                    <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-primary hover:underline"
+                        itemProp="url"
+                    >
+                        Open map
+                    </a>
+                </div>
+
+                {caption && (
+                    <figcaption className="mt-2 text-center text-sm text-muted-foreground italic" itemProp="name">
+                        {caption}
+                    </figcaption>
+                )}
+            </figure>
+        );
+    }
+
     return (
         <figure className={`${className} my-6 cdc-content-map not-prose`} itemScope itemType="https://schema.org/Map">
             <div
                 className="relative rounded-lg overflow-hidden border border-border shadow-sm"
-                style={isDarkTheme ? { filter: 'invert(90%) hue-rotate(180deg)' } : undefined}
+                style={shouldInvert ? { filter: 'invert(90%) hue-rotate(180deg)' } : undefined}
             >
                 <iframe
                     src={embedUrl}

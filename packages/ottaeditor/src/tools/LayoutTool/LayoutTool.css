@@ -114,6 +114,28 @@
     opacity: 0.7;
 }
 
+.cdx-layout__col-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cdx-layout__col-clear {
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+    color: hsl(var(--muted-foreground));
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cdx-layout__col-clear:hover {
+    border-color: hsl(var(--primary) / 0.6);
+    color: hsl(var(--primary));
+}
+
 /* Nested editor area */
 .cdx-layout__col-editor {
     min-height: 80px;

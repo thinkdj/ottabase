@@ -11,6 +11,8 @@ vi.mock('@editorjs/editorjs', () => {
         isReady: Promise.resolve(),
         save: vi.fn().mockResolvedValue({ blocks: [] }),
         destroy: vi.fn().mockResolvedValue(undefined),
+        clear: vi.fn().mockResolvedValue(undefined),
+        render: vi.fn().mockResolvedValue(undefined),
     }));
     return { default: MockEditorJS };
 });
@@ -221,6 +223,13 @@ describe('LayoutTool', () => {
             expect(placeholders.length).toBe(2);
             expect(placeholders[0].textContent).toContain('Type or press');
         });
+
+        it('should render clear buttons for each column', () => {
+            const tool = new LayoutTool({ data: {} as any, config: {}, api: mockAPI as any } as any);
+            const el = tool.render();
+            const clearButtons = el.querySelectorAll('.cdx-layout__col-clear');
+            expect(clearButtons.length).toBe(2);
+        });
     });
 
     describe('Validation', () => {
@@ -321,6 +330,25 @@ describe('LayoutTool', () => {
             const saved = await tool.save();
             expect(saved.preset).toBe('2-1');
             expect(saved.columns).toHaveLength(2);
+        });
+
+        it('should clear a column without affecting others', async () => {
+            const tool = new LayoutTool({
+                data: {
+                    preset: '1-1',
+                    columns: [
+                        { content: { blocks: [{ id: 'a', type: 'paragraph', data: { text: 'A' } }] } },
+                        { content: { blocks: [{ id: 'b', type: 'paragraph', data: { text: 'B' } }] } },
+                    ],
+                } as any,
+                config: {},
+                api: mockAPI as any,
+            } as any);
+
+            await (tool as any).clearColumn(0);
+            const saved = await tool.save();
+            expect(saved.columns[0].content.blocks).toHaveLength(0);
+            expect(saved.columns[1].content.blocks).toHaveLength(1);
         });
     });
 

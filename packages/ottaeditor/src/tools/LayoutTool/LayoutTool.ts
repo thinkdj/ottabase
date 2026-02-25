@@ -68,6 +68,8 @@ export default class LayoutTool implements BlockTool {
             colHeader: 'cdx-layout__col-header',
             colLabel: 'cdx-layout__col-label',
             colWidth: 'cdx-layout__col-width',
+            colMeta: 'cdx-layout__col-meta',
+            colClearBtn: 'cdx-layout__col-clear',
             colEditor: 'cdx-layout__col-editor',
             colPlaceholder: 'cdx-layout__col-placeholder',
         };
@@ -199,8 +201,19 @@ export default class LayoutTool implements BlockTool {
         colWidth.classList.add(LayoutTool.CSS.colWidth);
         colWidth.textContent = `${width}%`;
 
+        const colMeta = document.createElement('div');
+        colMeta.classList.add(LayoutTool.CSS.colMeta);
+        colMeta.appendChild(colWidth);
+
+        const clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.classList.add(LayoutTool.CSS.colClearBtn);
+        clearBtn.textContent = 'Clear';
+        clearBtn.addEventListener('click', () => this.clearColumn(idx));
+        colMeta.appendChild(clearBtn);
+
         header.appendChild(colLabel);
-        header.appendChild(colWidth);
+        header.appendChild(colMeta);
         col.appendChild(header);
 
         // Editor holder
@@ -301,6 +314,31 @@ export default class LayoutTool implements BlockTool {
             }
         });
         this.nestedEditors.clear();
+    }
+
+    /** Reset a single column to an empty state without removing the block */
+    private async clearColumn(idx: number): Promise<void> {
+        if (!this.data.columns[idx]) return;
+
+        this.data.columns[idx] = { content: { blocks: [] } };
+
+        const editor = this.nestedEditors.get(idx) as any;
+        if (editor) {
+            try {
+                await (editor.clear?.() ?? editor.render?.({ blocks: [] }));
+            } catch {
+                /* ignore editor clearing errors */
+            }
+        }
+
+        const holderEl = document.getElementById(this.colHolderId(idx));
+        if (holderEl && !editor) {
+            holderEl.innerHTML = '';
+            const placeholder = document.createElement('div');
+            placeholder.classList.add(LayoutTool.CSS.colPlaceholder);
+            placeholder.textContent = 'Type or press / to add blocks…';
+            holderEl.appendChild(placeholder);
+        }
     }
 
     private async switchPreset(preset: LayoutPreset): Promise<void> {

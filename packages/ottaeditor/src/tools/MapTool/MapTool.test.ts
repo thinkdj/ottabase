@@ -159,6 +159,18 @@ describe('MapTool', () => {
             expect(result).toContain('output=embed');
         });
 
+        it('should set satellite map type for Google Maps', () => {
+            const url = 'https://www.google.com/maps/place/London';
+            const result = MapTool.toEmbedUrl(url, 'gmaps', 'satellite', 13);
+            expect(result).toContain('t=k');
+        });
+
+        it('should set terrain map type for Google Maps', () => {
+            const url = 'https://www.google.com/maps/place/London';
+            const result = MapTool.toEmbedUrl(url, 'gmaps', 'terrain', 13);
+            expect(result).toContain('t=p');
+        });
+
         it('should convert OSM hash URL to embed format', () => {
             const url = 'https://www.openstreetmap.org/#map=13/51.5/-0.1';
             const result = MapTool.toEmbedUrl(url, 'openstreetmap', 'default', 13);

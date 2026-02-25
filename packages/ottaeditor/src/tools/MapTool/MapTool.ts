@@ -340,19 +340,21 @@ export default class MapTool implements BlockTool {
         if (provider === 'gmaps') {
             if (!isGMapsHost) return '';
 
+            const mapType = theme === 'satellite' ? 'k' : theme === 'terrain' ? 'p' : 'm';
+
             // https://goo.gl/maps/... short links – wrap in embed
             if (url.includes('goo.gl/maps/')) {
-                return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
+                return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed&t=${mapType}`;
             }
 
             // https://www.google.com/maps/place/.../@lat,lng,zoomz => embed without API key
             const placeMatch = url.match(/\/maps\/place\/([^/@]+)\/@(-?[\d.]+),(-?[\d.]+)/);
             if (placeMatch) {
-                return `https://maps.google.com/maps?q=${encodeURIComponent(placeMatch[1])}&output=embed&z=${zoom}`;
+                return `https://maps.google.com/maps?q=${encodeURIComponent(placeMatch[1])}&output=embed&z=${zoom}&t=${mapType}`;
             }
 
             // Fallback: wrap in standard iframe embed
-            return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
+            return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed&t=${mapType}`;
         }
 
         if (provider === 'openstreetmap') {
