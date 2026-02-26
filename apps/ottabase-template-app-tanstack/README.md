@@ -13,12 +13,33 @@ TanStack Router + Query template with automated OttaORM migrations and Cloudflar
 - **Mantine + shadcn/ui** - Flexible UI component libraries
 - **Jotai** - Global state management
 
+## First-Time Setup
+
+After cloning (or downloading) the repo, create your local working copies from the tracked templates:
+
+```bash
+# 1. Copy the example/template files
+cp ottabase.config.example.ts  ottabase.config.ts
+cp wrangler.example.jsonc      wrangler.jsonc
+cp -r ottabase.template/       ottabase/
+
+# 2. Install dependencies & build internal packages
+pnpm install && pnpm build:pkg
+
+# 3. Start dev server
+pnpm dev:worker
+
+# 4. Initialize database
+curl -X POST http://localhost:3004/api/ottaorm/init
+
+# Done! Visit http://localhost:3004
+```
+
+These three files/directories are **gitignored** so your customisations are never overwritten by `git pull`.
+
 ## Quick Start
 
 ```bash
-# Install
-pnpm install
-
 # Start Vite dev server (fast)
 pnpm dev
 
@@ -51,29 +72,39 @@ export default defineOttabaseConfig({
 
 ### File Ownership
 
-| File                            | Owner                  | Notes                                          |
-| ------------------------------- | ---------------------- | ---------------------------------------------- |
-| `ottabase.config.ts`            | **You**                | Single source of truth for your customisations |
-| `ottabase/models/`              | **You**                | Your domain models                             |
-| `ottabase/db/schema.ts`         | **You**                | Your table schema exports                      |
-| `ottabase/migrations/`          | **You**                | Your SQL migrations                            |
-| `ottabase/config.migrations.ts` | **You** (user section) | Add custom/premium packages here               |
-| `packages/`                     | Framework              | Shared packages — update via `git pull`        |
-| `worker/routes/`                | Framework              | API route handlers                             |
-| `cloudflare-worker.ts`          | Framework              | Worker entry point                             |
+| File / Directory                   | Owner         | Notes                                                  |
+| ---------------------------------- | ------------- | ------------------------------------------------------ |
+| `ottabase.config.ts`               | **You**       | Your app config (gitignored)                           |
+| `ottabase/`                        | **You**       | Models, schemas, migrations, queue handlers (gitignored) |
+| `wrangler.jsonc`                   | **You**       | Local Cloudflare Workers config (gitignored)           |
+| `ottabase.config.example.ts`       | Framework     | Template for `ottabase.config.ts`                      |
+| `wrangler.example.jsonc`           | Framework     | Template for `wrangler.jsonc` (also used by CI)        |
+| `ottabase.template/`               | Framework     | Template for `ottabase/` — diff on updates             |
+| `packages/`                        | Framework     | Shared packages — update via `git pull`                |
+| `worker/routes/`                   | Framework     | API route handlers                                     |
+| `cloudflare-worker.ts`             | Framework     | Worker entry point                                     |
 
 ### Updating the Framework
 
-```bash
-# Fork workflow
-git pull upstream main
+Your user-owned files (`ottabase.config.ts`, `wrangler.jsonc`, `ottabase/`) are
+**gitignored**, so framework updates never overwrite them.
 
-# Zip workflow (replace everything except your owned files)
-# 1. Back up: ottabase.config.ts, ottabase/models/, ottabase/db/schema.ts,
-#             ottabase/migrations/, ottabase/config.migrations.ts
-# 2. Unzip new release over the repo
-# 3. Restore your backed-up files
-# 4. Run: pnpm install && pnpm build:pkg
+```bash
+# Fork / git workflow — your files stay untouched
+git pull upstream main
+pnpm install && pnpm build:pkg
+
+# Check if ottabase.template/ changed (merge new framework defaults into your copy)
+diff -rq ottabase.template/ ottabase/
+# If there are differences, review and merge manually.
+```
+
+```bash
+# Zip workflow
+# 1. Unzip new release over the repo (ottabase.config.ts, wrangler.jsonc,
+#    and ottabase/ are gitignored — they won't be in the zip)
+# 2. Diff ottabase.template/ against your ottabase/ for any new framework defaults
+# 3. Run: pnpm install && pnpm build:pkg
 ```
 
 ### Adding a Premium Package
@@ -208,7 +239,7 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 Package models live in their packages (e.g. `@ottabase/shortlinks`, `@ottabase/ottablog`) and are registered directly
 via `registerModels()`.
 
-See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details.
+See [ottabase.template/migrations/README.md](./ottabase.template/migrations/README.md) for details.
 
 ## Brand Engine
 
@@ -310,32 +341,35 @@ See [@ottabase/brand-engine](../../packages/brand-engine/README.md) for detailed
 | `pnpm preview`    | Build + run on `workerd` via Wrangler (Cloudflare-like) |
 | `pnpm deploy`     | Build + deploy Worker + assets to Cloudflare            |
 | `pnpm type-check` | TypeScript type checking                                |
-| `pnpm cf-typegen` | Generate Cloudflare types from wrangler.jsonc           |
+| `pnpm cf-typegen` | Generate Cloudflare types from wrangler config           |
 
 ## Directory Structure
 
 ```
 apps/ottabase-template-app-tanstack/
-├── cloudflare-worker.ts    # Cloudflare Worker entry (API routes)
-├── ottabase/               # Server-side code
-│   ├── migrations/         # Database migrations
-│   ├── models/             # OttaORM models (Todo, etc.)
-│   └── db/schema.ts        # Drizzle table schemas
-├── src/                    # React application
-│   ├── main.tsx           # App entry point
-│   ├── router.tsx         # TanStack Router configuration
-│   ├── ottabase/          # Client-side config
-│   │   ├── config/        # App configuration
-│   │   ├── hooks/         # Custom hooks
-│   │   ├── providers/     # React providers
-│   │   └── state/         # Jotai atoms
-│   ├── pages/             # Page components
-│   │   └── demo/          # Demo pages
-│   └── providers/         # App providers wrapper
-├── index.html             # HTML template
-├── vite.config.ts         # Vite configuration
-├── wrangler.jsonc         # Cloudflare Workers config (template; CI substitutes placeholders)
-└── tailwind.config.cjs    # Tailwind CSS config
+├── ottabase.config.example.ts  # [tracked]  Template for user config
+├── ottabase.config.ts          # [gitignored] YOUR config (copy from .example)
+├── wrangler.example.jsonc      # [tracked]  Template for Cloudflare config (CI uses this)
+├── wrangler.jsonc              # [gitignored] YOUR Cloudflare config (copy from .example)
+├── ottabase.template/          # [tracked]  Template for user-zone code
+│   ├── config.migrations.ts    #   Custom/premium package registration
+│   ├── db/                     #   Drizzle table schemas
+│   ├── helpers/                #   Domain helpers
+│   ├── migrations/             #   Database migrations
+│   ├── models/                 #   OttaORM models (Todo, etc.)
+│   └── queue/                  #   Queue job handlers
+├── ottabase/                   # [gitignored] YOUR working copy (cp -r from .template/)
+├── cloudflare-worker.ts        # Cloudflare Worker entry (API routes)
+├── worker/                     # Worker route handlers, bootstrap, lib
+├── src/                        # React application
+│   ├── main.tsx                # App entry point
+│   ├── router.tsx              # TanStack Router configuration
+│   ├── ottabase/               # Client-side config, hooks, state
+│   ├── pages/                  # Page components
+│   └── providers/              # App providers wrapper
+├── index.html                  # HTML template
+├── vite.config.ts              # Vite configuration
+└── tailwind.config.cjs         # Tailwind CSS config
 ```
 
 ## Routes
@@ -442,9 +476,9 @@ pnpm wrangler r2 bucket create ottabase-bucket
 pnpm wrangler queues create ottabase-queue
 ```
 
-#### 2. Update wrangler.jsonc
+#### 2. Update wrangler.jsonc (local)
 
-Update the IDs in `wrangler.jsonc` with your actual:
+Update the IDs in your local `wrangler.jsonc` with your actual:
 
 - D1 database ID
 - KV namespace ID
@@ -456,7 +490,7 @@ Update the IDs in `wrangler.jsonc` with your actual:
 Shortlink and referral click tracking uses **Cloudflare Analytics Engine** (WAE). Clicks are written automatically; the
 unified analytics page at `/analytics` requires:
 
-1. **CLOUDFLARE_ACCOUNT_ID** – Set in `wrangler.jsonc` vars (32-char account ID from Cloudflare dashboard).
+1. **CLOUDFLARE_ACCOUNT_ID** – Set in your local `wrangler.jsonc` vars (32-char account ID from Cloudflare dashboard).
 
 2. **CLOUDFLARE_ANALYTICS_API_TOKEN** – Create a token with **Account | Account Analytics | Read**:
 

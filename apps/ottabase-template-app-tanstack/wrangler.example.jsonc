@@ -1,7 +1,11 @@
 {
-    // ─── SINGLE SOURCE OF TRUTH FOR SECRETS ───
-    // This file drives CI secret detection. The env.production / env.preview sections
-    // contain ALL_CAPS_SNAKE_CASE placeholder values (e.g. "D1_DATABASE_ID") that are:
+    // ─── WRANGLER CONFIG — EXAMPLE / TEMPLATE ───
+    // Copy to create your local config:  cp wrangler.example.jsonc wrangler.jsonc
+    // wrangler.jsonc is gitignored — your local overrides are never committed.
+    //
+    // CI uses this .example file directly (via cloudflare-config.json → wranglerConfig).
+    // The env.production / env.preview sections contain ALL_CAPS_SNAKE_CASE placeholder
+    // values (e.g. "D1_DATABASE_ID") that are:
     //   1. Auto-detected by substitute-wrangler-secrets.py at deploy time
     //   2. Verified against GitHub Secrets (missing → CI fails early with clear error)
     //   3. Substituted into wrangler.production.jsonc / wrangler.preview.jsonc

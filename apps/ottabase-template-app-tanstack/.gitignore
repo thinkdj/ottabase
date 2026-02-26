@@ -1,0 +1,20 @@
+# ============================================================
+# User-owned files — NOT tracked by git.
+# Copy the corresponding .example / .template on first setup:
+#
+#   cp ottabase.config.example.ts  ottabase.config.ts
+#   cp wrangler.example.jsonc      wrangler.jsonc
+#   cp -r ottabase.template/       ottabase/
+#
+# See README.md § "First-Time Setup" for details.
+# ============================================================
+
+# Single user config file (edit freely — never overwritten by git pull)
+ottabase.config.ts
+
+# Cloudflare Workers config (local dev overrides)
+wrangler.jsonc
+
+# User-zone: models, schemas, migrations, queue handlers
+# (ottabase.template/ is the tracked reference copy)
+ottabase/

@@ -1,18 +1,21 @@
 // ============================================================
-// OTTABASE USER CONFIG  ←  This file is YOURS to customize.
+// OTTABASE USER CONFIG  —  EXAMPLE / TEMPLATE
 // ============================================================
 //
-// This is the single file you edit when building your app on
-// top of the Ottabase monorepo.  All framework files (packages/,
-// worker/routes/, cloudflare-worker.ts, …) can be freely updated
-// via `git pull` / zip-replace without touching this file.
+// FIRST-TIME SETUP
+// ─────────────────
+// Copy this file to create your own config:
+//   cp ottabase.config.example.ts ottabase.config.ts
+//
+// ottabase.config.ts is gitignored — your customisations are
+// never overwritten by `git pull` or zip-replace.
 //
 // HOW UPDATES WORK
 // ─────────────────
 // 1. Pull the latest framework:
 //      git pull upstream main          (fork) OR
 //      unzip ottabase-latest.zip -d . (zip download)
-// 2. Your customisations here are untouched.
+// 2. Your ottabase.config.ts is untouched (gitignored).
 // 3. Run `pnpm install && pnpm build:pkg && pnpm dev`.
 //
 // PREMIUM / CUSTOM PACKAGES

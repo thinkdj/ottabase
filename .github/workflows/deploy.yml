@@ -200,9 +200,9 @@ jobs:
                     if [ -f "$CONFIG_JSON" ]; then
                       CONFIG=$(cat "$CONFIG_JSON")
                     else
-                      # Check for wrangler.jsonc as fallback
-                      if [ ! -f "${APP_PATH}/wrangler.jsonc" ]; then
-                        echo "⚠️  Warning: No cloudflare-config.json or wrangler.jsonc for ${app_folder}, skipping"
+                      # Check for wrangler config as fallback (.example is the tracked template)
+                      if [ ! -f "${APP_PATH}/wrangler.example.jsonc" ] && [ ! -f "${APP_PATH}/wrangler.jsonc" ]; then
+                        echo "⚠️  Warning: No cloudflare-config.json or wrangler config for ${app_folder}, skipping"
                         continue
                       fi
                       # Use TanStack defaults (default template app is TanStack)
@@ -213,7 +213,7 @@ jobs:
                         "workerBuildCommand": null,
                         "outputDirectory": "dist",
                         "verifyPaths": ["dist", "cloudflare-worker.ts"],
-                        "wranglerConfig": "wrangler.jsonc",
+                        "wranglerConfig": "wrangler.example.jsonc",
                         "wranglerEnv": "production",
                         "healthCheckPath": "/"
                       }'
@@ -322,10 +322,10 @@ jobs:
               run: |
                   echo "🔍 Verifying required secrets for ${{ matrix.name }}..."
 
-                  # Base secrets (wrangler-action needs these; not in wrangler.jsonc)
+                  # Base secrets (wrangler-action needs these; not in wrangler config)
                   BASE="CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID"
 
-                  # Derive placeholders from wrangler.jsonc env.production (single source of truth; no drift)
+                  # Derive placeholders from wrangler config env.production (single source of truth; no drift)
                   PLACEHOLDERS=$(python ../../.github/scripts/substitute-wrangler-secrets.py --list-only)
 
                   # Optional extra from cloudflare-config.json requiresSecrets
@@ -393,7 +393,7 @@ jobs:
                   key:
                       ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{
                       hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-${{ hashFiles('apps/${{
-                      matrix.folder }}/wrangler.jsonc', 'apps/${{ matrix.folder }}/open-next.config.ts', 'apps/${{
+                      matrix.folder }}/wrangler.example.jsonc', 'apps/${{ matrix.folder }}/open-next.config.ts', 'apps/${{
                       matrix.folder }}/next.config.js') }}
                   restore-keys: |
                       ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-
@@ -410,7 +410,7 @@ jobs:
                   key:
                       ${{ runner.os }}-tanstack-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{
                       hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-${{ hashFiles('apps/${{
-                      matrix.folder }}/wrangler.jsonc', 'apps/${{ matrix.folder }}/vite.config.ts') }}
+                      matrix.folder }}/wrangler.example.jsonc', 'apps/${{ matrix.folder }}/vite.config.ts') }}
                   restore-keys: |
                       ${{ runner.os }}-tanstack-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-
                       ${{ runner.os }}-tanstack-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
