@@ -3,7 +3,8 @@ import { invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
 import { createResendMailer, createSESMailer } from '@ottabase/email';
 import { SecurityContext } from '@ottabase/ottaorm';
 import { Account, Organization, OrganizationMember, VerificationToken } from '@ottabase/ottaorm/models';
-import type { CloudflareEnv } from '../cloudflare-env';
+import type { CloudflareEnv } from '../../cloudflare-env';
+import { createSecureToken } from './utils';
 import {
     AUTH_DISABLE_CREDENTIALS,
     AUTH_REQUIRE_EMAIL_VERIFIED,
@@ -12,7 +13,6 @@ import {
     EMAIL_FROM_DEFAULT,
     EMAIL_SES_REGION,
 } from './worker-config';
-import { createSecureToken } from './utils';
 
 export async function resolveMailer(env: CloudflareEnv) {
     // EMAIL_FROM is now configured in ottabase.config.ts; env var is no longer needed

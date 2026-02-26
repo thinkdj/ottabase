@@ -69,6 +69,9 @@ vi.mock('@/hooks/useLocalStorage', () => ({
 vi.mock('@/ottabase/config/app.config', () => ({
     APP_META: { appName: 'Test App' },
     APP_ID: 'test-app',
+    APP_NAME: 'Test App',
+    appConfig: { storage: { prefix: 'test' } },
+    REFERRALS_CONFIG: { enabled: false },
 }));
 vi.mock('@/ottabase/config/i18n.config', () => ({
     i18nConfig: { enabledLanguages: ['en'] },

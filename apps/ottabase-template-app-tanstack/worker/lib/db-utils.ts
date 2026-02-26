@@ -26,9 +26,10 @@ import {
 import { ReferralTracking } from '@ottabase/referrals';
 import { Shortlink } from '@ottabase/shortlinks';
 import { errorResponse } from '@ottabase/utils/http-errors';
+import type { CloudflareEnv } from '../../cloudflare-env';
 import { Todo } from '../../ottabase/models/Todo';
-import type { CloudflareEnv } from '../cloudflare-env';
 import { readJson } from './utils';
+import { PACKAGES } from './worker-config';
 
 export function initAdminCron(env: CloudflareEnv): Response | null {
     if (!env.OBCF_D1) {
@@ -74,39 +75,38 @@ export function initDbConnection(env: CloudflareEnv): void {
     }
 
     registerConnection('default', createD1Driver(env.OBCF_D1));
-    registerModels([
-        // Core models
+
+    // Core models (always registered)
+    const models: any[] = [
         Account,
         Authenticator,
         Session,
         VerificationToken,
         ScheduledTask,
-        // Multi-tenant models
         Organization,
         OrganizationMember,
-        // RBAC models
         Role,
         UserRole,
         Permission,
-        // Blog models
-        Post,
-        PostTag,
-        PostTagLink,
-        PostCategory,
-        PostSeries,
-        PostVersion,
-        OttablogPlugin,
-        OttablogTheme,
-        // Package models
-        Shortlink,
-        ReferralTracking,
-        // Brand engine models
-        BrandKit,
-        LayoutTemplate,
-        LayoutRouteMapping,
         // App models
         Todo,
-    ]);
+    ];
+
+    // Package models (only registered when enabled in ottabase.config.ts)
+    if (PACKAGES.ottablog) {
+        models.push(Post, PostTag, PostTagLink, PostCategory, PostSeries, PostVersion, OttablogPlugin, OttablogTheme);
+    }
+    if (PACKAGES.shortlinks) {
+        models.push(Shortlink);
+    }
+    if (PACKAGES.referrals) {
+        models.push(ReferralTracking);
+    }
+    if (PACKAGES.brandEngine) {
+        models.push(BrandKit, LayoutTemplate, LayoutRouteMapping);
+    }
+
+    registerModels(models);
 
     initRLS();
 }
