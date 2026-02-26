@@ -3,13 +3,15 @@ import './CTATool.css';
 
 interface CTAToolConfig {
     placeholder?: string;
-    defaultStyle?: 'primary' | 'secondary' | 'outline';
+    defaultStyle?: 'primary' | 'secondary' | 'outline' | 'ghost';
+    defaultAlignment?: 'left' | 'center' | 'right';
 }
 
 interface CTAData {
     text: string;
     url: string;
-    style: 'primary' | 'secondary' | 'outline';
+    style: 'primary' | 'secondary' | 'outline' | 'ghost';
+    alignment: 'left' | 'center' | 'right';
     openInNewTab: boolean;
     icon?: string;
 }
@@ -25,22 +27,26 @@ export default class CTATool implements BlockTool {
             baseClass: 'cdx-cta',
             wrapper: 'cdx-cta__wrapper',
             form: 'cdx-cta__form',
+            row: 'cdx-cta__row',
             inputGroup: 'cdx-cta__input-group',
             label: 'cdx-cta__label',
             input: 'cdx-cta__input',
-            textarea: 'cdx-cta__textarea',
             select: 'cdx-cta__select',
             checkbox: 'cdx-cta__checkbox',
             checkboxLabel: 'cdx-cta__checkbox-label',
             preview: 'cdx-cta__preview',
             previewButton: 'cdx-cta__preview-button',
+            alignBtnGroup: 'cdx-cta__align-group',
+            alignBtn: 'cdx-cta__align-btn',
+            alignBtnActive: 'cdx-cta__align-btn--active',
         };
     }
 
     static get toolbox() {
         return {
             title: 'Call to Action',
-            icon: '<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M20.5 17h-17A2.502 2.502 0 0 1 1 14.5v-4A2.502 2.502 0 0 1 3.5 8h17a2.502 2.502 0 0 1 2.5 2.5v4a2.502 2.502 0 0 1-2.5 2.5zm-17-8A1.502 1.502 0 0 0 2 10.5v4A1.502 1.502 0 0 0 3.5 16h17a1.502 1.502 0 0 0 1.5-1.5v-4A1.502 1.502 0 0 0 20.5 9zM17 12H7v1h10z"/></svg>',
+            // Tabler icon: hand-finger (pointer/CTA feel)
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="8" rx="3"/><path d="M10 12h4"/></svg>',
         };
     }
 
@@ -55,6 +61,7 @@ export default class CTATool implements BlockTool {
             text: data?.text || 'Get Started',
             url: data?.url || '',
             style: data?.style || this.config.defaultStyle || 'primary',
+            alignment: data?.alignment || this.config.defaultAlignment || 'center',
             openInNewTab: data?.openInNewTab ?? false,
             icon: data?.icon || '',
         };
@@ -67,16 +74,14 @@ export default class CTATool implements BlockTool {
         const form = document.createElement('div');
         form.classList.add(CTATool.CSS.form);
 
-        // Compact layout: Text and Style in one row
-        const topRow = document.createElement('div');
-        topRow.style.display = 'grid';
-        topRow.style.gridTemplateColumns = '1fr 120px';
-        topRow.style.gap = '8px';
-        topRow.style.alignItems = 'end';
+        // Row 1: Text input + Style select
+        const row1 = document.createElement('div');
+        row1.classList.add(CTATool.CSS.row);
 
         // Text input
         const textGroup = document.createElement('div');
         textGroup.classList.add(CTATool.CSS.inputGroup);
+        textGroup.style.flex = '1';
 
         const textLabel = document.createElement('label');
         textLabel.classList.add(CTATool.CSS.label);
@@ -89,10 +94,8 @@ export default class CTATool implements BlockTool {
         textInput.classList.add(CTATool.CSS.input);
         textInput.placeholder = this.config.placeholder || 'Enter button text...';
         textInput.value = this.data.text;
-
         textInput.addEventListener('input', (event) => {
-            const target = event.target as HTMLInputElement;
-            this.data.text = target.value;
+            this.data.text = (event.target as HTMLInputElement).value;
             this.updatePreview();
         });
 
@@ -102,6 +105,7 @@ export default class CTATool implements BlockTool {
         // Style select
         const styleGroup = document.createElement('div');
         styleGroup.classList.add(CTATool.CSS.inputGroup);
+        styleGroup.style.width = '110px';
 
         const styleLabel = document.createElement('label');
         styleLabel.classList.add(CTATool.CSS.label);
@@ -116,6 +120,7 @@ export default class CTATool implements BlockTool {
             { value: 'primary', label: 'Primary' },
             { value: 'secondary', label: 'Secondary' },
             { value: 'outline', label: 'Outline' },
+            { value: 'ghost', label: 'Ghost' },
         ];
 
         styles.forEach((style) => {
@@ -127,18 +132,17 @@ export default class CTATool implements BlockTool {
         });
 
         styleSelect.addEventListener('change', (event) => {
-            const target = event.target as HTMLSelectElement;
-            this.data.style = target.value as CTAData['style'];
+            this.data.style = (event.target as HTMLSelectElement).value as CTAData['style'];
             this.updatePreview();
         });
 
         styleGroup.appendChild(styleLabel);
         styleGroup.appendChild(styleSelect);
 
-        topRow.appendChild(textGroup);
-        topRow.appendChild(styleGroup);
+        row1.appendChild(textGroup);
+        row1.appendChild(styleGroup);
 
-        // URL input
+        // Row 2: URL input
         const urlGroup = document.createElement('div');
         urlGroup.classList.add(CTATool.CSS.inputGroup);
 
@@ -153,43 +157,103 @@ export default class CTATool implements BlockTool {
         urlInput.classList.add(CTATool.CSS.input);
         urlInput.placeholder = 'https://example.com';
         urlInput.value = this.data.url;
-
         urlInput.addEventListener('input', (event) => {
-            const target = event.target as HTMLInputElement;
-            this.data.url = target.value;
+            this.data.url = (event.target as HTMLInputElement).value;
             this.updatePreview();
         });
 
         urlGroup.appendChild(urlLabel);
         urlGroup.appendChild(urlInput);
 
-        // Open in new tab checkbox - inline with label
+        // Row 3: Alignment + Open in new tab
+        const row3 = document.createElement('div');
+        row3.classList.add(CTATool.CSS.row);
+
+        // Alignment buttons
+        const alignGroup = document.createElement('div');
+        alignGroup.classList.add(CTATool.CSS.inputGroup);
+        alignGroup.style.flex = '1';
+
+        const alignLabel = document.createElement('label');
+        alignLabel.classList.add(CTATool.CSS.label);
+        alignLabel.textContent = 'Alignment';
+
+        const alignBtnGroup = document.createElement('div');
+        alignBtnGroup.classList.add(CTATool.CSS.alignBtnGroup);
+
+        const alignments: Array<{ value: CTAData['alignment']; icon: string; title: string }> = [
+            {
+                value: 'left',
+                title: 'Left',
+                // Tabler icon: align-left
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/></svg>',
+            },
+            {
+                value: 'center',
+                title: 'Center',
+                // Tabler icon: align-center
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="5" y1="18" x2="19" y2="18"/></svg>',
+            },
+            {
+                value: 'right',
+                title: 'Right',
+                // Tabler icon: align-right
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="6" y1="18" x2="20" y2="18"/></svg>',
+            },
+        ];
+
+        alignments.forEach(({ value, icon, title }) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.classList.add(CTATool.CSS.alignBtn);
+            if (value === this.data.alignment) btn.classList.add(CTATool.CSS.alignBtnActive);
+            btn.innerHTML = icon;
+            btn.title = title;
+            btn.setAttribute('data-align', value);
+            btn.addEventListener('click', () => {
+                this.data.alignment = value;
+                alignBtnGroup.querySelectorAll(`.${CTATool.CSS.alignBtn}`).forEach((b) => {
+                    b.classList.toggle(CTATool.CSS.alignBtnActive, b.getAttribute('data-align') === value);
+                });
+                this.updatePreview();
+            });
+            alignBtnGroup.appendChild(btn);
+        });
+
+        alignGroup.appendChild(alignLabel);
+        alignGroup.appendChild(alignBtnGroup);
+
+        // Open in new tab checkbox
         const checkboxGroup = document.createElement('div');
-        checkboxGroup.style.display = 'flex';
-        checkboxGroup.style.alignItems = 'center';
+        checkboxGroup.classList.add(CTATool.CSS.inputGroup);
+        checkboxGroup.style.justifyContent = 'flex-end';
+        checkboxGroup.style.flexDirection = 'row';
+        checkboxGroup.style.alignItems = 'flex-end';
         checkboxGroup.style.gap = '6px';
+        checkboxGroup.style.paddingBottom = '4px';
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.id = 'cta-new-tab';
         checkbox.classList.add(CTATool.CSS.checkbox);
         checkbox.checked = this.data.openInNewTab;
+        checkbox.addEventListener('change', (event) => {
+            this.data.openInNewTab = (event.target as HTMLInputElement).checked;
+            this.updatePreview();
+        });
 
         const checkboxLabel = document.createElement('label');
         checkboxLabel.classList.add(CTATool.CSS.checkboxLabel);
         checkboxLabel.setAttribute('for', 'cta-new-tab');
-        checkboxLabel.textContent = 'Open in new tab';
+        checkboxLabel.textContent = 'New tab';
         checkboxLabel.style.cursor = 'pointer';
         checkboxLabel.style.margin = '0';
 
-        checkbox.addEventListener('change', (event) => {
-            const target = event.target as HTMLInputElement;
-            this.data.openInNewTab = target.checked;
-            this.updatePreview();
-        });
-
         checkboxGroup.appendChild(checkbox);
         checkboxGroup.appendChild(checkboxLabel);
+
+        row3.appendChild(alignGroup);
+        row3.appendChild(checkboxGroup);
 
         // Preview
         const preview = document.createElement('div');
@@ -204,9 +268,9 @@ export default class CTATool implements BlockTool {
 
         preview.appendChild(previewButton);
 
-        form.appendChild(topRow);
+        form.appendChild(row1);
         form.appendChild(urlGroup);
-        form.appendChild(checkboxGroup);
+        form.appendChild(row3);
         form.appendChild(preview);
 
         wrapper.appendChild(form);
@@ -233,8 +297,15 @@ export default class CTATool implements BlockTool {
             'cdx-cta__preview-button--primary',
             'cdx-cta__preview-button--secondary',
             'cdx-cta__preview-button--outline',
+            'cdx-cta__preview-button--ghost',
         );
         previewButton.classList.add(`cdx-cta__preview-button--${this.data.style}`);
+
+        // Update preview alignment
+        const preview = this.wrapper.querySelector(`.${CTATool.CSS.preview}`) as HTMLElement;
+        if (preview) {
+            preview.style.textAlign = this.data.alignment;
+        }
     }
 
     save(): CTAData {

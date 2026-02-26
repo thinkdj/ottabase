@@ -4,63 +4,70 @@ import { useMemo } from 'react';
 export interface CTAData {
     text?: string;
     url?: string;
-    style?: 'primary' | 'secondary' | 'outline';
+    style?: 'primary' | 'secondary' | 'outline' | 'ghost';
+    alignment?: 'left' | 'center' | 'right';
     openInNewTab?: boolean;
     icon?: string;
 }
+
+const alignmentClass: Record<NonNullable<CTAData['alignment']>, string> = {
+    left: 'justify-start',
+    center: 'justify-center',
+    right: 'justify-end',
+};
+
+/** Inline CSS-variable styles so the button respects the global theme without relying on specific Tailwind color values. */
+const buttonStyles: Record<NonNullable<CTAData['style']>, React.CSSProperties> = {
+    primary: {
+        background: 'hsl(var(--primary))',
+        color: 'hsl(var(--primary-foreground))',
+        border: '2px solid hsl(var(--primary))',
+    },
+    secondary: {
+        background: 'hsl(var(--secondary))',
+        color: 'hsl(var(--secondary-foreground))',
+        border: '2px solid hsl(var(--secondary))',
+    },
+    outline: {
+        background: 'transparent',
+        color: 'hsl(var(--primary))',
+        border: '2px solid hsl(var(--primary))',
+    },
+    ghost: {
+        background: 'transparent',
+        color: 'hsl(var(--foreground))',
+        border: '2px solid hsl(var(--border))',
+    },
+};
 
 const CTA: RenderFn<CTAData> = ({ data, className = '' }) => {
     const buttonText = data?.text || 'Get Started';
     const url = data?.url || '#';
     const style = data?.style || 'primary';
+    const alignment = data?.alignment || 'center';
     const openInNewTab = data?.openInNewTab ?? false;
     const icon = data?.icon;
 
-    // Memoize button classes and inline styles
-    const { buttonClasses, buttonStyle } = useMemo(() => {
-        const baseClasses =
-            'inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800';
-        const styleClasses = {
-            primary: 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500 shadow-md hover:shadow-lg',
-            secondary: 'bg-gray-600 hover:bg-gray-700 text-white focus:ring-gray-500 shadow-md hover:shadow-lg',
-            outline:
-                'bg-transparent border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-400 dark:hover:text-gray-900 focus:ring-blue-500',
-        };
+    const justify = alignmentClass[alignment] ?? 'justify-center';
 
-        // Inline styles as fallback for when Tailwind isn't processed
-        const inlineStyles: Record<string, React.CSSProperties> = {
-            primary: {
-                backgroundColor: '#2563eb',
-                color: '#ffffff',
-                borderColor: '#2563eb',
-                borderWidth: '2px',
-                borderStyle: 'solid',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-            },
-            secondary: {
-                backgroundColor: '#4b5563',
-                color: '#ffffff',
-                borderColor: '#4b5563',
-                borderWidth: '2px',
-                borderStyle: 'solid',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-            },
-            outline: {
-                backgroundColor: 'transparent',
-                color: '#2563eb',
-                borderColor: '#2563eb',
-                borderWidth: '2px',
-                borderStyle: 'solid',
-            },
-        };
+    const btnStyle = useMemo<React.CSSProperties>(
+        () => ({
+            ...(buttonStyles[style] ?? buttonStyles.primary),
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '10px 22px',
+            borderRadius: '6px',
+            fontWeight: 600,
+            fontSize: '14px',
+            textDecoration: 'none',
+            transition: 'opacity 0.2s ease, background 0.2s ease',
+            cursor: 'pointer',
+            lineHeight: 1.25,
+        }),
+        [style],
+    );
 
-        return {
-            buttonClasses: `${baseClasses} ${styleClasses[style]}`,
-            buttonStyle: inlineStyles[style],
-        };
-    }, [style]);
-
-    // Generate structured data for SEO
     const structuredData = useMemo(() => {
         if (!url || url === '#') return null;
         return {
@@ -76,35 +83,32 @@ const CTA: RenderFn<CTAData> = ({ data, className = '' }) => {
 
     return (
         <>
-            {/* Structured data for SEO */}
             {structuredData && (
                 <script
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
                 />
             )}
-            <div className={`${className} my-6 flex justify-center cdc-content-cta`}>
+            <div className={`${className} my-6 flex ${justify} cdc-content-cta`} data-alignment={alignment}>
                 <a
                     href={url}
                     target={openInNewTab ? '_blank' : '_self'}
-                    rel={openInNewTab ? 'noopener noreferrer' : ''}
-                    className={buttonClasses}
-                    style={buttonStyle}
+                    rel={openInNewTab ? 'noopener noreferrer' : undefined}
+                    style={btnStyle}
                     itemScope
                     itemType="https://schema.org/Action"
                     itemProp="name"
                     aria-label={buttonText}
                 >
-                    {icon && <span className="mr-2" dangerouslySetInnerHTML={{ __html: icon }} aria-hidden="true" />}
+                    {icon && <span dangerouslySetInnerHTML={{ __html: icon }} aria-hidden="true" />}
                     {buttonText}
                 </a>
             </div>
-            {/* Noscript fallback for crawlers */}
             <noscript>
-                <div className="my-6 flex justify-center">
+                <div className={`my-6 flex ${justify}`}>
                     <a
                         href={url}
-                        className="inline-block px-6 py-3 rounded-lg font-semibold text-sm bg-blue-600 text-white"
+                        style={{ padding: '10px 22px', borderRadius: '6px', fontWeight: 600, fontSize: '14px' }}
                     >
                         {buttonText}
                     </a>

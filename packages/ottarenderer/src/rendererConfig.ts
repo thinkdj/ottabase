@@ -67,6 +67,9 @@ export const defaultEJSRConfigs = {
     cta: {
         className: `${blockClass} cdc-content-cta`,
     },
+    disclosure: {
+        className: `${blockClass} cdc-content-disclosure`,
+    },
     review: {
         className: `${blockClass} cdc-content-review`,
     },

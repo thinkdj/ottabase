@@ -40,8 +40,14 @@ const Layout: RenderFn<LayoutData> = ({ data, className = '' }) => {
 
     if (!columns.length) return null;
 
+    const colCount = widths.length;
+
     return (
-        <div className={`${className} my-6 cdc-content-layout not-prose`} data-layout-preset={preset}>
+        <div
+            className={`${className} my-6 cdc-content-layout not-prose`}
+            data-layout-preset={preset}
+            data-col-count={colCount}
+        >
             <div
                 className="flex flex-col sm:flex-row gap-4 sm:gap-6 w-full"
                 role="region"
@@ -50,28 +56,27 @@ const Layout: RenderFn<LayoutData> = ({ data, className = '' }) => {
                 {widths.map((width, idx) => {
                     const colData = columns[idx];
                     const blocks = colData?.content?.blocks || [];
+                    const hasContent = blocks.length > 0;
 
                     return (
                         <div
                             key={idx}
-                            className="min-w-0"
-                            style={{
-                                // On small screens the flex column stacks; on sm+ use the preset widths
-                                flexBasis: `${width}%`,
-                                flexGrow: 0,
-                                flexShrink: 0,
-                            }}
+                            className="min-w-0 overflow-hidden"
+                            style={{ flexBasis: `${width}%`, flexGrow: 0, flexShrink: 0 }}
                             data-col={idx}
                             data-col-width={`${width}%`}
                         >
-                            {blocks.length > 0 ? (
+                            {hasContent ? (
                                 <Blocks
                                     data={colData?.content as any}
                                     config={defaultEJSRConfigs}
                                     renderers={{ ...baseRenderers, layout: Layout }}
                                 />
                             ) : (
-                                <div className="h-full min-h-12 rounded border border-dashed border-border dark:border-border" />
+                                <div
+                                    className="h-full min-h-12 rounded border border-dashed border-border"
+                                    aria-hidden="true"
+                                />
                             )}
                         </div>
                     );

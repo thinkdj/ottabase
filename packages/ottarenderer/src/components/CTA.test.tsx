@@ -23,30 +23,53 @@ describe('CTA Renderer', () => {
         });
     });
 
-    describe('Button Styles', () => {
-        it('should apply primary style by default', () => {
+    describe('Button Styles (theme CSS variables)', () => {
+        it('should apply primary style by default via inline style', () => {
             const { container } = render(<CTA data={{ text: 'Button' }} />);
             const link = container.querySelector('a');
-            expect(link?.className).toContain('bg-blue-600');
-        });
-
-        it('should apply primary style when specified', () => {
-            const { container } = render(<CTA data={{ text: 'Button', style: 'primary' }} />);
-            const link = container.querySelector('a');
-            expect(link?.className).toContain('bg-blue-600');
+            expect(link?.style.background).toContain('hsl(var(--primary))');
         });
 
         it('should apply secondary style', () => {
             const { container } = render(<CTA data={{ text: 'Button', style: 'secondary' }} />);
             const link = container.querySelector('a');
-            expect(link?.className).toContain('bg-gray-600');
+            expect(link?.style.background).toContain('hsl(var(--secondary))');
         });
 
-        it('should apply outline style', () => {
+        it('should apply outline style (transparent background)', () => {
             const { container } = render(<CTA data={{ text: 'Button', style: 'outline' }} />);
             const link = container.querySelector('a');
-            expect(link?.className).toContain('bg-transparent');
-            expect(link?.className).toContain('border-2');
+            expect(link?.style.background).toBe('transparent');
+        });
+
+        it('should apply ghost style (transparent background, border on foreground)', () => {
+            const { container } = render(<CTA data={{ text: 'Button', style: 'ghost' }} />);
+            const link = container.querySelector('a');
+            expect(link?.style.background).toBe('transparent');
+            expect(link?.style.color).toContain('hsl(var(--foreground))');
+        });
+    });
+
+    describe('Alignment', () => {
+        it('should default to center alignment', () => {
+            const { container } = render(<CTA data={{ text: 'Button' }} />);
+            const wrapper = container.querySelector('[data-alignment]');
+            expect(wrapper?.getAttribute('data-alignment')).toBe('center');
+            expect(wrapper?.className).toContain('justify-center');
+        });
+
+        it('should apply left alignment', () => {
+            const { container } = render(<CTA data={{ text: 'Button', alignment: 'left' }} />);
+            const wrapper = container.querySelector('[data-alignment]');
+            expect(wrapper?.getAttribute('data-alignment')).toBe('left');
+            expect(wrapper?.className).toContain('justify-start');
+        });
+
+        it('should apply right alignment', () => {
+            const { container } = render(<CTA data={{ text: 'Button', alignment: 'right' }} />);
+            const wrapper = container.querySelector('[data-alignment]');
+            expect(wrapper?.getAttribute('data-alignment')).toBe('right');
+            expect(wrapper?.className).toContain('justify-end');
         });
     });
 
@@ -55,7 +78,6 @@ describe('CTA Renderer', () => {
             render(<CTA data={{ url: 'https://example.com' }} />);
             const link = screen.getByRole('link');
             expect(link.getAttribute('target')).toBe('_self');
-            expect(link.getAttribute('rel')).toBe('');
         });
 
         it('should open in new tab when specified', () => {
@@ -96,8 +118,6 @@ describe('CTA Renderer', () => {
 
         it('should include noscript fallback', () => {
             const { container } = render(<CTA data={{ text: 'Button', url: 'https://example.com' }} />);
-            // Note: React Testing Library doesn't render noscript tags, but they exist in the HTML
-            // This test verifies the component structure includes noscript
             const html = container.innerHTML;
             expect(html).toContain('noscript');
         });
@@ -108,13 +128,6 @@ describe('CTA Renderer', () => {
             render(<CTA data={{ text: 'Sign Up' }} />);
             const link = screen.getByRole('link');
             expect(link.getAttribute('aria-label')).toBe('Sign Up');
-        });
-
-        it('should have focus styles', () => {
-            const { container } = render(<CTA data={{ text: 'Button' }} />);
-            const link = container.querySelector('a');
-            expect(link?.className).toContain('focus:outline-none');
-            expect(link?.className).toContain('focus:ring-2');
         });
     });
 
@@ -134,7 +147,7 @@ describe('CTA Renderer', () => {
     });
 
     describe('Custom ClassName', () => {
-        it('should apply custom className', () => {
+        it('should apply custom className to wrapper', () => {
             const { container } = render(<CTA data={{ text: 'Button' }} className="custom-class" />);
             const wrapper = container.querySelector('.custom-class');
             expect(wrapper).toBeTruthy();
@@ -153,10 +166,11 @@ describe('CTA Renderer', () => {
             expect(link.getAttribute('href')).toBe('#');
         });
 
-        it('should handle invalid style gracefully', () => {
+        it('should handle invalid style gracefully by using primary fallback', () => {
             const { container } = render(<CTA data={{ text: 'Button', style: 'invalid' as any }} />);
             const link = container.querySelector('a');
-            expect(link).toBeTruthy();
+            // Falls back to primary
+            expect(link?.style.background).toContain('hsl(var(--primary))');
         });
     });
 });

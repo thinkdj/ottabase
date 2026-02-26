@@ -16,6 +16,7 @@ import Warning from '@editorjs/warning';
 import AdvancedImageTool from './tools/AdvancedImageTool/AdvancedImageTool';
 import CodeTool from './tools/CodeTool/CodeTool';
 import CTATool from './tools/CTATool/CTATool';
+import DisclosureTool from './tools/DisclosureTool/DisclosureTool';
 import LayoutTool from './tools/LayoutTool/LayoutTool';
 import MapTool from './tools/MapTool/MapTool';
 import ReviewTool from './tools/ReviewTool/ReviewTool';
@@ -46,6 +47,7 @@ export const DEFAULT_PLUGIN_NAMES = {
     REVIEW: 'review',
     MAP: 'map',
     LAYOUT: 'layout',
+    DISCLOSURE: 'disclosure',
 } as const;
 
 /**
@@ -209,6 +211,11 @@ export const defaultPlugins: OttaEditorPlugin[] = [
             tools: buildLayoutNestedTools(),
         } as any,
     },
+    {
+        name: DEFAULT_PLUGIN_NAMES.DISCLOSURE,
+        tool: DisclosureTool as any,
+        config: {} as any,
+    },
 ];
 
 /**
@@ -242,6 +249,7 @@ export {
     CodeTool,
     CTATool,
     Delimiter,
+    DisclosureTool,
     Embed,
     Header,
     InlineCode,

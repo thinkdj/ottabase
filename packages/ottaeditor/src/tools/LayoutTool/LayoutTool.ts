@@ -39,6 +39,14 @@ export interface LayoutToolConfig {
     tools?: Record<string, any>;
 }
 
+// Tabler icon: columns (layout-columns feel)
+const TOOLBOX_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>';
+
+// Tabler icon: trash (clear column)
+const TRASH_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+
 /**
  * LayoutTool – multi-column layout where each column contains a full
  * nested EditorJS instance. Supports presets 50/50, 25/75, 75/25,
@@ -78,7 +86,7 @@ export default class LayoutTool implements BlockTool {
     static get toolbox() {
         return {
             title: 'Layout',
-            icon: '<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M3 3h8v18H3V3zm10 0h8v8h-8V3zm0 10h8v8h-8v-8z"/></svg>',
+            icon: TOOLBOX_ICON,
         };
     }
 
@@ -88,7 +96,6 @@ export default class LayoutTool implements BlockTool {
 
     constructor(options: BlockToolConstructorOptions<LayoutData, LayoutToolConfig>) {
         const { data, config, api } = options;
-        // `block` is provided by EditorJS at runtime but not consistently typed across versions
         const block = (options as any).block;
         this.api = api;
         this.config = config || {};
@@ -99,7 +106,6 @@ export default class LayoutTool implements BlockTool {
         const presetDef = PRESETS.find((p) => p.key === preset) || PRESETS[0];
         const columnCount = presetDef.widths.length;
 
-        // Build columns from saved data or create empty ones
         const columns: LayoutColumnData[] = [];
         for (let i = 0; i < columnCount; i++) {
             columns.push({
@@ -119,7 +125,6 @@ export default class LayoutTool implements BlockTool {
 
         this.wrapper = wrapper;
 
-        // Initialise nested editors after the element is in DOM
         requestAnimationFrame(() => this.initNestedEditors());
 
         return wrapper;
@@ -138,15 +143,16 @@ export default class LayoutTool implements BlockTool {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.classList.add(LayoutTool.CSS.presetBtn);
+            btn.title = preset.label;
             if (preset.key === this.data.preset) {
                 btn.classList.add(LayoutTool.CSS.presetBtnActive);
             }
 
             btn.appendChild(this.buildPresetIcon(preset.widths));
 
-            const btnLabel = document.createTextNode(preset.label);
+            const btnLabel = document.createElement('span');
+            btnLabel.textContent = preset.label;
             btn.appendChild(btnLabel);
-            btn.title = preset.label;
 
             btn.addEventListener('click', () => this.switchPreset(preset.key));
             toolbar.appendChild(btn);
@@ -158,10 +164,10 @@ export default class LayoutTool implements BlockTool {
     private buildPresetIcon(widths: number[]): HTMLElement {
         const icon = document.createElement('span');
         icon.classList.add(LayoutTool.CSS.presetIcon);
+        icon.setAttribute('aria-hidden', 'true');
         const total = widths.reduce((s, w) => s + w, 0);
         widths.forEach((w) => {
             const bar = document.createElement('span');
-            // Width relative to the icon container (max ~24px)
             bar.style.width = `${Math.round((w / total) * 20)}px`;
             icon.appendChild(bar);
         });
@@ -197,18 +203,21 @@ export default class LayoutTool implements BlockTool {
         colLabel.classList.add(LayoutTool.CSS.colLabel);
         colLabel.textContent = `Column ${idx + 1}`;
 
+        const colMeta = document.createElement('div');
+        colMeta.classList.add(LayoutTool.CSS.colMeta);
+
         const colWidth = document.createElement('span');
         colWidth.classList.add(LayoutTool.CSS.colWidth);
         colWidth.textContent = `${width}%`;
-
-        const colMeta = document.createElement('div');
-        colMeta.classList.add(LayoutTool.CSS.colMeta);
         colMeta.appendChild(colWidth);
 
+        // Clear button with trash icon
         const clearBtn = document.createElement('button');
         clearBtn.type = 'button';
         clearBtn.classList.add(LayoutTool.CSS.colClearBtn);
-        clearBtn.textContent = 'Clear';
+        clearBtn.title = 'Clear column';
+        clearBtn.setAttribute('aria-label', `Clear column ${idx + 1}`);
+        clearBtn.innerHTML = TRASH_ICON;
         clearBtn.addEventListener('click', () => this.clearColumn(idx));
         colMeta.appendChild(clearBtn);
 
@@ -216,12 +225,10 @@ export default class LayoutTool implements BlockTool {
         header.appendChild(colMeta);
         col.appendChild(header);
 
-        // Editor holder
         const editorHolder = document.createElement('div');
         editorHolder.classList.add(LayoutTool.CSS.colEditor);
         editorHolder.id = this.colHolderId(idx);
 
-        // Placeholder while editor is initialising
         const placeholder = document.createElement('div');
         placeholder.classList.add(LayoutTool.CSS.colPlaceholder);
         placeholder.textContent = 'Type or press / to add blocks…';
@@ -236,7 +243,6 @@ export default class LayoutTool implements BlockTool {
     }
 
     private async initNestedEditors(): Promise<void> {
-        // Destroy stale editors if any
         this.destroyNestedEditors();
 
         const presetDef = PRESETS.find((p) => p.key === this.data.preset) || PRESETS[0];
@@ -246,7 +252,6 @@ export default class LayoutTool implements BlockTool {
             const holderEl = document.getElementById(holderId);
             if (!holderEl) continue;
 
-            // Remove placeholder
             holderEl.innerHTML = '';
 
             const colData = this.data.columns[idx]?.content || { blocks: [] };
@@ -263,8 +268,7 @@ export default class LayoutTool implements BlockTool {
 
                 await editor.isReady;
                 this.nestedEditors.set(idx, editor);
-            } catch (err) {
-                // If EditorJS init fails (e.g., JSDOM in tests), show plain placeholder
+            } catch {
                 if (holderEl) {
                     const ph = document.createElement('div');
                     ph.classList.add(LayoutTool.CSS.colPlaceholder);
@@ -277,10 +281,9 @@ export default class LayoutTool implements BlockTool {
 
     /**
      * Default tools for nested editors.
-     * Includes common block types but excludes Layout to prevent infinite nesting.
+     * Excludes Layout to prevent infinite nesting.
      */
     private buildDefaultTools(): Record<string, any> {
-        // Dynamically import tools to avoid circular deps
         const tools: Record<string, any> = {};
         const toolImports: Array<{ name: string; module: string; config?: Record<string, any> }> = [
             { name: 'paragraph', module: '@editorjs/paragraph' },
@@ -305,7 +308,6 @@ export default class LayoutTool implements BlockTool {
     }
 
     private destroyNestedEditors(): void {
-        // EditorJS.destroy() is typed as void (not Promise<void>), so use try/catch
         this.nestedEditors.forEach((editor) => {
             try {
                 editor.destroy();
@@ -316,7 +318,6 @@ export default class LayoutTool implements BlockTool {
         this.nestedEditors.clear();
     }
 
-    /** Reset a single column to an empty state without removing the block */
     private async clearColumn(idx: number): Promise<void> {
         if (!this.data.columns[idx]) return;
 
@@ -344,13 +345,11 @@ export default class LayoutTool implements BlockTool {
     private async switchPreset(preset: LayoutPreset): Promise<void> {
         if (preset === this.data.preset) return;
 
-        // Save current column data before switching
         await this.collectColumnData();
 
         const newPresetDef = PRESETS.find((p) => p.key === preset) || PRESETS[0];
         const newColumnCount = newPresetDef.widths.length;
 
-        // Preserve existing column data where possible
         const newColumns: LayoutColumnData[] = [];
         for (let i = 0; i < newColumnCount; i++) {
             newColumns.push({
@@ -361,14 +360,12 @@ export default class LayoutTool implements BlockTool {
         this.data.preset = preset;
         this.data.columns = newColumns;
 
-        // Update toolbar active state
         if (this.wrapper) {
             this.wrapper.querySelectorAll(`.${LayoutTool.CSS.presetBtn}`).forEach((btn, i) => {
                 btn.classList.toggle(LayoutTool.CSS.presetBtnActive, PRESETS[i]?.key === preset);
             });
         }
 
-        // Rebuild columns area
         const columnsEl = this.wrapper?.querySelector('[data-key="columns"]') as HTMLElement | null;
         if (columnsEl) {
             columnsEl.innerHTML = '';
@@ -377,11 +374,9 @@ export default class LayoutTool implements BlockTool {
             });
         }
 
-        // Re-init nested editors
         requestAnimationFrame(() => this.initNestedEditors());
     }
 
-    /** Collect current OutputData from all nested editors into this.data.columns */
     private async collectColumnData(): Promise<void> {
         const savePromises: Array<Promise<void>> = [];
         this.nestedEditors.forEach((editor, idx) => {
@@ -414,7 +409,6 @@ export default class LayoutTool implements BlockTool {
         );
     }
 
-    /** Cleanup nested editors when the block is removed */
     destroy(): void {
         this.destroyNestedEditors();
     }

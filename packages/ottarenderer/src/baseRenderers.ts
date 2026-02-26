@@ -7,6 +7,7 @@ import AdvancedImageBlock from './components/AdvancedImage/AdvancedImage';
 import Checklist from './components/Checklist';
 import Code from './components/Code';
 import CTA from './components/CTA';
+import Disclosure from './components/Disclosure';
 import List from './components/List';
 import Map from './components/Map';
 import Quote from './components/Quote';
@@ -26,6 +27,7 @@ export const baseRenderers = {
     quote: Quote,
     spoiler: Spoiler,
     cta: CTA,
+    disclosure: Disclosure,
     review: Review,
     map: Map,
 };
