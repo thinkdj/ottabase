@@ -3,7 +3,7 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getKillSwitchStatus } from '../lib/killswitch';
-import { PACKAGES } from '../lib/worker-config';
+import { APP_ID, APP_NAME, PACKAGES } from '../lib/worker-config';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import {
     handleAdminDbRowDelete,
@@ -138,7 +138,7 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
     if (route === '/api/health') {
         return jsonResponse({
             ok: true,
-            name: 'ottabase-template-app-tanstack',
+            name: APP_NAME,
             timestamp: Date.now(),
         });
     }
@@ -355,7 +355,7 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleAnalyticsTrack({
             request: context.request,
             dataset: context.env.OBCF_ANALYTICS_CORE,
-            defaultAppId: 'ottabase-template',
+            defaultAppId: APP_ID,
         });
     }
 

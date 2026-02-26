@@ -1,3 +1,4 @@
+import { APP_NAME } from '@/ottabase/config/app.config';
 import type { DocsConfig, DocsSource } from '@ottabase/docs';
 import { extractTitle, fileNameToSlug, slugToTitle } from '@ottabase/docs';
 
@@ -81,7 +82,7 @@ const packageModules = import.meta.glob('/../../packages/*/README.md', {
 }) as Record<string, () => Promise<string>>;
 
 export const docsConfig: DocsConfig = {
-    title: 'Ottabase Docs',
+    title: `${APP_NAME} Docs`,
     basePath: '/docs',
     theme: 'spacious',
     codeRenderMode: 'ui-code-highlight',

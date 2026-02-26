@@ -1,5 +1,6 @@
 import type { LogConfig } from '@ottabase/logger';
 import { LogLevelEnum } from '@ottabase/logger';
+import { APP_ID } from './app.config';
 
 // Safe access for non-Vite environments (SSR, tests) where import.meta.env may be undefined
 const env = typeof import.meta !== 'undefined' ? import.meta.env : undefined;
@@ -26,7 +27,7 @@ export const logConfig: LogConfig = {
 
     // Global context to include in all logs
     context: {
-        app: 'ottabase-template-app-tanstack',
+        app: APP_ID,
         version: env?.VITE_APP_VERSION ?? '0.0.0',
     },
 
@@ -135,7 +136,7 @@ export const logConfig: LogConfig = {
 export const devLogConfig: LogConfig = {
     level: LogLevelEnum.DEBUG,
     context: {
-        app: 'ottabase-template-app-tanstack',
+        app: APP_ID,
         environment: 'development',
     },
     server: {
@@ -157,7 +158,7 @@ export const devLogConfig: LogConfig = {
 export const prodLogConfig: LogConfig = {
     level: LogLevelEnum.INFO,
     context: {
-        app: 'ottabase-template-app-tanstack',
+        app: APP_ID,
         environment: 'production',
     },
     server: {
