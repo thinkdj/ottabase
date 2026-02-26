@@ -26,6 +26,7 @@ export {
     defineOttabaseConfig,
     getCurrentYear,
     userConfigToOptions,
+    validateOttabaseConfig,
 } from './createAppConfig';
 
 // Import for internal use

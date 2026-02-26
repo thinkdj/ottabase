@@ -1,25 +1,37 @@
 // ============================================================
-// OTTABASE USER CONFIG  ←  This file is YOURS to customize.
+// OTTABASE USER CONFIG  —  EXAMPLE / TEMPLATE
 // ============================================================
 //
-// This is the single file you edit when building your app on
-// top of the Ottabase monorepo.  All framework files (packages/,
-// worker/routes/, cloudflare-worker.ts, …) can be freely updated
-// via `git pull` / zip-replace without touching this file.
+// FIRST-TIME SETUP
+// ─────────────────
+// Copy this file to create your own config:
+//   cp ottabase.config.example.ts ottabase.config.ts
+//
+// ottabase.config.ts is gitignored — your customisations are
+// never overwritten by `git pull` or zip-replace.
 //
 // HOW UPDATES WORK
 // ─────────────────
 // 1. Pull the latest framework:
 //      git pull upstream main          (fork) OR
 //      unzip ottabase-latest.zip -d . (zip download)
-// 2. Your customisations here are untouched.
+// 2. Your ottabase.config.ts is untouched (gitignored).
 // 3. Run `pnpm install && pnpm build:pkg && pnpm dev`.
 //
 // PREMIUM / CUSTOM PACKAGES
 // ──────────────────────────
-// Install the package, then add it to `customPackages` below.
-// Tables are resolved at runtime in `ottabase/config.migrations.ts`
-// (server-only) so client bundles stay lean.
+// Install the package, then:
+//   1. Register tables in  ottabase/config.migrations.ts
+//   2. Register routes in  ottabase/config.routes.ts
+//   3. Add the key to `customPackages` below.
+// Table/route imports are server-only so client bundles stay lean.
+//
+// VALIDATION
+// ──────────
+// defineOttabaseConfig() validates at startup:
+//   • Throws on missing required fields (appId, appName).
+//   • Warns on unrecognised keys (likely typos) so they
+//     don't silently fall to defaults.
 // ============================================================
 
 import { defineOttabaseConfig } from '@ottabase/config';
@@ -59,15 +71,15 @@ export default defineOttabaseConfig({
     },
 
     // ── Custom / Premium Packages ─────────────────────────────
-    // After installing a premium package, add its registration
-    // here AND import its tables in ottabase/config.migrations.ts.
+    // After installing a premium package:
+    //   1. Register tables in  ottabase/config.migrations.ts
+    //   2. Register routes in  ottabase/config.routes.ts
+    //   3. Add the key here:
     //
     // Example:
     //   customPackages: {
     //     myPremiumFeature: { tables: { premiumTable } },
     //   },
-    //
-    // (table imports live in config.migrations.ts to stay server-only)
     customPackages: {},
 
     // ── Feature Configuration ─────────────────────────────────

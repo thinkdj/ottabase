@@ -10,7 +10,8 @@
 // ── To add a custom or premium package ──────────────────────
 //   1. Install the package and import its table schema below.
 //   2. Add it to USER_PACKAGE_REGISTRY with { tables, migrations }.
-//   3. Toggle it on in `customPackages` in ottabase.config.ts.
+//   3. Register its API routes in `config.routes.ts`.
+//   4. Toggle it on in `customPackages` in ottabase.config.ts.
 //
 // Example:
 //   import { myPremiumTable } from '@myorg/premium-feature/schema';

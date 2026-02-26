@@ -1,7 +1,6 @@
 import { handleAnalyticsTrack } from '@ottabase/analytics/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { getKillSwitchStatus } from '../lib/killswitch';
 import { APP_ID, APP_NAME, PACKAGES } from '../lib/worker-config';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
@@ -82,17 +81,26 @@ import {
     handleShortlinksCreate,
     handleShortlinksList,
 } from './shortlinks';
+import type { ApiRouteContext } from './types';
 
-export interface ApiRouteContext {
-    request: Request;
-    env: CloudflareEnv;
-    url: URL;
-    route: string;
-    method: string;
-    withAuthCors: (response: Response) => Response;
-    corsHeaders: Record<string, string>;
+// Dynamic import with fallback for user-zone custom routes.
+// ottabase/ is user-owned (gitignored); ottabase.template/ is the tracked reference.
+// If the user hasn't set up ottabase/ yet, fall back to a no-op handler.
+let _handleCustomRoutes: ((ctx: ApiRouteContext) => Promise<Response | null>) | undefined;
+async function handleCustomRoutes(ctx: ApiRouteContext): Promise<Response | null> {
+    if (_handleCustomRoutes === undefined) {
+        try {
+            const mod = await import('../../ottabase/config.routes');
+            _handleCustomRoutes = mod.handleCustomRoutes;
+        } catch {
+            // User-zone file not found — fall back to no-op
+            _handleCustomRoutes = async () => null;
+        }
+    }
+    return _handleCustomRoutes(ctx);
 }
 
+export type { ApiRouteContext } from './types';
 type MethodHandler = (context: ApiRouteContext) => Promise<Response | null> | Response | null;
 
 export async function resolveApiRoute(context: ApiRouteContext): Promise<Response | null> {
@@ -108,7 +116,11 @@ export async function resolveApiRoute(context: ApiRouteContext): Promise<Respons
         }
     }
 
-    return handleMethodAgnosticRoutes(context);
+    const agnosticResponse = await handleMethodAgnosticRoutes(context);
+    if (agnosticResponse) return agnosticResponse;
+
+    // Custom / premium package routes (user-zone: ottabase/config.routes.ts)
+    return handleCustomRoutes(context);
 }
 
 function packageDisabledResponse(packageName: string): Response {
