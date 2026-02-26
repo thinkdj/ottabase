@@ -77,6 +77,12 @@ export const SPOTLIGHT_CONFIG = appConfig.features.spotlight;
 // Referrals
 export const REFERRALS_CONFIG = appConfig.features.referrals;
 
+// Auth behaviour
+export const AUTH_BEHAVIOR_CONFIG = appConfig.features.authBehavior;
+
+// Email (non-secret)
+export const EMAIL_CONFIG = appConfig.email;
+
 // Theme / Colors
 export const THEME_COLOR_DEFAULT = appConfig.theme.colorDefault;
 export const THEME_COLORS = appConfig.theme.colors;

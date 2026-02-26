@@ -1,4 +1,4 @@
-import { AppConfig, AppMeta, ConfigOptions, OttabaseUserConfig, SupportedUIFramework, ThemeColors } from './types';
+import { AppConfig, AppMeta, AuthBehaviorConfig, ConfigOptions, EmailConfig, OttabaseUserConfig, SupportedUIFramework, ThemeColors } from './types';
 
 /**
  * Creates app configuration by merging environment variables with defaults
@@ -156,6 +156,26 @@ export function createAppConfig(options: ConfigOptions = {}): AppConfig {
                 trackClicks: getBoolEnv('REFERRALS_TRACK_CLICKS', defaults.features?.referrals?.trackClicks ?? true),
                 expiryDays: getNumberEnv('REFERRALS_EXPIRY_DAYS', defaults.features?.referrals?.expiryDays ?? 30),
             },
+            authBehavior: {
+                sessionMaxAge: getNumberEnv(
+                    'AUTH_SESSION_MAX_AGE',
+                    defaults.features?.authBehavior?.sessionMaxAge ?? 30 * 24 * 60 * 60,
+                ),
+                requireEmailVerified: getBoolEnv(
+                    'AUTH_REQUIRE_EMAIL_VERIFIED',
+                    defaults.features?.authBehavior?.requireEmailVerified ?? false,
+                ),
+                disableCredentials: getBoolEnv(
+                    'AUTH_DISABLE_CREDENTIALS',
+                    defaults.features?.authBehavior?.disableCredentials ?? false,
+                ),
+                verbose: getBoolEnv('AUTH_VERBOSE', defaults.features?.authBehavior?.verbose ?? false),
+            },
+        },
+
+        email: {
+            from: getEnv('EMAIL_FROM', defaults.email?.from ?? 'noreply@example.com'),
+            sesRegion: getEnv('AWS_REGION', defaults.email?.sesRegion ?? 'us-east-1'),
         },
 
         model: {
@@ -260,8 +280,10 @@ export function userConfigToOptions(userConfig: OttabaseUserConfig): ConfigOptio
                       pagination: userConfig.features.pagination,
                       crudHub: userConfig.features.crudHub,
                       auth: userConfig.features.auth,
+                      authBehavior: userConfig.features.authBehavior,
                   }
                 : undefined,
+            email: userConfig.email,
         },
     };
 }

@@ -18,17 +18,17 @@ export function handleEmailProviders(context: EmailRouteContext): Response {
         resend: {
             available: !!env.EMAIL_RESEND_API_KEY,
             required: ['EMAIL_RESEND_API_KEY'],
-            optional: ['EMAIL_FROM'],
+            configNote: 'Sender address configured in ottabase.config.ts → email.from',
         },
         ses: {
             available: !!(env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY),
             required: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
-            optional: ['AWS_REGION', 'EMAIL_FROM'],
+            configNote: 'Sender address and SES region configured in ottabase.config.ts → email',
         },
         nodemailer: {
             available: !!env.EMAIL_SERVER,
             required: ['EMAIL_SERVER'],
-            optional: ['EMAIL_FROM'],
+            configNote: 'Sender address configured in ottabase.config.ts → email.from',
         },
     };
 
