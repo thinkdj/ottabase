@@ -70,24 +70,31 @@ export default defineOttabaseConfig({
 });
 ```
 
+`defineOttabaseConfig()` validates your config at startup — it **throws** on missing required fields (`appId`,
+`appName`) and **warns** about unrecognised keys (likely typos) so they don't silently fall to defaults. Example output:
+
+```
+[ottabase] Unknown key "packges" — possible typo (will be ignored)
+```
+
 ### File Ownership
 
-| File / Directory                   | Owner         | Notes                                                  |
-| ---------------------------------- | ------------- | ------------------------------------------------------ |
-| `ottabase.config.ts`               | **You**       | Your app config (gitignored)                           |
-| `ottabase/`                        | **You**       | Models, schemas, migrations, routes, queue handlers (gitignored) |
-| `wrangler.jsonc`                   | **You**       | Local Cloudflare Workers config (gitignored)           |
-| `ottabase.config.example.ts`       | Framework     | Template for `ottabase.config.ts`                      |
-| `wrangler.example.jsonc`           | Framework     | Template for `wrangler.jsonc` (also used by CI)        |
-| `ottabase.template/`               | Framework     | Template for `ottabase/` — diff on updates             |
-| `packages/`                        | Framework     | Shared packages — update via `git pull`                |
-| `worker/routes/`                   | Framework     | API route handlers                                     |
-| `cloudflare-worker.ts`             | Framework     | Worker entry point                                     |
+| File / Directory             | Owner     | Notes                                                            |
+| ---------------------------- | --------- | ---------------------------------------------------------------- |
+| `ottabase.config.ts`         | **You**   | Your app config (gitignored)                                     |
+| `ottabase/`                  | **You**   | Models, schemas, migrations, routes, queue handlers (gitignored) |
+| `wrangler.jsonc`             | **You**   | Local Cloudflare Workers config (gitignored)                     |
+| `ottabase.config.example.ts` | Framework | Template for `ottabase.config.ts`                                |
+| `wrangler.example.jsonc`     | Framework | Template for `wrangler.jsonc` (also used by CI)                  |
+| `ottabase.template/`         | Framework | Template for `ottabase/` — diff on updates                       |
+| `packages/`                  | Framework | Shared packages — update via `git pull`                          |
+| `worker/routes/`             | Framework | API route handlers                                               |
+| `cloudflare-worker.ts`       | Framework | Worker entry point                                               |
 
 ### Updating the Framework
 
-Your user-owned files (`ottabase.config.ts`, `wrangler.jsonc`, `ottabase/`) are
-**gitignored**, so framework updates never overwrite them.
+Your user-owned files (`ottabase.config.ts`, `wrangler.jsonc`, `ottabase/`) are **gitignored**, so framework updates
+never overwrite them.
 
 ```bash
 # Fork / git workflow — your files stay untouched
@@ -118,6 +125,7 @@ diff -rq ottabase.template/ ottabase/
     };
     ```
 3. Register routes in `ottabase/config.routes.ts`:
+
     ```typescript
     import { handlePremiumDashboard } from '@myorg/premium-feature';
 
@@ -128,6 +136,7 @@ diff -rq ottabase.template/ ottabase/
         return null;
     }
     ```
+
 4. Enable in `ottabase.config.ts`:
     ```typescript
     customPackages: { premiumFeature: { tables: { premiumTable } } },
@@ -136,9 +145,9 @@ diff -rq ottabase.template/ ottabase/
 
 ### Custom Routes (`ottabase/config.routes.ts`)
 
-Custom and premium packages can register API routes without editing framework files.
-The framework router calls `handleCustomRoutes(context)` **after** all built-in routes,
-giving your code the same `ApiRouteContext` that framework handlers use.
+Custom and premium packages can register API routes without editing framework files. The framework router calls
+`handleCustomRoutes(context)` **after** all built-in routes, giving your code the same `ApiRouteContext` that framework
+handlers use.
 
 ```typescript
 // ottabase/config.routes.ts
@@ -163,11 +172,10 @@ export async function handleCustomRoutes(context: ApiRouteContext): Promise<Resp
 }
 ```
 
-**Route resolution order:**
-Built-in (method-specific) → Built-in (method-agnostic) → **Custom routes** → 404
+**Route resolution order:** Built-in (method-specific) → Built-in (method-agnostic) → **Custom routes** → 404
 
-`ApiRouteContext` fields: `request`, `env` (Cloudflare bindings), `url`, `route` (normalized pathname),
-`method`, `corsHeaders`, `withAuthCors(response)`.
+`ApiRouteContext` fields: `request`, `env` (Cloudflare bindings), `url`, `route` (normalized pathname), `method`,
+`corsHeaders`, `withAuthCors(response)`.
 
 ## Authentication
 
@@ -387,7 +395,7 @@ See [@ottabase/brand-engine](../../packages/brand-engine/README.md) for detailed
 | `pnpm preview`    | Build + run on `workerd` via Wrangler (Cloudflare-like) |
 | `pnpm deploy`     | Build + deploy Worker + assets to Cloudflare            |
 | `pnpm type-check` | TypeScript type checking                                |
-| `pnpm cf-typegen` | Generate Cloudflare types from wrangler config           |
+| `pnpm cf-typegen` | Generate Cloudflare types from wrangler config          |
 
 ## Directory Structure
 

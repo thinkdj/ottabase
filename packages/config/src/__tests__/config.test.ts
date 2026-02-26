@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as config from '../index';
-import { createAppConfig, defineOttabaseConfig, userConfigToOptions } from '../createAppConfig';
+import { createAppConfig, defineOttabaseConfig, userConfigToOptions, validateOttabaseConfig } from '../createAppConfig';
 
 describe('Configuration Utilities', () => {
     describe('Config Module', () => {
@@ -220,3 +220,114 @@ describe('Configuration Utilities', () => {
             }
         });
     });
+
+    describe('validateOttabaseConfig', () => {
+        it('should throw if appId is missing', () => {
+            expect(() => validateOttabaseConfig({ appName: 'Test' })).toThrow('"appId" is required');
+        });
+
+        it('should throw if appName is missing', () => {
+            expect(() => validateOttabaseConfig({ appId: 'test' })).toThrow('"appName" is required');
+        });
+
+        it('should throw if appId is empty string', () => {
+            expect(() => validateOttabaseConfig({ appId: '', appName: 'Test' })).toThrow('"appId" is required');
+        });
+
+        it('should return no warnings for a valid config', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                packages: { ottablog: true },
+                features: { authBehavior: { sessionMaxAge: 3600 } },
+                email: { from: 'hi@test.com' },
+            });
+            expect(warnings).toEqual([]);
+        });
+
+        it('should warn on unknown top-level keys (typos)', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                packges: { ottablog: true }, // typo
+            });
+            expect(warnings).toHaveLength(1);
+            expect(warnings[0]).toMatch(/Unknown key "packges"/);
+        });
+
+        it('should warn on unknown nested keys in packages', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                packages: { ottablog: true, shortlink: true }, // typo: should be "shortlinks"
+            });
+            expect(warnings).toHaveLength(1);
+            expect(warnings[0]).toMatch(/Unknown key "packages\.shortlink"/);
+        });
+
+        it('should warn on unknown nested keys in features', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                features: { authBehaviour: { verbose: true } }, // typo: should be "authBehavior"
+            });
+            expect(warnings).toHaveLength(1);
+            expect(warnings[0]).toMatch(/Unknown key "features\.authBehaviour"/);
+        });
+
+        it('should warn on unknown deep-nested keys in features.authBehavior', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                features: { authBehavior: { sessionmaxage: 3600 } }, // typo: should be "sessionMaxAge"
+            });
+            expect(warnings).toHaveLength(1);
+            expect(warnings[0]).toMatch(/Unknown key "features\.authBehavior\.sessionmaxage"/);
+        });
+
+        it('should warn on unknown email keys', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                email: { from: 'hi@test.com', region: 'us-east-1' }, // typo: should be "sesRegion"
+            });
+            expect(warnings).toHaveLength(1);
+            expect(warnings[0]).toMatch(/Unknown key "email\.region"/);
+        });
+
+        it('should collect multiple warnings', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                packges: {}, // typo
+                fetures: {}, // typo
+            });
+            expect(warnings).toHaveLength(2);
+        });
+    });
+
+    describe('defineOttabaseConfig – validation integration', () => {
+        it('should log warnings for unknown keys', () => {
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            defineOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                packges: { ottablog: true }, // typo
+            } as any);
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown key "packges"'));
+            warnSpy.mockRestore();
+        });
+
+        it('should throw on missing required fields', () => {
+            expect(() => defineOttabaseConfig({ appId: '', appName: 'Test' } as any)).toThrow('"appId" is required');
+        });
+
+        it('should still return the config object on success', () => {
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            const cfg = defineOttabaseConfig({ appId: 'ok', appName: 'OK' });
+            expect(cfg.appId).toBe('ok');
+            expect(cfg.appName).toBe('OK');
+            warnSpy.mockRestore();
+        });
+    });
+});

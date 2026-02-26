@@ -25,6 +25,13 @@
 //   2. Register routes in  ottabase/config.routes.ts
 //   3. Add the key to `customPackages` below.
 // Table/route imports are server-only so client bundles stay lean.
+//
+// VALIDATION
+// ──────────
+// defineOttabaseConfig() validates at startup:
+//   • Throws on missing required fields (appId, appName).
+//   • Warns on unrecognised keys (likely typos) so they
+//     don't silently fall to defaults.
 // ============================================================
 
 import { defineOttabaseConfig } from '@ottabase/config';
