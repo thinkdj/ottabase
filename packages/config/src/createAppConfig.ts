@@ -291,10 +291,10 @@ export function validateOttabaseConfig(config: Record<string, unknown>): string[
     const warnings: string[] = [];
 
     // ── Required fields ──────────────────────────────────────
-    if (!config.appId || typeof config.appId !== 'string') {
+    if (typeof config.appId !== 'string' || config.appId.trim() === '') {
         throw new Error('ottabase.config.ts: "appId" is required and must be a non-empty string');
     }
-    if (!config.appName || typeof config.appName !== 'string') {
+    if (typeof config.appName !== 'string' || config.appName.trim() === '') {
         throw new Error('ottabase.config.ts: "appName" is required and must be a non-empty string');
     }
 

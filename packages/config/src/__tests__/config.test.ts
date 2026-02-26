@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import * as config from '../index';
 import { createAppConfig, defineOttabaseConfig, userConfigToOptions, validateOttabaseConfig } from '../createAppConfig';
+import * as config from '../index';
 
 describe('Configuration Utilities', () => {
     describe('Config Module', () => {
@@ -307,15 +307,23 @@ describe('Configuration Utilities', () => {
     });
 
     describe('defineOttabaseConfig – validation integration', () => {
+        let warnSpy: ReturnType<typeof vi.spyOn>;
+
+        beforeEach(() => {
+            warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            warnSpy.mockRestore();
+        });
+
         it('should log warnings for unknown keys', () => {
-            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
             defineOttabaseConfig({
                 appId: 'test',
                 appName: 'Test',
                 packges: { ottablog: true }, // typo
             } as any);
             expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown key "packges"'));
-            warnSpy.mockRestore();
         });
 
         it('should throw on missing required fields', () => {
@@ -323,11 +331,9 @@ describe('Configuration Utilities', () => {
         });
 
         it('should still return the config object on success', () => {
-            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
             const cfg = defineOttabaseConfig({ appId: 'ok', appName: 'OK' });
             expect(cfg.appId).toBe('ok');
             expect(cfg.appName).toBe('OK');
-            warnSpy.mockRestore();
         });
     });
 });

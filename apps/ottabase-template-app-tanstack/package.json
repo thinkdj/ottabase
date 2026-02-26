@@ -4,9 +4,12 @@
     "type": "module",
     "private": true,
     "scripts": {
+        "setup": "node scripts/setup-user-zone.js",
+        "predev": "node scripts/setup-user-zone.js",
         "dev": "vite --open",
         "dev:worker": "wrangler dev",
         "dev:full": "pnpm build && pnpm dev:worker",
+        "prebuild": "node scripts/setup-user-zone.js",
         "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
         "preview": "pnpm build && wrangler dev",
         "deploy": "pnpm build && wrangler deploy",
