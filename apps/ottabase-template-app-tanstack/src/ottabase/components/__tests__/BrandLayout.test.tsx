@@ -198,13 +198,14 @@ describe('BrandLayout', () => {
         it('renders footer when footer is true', () => {
             setLayout({ footer: true });
             render(<BrandLayout />);
-            expect(screen.getByText('Built with Ottabase')).toBeTruthy();
+            // Footer text is split across elements: "Built with" + APP_NAME
+            expect(screen.getByText(/Built with/)).toBeTruthy();
         });
 
         it('does not render footer when footer is false', () => {
             setLayout({ footer: false });
             render(<BrandLayout />);
-            expect(screen.queryByText('Built with Ottabase')).toBeNull();
+            expect(screen.queryByText(/Built with/)).toBeNull();
         });
     });
 
