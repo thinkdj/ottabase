@@ -102,6 +102,18 @@ export const DEFAULT_REFERRALS_CONFIG = {
     expiryDays: 30,
 } as const;
 
+export const DEFAULT_EMAIL_CONFIG = {
+    from: 'noreply@example.com',
+    sesRegion: 'us-east-1',
+} as const;
+
+export const DEFAULT_AUTH_BEHAVIOR_CONFIG = {
+    sessionMaxAge: 30 * 24 * 60 * 60, // 30 days
+    requireEmailVerified: false,
+    disableCredentials: false,
+    verbose: false,
+} as const;
+
 // Common storage keys
 export const STORAGE_KEYS = {
     THEME: 'theme',
@@ -167,4 +179,14 @@ export const ENV_KEYS = {
 
     // Storage
     STORAGE_PREFIX: 'STORAGE_PREFIX',
+
+    // Email (non-secret – from/region now in ottabase.config.ts, env var override kept)
+    EMAIL_FROM: 'EMAIL_FROM',
+    AWS_REGION: 'AWS_REGION',
+
+    // Auth behaviour (non-secret – now in ottabase.config.ts, env var override kept)
+    AUTH_SESSION_MAX_AGE: 'AUTH_SESSION_MAX_AGE',
+    AUTH_REQUIRE_EMAIL_VERIFIED: 'AUTH_REQUIRE_EMAIL_VERIFIED',
+    AUTH_DISABLE_CREDENTIALS: 'AUTH_DISABLE_CREDENTIALS',
+    AUTH_VERBOSE: 'AUTH_VERBOSE',
 } as const;

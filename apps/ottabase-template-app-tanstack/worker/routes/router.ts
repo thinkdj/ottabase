@@ -3,6 +3,7 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getKillSwitchStatus } from '../lib/killswitch';
+import { APP_ID, APP_NAME, PACKAGES } from '../lib/worker-config';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import {
     handleAdminDbRowDelete,
@@ -110,6 +111,12 @@ export async function resolveApiRoute(context: ApiRouteContext): Promise<Respons
     return handleMethodAgnosticRoutes(context);
 }
 
+function packageDisabledResponse(packageName: string): Response {
+    return errorResponse(`Package "${packageName}" is disabled in ottabase.config.ts`, 404, {
+        code: 'PACKAGE_DISABLED',
+    });
+}
+
 const METHOD_HANDLERS: Record<string, MethodHandler> = {
     GET: handleGetRoutes,
     POST: handlePostRoutes,
@@ -123,6 +130,7 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
 
     // Brand API (GET /api/brand, POST /api/brand/apply, GET/POST /api/brand/themes, etc.)
     if (route.startsWith('/api/brand')) {
+        if (!PACKAGES.brandEngine) return packageDisabledResponse('brandEngine');
         const res = await handleBrandApi(context);
         if (res) return res;
     }
@@ -130,7 +138,7 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
     if (route === '/api/health') {
         return jsonResponse({
             ok: true,
-            name: 'ottabase-template-app-tanstack',
+            name: APP_NAME,
             timestamp: Date.now(),
         });
     }
@@ -161,44 +169,49 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleAdminCronList(context);
     }
 
+    // ── Ottablog routes (guarded) ──
+    if (route.startsWith('/api/blog')) {
+        if (!PACKAGES.ottablog) return packageDisabledResponse('ottablog');
+    }
     if (route.startsWith('/api/blog/studio/') && route === '/api/blog/studio/state') {
         return handleBlogStudioState(context);
     }
-
     if (route === '/api/blog/posts') {
         return handleBlogPostsList(context);
     }
-
     const blogBySlugMatch = route.match(/^\/api\/blog\/posts\/by-slug\/([^/]+)$/);
     if (blogBySlugMatch) {
         const slug = decodeURIComponent(blogBySlugMatch[1]);
         return handleBlogPostBySlug(context, slug);
     }
 
+    // ── Shortlinks routes (guarded) ──
+    if (route.startsWith('/api/shortlinks') || route === '/shortlinks/go') {
+        if (!PACKAGES.shortlinks) return packageDisabledResponse('shortlinks');
+    }
     if (route === '/api/shortlinks') {
         return handleShortlinksList(context);
     }
-
     if (route === '/api/shortlinks/analytics') {
         return handleShortlinksAnalytics(context);
     }
-
     if (route === '/shortlinks/go') {
         return handleShortlinkExplicitGo(context);
     }
 
+    // ── Referrals routes (guarded) ──
+    if (route.startsWith('/api/referrals')) {
+        if (!PACKAGES.referrals) return packageDisabledResponse('referrals');
+    }
     if (route === '/api/referrals/stats') {
         return handleReferralStats(context);
     }
-
     if (route === '/api/referrals/user') {
         return handleReferralUser(context);
     }
-
     if (route === '/api/referrals/tracking') {
         return handleReferralTrackingList(context);
     }
-
     if (route === '/api/referrals/analytics') {
         return handleReferralsAnalytics(context);
     }
@@ -280,6 +293,7 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
     const { route } = context;
 
     if (route.startsWith('/api/brand')) {
+        if (!PACKAGES.brandEngine) return packageDisabledResponse('brandEngine');
         const res = await handleBrandApi(context);
         if (res) return res;
     }
@@ -308,27 +322,32 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleAdminPromoteOwner(context);
     }
 
+    // ── Ottablog routes (guarded) ──
+    if (route.startsWith('/api/blog')) {
+        if (!PACKAGES.ottablog) return packageDisabledResponse('ottablog');
+    }
     if (route === '/api/blog/studio/theme/activate') {
         return handleBlogStudioActivateTheme(context);
     }
-
     if (route === '/api/blog/studio/plugin/enable') {
         return handleBlogStudioPluginEnable(context);
     }
-
     if (route === '/api/blog/studio/plugin/config') {
         return handleBlogStudioPluginConfig(context);
     }
-
     if (route === '/api/blog/posts/unlock') {
         return handleBlogPostUnlock(context);
     }
 
+    // ── Shortlinks routes (guarded) ──
     if (route === '/api/shortlinks') {
+        if (!PACKAGES.shortlinks) return packageDisabledResponse('shortlinks');
         return handleShortlinksCreate(context);
     }
 
+    // ── Referrals routes (guarded) ──
     if (route === '/api/referrals/track') {
+        if (!PACKAGES.referrals) return packageDisabledResponse('referrals');
         return handleReferralTrack(context);
     }
 
@@ -336,7 +355,7 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleAnalyticsTrack({
             request: context.request,
             dataset: context.env.OBCF_ANALYTICS_CORE,
-            defaultAppId: 'ottabase-template',
+            defaultAppId: APP_ID,
         });
     }
 
@@ -397,6 +416,7 @@ async function handlePatchRoutes(context: ApiRouteContext): Promise<Response | n
 
     const shortlinkMatch = route.match(/^\/api\/shortlinks\/(.+)$/);
     if (shortlinkMatch) {
+        if (!PACKAGES.shortlinks) return packageDisabledResponse('shortlinks');
         return handleShortlinkById(context, shortlinkMatch[1], 'PATCH');
     }
 
@@ -417,12 +437,14 @@ async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | 
     const { route, url } = context;
 
     if (route.startsWith('/api/brand')) {
+        if (!PACKAGES.brandEngine) return packageDisabledResponse('brandEngine');
         const res = await handleBrandApi(context);
         if (res) return res;
     }
 
     const shortlinkMatch = route.match(/^\/api\/shortlinks\/(.+)$/);
     if (shortlinkMatch) {
+        if (!PACKAGES.shortlinks) return packageDisabledResponse('shortlinks');
         return handleShortlinkById(context, shortlinkMatch[1], 'DELETE');
     }
 
@@ -461,11 +483,13 @@ async function handlePutRoutes(context: ApiRouteContext): Promise<Response | nul
     const { route } = context;
 
     if (route.startsWith('/api/brand')) {
+        if (!PACKAGES.brandEngine) return packageDisabledResponse('brandEngine');
         const res = await handleBrandApi(context);
         if (res) return res;
     }
 
     if (route === '/api/referrals/username') {
+        if (!PACKAGES.referrals) return packageDisabledResponse('referrals');
         return handleReferralUsernameUpdate(context);
     }
 

@@ -66,3 +66,12 @@ export const AUTH_DISABLE_CREDENTIALS: boolean = cfg.features?.authBehavior?.dis
  * Default: false
  */
 export const AUTH_VERBOSE: boolean = cfg.features?.authBehavior?.verbose ?? false;
+
+// ── Package toggles ──────────────────────────────────────────
+/** Built-in package enabled/disabled flags from ottabase.config.ts */
+export const PACKAGES = {
+    ottablog: cfg.packages?.ottablog ?? false,
+    shortlinks: cfg.packages?.shortlinks ?? false,
+    referrals: cfg.packages?.referrals ?? false,
+    brandEngine: cfg.packages?.brandEngine ?? false,
+} as const;

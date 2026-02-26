@@ -111,7 +111,12 @@ export interface AppConfig {
         auth: AuthConfig;
         pagination: PaginationConfig;
         referrals: ReferralsConfig;
+        /** Server-side auth behaviour (session length, verification gate, etc.) */
+        authBehavior: AuthBehaviorConfig;
     };
+
+    // Email Configuration (non-secret settings)
+    email: EmailConfig;
 
     // Model Configuration
     model: {
@@ -138,7 +143,11 @@ export interface ConfigOptions {
             auth?: Partial<AuthConfig>;
             pagination?: Partial<PaginationConfig>;
             referrals?: Partial<ReferralsConfig>;
+            /** Server-side auth behaviour flags */
+            authBehavior?: Partial<AuthBehaviorConfig>;
         };
+        /** Email/mailer settings (non-secret) */
+        email?: Partial<EmailConfig>;
         model?: Partial<AppConfig['model']>;
     };
     envPrefix?: string;

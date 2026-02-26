@@ -6,6 +6,7 @@ import { handleBootstrapRoute, interceptIfNotReady, resolvePlatformState } from 
 import { injectBrandCriticalCSS } from './worker/lib/brand-html-inject';
 import { initDbConnection } from './worker/lib/db-utils';
 import { checkKillSwitches } from './worker/lib/killswitch';
+import { PACKAGES } from './worker/lib/worker-config';
 import { resolveApiRoute } from './worker/routes/router';
 import { handleShortlinkFallback } from './worker/routes/shortlinks';
 
@@ -113,9 +114,11 @@ export default {
                 return apiResponse;
             }
 
-            const shortlinkFallbackResponse = await handleShortlinkFallback({ request, env, url });
-            if (shortlinkFallbackResponse) {
-                return shortlinkFallbackResponse;
+            if (PACKAGES.shortlinks) {
+                const shortlinkFallbackResponse = await handleShortlinkFallback({ request, env, url });
+                if (shortlinkFallbackResponse) {
+                    return shortlinkFallbackResponse;
+                }
             }
 
             if (!env.OBCF_ASSETS) {
