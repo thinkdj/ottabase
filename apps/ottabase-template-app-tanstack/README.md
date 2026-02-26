@@ -75,7 +75,7 @@ export default defineOttabaseConfig({
 | File / Directory                   | Owner         | Notes                                                  |
 | ---------------------------------- | ------------- | ------------------------------------------------------ |
 | `ottabase.config.ts`               | **You**       | Your app config (gitignored)                           |
-| `ottabase/`                        | **You**       | Models, schemas, migrations, queue handlers (gitignored) |
+| `ottabase/`                        | **You**       | Models, schemas, migrations, routes, queue handlers (gitignored) |
 | `wrangler.jsonc`                   | **You**       | Local Cloudflare Workers config (gitignored)           |
 | `ottabase.config.example.ts`       | Framework     | Template for `ottabase.config.ts`                      |
 | `wrangler.example.jsonc`           | Framework     | Template for `wrangler.jsonc` (also used by CI)        |
@@ -133,6 +133,41 @@ diff -rq ottabase.template/ ottabase/
     customPackages: { premiumFeature: { tables: { premiumTable } } },
     ```
 5. Run migrations: `curl -X POST http://localhost:3004/api/ottaorm/init`
+
+### Custom Routes (`ottabase/config.routes.ts`)
+
+Custom and premium packages can register API routes without editing framework files.
+The framework router calls `handleCustomRoutes(context)` **after** all built-in routes,
+giving your code the same `ApiRouteContext` that framework handlers use.
+
+```typescript
+// ottabase/config.routes.ts
+import type { ApiRouteContext } from '../worker/routes/types';
+
+export async function handleCustomRoutes(context: ApiRouteContext): Promise<Response | null> {
+    const { route, method } = context;
+
+    // Simple route
+    if (route === '/api/my-feature' && method === 'GET') {
+        return new Response(JSON.stringify({ hello: 'world' }), {
+            headers: { 'Content-Type': 'application/json', ...context.corsHeaders },
+        });
+    }
+
+    // Prefix-based (delegate to a package handler)
+    if (route.startsWith('/api/premium/')) {
+        return handlePremiumRoutes(context);
+    }
+
+    return null; // fall through — not handled
+}
+```
+
+**Route resolution order:**
+Built-in (method-specific) → Built-in (method-agnostic) → **Custom routes** → 404
+
+`ApiRouteContext` fields: `request`, `env` (Cloudflare bindings), `url`, `route` (normalized pathname),
+`method`, `corsHeaders`, `withAuthCors(response)`.
 
 ## Authentication
 

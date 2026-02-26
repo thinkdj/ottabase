@@ -20,9 +20,11 @@
 //
 // PREMIUM / CUSTOM PACKAGES
 // ──────────────────────────
-// Install the package, then add it to `customPackages` below.
-// Tables are resolved at runtime in `ottabase/config.migrations.ts`
-// (server-only) so client bundles stay lean.
+// Install the package, then:
+//   1. Register tables in  ottabase/config.migrations.ts
+//   2. Register routes in  ottabase/config.routes.ts
+//   3. Add the key to `customPackages` below.
+// Table/route imports are server-only so client bundles stay lean.
 // ============================================================
 
 import { defineOttabaseConfig } from '@ottabase/config';
@@ -62,15 +64,15 @@ export default defineOttabaseConfig({
     },
 
     // ── Custom / Premium Packages ─────────────────────────────
-    // After installing a premium package, add its registration
-    // here AND import its tables in ottabase/config.migrations.ts.
+    // After installing a premium package:
+    //   1. Register tables in  ottabase/config.migrations.ts
+    //   2. Register routes in  ottabase/config.routes.ts
+    //   3. Add the key here:
     //
     // Example:
     //   customPackages: {
     //     myPremiumFeature: { tables: { premiumTable } },
     //   },
-    //
-    // (table imports live in config.migrations.ts to stay server-only)
     customPackages: {},
 
     // ── Feature Configuration ─────────────────────────────────
