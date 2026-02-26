@@ -64,7 +64,7 @@ const CTA: RenderFn<CTAData> = ({ data, className = '' }) => {
                 <a
                     href={url}
                     target={openInNewTab ? '_blank' : '_self'}
-                    rel={openInNewTab ? 'noopener noreferrer' : undefined}
+                    rel={openInNewTab ? 'noopener noreferrer nofollow' : undefined}
                     className={buttonClass}
                     itemScope
                     itemType="https://schema.org/Action"
