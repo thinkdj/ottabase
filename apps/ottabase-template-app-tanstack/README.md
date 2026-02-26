@@ -117,11 +117,22 @@ diff -rq ottabase.template/ ottabase/
         premiumFeature: { tables: { premiumTable }, migrations: [] },
     };
     ```
-3. Enable in `ottabase.config.ts`:
+3. Register routes in `ottabase/config.routes.ts`:
+    ```typescript
+    import { handlePremiumDashboard } from '@myorg/premium-feature';
+
+    export async function handleCustomRoutes(context) {
+        if (context.route === '/api/premium/dashboard' && context.method === 'GET') {
+            return handlePremiumDashboard(context);
+        }
+        return null;
+    }
+    ```
+4. Enable in `ottabase.config.ts`:
     ```typescript
     customPackages: { premiumFeature: { tables: { premiumTable } } },
     ```
-4. Run migrations: `curl -X POST http://localhost:3004/api/ottaorm/init`
+5. Run migrations: `curl -X POST http://localhost:3004/api/ottaorm/init`
 
 ## Authentication
 
@@ -352,7 +363,8 @@ apps/ottabase-template-app-tanstack/
 ├── wrangler.example.jsonc      # [tracked]  Template for Cloudflare config (CI uses this)
 ├── wrangler.jsonc              # [gitignored] YOUR Cloudflare config (copy from .example)
 ├── ottabase.template/          # [tracked]  Template for user-zone code
-│   ├── config.migrations.ts    #   Custom/premium package registration
+│   ├── config.migrations.ts    #   Custom/premium package table registration
+│   ├── config.routes.ts        #   Custom/premium package route registration
 │   ├── db/                     #   Drizzle table schemas
 │   ├── helpers/                #   Domain helpers
 │   ├── migrations/             #   Database migrations

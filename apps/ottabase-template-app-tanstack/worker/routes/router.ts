@@ -1,9 +1,10 @@
 import { handleAnalyticsTrack } from '@ottabase/analytics/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import type { CloudflareEnv } from '../../cloudflare-env';
+import { handleCustomRoutes } from '../../ottabase/config.routes';
 import { getKillSwitchStatus } from '../lib/killswitch';
 import { APP_ID, APP_NAME, PACKAGES } from '../lib/worker-config';
+import type { ApiRouteContext } from './types';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import {
     handleAdminDbRowDelete,
@@ -83,16 +84,7 @@ import {
     handleShortlinksList,
 } from './shortlinks';
 
-export interface ApiRouteContext {
-    request: Request;
-    env: CloudflareEnv;
-    url: URL;
-    route: string;
-    method: string;
-    withAuthCors: (response: Response) => Response;
-    corsHeaders: Record<string, string>;
-}
-
+export type { ApiRouteContext } from './types';
 type MethodHandler = (context: ApiRouteContext) => Promise<Response | null> | Response | null;
 
 export async function resolveApiRoute(context: ApiRouteContext): Promise<Response | null> {
@@ -108,7 +100,11 @@ export async function resolveApiRoute(context: ApiRouteContext): Promise<Respons
         }
     }
 
-    return handleMethodAgnosticRoutes(context);
+    const agnosticResponse = await handleMethodAgnosticRoutes(context);
+    if (agnosticResponse) return agnosticResponse;
+
+    // Custom / premium package routes (user-zone: ottabase/config.routes.ts)
+    return handleCustomRoutes(context);
 }
 
 function packageDisabledResponse(packageName: string): Response {
