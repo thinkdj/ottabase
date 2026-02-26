@@ -118,4 +118,105 @@ describe('Configuration Utilities', () => {
             expect(appConfig.storage.prefix).toBe('verify');
         });
     });
-});
+
+    describe('createAppConfig – email defaults and env overrides', () => {
+        it('should use hardcoded defaults when no config or env vars are provided', () => {
+            const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+            expect(appConfig.email.from).toBe('noreply@example.com');
+            expect(appConfig.email.sesRegion).toBe('us-east-1');
+        });
+
+        it('should use values from defaults when provided via userConfig', () => {
+            const userConfig = defineOttabaseConfig({
+                appId: 'email-app',
+                appName: 'Email App',
+                email: { from: 'hello@myapp.com', sesRegion: 'eu-west-1' },
+            });
+            const appConfig = createAppConfig(userConfigToOptions(userConfig));
+            expect(appConfig.email.from).toBe('hello@myapp.com');
+            expect(appConfig.email.sesRegion).toBe('eu-west-1');
+        });
+
+        it('should override email.from with EMAIL_FROM env var', () => {
+            process.env['EMAIL_FROM'] = 'override@env.com';
+            try {
+                const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+                expect(appConfig.email.from).toBe('override@env.com');
+            } finally {
+                delete process.env['EMAIL_FROM'];
+            }
+        });
+
+        it('should override email.sesRegion with AWS_REGION env var', () => {
+            process.env['AWS_REGION'] = 'ap-southeast-1';
+            try {
+                const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+                expect(appConfig.email.sesRegion).toBe('ap-southeast-1');
+            } finally {
+                delete process.env['AWS_REGION'];
+            }
+        });
+    });
+
+    describe('createAppConfig – authBehavior defaults and env overrides', () => {
+        it('should use hardcoded defaults when no config or env vars are provided', () => {
+            const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+            expect(appConfig.features.authBehavior.sessionMaxAge).toBe(30 * 24 * 60 * 60);
+            expect(appConfig.features.authBehavior.requireEmailVerified).toBe(false);
+            expect(appConfig.features.authBehavior.disableCredentials).toBe(false);
+            expect(appConfig.features.authBehavior.verbose).toBe(false);
+        });
+
+        it('should use values from defaults when provided via userConfig', () => {
+            const userConfig = defineOttabaseConfig({
+                appId: 'auth-app',
+                appName: 'Auth App',
+                features: {
+                    authBehavior: {
+                        sessionMaxAge: 7 * 24 * 3600,
+                        requireEmailVerified: true,
+                        disableCredentials: true,
+                        verbose: true,
+                    },
+                },
+            });
+            const appConfig = createAppConfig(userConfigToOptions(userConfig));
+            expect(appConfig.features.authBehavior.sessionMaxAge).toBe(7 * 24 * 3600);
+            expect(appConfig.features.authBehavior.requireEmailVerified).toBe(true);
+            expect(appConfig.features.authBehavior.disableCredentials).toBe(true);
+            expect(appConfig.features.authBehavior.verbose).toBe(true);
+        });
+
+        it('should override sessionMaxAge with AUTH_SESSION_MAX_AGE env var', () => {
+            process.env['AUTH_SESSION_MAX_AGE'] = '3600';
+            try {
+                const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+                expect(appConfig.features.authBehavior.sessionMaxAge).toBe(3600);
+            } finally {
+                delete process.env['AUTH_SESSION_MAX_AGE'];
+            }
+        });
+
+        it('should override requireEmailVerified with AUTH_REQUIRE_EMAIL_VERIFIED env var', () => {
+            process.env['AUTH_REQUIRE_EMAIL_VERIFIED'] = 'true';
+            try {
+                const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+                expect(appConfig.features.authBehavior.requireEmailVerified).toBe(true);
+            } finally {
+                delete process.env['AUTH_REQUIRE_EMAIL_VERIFIED'];
+            }
+        });
+
+        it('should override disableCredentials and verbose with env vars', () => {
+            process.env['AUTH_DISABLE_CREDENTIALS'] = 'true';
+            process.env['AUTH_VERBOSE'] = 'true';
+            try {
+                const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+                expect(appConfig.features.authBehavior.disableCredentials).toBe(true);
+                expect(appConfig.features.authBehavior.verbose).toBe(true);
+            } finally {
+                delete process.env['AUTH_DISABLE_CREDENTIALS'];
+                delete process.env['AUTH_VERBOSE'];
+            }
+        });
+    });
