@@ -147,7 +147,7 @@ export const {
     useUpdate: useUpdateTodo,
     useDelete: useDeleteTodo,
     useInfiniteList: useTodosInfinite,
-} = createModelHooks<TodoType>({ entity: 'todos' });
+} = createModelHooks<TodoType>({ entityName: 'todos' });
 
 // Usage: const { data: todo } = useTodoBySlug("slug", "my-todo-slug");
 ```
@@ -297,7 +297,7 @@ export { myTable } from '@ottabase/mypackage/schema';
 // ottabase/hooks/useMyModel.ts
 import { createModelHooks } from '@ottabase/ottaorm/client';
 
-export const { useList, useCreate, useUpdate, useDelete } = createModelHooks({ entity: 'mytable' });
+export const { useList, useCreate, useUpdate, useDelete } = createModelHooks({ entityName: 'mytable' });
 ```
 
 ### 5. Run migrations

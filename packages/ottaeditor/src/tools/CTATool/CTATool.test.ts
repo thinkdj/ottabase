@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CTATool from './CTATool';
 
+// Mock CSS import
+vi.mock('./CTATool.css', () => ({}));
+
 // Mock EditorJS API
 const createMockAPI = () => ({
     blocks: {
@@ -49,6 +52,7 @@ describe('CTATool', () => {
             expect(saved.text).toBe('Get Started');
             expect(saved.url).toBe('');
             expect(saved.style).toBe('primary');
+            expect(saved.alignment).toBe('center');
             expect(saved.openInNewTab).toBe(false);
         });
 
@@ -58,6 +62,7 @@ describe('CTATool', () => {
                     text: 'Sign Up',
                     url: 'https://example.com',
                     style: 'secondary',
+                    alignment: 'left',
                     openInNewTab: true,
                 },
                 config: {},
@@ -68,6 +73,7 @@ describe('CTATool', () => {
             expect(saved.text).toBe('Sign Up');
             expect(saved.url).toBe('https://example.com');
             expect(saved.style).toBe('secondary');
+            expect(saved.alignment).toBe('left');
             expect(saved.openInNewTab).toBe(true);
         });
 
@@ -80,6 +86,17 @@ describe('CTATool', () => {
 
             const saved = toolWithConfig.save();
             expect(saved.style).toBe('outline');
+        });
+
+        it('should use config default alignment', () => {
+            const toolWithConfig = new CTATool({
+                data: {},
+                config: { defaultAlignment: 'right' },
+                api: mockAPI as any,
+            });
+
+            const saved = toolWithConfig.save();
+            expect(saved.alignment).toBe('right');
         });
     });
 
@@ -96,10 +113,16 @@ describe('CTATool', () => {
             const form = element.querySelector('.cdx-cta__form');
             expect(form).toBeTruthy();
 
-            expect(element.querySelector('#cta-text')).toBeTruthy();
-            expect(element.querySelector('#cta-url')).toBeTruthy();
-            expect(element.querySelector('#cta-style')).toBeTruthy();
-            expect(element.querySelector('#cta-new-tab')).toBeTruthy();
+            expect(element.querySelector('[id^="cta-text-"]')).toBeTruthy();
+            expect(element.querySelector('[id^="cta-url-"]')).toBeTruthy();
+            expect(element.querySelector('[id^="cta-style-"]')).toBeTruthy();
+            expect(element.querySelector('[id^="cta-new-tab-"]')).toBeTruthy();
+        });
+
+        it('should render alignment buttons', () => {
+            const element = tool.render();
+            const alignBtns = element.querySelectorAll('.cdx-cta__align-btn');
+            expect(alignBtns.length).toBe(3);
         });
 
         it('should render preview button', () => {
@@ -113,7 +136,7 @@ describe('CTATool', () => {
 
         it('should update preview when text changes', () => {
             const element = tool.render();
-            const textInput = element.querySelector('#cta-text') as HTMLInputElement;
+            const textInput = element.querySelector('[id^="cta-text-"]') as HTMLInputElement;
             const previewButton = element.querySelector('.cdx-cta__preview-button') as HTMLAnchorElement;
 
             textInput.value = 'New Button Text';
@@ -124,7 +147,7 @@ describe('CTATool', () => {
 
         it('should update preview when URL changes', () => {
             const element = tool.render();
-            const urlInput = element.querySelector('#cta-url') as HTMLInputElement;
+            const urlInput = element.querySelector('[id^="cta-url-"]') as HTMLInputElement;
             const previewButton = element.querySelector('.cdx-cta__preview-button') as HTMLAnchorElement;
 
             urlInput.value = 'https://example.com';
@@ -135,7 +158,7 @@ describe('CTATool', () => {
 
         it('should update preview when style changes', () => {
             const element = tool.render();
-            const styleSelect = element.querySelector('#cta-style') as HTMLSelectElement;
+            const styleSelect = element.querySelector('[id^="cta-style-"]') as HTMLSelectElement;
             const previewButton = element.querySelector('.cdx-cta__preview-button') as HTMLAnchorElement;
 
             styleSelect.value = 'outline';
@@ -146,7 +169,7 @@ describe('CTATool', () => {
 
         it('should update target when checkbox changes', () => {
             const element = tool.render();
-            const checkbox = element.querySelector('#cta-new-tab') as HTMLInputElement;
+            const checkbox = element.querySelector('[id^="cta-new-tab-"]') as HTMLInputElement;
             const previewButton = element.querySelector('.cdx-cta__preview-button') as HTMLAnchorElement;
 
             checkbox.checked = true;
@@ -155,13 +178,35 @@ describe('CTATool', () => {
             expect(previewButton.target).toBe('_blank');
             expect(previewButton.rel).toBe('noopener noreferrer');
         });
+
+        it('should update alignment when alignment button clicked', () => {
+            const element = tool.render();
+            const leftBtn = element.querySelector('.cdx-cta__align-btn[data-align="left"]') as HTMLButtonElement;
+
+            leftBtn.click();
+
+            const saved = tool.save();
+            expect(saved.alignment).toBe('left');
+        });
+
+        it('should mark active alignment button', () => {
+            const element = tool.render();
+            const centerBtn = element.querySelector('.cdx-cta__align-btn[data-align="center"]') as HTMLButtonElement;
+            // Default is center
+            expect(centerBtn.classList.contains('cdx-cta__align-btn--active')).toBe(true);
+
+            const rightBtn = element.querySelector('.cdx-cta__align-btn[data-align="right"]') as HTMLButtonElement;
+            rightBtn.click();
+            expect(rightBtn.classList.contains('cdx-cta__align-btn--active')).toBe(true);
+            expect(centerBtn.classList.contains('cdx-cta__align-btn--active')).toBe(false);
+        });
     });
 
     describe('Save', () => {
         it('should save current data', () => {
             const element = tool.render();
-            const textInput = element.querySelector('#cta-text') as HTMLInputElement;
-            const urlInput = element.querySelector('#cta-url') as HTMLInputElement;
+            const textInput = element.querySelector('[id^="cta-text-"]') as HTMLInputElement;
+            const urlInput = element.querySelector('[id^="cta-url-"]') as HTMLInputElement;
 
             textInput.value = 'Click Here';
             textInput.dispatchEvent(new Event('input'));
@@ -172,6 +217,15 @@ describe('CTATool', () => {
             const saved = tool.save();
             expect(saved.text).toBe('Click Here');
             expect(saved.url).toBe('https://test.com');
+        });
+
+        it('should save alignment', () => {
+            const element = tool.render();
+            const leftBtn = element.querySelector('.cdx-cta__align-btn[data-align="left"]') as HTMLButtonElement;
+            leftBtn.click();
+
+            const saved = tool.save();
+            expect(saved.alignment).toBe('left');
         });
     });
 
@@ -199,7 +253,6 @@ describe('CTATool', () => {
                 api: mockAPI as any,
             });
 
-            // Override default text to test empty validation
             const saved = invalidTool.save();
             saved.text = '';
             expect(invalidTool.validate(saved)).toBe(false);
@@ -234,42 +287,51 @@ describe('CTATool', () => {
 
     describe('Style Options', () => {
         it('should support primary style', () => {
-            const tool = new CTATool({
-                data: { style: 'primary' },
-                config: {},
-                api: mockAPI as any,
-            });
-
-            const element = tool.render();
+            const t = new CTATool({ data: { style: 'primary' }, config: {}, api: mockAPI as any });
+            const element = t.render();
             const previewButton = element.querySelector('.cdx-cta__preview-button') as HTMLAnchorElement;
-
             expect(previewButton.classList.contains('cdx-cta__preview-button--primary')).toBe(true);
         });
 
         it('should support secondary style', () => {
-            const tool = new CTATool({
-                data: { style: 'secondary' },
-                config: {},
-                api: mockAPI as any,
-            });
-
-            const element = tool.render();
+            const t = new CTATool({ data: { style: 'secondary' }, config: {}, api: mockAPI as any });
+            const element = t.render();
             const previewButton = element.querySelector('.cdx-cta__preview-button') as HTMLAnchorElement;
-
             expect(previewButton.classList.contains('cdx-cta__preview-button--secondary')).toBe(true);
         });
 
         it('should support outline style', () => {
-            const tool = new CTATool({
-                data: { style: 'outline' },
-                config: {},
-                api: mockAPI as any,
-            });
-
-            const element = tool.render();
+            const t = new CTATool({ data: { style: 'outline' }, config: {}, api: mockAPI as any });
+            const element = t.render();
             const previewButton = element.querySelector('.cdx-cta__preview-button') as HTMLAnchorElement;
-
             expect(previewButton.classList.contains('cdx-cta__preview-button--outline')).toBe(true);
+        });
+
+        it('should support ghost style', () => {
+            const t = new CTATool({ data: { style: 'ghost' }, config: {}, api: mockAPI as any });
+            const element = t.render();
+            const previewButton = element.querySelector('.cdx-cta__preview-button') as HTMLAnchorElement;
+            expect(previewButton.classList.contains('cdx-cta__preview-button--ghost')).toBe(true);
+        });
+    });
+
+    describe('Alignment Options', () => {
+        it('should support left alignment', () => {
+            const t = new CTATool({ data: { alignment: 'left' }, config: {}, api: mockAPI as any });
+            const saved = t.save();
+            expect(saved.alignment).toBe('left');
+        });
+
+        it('should support center alignment', () => {
+            const t = new CTATool({ data: { alignment: 'center' }, config: {}, api: mockAPI as any });
+            const saved = t.save();
+            expect(saved.alignment).toBe('center');
+        });
+
+        it('should support right alignment', () => {
+            const t = new CTATool({ data: { alignment: 'right' }, config: {}, api: mockAPI as any });
+            const saved = t.save();
+            expect(saved.alignment).toBe('right');
         });
     });
 });

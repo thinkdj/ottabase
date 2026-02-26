@@ -44,7 +44,7 @@ Copy the returned `database_id` and update `wrangler.jsonc`:
 
 ```jsonc
 "d1_databases": [{
-  "binding: "OBCF_D1",
+  "binding": "OBCF_D1",
   "database_name": "ottabase-db",
   "database_id": "YOUR_D1_DATABASE_ID"
 }]
@@ -141,7 +141,7 @@ pnpm wrangler secret put CF_API_TOKEN
 ### Local Development (with HMR)
 
 ```bash
-cd apps/ottabase-template-app
+cd apps/ottabase-template-app-tanstack
 pnpm dev
 ```
 
@@ -429,7 +429,7 @@ export const runtime = 'edge';
 export async function GET(request: Request) {
     const { env } = await getCloudflareContext();
     const limiter = createRateLimitingClient({
-        rateLimiter: env.RATE_LIMITER,
+        rateLimiter: env.OBCF_RATE_LIMITER,
     });
 
     const ip = request.headers.get('cf-connecting-ip') || 'unknown';
@@ -540,7 +540,7 @@ Check `wrangler.jsonc` configuration and ensure bindings are created:
 
 ```bash
 pnpm wrangler d1 list
-pnpm wrangler kv:namespace list
+pnpm wrangler kv namespace list
 pnpm wrangler r2 bucket list
 ```
 
@@ -549,7 +549,7 @@ pnpm wrangler r2 bucket list
 Run type generation:
 
 ```bash
-pnpm wrangler types
+pnpm cf-typegen
 ```
 
 ### Local development not working

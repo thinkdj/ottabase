@@ -120,8 +120,8 @@ export const yourTable = sqliteTable('your_table', {
 });
 
 export class YourModel extends BaseModel {
+    static entity = 'your_table';
     static table = yourTable;
-    static tableName = 'your_table';
 }
 ```
 

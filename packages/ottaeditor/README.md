@@ -4,11 +4,11 @@ A flexible EditorJS wrapper with typesafe plugin management for React applicatio
 
 ## Features
 
-- 🔌 **15 pre-installed EditorJS plugins**
-- ✨ **Typesafe plugin selection** with autocomplete
-- 📦 Full TypeScript support
-- 🎯 Easy custom plugin integration
-- 🎁 Zero configuration required
+- **21 pre-installed plugins** (15 Editor.js + 6 custom blocks)
+- **Type-safe plugin selection** with autocomplete
+- **TypeScript support**
+- **Custom plugin integration**
+- **Zero-config defaults**
 
 ## Installation
 
@@ -18,14 +18,22 @@ pnpm add @ottabase/ottaeditor
 
 ## Default Plugins
 
-15 EditorJS plugins included: Header, Paragraph, List, Checklist, Code, Quote, Table, Warning, Delimiter, Link, Embed,
+15 Editor.js plugins included: Header, Paragraph, List, Checklist, Code, Quote, Table, Warning, Delimiter, Link, Embed,
 Raw HTML, Marker, Underline, Inline Code.
 
 ### Custom Block Plugins
 
-- **Spoiler** - Collapsible spoiler content
-- **CTA** - Call-to-action button with style variants
-- **Review** - Product/service review block with image, rating, pros/cons, and summary
+- **Spoiler** – Collapsible spoiler content
+- **CTA** – Call-to-action button with alignment (left/center/right) and four style variants (primary, secondary,
+  outline, ghost)
+- **Review** – Product/service review block with image, rating, pros/cons, and summary
+- **Map** – Embeddable map block (OpenStreetMap, Google Maps)
+- **Layout** – Multi-column layout with six preset splits; each column hosts a full nested editor
+- **Disclosure** – Transparency block with AI usage disclosure (slight/mid/high/custom %) and sponsored-content
+  disclaimer (preset or custom wording)
+
+CTA and Disclosure generate instance-scoped input IDs/names so multiple blocks can coexist without DOM ID or radio-group
+collisions.
 
 ## Quick Start
 
@@ -39,7 +47,6 @@ const { editorRef, save, hasUnsavedChanges } = useOttaEditor({
     placeholder: 'Start writing...',
 });
 
-// Use hasUnsavedChanges to control save button state
 <button onClick={save} disabled={!hasUnsavedChanges}>
     Save
 </button>;
@@ -79,7 +86,8 @@ const { editorRef } = useOttaEditor({
 Use these names with `defaultPlugins`:
 
 `'header'`, `'paragraph'`, `'list'`, `'checklist'`, `'code'`, `'quote'`, `'table'`, `'warning'`, `'delimiter'`,
-`'linkTool'`, `'embed'`, `'raw'`, `'Marker'`, `'underline'`, `'inlineCode'`, `'spoiler'`, `'cta'`, `'review'`
+`'linkTool'`, `'embed'`, `'raw'`, `'Marker'`, `'underline'`, `'inlineCode'`, `'spoiler'`, `'cta'`, `'review'`, `'map'`,
+`'layout'`, `'disclosure'`
 
 ## API
 
@@ -114,10 +122,67 @@ Use these names with `defaultPlugins`:
 }
 ```
 
+## Plugin Reference
+
+### CTA
+
+```typescript
+// Saved data shape
+interface CTAData {
+    text: string; // Button label
+    url: string; // Destination URL
+    style: 'primary' | 'secondary' | 'outline' | 'ghost';
+    alignment: 'left' | 'center' | 'right';
+    openInNewTab: boolean;
+    icon?: string; // Optional SVG string
+}
+```
+
+### Disclosure
+
+```typescript
+// Saved data shape
+interface DisclosureData {
+    aiEnabled: boolean;
+    aiLevel: 'none' | 'slight' | 'mid' | 'high' | 'custom';
+    aiPercent?: number; // 1–100, used when aiLevel === 'custom'
+    sponsoredEnabled: boolean;
+    sponsoredType: 'preset' | 'custom';
+    sponsoredText?: string; // Used when sponsoredType === 'custom'
+}
+
+// Standard AI wording presets
+// slight → "AI tools were used to assist in light editing and proofreading…"
+// mid    → "AI tools were significantly used in drafting and editing…"
+// high   → "This content was primarily generated with AI assistance…"
+// custom → "Approximately {n}% of this content was created with AI assistance."
+
+// Standard sponsored preset
+// "This content was created in partnership with a sponsor. Our editorial standards remain independent."
+```
+
+### Layout
+
+```typescript
+// Saved data shape
+interface LayoutData {
+    preset: '1-1' | '1-3' | '3-1' | '1-2' | '2-1' | '1-1-1';
+    columns: Array<{ content: OutputData }>;
+}
+```
+
 ## Types
 
 ```typescript
-import type { DefaultPluginName, OttaEditorPlugin, OutputData } from '@ottabase/ottaeditor';
+import type {
+    AIDisclosureLevel,
+    DefaultPluginName,
+    DisclosureData,
+    LayoutData,
+    LayoutPreset,
+    OttaEditorPlugin,
+    OutputData,
+} from '@ottabase/ottaeditor';
 ```
 
 ## License

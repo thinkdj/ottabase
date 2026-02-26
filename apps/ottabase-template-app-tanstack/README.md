@@ -49,7 +49,7 @@ pnpm dev:worker
 # Initialize database (creates all tables automatically)
 curl -X POST http://localhost:3004/api/ottaorm/init
 
-# Done! Visit http://localhost:3004
+# Done! Visit http://localhost:3003 (frontend) or http://localhost:3004 (when using dev:worker only)
 ```
 
 ## Customising Your App
@@ -514,31 +514,36 @@ pnpm dev:worker
 
 #### 1. Create Cloudflare Resources
 
+Use the automated setup script (recommended):
+
 ```bash
-# Login
+pnpm cf:login   # authenticate
+pnpm cf:setup   # creates D1, KV, R2, Queue — prints IDs for GitHub Secrets
+pnpm cf:validate
+```
+
+Or manually:
+
+```bash
 pnpm wrangler login
-
-# Create D1 database
 pnpm wrangler d1 create ottabase-db
-
-# Create KV namespace
-pnpm wrangler kv:namespace create OTTABASE_KV
-
-# Create R2 bucket
+pnpm wrangler kv namespace create OBCF_KV
 pnpm wrangler r2 bucket create ottabase-bucket
-
-# Create Queue
 pnpm wrangler queues create ottabase-queue
 ```
 
-#### 2. Update wrangler.jsonc (local)
+#### 2. Configure wrangler.jsonc + GitHub Secrets
 
-Update the IDs in your local `wrangler.jsonc` with your actual:
+- **Local (gitignored)**: Copy `wrangler.example.jsonc` to `wrangler.jsonc` and replace the placeholders with your
+  actual D1/KV/R2/Queue/DO IDs for local dev.
+- **CI/CD**: `wrangler.example.jsonc` keeps `ALL_CAPS` placeholders that the deploy workflow substitutes from GitHub
+  Secrets. Set these in your repository → Settings → Secrets → Actions:
 
-- D1 database ID
-- KV namespace ID
-- R2 bucket name
-- Queue name
+- `D1_DATABASE_ID`, `KV_NAMESPACE_ID` (production)
+- `D1_PREVIEW_DATABASE_ID`, `KV_PREVIEW_NAMESPACE_ID` (PR previews)
+- `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
+
+See [CLOUDFLARE_DEPLOY.md](../../CLOUDFLARE_DEPLOY.md) for the full setup guide.
 
 #### 3. Analytics (optional)
 
