@@ -696,6 +696,50 @@ const adminBlogStudioRoute = new Route({
     ),
 });
 
+// Admin Landing – Sites list
+const adminLandingRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/landing',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/landing').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminLandingSitesPage />),
+        })),
+    ),
+});
+
+// Admin Landing – Site editor
+const adminLandingSiteEditorRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/landing/sites/$siteId',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/landing').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminLandingSiteEditorPage />),
+        })),
+    ),
+});
+
+// Admin Landing – Page editor
+const adminLandingPageEditorRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/landing/pages/$pageId',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/landing').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminLandingPageEditorPage />),
+        })),
+    ),
+});
+
+// Admin Landing – Section content editor
+const adminLandingSectionEditorRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/landing/sections/$sectionId',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/landing').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminLandingSectionEditorPage />),
+        })),
+    ),
+});
+
 // Public Blog routes
 const blogListRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -931,6 +975,10 @@ const routeTree = rootRoute.addChildren([
     adminBlogNewRoute,
     adminBlogEditRoute,
     adminBlogStudioRoute,
+    adminLandingRoute,
+    adminLandingSiteEditorRoute,
+    adminLandingPageEditorRoute,
+    adminLandingSectionEditorRoute,
     adminDbRoute,
     adminThemeGeneratorRoute,
     adminRBACRoute,

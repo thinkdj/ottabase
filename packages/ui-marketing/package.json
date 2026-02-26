@@ -1,0 +1,264 @@
+{
+    "name": "@ottabase/ui-marketing",
+    "version": "0.1.0",
+    "description": "Marketing section components — Atlas, Mono, and SaaS templates — for ottabase homepages and apps",
+    "license": "MIT",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./types": {
+            "types": "./dist/types.d.ts",
+            "import": "./dist/types.mjs",
+            "require": "./dist/types.js"
+        },
+        "./atlas": {
+            "types": "./dist/atlas/index.d.ts",
+            "import": "./dist/atlas/index.mjs",
+            "require": "./dist/atlas/index.js"
+        },
+        "./atlas/hero": {
+            "types": "./dist/atlas/HeroSection.d.ts",
+            "import": "./dist/atlas/HeroSection.mjs",
+            "require": "./dist/atlas/HeroSection.js"
+        },
+        "./atlas/features": {
+            "types": "./dist/atlas/FeaturesGrid.d.ts",
+            "import": "./dist/atlas/FeaturesGrid.mjs",
+            "require": "./dist/atlas/FeaturesGrid.js"
+        },
+        "./atlas/pricing": {
+            "types": "./dist/atlas/PricingTable.d.ts",
+            "import": "./dist/atlas/PricingTable.mjs",
+            "require": "./dist/atlas/PricingTable.js"
+        },
+        "./atlas/testimonials": {
+            "types": "./dist/atlas/TestimonialsCarousel.d.ts",
+            "import": "./dist/atlas/TestimonialsCarousel.mjs",
+            "require": "./dist/atlas/TestimonialsCarousel.js"
+        },
+        "./atlas/faq": {
+            "types": "./dist/atlas/FAQAccordion.d.ts",
+            "import": "./dist/atlas/FAQAccordion.mjs",
+            "require": "./dist/atlas/FAQAccordion.js"
+        },
+        "./atlas/logo-cloud": {
+            "types": "./dist/atlas/LogoCloud.d.ts",
+            "import": "./dist/atlas/LogoCloud.mjs",
+            "require": "./dist/atlas/LogoCloud.js"
+        },
+        "./atlas/cta": {
+            "types": "./dist/atlas/CTABanner.d.ts",
+            "import": "./dist/atlas/CTABanner.mjs",
+            "require": "./dist/atlas/CTABanner.js"
+        },
+        "./atlas/footer": {
+            "types": "./dist/atlas/FooterMarketing.d.ts",
+            "import": "./dist/atlas/FooterMarketing.mjs",
+            "require": "./dist/atlas/FooterMarketing.js"
+        },
+        "./atlas/navbar": {
+            "types": "./dist/atlas/Navbar.d.ts",
+            "import": "./dist/atlas/Navbar.mjs",
+            "require": "./dist/atlas/Navbar.js"
+        },
+        "./atlas/stats": {
+            "types": "./dist/atlas/StatsSection.d.ts",
+            "import": "./dist/atlas/StatsSection.mjs",
+            "require": "./dist/atlas/StatsSection.js"
+        },
+        "./atlas/steps": {
+            "types": "./dist/atlas/StepsSection.d.ts",
+            "import": "./dist/atlas/StepsSection.mjs",
+            "require": "./dist/atlas/StepsSection.js"
+        },
+        "./atlas/feature-highlight": {
+            "types": "./dist/atlas/FeatureHighlight.d.ts",
+            "import": "./dist/atlas/FeatureHighlight.mjs",
+            "require": "./dist/atlas/FeatureHighlight.js"
+        },
+        "./atlas/about": {
+            "types": "./dist/atlas/AboutSection.d.ts",
+            "import": "./dist/atlas/AboutSection.mjs",
+            "require": "./dist/atlas/AboutSection.js"
+        },
+        "./atlas/contact": {
+            "types": "./dist/atlas/ContactSection.d.ts",
+            "import": "./dist/atlas/ContactSection.mjs",
+            "require": "./dist/atlas/ContactSection.js"
+        },
+        "./atlas/timeline": {
+            "types": "./dist/atlas/TimelineSection.d.ts",
+            "import": "./dist/atlas/TimelineSection.mjs",
+            "require": "./dist/atlas/TimelineSection.js"
+        },
+        "./mono": {
+            "types": "./dist/mono/index.d.ts",
+            "import": "./dist/mono/index.mjs",
+            "require": "./dist/mono/index.js"
+        },
+        "./mono/hero": {
+            "types": "./dist/mono/HeroSection.d.ts",
+            "import": "./dist/mono/HeroSection.mjs",
+            "require": "./dist/mono/HeroSection.js"
+        },
+        "./mono/features": {
+            "types": "./dist/mono/FeaturesGrid.d.ts",
+            "import": "./dist/mono/FeaturesGrid.mjs",
+            "require": "./dist/mono/FeaturesGrid.js"
+        },
+        "./mono/pricing": {
+            "types": "./dist/mono/PricingTable.d.ts",
+            "import": "./dist/mono/PricingTable.mjs",
+            "require": "./dist/mono/PricingTable.js"
+        },
+        "./mono/testimonials": {
+            "types": "./dist/mono/TestimonialsCarousel.d.ts",
+            "import": "./dist/mono/TestimonialsCarousel.mjs",
+            "require": "./dist/mono/TestimonialsCarousel.js"
+        },
+        "./mono/faq": {
+            "types": "./dist/mono/FAQAccordion.d.ts",
+            "import": "./dist/mono/FAQAccordion.mjs",
+            "require": "./dist/mono/FAQAccordion.js"
+        },
+        "./mono/logo-cloud": {
+            "types": "./dist/mono/LogoCloud.d.ts",
+            "import": "./dist/mono/LogoCloud.mjs",
+            "require": "./dist/mono/LogoCloud.js"
+        },
+        "./mono/cta": {
+            "types": "./dist/mono/CTABanner.d.ts",
+            "import": "./dist/mono/CTABanner.mjs",
+            "require": "./dist/mono/CTABanner.js"
+        },
+        "./mono/footer": {
+            "types": "./dist/mono/FooterMarketing.d.ts",
+            "import": "./dist/mono/FooterMarketing.mjs",
+            "require": "./dist/mono/FooterMarketing.js"
+        },
+        "./mono/navbar": {
+            "types": "./dist/mono/Navbar.d.ts",
+            "import": "./dist/mono/Navbar.mjs",
+            "require": "./dist/mono/Navbar.js"
+        },
+        "./mono/stats": {
+            "types": "./dist/mono/StatsSection.d.ts",
+            "import": "./dist/mono/StatsSection.mjs",
+            "require": "./dist/mono/StatsSection.js"
+        },
+        "./mono/steps": {
+            "types": "./dist/mono/StepsSection.d.ts",
+            "import": "./dist/mono/StepsSection.mjs",
+            "require": "./dist/mono/StepsSection.js"
+        },
+        "./mono/feature-highlight": {
+            "types": "./dist/mono/FeatureHighlight.d.ts",
+            "import": "./dist/mono/FeatureHighlight.mjs",
+            "require": "./dist/mono/FeatureHighlight.js"
+        },
+        "./mono/about": {
+            "types": "./dist/mono/AboutSection.d.ts",
+            "import": "./dist/mono/AboutSection.mjs",
+            "require": "./dist/mono/AboutSection.js"
+        },
+        "./mono/contact": {
+            "types": "./dist/mono/ContactSection.d.ts",
+            "import": "./dist/mono/ContactSection.mjs",
+            "require": "./dist/mono/ContactSection.js"
+        },
+        "./mono/timeline": {
+            "types": "./dist/mono/TimelineSection.d.ts",
+            "import": "./dist/mono/TimelineSection.mjs",
+            "require": "./dist/mono/TimelineSection.js"
+        },
+        "./saas": {
+            "types": "./dist/saas/index.d.ts",
+            "import": "./dist/saas/index.mjs",
+            "require": "./dist/saas/index.js"
+        },
+        "./saas/hero": {
+            "types": "./dist/saas/HeroSection.d.ts",
+            "import": "./dist/saas/HeroSection.mjs",
+            "require": "./dist/saas/HeroSection.js"
+        },
+        "./saas/features": {
+            "types": "./dist/saas/FeaturesGrid.d.ts",
+            "import": "./dist/saas/FeaturesGrid.mjs",
+            "require": "./dist/saas/FeaturesGrid.js"
+        },
+        "./saas/pricing": {
+            "types": "./dist/saas/PricingTable.d.ts",
+            "import": "./dist/saas/PricingTable.mjs",
+            "require": "./dist/saas/PricingTable.js"
+        },
+        "./saas/testimonials": {
+            "types": "./dist/saas/TestimonialsCarousel.d.ts",
+            "import": "./dist/saas/TestimonialsCarousel.mjs",
+            "require": "./dist/saas/TestimonialsCarousel.js"
+        },
+        "./saas/faq": {
+            "types": "./dist/saas/FAQAccordion.d.ts",
+            "import": "./dist/saas/FAQAccordion.mjs",
+            "require": "./dist/saas/FAQAccordion.js"
+        },
+        "./saas/logo-cloud": {
+            "types": "./dist/saas/LogoCloud.d.ts",
+            "import": "./dist/saas/LogoCloud.mjs",
+            "require": "./dist/saas/LogoCloud.js"
+        },
+        "./saas/cta": {
+            "types": "./dist/saas/CTABanner.d.ts",
+            "import": "./dist/saas/CTABanner.mjs",
+            "require": "./dist/saas/CTABanner.js"
+        },
+        "./saas/footer": {
+            "types": "./dist/saas/FooterMarketing.d.ts",
+            "import": "./dist/saas/FooterMarketing.mjs",
+            "require": "./dist/saas/FooterMarketing.js"
+        },
+        "./saas/navbar": {
+            "types": "./dist/saas/Navbar.d.ts",
+            "import": "./dist/saas/Navbar.mjs",
+            "require": "./dist/saas/Navbar.js"
+        },
+        "./saas/stats": {
+            "types": "./dist/saas/StatsSection.d.ts",
+            "import": "./dist/saas/StatsSection.mjs",
+            "require": "./dist/saas/StatsSection.js"
+        },
+        "./saas/steps": {
+            "types": "./dist/saas/StepsSection.d.ts",
+            "import": "./dist/saas/StepsSection.mjs",
+            "require": "./dist/saas/StepsSection.js"
+        }
+    },
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "type-check": "tsc --noEmit",
+        "clean": "rimraf dist"
+    },
+    "peerDependencies": {
+        "react": "catalog:",
+        "react-dom": "catalog:"
+    },
+    "dependencies": {
+        "clsx": "catalog:",
+        "tailwind-merge": "catalog:",
+        "lucide-react": "catalog:"
+    },
+    "devDependencies": {
+        "typescript": "catalog:",
+        "tsup": "catalog:",
+        "rimraf": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:"
+    }
+}

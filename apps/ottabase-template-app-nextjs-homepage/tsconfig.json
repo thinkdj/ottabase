@@ -23,8 +23,21 @@
         "baseUrl": ".",
         "paths": {
             "@/*": ["./*"],
-            /* Pattern-based path mapping for all packages */
-            "@ottabase/*": ["../../packages/*/src"]
+            /* Sub-path exports for transpiled UI packages */
+            "@ottabase/ui-components/*": ["../../packages/ui-components/src/*"],
+            "@ottabase/ui-marketing/atlas": ["../../packages/ui-marketing/src/atlas/index"],
+            "@ottabase/ui-marketing/atlas/*": ["../../packages/ui-marketing/src/atlas/*"],
+            "@ottabase/ui-marketing/mono": ["../../packages/ui-marketing/src/mono/index"],
+            "@ottabase/ui-marketing/mono/*": ["../../packages/ui-marketing/src/mono/*"],
+            "@ottabase/ui-shadcn/lib/utils": ["../../packages/ui-shadcn/src/lib/utils"],
+            /* Source-level mappings only for UI packages in transpilePackages.
+               All other @ottabase/* packages resolve via node_modules (their built dist). */
+            "@ottabase/ui-base": ["../../packages/ui-base/src"],
+            "@ottabase/ui-code-highlight": ["../../packages/ui-code-highlight/src"],
+            "@ottabase/ui-components": ["../../packages/ui-components/src"],
+            "@ottabase/ui-marketing": ["../../packages/ui-marketing/src"],
+            "@ottabase/ui-shadcn": ["../../packages/ui-shadcn/src"],
+            "@ottabase/ui-tailwind": ["../../packages/ui-tailwind/src"]
         }
     },
     "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "types/**/*.d.ts"],

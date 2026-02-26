@@ -32,6 +32,7 @@ const nextConfig = {
         '@ottabase/brand-engine',
         '@ottabase/brand-engine-react',
         '@ottabase/ui-components',
+        '@ottabase/ui-marketing',
         '@ottabase/ui-shadcn',
         '@ottabase/ui-tailwind',
     ],
