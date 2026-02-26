@@ -1,4 +1,4 @@
-import { AppConfig, AppMeta, AuthBehaviorConfig, ConfigOptions, EmailConfig, OttabaseUserConfig, SupportedUIFramework, ThemeColors } from './types';
+import { AppConfig, AppMeta, ConfigOptions, OttabaseUserConfig, SupportedUIFramework, ThemeColors } from './types';
 
 /**
  * Creates app configuration by merging environment variables with defaults
