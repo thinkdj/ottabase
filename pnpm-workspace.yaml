@@ -4,10 +4,6 @@ packages:
 
 catalog:
     "@auth/core": ^0.34.0
-    "@babel/core": ^7.28.6
-    "@babel/preset-env": ^7.28.6
-    "@babel/preset-react": ^7.28.5
-    "@babel/preset-typescript": ^7.28.5
     "@cloudflare/workers-types": ^4.20251210.0
     "@hookform/resolvers": ^3.9.1
     "@mantine/carousel": ^8.3.15
@@ -15,13 +11,6 @@ catalog:
     "@mantine/hooks": ^8.3.15
     "@mantine/modals": ^8.3.15
     "@mantine/notifications": ^8.3.15
-    "@prisma/adapter-d1": ^5.22.0
-    "@prisma/client": ^5.22.0
-    "@storybook/addon-docs": ^10.2.3
-    "@storybook/addon-links": ^10.2.3
-    "@storybook/addon-styling-webpack": ^3.0.0
-    "@storybook/react-webpack5": ^10.2.3
-    "@storybook/test": ^9.1.15
     "@tabler/icons-react": ^3.35.0
     "@tailwindcss/forms": ^0.5.10
     "@tailwindcss/typography": ^0.5.18
@@ -32,55 +21,36 @@ catalog:
     "@types/nodemailer": ^7.0.0
     "@types/react": ^19.2.7
     "@types/react-dom": ^19.2.3
-    "@typescript-eslint/eslint-plugin": ^8.54.0
-    "@typescript-eslint/parser": ^8.54.0
+    "@testing-library/jest-dom": ^6.9.1
+    "@testing-library/react": ^16.3.2
     "@vitejs/plugin-react": ^4.7.0
     autoprefixer: ^10.4.21
-    babel-loader: ^10.0.0
     class-variance-authority: ^0.7.0
     clsx: ^2.1.0
-    critters: ^0.0.22
     cross-env: ^7.0.3
-    css-loader: ^7.1.3
     date-fns: ^4.1.0
-    date-fns-tz: ^3.2.0
-    drizzle-kit: ^0.31.8
     drizzle-orm: ^0.38.3
     eslint: ^9.39.2
-    eslint-plugin-storybook: ^10.2.3
-    handlebars: ^4.7.8
-    highlight.js: ^11.11.1
-    husky: ^9.1.7
     jotai: ^2.16.2
-    lint-staged: ^15.5.2
     localflare: ^0.1.2
     lucide-react: ^0.468.0
     mongodb: ^7.0.0
     next-themes: ^0.4.6
     nodemailer: ^7.0.0
     postcss: ^8.5.6
-    postcss-loader: ^8.2.0
     postcss-preset-env: ^9.6.0
     postcss-preset-mantine: ^1.18.0
     postcss-simple-vars: ^7.0.1
-    prettier: ^3.7.4
-    prisma: ^5.22.0
     react: ^19.2.4
     react-dom: ^19.2.4
     react-hook-form: ^7.54.2
     rimraf: ^6.1.2
     sonner: ^1.5.1
-    storybook: ^10.2.3
-    style-loader: ^4.0.0
     tailwind-merge: ^2.6.0
     tailwindcss: ^3.4.19
     tailwindcss-animate: ^1.0.7
-    ts-node: ^10.9.2
     tsup: ^8.5.1
-    tsx: ^4.19.2
     typescript: ^5.9.3
-    vite: ^5.4.11
-    vite-tsconfig-paths: ^5.1.4
     vitest: ^4.0.18
     wrangler: ^4.59.1
     zod: ^3.24.1

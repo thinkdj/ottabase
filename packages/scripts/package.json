@@ -59,7 +59,7 @@
         "@types/node": "catalog:",
         "eslint": "catalog:",
         "rimraf": "catalog:",
-        "ts-node": "catalog:",
+        "ts-node": "^10.9.2",
         "tsup": "catalog:",
         "typescript": "catalog:"
     }

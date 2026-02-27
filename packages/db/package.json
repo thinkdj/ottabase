@@ -51,7 +51,7 @@
         "test:coverage": "vitest --coverage"
     },
     "peerDependencies": {
-        "@prisma/client": "catalog:",
+        "@prisma/client": "^5.22.0",
         "drizzle-orm": "catalog:",
         "mongodb": "catalog:"
     },
@@ -68,12 +68,12 @@
     },
     "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
-        "@prisma/client": "catalog:",
+        "@prisma/client": "^5.22.0",
         "@types/node": "catalog:",
         "drizzle-orm": "catalog:",
         "eslint": "catalog:",
         "mongodb": "catalog:",
-        "prisma": "catalog:",
+        "prisma": "^5.22.0",
         "rimraf": "catalog:",
         "tsup": "catalog:",
         "typescript": "catalog:"
