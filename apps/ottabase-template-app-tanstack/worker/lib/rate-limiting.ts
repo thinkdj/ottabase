@@ -1,8 +1,8 @@
+import { globalKey, userKey } from '@ottabase/cf/cache-keys';
 import { createKVClient } from '@ottabase/cf/kv';
-import { userKey, globalKey } from '@ottabase/cf/cache-keys';
 import { createRateLimitingClient } from '@ottabase/cf/rate-limiting';
 import { errorResponse } from '@ottabase/utils/http-errors';
-import type { CloudflareEnv } from '../cloudflare-env';
+import type { CloudflareEnv } from '../../cloudflare-env';
 
 /**
  * Build scoped rate limit key

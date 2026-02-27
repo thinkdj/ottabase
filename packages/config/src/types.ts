@@ -39,6 +39,26 @@ export interface AuthConfig {
     preLaunchOptIn: boolean;
 }
 
+/** Email/mailer configuration (non-secret settings only – API keys stay in env vars) */
+export interface EmailConfig {
+    /** Default "From" address for outbound emails. e.g. "noreply@yourdomain.com" */
+    from: string;
+    /** AWS region used for SES. Default: "us-east-1" */
+    sesRegion: string;
+}
+
+/** Server-side auth behaviour flags (non-secret – values that don't require a secret) */
+export interface AuthBehaviorConfig {
+    /** Session cookie max-age in seconds. Default: 2592000 (30 days) */
+    sessionMaxAge: number;
+    /** Require email verification before login is allowed. Default: false */
+    requireEmailVerified: boolean;
+    /** Disable credentials (email/password) login. Default: false */
+    disableCredentials: boolean;
+    /** Enable verbose auth logging. Default: false */
+    verbose: boolean;
+}
+
 export interface PaginationConfig {
     defaultPageSize: number;
     maxPageSize: number;
@@ -91,7 +111,12 @@ export interface AppConfig {
         auth: AuthConfig;
         pagination: PaginationConfig;
         referrals: ReferralsConfig;
+        /** Server-side auth behaviour (session length, verification gate, etc.) */
+        authBehavior: AuthBehaviorConfig;
     };
+
+    // Email Configuration (non-secret settings)
+    email: EmailConfig;
 
     // Model Configuration
     model: {
@@ -118,8 +143,82 @@ export interface ConfigOptions {
             auth?: Partial<AuthConfig>;
             pagination?: Partial<PaginationConfig>;
             referrals?: Partial<ReferralsConfig>;
+            /** Server-side auth behaviour flags */
+            authBehavior?: Partial<AuthBehaviorConfig>;
         };
+        /** Email/mailer settings (non-secret) */
+        email?: Partial<EmailConfig>;
         model?: Partial<AppConfig['model']>;
     };
     envPrefix?: string;
+}
+
+// ============================================================
+// OttabaseUserConfig – the shape of `ottabase.config.ts`
+// ============================================================
+
+/** Built-in feature packages shipped with the monorepo */
+export type BuiltinPackageName = 'ottablog' | 'shortlinks' | 'referrals' | 'brandEngine';
+
+/**
+ * Top-level user configuration for the Ottabase monorepo app.
+ * Lives in `ottabase.config.ts` at the app root.
+ *
+ * This is the SINGLE file users edit.  Framework files can be freely
+ * updated (git pull / zip replace) without touching this file.
+ */
+export interface OttabaseUserConfig {
+    /** Unique app identifier (used for storage prefix, API headers, etc.) */
+    appId: string;
+
+    /** Human-readable app name */
+    appName: string;
+
+    /** SEO / branding metadata */
+    meta?: Partial<Omit<AppMeta, 'appName'>>;
+
+    /** UI / layout defaults */
+    ui?: Partial<AppConfig['ui']>;
+
+    /** Theme defaults */
+    theme?: {
+        /** Default active color name (must match a key in `theme.colors`) */
+        colorDefault?: string;
+        /** Custom Mantine-style 10-shade color palettes */
+        colors?: ThemeColors;
+    };
+
+    /** Storage key prefix for localStorage/sessionStorage */
+    storage?: Partial<AppConfig['storage']>;
+
+    /**
+     * Toggle built-in packages on/off.
+     * Missing keys default to `false` (disabled).
+     */
+    packages?: Partial<Record<BuiltinPackageName, boolean>>;
+
+    /**
+     * Enable custom or premium packages.
+     * Keys are package names; values toggle enablement.
+     * Server-only resources (e.g., Drizzle table schemas) must be registered in
+     * server-only files such as `ottabase/config.migrations.ts`.
+     */
+    customPackages?: Record<string, boolean>;
+
+    /** Fine-grained feature configuration */
+    features?: {
+        referrals?: Partial<ReferralsConfig>;
+        spotlight?: Partial<SpotlightConfig>;
+        pagination?: Partial<PaginationConfig>;
+        crudHub?: Partial<CrudHubConfig>;
+        auth?: Partial<AuthConfig>;
+        /** Server-side auth behaviour (session length, verification gate, etc.) */
+        authBehavior?: Partial<AuthBehaviorConfig>;
+    };
+
+    /**
+     * Email/mailer settings (non-secret).
+     * Secrets (API keys, SMTP passwords) must remain in environment variables.
+     */
+    email?: Partial<EmailConfig>;
 }

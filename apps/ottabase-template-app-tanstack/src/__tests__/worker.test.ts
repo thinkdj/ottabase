@@ -57,7 +57,7 @@ describe('Cloudflare Worker API', () => {
             const data = (await resp.json()) as any;
             expect(resp.status).toBe(200);
             expect(data.ok).toBe(true);
-            expect(data.name).toBe('ottabase-template-app-tanstack');
+            expect(data.name).toBe('Ottabase Template App (TanStack)');
         });
     });
 

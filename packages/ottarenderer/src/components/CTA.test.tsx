@@ -88,7 +88,7 @@ describe('CTA Renderer', () => {
             render(<CTA data={{ url: 'https://example.com', openInNewTab: true }} />);
             const link = screen.getByRole('link');
             expect(link.getAttribute('target')).toBe('_blank');
-            expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+            expect(link.getAttribute('rel')).toBe('noopener noreferrer nofollow');
         });
     });
 

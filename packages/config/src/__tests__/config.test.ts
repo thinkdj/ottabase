@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { createAppConfig, defineOttabaseConfig, userConfigToOptions } from '../index';
+import { validateOttabaseConfig } from '../createAppConfig';
 import * as config from '../index';
 
 describe('Configuration Utilities', () => {
@@ -33,6 +35,306 @@ describe('Configuration Utilities', () => {
 
         it('should support multiple environments', () => {
             expect(config).toBeDefined();
+        });
+    });
+
+    describe('defineOttabaseConfig', () => {
+        it('should be a pass-through identity function', () => {
+            const userConfig = defineOttabaseConfig({
+                appId: 'test-app',
+                appName: 'Test App',
+            });
+            expect(userConfig.appId).toBe('test-app');
+            expect(userConfig.appName).toBe('Test App');
+        });
+
+        it('should preserve all user config fields', () => {
+            const userConfig = defineOttabaseConfig({
+                appId: 'my-saas',
+                appName: 'My SaaS',
+                packages: { ottablog: true, shortlinks: false },
+                features: {
+                    referrals: { enabled: true, trackClicks: true, expiryDays: 90 },
+                    spotlight: { enabled: true, shortcuts: ['/'] },
+                },
+            });
+            expect(userConfig.packages?.ottablog).toBe(true);
+            expect(userConfig.packages?.shortlinks).toBe(false);
+            expect(userConfig.features?.referrals?.enabled).toBe(true);
+            expect(userConfig.features?.spotlight?.shortcuts).toEqual(['/']);
+        });
+
+        it('should accept email config (non-secret)', () => {
+            const userConfig = defineOttabaseConfig({
+                appId: 'email-test',
+                appName: 'Email Test',
+                email: { from: 'noreply@my-app.com', sesRegion: 'eu-west-1' },
+            });
+            expect(userConfig.email?.from).toBe('noreply@my-app.com');
+            expect(userConfig.email?.sesRegion).toBe('eu-west-1');
+        });
+
+        it('should accept authBehavior flags (non-secret)', () => {
+            const userConfig = defineOttabaseConfig({
+                appId: 'auth-test',
+                appName: 'Auth Test',
+                features: {
+                    authBehavior: {
+                        sessionMaxAge: 7 * 24 * 3600,
+                        requireEmailVerified: true,
+                        disableCredentials: false,
+                        verbose: false,
+                    },
+                },
+            });
+            expect(userConfig.features?.authBehavior?.sessionMaxAge).toBe(7 * 24 * 3600);
+            expect(userConfig.features?.authBehavior?.requireEmailVerified).toBe(true);
+        });
+    });
+
+    describe('userConfigToOptions', () => {
+        it('should convert OttabaseUserConfig to ConfigOptions', () => {
+            const userConfig = defineOttabaseConfig({
+                appId: 'my-app',
+                appName: 'My App',
+                meta: { description: 'A test app', author: 'Tester' },
+                features: { referrals: { enabled: false, trackClicks: false, expiryDays: 30 } },
+            });
+            const options = userConfigToOptions(userConfig);
+            expect(options.appId).toBe('my-app');
+            expect(options.appName).toBe('My App');
+            expect(options.defaults?.meta?.description).toBe('A test app');
+            expect(options.defaults?.features?.referrals?.enabled).toBe(false);
+        });
+
+        it('should produce a valid AppConfig via createAppConfig', () => {
+            const userConfig = defineOttabaseConfig({
+                appId: 'verify-app',
+                appName: 'Verify App',
+                storage: { prefix: 'verify' },
+            });
+            const appConfig = createAppConfig(userConfigToOptions(userConfig));
+            expect(appConfig.appId).toBe('verify-app');
+            expect(appConfig.meta.appName).toBe('Verify App');
+            expect(appConfig.storage.prefix).toBe('verify');
+        });
+    });
+
+    describe('createAppConfig – email defaults and env overrides', () => {
+        it('should use hardcoded defaults when no config or env vars are provided', () => {
+            const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+            expect(appConfig.email.from).toBe('noreply@example.com');
+            expect(appConfig.email.sesRegion).toBe('us-east-1');
+        });
+
+        it('should use values from defaults when provided via userConfig', () => {
+            const userConfig = defineOttabaseConfig({
+                appId: 'email-app',
+                appName: 'Email App',
+                email: { from: 'hello@myapp.com', sesRegion: 'eu-west-1' },
+            });
+            const appConfig = createAppConfig(userConfigToOptions(userConfig));
+            expect(appConfig.email.from).toBe('hello@myapp.com');
+            expect(appConfig.email.sesRegion).toBe('eu-west-1');
+        });
+
+        it('should override email.from with EMAIL_FROM env var', () => {
+            process.env['EMAIL_FROM'] = 'override@env.com';
+            try {
+                const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+                expect(appConfig.email.from).toBe('override@env.com');
+            } finally {
+                delete process.env['EMAIL_FROM'];
+            }
+        });
+
+        it('should override email.sesRegion with AWS_REGION env var', () => {
+            process.env['AWS_REGION'] = 'ap-southeast-1';
+            try {
+                const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+                expect(appConfig.email.sesRegion).toBe('ap-southeast-1');
+            } finally {
+                delete process.env['AWS_REGION'];
+            }
+        });
+    });
+
+    describe('createAppConfig – authBehavior defaults and env overrides', () => {
+        it('should use hardcoded defaults when no config or env vars are provided', () => {
+            const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+            expect(appConfig.features.authBehavior.sessionMaxAge).toBe(30 * 24 * 60 * 60);
+            expect(appConfig.features.authBehavior.requireEmailVerified).toBe(false);
+            expect(appConfig.features.authBehavior.disableCredentials).toBe(false);
+            expect(appConfig.features.authBehavior.verbose).toBe(false);
+        });
+
+        it('should use values from defaults when provided via userConfig', () => {
+            const userConfig = defineOttabaseConfig({
+                appId: 'auth-app',
+                appName: 'Auth App',
+                features: {
+                    authBehavior: {
+                        sessionMaxAge: 7 * 24 * 3600,
+                        requireEmailVerified: true,
+                        disableCredentials: true,
+                        verbose: true,
+                    },
+                },
+            });
+            const appConfig = createAppConfig(userConfigToOptions(userConfig));
+            expect(appConfig.features.authBehavior.sessionMaxAge).toBe(7 * 24 * 3600);
+            expect(appConfig.features.authBehavior.requireEmailVerified).toBe(true);
+            expect(appConfig.features.authBehavior.disableCredentials).toBe(true);
+            expect(appConfig.features.authBehavior.verbose).toBe(true);
+        });
+
+        it('should override sessionMaxAge with AUTH_SESSION_MAX_AGE env var', () => {
+            process.env['AUTH_SESSION_MAX_AGE'] = '3600';
+            try {
+                const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+                expect(appConfig.features.authBehavior.sessionMaxAge).toBe(3600);
+            } finally {
+                delete process.env['AUTH_SESSION_MAX_AGE'];
+            }
+        });
+
+        it('should override requireEmailVerified with AUTH_REQUIRE_EMAIL_VERIFIED env var', () => {
+            process.env['AUTH_REQUIRE_EMAIL_VERIFIED'] = 'true';
+            try {
+                const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+                expect(appConfig.features.authBehavior.requireEmailVerified).toBe(true);
+            } finally {
+                delete process.env['AUTH_REQUIRE_EMAIL_VERIFIED'];
+            }
+        });
+
+        it('should override disableCredentials and verbose with env vars', () => {
+            process.env['AUTH_DISABLE_CREDENTIALS'] = 'true';
+            process.env['AUTH_VERBOSE'] = 'true';
+            try {
+                const appConfig = createAppConfig({ appId: 'test', appName: 'Test' });
+                expect(appConfig.features.authBehavior.disableCredentials).toBe(true);
+                expect(appConfig.features.authBehavior.verbose).toBe(true);
+            } finally {
+                delete process.env['AUTH_DISABLE_CREDENTIALS'];
+                delete process.env['AUTH_VERBOSE'];
+            }
+        });
+    });
+
+    describe('validateOttabaseConfig', () => {
+        it('should throw if appId is missing', () => {
+            expect(() => validateOttabaseConfig({ appName: 'Test' })).toThrow('"appId" is required');
+        });
+
+        it('should throw if appName is missing', () => {
+            expect(() => validateOttabaseConfig({ appId: 'test' })).toThrow('"appName" is required');
+        });
+
+        it('should throw if appId is empty string', () => {
+            expect(() => validateOttabaseConfig({ appId: '', appName: 'Test' })).toThrow('"appId" is required');
+        });
+
+        it('should return no warnings for a valid config', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                packages: { ottablog: true },
+                features: { authBehavior: { sessionMaxAge: 3600 } },
+                email: { from: 'hi@test.com' },
+            });
+            expect(warnings).toEqual([]);
+        });
+
+        it('should warn on unknown top-level keys (typos)', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                packges: { ottablog: true }, // typo
+            });
+            expect(warnings).toHaveLength(1);
+            expect(warnings[0]).toMatch(/Unknown key "packges"/);
+        });
+
+        it('should warn on unknown nested keys in packages', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                packages: { ottablog: true, shortlink: true }, // typo: should be "shortlinks"
+            });
+            expect(warnings).toHaveLength(1);
+            expect(warnings[0]).toMatch(/Unknown key "packages\.shortlink"/);
+        });
+
+        it('should warn on unknown nested keys in features', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                features: { authBehaviour: { verbose: true } }, // typo: should be "authBehavior"
+            });
+            expect(warnings).toHaveLength(1);
+            expect(warnings[0]).toMatch(/Unknown key "features\.authBehaviour"/);
+        });
+
+        it('should warn on unknown deep-nested keys in features.authBehavior', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                features: { authBehavior: { sessionmaxage: 3600 } }, // typo: should be "sessionMaxAge"
+            });
+            expect(warnings).toHaveLength(1);
+            expect(warnings[0]).toMatch(/Unknown key "features\.authBehavior\.sessionmaxage"/);
+        });
+
+        it('should warn on unknown email keys', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                email: { from: 'hi@test.com', region: 'us-east-1' }, // typo: should be "sesRegion"
+            });
+            expect(warnings).toHaveLength(1);
+            expect(warnings[0]).toMatch(/Unknown key "email\.region"/);
+        });
+
+        it('should collect multiple warnings', () => {
+            const warnings = validateOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                packges: {}, // typo
+                fetures: {}, // typo
+            });
+            expect(warnings).toHaveLength(2);
+        });
+    });
+
+    describe('defineOttabaseConfig – validation integration', () => {
+        let warnSpy: ReturnType<typeof vi.spyOn>;
+
+        beforeEach(() => {
+            warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            warnSpy.mockRestore();
+        });
+
+        it('should log warnings for unknown keys', () => {
+            defineOttabaseConfig({
+                appId: 'test',
+                appName: 'Test',
+                packges: { ottablog: true }, // typo
+            } as any);
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown key "packges"'));
+        });
+
+        it('should throw on missing required fields', () => {
+            expect(() => defineOttabaseConfig({ appId: '', appName: 'Test' } as any)).toThrow('"appId" is required');
+        });
+
+        it('should still return the config object on success', () => {
+            const cfg = defineOttabaseConfig({ appId: 'ok', appName: 'OK' });
+            expect(cfg.appId).toBe('ok');
+            expect(cfg.appName).toBe('OK');
         });
     });
 });

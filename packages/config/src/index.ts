@@ -2,9 +2,13 @@
 export type {
     AppConfig,
     AppMeta,
+    AuthBehaviorConfig,
     AuthConfig,
+    BuiltinPackageName,
     ConfigOptions,
     CrudHubConfig,
+    EmailConfig,
+    OttabaseUserConfig,
     PaginationConfig,
     ReferralsConfig,
     SpotlightConfig,
@@ -14,41 +18,25 @@ export type {
 } from './types';
 
 // Export main functions
-export { createAppConfig, createStorageKey, createThemeColors, getCurrentYear } from './createAppConfig';
+export {
+    createAppConfig,
+    createStorageKey,
+    createThemeColors,
+    defineOttabaseConfig,
+    getCurrentYear,
+    userConfigToOptions,
+    validateOttabaseConfig,
+} from './createAppConfig';
 
 // Import for internal use
 import type { SupportedUIFramework, ThemeColors } from './types';
+import { DEFAULT_AUTH_BEHAVIOR_CONFIG, DEFAULT_EMAIL_CONFIG, DEFAULT_THEME_COLORS } from './defaults';
 
 // Export constants and defaults
 export const DEFAULT_UI_FRAMEWORK: SupportedUIFramework = 'mantine';
 export const DEFAULT_APP_ID = 'ottabase-template-app';
 
-export const DEFAULT_THEME_COLORS: ThemeColors = {
-    primary: [
-        '#f7eefb',
-        '#ebdaf2',
-        '#d6b0e6',
-        '#c085dc',
-        '#ae60d2',
-        '#a349cc',
-        '#9e3dca',
-        '#8a30b3',
-        '#7b29a0',
-        '#6b218d',
-    ],
-    tremorBlue: [
-        '#e5f3ff',
-        '#cee2ff',
-        '#9ec2fd',
-        '#6aa1fa',
-        '#3e84f6',
-        '#2272f5',
-        '#0d69f5',
-        '#0058db',
-        '#004ec5',
-        '#0043af',
-    ],
-};
+export { DEFAULT_THEME_COLORS };
 
 export const DEFAULT_UI_CONFIG = {
     preventFOUC: false,
@@ -89,6 +77,8 @@ export const DEFAULT_REFERRALS_CONFIG = {
     trackClicks: true,
     expiryDays: 30,
 } as const;
+
+export { DEFAULT_EMAIL_CONFIG, DEFAULT_AUTH_BEHAVIOR_CONFIG };
 
 // Common storage keys
 export const STORAGE_KEYS = {
@@ -155,4 +145,14 @@ export const ENV_KEYS = {
 
     // Storage
     STORAGE_PREFIX: 'STORAGE_PREFIX',
+
+    // Email (non-secret – from/region now in ottabase.config.ts, env var override kept)
+    EMAIL_FROM: 'EMAIL_FROM',
+    AWS_REGION: 'AWS_REGION',
+
+    // Auth behaviour (non-secret – now in ottabase.config.ts, env var override kept)
+    AUTH_SESSION_MAX_AGE: 'AUTH_SESSION_MAX_AGE',
+    AUTH_REQUIRE_EMAIL_VERIFIED: 'AUTH_REQUIRE_EMAIL_VERIFIED',
+    AUTH_DISABLE_CREDENTIALS: 'AUTH_DISABLE_CREDENTIALS',
+    AUTH_VERBOSE: 'AUTH_VERBOSE',
 } as const;

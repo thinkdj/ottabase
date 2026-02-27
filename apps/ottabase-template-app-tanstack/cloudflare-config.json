@@ -7,7 +7,7 @@
     "workerBuildCommand": "",
     "outputDirectory": "dist",
     "verifyPaths": ["dist", "cloudflare-worker.ts"],
-    "wranglerConfig": "wrangler.jsonc",
+    "wranglerConfig": "wrangler.example.jsonc",
     "wranglerEnv": "production",
     "healthCheckPath": "/",
     "requiresSecrets": [],

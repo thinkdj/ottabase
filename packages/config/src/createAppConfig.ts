@@ -1,4 +1,5 @@
-import { AppConfig, AppMeta, ConfigOptions, SupportedUIFramework, ThemeColors } from './types';
+import { AppConfig, AppMeta, ConfigOptions, OttabaseUserConfig, SupportedUIFramework, ThemeColors } from './types';
+import { DEFAULT_AUTH_BEHAVIOR_CONFIG, DEFAULT_EMAIL_CONFIG } from './defaults';
 
 /**
  * Creates app configuration by merging environment variables with defaults
@@ -156,6 +157,31 @@ export function createAppConfig(options: ConfigOptions = {}): AppConfig {
                 trackClicks: getBoolEnv('REFERRALS_TRACK_CLICKS', defaults.features?.referrals?.trackClicks ?? true),
                 expiryDays: getNumberEnv('REFERRALS_EXPIRY_DAYS', defaults.features?.referrals?.expiryDays ?? 30),
             },
+            authBehavior: {
+                sessionMaxAge: getNumberEnv(
+                    'AUTH_SESSION_MAX_AGE',
+                    defaults.features?.authBehavior?.sessionMaxAge ?? DEFAULT_AUTH_BEHAVIOR_CONFIG.sessionMaxAge,
+                ),
+                requireEmailVerified: getBoolEnv(
+                    'AUTH_REQUIRE_EMAIL_VERIFIED',
+                    defaults.features?.authBehavior?.requireEmailVerified ??
+                        DEFAULT_AUTH_BEHAVIOR_CONFIG.requireEmailVerified,
+                ),
+                disableCredentials: getBoolEnv(
+                    'AUTH_DISABLE_CREDENTIALS',
+                    defaults.features?.authBehavior?.disableCredentials ??
+                        DEFAULT_AUTH_BEHAVIOR_CONFIG.disableCredentials,
+                ),
+                verbose: getBoolEnv(
+                    'AUTH_VERBOSE',
+                    defaults.features?.authBehavior?.verbose ?? DEFAULT_AUTH_BEHAVIOR_CONFIG.verbose,
+                ),
+            },
+        },
+
+        email: {
+            from: getEnv('EMAIL_FROM', defaults.email?.from ?? DEFAULT_EMAIL_CONFIG.from),
+            sesRegion: getEnv('AWS_REGION', defaults.email?.sesRegion ?? DEFAULT_EMAIL_CONFIG.sesRegion),
         },
 
         model: {
@@ -218,4 +244,147 @@ export function createThemeColors(colors: ThemeColors = {}): ThemeColors {
     };
 
     return { ...defaultColors, ...colors };
+}
+
+// ── Config validation ────────────────────────────────────────────────────────
+
+/** Known keys at each level of OttabaseUserConfig. `true` = open-ended (no nested check). */
+const VALID_TOP_KEYS = new Set([
+    'appId',
+    'appName',
+    'meta',
+    'ui',
+    'theme',
+    'storage',
+    'packages',
+    'customPackages',
+    'features',
+    'email',
+]);
+
+const VALID_NESTED_KEYS: Record<string, Set<string>> = {
+    meta: new Set(['description', 'author', 'keywords', 'robots', 'copyrightText', 'companyName', 'logoUrl', 'title']),
+    ui: new Set(['preventFOUC', 'preventFOUCInsideIframe', 'debounceMs', 'layout', 'enforceGoogleFonts']),
+    'ui.layout': new Set(['minWidth', 'maxWidth']),
+    theme: new Set(['colorDefault', 'colors']),
+    storage: new Set(['prefix']),
+    packages: new Set(['ottablog', 'shortlinks', 'referrals', 'brandEngine']),
+    features: new Set(['referrals', 'spotlight', 'pagination', 'crudHub', 'auth', 'authBehavior']),
+    'features.referrals': new Set(['enabled', 'trackClicks', 'expiryDays']),
+    'features.spotlight': new Set(['enabled', 'shortcuts']),
+    'features.pagination': new Set(['defaultPageSize', 'maxPageSize', 'sizeOptions']),
+    'features.crudHub': new Set(['apiBaseUrl', 'urlBase', 'urlBaseListing']),
+    'features.auth': new Set(['signInUrl', 'signOutUrl', 'preLaunchOptIn']),
+    'features.authBehavior': new Set(['sessionMaxAge', 'requireEmailVerified', 'disableCredentials', 'verbose']),
+    email: new Set(['from', 'sesRegion']),
+};
+
+function checkUnknownKeys(obj: Record<string, unknown>, validKeys: Set<string>, path: string): string[] {
+    const warnings: string[] = [];
+    for (const key of Object.keys(obj)) {
+        if (!validKeys.has(key)) {
+            warnings.push(`Unknown key "${path ? path + '.' : ''}${key}" — possible typo (will be ignored)`);
+        }
+    }
+    return warnings;
+}
+
+/**
+ * Validates an OttabaseUserConfig at runtime.
+ * Throws on missing required fields; returns warnings for unknown keys.
+ */
+export function validateOttabaseConfig(config: Record<string, unknown>): string[] {
+    const warnings: string[] = [];
+
+    // ── Required fields ──────────────────────────────────────
+    if (typeof config.appId !== 'string' || config.appId.trim() === '') {
+        throw new Error('ottabase.config.ts: "appId" is required and must be a non-empty string');
+    }
+    if (typeof config.appName !== 'string' || config.appName.trim() === '') {
+        throw new Error('ottabase.config.ts: "appName" is required and must be a non-empty string');
+    }
+
+    // ── Top-level unknown keys ───────────────────────────────
+    warnings.push(...checkUnknownKeys(config, VALID_TOP_KEYS, ''));
+
+    // ── Nested unknown keys (2 levels deep) ──────────────────
+    for (const [topKey, value] of Object.entries(config)) {
+        if (value && typeof value === 'object' && !Array.isArray(value) && VALID_NESTED_KEYS[topKey]) {
+            warnings.push(...checkUnknownKeys(value as Record<string, unknown>, VALID_NESTED_KEYS[topKey], topKey));
+
+            // Go one more level for features.* and ui.layout
+            for (const [nestedKey, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+                const deepPath = `${topKey}.${nestedKey}`;
+                if (
+                    nestedValue &&
+                    typeof nestedValue === 'object' &&
+                    !Array.isArray(nestedValue) &&
+                    VALID_NESTED_KEYS[deepPath]
+                ) {
+                    warnings.push(
+                        ...checkUnknownKeys(
+                            nestedValue as Record<string, unknown>,
+                            VALID_NESTED_KEYS[deepPath],
+                            deepPath,
+                        ),
+                    );
+                }
+            }
+        }
+    }
+
+    return warnings;
+}
+
+/**
+ * Helper for `ottabase.config.ts`.
+ * Provides TypeScript autocomplete and **runtime validation** — throws on
+ * missing required fields and warns on unrecognised keys (likely typos).
+ *
+ * @example
+ * ```ts
+ * // ottabase.config.ts
+ * import { defineOttabaseConfig } from '@ottabase/config';
+ *
+ * export default defineOttabaseConfig({
+ *   appId: 'my-app',
+ *   appName: 'My SaaS App',
+ *   packages: { ottablog: true, shortlinks: true, referrals: true },
+ * });
+ * ```
+ */
+export function defineOttabaseConfig<T extends OttabaseUserConfig>(config: T): T {
+    const warnings = validateOttabaseConfig(config as unknown as Record<string, unknown>);
+    for (const w of warnings) {
+        console.warn(`[ottabase] ${w}`);
+    }
+    return config;
+}
+
+/**
+ * Converts an `OttabaseUserConfig` into `ConfigOptions` accepted by `createAppConfig`.
+ * Use this inside `src/ottabase/config/app.config.ts` to bridge the two.
+ */
+export function userConfigToOptions(userConfig: OttabaseUserConfig): ConfigOptions {
+    return {
+        appId: userConfig.appId,
+        appName: userConfig.appName,
+        defaults: {
+            meta: userConfig.meta,
+            ui: userConfig.ui,
+            theme: userConfig.theme,
+            storage: userConfig.storage,
+            features: userConfig.features
+                ? {
+                      referrals: userConfig.features.referrals,
+                      spotlight: userConfig.features.spotlight,
+                      pagination: userConfig.features.pagination,
+                      crudHub: userConfig.features.crudHub,
+                      auth: userConfig.features.auth,
+                      authBehavior: userConfig.features.authBehavior,
+                  }
+                : undefined,
+            email: userConfig.email,
+        },
+    };
 }

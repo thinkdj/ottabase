@@ -3,11 +3,44 @@ import { invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
 import { createResendMailer, createSESMailer } from '@ottabase/email';
 import { SecurityContext } from '@ottabase/ottaorm';
 import { Account, Organization, OrganizationMember, VerificationToken } from '@ottabase/ottaorm/models';
-import type { CloudflareEnv } from '../cloudflare-env';
+import type { CloudflareEnv } from '../../cloudflare-env';
 import { createSecureToken } from './utils';
+import {
+    AUTH_DISABLE_CREDENTIALS,
+    AUTH_REQUIRE_EMAIL_VERIFIED,
+    AUTH_SESSION_MAX_AGE,
+    AUTH_VERBOSE,
+    EMAIL_FROM_DEFAULT,
+    EMAIL_SES_REGION,
+} from './worker-config';
+
+function parseBoolOverride(value: unknown): boolean | undefined {
+    if (value === undefined || value === null) return undefined;
+    const v = String(value).trim().toLowerCase();
+    if (v === 'true' || v === '1' || v === 'yes') return true;
+    if (v === 'false' || v === '0' || v === 'no') return false;
+    return undefined;
+}
+
+function resolveSessionMaxAge(env: CloudflareEnv): number {
+    const envVal = Number((env as any).AUTH_SESSION_MAX_AGE);
+    if (Number.isFinite(envVal) && envVal > 0) return envVal;
+    return AUTH_SESSION_MAX_AGE;
+}
+
+export function resolveAuthBehavior(env: CloudflareEnv) {
+    return {
+        sessionMaxAge: resolveSessionMaxAge(env),
+        requireEmailVerified:
+            parseBoolOverride((env as any).AUTH_REQUIRE_EMAIL_VERIFIED) ?? AUTH_REQUIRE_EMAIL_VERIFIED,
+        disableCredentials: parseBoolOverride((env as any).AUTH_DISABLE_CREDENTIALS) ?? AUTH_DISABLE_CREDENTIALS,
+        verbose: parseBoolOverride((env as any).AUTH_VERBOSE) ?? AUTH_VERBOSE,
+    };
+}
 
 export async function resolveMailer(env: CloudflareEnv) {
-    const from = env.EMAIL_FROM || 'noreply@example.com';
+    // Prefer env override for backward compatibility; fall back to config default
+    const from = env.EMAIL_FROM && env.EMAIL_FROM.trim().length > 0 ? env.EMAIL_FROM : EMAIL_FROM_DEFAULT;
     let mailer: any = null;
     let provider: 'resend' | 'ses' | 'nodemailer' | null = null;
 
@@ -18,7 +51,8 @@ export async function resolveMailer(env: CloudflareEnv) {
         mailer = createSESMailer({
             accessKeyId: env.AWS_ACCESS_KEY_ID,
             secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
-            region: env.AWS_REGION || 'us-east-1',
+            // Prefer env override for backward compatibility; fall back to config default
+            region: env.AWS_REGION || EMAIL_SES_REGION,
         });
         provider = 'ses';
     } else if (env.EMAIL_SERVER) {
@@ -58,6 +92,8 @@ export async function createVerificationToken(
 }
 
 export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
+    const behavior = resolveAuthBehavior(env);
+
     const options: CreateAuthConfigOptions = {
         authConfig: {
             pages: {
@@ -67,23 +103,17 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
         },
     };
 
-    const maxAge = Number(env.AUTH_SESSION_MAX_AGE);
-    if (Number.isFinite(maxAge) && maxAge > 0) {
-        options.sessionMaxAge = maxAge;
-    }
+    options.sessionMaxAge = behavior.sessionMaxAge;
 
-    const requireVerified = env.AUTH_REQUIRE_EMAIL_VERIFIED === 'true' || env.AUTH_REQUIRE_EMAIL_VERIFIED === '1';
-    if (requireVerified) {
+    if (behavior.requireEmailVerified) {
         options.requireVerifiedEmail = true;
     }
 
-    const disableCredentials = env.AUTH_DISABLE_CREDENTIALS === 'true' || env.AUTH_DISABLE_CREDENTIALS === '1';
-    if (disableCredentials) {
+    if (behavior.disableCredentials) {
         options.disableCredentials = true;
     }
 
-    const verbose = env.AUTH_VERBOSE === 'true' || env.AUTH_VERBOSE === '1';
-    if (verbose) {
+    if (behavior.verbose) {
         options.verbose = true;
     }
 

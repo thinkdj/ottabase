@@ -12,10 +12,17 @@ import { isValidUrl } from '@ottabase/utils/url';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { processReferralAttribution } from '../../ottabase/helpers/referral-attribution';
 import { registerAppEmailTemplates } from '../../src/email/templates';
-import { createVerificationToken, getAuthOptions, getUserLinkedAccounts, resolveMailer } from '../lib/auth-utils';
+import {
+    createVerificationToken,
+    getAuthOptions,
+    getUserLinkedAccounts,
+    resolveAuthBehavior,
+    resolveMailer,
+} from '../lib/auth-utils';
 import { enforceRateLimit } from '../lib/rate-limiting';
 import { provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
 import { getClientIpAddress, isStrongPassword, normalizeEmail, readJson } from '../lib/utils';
+import { APP_ID } from '../lib/worker-config';
 
 export interface AuthRouteContext {
     request: Request;
@@ -320,10 +327,11 @@ export async function handlePasswordResetConfirm(context: AuthRouteContext): Pro
     await VerificationToken.deleteByIdentifierAndToken(identifier, token);
 
     if (env.OBCF_KV) {
+        const authBehavior = resolveAuthBehavior(env);
         try {
             const revokedAt = Math.floor(Date.now() / 1000);
             await env.OBCF_KV.put(userKey('auth', String(user.get('id')), 'revoked'), String(revokedAt), {
-                expirationTtl: Number(env.AUTH_SESSION_MAX_AGE) || 30 * 24 * 60 * 60,
+                expirationTtl: authBehavior.sessionMaxAge,
             });
         } catch {
             // ignore revocation errors
@@ -405,10 +413,11 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
         const updated = await User.update(userId, updates);
 
         if (env.OBCF_KV) {
+            const authBehavior = resolveAuthBehavior(env);
             try {
                 const version = Date.now();
                 await env.OBCF_KV.put(userKey('auth', userId, 'profile', 'version'), String(version), {
-                    expirationTtl: Number(env.AUTH_SESSION_MAX_AGE) || 30 * 24 * 60 * 60,
+                    expirationTtl: authBehavior.sessionMaxAge,
                 });
             } catch (error) {
                 console.warn('Failed to bump profile version in KV:', error);
@@ -434,7 +443,10 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
         );
     }
 
-    if (env.AUTH_DISABLE_CREDENTIALS === 'true' || env.AUTH_DISABLE_CREDENTIALS === '1') {
+    // AUTH_DISABLE_CREDENTIALS resolved from ottabase.config.ts with env override (backward compatible)
+    const authBehavior = resolveAuthBehavior(env);
+
+    if (authBehavior.disableCredentials) {
         return withAuthCors(
             errorResponse('Credentials registration is disabled', 403, {
                 code: 'CREDENTIALS_DISABLED',
@@ -525,7 +537,8 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
                 name,
                 organizationRole: 'owner',
                 roleFallbacks: ['member', 'viewer'],
-                appId: env.APP_ID ?? 'ottabase-template-app',
+                // APP_ID is now configured in ottabase.config.ts
+                appId: APP_ID,
             });
 
             organizationId = provisioned.organizationId;
@@ -568,7 +581,8 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
             });
         }
 
-        const requireVerified = env.AUTH_REQUIRE_EMAIL_VERIFIED === 'true' || env.AUTH_REQUIRE_EMAIL_VERIFIED === '1';
+        // AUTH_REQUIRE_EMAIL_VERIFIED is now configured in ottabase.config.ts (non-secret)
+        const requireVerified = authBehavior.requireEmailVerified;
         let verificationSent = false;
 
         if (requireVerified) {

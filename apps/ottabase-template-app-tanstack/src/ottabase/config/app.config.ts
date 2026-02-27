@@ -1,59 +1,30 @@
-import { createAppConfig, createThemeColors, DEFAULT_THEME_COLORS } from '@ottabase/config';
+import {
+    createAppConfig,
+    createThemeColors,
+    DEFAULT_THEME_COLORS,
+    OttabaseUserConfig,
+    userConfigToOptions,
+} from '@ottabase/config';
+import userConfig from '../../../ottabase.config';
 
+// Cast through OttabaseUserConfig to allow optional `colors` access on the
+// narrowed type returned by defineOttabaseConfig.
+const typedConfig = userConfig as OttabaseUserConfig;
+const options = userConfigToOptions(typedConfig);
+
+// Convert the root user config into createAppConfig options.
+// userConfigToOptions bridges OttabaseUserConfig → ConfigOptions.
 export const appConfig = createAppConfig({
-    appName: 'Ottabase Template App (TanStack)',
-    appId: 'ottabase-template-app',
+    ...options,
     defaults: {
-        meta: {
-            author: '@thinkdj',
-            description: 'A minimal TanStack + Cloudflare Workers template app in the Ottabase monorepo',
-            keywords:
-                'Ottabase, TanStack Router, TanStack Query, Vite, Tailwind, Shadcn, Cloudflare Workers, TypeScript, React',
-            companyName: 'Ottabase',
-        },
-        uiFramework: 'mantine',
-        ui: {
-            preventFOUC: false,
-            preventFOUCInsideIframe: false,
-            debounceMs: 500,
-            layout: {
-                minWidth: 320,
-                maxWidth: 1280,
-            },
-            enforceGoogleFonts: true,
-        },
+        ...options.defaults,
+        // Merge in the full theme color palette (not settable via env vars)
         theme: {
-            colorDefault: 'tremorBlue',
+            colorDefault: typedConfig.theme?.colorDefault ?? 'tremorBlue',
             colors: createThemeColors({
                 ...DEFAULT_THEME_COLORS,
+                ...typedConfig.theme?.colors,
             }),
-        },
-        storage: {
-            prefix: 'ottabase',
-        },
-        api: {
-            serverErrorHttpCode: 500,
-        },
-        features: {
-            spotlight: {
-                enabled: true,
-                shortcuts: ['/'],
-            },
-            referrals: {
-                enabled: true,
-                trackClicks: true, // Set to false to disable click tracking (only track conversions)
-                expiryDays: 90, // How long stored referral codes are valid by default
-            },
-            crudHub: {
-                apiBaseUrl: '/api/crudhub',
-                urlBase: 'crudhub',
-                urlBaseListing: 'browse',
-            },
-            pagination: {
-                defaultPageSize: 10,
-                maxPageSize: 100,
-                sizeOptions: [5, 10, 20, 50, 100],
-            },
         },
         model: {
             defaultRelKey: 'defaults',
@@ -106,6 +77,12 @@ export const SPOTLIGHT_CONFIG = appConfig.features.spotlight;
 
 // Referrals
 export const REFERRALS_CONFIG = appConfig.features.referrals;
+
+// Auth behaviour
+export const AUTH_BEHAVIOR_CONFIG = appConfig.features.authBehavior;
+
+// Email (non-secret)
+export const EMAIL_CONFIG = appConfig.email;
 
 // Theme / Colors
 export const THEME_COLOR_DEFAULT = appConfig.theme.colorDefault;

@@ -7,6 +7,7 @@ import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
 import { checkMigrationAuth, initDbConnection } from '../lib/db-utils';
 import { ensureAppBrandDefaults } from '../lib/user-provisioning';
+import { APP_NAME, APP_ID } from '../lib/worker-config';
 
 export interface OttaormInitContext {
     request: Request;
@@ -61,8 +62,8 @@ export async function handleOttaormInit(context: OttaormInitContext): Promise<Re
     // Seed default brand kit + route mappings for current app (brand kits are always app-scoped)
     if (result.success) {
         initDbConnection(env);
-        const appId = (env as { APP_ID?: string }).APP_ID ?? 'ottabase-template-app';
-        await ensureAppBrandDefaults('Ottabase', appId);
+        // APP_ID and APP_NAME are now configured in ottabase.config.ts
+        await ensureAppBrandDefaults(APP_NAME, APP_ID);
     }
 
     return jsonResponse(result);

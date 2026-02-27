@@ -293,7 +293,7 @@ export function renderWizardPage(state: PlatformStateResult): string {
       <h3 style="margin-top:0.75rem">Email (Optional)</h3>
       <table class="env-table">
         <tr><td>EMAIL_RESEND_API_KEY</td><td>API key from <a href="https://resend.com" target="_blank" style="color:var(--accent-light)">Resend</a> (recommended)</td></tr>
-        <tr><td>EMAIL_FROM</td><td>Sender address (default: noreply@example.com)</td></tr>
+        <tr><td colspan="2" style="font-size:0.85em;opacity:0.8">Sender address &amp; SES region are configured in <code>ottabase.config.ts</code> → <code>email</code></td></tr>
       </table>
       <h3 style="margin-top:0.75rem">Security (Recommended)</h3>
       <table class="env-table">

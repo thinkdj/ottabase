@@ -27,7 +27,7 @@ from `main`.
 }
 ```
 
-2. Ensure `package.json` has a `build` script and (if needed) `wrangler.jsonc` exists.
+2. Ensure `package.json` has a `build` script and (if needed) `wrangler.example.jsonc` exists.
 3. Push to `main` → production deploy runs when that app (or `packages/`) has changes. Open a PR → preview deploy runs
    unless skipped.
 
@@ -50,10 +50,10 @@ Already configured; push to `main` or open PRs as usual.
 | `workerBuildCommand` | `null`                             | pnpm script for Worker bundle (e.g. OpenNext); `null` for TanStack |
 | `outputDirectory`    | `"dist"`                           | Dir to verify after build                                          |
 | `verifyPaths`        | `["dist", "cloudflare-worker.ts"]` | Paths that must exist after build                                  |
-| `wranglerConfig`     | `"wrangler.jsonc"`                 | Wrangler config file                                               |
-| `requiresSecrets`    | `[]`                               | _(Optional)_ Extra secrets not in wrangler.jsonc (e.g. build-time) |
+| `wranglerConfig`     | `"wrangler.example.jsonc"`         | Wrangler config file (tracked template; user copy is gitignored)   |
+| `requiresSecrets`    | `[]`                               | _(Optional)_ Extra secrets not in wrangler config (e.g. build-time) |
 
-> **SSOT:** Placeholders in `wrangler.jsonc` `env.production` / `env.preview` are auto-detected. `requiresSecrets` is
+> **SSOT:** Placeholders in `wrangler.example.jsonc` `env.production` / `env.preview` are auto-detected. `requiresSecrets` is
 > only for secrets that don't appear in wrangler.
 
 ### Minimal examples
@@ -87,13 +87,13 @@ Already configured; push to `main` or open PRs as usual.
     "buildCommand": "build",
     "outputDirectory": "dist",
     "verifyPaths": ["dist", "cloudflare-worker.ts"],
-    "wranglerConfig": "wrangler.jsonc"
+    "wranglerConfig": "wrangler.example.jsonc"
 }
 ```
 
 ### Wrangler placeholders
 
-In `wrangler.jsonc`, `ALL_CAPS_SNAKE_CASE` placeholder values in `env.production` and `env.preview` are
+In `wrangler.example.jsonc`, `ALL_CAPS_SNAKE_CASE` placeholder values in `env.production` and `env.preview` are
 **auto-detected** by `substitute-wrangler-secrets.py` and substituted from GitHub Secrets. No explicit key list or
 per-secret workflow wiring needed — just set the placeholder and the secret.
 
@@ -204,9 +204,9 @@ pnpm preview       # if available
 
 | Issue               | Check                                                                                                                                 |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| App not discovered  | `deployable: true` in `cloudflare-config.json`; `package.json` has required scripts; `wrangler.jsonc` present if no cloudflare-config |
-| Build fails         | Actions logs; locally: `pnpm --filter=@ottabase/my-app run build`                                                                     |
-| Deploy fails        | Required secrets set; `wrangler.jsonc` valid; no unsubstituted placeholders in generated config                                       |
+| App not discovered  | `deployable: true` in `cloudflare-config.json`; `package.json` has required scripts; `wrangler.example.jsonc` present if no cloudflare-config |
+| Build fails         | Actions logs; locally: `pnpm --filter=@ottabase/my-app run build`                                                                             |
+| Deploy fails        | Required secrets set; `wrangler.example.jsonc` valid; no unsubstituted placeholders in generated config                                       |
 | Preview not created | PR without `#skippr` / `#skipdeploy`; secrets set; app in `APPS_TO_DEPLOY` or default                                                 |
 
 Errors in workflows include what failed, why, and how to fix (e.g. missing secrets with links to Cloudflare).

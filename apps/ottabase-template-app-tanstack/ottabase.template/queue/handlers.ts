@@ -22,9 +22,11 @@ import { createResendMailer } from '@ottabase/email/providers/resend';
 import { createSESMailer } from '@ottabase/email/providers/ses';
 import type { JobHandler } from '@ottabase/queue';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { EMAIL_FROM_DEFAULT, EMAIL_SES_REGION } from '../../worker/lib/worker-config';
 
 function getMailer(env: CloudflareEnv): { mailer: Mailer | null; from: string } {
-    const from = (env as any).EMAIL_FROM || 'noreply@example.com';
+    // Email "from" and SES region are now configured in ottabase.config.ts
+    const from = EMAIL_FROM_DEFAULT;
     if ((env as any).EMAIL_RESEND_API_KEY) {
         return { mailer: createResendMailer({ apiKey: (env as any).EMAIL_RESEND_API_KEY }), from };
     }
@@ -33,7 +35,7 @@ function getMailer(env: CloudflareEnv): { mailer: Mailer | null; from: string } 
             mailer: createSESMailer({
                 accessKeyId: (env as any).AWS_ACCESS_KEY_ID,
                 secretAccessKey: (env as any).AWS_SECRET_ACCESS_KEY,
-                region: (env as any).AWS_REGION || 'us-east-1',
+                region: EMAIL_SES_REGION,
             }),
             from,
         };
