@@ -5,16 +5,16 @@
  * Uses public API so protected posts return without body until unlocked.
  */
 import { SEOHead } from '@/components/SEOHead';
-import { BLOG_DETAIL_QUERY_CONFIG, BLOG_LIST_QUERY_CONFIG } from '@/ottabase/config/query.config';
+import { BLOG_DETAIL_QUERY_CONFIG, BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
+import { useSession } from '@/lib/auth';
 import { api, isApiError } from '@/lib/api';
 import { useBlogStudio } from '@/ottabase/blog/BlogStudioContext';
 import { BlogRenderer, formatDate, type BlogPostData } from '@ottabase/ottablog';
 import type { OutputData } from '@ottabase/ottaeditor';
-import { createModelHooks } from '@ottabase/ottaorm/client';
+import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
 import { Button, Input } from '@ottabase/ui-shadcn';
-import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
-import { ArrowLeft, ArrowRight, ChevronLeft, Loader2, Lock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, Loader2, Lock, Pencil } from 'lucide-react';
 import { useState } from 'react';
 
 interface BlogPost {
@@ -61,25 +61,23 @@ const blogSeriesHooks = createModelHooks<BlogSeries>({
 export function BlogDetailPage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug;
+    const { user } = useSession({ skipAutoSync: true });
     const { isReady: studioReady } = useBlogStudio();
     const [unlockedPost, setUnlockedPost] = useState<BlogPost | null>(null);
     const [password, setPassword] = useState('');
     const [unlockError, setUnlockError] = useState<string | null>(null);
     const [isUnlocking, setIsUnlocking] = useState(false);
 
-    // Fetch post by slug from public API (stripped for protected posts)
-    const { data: post, isLoading: isLoadingPost } = useQuery({
-        queryKey: ['blog', 'post', 'by-slug', slug],
-        queryFn: async () => {
-            const res = await fetch(`/api/blog/posts/by-slug/${encodeURIComponent(slug!)}`);
-            if (!res.ok) {
-                if (res.status === 404) return null;
-                throw new Error(await res.text());
-            }
-            return res.json() as Promise<BlogPost>;
+    // useApiQuery with entity:'posts' namespaces the key as ['posts', 'by-slug', slug].
+    // Any mutation on the posts entity auto-busts this cache via the global observer.
+    const { data: post, isLoading: isLoadingPost } = useApiQuery<BlogPost>({
+        entity: 'posts',
+        queryKey: ['by-slug', slug],
+        endpoint: `/api/blog/posts/by-slug/${encodeURIComponent(slug ?? '')}`,
+        queryOptions: {
+            enabled: !!slug,
+            ...BLOG_DETAIL_QUERY_CONFIG,
         },
-        enabled: !!slug,
-        ...BLOG_DETAIL_QUERY_CONFIG,
     });
 
     // Fetch series info if post is part of a series (using useDetail for primary key lookup)
@@ -215,14 +213,22 @@ export function BlogDetailPage() {
                 author={displayPost.authorName || undefined}
             />
 
-            {/* Back link */}
-            <div className="mb-6">
+            {/* Back link + Edit (author only) */}
+            <div className="mb-6 flex items-center justify-between gap-4">
                 <Button variant="ghost" size="sm" asChild>
                     <Link to="/blog">
                         <ChevronLeft className="mr-1 h-4 w-4" />
                         Back to Blog
                     </Link>
                 </Button>
+                {user?.id && displayPost.authorId && user.id === displayPost.authorId && (
+                    <Button variant="outline" size="sm" asChild>
+                        <Link to="/admin/blog/$postId/edit" params={{ postId: displayPost.id }}>
+                            <Pencil className="mr-1.5 h-4 w-4" />
+                            Edit
+                        </Link>
+                    </Button>
+                )}
             </div>
 
             {/* Lock screen for password-protected posts */}

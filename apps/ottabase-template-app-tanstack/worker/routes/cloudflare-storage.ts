@@ -1,3 +1,4 @@
+import { getSession } from '@ottabase/auth/backend';
 import { createKVClient } from '@ottabase/cf/kv';
 import { createR2Client } from '@ottabase/cf/r2';
 import { createImagesClient } from '@ottabase/cf/images';
@@ -5,11 +6,23 @@ import { uploadFileToCloudflareImages, uploadFileToR2 } from '@ottabase/ottauplo
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { getAuthOptions } from '../lib/auth-utils';
 
 export interface StorageRouteContext {
     request: Request;
     env: CloudflareEnv;
     url: URL;
+}
+
+/** Deterministic hash of userId for avatar path obfuscation (SHA-256, 32 hex chars) */
+async function hashUserId(userId: string): Promise<string> {
+    const data = new TextEncoder().encode(userId);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+        .substring(0, 32);
 }
 
 export async function handleCloudflareKV(context: StorageRouteContext): Promise<Response> {
@@ -195,15 +208,31 @@ export async function handleUpload(context: StorageRouteContext): Promise<Respon
             });
         }
 
-        const r2Client = createR2Client({ bucket: env.OBCF_R2 });
-        const result = await uploadFileToR2(file, r2Client, {
+        // Avatar upload: use fixed key {userId}/avatar.png so each upload overwrites
+        const customKey = formData.get('key') as string | null;
+        let uploadOptions: { maxFileSize: number; generateKey?: (file: File) => string } = {
             maxFileSize: 50 * 1024 * 1024,
-        });
+        };
+
+        if (customKey === 'avatar') {
+            const session = await getSession(request, env as any, getAuthOptions(env));
+            const userId = session?.user?.id;
+            if (!userId) {
+                return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+            }
+            const hash = await hashUserId(userId);
+            uploadOptions.generateKey = () => `${hash}/avatar.png`;
+        }
+
+        const r2Client = createR2Client({ bucket: env.OBCF_R2 });
+        const result = await uploadFileToR2(file, r2Client, uploadOptions);
 
         if (result.success) {
+            // Avatar: append ?v=timestamp for cache busting when user uploads new image
+            const url = customKey === 'avatar' ? `${result.url}?v=${Date.now()}` : result.url;
             return jsonResponse({
                 success: true,
-                url: result.url,
+                url,
                 key: result.key,
                 provider: 'r2',
             });

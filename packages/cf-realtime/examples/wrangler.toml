@@ -13,7 +13,7 @@ compatibility_date = "2024-01-01"
 
 # Durable Objects binding
 [[durable_objects.bindings]]
-name = "REALTIME"
+name = "OBCF_REALTIME"
 class_name = "RealtimeActor"
 
 # Migration to create the Durable Object class

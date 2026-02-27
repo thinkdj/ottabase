@@ -25,7 +25,7 @@ works across your entire monorepo. It handles:
 │         Collects all table schemas:                          │
 │  • Core (from @ottabase/ottaorm/schema)                     │
 │  • App (from ottabase/db/schema.ts)                         │
-│  • Packages (from migrations.config.ts)                     │
+│  • Packages (from config.migrations.ts)                     │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -47,7 +47,7 @@ works across your entire monorepo. It handles:
 
 ### Key Components
 
-1. **`ottabase/migrations.config.ts`**
+1. **`ottabase/config.migrations.ts`**
     - Single source of truth for enabled packages
     - Configure which packages are active
     - Each package can provide tables + custom migrations
@@ -61,7 +61,7 @@ works across your entire monorepo. It handles:
     - Exports all table schemas
     - Core tables from `@ottabase/ottaorm`
     - App-specific tables
-    - Package tables (via `migrations.config.ts`)
+    - Package tables (via `config.migrations.ts`)
 
 4. **`ottabase/migrations/index.ts`**
     - Custom migrations registry
@@ -120,8 +120,8 @@ export const yourTable = sqliteTable('your_table', {
 });
 
 export class YourModel extends BaseModel {
+    static entity = 'your_table';
     static table = yourTable;
-    static tableName = 'your_table';
 }
 ```
 
@@ -141,7 +141,7 @@ That's it! The table will be automatically created.
 
 ### Adding a Package
 
-1. **Enable the package** in `ottabase/migrations.config.ts`:
+1. **Enable the package** in `ottabase/config.migrations.ts`:
 
 ```typescript
 import { shortlinksTable } from '@ottabase/shortlinks';
@@ -316,7 +316,7 @@ For data migrations, implement a `down` function in your custom migration.
 
 ### Package tables not created
 
-- Verify the package is enabled in `migrations.config.ts`
+- Verify the package is enabled in `config.migrations.ts`
 - Check that the table is imported correctly
 - Look for errors in `/migration-status`
 
@@ -333,4 +333,4 @@ See the following files for complete examples:
 - `ottabase/models/Todo.ts` - Simple app-specific model
 - `@ottabase/shortlinks` package - Shortlinks model in package
 - `ottabase/migrations/index.ts` - Custom migrations setup
-- `ottabase/migrations.config.ts` - Package configuration
+- `ottabase/config.migrations.ts` - Package configuration

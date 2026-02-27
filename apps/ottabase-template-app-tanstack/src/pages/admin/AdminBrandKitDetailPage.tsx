@@ -4,30 +4,36 @@
 
 import { buildCSSVarMap, buildPreviewTheme, injectFont } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ottabase/ui-shadcn';
 import {
+    IconActivity,
     IconArrowLeft,
     IconBadge,
+    IconDownload,
     IconPalette,
     IconPhoto,
+    IconPointer,
     IconSettings,
     IconTrash,
     IconTypography,
 } from '@tabler/icons-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { brandKitApi, type BrandKitItem } from './brand/brandApi';
 import { BrandKitAdvancedTab } from './brand/BrandKitAdvancedTab';
 import { BrandKitBrandTab } from './brand/BrandKitBrandTab';
+import { BrandKitCursorsTab } from './brand/BrandKitCursorsTab';
 import { BrandKitFontsTab } from './brand/BrandKitFontsTab';
 import { BrandKitLogoTab } from './brand/BrandKitLogoTab';
-import { BrandKitThemeTab } from './brand/BrandKitThemeTab';
+import { BrandKitMotionTab } from './brand/BrandKitMotionTab';
+import { BrandKitThemeTab, colorSwatchClass } from './brand/BrandKitThemeTab';
 
-const VALID_TABS = ['brand', 'logo', 'theme', 'fonts', 'advanced'] as const;
+const VALID_TABS = ['brand', 'logo', 'theme', 'fonts', 'motion', 'cursors', 'advanced'] as const;
 
-/** Preview panel – reflects current draft (colors, fonts) in realtime */
+/** Preview panel – reflects current draft (colors, fonts, motion, shadows) in realtime */
 function BrandKitPreviewPanel({
     kitData,
     mode = 'light',
@@ -43,6 +49,7 @@ function BrandKitPreviewPanel({
     );
     const varMap = useMemo(() => buildCSSVarMap(theme), [theme]);
     const logoUrl = mode === 'dark' ? (logos?.dark ?? logos?.primary) : logos?.primary;
+
     useEffect(() => {
         const urls: string[] = [];
         if (theme.typography?.heading?.url) urls.push(theme.typography.heading.url);
@@ -50,18 +57,32 @@ function BrandKitPreviewPanel({
         if (theme.typography?.handwriting?.url) urls.push(theme.typography.handwriting.url);
         urls.forEach((url) => injectFont(url));
     }, [theme.typography]);
+
     return (
         <div
-            className="rounded-xl border bg-background p-4 shadow-sm dark:border-muted"
+            className="rounded-xl border bg-background p-4 dark:border-muted overflow-hidden relative group"
             style={
                 {
                     ...varMap,
+                    borderRadius: 'var(--radius)',
+                    boxShadow: 'var(--shadow-md)',
                     // Ensure text inherits preview theme's foreground (fixes dark mode contrast)
                     color: 'hsl(var(--foreground))',
+                    cursor: 'var(--cursor-default, auto)',
                 } as React.CSSProperties
             }
         >
-            <div className="space-y-4">
+            {/* Background animated element to demonstrate motion tokens */}
+            <div
+                className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-primary/10 blur-2xl pointer-events-none"
+                style={{
+                    transition:
+                        'transform var(--motion-duration-slow, 500ms) var(--motion-ease-bouncy, cubic-bezier(0.34, 1.56, 0.64, 1))',
+                    transform: 'scale(1)',
+                }}
+            />
+
+            <div className="space-y-theme-section relative z-10 group-hover:[&>.absolute]:scale-150">
                 <div className="flex items-center gap-3">
                     {logoUrl ? (
                         <img src={logoUrl} alt="Logo" className="h-10 object-contain" />
@@ -72,46 +93,110 @@ function BrandKitPreviewPanel({
                     )}
                     <div>
                         <h3 className="text-lg font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>
-                            Preview
+                            Preview UI
                         </h3>
                         <p className="text-sm text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
-                            Changes reflect here
+                            Changes reflect instantly
                         </p>
                     </div>
                 </div>
-                <div className="space-y-2 rounded-lg border p-3 dark:border-muted">
+
+                <div className="space-y-2 rounded-lg border p-3 bg-card border-border dark:border-muted">
                     <p className="text-xs font-medium text-muted-foreground">Color palette</p>
                     <div className="flex flex-wrap gap-2">
                         {['primary', 'secondary', 'accent', 'muted', 'destructive'].map((token) => (
                             <div
                                 key={token}
-                                className="h-8 w-8 rounded-md border border-border shadow-sm dark:border-muted"
-                                style={{ backgroundColor: `hsl(var(--${token}))` }}
+                                className={`h-8 w-8 rounded-md ${colorSwatchClass} hover:scale-110`}
+                                style={{
+                                    backgroundColor: `hsl(var(--${token}))`,
+                                    transition:
+                                        'transform var(--motion-duration-normal, 200ms) var(--motion-ease-default, ease)',
+                                    cursor: 'var(--cursor-pointer, pointer)',
+                                }}
                                 title={token}
                             />
                         ))}
                     </div>
                 </div>
-                <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Sample UI</p>
-                    <div className="flex flex-wrap gap-2">
+
+                <div className="space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground">Shadows &amp; Interactive Elements</p>
+                    <div className="flex flex-wrap gap-3">
                         <button
                             type="button"
-                            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+                            className="bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0"
+                            style={{
+                                borderRadius: 'calc(var(--radius) - 2px)',
+                                boxShadow: 'var(--shadow-sm)',
+                                transition: 'all var(--motion-duration-fast, 150ms) var(--motion-ease-default, ease)',
+                                cursor: 'var(--cursor-pointer, pointer)',
+                            }}
                         >
-                            Button
+                            Primary Button
                         </button>
                         <button
                             type="button"
-                            className="rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-accent"
+                            className="border border-input bg-background/50 px-4 py-2 text-sm font-medium hover:bg-accent"
+                            style={{
+                                borderRadius: 'calc(var(--radius) - 2px)',
+                                transition: 'all var(--motion-duration-fast, 150ms) var(--motion-ease-default, ease)',
+                                cursor: 'var(--cursor-pointer, pointer)',
+                            }}
                         >
-                            Outline
+                            Outline Variant
                         </button>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-3 mt-4">
+                        {['xs', 'sm', 'md', 'lg'].map((level) => (
+                            <div
+                                key={level}
+                                className="p-3 border border-border bg-card group/card hover:-translate-y-1"
+                                style={{
+                                    borderRadius: 'var(--radius)',
+                                    boxShadow: `var(--shadow-${level})`,
+                                    transition:
+                                        'box-shadow var(--motion-duration-normal, 200ms) var(--motion-ease-default, ease), transform var(--motion-duration-normal, 200ms) var(--motion-ease-default, ease)',
+                                    cursor: 'var(--cursor-text, text)',
+                                }}
+                            >
+                                <span className="text-xs font-medium text-card-foreground">--shadow-{level}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                <p className="text-xs" style={{ fontFamily: 'var(--font-handwriting)' }}>
-                    Handwriting sample
-                </p>
+
+                <div className="pt-2 border-t border-border">
+                    <p
+                        className="text-sm"
+                        style={{
+                            fontFamily: 'var(--font-heading)',
+                            fontWeight: 'var(--typography-heading-weight, 700)',
+                            letterSpacing: 'var(--typography-heading-spacing, normal)',
+                            lineHeight: 'var(--typography-heading-line-height, 1.2)',
+                        }}
+                    >
+                        Heading Typography
+                    </p>
+                    <p
+                        className="text-[13px] text-muted-foreground mt-1"
+                        style={{
+                            fontFamily: 'var(--font-body)',
+                            lineHeight: 'var(--typography-body-line-height, 1.5)',
+                            fontWeight: 'var(--typography-body-weight, 400)',
+                            letterSpacing: 'var(--typography-body-spacing, normal)',
+                        }}
+                    >
+                        Body typography preview demonstrating the selected Google Fonts and precise typographic scaling.
+                    </p>
+                    <p
+                        className="text-sm mt-3 text-primary"
+                        style={{ fontFamily: 'var(--font-handwriting)', fontSize: '1.25rem' }}
+                    >
+                        Handwriting sample showing custom web fonts
+                    </p>
+                </div>
             </div>
         </div>
     );
@@ -133,12 +218,11 @@ export function AdminBrandKitDetailPage() {
     const navigate = useNavigate();
     const isNew = !kitId || kitId === 'new';
 
-    const { data: kit, isLoading } = useQuery<BrandKitItem>({
-        queryKey: ['brand', 'kit', kitId],
-        queryFn: () => brandKitApi.get(kitId!),
-        enabled: !!kitId && kitId !== 'new',
-        // Trust cached data from create/clone for 5s to avoid D1 eventual consistency
-        staleTime: 5000,
+    const { data: kit, isLoading } = useApiQuery<BrandKitItem>({
+        entity: 'brand_kits',
+        queryKey: ['detail', kitId],
+        endpoint: `/api/brand/kits/${kitId}`,
+        queryOptions: { enabled: !!kitId && kitId !== 'new', staleTime: 5000 },
     });
 
     // Draft state – updates preview in realtime
@@ -184,22 +268,22 @@ export function AdminBrandKitDetailPage() {
     }, [kit]);
 
     const updateMutation = useMutation({
+        meta: { entity: 'brand_kits' },
         mutationFn: (body: Record<string, unknown>) => brandKitApi.update(kitId!, body),
         onSuccess: () => {
             toast.success('Brand Kit saved');
-            queryClient.invalidateQueries({ queryKey: ['brand', 'kit', kitId] });
-            queryClient.invalidateQueries({ queryKey: ['brand', 'kits'] });
+            queryClient.invalidateQueries({ queryKey: ['brand_kits'] });
             refresh();
         },
         onError: () => toast.error('Failed to save'),
     });
 
     const createMutation = useMutation({
+        meta: { entity: 'brand_kits' },
         mutationFn: (body: Record<string, unknown>) => brandKitApi.create(body),
         onSuccess: (created) => {
             toast.success('Brand Kit created');
-            queryClient.invalidateQueries({ queryKey: ['brand', 'kits'] });
-            queryClient.setQueryData(['brand', 'kit', created.id], created);
+            queryClient.invalidateQueries({ queryKey: ['brand_kits'] });
             refresh();
             navigate({ to: '/admin/brand-engine/kits/$kitId', params: { kitId: created.id } });
         },
@@ -207,16 +291,14 @@ export function AdminBrandKitDetailPage() {
     });
 
     const deleteMutation = useMutation({
+        meta: { entity: 'brand_kits' },
         mutationFn: () => brandKitApi.delete(kitId!),
-        onSuccess: () =>
-            Promise.all([
-                queryClient.invalidateQueries({ queryKey: ['brand', 'kit', kitId] }),
-                queryClient.invalidateQueries({ queryKey: ['brand', 'kits'] }),
-            ]).then(() => {
-                toast.success('Brand Kit deleted');
-                refresh();
-                navigate({ to: '/admin/brand-engine' });
-            }),
+        onSuccess: () => {
+            toast.success('Brand Kit deleted');
+            queryClient.invalidateQueries({ queryKey: ['brand_kits'] });
+            refresh();
+            navigate({ to: '/admin/brand-engine' });
+        },
         onError: () => toast.error('Failed to delete'),
     });
 
@@ -245,6 +327,54 @@ export function AdminBrandKitDetailPage() {
         if (deleteMutation.isPending || !kit) return;
         if (kit.isDefault) return;
         if (window.confirm('Delete this Brand Kit? This cannot be undone.')) deleteMutation.mutate();
+    };
+
+    /** Download kit as ottabase_<name>_YYYYMMDD.json – complete backup */
+    const handleDownloadKit = () => {
+        const themeName =
+            (draft.name || draft.brandName || kitForView.name || 'brand-kit')
+                .replace(/[^a-zA-Z0-9-_]/g, '_')
+                .replace(/_+/g, '_')
+                .replace(/^_|_$/g, '') || 'brand-kit';
+        const appId = kitForView.appId ?? 'default';
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const filename = `ottabase_${themeName}_${appId}_${date}.json`;
+
+        const payload: Record<string, unknown> = {
+            meta: { exportedAt: new Date().toISOString(), version: 'ottabase-brand-kit-v1' },
+            id: kitForView.id,
+            appId: kitForView.appId,
+            isDefault: kitForView.isDefault,
+            parentBrandKitId: draft.parentBrandKitId ?? kitForView.parentBrandKitId,
+            createdBy: kitForView.createdBy,
+            updatedBy: kitForView.updatedBy,
+            name: draft.name || kitForView.name,
+            slug: kitForView.slug,
+            brandName: draft.brandName || kitForView.brandName,
+            tagline: draft.tagline ?? kitForView.tagline,
+            themePresetId: draft.themePresetId ?? kitForView.themePresetId,
+            tokensJson: draft.tokensJson?.trim() || kitForView.tokensJson,
+            defaultColorScheme: draft.defaultColorScheme ?? kitForView.defaultColorScheme,
+            allowDarkModeToggle: draft.allowDarkModeToggle ?? kitForView.allowDarkModeToggle,
+            customCss: draft.customCss ?? kitForView.customCss,
+            hideOttabaseBranding: draft.hideOttabaseBranding ?? kitForView.hideOttabaseBranding,
+            logoKey: draft.logoKey ?? kitForView.logoKey,
+            logoDarkKey: draft.logoDarkKey ?? kitForView.logoDarkKey,
+            iconKey: draft.iconKey ?? kitForView.iconKey,
+            ogImageKey: draft.ogImageKey ?? kitForView.ogImageKey,
+            emailLogoKey: draft.emailLogoKey ?? kitForView.emailLogoKey,
+            createdAt: kitForView.createdAt,
+            updatedAt: kitForView.updatedAt,
+        };
+
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('Brand Kit downloaded');
     };
 
     // Stable handlers for child tab components (avoids re-render on every draft change)
@@ -282,7 +412,7 @@ export function AdminBrandKitDetailPage() {
         kit ??
         ({
             id: 'new',
-            organizationId: null,
+            appId: null,
             name: draft.name || 'New Brand Kit',
             brandName: draft.brandName || 'My App',
             tagline: draft.tagline || null,
@@ -306,9 +436,9 @@ export function AdminBrandKitDetailPage() {
     const saving = isNew ? createMutation.isPending : updateMutation.isPending;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-theme-section">
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-theme-card">
                     <Link to="/admin/brand-engine">
                         <button
                             type="button"
@@ -329,6 +459,15 @@ export function AdminBrandKitDetailPage() {
                     </Link>
                 ) : null}
                 <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        className="inline-flex items-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
+                        onClick={handleDownloadKit}
+                        title="Download kit as JSON backup (ottabase_&lt;name&gt;_YYYYMMDD.json)"
+                    >
+                        <IconDownload className="mr-2 h-4 w-4" />
+                        Download
+                    </button>
                     {isNew || isDefaultKit ? null : (
                         <button
                             type="button"
@@ -351,7 +490,7 @@ export function AdminBrandKitDetailPage() {
                 </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
+            <div className="grid gap-theme-section lg:grid-cols-[1fr,320px]">
                 <Tabs value={tab} onValueChange={(v) => setTab(v as (typeof VALID_TABS)[number])} className="w-full">
                     <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-5 lg:w-auto lg:inline-flex lg:flex-wrap">
                         <TabsTrigger value="brand">
@@ -370,6 +509,14 @@ export function AdminBrandKitDetailPage() {
                             <IconTypography className="h-4 w-4 mr-2" />
                             Fonts
                         </TabsTrigger>
+                        <TabsTrigger value="motion">
+                            <IconActivity className="h-4 w-4 mr-2" />
+                            Motion
+                        </TabsTrigger>
+                        <TabsTrigger value="cursors">
+                            <IconPointer className="h-4 w-4 mr-2" />
+                            Cursors
+                        </TabsTrigger>
                         <TabsTrigger value="advanced">
                             <IconSettings className="h-4 w-4 mr-2" />
                             Advanced
@@ -384,7 +531,7 @@ export function AdminBrandKitDetailPage() {
                             parentBrandKitId={draft.parentBrandKitId}
                             currentKitId={isNew ? undefined : kitId}
                             onChange={handleDraftMerge}
-                            nameReadOnly={!isNew && kitForView.organizationId === null}
+                            nameReadOnly={!isNew && kitForView.appId === null}
                         />
                     </TabsContent>
                     <TabsContent value="logo">
@@ -424,6 +571,12 @@ export function AdminBrandKitDetailPage() {
                             hasParent={!!draft.parentBrandKitId}
                         />
                     </TabsContent>
+                    <TabsContent value="motion">
+                        <BrandKitMotionTab tokensJson={draft.tokensJson} onTokensChange={handleTokensChange} />
+                    </TabsContent>
+                    <TabsContent value="cursors">
+                        <BrandKitCursorsTab tokensJson={draft.tokensJson} onTokensChange={handleTokensChange} />
+                    </TabsContent>
                     <TabsContent value="advanced">
                         <BrandKitAdvancedTab
                             defaultColorScheme={draft.defaultColorScheme}
@@ -438,7 +591,7 @@ export function AdminBrandKitDetailPage() {
                 </Tabs>
 
                 {/* Realtime preview – light and dark stacked */}
-                <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+                <div className="space-y-theme-card lg:sticky lg:top-4 lg:self-start">
                     <div>
                         <p className="text-sm font-medium text-muted-foreground">Live preview</p>
                         {hasColorOverrides ? (

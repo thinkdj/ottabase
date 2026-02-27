@@ -424,6 +424,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                                         // ignore bad permissions
                                     }
                                 }
+
                                 permissions = Array.from(permissionsSet);
                             } catch (error) {
                                 console.warn('Failed to load user roles for auth:', error);
@@ -710,7 +711,8 @@ export async function getSession(request: Request, env: AuthEnv, options?: Creat
 }
 
 const PBKDF2_PREFIX = 'pbkdf2';
-const PBKDF2_ITERATIONS = 120000;
+// Cloudflare Workers limits PBKDF2 to 100k iterations; OWASP recommends >= 100k for PBKDF2-SHA256
+const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_SALT_BYTES = 16;
 const PBKDF2_HASH_BYTES = 32;
 

@@ -1,4 +1,5 @@
-import { APP_META, appConfig } from '@/ottabase/config/app.config';
+import { APP_META, appConfig } from '@/ottabase/config';
+import { MANTINE_DEMO_THEME_COLORS } from '@ottabase/ui-mantine';
 import { appStateAtom, sidebarStateAtom, themeAtom } from '@/ottabase/state/appState';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import { BlogPagination } from '@ottabase/ui-components';
@@ -266,7 +267,7 @@ export function MantineDemoPage() {
                         <Group justify="space-between">
                             <Text size="sm">Available Theme Colors:</Text>
                             <Group gap="xs">
-                                {Object.keys(appConfig.theme.colors).map((colorName) => (
+                                {Object.keys(MANTINE_DEMO_THEME_COLORS).map((colorName) => (
                                     <Badge key={colorName} variant="light" size="sm">
                                         {colorName}
                                     </Badge>

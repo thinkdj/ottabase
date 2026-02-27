@@ -468,7 +468,7 @@ async function executeSecureCrud(params: {
 export function extractSecurityContext(request: Request, env?: any): SecurityContext {
     // Extract from headers
     const userId = request.headers.get('x-user-id') || undefined;
-    const organizationId = request.headers.get('x-organization-id') || undefined;
+    const organizationId = request.headers.get('x-org-id') || undefined;
     const appId = request.headers.get('x-app-id') || undefined;
 
     // Parse roles and permissions from header (comma-separated)

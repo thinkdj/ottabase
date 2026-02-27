@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { useApiMutation } from '@ottabase/ottaorm/client';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -100,8 +101,6 @@ export function AdminQueuePage() {
         title: string;
         message: string;
     }>({ open: false, title: '', message: '' });
-    const queryClient = useQueryClient();
-
     // Fetch queue overview
     const {
         data: overview,
@@ -145,121 +144,140 @@ export function AdminQueuePage() {
         enabled: activeTab === 'dlq',
     });
 
-    const handleResetStats = () => {
-        setResetStatsDialog(true);
+    const resetStatsMutation = useApiMutation({
+        endpoint: '/api/admin/queues/reset-stats',
+        method: 'POST',
+        invalidateKeys: [['admin', 'queues']],
+        mutationOptions: {
+            onSuccess: () => {
+                setIsResetting(false);
+                setResetStatsDialog(false);
+            },
+            onError: (err) => {
+                setIsResetting(false);
+                setResetStatsDialog(false);
+                setAlertDialog({
+                    open: true,
+                    title: 'Error',
+                    message: isApiError(err) ? err.message : 'Failed to reset stats',
+                });
+            },
+        },
+    });
+
+    const retryJobMutation = useApiMutation<unknown, string>({
+        endpoint: (jobId) => `/api/admin/queues/dlq/${jobId}/retry`,
+        method: 'POST',
+        invalidateKeys: [['admin', 'queues']],
+        mutationOptions: {
+            onSuccess: () => setRetryingJobId(null),
+            onError: (err) => {
+                setRetryingJobId(null);
+                setAlertDialog({
+                    open: true,
+                    title: 'Error',
+                    message: isApiError(err) ? err.message : 'Failed to retry job',
+                });
+            },
+        },
+    });
+
+    const deleteJobMutation = useApiMutation<unknown, string>({
+        endpoint: (jobId) => `/api/admin/queues/dlq/${jobId}`,
+        method: 'DELETE',
+        invalidateKeys: [['admin', 'queues']],
+        mutationOptions: {
+            onSuccess: () => {
+                setDeletingJobId(null);
+                setDeleteJobDialog(null);
+            },
+            onError: (err) => {
+                setDeletingJobId(null);
+                setDeleteJobDialog(null);
+                setAlertDialog({
+                    open: true,
+                    title: 'Error',
+                    message: isApiError(err) ? err.message : 'Failed to delete job',
+                });
+            },
+        },
+    });
+
+    const retryAllMutation = useApiMutation<{ success: number; failed: number }>({
+        endpoint: '/api/admin/queues/dlq/retry-all',
+        method: 'POST',
+        invalidateKeys: [['admin', 'queues']],
+        mutationOptions: {
+            onSuccess: (result) => {
+                setIsRetryingAll(false);
+                setRetryAllDialog(false);
+                setAlertDialog({
+                    open: true,
+                    title: 'Success',
+                    message: `Retried ${result.success} jobs. ${result.failed} failed.`,
+                });
+            },
+            onError: (err) => {
+                setIsRetryingAll(false);
+                setRetryAllDialog(false);
+                setAlertDialog({
+                    open: true,
+                    title: 'Error',
+                    message: isApiError(err) ? err.message : 'Failed to retry jobs',
+                });
+            },
+        },
+    });
+
+    const purgeDLQMutation = useApiMutation<{ deleted: number }>({
+        endpoint: '/api/admin/queues/dlq',
+        method: 'DELETE',
+        invalidateKeys: [['admin', 'queues']],
+        mutationOptions: {
+            onSuccess: (result) => {
+                setIsPurgingDLQ(false);
+                setPurgeDLQDialog(false);
+                setAlertDialog({ open: true, title: 'Success', message: `Deleted ${result.deleted} jobs from DLQ.` });
+            },
+            onError: (err) => {
+                setIsPurgingDLQ(false);
+                setPurgeDLQDialog(false);
+                setAlertDialog({
+                    open: true,
+                    title: 'Error',
+                    message: isApiError(err) ? err.message : 'Failed to purge DLQ',
+                });
+            },
+        },
+    });
+
+    const handleResetStats = () => setResetStatsDialog(true);
+    const handleConfirmResetStats = () => {
+        setIsResetting(true);
+        resetStatsMutation.mutate({});
     };
 
-    const handleConfirmResetStats = async () => {
-        try {
-            setIsResetting(true);
-            await api('/api/admin/queues/reset-stats', { method: 'POST' });
-            await queryClient.invalidateQueries({ queryKey: ['admin', 'queues'] });
-        } catch (err) {
-            setAlertDialog({
-                open: true,
-                title: 'Error',
-                message: isApiError(err) ? err.message : 'Failed to reset stats',
-            });
-        } finally {
-            setIsResetting(false);
-            setResetStatsDialog(false);
-        }
+    const handleRetryJob = (jobId: string) => {
+        setRetryingJobId(jobId);
+        retryJobMutation.mutate(jobId);
+    };
+    const handleDeleteJob = (jobId: string) => setDeleteJobDialog(jobId);
+    const handleConfirmDeleteJob = () => {
+        if (!deleteJobDialog) return;
+        setDeletingJobId(deleteJobDialog);
+        deleteJobMutation.mutate(deleteJobDialog);
     };
 
-    const handleRetryJob = async (jobId: string) => {
-        try {
-            setRetryingJobId(jobId);
-            await api(`/api/admin/queues/dlq/${jobId}/retry`, { method: 'POST' });
-            await queryClient.invalidateQueries({ queryKey: ['admin', 'queues'] });
-        } catch (err) {
-            setAlertDialog({
-                open: true,
-                title: 'Error',
-                message: isApiError(err) ? err.message : 'Failed to retry job',
-            });
-        } finally {
-            setRetryingJobId(null);
-        }
+    const handleRetryAll = () => setRetryAllDialog(true);
+    const handleConfirmRetryAll = () => {
+        setIsRetryingAll(true);
+        retryAllMutation.mutate({});
     };
 
-    const handleDeleteJob = (jobId: string) => {
-        setDeleteJobDialog(jobId);
-    };
-
-    const handleConfirmDeleteJob = async () => {
-        const jobId = deleteJobDialog;
-        if (!jobId) return;
-
-        try {
-            setDeletingJobId(jobId);
-            await api(`/api/admin/queues/dlq/${jobId}`, { method: 'DELETE' });
-            await queryClient.invalidateQueries({ queryKey: ['admin', 'queues'] });
-        } catch (err) {
-            setAlertDialog({
-                open: true,
-                title: 'Error',
-                message: isApiError(err) ? err.message : 'Failed to delete job',
-            });
-        } finally {
-            setDeletingJobId(null);
-            setDeleteJobDialog(null);
-        }
-    };
-
-    const handleRetryAll = () => {
-        setRetryAllDialog(true);
-    };
-
-    const handleConfirmRetryAll = async () => {
-        try {
-            setIsRetryingAll(true);
-            const result = await api<{ success: number; failed: number }>('/api/admin/queues/dlq/retry-all', {
-                method: 'POST',
-            });
-            setAlertDialog({
-                open: true,
-                title: 'Success',
-                message: `Retried ${result.success} jobs. ${result.failed} failed.`,
-            });
-            await queryClient.invalidateQueries({ queryKey: ['admin', 'queues'] });
-        } catch (err) {
-            setAlertDialog({
-                open: true,
-                title: 'Error',
-                message: isApiError(err) ? err.message : 'Failed to retry jobs',
-            });
-        } finally {
-            setIsRetryingAll(false);
-            setRetryAllDialog(false);
-        }
-    };
-
-    const handlePurgeDLQ = () => {
-        setPurgeDLQDialog(true);
-    };
-
-    const handleConfirmPurgeDLQ = async () => {
-        try {
-            setIsPurgingDLQ(true);
-            const result = await api<{ deleted: number }>('/api/admin/queues/dlq', {
-                method: 'DELETE',
-            });
-            setAlertDialog({
-                open: true,
-                title: 'Success',
-                message: `Deleted ${result.deleted} jobs from DLQ.`,
-            });
-            await queryClient.invalidateQueries({ queryKey: ['admin', 'queues'] });
-        } catch (err) {
-            setAlertDialog({
-                open: true,
-                title: 'Error',
-                message: isApiError(err) ? err.message : 'Failed to purge DLQ',
-            });
-        } finally {
-            setIsPurgingDLQ(false);
-            setPurgeDLQDialog(false);
-        }
+    const handlePurgeDLQ = () => setPurgeDLQDialog(true);
+    const handleConfirmPurgeDLQ = () => {
+        setIsPurgingDLQ(true);
+        purgeDLQMutation.mutate({});
     };
 
     const stats = overview?.stats;

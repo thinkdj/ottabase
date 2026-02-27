@@ -218,6 +218,9 @@ await cache.clear();
 '*:*'; // Full access (superadmin)
 ```
 
+**Note:** [@ottabase/ottaorm](../ottaorm/README.md) RLS `requiredPermissions` uses the same wildcard semantics (`*:*`,
+`brand:*`, `*:edit`), so admins with `*:*` pass RLS checks for models like menus that require `brand:edit`.
+
 ## User Model Extensions
 
 ```typescript
@@ -259,7 +262,7 @@ import {
 // Extract tenant ID from request
 const orgId = await extractOrganizationId({
     request,
-    headerName: 'X-Organization-Id', // Default
+    headerName: 'X-Org-Id', // Default
     queryParam: 'organizationId', // Default
     subdomainPrefix: 'org-', // acme.app.com → org-acme
 });

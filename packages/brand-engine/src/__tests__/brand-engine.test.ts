@@ -27,6 +27,19 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Cast helper: test fixtures always pass typography as a flat `{heading, body, handwriting}` literal.
+ * `ModeValue<T>` adds an index signature that makes TypeScript think `.heading` might be the mode-split
+ * form. This helper re-asserts the expected flat structure so tests keep reading naturally.
+ */
+function flatTypo(t: unknown): {
+    heading: { fontFamily: string };
+    body: { fontFamily: string };
+    handwriting: { fontFamily: string };
+} {
+    return t as { heading: { fontFamily: string }; body: { fontFamily: string }; handwriting: { fontFamily: string } };
+}
+
 /** Minimal valid BrandTheme fixture */
 function makeTheme(overrides: Partial<BrandTheme> = {}): BrandTheme {
     return {
@@ -217,6 +230,77 @@ describe('resolveTheme', () => {
         const theme = makeTheme();
         const resolved = resolveTheme({ base: theme });
         expect(resolved.colors.background).toBe(DEFAULT_COLORS_LIGHT.background);
+    });
+
+    it('resolves mode-split typography for light vs dark', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: DEFAULT_COLORS_LIGHT, dark: DEFAULT_COLORS_DARK },
+                typography: {
+                    light: {
+                        heading: { fontFamily: 'Inter', fontWeight: '700' },
+                        body: { fontFamily: 'Inter' },
+                        handwriting: { fontFamily: 'Caveat' },
+                    },
+                    dark: {
+                        heading: { fontFamily: 'Inter', fontWeight: '300' },
+                        body: { fontFamily: 'Inter' },
+                        handwriting: { fontFamily: 'Caveat' },
+                    },
+                },
+            },
+        });
+        const light = resolveTheme({ base: theme, mode: 'light' });
+        const dark = resolveTheme({ base: theme, mode: 'dark' });
+        expect(light.typography.heading.fontWeight).toBe('700');
+        expect(dark.typography.heading.fontWeight).toBe('300');
+    });
+
+    it('resolves mode-split spacing for light vs dark', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: DEFAULT_COLORS_LIGHT, dark: DEFAULT_COLORS_DARK },
+                spacing: {
+                    light: { section: '3rem', card: '1.5rem', element: '0.5rem' },
+                    dark: { section: '4rem', card: '2rem', element: '0.75rem' },
+                },
+            },
+        });
+        const light = resolveTheme({ base: theme, mode: 'light' });
+        const dark = resolveTheme({ base: theme, mode: 'dark' });
+        expect(light.spacing.section).toBe('3rem');
+        expect(dark.spacing.section).toBe('4rem');
+    });
+
+    it('resolves mode-split motion for light vs dark', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: DEFAULT_COLORS_LIGHT, dark: DEFAULT_COLORS_DARK },
+                motion: {
+                    light: { durationFast: '150ms', easing: 'linear' },
+                    dark: { durationFast: '80ms', easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
+                },
+            },
+        });
+        const light = resolveTheme({ base: theme, mode: 'light' });
+        const dark = resolveTheme({ base: theme, mode: 'dark' });
+        expect(light.motion.durationFast).toBe('150ms');
+        expect(dark.motion.durationFast).toBe('80ms');
+        expect(light.motion.easing).toBe('linear');
+        expect(dark.motion.easing).toBe('cubic-bezier(0.4, 0, 0.2, 1)');
+    });
+
+    it('resolves mode-split cursors for light vs dark', () => {
+        const theme = makeTheme({
+            cursors: {
+                light: { default: 'auto', pointer: 'pointer' },
+                dark: { default: 'crosshair', pointer: 'crosshair' },
+            },
+        });
+        const light = resolveTheme({ base: theme, mode: 'light' });
+        const dark = resolveTheme({ base: theme, mode: 'dark' });
+        expect(light.cursors?.default).toBe('auto');
+        expect(dark.cursors?.default).toBe('crosshair');
     });
 
     it('uses custom cursors when provided on theme', () => {
@@ -498,6 +582,72 @@ describe('buildCSSVarMap', () => {
         expect(vars['--ease-exit']).toBeDefined();
     });
 
+    it('generates --motion-* alias vars matching motion defaults', () => {
+        const vars = buildCSSVarMap(resolved);
+        // Semantic aliases used by component-level transitions
+        expect(vars['--motion-duration-fast']).toBe(vars['--duration-fast']);
+        expect(vars['--motion-duration-normal']).toBe(vars['--duration-normal']);
+        expect(vars['--motion-duration-slow']).toBe(vars['--duration-slow']);
+        expect(vars['--motion-ease-default']).toBe(vars['--ease']);
+        expect(vars['--motion-ease-enter']).toBe(vars['--ease-enter']);
+        expect(vars['--motion-ease-exit']).toBe(vars['--ease-exit']);
+        // Fixed bouncy easing preset
+        expect(vars['--motion-ease-bouncy']).toBe('cubic-bezier(0.34, 1.56, 0.64, 1)');
+    });
+
+    it('generates typography extended vars (weight, line-height, letter-spacing)', () => {
+        const vars = buildCSSVarMap(resolved);
+        expect(vars['--typography-heading-weight']).toBeDefined();
+        expect(vars['--typography-heading-line-height']).toBeDefined();
+        expect(vars['--typography-heading-spacing']).toBeDefined();
+        expect(vars['--typography-body-weight']).toBeDefined();
+        expect(vars['--typography-body-line-height']).toBeDefined();
+        expect(vars['--typography-body-spacing']).toBeDefined();
+    });
+
+    it('reflects custom typography extended props in CSS vars', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: { ...DEFAULT_COLORS_LIGHT }, dark: { ...DEFAULT_COLORS_DARK } },
+                typography: {
+                    heading: {
+                        fontFamily: 'Playfair Display',
+                        fontWeight: '700',
+                        lineHeight: 'tight',
+                        letterSpacing: 'tighter',
+                    },
+                    body: { fontFamily: 'Inter', fontWeight: '400', lineHeight: 'relaxed', letterSpacing: 'normal' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        });
+        const r = resolveTheme({ base: theme, mode: 'light' });
+        const vars = buildCSSVarMap(r);
+        expect(vars['--typography-heading-weight']).toBe('700');
+        expect(vars['--typography-heading-line-height']).toBe('tight');
+        expect(vars['--typography-heading-spacing']).toBe('tighter');
+        expect(vars['--typography-body-weight']).toBe('400');
+        expect(vars['--typography-body-line-height']).toBe('relaxed');
+        expect(vars['--typography-body-spacing']).toBe('normal');
+    });
+
+    it('normalizes semantic fontWeight to numeric CSS values', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: { ...DEFAULT_COLORS_LIGHT }, dark: { ...DEFAULT_COLORS_DARK } },
+                typography: {
+                    heading: { fontFamily: 'Inter', fontWeight: 'bold' },
+                    body: { fontFamily: 'Inter', fontWeight: 'normal' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        });
+        const r = resolveTheme({ base: theme, mode: 'light' });
+        const vars = buildCSSVarMap(r);
+        expect(vars['--typography-heading-weight']).toBe('700');
+        expect(vars['--typography-body-weight']).toBe('400');
+    });
+
     it('dark mode produces different colour vars than light', () => {
         const darkResolved = resolveTheme({ base: makeTheme(), mode: 'dark' });
         const lightVars = buildCSSVarMap(resolved);
@@ -553,7 +703,7 @@ describe('fromLegacyThemeConfig', () => {
         const brand = fromLegacyThemeConfig(legacy);
 
         expect(brand.name).toBe('default');
-        expect(brand.tokens.typography.heading.fontFamily).toBe('Inter');
+        expect(flatTypo(brand.tokens.typography).heading.fontFamily).toBe('Inter');
         expect(brand.tokens.color.light.background).toBe('0 0% 100%');
         expect(brand.tokens.radius).toBe('0.5rem');
         expect(brand.tokens.spacing).toEqual({ section: '2rem' });
@@ -713,7 +863,7 @@ describe('Theme Registry', () => {
         });
         registerTheme(v1);
         registerTheme(v2);
-        expect(getThemeByName('brand')?.tokens.typography.heading.fontFamily).toBe('Roboto');
+        expect(flatTypo(getThemeByName('brand')?.tokens.typography).heading.fontFamily).toBe('Roboto');
         expect(getRegisteredThemeNames()).toEqual(['brand']); // still one entry
     });
 
@@ -775,7 +925,7 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
         // Color should be inherited from parent (child didn't override)
         expect(merged.tokens.color.light.primary).toBe('120 80% 40%');
         // Typography should be the child's override
-        expect(merged.tokens.typography.heading.fontFamily).toBe('Roboto');
+        expect(flatTypo(merged.tokens.typography).heading.fontFamily).toBe('Roboto');
     });
 
     it('child with only color inherits parent typography', () => {
@@ -811,8 +961,8 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
         ) as unknown as BrandTheme;
 
         // Typography should be inherited from parent (child didn't override)
-        expect(merged.tokens.typography.heading.fontFamily).toBe('Merriweather');
-        expect(merged.tokens.typography.body.fontFamily).toBe('Source Sans Pro');
+        expect(flatTypo(merged.tokens.typography).heading.fontFamily).toBe('Merriweather');
+        expect(flatTypo(merged.tokens.typography).body.fontFamily).toBe('Source Sans Pro');
         // Color should be child's override
         expect(merged.tokens.color.light.primary).toBe('0 100% 50%');
     });
@@ -848,7 +998,7 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
 
         // Everything inherited from parent
         expect(merged.tokens.color.light.primary).toBe('250 50% 50%');
-        expect(merged.tokens.typography.heading.fontFamily).toBe('Georgia');
+        expect(flatTypo(merged.tokens.typography).heading.fontFamily).toBe('Georgia');
         expect(merged.tokens.radius).toBe('1rem');
         expect(merged.tokens.spacing).toEqual({ section: '4rem', card: '2rem', element: '1rem' });
     });
@@ -890,7 +1040,7 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
             childWithBoth as Record<string, unknown>,
         ) as unknown as BrandTheme;
         expect(mergedBoth.tokens.color.light.primary).toBe('0 100% 50%');
-        expect(mergedBoth.tokens.typography.heading.fontFamily).toBe('Roboto');
+        expect(flatTypo(mergedBoth.tokens.typography).heading.fontFamily).toBe('Roboto');
 
         // Step 2: Child removes color override (simulates toggle OFF)
         const childWithoutColor: Partial<BrandTheme> = {
@@ -912,7 +1062,7 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
         // Color should now come from parent
         expect(mergedWithoutColor.tokens.color.light.primary).toBe('200 60% 45%');
         // Typography still from child
-        expect(mergedWithoutColor.tokens.typography.heading.fontFamily).toBe('Roboto');
+        expect(flatTypo(mergedWithoutColor.tokens.typography).heading.fontFamily).toBe('Roboto');
     });
 
     it('three-level chain: grandparent → parent → child with selective overrides', () => {
@@ -965,7 +1115,7 @@ describe('inheritance diff (partial tokensJson overlay)', () => {
         // Color from grandparent (neither parent nor child overrode it)
         expect(merged.tokens.color.light.primary).toBe('100 50% 50%');
         // Typography from parent
-        expect(merged.tokens.typography.heading.fontFamily).toBe('Serif B');
+        expect(flatTypo(merged.tokens.typography).heading.fontFamily).toBe('Serif B');
         // Radius from child
         expect(merged.tokens.radius).toBe('1rem');
     });

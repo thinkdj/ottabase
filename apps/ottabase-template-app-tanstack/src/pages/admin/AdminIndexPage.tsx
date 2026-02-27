@@ -1,5 +1,7 @@
+import { PACKAGES_ENABLED } from '@/ottabase/config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
+import { IconMenu2 } from '@tabler/icons-react';
 import {
     Activity,
     Bell,
@@ -17,8 +19,15 @@ import {
     Power,
 } from 'lucide-react';
 
+// brandEngine is core — BrandEngine/Theme Generator always shown
+const PACKAGE_LINK_KEYS: Record<string, keyof typeof PACKAGES_ENABLED> = {
+    'Blog Management': 'ottablog',
+    'Blog Studio': 'ottablog',
+    'Referral Tracking': 'referrals',
+};
+
 export function AdminIndexPage() {
-    const adminLinks = [
+    const adminLinksAll = [
         {
             title: 'BrandEngine',
             description: 'Theme, layout, typography, and design token configuration with real-time preview.',
@@ -31,6 +40,13 @@ export function AdminIndexPage() {
             description: 'Generate color palettes and check accessibility contrast (in Brand Engine).',
             href: '/admin/brand-engine',
             icon: Palette,
+            disabled: false,
+        },
+        {
+            title: 'Menus',
+            description: 'Define navigation menus (sidebar, header). Override default nav links.',
+            href: '/admin/menus',
+            icon: IconMenu2,
             disabled: false,
         },
         {
@@ -142,6 +158,12 @@ export function AdminIndexPage() {
         },
     ];
 
+    // Filter by enabled packages (SSOT)
+    const adminLinks = adminLinksAll.filter((link) => {
+        const pkg = PACKAGE_LINK_KEYS[link.title];
+        return !pkg || PACKAGES_ENABLED[pkg];
+    });
+
     return (
         <div className="space-y-8">
             <div>
@@ -179,9 +201,11 @@ export function AdminIndexPage() {
                     <Link to="/demo" className="text-sm text-primary hover:underline">
                         Component Demos
                     </Link>
-                    <Link to="/shortlinks" className="text-sm text-primary hover:underline">
-                        Shortlinks Manager
-                    </Link>
+                    {PACKAGES_ENABLED.shortlinks && (
+                        <Link to="/shortlinks" className="text-sm text-primary hover:underline">
+                            Shortlinks Manager
+                        </Link>
+                    )}
                 </div>
             </div>
         </div>

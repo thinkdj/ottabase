@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type { BuiltInMenuSlotName, MenuSlotConfig } from '../index';
 import {
+    BUILT_IN_MENU_SLOTS,
     containerPaddingClass,
     contentWidthClass,
     createDefaultRouteMappings,
@@ -380,5 +382,45 @@ describe('containerPaddingClass', () => {
 
     it('defaults to md', () => {
         expect(containerPaddingClass()).toBe('px-4');
+    });
+});
+
+// ===========================================================================
+// Menu Slots
+// ===========================================================================
+
+describe('BUILT_IN_MENU_SLOTS', () => {
+    it('contains expected slot names', () => {
+        expect(BUILT_IN_MENU_SLOTS).toContain('header-nav');
+        expect(BUILT_IN_MENU_SLOTS).toContain('sidebar-nav');
+        expect(BUILT_IN_MENU_SLOTS).toContain('footer-nav');
+        expect(BUILT_IN_MENU_SLOTS).toContain('mobile-nav');
+        expect(BUILT_IN_MENU_SLOTS).toContain('user-menu');
+        expect(BUILT_IN_MENU_SLOTS).toContain('admin-nav');
+    });
+
+    it('has 6 built-in slot names', () => {
+        expect(BUILT_IN_MENU_SLOTS).toHaveLength(6);
+    });
+
+    it('all slot names are valid BuiltInMenuSlotName type', () => {
+        // Compile-time check – if it compiles, all values are valid
+        const slots: BuiltInMenuSlotName[] = BUILT_IN_MENU_SLOTS;
+        expect(slots.every((s) => typeof s === 'string')).toBe(true);
+    });
+});
+
+describe('MenuSlotConfig type', () => {
+    it('can be constructed with all required fields', () => {
+        const config: MenuSlotConfig = {
+            slotName: 'header-nav',
+            menuId: 'menu-123',
+            renderType: 'mega',
+            sortOrder: 0,
+        };
+        expect(config.slotName).toBe('header-nav');
+        expect(config.menuId).toBe('menu-123');
+        expect(config.renderType).toBe('mega');
+        expect(config.sortOrder).toBe(0);
     });
 });

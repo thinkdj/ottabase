@@ -1,6 +1,6 @@
-import { appConfig } from '@/ottabase/config/app.config';
+import { appConfig } from '@/ottabase/config';
 import { themeAtom } from '@/ottabase/state/appState';
-import { ProviderUIMantine } from '@ottabase/ui-mantine';
+import { MANTINE_DEMO_COLOR_DEFAULT, MANTINE_DEMO_THEME_COLORS, ProviderUIMantine } from '@ottabase/ui-mantine';
 import { atom, useAtomValue } from 'jotai';
 
 // Mantine theme preset (local to this demo component)
@@ -22,8 +22,8 @@ export function MantineLayout({ children }: { children: React.ReactNode }) {
     return (
         <ProviderUIMantine
             storagePrefix={appConfig.storage.prefix}
-            themeColors={appConfig.theme.colors}
-            primaryColor={appConfig.theme.colorDefault}
+            themeColors={MANTINE_DEMO_THEME_COLORS}
+            primaryColor={MANTINE_DEMO_COLOR_DEFAULT}
             baseTheme={mantineThemePreset}
             colorScheme={validTheme}
         >

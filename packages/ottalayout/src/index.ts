@@ -7,13 +7,15 @@
 // ---------------------------------------------------------------------------
 
 // ── Types ──────────────────────────────────────────────────────────────────
-export { createDefaultRouteMappings, DEFAULT_LAYOUT, LAYOUT_FIELD_DEFAULTS } from './types';
+export { BUILT_IN_MENU_SLOTS, DEFAULT_LAYOUT, LAYOUT_FIELD_DEFAULTS, createDefaultRouteMappings } from './types';
 export type {
+    BuiltInMenuSlotName,
     ContainerPadding,
     ContentWidth,
     Density,
     HeaderVariant,
     LayoutConfig,
+    MenuSlotConfig,
     NavigationVariant,
     RouteMapping,
     SidebarWidth,
@@ -28,8 +30,8 @@ export {
     FULLSCREEN_LAYOUT,
     HOMEPAGE_LAYOUT,
     LANDING_LAYOUT,
-    LAYOUT_PRESET_IDS,
     LAYOUT_PRESETS,
+    LAYOUT_PRESET_IDS,
     MARKETING_LAYOUT,
     MINIMAL_LAYOUT,
     SETTINGS_LAYOUT,
@@ -42,9 +44,6 @@ export type { RouteMatchResult } from './resolver';
 
 // ── Validators ─────────────────────────────────────────────────────────────
 export {
-    isValidLayoutConfig,
-    isValidPathPattern,
-    mergeLayoutConfig,
     VALID_CONTAINER_PADDINGS,
     VALID_DENSITIES,
     VALID_HEADERS,
@@ -52,6 +51,9 @@ export {
     VALID_SIDEBAR_POSITIONS,
     VALID_SIDEBAR_WIDTHS,
     VALID_WIDTHS,
+    isValidLayoutConfig,
+    isValidPathPattern,
+    mergeLayoutConfig,
 } from './validators';
 
 // ── Utilities ──────────────────────────────────────────────────────────────

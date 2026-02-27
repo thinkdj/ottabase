@@ -9,7 +9,6 @@ import { clsx } from 'clsx';
 import { ArrowLeft, Edit2, Trash2, Check, X, ExternalLink, Image as ImageIcon } from 'lucide-react';
 import type { ModelDetailProps, ModelFieldDescriptor } from '../types';
 
-// Re-export for backwards compatibility
 export type { ModelDetailProps } from '../types';
 
 interface FieldEntry {

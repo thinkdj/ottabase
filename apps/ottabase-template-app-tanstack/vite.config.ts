@@ -127,8 +127,8 @@ export default defineConfig(({ command }) => ({
                 },
             ]),
         ),
-        // Harden the dev server – disallow serving files outside the project root
-        fs: { strict: true },
+        // Allow dev server to read files from repo root (for docs markdown)
+        fs: { strict: true, allow: ['../..'] },
     },
     preview: {
         port: 4173,

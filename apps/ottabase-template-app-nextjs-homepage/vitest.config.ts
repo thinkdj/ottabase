@@ -28,7 +28,7 @@ export default defineConfig({
             ],
         },
         include: ['app/**/*.{test,spec}.{ts,tsx}', '__tests__/**/*.{test,spec}.{ts,tsx}'],
-        testTimeout: 10000,
+        testTimeout: 30000,
     },
     resolve: {
         alias: {

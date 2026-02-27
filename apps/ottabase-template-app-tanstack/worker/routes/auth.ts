@@ -10,6 +10,7 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { isEmail } from '@ottabase/utils/string';
 import { isValidUrl } from '@ottabase/utils/url';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { processReferralAttribution } from '../../ottabase/helpers/referral-attribution';
 import { registerAppEmailTemplates } from '../../src/email/templates';
 import { createVerificationToken, getAuthOptions, getUserLinkedAccounts, resolveMailer } from '../lib/auth-utils';
@@ -362,7 +363,7 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
     }
 
     if (request.method === 'PATCH') {
-        const body = await readJson<{ name?: string; image?: string | null }>(request);
+        const body = await readJson<{ name?: string; image?: string | null; timezone?: string | null }>(request);
 
         const updates: Record<string, any> = {};
         const fieldErrors: Record<string, string[]> = {};
@@ -387,6 +388,11 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
             } else {
                 updates.image = image;
             }
+        }
+
+        if (body.timezone !== undefined) {
+            const timezone = typeof body.timezone === 'string' ? body.timezone.trim() : null;
+            updates.timezone = timezone || null;
         }
 
         if (Object.keys(fieldErrors).length > 0) {
@@ -453,6 +459,11 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
         password?: string;
         name?: string;
         referralCode?: string;
+        utm_source?: string;
+        utm_medium?: string;
+        utm_campaign?: string;
+        utm_term?: string;
+        utm_content?: string;
     }>(request);
 
     const email = typeof body.email === 'string' ? normalizeEmail(body.email) : '';
@@ -520,6 +531,7 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
                 name,
                 organizationRole: 'owner',
                 roleFallbacks: ['member', 'viewer'],
+                appId: env.APP_ID ?? 'ottabase-template-app',
             });
 
             organizationId = provisioned.organizationId;
@@ -530,10 +542,35 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
         }
 
         let attributionResult;
-        if (body.referralCode) {
+        if (body.referralCode && getOttabaseConfig(env).packages.referrals) {
+            const safeHeaders: Record<string, string> = {};
+            for (const h of ['accept', 'accept-language', 'cf-connecting-country']) {
+                const v = request.headers.get(h);
+                if (v) safeHeaders[h] = v;
+            }
+            const hasUtm = body.utm_source || body.utm_medium || body.utm_campaign || body.utm_term || body.utm_content;
+            const meta =
+                hasUtm || Object.keys(safeHeaders).length > 0
+                    ? {
+                          utm: hasUtm
+                              ? {
+                                    source: body.utm_source,
+                                    medium: body.utm_medium,
+                                    campaign: body.utm_campaign,
+                                    term: body.utm_term,
+                                    content: body.utm_content,
+                                }
+                              : undefined,
+                          headers: Object.keys(safeHeaders).length > 0 ? safeHeaders : undefined,
+                      }
+                    : undefined;
             attributionResult = await processReferralAttribution({
                 newUserId,
                 referralCode: body.referralCode,
+                ipAddress: getClientIpAddress(request),
+                userAgent: request.headers.get('user-agent') ?? null,
+                referer: request.headers.get('referer') ?? null,
+                meta: meta ?? null,
             });
         }
 

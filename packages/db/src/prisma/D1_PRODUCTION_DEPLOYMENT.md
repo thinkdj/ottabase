@@ -43,7 +43,7 @@ Your app uses [wrangler.jsonc](../apps/ottabase-template-app/wrangler.jsonc) wit
       "d1_databases": [{
         "binding: "OBCF_D1",
         "database_name": "ottabase-db",
-        "database_id": "PRODUCTION_D1_DATABASE_ID"  // Must set this!
+        "database_id": "D1_DATABASE_ID"  // Placeholder = GitHub Secret name; CI substitutes at deploy time
       }]
     }
   }
@@ -79,7 +79,8 @@ wrangler d1 create ottabase-db
 
 ### 2. Update wrangler.jsonc
 
-Replace `PRODUCTION_D1_DATABASE_ID` with the actual ID:
+The placeholder `D1_DATABASE_ID` in `env.production` matches the GitHub Secret name. CI substitutes it automatically.
+For manual deploy, replace with the actual ID:
 
 ```jsonc
 {

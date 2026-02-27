@@ -1,4 +1,4 @@
-﻿# @ottabase/utils
+# @ottabase/utils
 
 A set of utility functions for file operations, string manipulation, URL handling, environment detection, currency
 formatting, email parsing, JSON handling, git operations, and more.
@@ -91,6 +91,7 @@ import {
     nowUTC,
     parseInTimezone,
     getCommonTimezones,
+    getTimezonesForSelect,
     isValidTimezone,
 } from '@ottabase/utils/timezone';
 ```
@@ -248,7 +249,10 @@ Ready-to-use format presets for common display patterns:
 
 #### Timezone Information
 
-- **`getCommonTimezones(): Array<{name, offset, label}>`** - Get list of common timezones (for dropdowns)
+- **`getCommonTimezones(): Array<{name, offset, label}>`** - Get list of common timezones (~55 major regions; fallback
+  when `Intl.supportedValuesOf` unavailable)
+- **`getTimezonesForSelect(options?: { preferredTimezone? }): Array<{name, offset, label}>`** - Full IANA list when
+  supported, or common list. Use `preferredTimezone` to show user's timezone first.
 - **`isValidTimezone(timezone: string): boolean`** - Validate IANA timezone string
 - **`getTimezoneOffsetMinutes(timezone?: Timezone, date?: DateInput): number`** - Get timezone offset in minutes
 - **`isDST(date: DateInput, timezone?: Timezone): boolean`** - Check if date is in daylight saving time
@@ -377,9 +381,11 @@ const newRecord = {
     createdAt: Date.now(), // Current time in UTC (ms)
 };
 
-// TIMEZONE SELECTOR: Get list of common timezones
-const timezones = getCommonTimezones();
-// [{ name: 'America/New_York', offset: -300, label: 'America/New York (UTC-05:00)' }, ...]
+// TIMEZONE SELECTOR: Full list (or common fallback). Pass preferredTimezone to show user's tz first.
+const timezones = getTimezonesForSelect({
+    preferredTimezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined,
+});
+// [{ name: 'America/New_York', offset: -300, label: 'America New York (UTC-05:00)' }, ...]
 ```
 
 ### Real-World SaaS Example

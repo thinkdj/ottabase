@@ -41,7 +41,6 @@ export class Post extends BaseModel {
         isFeatured: 'boolean' as const,
         allowComments: 'boolean' as const,
         isProtected: 'boolean' as const,
-        viewCount: 'number' as const,
         readingTimeMinutes: 'number' as const,
         wordCount: 'number' as const,
         seriesOrder: 'number' as const,
@@ -59,7 +58,6 @@ export class Post extends BaseModel {
         isFeatured: false,
         allowComments: true,
         isProtected: false,
-        viewCount: 0,
     };
 
     // Allow server-side writes for system-managed fields (RLS still enforces scope)
@@ -89,7 +87,6 @@ export class Post extends BaseModel {
             'isProtected',
             'passwordHash',
             'passwordHint',
-            'viewCount',
             'publishAt',
             'publishedAt',
             'postedAt',
@@ -123,7 +120,6 @@ export class Post extends BaseModel {
             'isProtected',
             'passwordHash',
             'passwordHint',
-            'viewCount',
             'publishAt',
             'publishedAt',
             'postedAt',
@@ -543,18 +539,6 @@ export class Post extends BaseModel {
                 visible: false,
             },
         },
-        viewCount: {
-            type: 'number',
-            editable: false,
-            sortable: true,
-            uiConfig: {
-                label: 'Views',
-            },
-            tableConfig: {
-                visible: true,
-                colWidth: 80,
-            },
-        },
         publishAt: {
             type: 'date',
             editable: true,
@@ -877,15 +861,6 @@ export class Post extends BaseModel {
      */
     async toggleFeatured() {
         this.set('isFeatured', !this.get('isFeatured'));
-        return this.save();
-    }
-
-    /**
-     * Increment view count
-     */
-    async incrementViews() {
-        const currentViews = this.get('viewCount') || 0;
-        this.set('viewCount', currentViews + 1);
         return this.save();
     }
 

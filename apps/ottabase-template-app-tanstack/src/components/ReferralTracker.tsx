@@ -4,14 +4,14 @@
  * Automatically tracks referral links when the ?ref parameter is present in the URL.
  * Place this component at the root of your app to enable referral tracking.
  *
- * Configuration options (via app.config.ts):
+ * Configuration options (via ottabase.config.ts / REFERRALS_CONFIG):
  * - enabled: Enable/disable the entire referral system
  * - trackClicks: Enable/disable click tracking (still tracks conversions)
  * - expiryDays: How long stored referral codes are valid
  */
 
 import { cleanReferralFromUrl, getStoredReferralCode, storeReferralCode, trackReferralClick } from '@/lib/referrals';
-import { REFERRALS_CONFIG } from '@/ottabase/config/app.config';
+import { REFERRALS_CONFIG } from '@/ottabase/config';
 import { useEffect, useRef } from 'react';
 
 export function ReferralTracker() {

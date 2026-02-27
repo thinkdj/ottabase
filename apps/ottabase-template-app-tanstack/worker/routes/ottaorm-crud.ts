@@ -1,13 +1,12 @@
+import { getSession, hashPassword } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { Post } from '@ottabase/ottablog';
+import { executeSecureCrudRequest, parseCrudRequest, registerConnection } from '@ottabase/ottaorm';
+import { OrganizationMember } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { getSession, hashPassword } from '@ottabase/auth/backend';
-import { getAuthOptions } from '../lib/auth-utils';
-import { parseCrudRequest, executeSecureCrudRequest, registerConnection } from '@ottabase/ottaorm';
-import { getSecurityContext } from '../lib/auth-utils';
-import { Post } from '@ottabase/ottablog';
-import { OrganizationMember } from '@ottabase/ottaorm/models';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { getAuthOptions, getSecurityContext } from '../lib/auth-utils';
 
 export interface OttaormCrudContext {
     request: Request;
@@ -41,6 +40,13 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         return errorResponse('Users CRUD is disabled', 403, {
             code: 'CRUD_DISABLED',
             hint: 'Use /api/users/me for profile access',
+        });
+    }
+
+    if (crudRequest.model === 'menus' || crudRequest.model === 'menu_items') {
+        return errorResponse('Menus CRUD is disabled via OttaORM', 403, {
+            code: 'CRUD_DISABLED',
+            hint: 'Use /api/brand/menus for menu CRUD (includes cache invalidation)',
         });
     }
 

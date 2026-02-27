@@ -1,4 +1,5 @@
 import { ReferralTracker } from '@/components/ReferralTracker';
+import { PACKAGES_ENABLED } from '@/ottabase/config';
 import { useTheme } from '@/ottabase/providers/ThemeContext';
 import { contentWidthClass, densityPadding } from '@ottabase/ottalayout';
 import { Outlet } from '@tanstack/react-router';
@@ -34,14 +35,16 @@ export function BrandLayout() {
 
     return (
         <div className="min-h-screen bg-background font-sans flex flex-col">
-            <ReferralTracker />
+            {PACKAGES_ENABLED.referrals && <ReferralTracker />}
 
             {/* Header */}
             {header === 'topbar' && (
                 <TopbarHeader showNav={navInHeader} containerClass={cwClass} leading={drawerTrigger} />
             )}
             {header === 'sidebar' && <TopbarHeader showNav={false} containerClass={cwClass} leading={drawerTrigger} />}
-            {header === 'minimal' && <MinimalHeader containerClass={cwClass} leading={drawerTrigger} />}
+            {header === 'minimal' && (
+                <MinimalHeader containerClass={cwClass} leading={drawerTrigger} showNav={navInHeader} />
+            )}
             {/* header === 'none' renders nothing above the content */}
             {header === 'none' && hasDrawer && (
                 <div className="fixed top-4 left-4 z-40">

@@ -1,7 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import React from 'react';
-import * as editor from '../index.ts';
+import { describe, expect, it, vi } from 'vitest';
+import * as editor from '../index';
 
 // Mock EditorJS wrapper component
 const MockEditor = ({ onSave }: { onSave?: (data: any) => void }) => (

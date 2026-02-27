@@ -1,7 +1,8 @@
 /**
  * Row-Level Security (RLS) System
  *
- * Automatic tenant isolation at the database level
+ * Automatic tenant isolation at the database level. Supports permission wildcards
+ * (*:*, brand:*, *:edit) for requiredPermissions—same semantics as @ottabase/rbac.
  *
  * @example
  * ```typescript
@@ -13,11 +14,11 @@
  * import { rlsMiddleware } from '@ottabase/ottaorm/rls';
  * return rlsMiddleware(request, env);
  *
- * // Register custom model
+ * // Register custom model (requiredPermissions uses wildcards: *:*, brand:*)
  * import { registerPolicy, RLSPolicies } from '@ottabase/ottaorm/rls';
  * registerPolicy({
  *   model: 'my_custom_model',
- *   policy: RLSPolicies.TenantScoped(false),
+ *   policy: { ...RLSPolicies.AppScoped(), requiredPermissions: ['brand:edit'] },
  *   auditEnabled: true,
  * });
  * ```

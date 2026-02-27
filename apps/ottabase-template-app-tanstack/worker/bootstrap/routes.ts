@@ -26,7 +26,7 @@ import {
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
-import { provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
+import { ensureAppBrandDefaults, provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
 import { renderBindingsErrorPage, renderLockedPage, renderMaintenancePage, renderWizardPage } from './pages';
 import { ensureMetaTable, probeBindings, writeDBState, writeKVState } from './state-resolver';
 import type { PlatformStateResult } from './types';
@@ -54,6 +54,30 @@ function jsonResp(data: unknown, status = 200): Response {
         status,
         headers: { 'Content-Type': 'application/json' },
     });
+}
+
+const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
+    owner: ['*:*'],
+    admin: ['*:*'],
+    editor: ['*:read', '*:create', '*:update'],
+    viewer: ['*:read'],
+    member: ['*:read'],
+};
+
+async function enforceDefaultRolePermissions(env: CloudflareEnv): Promise<string[]> {
+    if (!env.OBCF_D1) return [];
+
+    const normalized: string[] = [];
+    const now = Date.now();
+
+    for (const [name, permissions] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
+        await env.OBCF_D1.prepare(`UPDATE roles SET permissions = ?, updated_at = ? WHERE name = ?`)
+            .bind(JSON.stringify(permissions), now, name)
+            .run();
+        normalized.push(name);
+    }
+
+    return normalized;
 }
 
 /**
@@ -357,38 +381,22 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
     try {
         ensureOrmConnection(env);
 
+        // Seed default brand kit + route mappings for current app (brand kits are always app-scoped)
+        const appId = (env as { APP_ID?: string }).APP_ID ?? 'ottabase-template-app';
+        await ensureAppBrandDefaults('Ottabase', appId);
+
         // Seed default roles (owner, admin, editor, viewer, member)
         const createdRoles = await Role.ensureDefaultRoles();
         const roleNames = createdRoles.map((r: any) => r.get('name') as string);
+        const normalizedRoles = await enforceDefaultRolePermissions(env);
 
         // Count existing roles for reporting
         const allRolesResult = await env.OBCF_D1.prepare('SELECT name FROM roles').all();
         const existingRoles = (allRolesResult.results || []).map((r: any) => r.name as string);
 
-        // Seed default organization if it doesn't exist
-        let defaultOrgCreated = false;
-        try {
-            const existing = await env.OBCF_D1.prepare(
-                `SELECT id FROM organizations WHERE id = 'default-org' LIMIT 1`,
-            ).first<any>();
-            if (!existing) {
-                const now = Date.now();
-                await env.OBCF_D1.prepare(
-                    `INSERT INTO organizations (id, name, slug, plan, status, created_at, updated_at)
-                     VALUES ('default-org', 'Default Organization', 'default', 'free', 'active', ?, ?)`,
-                )
-                    .bind(now, now)
-                    .run();
-                defaultOrgCreated = true;
-            }
-        } catch {
-            /* organizations table may not exist if SQL migration hasn't run */
-        }
-
         return jsonResp({
             success: true,
-            roles: { created: roleNames, existing: existingRoles },
-            defaultOrganization: defaultOrgCreated ? 'created' : 'already exists',
+            roles: { created: roleNames, existing: existingRoles, normalized: normalizedRoles },
             timestamp: Date.now(),
         });
     } catch (error: any) {
@@ -442,6 +450,9 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
     try {
         ensureOrmConnection(env);
 
+        await Role.ensureDefaultRoles();
+        await enforceDefaultRolePermissions(env);
+
         // Check if users already exist
         const countRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
         const userCount = Number(countRow?.count ?? 0);
@@ -479,6 +490,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 organizationRole: 'owner',
                 assignedBy: 'system',
                 roleFallbacks: ['owner'],
+                appId: (env as { APP_ID?: string }).APP_ID ?? 'ottabase-template-app',
             });
             organizationId = provisioned.organizationId;
             assignedRole = provisioned.assignedRole;
@@ -499,6 +511,8 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         let sessionToken: string | null = null;
 
         // Primary path: JWT session strategy (default)
+        // Owner role gets *:* permissions; Auth.js callbacks will enrich from DB on /session, but JWT must have them for immediate use
+        const ownerPermissions = assignedRole === 'owner' ? ['*:*'] : [];
         try {
             const nowSeconds = Math.floor(Date.now() / 1000);
             const authSecret = (env as any).AUTH_SECRET || 'dev-secret-change-in-production';
@@ -511,7 +525,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                     emailVerified: Date.now(),
                     organizationId: organizationId || undefined,
                     roles: assignedRole ? [assignedRole] : undefined,
-                    permissions: [],
+                    permissions: ownerPermissions,
                     jti: crypto.randomUUID(),
                     iat: nowSeconds,
                     exp: nowSeconds + maxAgeSeconds,
@@ -553,6 +567,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             },
             organizationId,
             sessionToken: sessionToken ? true : false,
+            sessionExpires: Date.now() + maxAgeSeconds * 1000,
             timestamp: Date.now(),
         };
 

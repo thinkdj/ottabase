@@ -24,7 +24,6 @@ describe('ottablog models', () => {
             expect(defaults.isFeatured).toBe(false);
             expect(defaults.allowComments).toBe(true);
             expect(defaults.isProtected).toBe(false);
-            expect(defaults.viewCount).toBe(0);
         });
 
         it('should have field metadata defined', () => {
@@ -270,11 +269,6 @@ describe('ottablog models', () => {
         it('Post should have toggleFeatured method', () => {
             expect(Post.prototype.toggleFeatured).toBeDefined();
             expect(typeof Post.prototype.toggleFeatured).toBe('function');
-        });
-
-        it('Post should have incrementViews method', () => {
-            expect(Post.prototype.incrementViews).toBeDefined();
-            expect(typeof Post.prototype.incrementViews).toBe('function');
         });
 
         it('PostCategory should have generateSlug method', () => {

@@ -1,0 +1,63 @@
+/* ==========================================================================
+   @ottabase/docs — Compact layout theme
+   Dense layout: narrow sidebar, narrow content, tight spacing.
+   Good for API references and dense documentation.
+   Colors come from Brand Kit.
+   ========================================================================== */
+
+.otta-docs-theme-compact {
+    --otta-docs-sidebar-width: 220px;
+    --otta-docs-toc-width: 180px;
+    --otta-docs-content-max-width: 680px;
+    /* Radius from Brand Kit (--radius); fallback to theme default when no brand applied */
+    --otta-docs-radius: var(--radius, 2px);
+    --otta-docs-radius-sm: var(--radius, 2px);
+}
+
+.otta-docs-theme-compact .otta-docs-nav-group-label {
+    font-size: 10px;
+    padding: 10px 4px 2px;
+}
+
+.otta-docs-theme-compact .otta-docs-nav-link {
+    font-size: 13px;
+    padding: 3px 4px;
+}
+
+.otta-docs-theme-compact .otta-docs-content h1 {
+    font-size: 2rem;
+    margin: 0 0 4px;
+}
+
+.otta-docs-theme-compact .otta-docs-content h2 {
+    font-size: 1.35rem;
+    margin: 24px 0 6px;
+}
+
+.otta-docs-theme-compact .otta-docs-content h3 {
+    font-size: 1.1rem;
+    margin: 20px 0 4px;
+}
+
+.otta-docs-theme-compact .otta-docs-p {
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.otta-docs-theme-compact .otta-docs-code-block pre {
+    font-size: 13px;
+    padding: 10px 14px;
+}
+
+.otta-docs-theme-compact .otta-docs-article {
+    padding: 32px 40px 64px;
+}
+
+.otta-docs-theme-compact .otta-docs-toc-link {
+    font-size: 12px;
+}
+
+.otta-docs-theme-compact .otta-docs-pagination {
+    margin-top: 36px;
+    padding-top: 20px;
+}

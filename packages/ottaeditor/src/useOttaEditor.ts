@@ -41,13 +41,6 @@ export interface UseOttaEditorOptions extends Omit<OttaEditorConfig, 'holder'> {
     additionalPlugins?: OttaEditorPlugin[];
 
     /**
-     * Use default plugins automatically
-     * @default true
-     * @deprecated Use `defaultPlugins` instead for more control
-     */
-    useDefaultPlugins?: boolean;
-
-    /**
      * Enable editor on mount
      */
     enableOnMount?: boolean;
@@ -110,24 +103,16 @@ export function useOttaEditor(options: UseOttaEditorOptions = {}): UseOttaEditor
         plugins,
         defaultPlugins: defaultPluginsConfig,
         additionalPlugins = [],
-        useDefaultPlugins = true,
         ...editorConfig
     } = options;
 
     // Determine which plugins to use
-    let pluginsToRegister: OttaEditorPlugin[];
-
-    if (plugins !== undefined) {
-        // If plugins is explicitly provided, use only those (backward compatibility)
-        pluginsToRegister = plugins;
-    } else if (defaultPluginsConfig !== undefined) {
-        // Use the new defaultPlugins configuration
-        const selectedDefaults = getDefaultPlugins(defaultPluginsConfig);
-        pluginsToRegister = [...selectedDefaults, ...additionalPlugins];
-    } else {
-        // Fallback to legacy useDefaultPlugins behavior
-        pluginsToRegister = useDefaultPlugins ? [...defaultPlugins, ...additionalPlugins] : additionalPlugins;
-    }
+    const pluginsToRegister: OttaEditorPlugin[] =
+        plugins !== undefined
+            ? plugins
+            : defaultPluginsConfig !== undefined
+              ? [...getDefaultPlugins(defaultPluginsConfig), ...additionalPlugins]
+              : [...defaultPlugins, ...additionalPlugins];
 
     useEffect(() => {
         if (!editorRef.current || !enableOnMount || initializingRef.current || editorInstanceRef.current) {

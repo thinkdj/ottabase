@@ -1,6 +1,5 @@
 // @ts-nocheck - EditorJS plugins have inconsistent type definitions
 import CheckList from '@editorjs/checklist';
-import CodeTool from '@editorjs/code';
 import Delimiter from '@editorjs/delimiter';
 import Embed from '@editorjs/embed';
 import Header from '@editorjs/header';
@@ -14,7 +13,13 @@ import Raw from '@editorjs/raw';
 import Table from '@editorjs/table';
 import Underline from '@editorjs/underline';
 import Warning from '@editorjs/warning';
+import AdvancedImageTool from './tools/AdvancedImageTool/AdvancedImageTool';
+import CodeTool from './tools/CodeTool/CodeTool';
 import CTATool from './tools/CTATool/CTATool';
+import DisclosureTool from './tools/DisclosureTool/DisclosureTool';
+import LayoutTool from './tools/LayoutTool/LayoutTool';
+import MapTool from './tools/MapTool/MapTool';
+import ReviewTool from './tools/ReviewTool/ReviewTool';
 import SpoilerTool from './tools/SpoilerTool/SpoilerTool';
 import type { OttaEditorPlugin } from './types';
 
@@ -39,12 +44,33 @@ export const DEFAULT_PLUGIN_NAMES = {
     INLINE_CODE: 'inlineCode',
     SPOILER: 'spoiler',
     CTA: 'cta',
+    REVIEW: 'review',
+    MAP: 'map',
+    LAYOUT: 'layout',
+    DISCLOSURE: 'disclosure',
 } as const;
 
 /**
  * Type representing all available default plugin names
  */
 export type DefaultPluginName = (typeof DEFAULT_PLUGIN_NAMES)[keyof typeof DEFAULT_PLUGIN_NAMES];
+
+/**
+ * Build the tools config for nested Layout editors.
+ * Includes all default block tools except Layout itself (prevents infinite nesting).
+ */
+function buildLayoutNestedTools(): Record<string, any> {
+    return {
+        paragraph: { class: Paragraph, config: { placeholder: 'Start writing…' } },
+        header: { class: Header, config: { levels: [1, 2, 3, 4, 5, 6], defaultLevel: 2 } },
+        image: { class: AdvancedImageTool },
+        delimiter: { class: Delimiter },
+        code: { class: CodeTool, config: { placeholder: 'Enter your code here…' } },
+        list: { class: NestedList, config: { defaultStyle: 'unordered' } },
+        checklist: { class: CheckList },
+        table: { class: Table, config: { rows: 2, cols: 3 } },
+    };
+}
 
 /**
  * Default EditorJS plugins configuration
@@ -164,6 +190,32 @@ export const defaultPlugins: OttaEditorPlugin[] = [
             defaultStyle: 'primary',
         } as any,
     },
+    {
+        name: DEFAULT_PLUGIN_NAMES.REVIEW,
+        tool: ReviewTool as any,
+        config: {} as any,
+    },
+    {
+        name: DEFAULT_PLUGIN_NAMES.MAP,
+        tool: MapTool as any,
+        config: {
+            defaultProvider: 'openstreetmap',
+            defaultHeight: 400,
+            defaultTheme: 'default',
+        } as any,
+    },
+    {
+        name: DEFAULT_PLUGIN_NAMES.LAYOUT,
+        tool: LayoutTool as any,
+        config: {
+            tools: buildLayoutNestedTools(),
+        } as any,
+    },
+    {
+        name: DEFAULT_PLUGIN_NAMES.DISCLOSURE,
+        tool: DisclosureTool as any,
+        config: {} as any,
+    },
 ];
 
 /**
@@ -197,15 +249,19 @@ export {
     CodeTool,
     CTATool,
     Delimiter,
+    DisclosureTool,
     Embed,
     Header,
     InlineCode,
+    LayoutTool,
     LinkTool,
+    MapTool,
     Marker,
     NestedList,
     Paragraph,
     Quote,
     Raw,
+    ReviewTool,
     SpoilerTool,
     Table,
     Underline,

@@ -7,14 +7,72 @@ Monorepo using **pnpm workspaces** + **Turborepo**. TanStack Router + Vite app w
 
 1. **OttaORM First**: All data models MUST inherit from `BaseModel`. Do not write raw SQL or vanilla Drizzle queries
    unless absolutely necessary for performance. Logic belongs in the Model class, not in "Controllers" or "Services".
-2. **Schema Integrity**: NEVER edit `schema.prisma` directly. Use the modular schema system in
-   `packages/db/prisma/schemas/` and run `db:generate`.
+2. **Schema Integrity**: Drizzle schema lives in `apps/*/ottabase/db/schema.ts`. Export all tables there. Package tables
+   come from package schemas (e.g. `@ottabase/shortlinks/schema`) and are wired via `schemas-helper.ts`.
 3. **Workspace Protocol**: Always use `workspace:*` for internal package dependencies. Use `catalog:` for shared
    external dependencies (React, Drizzle, etc.).
 4. **Don't Reinvent**: Check `@ottabase/utils` for internal helpers (date, string, currency) and `@ottabase/ui-shadcn`
    for UI components before creating new ones.
 5. **Edge Runtime**: This is a Cloudflare Workers project. Avoid Node.js-only APIs (fs, child_process) in app code.
 6. **Fat Models**: Encapsulate logic in models. E.g., `user.activate()` instead of `authService.activate(user)`.
+
+## High-Impact Nuances (Agent Checklist)
+
+Use this as the default decision tree when shipping new work.
+
+### If adding a new app feature
+
+1. **CRUD-first via OttaORM**
+    - If it is standard entity CRUD, use model + `createModelHooks()` + `/api/ottaorm/{entity}`.
+    - Do not introduce custom CRUD endpoints unless there is a real non-CRUD need.
+2. **Keep data logic in models**
+    - Put domain logic in model methods, not page/component handlers.
+3. **Theme-safe UI**
+    - Prefer design tokens/CSS variables and existing UI packages (`@ottabase/ui-shadcn`, `@ottabase/ui-mantine`).
+    - Avoid hardcoded one-off colors/sizes that bypass theme runtime.
+4. **Cloudflare edge-safe code**
+    - Avoid Node-only APIs in app/worker code.
+5. **Minimal route logic**
+    - Worker routes should orchestrate/auth/validate; model should own persistence behavior.
+6. **Docs + tests are required**
+    - Every new feature must create/update its respective `README.MD` and include/update tests.
+
+### If adding a new package
+
+1. **Persistence decision first**
+    - No DB persistence: keep package framework-agnostic and stateless where possible.
+    - Needs DB persistence: follow OttaORM split below.
+2. **OttaORM persistence split (required)**
+    - Package exports table schema (`packages/<pkg>/src/schema.ts`).
+    - App owns the `BaseModel` class (`apps/*/ottabase/models/*`).
+    - App exports table from `apps/*/ottabase/db/schema.ts`.
+    - Ensure schema collector includes it for init/migrations.
+    - Register model for generic CRUD if entity should be API-accessible.
+3. **Dependency protocol**
+    - Internal deps: `workspace:*`
+    - Shared external deps: `catalog:`
+4. **Docs + tests are required**
+    - Every new package must create/update its own `README.MD` and include/update tests.
+
+### Quick examples
+
+```typescript
+// App feature CRUD hooks (preferred for basic CRUD)
+import { createModelHooks } from '@ottabase/ottaorm/client';
+export const { useList, useCreate, useUpdate, useDelete } = createModelHooks({ entityName: 'todos' });
+```
+
+```typescript
+// Fat model method (preferred over route/controller business logic)
+export class Todo extends BaseModel {
+    static entity = 'todos';
+    static table = todosTable;
+    async markDone() {
+        this.set('completed', true);
+        return this.save();
+    }
+}
+```
 
 ## Structure
 
@@ -148,7 +206,7 @@ export const {
     useUpdate: useUpdateTodo,
     useDelete: useDeleteTodo,
     useInfiniteList: useTodosInfinite,
-} = createModelHooks<TodoType>({ entity: 'todos' });
+} = createModelHooks<TodoType>({ entityName: 'todos' });
 
 // Usage:
 // const { data: todo } = useTodoBySlug("slug", "my-todo-slug");
@@ -312,7 +370,7 @@ export { myTable } from '@ottabase/mypackage/schema';
 // ottabase/hooks/useMyModel.ts
 import { createModelHooks } from '@ottabase/ottaorm/client';
 
-export const { useList, useCreate, useUpdate, useDelete } = createModelHooks({ entity: 'mytable' });
+export const { useList, useCreate, useUpdate, useDelete } = createModelHooks({ entityName: 'mytable' });
 ```
 
 ### 5. Run migrations
@@ -342,9 +400,9 @@ Add to catalog when:
 ```yaml
 # pnpm-workspace.yaml
 catalog:
-    react: ^19.1.0
-    typescript: ~5.8.4
-    drizzle-orm: ^0.44.2
+    react: ^19.2.4
+    typescript: ^5.9.3
+    drizzle-orm: ^0.38.3
 ```
 
 Then reference in package.json:
@@ -366,7 +424,7 @@ Add locally when:
 pnpm add --filter @ottabase/ottaeditor @editorjs/editorjs
 
 # Add to specific app
-pnpm add --filter @ottabase/template-app-tanstack some-package
+pnpm add --filter @ottabase/ottabase-template-app-tanstack some-package
 ```
 
 ### Workspace Protocol
@@ -451,6 +509,11 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 
 ### IMPORTANT NOTES FOR CODING AGENTS
 
+- **Build commands:** Agents should only run build and test commands for a particular package using the `--filter` flag
+  (e.g., `pnpm build:pkg --filter=<package>` or `pnpm test --filter=<package>`). Do not run full app builds
+  (`pnpm build`, `pnpm dev`, etc.) unless you are a cloud agent; only cloud agents may execute full builds or dev
+  workflows. Local development user is responsible for running full app builds, and shall share output with the agent as
+  required.
 - Do not make stray .MD files after a task (like SUMMARY.MD)
 - Add comments in code snippets to explain what they do, especially for complex logic.
 - `README.MD`s should be concise, and with examples. Don't be too verbose. Keep text sharply focused on the task at
@@ -483,7 +546,7 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 
 ### Formatting / Pre-commit
 
-- **Format command:** `pnpm -w prettier:check` (or `pnpm -w prettier:fix` to fix).
+- **Format command:** `pnpm format` (runs `prettier --write .` on the whole repo).
 - **Pre-commit:** We recommend `husky` + `lint-staged` to run format and basic lint on staged files.
 
 </INSTRUCTIONS>

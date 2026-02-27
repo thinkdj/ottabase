@@ -1,6 +1,3 @@
-export * from './app.config';
-export * from './api.config';
-export * from './i18n.config';
-export * from './log.config';
-export * from './query.config';
-export * from './mantine.config';
+// Re-export from ottabase.config.ts (single source via config.loader)
+export * from '../../../ottabase/config.loader';
+export * from './theme.mantine';

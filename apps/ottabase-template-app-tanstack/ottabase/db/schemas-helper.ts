@@ -31,7 +31,7 @@ import {
     usersTable,
     verificationTokensTable,
 } from '@ottabase/ottaorm';
-import { getEnabledPackageTables } from '../migrations.config';
+import { getEnabledPackageTables } from '../config.migrations';
 import { todosTable } from '../models/Todo';
 
 /**

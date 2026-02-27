@@ -39,7 +39,11 @@ export const GOOGLE_FONTS: GoogleFontMeta[] = [
     { family: 'Libre Baskerville', category: 'serif', weights: [400, 700] },
     { family: 'Crimson Text', category: 'serif', weights: [400, 600, 700] },
     { family: 'EB Garamond', category: 'serif', weights: [400, 500, 600, 700] },
-    // Display (headings)
+    { family: 'IBM Plex Serif', category: 'serif', weights: [400, 500, 600, 700] },
+    { family: 'Fraunces', category: 'serif', weights: [400, 500, 600, 700] },
+    // Display (headings, body for playful themes)
+    { family: 'Righteous', category: 'display', weights: [400] },
+    { family: 'Comfortaa', category: 'display', weights: [300, 400, 500, 600, 700] },
     { family: 'Bebas Neue', category: 'display', weights: [400] },
     { family: 'Oswald', category: 'display', weights: [400, 500, 600, 700] },
     { family: 'Bitter', category: 'display', weights: [400, 600, 700] },
@@ -53,6 +57,8 @@ export const GOOGLE_FONTS: GoogleFontMeta[] = [
     { family: 'Amatic SC', category: 'handwriting', weights: [400, 700] },
     { family: 'Kalam', category: 'handwriting', weights: [400, 700] },
     { family: 'Patrick Hand', category: 'handwriting', weights: [400] },
+    { family: 'Permanent Marker', category: 'handwriting', weights: [400] },
+    { family: 'Indie Flower', category: 'handwriting', weights: [400] },
     // Monospace (optional for code)
     { family: 'JetBrains Mono', category: 'monospace', weights: [400, 500, 600, 700] },
     { family: 'Fira Code', category: 'monospace', weights: [400, 500, 600, 700] },

@@ -66,8 +66,11 @@ vi.mock('@/components/ReferralTracker', () => ({
 vi.mock('@/hooks/useLocalStorage', () => ({
     useLocalStorage: () => [null, vi.fn()],
 }));
-vi.mock('@/ottabase/config/app.config', () => ({
+vi.mock('@/ottabase/config', () => ({
     APP_META: { appName: 'Test App' },
+    APP_ID: 'test-app',
+    APP_NAME: 'Test App',
+    PACKAGES_ENABLED: { ottablog: true, shortlinks: true, referrals: true },
 }));
 vi.mock('@/ottabase/config/i18n.config', () => ({
     i18nConfig: { enabledLanguages: ['en'] },
@@ -87,6 +90,16 @@ vi.mock('lucide-react', () => ({
     LogOut: () => <span data-testid="icon-logout" />,
     Menu: () => <span data-testid="icon-menu" />,
     X: () => <span data-testid="icon-close" />,
+}));
+
+// SidebarNav uses useApiQuery; mock to avoid QueryClientProvider in tests
+vi.mock('@ottabase/ottaorm/client', () => ({
+    useApiQuery: () => ({ data: null, isLoading: false }),
+}));
+
+// TopbarHeader, SidebarNav, BrandFooter use useBrand; mock so they use legacy/fallback content
+vi.mock('@ottabase/brand-engine-react', () => ({
+    useBrand: () => ({ config: null, isLoading: false, error: null, refresh: vi.fn() }),
 }));
 
 import { BrandLayout } from '../BrandLayout';

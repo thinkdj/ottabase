@@ -28,7 +28,7 @@ the theme value to this provider's `colorScheme` prop to keep it in sync.
 
 ```tsx
 import { ProviderUIBase } from '@ottabase/ui-base';
-import { ProviderUIMantine } from '@ottabase/ui-mantine';
+import { ProviderUIMantine, MANTINE_DEMO_THEME_COLORS, MANTINE_DEMO_COLOR_DEFAULT } from '@ottabase/ui-mantine';
 import { useAtomValue } from 'jotai';
 import { themeAtom } from '@/ottabase/state/appGlobalState'; // Adjust path as needed
 
@@ -39,8 +39,8 @@ function App({ children }) {
         <ProviderUIBase>
             <ProviderUIMantine
                 storagePrefix="ottabase"
-                themeColors={THEME_COLORS}
-                primaryColor="blue"
+                themeColors={MANTINE_DEMO_THEME_COLORS}
+                primaryColor={MANTINE_DEMO_COLOR_DEFAULT}
                 // Pass the global theme to the provider
                 colorScheme={theme as 'light' | 'dark'}
             >

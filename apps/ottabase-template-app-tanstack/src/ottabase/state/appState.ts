@@ -2,8 +2,9 @@
  * App Global State
  * Central state management for ottabase-template-app-tanstack
  */
+import { APP_ID, APP_NAME } from '@/ottabase/config';
 import { createAppState, type BaseUser, type SidebarState } from '@ottabase/state';
-import { APP_ID } from '@/ottabase/config/app.config';
+import { createStore } from 'jotai';
 
 // Extend BaseUser if needed
 export interface AppUser extends BaseUser {
@@ -14,7 +15,7 @@ export interface AppUser extends BaseUser {
 
 // Create app state with appName
 const { appStateAtom, atoms, createAtom } = createAppState<AppUser>({
-    appName: 'Ottabase',
+    appName: APP_NAME,
     initialState: {
         appId: APP_ID,
         organizationId: null,
@@ -29,6 +30,10 @@ const { appStateAtom, atoms, createAtom } = createAppState<AppUser>({
         },
     },
 });
+
+// Create global store for accessing atoms outside React components
+// This allows the API client to read appId and organizationId
+export const globalStore = createStore();
 
 // Export individual atoms for component use
 export const {

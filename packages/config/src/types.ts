@@ -66,8 +66,8 @@ export interface AppConfig {
         enforceGoogleFonts: boolean;
     };
 
-    // Theme Configuration
-    theme: {
+    // Theme Configuration (optional — Mantine demo uses @ottabase/ui-mantine; core uses BrandEngine)
+    theme?: {
         colorDefault: string;
         colors: ThemeColors;
     };

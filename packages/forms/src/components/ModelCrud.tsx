@@ -12,7 +12,6 @@ import { ModelDetail } from './ModelDetail';
 import { ModelForm } from './ModelForm';
 import type { ModelCrudProps, CrudViewMode } from '../types';
 
-// Re-export for backwards compatibility
 export type { ModelCrudProps } from '../types';
 
 interface PaginationResult<T> {

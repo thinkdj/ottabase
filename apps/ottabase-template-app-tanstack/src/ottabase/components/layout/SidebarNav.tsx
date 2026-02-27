@@ -1,7 +1,10 @@
 import { useSession } from '@/lib/auth';
+import { useBrand } from '@ottabase/brand-engine-react';
+import type { ResolvedMenuSlotData } from '@ottabase/ottamenu';
+import { MenuSlotRenderer } from '@ottabase/ottamenu';
 import { Link, useLocation } from '@tanstack/react-router';
 import { memo } from 'react';
-import { NAV_LINKS } from './layout.constants';
+import { getNavLinks } from './layout.constants';
 
 /** Map width class to px value for responsive inline style */
 const WIDTH_MAP: Record<string, string> = {
@@ -17,7 +20,37 @@ const SIDEBAR_WIDTH_CSS = `@media (min-width: 768px) { aside[style*="--sidebar-w
 export const SidebarNav = memo(function SidebarNav({ widthClass = 'w-56' }: { widthClass?: string }) {
     const { isAuthenticated } = useSession();
     const location = useLocation();
-    const links = NAV_LINKS.filter((l) => !l.authRequired || isAuthenticated);
+    const { config } = useBrand();
+    const links = getNavLinks().filter((l) => !l.authRequired || isAuthenticated);
+
+    const staticContent = links.map((link) => {
+        const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
+        return (
+            <Link
+                key={link.to}
+                to={link.to}
+                className={`px-3 py-2 text-sm rounded-md transition-colors whitespace-nowrap md:whitespace-normal ${
+                    isActive
+                        ? 'bg-accent text-accent-foreground font-medium'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                }`}
+            >
+                {link.label}
+            </Link>
+        );
+    });
+
+    const menuContent = config?.menuSlots ? (
+        <MenuSlotRenderer
+            slot="sidebar-nav"
+            menuSlots={config.menuSlots as Record<string, ResolvedMenuSlotData[]> | undefined}
+            options={{ isAuthenticated: !!isAuthenticated, pathname: location.pathname }}
+            fallback={staticContent}
+        />
+    ) : (
+        staticContent
+    );
+
     const desktopWidth = WIDTH_MAP[widthClass] ?? '14rem';
 
     return (
@@ -27,23 +60,7 @@ export const SidebarNav = memo(function SidebarNav({ widthClass = 'w-56' }: { wi
         >
             <style>{SIDEBAR_WIDTH_CSS}</style>
             <nav className="flex gap-1 p-2 overflow-x-auto md:flex-col md:gap-0.5 md:p-3 md:overflow-x-visible">
-                {links.map((link) => {
-                    const isActive =
-                        location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
-                    return (
-                        <Link
-                            key={link.to}
-                            to={link.to}
-                            className={`px-3 py-2 text-sm rounded-md transition-colors whitespace-nowrap md:whitespace-normal ${
-                                isActive
-                                    ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                            }`}
-                        >
-                            {link.label}
-                        </Link>
-                    );
-                })}
+                {menuContent}
             </nav>
         </aside>
     );

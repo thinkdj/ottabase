@@ -4,7 +4,7 @@
 // Optimized QueryClient configuration for OttaORM apps
 // ============================================================
 
-import React, { useState, createContext, useContext } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 import { QueryClient, QueryClientProvider, type QueryClientConfig } from '@tanstack/react-query';
 import type { ApiClientFunction } from './types';
 
@@ -115,6 +115,28 @@ export function OttaQueryProvider({ children, config, client, apiClient }: OttaQ
                 },
             }),
     );
+
+    // Global mutation observer: automatically invalidates entity query namespaces
+    // when any mutation that has meta.entity set succeeds.
+    //
+    // This is the SWR-like "it just works" layer — any mutation anywhere in the
+    // app that declares meta.entity will bust the right cache without the caller
+    // needing to know about query key structures.
+    //
+    // createModelHooks sets meta.entity on all its mutations automatically.
+    // useApiMutation does NOT use meta.entity — it invalidates directly via onSuccess.
+    // Custom useMutation callers can opt in by setting meta: { entity: 'posts' }.
+    useEffect(() => {
+        return queryClient.getMutationCache().subscribe((event) => {
+            if (event.type !== 'updated') return;
+            if (event.mutation.state.status !== 'success') return;
+
+            const entity = event.mutation.options.meta?.entity as string | undefined;
+            if (!entity) return;
+
+            queryClient.invalidateQueries({ queryKey: [entity] });
+        });
+    }, [queryClient]);
 
     return (
         <QueryClientProvider client={queryClient}>

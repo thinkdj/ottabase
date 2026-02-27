@@ -5,8 +5,7 @@
  * GitHub-like minimal UI with dark mode support
  */
 
-import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useOrganizations } from '@/hooks/useRBAC';
 import {
     Button,
     DropdownMenu,
@@ -15,10 +14,10 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-    Badge,
 } from '@ottabase/ui-shadcn';
-import { Building2, Check, ChevronsUpDown, Plus } from 'lucide-react';
-import { useOrganizations } from '@/hooks/useRBAC';
+import { useNavigate } from '@tanstack/react-router';
+import { Building2, Check, ChevronsUpDown, Plus, Settings } from 'lucide-react';
+import { useState } from 'react';
 
 interface OrganizationSwitcherProps {
     currentOrgId?: string;
@@ -44,6 +43,11 @@ export function OrganizationSwitcher({ currentOrgId, onOrgChange }: Organization
 
     const handleCreateNew = () => {
         navigate({ to: '/organizations/new' });
+        setIsOpen(false);
+    };
+
+    const handleOpenSettings = (orgId: string) => {
+        navigate({ to: `/organizations/${orgId}/settings` });
         setIsOpen(false);
     };
 
@@ -78,19 +82,35 @@ export function OrganizationSwitcher({ currentOrgId, onOrgChange }: Organization
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[200px]">
+            <DropdownMenuContent align="start" className="w-[240px]">
                 <DropdownMenuLabel className="text-xs text-muted-foreground">Your Organizations</DropdownMenuLabel>
                 {orgs.map((org) => (
                     <DropdownMenuItem
                         key={org.id}
                         onClick={() => handleSelect(org.id)}
-                        className="flex items-center justify-between cursor-pointer"
+                        className="flex items-center justify-between gap-2 cursor-pointer"
                     >
-                        <div className="flex items-center gap-2 overflow-hidden">
+                        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                             <Building2 className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            <span className="truncate">{org.name}</span>
+                            <span className="truncate flex-1">{org.name}</span>
+                            {currentOrgId === org.id && <Check className="h-4 w-4 flex-shrink-0" />}
                         </div>
-                        {currentOrgId === org.id && <Check className="h-4 w-4 flex-shrink-0" />}
+                        <div className="ml-1 flex flex-shrink-0 items-center gap-1 border-l border-border/70 pl-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 rounded-sm border border-transparent text-muted-foreground hover:border-border hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+                                aria-label={`Open settings for ${org.name}`}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    handleOpenSettings(org.id);
+                                }}
+                            >
+                                <Settings className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
                     </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />

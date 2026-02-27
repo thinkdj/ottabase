@@ -4,6 +4,7 @@
 // ---------------------------------------------------------------------------
 
 import { ReferralTracker } from '@/components/ReferralTracker';
+import { PACKAGES_ENABLED } from '@/ottabase/config';
 import type { LayoutConfig } from '@ottabase/ottalayout';
 import { contentWidthClass, containerPaddingClass, densityPadding, sidebarWidthClass } from '@ottabase/ottalayout';
 import { LayoutSlot } from '@ottabase/ottalayout/react';
@@ -45,7 +46,7 @@ export const ConfigurableLayout = memo(function ConfigurableLayout({ config, chi
 
     return (
         <div className="min-h-screen bg-background font-sans flex flex-col">
-            <ReferralTracker />
+            {PACKAGES_ENABLED.referrals && <ReferralTracker />}
 
             {/* Announcement slot – pages can inject banners here */}
             <LayoutSlot name="announcement" />
@@ -56,7 +57,9 @@ export const ConfigurableLayout = memo(function ConfigurableLayout({ config, chi
             {header === 'sidebar' && (
                 <TopbarHeader showNav={false} containerClass={cwClass} leading={drawerTrigger} sticky={sticky} />
             )}
-            {header === 'minimal' && <MinimalHeader containerClass={cwClass} leading={drawerTrigger} />}
+            {header === 'minimal' && (
+                <MinimalHeader containerClass={cwClass} leading={drawerTrigger} showNav={navInHeader} />
+            )}
             {header === 'none' && hasDrawer && (
                 <div className="fixed top-4 left-4 z-40">
                     <DrawerNav />

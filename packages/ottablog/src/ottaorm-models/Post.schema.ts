@@ -1,6 +1,7 @@
 /**
  * Post table schema - main content storage
  */
+import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const postsTable = sqliteTable(
@@ -116,9 +117,6 @@ export const postsTable = sqliteTable(
         passwordHash: text('password_hash'),
         passwordHint: text('password_hint'),
 
-        // View count
-        viewCount: integer('view_count').notNull().default(0),
-
         // Scheduled publish date (for scheduled posts)
         publishAt: integer('publish_at'),
 
@@ -149,6 +147,10 @@ export const postsTable = sqliteTable(
         uniqueIndex('posts_app_id_slug_unique_idx').on(table.appId, table.slug),
         // Unique slug per organization + app (multi-tenant)
         uniqueIndex('posts_org_app_slug_unique_idx').on(table.organizationId, table.appId, table.slug),
+        // Unique slug when appId is null (single-tenant/local)
+        uniqueIndex('posts_slug_unique_no_app_idx')
+            .on(table.slug)
+            .where(sql`${table.appId} IS NULL`),
 
         // Published posts query: status + publishedAt (DESC) for sorting
         index('posts_status_published_at_idx').on(table.status, table.publishedAt),

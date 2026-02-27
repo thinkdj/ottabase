@@ -29,6 +29,7 @@
         "test:apps": "turbo test --filter=./apps/*",
         "test:tanstack": "turbo test --filter=@ottabase/ottabase-template-app-tanstack",
         "test:next": "turbo test --filter=@ottabase/ottabase-template-app",
+        "test:analytics": "turbo test --filter=@ottabase/analytics -- --run",
         "test:coverage": "turbo test -- --coverage",
         "test:coverage:packages": "turbo test --filter=./packages/* -- --coverage",
         "test:coverage:apps": "turbo test --filter=./apps/* -- --coverage",
@@ -40,10 +41,11 @@
         "lint-staged": "lint-staged",
         "storybook": "storybook dev -p 6006",
         "storybook:build": "storybook build",
-        "cloudflare:setup": "pnpm --filter @ottabase/scripts exec cloudflare-setup",
-        "cloudflare:validate": "pnpm --filter @ottabase/scripts exec cloudflare-validate",
-        "create-app": "pnpm --filter @ottabase/scripts exec create-app",
-        "sync-tiers": "pnpm --filter @ottabase/scripts exec sync-tiers"
+        "cf:login": "node packages/scripts/bin/cloudflare-login.cjs",
+        "cf:setup": "node packages/scripts/bin/cloudflare-setup.cjs",
+        "cf:validate": "node packages/scripts/bin/cloudflare-validate.cjs",
+        "create-app": "node packages/scripts/bin/create-app.cjs",
+        "sync-tiers": "node packages/scripts/bin/sync-tiers.cjs"
     },
     "devDependencies": {
         "@babel/core": "catalog:",

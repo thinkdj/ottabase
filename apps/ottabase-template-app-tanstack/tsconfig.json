@@ -21,6 +21,14 @@
         },
         "types": ["@cloudflare/workers-types"]
     },
-    "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "cloudflare-worker.ts", "cloudflare-env.d.ts"],
+    "include": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "ottabase/**/*.ts",
+        "worker/**/*.ts",
+        "vite.config.ts",
+        "cloudflare-worker.ts",
+        "cloudflare-env.d.ts"
+    ],
     "exclude": ["node_modules", "dist"]
 }

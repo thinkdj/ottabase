@@ -4,7 +4,7 @@
 // Dual mode ensures brand theme applies universally on first paint for both light/dark.
 // ---------------------------------------------------------------------------
 
-import { buildCriticalStyleTagDual, getThemeOrDefault, resolveTheme } from '@ottabase/brand-engine';
+import { buildCriticalStyleTagDual } from '@ottabase/brand-engine';
 import { resolveBrandConfig } from '@ottabase/brand-engine/persistence';
 import type { CloudflareEnv } from '../../cloudflare-env';
 
@@ -32,17 +32,15 @@ export async function injectBrandCriticalCSS(
         const url = new URL(request.url);
         const path = url.pathname || '/';
         const config = await resolveBrandConfig(env, {
-            organizationId: url.searchParams.get('organizationId') ?? request.headers.get('x-organization-id') ?? null,
             appId: url.searchParams.get('appId') ?? request.headers.get('x-app-id') ?? null,
             path,
             mode: 'light', // Used for initial load; both palettes injected below
         });
         if (!config?.theme) return response;
 
-        const base = getThemeOrDefault(config.themeBase || 'default');
-        const tenantTheme = config.tenantTheme ?? {};
-        const lightTheme = resolveTheme({ base, tenantOverrides: tenantTheme, mode: 'light' });
-        const darkTheme = resolveTheme({ base, tenantOverrides: tenantTheme, mode: 'dark' });
+        // Use pre-resolved themes from server (already merged preset + tenant overrides)
+        const lightTheme = config.theme;
+        const darkTheme = config.darkTheme ?? config.theme;
 
         const html = await response.text();
         const criticalTag = buildCriticalStyleTagDual(lightTheme, darkTheme);

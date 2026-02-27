@@ -156,8 +156,14 @@ export function useSession(options?: UseSessionOptions) {
                         setPersistentSession(null);
                     }
                 } else {
-                    // Clear local session if backend session doesn't exist
-                    setPersistentSession(null);
+                    // Backend returned null – clear only if we don't have a valid stored session
+                    // (e.g. bootstrap create-owner pre-hydrates localStorage; cookie may not be set yet)
+                    setPersistentSession((prev) => {
+                        if (!prev) return null;
+                        const expiresAt = Number(prev.expires);
+                        if (Number.isFinite(expiresAt) && expiresAt > Date.now()) return prev;
+                        return null;
+                    });
                     setMemorySession(null);
                 }
             } catch (error) {

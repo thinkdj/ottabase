@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – BrandKit OttaORM Model
-// Self-contained: identity, logos, colors, fonts, theme
+// Brand Engine – BrandKit OttaORM Model (v2: per-app scoping)
+// Self-contained: identity, logos, colors, fonts, theme. Scoped by appId.
 // ---------------------------------------------------------------------------
 
 import type { LayoutConfig } from '@ottabase/ottalayout';
@@ -32,7 +32,7 @@ export class BrandKit extends BaseModel {
 
     static writable = {
         create: [
-            'organizationId',
+            'appId',
             'parentBrandKitId',
             'name',
             'slug',
@@ -62,10 +62,10 @@ export class BrandKit extends BaseModel {
 
     protected static fields: ModelFields = {
         id: { type: 'id', primaryKey: true, editable: false, uiConfig: { label: 'ID' } },
-        organizationId: {
+        appId: {
             type: 'string',
             editable: false,
-            uiConfig: { label: 'Organization' },
+            uiConfig: { label: 'App' },
             formConfig: { visible: false },
             tableConfig: { visible: false },
         },
@@ -158,15 +158,20 @@ export class BrandKit extends BaseModel {
         },
     };
 
-    /** Get or create system default Brand Kit */
+    /**
+     * Get or create system default Brand Kit (appId=null).
+     * IMPORTANT: Only call this when truly needed (bootstrap, fallback).
+     * Most code should resolve per-app kits via proper resolution pipeline.
+     */
     static async getOrCreateDefault(): Promise<BrandKit> {
         const existing = (await this.first({
-            organizationId: null,
+            appId: null,
         })) as BrandKit | null;
         if (existing) return existing;
 
+        // Bootstrap: Create system default kit
         return this.create({
-            organizationId: null,
+            appId: null,
             isDefault: true,
             name: 'Default',
             brandName: 'Ottabase',
@@ -185,7 +190,7 @@ export class BrandKit extends BaseModel {
             try {
                 parsed = JSON.parse(tokensJson as string);
             } catch {
-                // ignore
+                console.warn('[BrandKit.toBrandTheme] Failed to parse tokensJson for kit:', this.get('id'));
             }
         }
 

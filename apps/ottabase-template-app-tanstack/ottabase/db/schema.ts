@@ -60,8 +60,8 @@ export {
 };
 
 // ============================================================
-// DYNAMIC PACKAGE TABLES (Configured in migrations.config.ts)
+// DYNAMIC PACKAGE TABLES (Configured in config.migrations.ts)
 // ============================================================
-import { getEnabledPackageTables } from '../migrations.config';
+import { getEnabledPackageTables } from '../config.migrations';
 
 export const packageTables = getEnabledPackageTables();

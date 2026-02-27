@@ -30,7 +30,7 @@ The system now handles migrations for:
 
 #### Updated Files:
 
-1. **`ottabase/migrations.config.ts`**
+1. **`ottabase/config.migrations.ts`**
     - Added support for package migrations (not just tables)
     - New `getEnabledPackageMigrations()` function
     - Single source of truth for package configuration
@@ -62,7 +62,7 @@ When you call /api/ottaorm/init:
 1. schemas-helper.ts collects all schemas:
    ├─ Core schemas (from @ottabase/ottaorm)
    ├─ App schemas (from ottabase/db/schema.ts)
-   └─ Package schemas (from enabled packages in migrations.config.ts)
+   └─ Package schemas (from enabled packages in config.migrations.ts)
 
 2. migrations/index.ts collects all custom migrations:
    ├─ Core migrations (currently empty)
@@ -105,7 +105,7 @@ curl -X POST https://your-app.workers.dev/api/ottaorm/init \
 To add a new package with migrations:
 
 ```typescript
-// In ottabase/migrations.config.ts
+// In ottabase/config.migrations.ts
 import { myPackageTable } from "@ottabase/my-package/schema";
 import { myPackageMigrations } from "@ottabase/my-package/migrations";
 
@@ -193,7 +193,7 @@ The package migrations will automatically be included!
 ```
 apps/ottabase-template-app-tanstack/
 ├── ottabase/
-│   ├── migrations.config.ts          # Package enablement
+│   ├── config.migrations.ts          # Package enablement
 │   ├── db/
 │   │   ├── schema.ts                 # All table exports
 │   │   └── schemas-helper.ts         # NEW: Schema collection

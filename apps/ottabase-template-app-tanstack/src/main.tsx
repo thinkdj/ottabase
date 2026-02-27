@@ -7,7 +7,7 @@ import { Providers } from './providers/Providers';
 import { router } from './router';
 import './styles/globals.css';
 
-// Register built-in themes (default, neo, crisp, etc.) before any component uses them
+// Register built-in themes (default, neo, midnight, etc.)
 registerBuiltInThemes();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

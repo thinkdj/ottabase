@@ -98,7 +98,7 @@ The column will be automatically added! ✅
 
 ### 5. Enable a Package
 
-**Step 1:** Edit `ottabase/migrations.config.ts`
+**Step 1:** Edit `ottabase/config.migrations.ts`
 
 ```typescript
 import { shortlinksTable } from '@ottabase/shortlinks';
@@ -196,7 +196,7 @@ open https://your-app.workers.dev/migration-status
 
 ### 10. Disable a Package
 
-**Edit `ottabase/migrations.config.ts`:**
+**Edit `ottabase/config.migrations.ts`:**
 
 ```typescript
 export const migrationConfig = {
@@ -214,8 +214,8 @@ Note: This won't drop the tables, just stops managing them.
 | ----------------- | ------------------------------- | ----------------------- |
 | Add app table     | `ottabase/models/YourModel.ts`  | Create new file         |
 | Export table      | `ottabase/db/schema.ts`         | Add export              |
-| Enable package    | `ottabase/migrations.config.ts` | `migrationConfig`       |
-| Add package       | `ottabase/migrations.config.ts` | `PACKAGE_REGISTRY`      |
+| Enable package    | `ottabase/config.migrations.ts` | `migrationConfig`       |
+| Add package       | `ottabase/config.migrations.ts` | `PACKAGE_REGISTRY`      |
 | Custom migration  | `ottabase/migrations/index.ts`  | `appSpecificMigrations` |
 | Check all schemas | `ottabase/db/schemas-helper.ts` | `getAllSchemas()`       |
 
@@ -234,7 +234,7 @@ curl -X POST http://127.0.0.1:3004/api/ottaorm/init
 ### Package not working?
 
 ```typescript
-// In migrations.config.ts, verify:
+// In config.migrations.ts, verify:
 1. Package imported correctly
 2. Added to PACKAGE_REGISTRY
 3. Set to true in migrationConfig
@@ -353,13 +353,13 @@ The system successfully detects and processes models from three sources:
 
 #### 2. **Package Models** (from enabled packages)
 
-- Configured via: `/home/user/ottabase/apps/ottabase-template-app-tanstack/ottabase/migrations.config.ts`
+- Configured via: `/home/user/ottabase/apps/ottabase-template-app-tanstack/ottabase/config.migrations.ts`
 - Registry includes:
     - **ottablog**: `postsTable`, `categoriesTable`, `seriesTable`, `postTagsTable`, `postTagLinksTable`,
       `postVersionsTable`, `ottablogPluginsTable`, `ottablogThemesTable`
     - **shortlinks**: `shortlinksTable`
     - **referrals**: `referralTrackingTable`
-- Function: `getEnabledPackageTables()` dynamically includes tables based on config (migrations.config.ts:76-86)
+- Function: `getEnabledPackageTables()` dynamically includes tables based on config (config.migrations.ts:76-86)
 
 #### 3. **App Models** (app-specific)
 
