@@ -1,4 +1,5 @@
 import { BrandKit, LayoutRouteMapping, LayoutTemplate } from '@ottabase/brand-engine/persistence';
+import { Menu, MenuItem } from '@ottabase/ottamenu/persistence';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import {
     OttablogPlugin,
@@ -97,9 +98,17 @@ export function initDbConnection(env: CloudflareEnv): void {
         ...(packages.referrals ? [ReferralTracking] : []),
     ];
     const brandModels = [BrandKit, LayoutTemplate, LayoutRouteMapping];
+    const ottamenuModels = [Menu, MenuItem];
     const appModels = [Todo];
 
-    registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
+    registerModels([
+        ...coreModels,
+        ...ottablogModels,
+        ...packageModels,
+        ...brandModels,
+        ...ottamenuModels,
+        ...appModels,
+    ]);
 
     initRLS();
 }

@@ -20,6 +20,7 @@
 import type { BuiltInPackageName } from '@ottabase/config';
 import { getOttabaseConfig } from './config.loader';
 import { brandKitsTable, layoutRouteMappingsTable, layoutTemplatesTable } from '@ottabase/brand-engine/persistence';
+import { menuItemsTable, menusTable } from '@ottabase/ottamenu/persistence';
 import {
     categoriesTable,
     ottablogPluginsTable,
@@ -68,6 +69,13 @@ const PACKAGE_REGISTRY = {
         },
         migrations: [] as Migration[],
     },
+    ottamenu: {
+        tables: {
+            menusTable,
+            menuItemsTable,
+        },
+        migrations: [] as Migration[],
+    },
 } as const;
 
 /**
@@ -81,7 +89,8 @@ export function getMigrationConfig(env?: Record<string, unknown>): Record<Migrat
     const config = getOttabaseConfig(env);
     const result: Record<string, boolean> = {};
     for (const pkg of Object.keys(PACKAGE_REGISTRY) as MigrationPackageName[]) {
-        result[pkg] = pkg === 'brandEngine' ? true : (config.packages[pkg as BuiltInPackageName] ?? false);
+        result[pkg] =
+            pkg === 'brandEngine' || pkg === 'ottamenu' ? true : (config.packages[pkg as BuiltInPackageName] ?? false);
     }
     return result as Record<MigrationPackageName, boolean>;
 }
@@ -100,7 +109,7 @@ export function getEnabledPackageTables(env?: Record<string, unknown>) {
 
     // Built-in packages (brandEngine is core — always included)
     for (const [pkgName, pkgConfig] of Object.entries(PACKAGE_REGISTRY)) {
-        if (pkgName === 'brandEngine' || config.packages[pkgName as BuiltInPackageName]) {
+        if (pkgName === 'brandEngine' || pkgName === 'ottamenu' || config.packages[pkgName as BuiltInPackageName]) {
             Object.assign(tables, pkgConfig.tables);
         }
     }
@@ -125,7 +134,10 @@ export function getEnabledPackageMigrations(env?: Record<string, unknown>): Migr
 
     // Built-in packages (brandEngine is core — always included)
     for (const [pkgName, pkgConfig] of Object.entries(PACKAGE_REGISTRY)) {
-        if ((pkgName === 'brandEngine' || config.packages[pkgName as BuiltInPackageName]) && pkgConfig.migrations) {
+        if (
+            (pkgName === 'brandEngine' || pkgName === 'ottamenu' || config.packages[pkgName as BuiltInPackageName]) &&
+            pkgConfig.migrations
+        ) {
             migrations.push(...pkgConfig.migrations);
         }
     }

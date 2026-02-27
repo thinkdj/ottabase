@@ -863,6 +863,22 @@ interface SecurityContext {
 }
 ```
 
+### Permission Wildcards
+
+When a policy uses `requiredPermissions` (e.g. `['brand:edit']`), the RLS engine supports wildcard matching:
+
+| Pattern   | Matches              | Example                                   |
+| --------- | -------------------- | ----------------------------------------- |
+| `*:*`     | All permissions      | Super-admin bypasses any permission check |
+| `brand:*` | All brand actions    | Satisfies `brand:edit`, `brand:read`      |
+| `*:edit`  | Edit on any resource | Satisfies `posts:edit`, `brand:edit`      |
+
+Admins with `*:*` or `brand:*` will pass policies requiring `brand:edit`. Same semantics as
+[@ottabase/rbac](../rbac/README.md).
+
+**Limits:** Only 2-segment `resource:action` format is supported. Bare `*` does not grant—use `*:*`. 3+ segments (e.g.
+`brand:edit:admin`) are not matched by wildcards; only exact match applies.
+
 ### Audit Integration
 
 RLS violations are automatically logged to the `audit_logs` table via the `AuditLog` model. Use `getRecentViolations()`

@@ -596,6 +596,27 @@ const adminBrandKitDetailRoute = new Route({
     ),
 });
 
+// Admin Menus (Ottamenu – core)
+const adminMenusRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/menus',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminMenusListPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminMenusListPage />),
+        })),
+    ),
+});
+
+const adminMenuDetailRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/menus/$menuId',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminMenuDetailPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminMenuDetailPage />),
+        })),
+    ),
+});
+
 // Admin BrandEngine – Layouts & Route Mappings
 const adminBrandLayoutsRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -922,6 +943,8 @@ const packageRoutes = [
     { route: adminBrandKitDetailRoute, pkg: 'brandEngine' as const },
     { route: adminBrandLayoutsRoute, pkg: 'brandEngine' as const },
     { route: adminThemeGeneratorRoute, pkg: 'brandEngine' as const },
+    { route: adminMenusRoute, pkg: 'ottamenu' as const },
+    { route: adminMenuDetailRoute, pkg: 'ottamenu' as const },
     { route: adminReferralsRoute, pkg: 'referrals' as const },
     { route: adminBlogRoute, pkg: 'ottablog' as const },
     { route: adminBlogNewRoute, pkg: 'ottablog' as const },
@@ -960,7 +983,9 @@ const coreRoutes = [
 ];
 const routeTree = rootRoute.addChildren([
     ...coreRoutes,
-    ...packageRoutes.filter((r) => r.pkg === 'brandEngine' || PACKAGES_ENABLED[r.pkg]).map((r) => r.route),
+    ...packageRoutes
+        .filter((r) => r.pkg === 'brandEngine' || r.pkg === 'ottamenu' || PACKAGES_ENABLED[r.pkg])
+        .map((r) => r.route),
 ]);
 
 const browserHistory = createBrowserHistory();

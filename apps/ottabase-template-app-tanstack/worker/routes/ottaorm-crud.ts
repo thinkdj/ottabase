@@ -6,6 +6,7 @@ import { getAuthOptions } from '../lib/auth-utils';
 import { parseCrudRequest, executeSecureCrudRequest, registerConnection } from '@ottabase/ottaorm';
 import { getSecurityContext } from '../lib/auth-utils';
 import { Post } from '@ottabase/ottablog';
+import { Menu } from '@ottabase/ottamenu/persistence';
 import { OrganizationMember } from '@ottabase/ottaorm/models';
 import type { CloudflareEnv } from '../../cloudflare-env';
 
@@ -79,6 +80,17 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         (crudRequest.body as any).userId = user?.id ?? (crudRequest.body as any).userId ?? null;
         (crudRequest.body as any).organizationId = securityContext.organizationId ?? null;
         (crudRequest.body as any).appId = securityContext.appId ?? (crudRequest.body as any).appId ?? 'web';
+    }
+
+    // Menu items: inject appId from parent menu on create (denormalized for RLS)
+    if (crudRequest.model === 'menu_items' && crudRequest.body && crudRequest.method === 'POST') {
+        const menuId = (crudRequest.body as any).menuId;
+        if (menuId) {
+            const menu = await Menu.find(menuId);
+            if (menu) {
+                (crudRequest.body as any).appId = menu.get('appId') ?? securityContext.appId ?? null;
+            }
+        }
     }
 
     if (crudRequest.model === 'organizations' && crudRequest.body && crudRequest.method === 'POST') {

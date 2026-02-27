@@ -194,6 +194,28 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
+    // Menus – app-scoped (Ottamenu), requires brand:edit (same as Brand Kits). *:* satisfies this.
+    {
+        model: 'menus',
+        policy: {
+            ...RLSPolicies.AppScoped(),
+            requiredPermissions: ['brand:edit'],
+        },
+        contextFields: ['appId'],
+        auditEnabled: true,
+    },
+
+    // Menu items – app-scoped, requires brand:edit. *:* or brand:* satisfies.
+    {
+        model: 'menu_items',
+        policy: {
+            ...RLSPolicies.AppScoped(),
+            requiredPermissions: ['brand:edit'],
+        },
+        contextFields: ['appId'],
+        auditEnabled: true,
+    },
+
     // Todos - user-scoped (todos belong to users)
     {
         model: 'todos',

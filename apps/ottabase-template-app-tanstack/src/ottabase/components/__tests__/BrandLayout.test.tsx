@@ -92,6 +92,11 @@ vi.mock('lucide-react', () => ({
     X: () => <span data-testid="icon-close" />,
 }));
 
+// SidebarNav uses useApiQuery; mock to avoid QueryClientProvider in tests
+vi.mock('@ottabase/ottaorm/client', () => ({
+    useApiQuery: () => ({ data: null, isLoading: false }),
+}));
+
 import { BrandLayout } from '../BrandLayout';
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import { PACKAGES_ENABLED } from '@/ottabase/config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
+import { IconMenu2 } from '@tabler/icons-react';
 import {
     Activity,
     Bell,
@@ -39,6 +40,13 @@ export function AdminIndexPage() {
             description: 'Generate color palettes and check accessibility contrast (in Brand Engine).',
             href: '/admin/brand-engine',
             icon: Palette,
+            disabled: false,
+        },
+        {
+            title: 'Menus',
+            description: 'Define navigation menus (sidebar, header). Override default nav links.',
+            href: '/admin/menus',
+            icon: IconMenu2,
             disabled: false,
         },
         {
