@@ -15,6 +15,44 @@
 5. **Edge Runtime**: This is a Cloudflare Workers project. Avoid Node.js-only APIs (fs, child_process) in app code.
 6. **Fat Models**: Encapsulate logic in models. E.g., `user.activate()` instead of `authService.activate(user)`.
 
+## Implementation Nuances (Do This by Default)
+
+### New feature in app
+
+1. Use OttaORM CRUD first:
+    - Prefer `createModelHooks()` + `/api/ottaorm/{entity}` for basic CRUD.
+    - Add custom endpoints only for non-CRUD workflows.
+2. Keep business/data logic inside `BaseModel` methods.
+3. Reuse `@ottabase/ui-shadcn` / `@ottabase/ui-mantine` and existing theme tokens/variables.
+4. Keep worker code edge-compatible (no Node-only APIs).
+5. Keep route handlers thin (auth/validation/orchestration), not data-heavy.
+
+### New package
+
+1. Decide if persistence is needed before coding:
+    - If no persistence: keep package stateless/framework-agnostic.
+    - If persistence: package exports schema; app owns `BaseModel`.
+2. For persistence packages, always complete all wiring:
+    - Export table from package `src/schema.ts`
+    - Export table in app `ottabase/db/schema.ts`
+    - Ensure schema collection includes table for init/migrations
+    - Register model if generic CRUD API should expose the entity
+3. Use dependency protocol:
+    - Internal packages: `workspace:*`
+    - Shared externals: `catalog:`
+
+### Short examples
+
+```typescript
+// Basic CRUD hook setup (preferred path)
+const hooks = createModelHooks({ entityName: 'shortlinks' });
+```
+
+```typescript
+// Model-centric domain logic
+await shortlink.rotateSlug();
+```
+
 ---
 
 ## Architecture Overview

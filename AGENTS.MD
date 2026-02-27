@@ -16,6 +16,60 @@ Monorepo using **pnpm workspaces** + **Turborepo**. TanStack Router + Vite app w
 5. **Edge Runtime**: This is a Cloudflare Workers project. Avoid Node.js-only APIs (fs, child_process) in app code.
 6. **Fat Models**: Encapsulate logic in models. E.g., `user.activate()` instead of `authService.activate(user)`.
 
+## High-Impact Nuances (Agent Checklist)
+
+Use this as the default decision tree when shipping new work.
+
+### If adding a new app feature
+
+1. **CRUD-first via OttaORM**
+    - If it is standard entity CRUD, use model + `createModelHooks()` + `/api/ottaorm/{entity}`.
+    - Do not introduce custom CRUD endpoints unless there is a real non-CRUD need.
+2. **Keep data logic in models**
+    - Put domain logic in model methods, not page/component handlers.
+3. **Theme-safe UI**
+    - Prefer design tokens/CSS variables and existing UI packages (`@ottabase/ui-shadcn`, `@ottabase/ui-mantine`).
+    - Avoid hardcoded one-off colors/sizes that bypass theme runtime.
+4. **Cloudflare edge-safe code**
+    - Avoid Node-only APIs in app/worker code.
+5. **Minimal route logic**
+    - Worker routes should orchestrate/auth/validate; model should own persistence behavior.
+
+### If adding a new package
+
+1. **Persistence decision first**
+    - No DB persistence: keep package framework-agnostic and stateless where possible.
+    - Needs DB persistence: follow OttaORM split below.
+2. **OttaORM persistence split (required)**
+    - Package exports table schema (`packages/<pkg>/src/schema.ts`).
+    - App owns the `BaseModel` class (`apps/*/ottabase/models/*`).
+    - App exports table from `apps/*/ottabase/db/schema.ts`.
+    - Ensure schema collector includes it for init/migrations.
+    - Register model for generic CRUD if entity should be API-accessible.
+3. **Dependency protocol**
+    - Internal deps: `workspace:*`
+    - Shared external deps: `catalog:`
+
+### Quick examples
+
+```typescript
+// App feature CRUD hooks (preferred for basic CRUD)
+import { createModelHooks } from '@ottabase/ottaorm/client';
+export const { useList, useCreate, useUpdate, useDelete } = createModelHooks({ entityName: 'todos' });
+```
+
+```typescript
+// Fat model method (preferred over route/controller business logic)
+export class Todo extends BaseModel {
+    static entity = 'todos';
+    static table = todosTable;
+    async markDone() {
+        this.set('completed', true);
+        return this.save();
+    }
+}
+```
+
 ## Structure
 
 ```
