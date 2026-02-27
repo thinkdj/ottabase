@@ -108,9 +108,9 @@ export const DEMO_ITEMS: DemoItem[] = [
         buttonVariant: 'outline',
     },
     {
-        to: '/demo/cropper',
+        to: '/demo/ui-cropper',
         icon: Crop,
-        label: 'Cropper',
+        label: 'UI Cropper',
         title: 'Image Cropper',
         description:
             'Vanilla image cropper: crop, flip, rotate. Square/rect/circle viewfinder. PNG/JPEG. Zero React. ~2–3 KB gzipped.',

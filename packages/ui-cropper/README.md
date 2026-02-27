@@ -1,4 +1,4 @@
-# @ottabase/cropper
+# @ottabase/ui-cropper
 
 Advanced vanilla image cropper: crop, flip, rotate, zoom with smooth transitions. Square/rect/circle viewfinder.
 PNG/JPEG. Zero React. ~3–4 KB gzipped.
@@ -18,7 +18,7 @@ PNG/JPEG. Zero React. ~3–4 KB gzipped.
 ## Usage
 
 ```typescript
-import { Cropper } from '@ottabase/cropper';
+import { Cropper } from '@ottabase/ui-cropper';
 
 const container = document.getElementById('cropper-root');
 const cropper = new Cropper(container, {
@@ -103,7 +103,7 @@ cropper.destroy();
 ### Custom presets
 
 ```typescript
-import { Cropper, DEFAULT_ASPECT_PRESETS } from '@ottabase/cropper';
+import { Cropper, DEFAULT_ASPECT_PRESETS } from '@ottabase/ui-cropper';
 
 new Cropper(container, {
     aspectPresets: [...DEFAULT_ASPECT_PRESETS, { label: '3:2', value: 3 / 2 }, { label: '21:9', value: 21 / 9 }],

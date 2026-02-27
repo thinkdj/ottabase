@@ -232,9 +232,9 @@ const demoSplitPaneRoute = new Route({
 
 const demoCropperRoute = new Route({
     getParentRoute: () => demoLayoutRoute,
-    path: 'cropper',
+    path: 'ui-cropper',
     component: lazyRouteComponent(() =>
-        import('@/pages/demo/cropper/CropperDemoPage').then((m) => ({
+        import('@/pages/demo/ui-cropper/CropperDemoPage').then((m) => ({
             default: m.CropperDemoPage,
         })),
     ),

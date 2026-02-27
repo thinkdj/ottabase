@@ -42,7 +42,7 @@ ottabase/
 │   ├── ottaupload/       # File uploads (R2, CF Images)
 │   ├── ottarenderer/     # EditorJS block renderer
 │   ├── ottaselect/       # Headless select/combobox
-│   ├── cropper/          # Vanilla JS image cropper (~3-4 KB)
+│   ├── ui-cropper/       # Vanilla JS image cropper (~3-4 KB)
 │   ├── spotlight/        # Command palette
 │   ├── docs/             # Markdown doc viewer
 │   ├── forms/            # Auto-generated CRUD forms from OttaORM models
@@ -217,7 +217,7 @@ createTodo.mutate({ title: 'New Todo' });
 | `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)            |
 | `@ottabase/ottarenderer`      | EditorJS block renderer for React                        |
 | `@ottabase/ottaselect`        | Headless select/combobox component                       |
-| `@ottabase/cropper`           | Vanilla JS image cropper (~3-4 KB, zero deps)            |
+| `@ottabase/ui-cropper`        | Vanilla JS image cropper (~3-4 KB, zero deps)            |
 | `@ottabase/spotlight`         | Spotlight/command palette component                      |
 | `@ottabase/docs`              | Markdown doc viewer with layout themes                   |
 | `@ottabase/forms`             | Auto-generated CRUD forms from OttaORM models            |

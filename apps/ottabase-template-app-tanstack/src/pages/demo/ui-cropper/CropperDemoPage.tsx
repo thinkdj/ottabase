@@ -1,10 +1,10 @@
 /**
- * Cropper Demo Page – @ottabase/cropper
+ * Cropper Demo Page – @ottabase/ui-cropper
  * Vanilla image cropper: crop, flip, rotate. Square/rect/circle viewfinder.
  * All capabilities exposed via realtime config.
  */
-import type { CropShape } from '@ottabase/cropper';
-import { Cropper, DEFAULT_ASPECT_PRESETS } from '@ottabase/cropper';
+import type { CropShape } from '@ottabase/ui-cropper';
+import { Cropper, DEFAULT_ASPECT_PRESETS } from '@ottabase/ui-cropper';
 import {
     Button,
     Card,

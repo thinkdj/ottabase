@@ -1,5 +1,5 @@
 {
-    "name": "@ottabase/cropper",
+    "name": "@ottabase/ui-cropper",
     "version": "1.0.0",
     "description": "Advanced vanilla image cropper with smooth transitions. Crop, flip, rotate, zoom. Square/rect/circle viewfinder. Zero React.",
     "main": "dist/index.js",
