@@ -123,42 +123,24 @@ export default class MapTool implements BlockTool {
 
         input.addEventListener('change', () => {
             this.data.url = input.value.trim();
-
-            let detectedProvider: MapProvider | null = null;
-            try {
-                const parsedUrl = new URL(this.data.url);
-                const host = parsedUrl.hostname.toLowerCase();
-                const path = parsedUrl.pathname.toLowerCase();
-
-                const isGoogleDomain = host === 'google.com' || host.endsWith('.google.com');
-                const isShortGoogle = host === 'goo.gl';
-                const isGoogleMaps =
-                    host === 'maps.app.goo.gl' || ((isGoogleDomain || isShortGoogle) && path.startsWith('/maps'));
-
-                const isOpenStreetMap = [
-                    'openstreetmap.org',
-                    'www.openstreetmap.org',
-                    'osm.org',
-                    'www.osm.org',
-                ].includes(host);
-
-                if (isGoogleMaps) {
-                    detectedProvider = 'gmaps';
-                } else if (isOpenStreetMap) {
-                    detectedProvider = 'openstreetmap';
-                }
-            } catch {
-                // ignore invalid URLs; leave provider unchanged
-            }
-
-            if (detectedProvider) {
-                this.data.provider = detectedProvider;
+            // Auto-detect provider from URL
+            if (
+                this.data.url.includes('google.com/maps') ||
+                this.data.url.includes('goo.gl/maps') ||
+                this.data.url.includes('maps.app.goo.gl')
+            ) {
+                this.data.provider = 'gmaps';
                 const providerSelect = this.wrapper?.querySelector(
                     '.cdx-map__select[data-key="provider"]',
                 ) as HTMLSelectElement | null;
-                if (providerSelect) providerSelect.value = detectedProvider;
+                if (providerSelect) providerSelect.value = 'gmaps';
+            } else if (this.data.url.includes('openstreetmap.org') || this.data.url.includes('osm.org')) {
+                this.data.provider = 'openstreetmap';
+                const providerSelect = this.wrapper?.querySelector(
+                    '.cdx-map__select[data-key="provider"]',
+                ) as HTMLSelectElement | null;
+                if (providerSelect) providerSelect.value = 'openstreetmap';
             }
-
             this.refreshPreview();
         });
 

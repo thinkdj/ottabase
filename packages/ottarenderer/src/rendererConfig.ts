@@ -81,6 +81,6 @@ export const defaultEJSRConfigs = {
     },
 };
 
-export const shouldRenderContentBlocks = (contentBlocks: Record<string, unknown> | null) => {
+export const shouldRenderContentBlocks = (contentBlocks: {} | null) => {
     return contentBlocks !== null && Object.keys(contentBlocks).length > 0;
 };
