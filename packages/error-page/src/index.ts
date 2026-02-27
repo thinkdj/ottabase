@@ -1,6 +1,6 @@
 import type { MetadataGroup, MetadataSection, ErrorPageHTMLOptions, ParsedError, StackFrame } from './types.js';
 import { parseError } from './parser.js';
-import { renderHTML } from './renderer.js';
+import { renderHTML, renderProductionHTML } from './renderer.js';
 
 /**
  * ErrorPage — Pretty print JavaScript errors as self-contained HTML pages.
@@ -117,6 +117,17 @@ export class ErrorPage {
             cspNonce: options?.cspNonce,
         });
     }
+
+    /**
+     * Render a minimal, production-safe error page.
+     * Does not expose stack traces, internal paths, or error details.
+     *
+     * @param status - HTTP status code
+     * @param options - Optional title, message, and CSP nonce
+     */
+    toProductionHTML(status: number, options?: { title?: string; message?: string; cspNonce?: string }): string {
+        return renderProductionHTML(status, options);
+    }
 }
 
 /**
@@ -129,7 +140,7 @@ function maskValue(value: string): string {
 
 // ─── Re-exports ──────────────────────────────────────────────────────────
 export { parseError } from './parser.js';
-export { renderHTML } from './renderer.js';
+export { renderHTML, renderProductionHTML } from './renderer.js';
 export type {
     ParsedError,
     StackFrame,

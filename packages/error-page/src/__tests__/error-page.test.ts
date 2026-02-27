@@ -152,4 +152,22 @@ describe('ErrorPage', () => {
         expect(htmlNoOffset).toContain('<!DOCTYPE html>');
         expect(htmlWithOffset).toContain('<!DOCTYPE html>');
     });
+
+    it('should render production-safe error page via toProductionHTML', () => {
+        const errorPage = new ErrorPage();
+        const html = errorPage.toProductionHTML(500);
+
+        expect(html).toContain('<!DOCTYPE html>');
+        expect(html).toContain('500');
+        expect(html).toContain('Server Error');
+        expect(html).not.toContain('Stack Trace');
+    });
+
+    it('should render production page with custom title', () => {
+        const errorPage = new ErrorPage();
+        const html = errorPage.toProductionHTML(403, { title: 'Forbidden' });
+
+        expect(html).toContain('403');
+        expect(html).toContain('Forbidden');
+    });
 });

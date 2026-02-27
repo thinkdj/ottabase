@@ -166,3 +166,82 @@ describe('renderHTML', () => {
         expect(html).toContain('&lt;script&gt;');
     });
 });
+
+describe('renderProductionHTML', () => {
+    let renderProductionHTML: typeof import('../renderer').renderProductionHTML;
+
+    beforeAll(async () => {
+        const mod = await import('../renderer');
+        renderProductionHTML = mod.renderProductionHTML;
+    });
+
+    it('should return a valid HTML document', () => {
+        const html = renderProductionHTML(500);
+
+        expect(html).toContain('<!DOCTYPE html>');
+        expect(html).toContain('<html');
+        expect(html).toContain('</html>');
+    });
+
+    it('should show the status code prominently', () => {
+        const html = renderProductionHTML(500);
+
+        expect(html).toContain('500');
+    });
+
+    it('should show default title for 500 errors', () => {
+        const html = renderProductionHTML(500);
+
+        expect(html).toContain('Server Error');
+    });
+
+    it('should show default title for 404 errors', () => {
+        const html = renderProductionHTML(404);
+
+        expect(html).toContain('Not Found');
+    });
+
+    it('should accept custom title and message', () => {
+        const html = renderProductionHTML(503, {
+            title: 'Service Unavailable',
+            message: 'We are currently undergoing maintenance.',
+        });
+
+        expect(html).toContain('Service Unavailable');
+        expect(html).toContain('We are currently undergoing maintenance.');
+    });
+
+    it('should not contain stack traces or internal details', () => {
+        const html = renderProductionHTML(500);
+
+        expect(html).not.toContain('at ');
+        expect(html).not.toContain('node_modules');
+        expect(html).not.toContain('Stack Trace');
+    });
+
+    it('should include a "Go Home" link', () => {
+        const html = renderProductionHTML(500);
+
+        expect(html).toContain('Go Home');
+        expect(html).toContain('href="/"');
+    });
+
+    it('should support CSP nonce', () => {
+        const html = renderProductionHTML(500, { cspNonce: 'prod-nonce' });
+
+        expect(html).toContain('nonce="prod-nonce"');
+    });
+
+    it('should escape HTML in custom messages', () => {
+        const html = renderProductionHTML(500, { message: '<script>alert("xss")</script>' });
+
+        expect(html).not.toContain('<script>alert("xss")</script>');
+        expect(html).toContain('&lt;script&gt;');
+    });
+
+    it('should support dark mode via prefers-color-scheme', () => {
+        const html = renderProductionHTML(500);
+
+        expect(html).toContain('prefers-color-scheme: dark');
+    });
+});

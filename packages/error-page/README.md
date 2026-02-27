@@ -88,6 +88,17 @@ errorPage.group('Request', {
 Automatically extract method, URL, and common headers from a `Request` object. Sensitive headers (`authorization`,
 `cookie`) are automatically masked.
 
+### `errorPage.toProductionHTML(status, options?)`
+
+Render a minimal, production-safe error page. Does not expose stack traces, internal paths, or error details.
+
+```ts
+const html = errorPage.toProductionHTML(500, {
+    title: 'Service Unavailable',
+    message: 'We are currently undergoing maintenance.',
+});
+```
+
 ### `errorPage.parse(error, offset?)`
 
 Parse an error into a structured `ParsedError` object without rendering HTML.
@@ -100,6 +111,10 @@ Standalone function to parse errors into structured objects.
 
 Standalone function to render a `ParsedError` to HTML.
 
+### `renderProductionHTML(status, options?)`
+
+Standalone function to render a minimal production error page.
+
 ## Integration with Cloudflare Worker
 
 ```ts
@@ -110,10 +125,10 @@ export default {
         try {
             return await handleRequest(request, env);
         } catch (err) {
-            const isDev = env.ENVIRONMENT === 'development';
+            const isDev = !env.ENVIRONMENT || env.ENVIRONMENT === 'development';
+            const errorPage = new ErrorPage();
 
             if (isDev) {
-                const errorPage = new ErrorPage();
                 errorPage.addRequestMetadata(request);
                 const html = errorPage.toHTML(err, { title: 'Worker Error' });
                 return new Response(html, {
@@ -122,7 +137,12 @@ export default {
                 });
             }
 
-            return new Response('Internal Server Error', { status: 500 });
+            // Production: clean error page without internals
+            const html = errorPage.toProductionHTML(500);
+            return new Response(html, {
+                status: 500,
+                headers: { 'Content-Type': 'text/html; charset=utf-8' },
+            });
         }
     },
 };

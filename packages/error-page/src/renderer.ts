@@ -684,3 +684,79 @@ export function renderHTML(
 </body>
 </html>`;
 }
+
+// ─── Production Error Page ────────────────────────────────────────────────
+
+/**
+ * Render a minimal, safe error page for production environments.
+ * Does not expose stack traces, internal paths, or error details.
+ *
+ * @param status - HTTP status code
+ * @param options - Optional title, message, and CSP nonce
+ */
+export function renderProductionHTML(
+    status: number,
+    options: {
+        title?: string;
+        message?: string;
+        cspNonce?: string;
+    } = {},
+): string {
+    const statusTitle = status >= 500 ? 'Server Error' : status === 404 ? 'Not Found' : 'Error';
+    const title = options.title ?? statusTitle;
+    const message = options.message ?? 'Something went wrong. Please try again later.';
+    const nonce = options.cspNonce ? ` nonce="${esc(options.cspNonce)}"` : '';
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${status} — ${esc(title)}</title>
+    <style${nonce}>
+    :root {
+        --ep-bg: #fafafa; --ep-fg: #1a1a1a; --ep-muted: #6b7280;
+        --ep-border: #e5e7eb; --ep-accent: #dc2626; --ep-accent-bg: #fef2f2;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --ep-bg: #0f0f0f; --ep-fg: #e5e5e5; --ep-muted: #9ca3af;
+            --ep-border: #2d2d2d; --ep-accent: #ef4444; --ep-accent-bg: #1c0d0d;
+        }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background: var(--ep-bg); color: var(--ep-fg); line-height: 1.6;
+        display: flex; align-items: center; justify-content: center; min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+    }
+    .ep-prod { text-align: center; max-width: 480px; padding: 48px 24px; }
+    .ep-prod-status {
+        font-size: 72px; font-weight: 700; color: var(--ep-accent);
+        line-height: 1; margin-bottom: 8px;
+    }
+    .ep-prod-title {
+        font-size: 20px; font-weight: 600; margin-bottom: 12px; color: var(--ep-fg);
+    }
+    .ep-prod-message {
+        font-size: 14px; color: var(--ep-muted); margin-bottom: 24px; line-height: 1.5;
+    }
+    .ep-prod-action {
+        display: inline-block; padding: 8px 20px; font-size: 13px; font-weight: 500;
+        color: var(--ep-fg); border: 1px solid var(--ep-border); border-radius: 6px;
+        text-decoration: none; transition: background 0.15s;
+    }
+    .ep-prod-action:hover { background: var(--ep-accent-bg); }
+    </style>
+</head>
+<body>
+<div class="ep-prod">
+    <div class="ep-prod-status">${status}</div>
+    <div class="ep-prod-title">${esc(title)}</div>
+    <div class="ep-prod-message">${esc(message)}</div>
+    <a href="/" class="ep-prod-action">Go Home</a>
+</div>
+</body>
+</html>`;
+}

@@ -141,28 +141,42 @@ export default {
         } catch (err) {
             console.error('Worker unhandled error:', err);
 
-            // In dev mode, return a pretty HTML error page
+            const status = err instanceof ServiceError ? err.status : 500;
             const isDev =
                 !(env as Record<string, unknown>).ENVIRONMENT ||
                 (env as Record<string, unknown>).ENVIRONMENT === 'development' ||
                 (env as Record<string, unknown>).ENVIRONMENT === 'dev';
 
-            if (isDev && isHtmlRequest(request)) {
-                const errorPage = new ErrorPage();
+            // For non-HTML requests (API calls), always return JSON
+            if (!isHtmlRequest(request)) {
+                if (err instanceof ServiceError) {
+                    return errorResponse(err.message, err.status, err.toApiResponse());
+                }
+                return errorResponse(
+                    isDev && err instanceof Error ? err.message : 'An unexpected error occurred',
+                    500,
+                    { code: 'INTERNAL_SERVER_ERROR' },
+                );
+            }
+
+            // For HTML requests: show detailed dev error page or clean production page
+            const errorPage = new ErrorPage();
+            if (isDev) {
                 errorPage.addRequestMetadata(request);
                 const html = errorPage.toHTML(err, { title: 'Worker Error' });
                 return new Response(html, {
-                    status: err instanceof ServiceError ? err.status : 500,
+                    status,
                     headers: { 'Content-Type': 'text/html; charset=utf-8' },
                 });
             }
 
-            if (err instanceof ServiceError) {
-                return errorResponse(err.message, err.status, err.toApiResponse());
-            }
-
-            return errorResponse(err instanceof Error ? err.message : 'An unexpected error occurred', 500, {
-                code: 'INTERNAL_SERVER_ERROR',
+            // Production: minimal error page without internal details
+            const html = errorPage.toProductionHTML(status, {
+                title: err instanceof ServiceError ? err.message : undefined,
+            });
+            return new Response(html, {
+                status,
+                headers: { 'Content-Type': 'text/html; charset=utf-8' },
             });
         }
     },
