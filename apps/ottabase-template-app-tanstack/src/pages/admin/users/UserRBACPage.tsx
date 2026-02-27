@@ -8,6 +8,14 @@
 import { useState } from 'react';
 import { useParams, Link } from '@tanstack/react-router';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Avatar,
     AvatarFallback,
     AvatarImage,
@@ -69,6 +77,7 @@ export function UserRBACPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedOrg, setSelectedOrg] = useState('');
     const [selectedRole, setSelectedRole] = useState<MemberRole>('member');
+    const [removeMembership, setRemoveMembership] = useState<{ id: string; orgName: string } | null>(null);
 
     const { data: user, isLoading: isUserLoading } = useApiQuery<{ data: UserRecord }, UserRecord>({
         entity: 'users',
@@ -144,8 +153,14 @@ export function UserRBACPage() {
     };
 
     const handleRemove = (membershipId: string, orgName: string) => {
-        if (!confirm(`Remove user from ${orgName}?`)) return;
-        removeMember.mutate(membershipId as string);
+        setRemoveMembership({ id: membershipId, orgName });
+    };
+
+    const handleConfirmRemove = () => {
+        if (removeMembership) {
+            removeMember.mutate(removeMembership.id as string);
+        }
+        setRemoveMembership(null);
     };
 
     const handleRoleChange = (membershipId: string, newRole: MemberRole) => {
@@ -362,6 +377,22 @@ export function UserRBACPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <AlertDialog open={removeMembership !== null} onOpenChange={(open) => !open && setRemoveMembership(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove from Organization?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Remove this user from {removeMembership?.orgName ?? 'the organization'}? They will lose
+                            access to all resources in this organization.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmRemove}>Remove</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

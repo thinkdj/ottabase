@@ -3,6 +3,14 @@
 // ---------------------------------------------------------------------------
 
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Badge,
     Button,
     Card,
@@ -19,6 +27,7 @@ import { IconCopy, IconDotsVertical, IconGitBranch, IconPalette, IconPlus, IconS
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Link, useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { brandKitApi, type BrandKitItem } from './brand/brandApi';
 
@@ -146,6 +155,7 @@ function KitCard({
     isDefault?: boolean;
 }) {
     const isDefaultKit = Boolean(isDefault ?? kit.isDefault);
+    const [deleteOpen, setDeleteOpen] = useState(false);
 
     return (
         <Link
@@ -197,7 +207,7 @@ function KitCard({
                             <DropdownMenuItem
                                 onClick={(e) => {
                                     e.preventDefault();
-                                    if (window.confirm('Delete this Brand Kit? This cannot be undone.')) onDelete();
+                                    setDeleteOpen(true);
                                 }}
                                 disabled={deleting}
                                 className="text-destructive focus:text-destructive"
@@ -208,6 +218,28 @@ function KitCard({
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+
+            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <AlertDialogContent onClick={(e) => e.preventDefault()}>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Brand Kit?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This cannot be undone. The Brand Kit &quot;{kit.name}&quot; will be permanently deleted.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                onDelete();
+                                setDeleteOpen(false);
+                            }}
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Link>
     );
 }

@@ -5,6 +5,14 @@
 import type { MenuItemTreeNode } from '@ottabase/ottamenu';
 import { buildItemTree, renderMenu } from '@ottabase/ottamenu';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Button,
     Card,
     CardContent,
@@ -297,6 +305,7 @@ function MenuItemsEditor({ menu }: { menu: MenuWithItemsDto }) {
     const { refresh: refreshBrand } = useBrand();
     const [editingId, setEditingId] = useState<string | null>(null);
     const [newItemParentId, setNewItemParentId] = useState<string | null | undefined>(undefined);
+    const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
 
     const refreshMenuAndBrand = useCallback(() => {
         queryClient.invalidateQueries({ queryKey: ['menus', menu.id] });
@@ -350,9 +359,7 @@ function MenuItemsEditor({ menu }: { menu: MenuWithItemsDto }) {
                         editingId={editingId}
                         setEditingId={setEditingId}
                         onAddChild={(parentId) => setNewItemParentId(parentId)}
-                        onDelete={(id) =>
-                            window.confirm('Remove this item and its children?') && deleteItemMutation.mutate(id)
-                        }
+                        onDelete={(id) => setDeleteItemId(id)}
                         onSaved={() => {
                             setEditingId(null);
                             refreshMenuAndBrand();
@@ -381,6 +388,28 @@ function MenuItemsEditor({ menu }: { menu: MenuWithItemsDto }) {
                     </Button>
                 )}
             </CardContent>
+
+            <AlertDialog open={deleteItemId !== null} onOpenChange={(open) => !open && setDeleteItemId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Menu Item?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This item and all its children will be removed. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (deleteItemId) deleteItemMutation.mutate(deleteItemId);
+                                setDeleteItemId(null);
+                            }}
+                        >
+                            Remove
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     );
 }

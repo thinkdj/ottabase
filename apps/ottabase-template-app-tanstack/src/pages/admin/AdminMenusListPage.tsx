@@ -3,6 +3,14 @@
 // ---------------------------------------------------------------------------
 
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Button,
     Card,
     CardContent,
@@ -27,6 +35,7 @@ export function AdminMenusListPage() {
     const navigate = useNavigate();
     const [slotsModalOpen, setSlotsModalOpen] = useState(false);
     const [slotsModalMenuId, setSlotsModalMenuId] = useState<string | null>(null);
+    const [deleteMenuId, setDeleteMenuId] = useState<string | null>(null);
 
     const { data: menus = [], isLoading } = useQuery({
         queryKey: ['menus', 'list'],
@@ -109,11 +118,7 @@ export function AdminMenusListPage() {
                                     key={menu.id}
                                     menu={menu}
                                     onAssignToSlots={() => openSlotsModal(menu.id)}
-                                    onDelete={() => {
-                                        if (window.confirm('Delete this menu? All items will be removed.')) {
-                                            deleteMutation.mutate(menu.id);
-                                        }
-                                    }}
+                                    onDelete={() => setDeleteMenuId(menu.id)}
                                     deleting={deleteMutation.isPending}
                                 />
                             ))}
@@ -121,6 +126,28 @@ export function AdminMenusListPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <AlertDialog open={deleteMenuId !== null} onOpenChange={(open) => !open && setDeleteMenuId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Menu?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            All items in this menu will be removed. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (deleteMenuId) deleteMutation.mutate(deleteMenuId);
+                                setDeleteMenuId(null);
+                            }}
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
@@ -176,7 +203,7 @@ function MenuCard({
                         <DropdownMenuItem
                             onClick={(e) => {
                                 e.preventDefault();
-                                if (window.confirm('Delete this menu? All items will be removed.')) onDelete();
+                                onDelete();
                             }}
                             disabled={deleting}
                             className="text-destructive focus:text-destructive"

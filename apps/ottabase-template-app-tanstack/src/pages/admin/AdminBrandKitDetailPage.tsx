@@ -5,7 +5,20 @@
 import { buildCSSVarMap, buildPreviewTheme, injectFont } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from '@ottabase/ui-shadcn';
 import {
     IconActivity,
     IconArrowLeft,
@@ -244,6 +257,7 @@ export function AdminBrandKitDetailPage() {
         emailLogoKey: null as string | null,
     });
     const [tab, setTab] = useState<(typeof VALID_TABS)[number]>('brand');
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
     useEffect(() => {
         if (kit) {
@@ -326,7 +340,12 @@ export function AdminBrandKitDetailPage() {
     const handleDelete = () => {
         if (deleteMutation.isPending || !kit) return;
         if (kit.isDefault) return;
-        if (window.confirm('Delete this Brand Kit? This cannot be undone.')) deleteMutation.mutate();
+        setDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        deleteMutation.mutate();
+        setDeleteDialogOpen(false);
     };
 
     /** Download kit as ottabase_<name>_YYYYMMDD.json – complete backup */
@@ -624,6 +643,22 @@ export function AdminBrandKitDetailPage() {
                     </div>
                 </div>
             </div>
+
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Brand Kit?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This cannot be undone. The Brand Kit &quot;{kitForView.name}&quot; will be permanently
+                            deleted.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
