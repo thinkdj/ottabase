@@ -220,7 +220,7 @@ function KitCard({
             </div>
 
             <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-                <AlertDialogContent onClick={(e) => e.preventDefault()}>
+                <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Brand Kit?</AlertDialogTitle>
                         <AlertDialogDescription>
