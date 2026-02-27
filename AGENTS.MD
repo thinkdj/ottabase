@@ -34,6 +34,8 @@ Use this as the default decision tree when shipping new work.
     - Avoid Node-only APIs in app/worker code.
 5. **Minimal route logic**
     - Worker routes should orchestrate/auth/validate; model should own persistence behavior.
+6. **Docs + tests are required**
+    - Every new feature must create/update its respective `README.MD` and include/update tests.
 
 ### If adding a new package
 
@@ -49,6 +51,8 @@ Use this as the default decision tree when shipping new work.
 3. **Dependency protocol**
     - Internal deps: `workspace:*`
     - Shared external deps: `catalog:`
+4. **Docs + tests are required**
+    - Every new package must create/update its own `README.MD` and include/update tests.
 
 ### Quick examples
 

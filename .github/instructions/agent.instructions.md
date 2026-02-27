@@ -26,6 +26,7 @@
 3. Reuse `@ottabase/ui-shadcn` / `@ottabase/ui-mantine` and existing theme tokens/variables.
 4. Keep worker code edge-compatible (no Node-only APIs).
 5. Keep route handlers thin (auth/validation/orchestration), not data-heavy.
+6. Every new feature must create/update its respective `README.MD` and include/update tests.
 
 ### New package
 
@@ -40,6 +41,7 @@
 3. Use dependency protocol:
     - Internal packages: `workspace:*`
     - Shared externals: `catalog:`
+4. Every new package must create/update its own `README.MD` and include/update tests.
 
 ### Short examples
 
