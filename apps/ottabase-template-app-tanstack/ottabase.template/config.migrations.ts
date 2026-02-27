@@ -2,16 +2,17 @@
 // PACKAGE MIGRATION CONFIGURATION  (Framework-managed)
 // ============================================================
 // This file wires up the built-in PACKAGE_REGISTRY and merges
-// any custom/premium packages declared in `../ottabase.config.ts`.
+// any custom/premium packages declared in `../ottabase.config.ts`
+// (customPackages is KEY-ONLY; schemas live here in USER_PACKAGE_REGISTRY).
 //
 // ── To enable/disable a built-in package ────────────────────
 //   Edit `packages` in ottabase.config.ts (no change needed here).
 //
 // ── To add a custom or premium package ──────────────────────
 //   1. Install the package and import its table schema below.
-//   2. Add it to USER_PACKAGE_REGISTRY with { tables, migrations }.
+//   2. Add it to USER_PACKAGE_REGISTRY with { tables, migrations } (server-only).
 //   3. Register its API routes in `config.routes.ts`.
-//   4. Toggle it on in `customPackages` in ottabase.config.ts.
+//   4. Toggle it on in `customPackages` in ottabase.config.ts (boolean flag only).
 //
 // Example:
 //   import { myPremiumTable } from '@myorg/premium-feature/schema';

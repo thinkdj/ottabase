@@ -10,13 +10,14 @@ import userConfig from '../../../ottabase.config';
 // Cast through OttabaseUserConfig to allow optional `colors` access on the
 // narrowed type returned by defineOttabaseConfig.
 const typedConfig = userConfig as OttabaseUserConfig;
+const options = userConfigToOptions(typedConfig);
 
 // Convert the root user config into createAppConfig options.
 // userConfigToOptions bridges OttabaseUserConfig → ConfigOptions.
 export const appConfig = createAppConfig({
-    ...userConfigToOptions(typedConfig),
+    ...options,
     defaults: {
-        ...userConfigToOptions(typedConfig).defaults,
+        ...options.defaults,
         // Merge in the full theme color palette (not settable via env vars)
         theme: {
             colorDefault: typedConfig.theme?.colorDefault ?? 'tremorBlue',

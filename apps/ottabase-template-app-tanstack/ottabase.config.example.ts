@@ -78,7 +78,7 @@ export default defineOttabaseConfig({
     //
     // Example:
     //   customPackages: {
-    //     myPremiumFeature: { tables: { premiumTable } },
+    //     myPremiumFeature: true,
     //   },
     customPackages: {},
 

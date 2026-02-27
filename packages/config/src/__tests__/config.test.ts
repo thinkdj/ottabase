@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createAppConfig, defineOttabaseConfig, userConfigToOptions, validateOttabaseConfig } from '../createAppConfig';
+import { createAppConfig, defineOttabaseConfig, userConfigToOptions } from '../index';
+import { validateOttabaseConfig } from '../createAppConfig';
 import * as config from '../index';
 
 describe('Configuration Utilities', () => {

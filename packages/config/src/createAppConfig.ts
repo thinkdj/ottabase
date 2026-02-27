@@ -1,4 +1,5 @@
 import { AppConfig, AppMeta, ConfigOptions, OttabaseUserConfig, SupportedUIFramework, ThemeColors } from './types';
+import { DEFAULT_AUTH_BEHAVIOR_CONFIG, DEFAULT_EMAIL_CONFIG } from './defaults';
 
 /**
  * Creates app configuration by merging environment variables with defaults
@@ -159,23 +160,28 @@ export function createAppConfig(options: ConfigOptions = {}): AppConfig {
             authBehavior: {
                 sessionMaxAge: getNumberEnv(
                     'AUTH_SESSION_MAX_AGE',
-                    defaults.features?.authBehavior?.sessionMaxAge ?? 30 * 24 * 60 * 60,
+                    defaults.features?.authBehavior?.sessionMaxAge ?? DEFAULT_AUTH_BEHAVIOR_CONFIG.sessionMaxAge,
                 ),
                 requireEmailVerified: getBoolEnv(
                     'AUTH_REQUIRE_EMAIL_VERIFIED',
-                    defaults.features?.authBehavior?.requireEmailVerified ?? false,
+                    defaults.features?.authBehavior?.requireEmailVerified ??
+                        DEFAULT_AUTH_BEHAVIOR_CONFIG.requireEmailVerified,
                 ),
                 disableCredentials: getBoolEnv(
                     'AUTH_DISABLE_CREDENTIALS',
-                    defaults.features?.authBehavior?.disableCredentials ?? false,
+                    defaults.features?.authBehavior?.disableCredentials ??
+                        DEFAULT_AUTH_BEHAVIOR_CONFIG.disableCredentials,
                 ),
-                verbose: getBoolEnv('AUTH_VERBOSE', defaults.features?.authBehavior?.verbose ?? false),
+                verbose: getBoolEnv(
+                    'AUTH_VERBOSE',
+                    defaults.features?.authBehavior?.verbose ?? DEFAULT_AUTH_BEHAVIOR_CONFIG.verbose,
+                ),
             },
         },
 
         email: {
-            from: getEnv('EMAIL_FROM', defaults.email?.from ?? 'noreply@example.com'),
-            sesRegion: getEnv('AWS_REGION', defaults.email?.sesRegion ?? 'us-east-1'),
+            from: getEnv('EMAIL_FROM', defaults.email?.from ?? DEFAULT_EMAIL_CONFIG.from),
+            sesRegion: getEnv('AWS_REGION', defaults.email?.sesRegion ?? DEFAULT_EMAIL_CONFIG.sesRegion),
         },
 
         model: {

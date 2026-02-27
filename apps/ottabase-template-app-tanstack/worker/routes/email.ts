@@ -50,8 +50,8 @@ export async function handleEmailTest(context: EmailRouteContext): Promise<Respo
         provider?: 'auto' | 'resend' | 'ses' | 'nodemailer';
     }>(request);
 
-    // EMAIL_FROM is now configured in ottabase.config.ts; env var no longer needed
-    const from = EMAIL_FROM_DEFAULT;
+    // Prefer env.EMAIL_FROM for backward compatibility; fall back to ottabase.config.ts default
+    const from = env.EMAIL_FROM || EMAIL_FROM_DEFAULT;
     const recipients = body.recipients || [];
 
     if (!recipients.length) {
@@ -79,8 +79,8 @@ export async function handleEmailTest(context: EmailRouteContext): Promise<Respo
             mailer = createSESMailer({
                 accessKeyId: env.AWS_ACCESS_KEY_ID,
                 secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
-                // AWS region configured in ottabase.config.ts (non-secret)
-                region: EMAIL_SES_REGION,
+                // Prefer env override for backward compatibility; fall back to ottabase.config.ts default
+                region: env.AWS_REGION || EMAIL_SES_REGION,
             });
         } else if (selectedProvider === 'ses') {
             return errorResponse(

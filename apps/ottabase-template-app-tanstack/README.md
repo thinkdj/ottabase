@@ -137,9 +137,9 @@ diff -rq ottabase.template/ ottabase/
     }
     ```
 
-4. Enable in `ottabase.config.ts`:
+4. Enable in `ottabase.config.ts` (by key only—no schema imports in this file):
     ```typescript
-    customPackages: { premiumFeature: { tables: { premiumTable } } },
+    customPackages: { premiumFeature: true },
     ```
 5. Run migrations: `curl -X POST http://localhost:3004/api/ottaorm/init`
 

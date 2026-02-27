@@ -39,10 +39,10 @@ export default defineOttabaseConfig({
         brandEngine: false,
     },
 
-    // Register custom / premium packages
-    // (import tables in ottabase/config.migrations.ts, not here)
+    // Enable custom / premium packages by key only (no schemas here)
+    // Schemas stay in ottabase/config.migrations.ts
     customPackages: {
-        // premiumFeature: { tables: { premiumTable } },
+        // premiumFeature: true,
     },
 
     features: {

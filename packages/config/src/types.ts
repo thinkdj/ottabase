@@ -161,16 +161,6 @@ export interface ConfigOptions {
 export type BuiltinPackageName = 'ottablog' | 'shortlinks' | 'referrals' | 'brandEngine';
 
 /**
- * A custom or premium package registration.
- * Tables are Drizzle table objects keyed by any string.
- * Keep table imports server-side (worker) only.
- */
-export interface OttabaseCustomPackage {
-    /** Drizzle table schema objects for this package (server-side only) */
-    tables: Record<string, unknown>;
-}
-
-/**
  * Top-level user configuration for the Ottabase monorepo app.
  * Lives in `ottabase.config.ts` at the app root.
  *
@@ -208,20 +198,12 @@ export interface OttabaseUserConfig {
     packages?: Partial<Record<BuiltinPackageName, boolean>>;
 
     /**
-     * Register custom or premium packages.
-     * The key becomes the package name in the migration registry.
-     * Table schemas should only be imported in server/worker code.
-     *
-     * @example
-     * ```ts
-     * customPackages: {
-     *   myPremiumFeature: {
-     *     tables: { premiumTable },
-     *   },
-     * }
-     * ```
+     * Enable custom or premium packages.
+     * Keys are package names; values toggle enablement.
+     * Server-only resources (e.g., Drizzle table schemas) must be registered in
+     * server-only files such as `ottabase/config.migrations.ts`.
      */
-    customPackages?: Record<string, OttabaseCustomPackage>;
+    customPackages?: Record<string, boolean>;
 
     /** Fine-grained feature configuration */
     features?: {
