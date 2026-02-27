@@ -1,0 +1,182 @@
+/* Layout Tool Styles */
+
+.cdx-layout__wrapper {
+    border-radius: 6px;
+    border: 1px solid hsl(var(--border));
+}
+
+/* Toolbar */
+.cdx-layout__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: hsl(var(--muted) / 0.5);
+    border-bottom: 1px solid hsl(var(--border));
+    border-radius: 6px 6px 0 0;
+    flex-wrap: wrap;
+}
+
+.cdx-layout__toolbar-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 4px;
+}
+
+/* Preset buttons */
+.cdx-layout__preset-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border: 1px solid hsl(var(--border));
+    border-radius: 4px;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.cdx-layout__preset-btn:hover {
+    border-color: hsl(var(--primary) / 0.5);
+    background: hsl(var(--primary) / 0.05);
+    color: hsl(var(--primary));
+}
+
+.cdx-layout__preset-btn--active {
+    border-color: hsl(var(--primary));
+    background: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
+    font-weight: 600;
+}
+
+/* Preset icon (mini column diagram) */
+.cdx-layout__preset-icon {
+    display: inline-flex;
+    gap: 2px;
+    align-items: stretch;
+    height: 12px;
+}
+
+.cdx-layout__preset-icon span {
+    display: block;
+    background: currentColor;
+    border-radius: 1px;
+    opacity: 0.8;
+    min-width: 4px;
+}
+
+/* Columns container */
+.cdx-layout__columns {
+    display: flex;
+    gap: 0;
+    min-height: 80px;
+}
+
+/* Individual column */
+.cdx-layout__column {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    border-right: 1px solid hsl(var(--border));
+}
+
+.cdx-layout__column:last-child {
+    border-right: none;
+}
+
+/* Column header */
+.cdx-layout__col-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    background: hsl(var(--muted) / 0.3);
+    border-bottom: 1px solid hsl(var(--border) / 0.5);
+}
+
+.cdx-layout__col-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cdx-layout__col-width {
+    font-size: 10px;
+    color: hsl(var(--muted-foreground));
+    opacity: 0.7;
+}
+
+.cdx-layout__col-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cdx-layout__col-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    border-radius: 4px;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.cdx-layout__col-clear:hover {
+    border-color: hsl(var(--destructive) / 0.4);
+    background: hsl(var(--destructive) / 0.08);
+    color: hsl(var(--destructive));
+}
+
+/* Nested editor area */
+.cdx-layout__col-editor {
+    min-height: 80px;
+    padding: 4px;
+    outline: none;
+    position: relative;
+}
+
+/* Style nested editor instances to look native */
+.cdx-layout__col-editor .codex-editor {
+    min-height: 60px;
+}
+
+.cdx-layout__col-editor .codex-editor__redactor {
+    padding-bottom: 16px !important;
+}
+
+.cdx-layout__col-editor .ce-block {
+    font-size: 14px;
+}
+
+/* Make the nested editor placeholder smaller */
+.cdx-layout__col-editor .codex-editor__redactor:only-child::before {
+    font-size: 13px;
+}
+
+/* Placeholder when editor not yet initialized */
+.cdx-layout__col-placeholder {
+    padding: 16px 12px;
+    color: hsl(var(--muted-foreground));
+    font-size: 13px;
+    font-style: italic;
+    text-align: center;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

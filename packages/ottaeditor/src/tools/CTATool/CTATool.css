@@ -17,9 +17,11 @@
     margin: 0;
 }
 
-/* Ensure checkbox group has same spacing as other rows */
-.cdx-cta__form > div:has(input[type='checkbox']) {
-    margin: 0;
+/* Rows: flex containers for side-by-side fields */
+.cdx-cta__row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
 }
 
 .cdx-cta__input-group {
@@ -46,6 +48,7 @@
     font-family: inherit;
     background: hsl(var(--background));
     color: hsl(var(--foreground));
+    box-sizing: border-box;
 }
 
 .cdx-cta__input:focus,
@@ -53,6 +56,41 @@
     outline: none;
     border-color: hsl(var(--ring));
     box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+}
+
+/* Alignment button group */
+.cdx-cta__align-group {
+    display: inline-flex;
+    gap: 2px;
+    border: 1px solid hsl(var(--border));
+    border-radius: 4px;
+    padding: 2px;
+    background: hsl(var(--background));
+}
+
+.cdx-cta__align-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 26px;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: all 0.15s ease;
+    padding: 0;
+}
+
+.cdx-cta__align-btn:hover {
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+}
+
+.cdx-cta__align-btn--active {
+    background: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
 }
 
 .cdx-cta__checkbox-group {
@@ -67,6 +105,7 @@
     height: 14px;
     cursor: pointer;
     margin: 0;
+    accent-color: hsl(var(--primary));
 }
 
 .cdx-cta__checkbox-label {
@@ -80,12 +119,11 @@
     margin-top: 6px;
     padding-top: 8px;
     border-top: 1px solid hsl(var(--border));
-    text-align: center;
 }
 
 .cdx-cta__preview-button {
     display: inline-block;
-    padding: 8px 16px;
+    padding: 8px 18px;
     border-radius: 6px;
     font-size: 13px;
     font-weight: 500;
@@ -106,13 +144,13 @@
 }
 
 .cdx-cta__preview-button--secondary {
-    background: hsl(var(--muted));
-    color: hsl(var(--muted-foreground));
-    border-color: hsl(var(--muted));
+    background: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+    border-color: hsl(var(--secondary));
 }
 
 .cdx-cta__preview-button--secondary:hover {
-    opacity: 0.8;
+    opacity: 0.85;
 }
 
 .cdx-cta__preview-button--outline {
@@ -124,4 +162,15 @@
 .cdx-cta__preview-button--outline:hover {
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
+}
+
+.cdx-cta__preview-button--ghost {
+    background: transparent;
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--border));
+}
+
+.cdx-cta__preview-button--ghost:hover {
+    background: hsl(var(--muted));
+    border-color: hsl(var(--muted));
 }

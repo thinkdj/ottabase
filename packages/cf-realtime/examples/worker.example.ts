@@ -18,7 +18,7 @@ export default handler(RealtimeActor);
  * Environment bindings
  */
 export interface Env {
-    REALTIME: DurableObjectNamespace;
+    OBCF_REALTIME: DurableObjectNamespace;
     // Add other bindings like KV, R2, etc. as needed
 }
 
@@ -110,7 +110,8 @@ async function handleBroadcast(request: Request, env: Env): Promise<Response> {
             });
         }
 
-        if (!body.event) {
+        const event = typeof body.event === 'string' ? body.event.trim() : '';
+        if (!event) {
             return new Response(JSON.stringify({ error: 'event is required' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' },
@@ -121,7 +122,7 @@ async function handleBroadcast(request: Request, env: Env): Promise<Response> {
 
         const result = await broadcaster.broadcast({
             channels: body.channels,
-            event: body.event,
+            event,
             data: body.data,
             persistForOffline: body.persistForOffline || false,
             metadata: body.metadata,

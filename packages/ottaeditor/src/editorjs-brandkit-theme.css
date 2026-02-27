@@ -38,6 +38,16 @@
     fill: currentColor !important;
 }
 
+/* Keep EditorJS menus above custom block UIs (e.g. Layout headers/toolbars) */
+.ce-toolbar,
+.ce-inline-toolbar,
+.ce-conversion-toolbar,
+.ce-popover,
+.ce-settings,
+.ce-toolbox {
+    z-index: 60 !important;
+}
+
 /* Popover Item Hover - Brand color with transparency */
 .ce-popover__item:hover,
 .ce-popover-item:hover {

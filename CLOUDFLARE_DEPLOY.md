@@ -215,11 +215,11 @@ pnpm build && pnpm wrangler deploy --env production
 wrangler tail ottabase-template-app-tanstack
 
 # Execute D1 commands
-wrangler d1 execute ottabase-db --remote --command="SELECT * FROM User LIMIT 5"
+wrangler d1 execute ottabase-db --remote --command="SELECT * FROM users LIMIT 5"
 
 # List resources
 wrangler d1 list
-wrangler kv:namespace list
+wrangler kv namespace list
 wrangler r2 bucket list
 wrangler queues list
 ```

@@ -168,7 +168,7 @@ Initialize database via your API endpoint:
 pnpm dev
 
 # Initialize database (creates all tables automatically)
-curl -X POST http://localhost:3000/api/ottaorm/init
+curl -X POST http://localhost:3004/api/ottaorm/init
 ```
 
 ### Production Setup
@@ -535,7 +535,7 @@ const tags = await post.tags({
 
 ```bash
 # Development (no auth)
-curl -X POST http://localhost:3000/api/ottaorm/init
+curl -X POST http://localhost:3004/api/ottaorm/init
 
 # Production (requires MIGRATION_SECRET)
 curl -X POST https://your-app.com/api/ottaorm/init \
@@ -611,7 +611,7 @@ status: text('status').notNull();
 ```
 
 For complex schema changes, use custom migrations. See
-[Migration READMEs](../../apps/ottabase-template-app/ottabase/migrations/README.md) for examples.
+[Migration README](../../apps/ottabase-template-app-tanstack/ottabase/migrations/README.md) for examples.
 
 ## Type Casting
 

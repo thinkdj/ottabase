@@ -1,4 +1,4 @@
-import type { API, BlockTool, BlockToolConstructorOptions } from '@editorjs/editorjs';
+import type { API, BlockTool } from '@editorjs/editorjs';
 import './CodeTool.css';
 
 const LANGUAGE_OPTIONS = [
@@ -88,7 +88,7 @@ export default class CodeTool implements BlockTool {
     static get toolbox() {
         return {
             title: 'Code',
-            icon: '<svg width="17" height="15" viewBox="0 0 17 15" xmlns="http://www.w3.org/2000/svg"><path d="M8.333 1.667H4.167v11.666h4.166V15H0V0h8.333v1.667Zm8.334 0H12.5V0H17v15h-4.167v-1.667h4.166V1.667Z" fill="currentColor"/></svg>',
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(3 3)"><polyline points="17 18 23 12 17 6"/><polyline points="7 6 1 12 7 18"/><line x1="15" y1="4" x2="9" y2="20"/></g></svg>',
         };
     }
 
@@ -96,7 +96,7 @@ export default class CodeTool implements BlockTool {
         return true;
     }
 
-    constructor({ data, config, api }: BlockToolConstructorOptions<CodeToolData, CodeToolConfig>) {
+    constructor({ data, config, api }: { data?: Partial<CodeToolData>; config?: CodeToolConfig; api: API }) {
         this.api = api;
         this.config = config || {};
         this.data = {
