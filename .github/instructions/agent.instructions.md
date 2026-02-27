@@ -23,7 +23,7 @@
     - Prefer `createModelHooks()` + `/api/ottaorm/{entity}` for basic CRUD.
     - Add custom endpoints only for non-CRUD workflows.
 2. Keep business/data logic inside `BaseModel` methods.
-3. Reuse `@ottabase/ui-shadcn` / `@ottabase/ui-mantine` and existing theme tokens/variables.
+3. Reuse `@ottabase/ui-shadcn` and existing theme tokens/variables.
 4. Keep worker code edge-compatible (no Node-only APIs).
 5. Keep route handlers thin (auth/validation/orchestration), not data-heavy.
 6. Every new feature must create/update its respective `README.MD` and include/update tests.
