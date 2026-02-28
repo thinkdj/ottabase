@@ -618,11 +618,6 @@ function saveSnapshot(snap: SavedResumeSnapshot) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 }
 
-function deleteSnapshot(id: string) {
-    const list = loadSnapshots().filter((s) => s.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-}
-
 // ========================== Main Component ==================================
 
 export default function ResumeBuilder({ guestMode = false }: { guestMode?: boolean }) {
