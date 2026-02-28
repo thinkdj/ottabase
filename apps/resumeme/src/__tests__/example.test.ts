@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-describe('TanStack App Example Tests', () => {
+describe('ResumeMe App — Environment Tests', () => {
     describe('Cloudflare Bindings', () => {
         it('should have mocked D1 database', () => {
             expect((global as any).OBCF_D1).toBeDefined();
