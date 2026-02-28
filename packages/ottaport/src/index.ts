@@ -18,6 +18,7 @@ export { formatCsv, formatJson, formatTsv, parseCsv, parseFileContent, parseJson
 export { processExport, processImport } from './server';
 
 // Types
+export { DEFAULT_BATCH_SIZE } from './types';
 export type {
     BatchResult,
     ExportConfig,

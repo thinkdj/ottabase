@@ -93,12 +93,18 @@ const PACKAGE_REGISTRY = {
  */
 export type MigrationPackageName = keyof typeof PACKAGE_REGISTRY;
 
+/** Core packages are always enabled regardless of ottabase.config */
+const CORE_PACKAGES: MigrationPackageName[] = ['brandEngine', 'ottaport'];
+
+function isCorePackage(name: string): boolean {
+    return CORE_PACKAGES.includes(name as MigrationPackageName);
+}
+
 export function getMigrationConfig(env?: Record<string, unknown>): Record<MigrationPackageName, boolean> {
     const config = getOttabaseConfig(env);
     const result: Record<string, boolean> = {};
     for (const pkg of Object.keys(PACKAGE_REGISTRY) as MigrationPackageName[]) {
-        result[pkg] =
-            pkg === 'brandEngine' || pkg === 'ottaport' ? true : (config.packages[pkg as BuiltInPackageName] ?? false);
+        result[pkg] = isCorePackage(pkg) ? true : (config.packages[pkg as BuiltInPackageName] ?? false);
     }
     return result as Record<MigrationPackageName, boolean>;
 }
@@ -115,9 +121,9 @@ export function getEnabledPackageTables(env?: Record<string, unknown>) {
     const config = getOttabaseConfig(env);
     const tables: Record<string, unknown> = {};
 
-    // Built-in packages (brandEngine + ottaport are core — always included)
+    // Built-in packages (core packages are always included)
     for (const [pkgName, pkgConfig] of Object.entries(PACKAGE_REGISTRY)) {
-        if (pkgName === 'brandEngine' || pkgName === 'ottaport' || config.packages[pkgName as BuiltInPackageName]) {
+        if (isCorePackage(pkgName) || config.packages[pkgName as BuiltInPackageName]) {
             Object.assign(tables, pkgConfig.tables);
         }
     }
@@ -140,12 +146,9 @@ export function getEnabledPackageMigrations(env?: Record<string, unknown>): Migr
     const config = getOttabaseConfig(env);
     const migrations: Migration[] = [];
 
-    // Built-in packages (brandEngine + ottaport are core — always included)
+    // Built-in packages (core packages are always included)
     for (const [pkgName, pkgConfig] of Object.entries(PACKAGE_REGISTRY)) {
-        if (
-            (pkgName === 'brandEngine' || pkgName === 'ottaport' || config.packages[pkgName as BuiltInPackageName]) &&
-            pkgConfig.migrations
-        ) {
+        if ((isCorePackage(pkgName) || config.packages[pkgName as BuiltInPackageName]) && pkgConfig.migrations) {
             migrations.push(...pkgConfig.migrations);
         }
     }

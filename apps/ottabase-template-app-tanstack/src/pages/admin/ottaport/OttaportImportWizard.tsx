@@ -237,7 +237,7 @@ export function OttaportImportWizard() {
             </CardHeader>
             <CardContent className="space-y-4">
                 <div
-                    className={`rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
+                    className={`relative rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
                         isDragging
                             ? 'border-primary bg-primary/5'
                             : 'border-muted-foreground/25 hover:border-muted-foreground/50'
@@ -257,7 +257,6 @@ export function OttaportImportWizard() {
                         accept=".csv,.json,.tsv,.tab,.txt"
                         onChange={handleFileInput}
                         className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                        style={{ position: 'relative' }}
                     />
                 </div>
 

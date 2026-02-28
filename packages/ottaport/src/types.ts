@@ -2,6 +2,9 @@
 // @ottabase/ottaport - Types
 // ============================================================
 
+/** Default batch size for chunked imports */
+export const DEFAULT_BATCH_SIZE = 50;
+
 /** Supported file formats for import/export */
 export type FileFormat = 'csv' | 'json' | 'tsv';
 

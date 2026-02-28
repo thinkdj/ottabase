@@ -30,7 +30,7 @@ export async function processExport(config: ExportConfig): Promise<{
     const whereConditions: Record<string, unknown> = { ...where };
 
     // Fetch records with filters
-    let records: any[];
+    let records: InstanceType<typeof import('@ottabase/ottaorm').BaseModel>[];
     const queryOptions: {
         orderBy?: string;
         orderDirection?: 'asc' | 'desc';

@@ -6,6 +6,7 @@
 // ============================================================
 
 import { getModel, hasModel } from '@ottabase/ottaorm';
+import { DEFAULT_BATCH_SIZE } from '../types';
 import type { BatchResult, FieldMapping, ImportConfig, ImportResult, ParsedRow } from '../types';
 
 /**
@@ -19,7 +20,7 @@ import type { BatchResult, FieldMapping, ImportConfig, ImportResult, ParsedRow }
  */
 export async function processImport(rows: ParsedRow[], config: ImportConfig): Promise<ImportResult> {
     const startTime = Date.now();
-    const { modelEntity, fieldMappings, uniqueField, batchSize = 50 } = config;
+    const { modelEntity, fieldMappings, uniqueField, batchSize = DEFAULT_BATCH_SIZE } = config;
 
     if (!hasModel(modelEntity)) {
         return {
