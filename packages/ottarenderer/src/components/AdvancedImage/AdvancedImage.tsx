@@ -2,7 +2,8 @@ import React from 'react';
 import { RenderFn } from 'editorjs-blocks-react-renderer';
 import { AdvancedImageData } from './advancedimage.types';
 
-const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' }) => {
+const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className: rawClassName }) => {
+    const className = rawClassName || '';
     // Support both AdvancedImage (data.url) and legacy @editorjs/image (data.file.url)
     const resolvedUrl = data?.url || (data as any)?.file?.url;
     if (!resolvedUrl) {

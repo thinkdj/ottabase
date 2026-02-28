@@ -68,7 +68,9 @@ const Layout: RenderFn<LayoutData> = ({ data, className = '' }) => {
                         >
                             {hasContent ? (
                                 <Blocks
-                                    data={colData?.content as any}
+                                    data={
+                                        { ...colData?.content, version: colData?.content?.version || '2.28.0' } as any
+                                    }
                                     config={defaultEJSRConfigs}
                                     renderers={{ ...baseRenderers, layout: Layout }}
                                 />

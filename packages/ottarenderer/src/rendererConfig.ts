@@ -79,6 +79,12 @@ export const defaultEJSRConfigs = {
     layout: {
         className: `${blockClass} cdc-content-layout`,
     },
+    raw: {
+        className: `${blockClass} cdc-content-raw`,
+    },
+    linkTool: {
+        className: `${blockClass} cdc-content-link`,
+    },
 };
 
 export const shouldRenderContentBlocks = (contentBlocks: {} | null) => {
