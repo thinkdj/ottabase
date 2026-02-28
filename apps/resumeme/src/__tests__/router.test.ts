@@ -25,6 +25,11 @@ describe('Router config', () => {
         expect(routeIds).toContain('/builder');
     });
 
+    it('has guest route', () => {
+        const routeIds = Object.keys(router.routesById);
+        expect(routeIds).toContain('/guest');
+    });
+
     it('has home route', () => {
         const routeIds = Object.keys(router.routesById);
         expect(routeIds).toContain('/');

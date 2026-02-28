@@ -11,6 +11,7 @@ import {
     type ResumeTemplateData,
     type SectionKey,
 } from './types';
+import { GUEST_DATA } from './guestData';
 
 // ---------------------------------------------------------------------------
 // Sample data — realistic placeholder content for the builder shell.
@@ -438,7 +439,7 @@ function SidebarToggle({ side, isOpen, onClick }: { side: 'left' | 'right'; isOp
 
 // ========================== Main Component ==================================
 
-export default function ResumeBuilder() {
+export default function ResumeBuilder({ guestMode = false }: { guestMode?: boolean }) {
     const [templateId, setTemplateId] = useState('classic');
     const [accentColor, setAccentColor] = useState('#475569');
     const [fontSize, setFontSize] = useState(FONT_SIZE_DEFAULT);
@@ -446,41 +447,106 @@ export default function ResumeBuilder() {
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
     const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
 
-    const data = SAMPLE_DATA;
+    const data = guestMode ? GUEST_DATA : SAMPLE_DATA;
 
     const handlePrint = useCallback(() => {
+        if (guestMode) return; // Print disabled in guest mode
         window.print();
-    }, []);
+    }, [guestMode]);
 
     return (
         <div className="flex h-screen flex-col bg-gray-100 dark:bg-gray-900">
+            {/* ---- Guest Mode Banner ---- */}
+            {guestMode && (
+                <div className="flex shrink-0 items-center justify-center gap-2 bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 print:hidden">
+                    <svg
+                        className="h-4 w-4 shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
+                        />
+                    </svg>
+                    <span>
+                        <strong>Guest Mode</strong> — Explore all features freely. Name is locked to &quot;John
+                        Doe&quot;, printing is disabled, and changes are not saved.{' '}
+                        <a
+                            href="/auth/signup"
+                            className="font-medium underline hover:text-amber-900 dark:hover:text-amber-100"
+                        >
+                            Create an account
+                        </a>{' '}
+                        to unlock everything.
+                    </span>
+                </div>
+            )}
+
             {/* ---- Toolbar ---- */}
             <header className="flex shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 py-2 dark:border-gray-700 dark:bg-gray-800 print:hidden">
                 <div className="flex items-center gap-3">
                     <SidebarToggle side="left" isOpen={leftSidebarOpen} onClick={() => setLeftSidebarOpen((o) => !o)} />
                     <h1 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                         Resume Builder
-                        <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-normal text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-                            Default Data Set
-                        </span>
+                        {guestMode ? (
+                            <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-normal text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                                Guest Mode
+                            </span>
+                        ) : (
+                            <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-normal text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                                Default Data Set
+                            </span>
+                        )}
                     </h1>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button
-                        type="button"
-                        onClick={handlePrint}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
-                    >
-                        {/* Printer icon */}
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                            />
-                        </svg>
-                        Print / Export PDF
-                    </button>
+                    {guestMode ? (
+                        <span
+                            title="Sign up to unlock printing and PDF export"
+                            className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md bg-gray-300 px-3 py-1.5 text-sm font-medium text-gray-500 dark:bg-gray-600 dark:text-gray-400"
+                        >
+                            <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                />
+                            </svg>
+                            Print / Export PDF
+                        </span>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={handlePrint}
+                            className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                        >
+                            {/* Printer icon */}
+                            <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                                />
+                            </svg>
+                            Print / Export PDF
+                        </button>
+                    )}
                     <SidebarToggle
                         side="right"
                         isOpen={rightSidebarOpen}

@@ -48,12 +48,18 @@ function HomePage() {
                     Get Started
                 </Link>
                 <Link
-                    to="/auth/signin"
+                    to="/guest"
                     className="rounded-md border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
                 >
-                    Sign In
+                    Try it Free
                 </Link>
             </div>
+            <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
+                No sign-up required —{' '}
+                <Link to="/guest" className="underline hover:text-gray-600 dark:hover:text-gray-300">
+                    explore all features as a guest
+                </Link>
+            </p>
         </div>
     );
 }
@@ -80,6 +86,16 @@ const builderRoute = new Route({
                     <m.default />
                 </ProtectedRoute>
             ),
+        })),
+    ),
+});
+
+const guestRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/guest',
+    component: lazyRouteComponent(() =>
+        import('@/pages/resume/ResumeBuilder').then((m) => ({
+            default: () => <m.default guestMode />,
         })),
     ),
 });
@@ -132,6 +148,7 @@ const userProfileRoute = new Route({
 const routeTree = rootRoute.addChildren([
     homeRoute,
     builderRoute,
+    guestRoute,
     signinRoute,
     signupRoute,
     verifyEmailRoute,

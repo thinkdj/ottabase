@@ -110,13 +110,35 @@ curl -X POST http://localhost:3006/api/ottaorm/init
 
 ## Routes
 
-| Path            | Description                |
-| --------------- | -------------------------- |
-| `/`             | Landing page               |
-| `/builder`      | Resume builder (protected) |
-| `/auth/signin`  | Sign in                    |
-| `/auth/signup`  | Sign up                    |
-| `/user/profile` | User profile               |
+| Path            | Description                             |
+| --------------- | --------------------------------------- |
+| `/`             | Landing page                            |
+| `/guest`        | Guest mode builder (public, no sign-up) |
+| `/builder`      | Resume builder (protected)              |
+| `/auth/signin`  | Sign in                                 |
+| `/auth/signup`  | Sign up                                 |
+| `/user/profile` | User profile                            |
+
+## Guest Mode
+
+Visit `/guest` to try the full resume builder without creating an account.
+
+**What works:**
+
+- All 5 templates (Classic, Modern, Lisbon, Executive, Minimal)
+- Accent colour and font size controls
+- Section reordering
+- Real-time preview updates
+
+**Restrictions:**
+
+- Name is locked to **John Doe** with a placeholder avatar
+- **Printing / PDF export** is disabled (greyed out with lock icon)
+- Changes are **not saved** — they live only in browser memory
+- A banner at the top encourages sign-up to unlock full features
+
+The guest data lives in `src/pages/resume/guestData.ts` — a self-contained mock JSON with realistic work experience,
+skills, projects, and certifications.
 
 ## Client Hooks
 
