@@ -63,10 +63,14 @@ export interface ResumeTemplateData {
 export interface ResumeTemplateProps {
     data: ResumeTemplateData;
     accentColor: string;
-    /** Base font size in pt (default 12) */
+    /** Zoom scale percentage (default 100). Applied as CSS zoom for proportional scaling. */
     fontSize: number;
     /** Ordered section keys — templates render sections in this order */
     sectionOrder: SectionKey[];
+    /** Optional heading label overrides — keys match SectionKey, values are custom labels */
+    headingLabels?: Partial<Record<SectionKey, string>>;
+    /** Callback fired when user edits a heading inline in the preview */
+    onHeadingChange?: (key: SectionKey, label: string) => void;
 }
 
 /** Template metadata for template picker */
@@ -147,18 +151,23 @@ export const DEFAULT_SECTION_ORDER: SectionKey[] = [
     'certifications',
 ];
 
-/** Move a section one position earlier in the order. Returns new array. */
+/** Move a section one position earlier in the order. Returns new array.
+ *  'summary' is pinned at index 0 and cannot be displaced. */
 export function moveSectionUp(order: SectionKey[], key: SectionKey): SectionKey[] {
+    if (key === 'summary') return order; // summary stays at 0
     const idx = order.indexOf(key);
     if (idx <= 0) return order;
+    if (idx === 1 && order[0] === 'summary') return order; // can't swap above pinned summary
     const next = [...order];
     next[idx] = next[idx - 1]!;
     next[idx - 1] = key;
     return next;
 }
 
-/** Move a section one position later in the order. Returns new array. */
+/** Move a section one position later in the order. Returns new array.
+ *  'summary' is pinned at index 0 and cannot move down. */
 export function moveSectionDown(order: SectionKey[], key: SectionKey): SectionKey[] {
+    if (key === 'summary') return order; // summary stays at 0
     const idx = order.indexOf(key);
     if (idx < 0 || idx >= order.length - 1) return order;
     const next = [...order];
@@ -168,10 +177,50 @@ export function moveSectionDown(order: SectionKey[], key: SectionKey): SectionKe
 }
 
 // ---------------------------------------------------------------------------
-// Font size
+// Font size (zoom percentage — proportional scaling)
 // ---------------------------------------------------------------------------
 
-/** Font size limits for the resume (in pt) */
-export const FONT_SIZE_MIN = 9;
-export const FONT_SIZE_MAX = 16;
-export const FONT_SIZE_DEFAULT = 12;
+/** Font scale limits for the resume (percentage; 100 = normal size) */
+export const FONT_SIZE_MIN = 80;
+export const FONT_SIZE_MAX = 130;
+export const FONT_SIZE_DEFAULT = 100;
+
+// ---------------------------------------------------------------------------
+// Heading labels
+// ---------------------------------------------------------------------------
+
+/** Default heading labels per section — templates may use different labels */
+export const DEFAULT_HEADING_LABELS: Record<SectionKey, string> = {
+    summary: 'Summary',
+    workExperiences: 'Experience',
+    educations: 'Education',
+    skillSets: 'Skills',
+    projects: 'Projects',
+    certifications: 'Certifications',
+};
+
+/** Resolve the effective heading label for a section */
+export function resolveHeadingLabel(
+    key: SectionKey,
+    overrides?: Partial<Record<SectionKey, string>>,
+    templateDefault?: string,
+): string {
+    return overrides?.[key] || templateDefault || DEFAULT_HEADING_LABELS[key];
+}
+
+// ---------------------------------------------------------------------------
+// Saved resume snapshot
+// ---------------------------------------------------------------------------
+
+/** Full serialisable resume state for save/load */
+export interface SavedResumeSnapshot {
+    id: string;
+    name: string;
+    savedAt: string;
+    templateId: string;
+    accentColor: string;
+    fontSize: number;
+    sectionOrder: SectionKey[];
+    headingLabels: Partial<Record<SectionKey, string>>;
+    data: ResumeTemplateData;
+}

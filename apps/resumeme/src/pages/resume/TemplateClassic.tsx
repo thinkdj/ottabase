@@ -1,11 +1,31 @@
 import type { ResumeTemplateProps } from './types';
-import { formatDateRange, formatResumeDate, type SectionKey } from './types';
+import { formatDateRange, formatResumeDate, resolveHeadingLabel, type SectionKey } from './types';
 import type { ReactNode } from 'react';
 
-/** Section heading with accent-colored left border */
-function SectionHeading({ title }: { title: string }) {
+/** Section heading with accent-colored left border — supports inline editing */
+function SectionHeading({
+    title,
+    sectionKey,
+    onHeadingChange,
+}: {
+    title: string;
+    sectionKey?: SectionKey;
+    onHeadingChange?: (key: SectionKey, label: string) => void;
+}) {
     return (
-        <h2 className="mb-3 border-l-[3px] border-[var(--resume-accent)] pl-3 text-lg font-bold uppercase tracking-wide text-gray-800 dark:text-gray-100">
+        <h2
+            className="mb-3 border-l-[3px] border-[var(--resume-accent)] pl-3 text-lg font-bold uppercase tracking-wide text-gray-800 dark:text-gray-100"
+            contentEditable={!!onHeadingChange}
+            suppressContentEditableWarning
+            onBlur={(e) => {
+                if (onHeadingChange && sectionKey) {
+                    const text = e.currentTarget.textContent?.trim() || title;
+                    onHeadingChange(sectionKey, text);
+                }
+            }}
+            style={onHeadingChange ? { cursor: 'text', outline: 'none' } : undefined}
+            title={onHeadingChange ? 'Click to edit heading' : undefined}
+        >
             {title}
         </h2>
     );
@@ -46,7 +66,14 @@ function ContactRow({ profile }: { profile: ResumeTemplateProps['data']['profile
     );
 }
 
-export default function TemplateClassic({ data, accentColor, fontSize, sectionOrder }: ResumeTemplateProps) {
+export default function TemplateClassic({
+    data,
+    accentColor,
+    fontSize,
+    sectionOrder,
+    headingLabels,
+    onHeadingChange,
+}: ResumeTemplateProps) {
     const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
 
     /** Map each section key to its JSX — returns null if the section is empty */
@@ -54,7 +81,11 @@ export default function TemplateClassic({ data, accentColor, fontSize, sectionOr
         summary: () =>
             profile?.summary ? (
                 <section className="mb-5" key="summary">
-                    <SectionHeading title="Summary" />
+                    <SectionHeading
+                        title={resolveHeadingLabel('summary', headingLabels, 'Summary')}
+                        sectionKey="summary"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                         {profile.summary}
                     </p>
@@ -64,7 +95,7 @@ export default function TemplateClassic({ data, accentColor, fontSize, sectionOr
         workExperiences: () =>
             workExperiences.length > 0 ? (
                 <section className="mb-5" key="workExperiences">
-                    <SectionHeading title="Experience" />
+                    <SectionHeading title={resolveHeadingLabel('workExperiences', headingLabels, 'Experience')} sectionKey="workExperiences" onHeadingChange={onHeadingChange} />
                     <div className="space-y-4">
                         {workExperiences.map((exp) => (
                             <div key={exp.id}>
@@ -100,7 +131,7 @@ export default function TemplateClassic({ data, accentColor, fontSize, sectionOr
         educations: () =>
             educations.length > 0 ? (
                 <section className="mb-5" key="educations">
-                    <SectionHeading title="Education" />
+                    <SectionHeading title={resolveHeadingLabel('educations', headingLabels, 'Education')} sectionKey="educations" onHeadingChange={onHeadingChange} />
                     <div className="space-y-3">
                         {educations.map((edu) => (
                             <div key={edu.id}>
@@ -129,7 +160,7 @@ export default function TemplateClassic({ data, accentColor, fontSize, sectionOr
         skillSets: () =>
             skillSets.length > 0 ? (
                 <section className="mb-5" key="skillSets">
-                    <SectionHeading title="Skills" />
+                    <SectionHeading title={resolveHeadingLabel('skillSets', headingLabels, 'Skills')} sectionKey="skillSets" onHeadingChange={onHeadingChange} />
                     <div className="space-y-2">
                         {skillSets.map((set) => (
                             <div key={set.id}>
@@ -146,7 +177,7 @@ export default function TemplateClassic({ data, accentColor, fontSize, sectionOr
         projects: () =>
             projects.length > 0 ? (
                 <section className="mb-5" key="projects">
-                    <SectionHeading title="Projects" />
+                    <SectionHeading title={resolveHeadingLabel('projects', headingLabels, 'Projects')} sectionKey="projects" onHeadingChange={onHeadingChange} />
                     <div className="space-y-3">
                         {projects.map((proj) => (
                             <div key={proj.id}>
@@ -195,7 +226,7 @@ export default function TemplateClassic({ data, accentColor, fontSize, sectionOr
         certifications: () =>
             certifications.length > 0 ? (
                 <section className="mb-5" key="certifications">
-                    <SectionHeading title="Certifications" />
+                    <SectionHeading title={resolveHeadingLabel('certifications', headingLabels, 'Certifications')} sectionKey="certifications" onHeadingChange={onHeadingChange} />
                     <div className="space-y-2">
                         {certifications.map((cert) => (
                             <div key={cert.id} className="flex flex-wrap items-baseline justify-between gap-x-2">
@@ -234,8 +265,7 @@ export default function TemplateClassic({ data, accentColor, fontSize, sectionOr
             style={
                 {
                     '--resume-accent': accentColor,
-                    '--resume-font-size': `${fontSize}pt`,
-                    fontSize: `${fontSize}pt`,
+                    zoom: fontSize / 100,
                 } as React.CSSProperties
             }
         >
@@ -257,7 +287,7 @@ export default function TemplateClassic({ data, accentColor, fontSize, sectionOr
             {/* ── Print styles ── */}
             <style>{`
                 @media print {
-                    .resume-classic { font-size: ${fontSize}pt; color: #1a1a1a; }
+                    .resume-classic { zoom: ${fontSize / 100}; color: #1a1a1a; }
                     .resume-classic a { color: inherit; text-decoration: none; }
                     .resume-classic section { break-inside: avoid; }
                 }
