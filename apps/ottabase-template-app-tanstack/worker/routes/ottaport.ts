@@ -11,6 +11,14 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { requireAdminAccess } from '../lib/admin-guard';
 import type { ApiRouteContext } from './router';
 
+/** Sanitize a filename to prevent path traversal — strips directory components and unsafe chars */
+function sanitizeFilename(name: string): string {
+    // Remove directory components (path traversal)
+    const basename = name.split(/[\\/]/).pop() || 'upload';
+    // Keep only safe characters
+    return basename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 200) || 'upload';
+}
+
 // ============================================================
 // GET /api/admin/ottaport/models — List available models for import/export
 // ============================================================
@@ -70,10 +78,10 @@ export async function handleOttaportImportParse(context: ApiRouteContext): Promi
         const saveToR2 = formData.get('saveToR2') === 'true';
         if (saveToR2 && context.env.OBCF_R2) {
             const timestamp = Date.now();
-            r2Key = `ottaport/imports/${timestamp}-${file.name}`;
+            r2Key = `ottaport/imports/${timestamp}-${sanitizeFilename(file.name)}`;
             await context.env.OBCF_R2.put(r2Key, content, {
                 httpMetadata: { contentType: file.type || 'text/plain' },
-                customMetadata: { originalName: file.name, uploadedAt: new Date().toISOString() },
+                customMetadata: { originalName: sanitizeFilename(file.name), uploadedAt: new Date().toISOString() },
             });
         }
 
@@ -111,6 +119,27 @@ export async function handleOttaportImportExecute(context: ApiRouteContext): Pro
 
         const config: ImportConfig = JSON.parse(configJson);
         const format = (formData.get('format') as FileFormat) || 'csv';
+
+        // Validate that the target model exists
+        const targetModel = getModel(config.modelEntity);
+        if (!targetModel) {
+            return errorResponse(`Model '${config.modelEntity}' not found`, 404, { code: 'MODEL_NOT_FOUND' });
+        }
+
+        // Validate field mappings against actual model fields
+        const modelTable = (targetModel as any).table;
+        if (modelTable && config.fieldMappings) {
+            for (const mapping of config.fieldMappings) {
+                if (!(mapping.targetField in modelTable)) {
+                    return errorResponse(
+                        `Invalid target field '${mapping.targetField}' for model '${config.modelEntity}'`,
+                        400,
+                        { code: 'INVALID_FIELD' },
+                    );
+                }
+            }
+        }
+
         const content = await file.text();
         const parsed = parseFileContent(content, format);
 
@@ -118,10 +147,10 @@ export async function handleOttaportImportExecute(context: ApiRouteContext): Pro
         let r2Key: string | undefined;
         if (config.saveToR2 && context.env.OBCF_R2) {
             const timestamp = Date.now();
-            r2Key = `ottaport/imports/${timestamp}-${file.name}`;
+            r2Key = `ottaport/imports/${timestamp}-${sanitizeFilename(file.name)}`;
             await context.env.OBCF_R2.put(r2Key, content, {
                 httpMetadata: { contentType: file.type || 'text/plain' },
-                customMetadata: { originalName: file.name, uploadedAt: new Date().toISOString() },
+                customMetadata: { originalName: sanitizeFilename(file.name), uploadedAt: new Date().toISOString() },
             });
         }
 
@@ -247,7 +276,7 @@ export async function handleOttaportExport(context: ApiRouteContext): Promise<Re
             status: 200,
             headers: {
                 'Content-Type': result.contentType,
-                'Content-Disposition': `attachment; filename="${result.filename}"`,
+                'Content-Disposition': `attachment; filename="${sanitizeFilename(result.filename)}"`,
                 ...context.corsHeaders,
             },
         });
