@@ -1,0 +1,35 @@
+{
+    "name": "@ottabase/recraft",
+    "version": "0.0.1",
+    "description": "AI-powered brand asset and logo generation with persistent style sets — Recraft.ai-style creative engine for Ottabase",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./handlers": {
+            "types": "./src/handlers/index.ts",
+            "default": "./src/handlers/index.ts"
+        },
+        "./presets": {
+            "types": "./src/presets/index.ts",
+            "default": "./src/presets/index.ts"
+        }
+    },
+    "scripts": {
+        "clean": "rm -rf .turbo node_modules",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "peerDependencies": {
+        "drizzle-orm": "catalog:"
+    },
+    "dependencies": {
+        "@ottabase/ottaorm": "workspace:*"
+    },
+    "devDependencies": {
+        "drizzle-orm": "catalog:",
+        "typescript": "catalog:"
+    }
+}

@@ -31,6 +31,11 @@
         "enabled": true,
     },
 
+    // Workers AI binding (for @ottabase/recraft AI image generation)
+    "ai": {
+        "binding": "AI"
+    },
+
     // TOP LEVEL BINDINGS (available in all environments unless overridden in env.*)
     // This is required for local development to define the shape of bindings and enable Wrangler features (e.g. `wrangler dev` with real D1/KV/R2/Queue emulation).
     // Preview and prod would use env.production/env.preview overrides to substitute real Cloudflare resource IDs from GitHub Secrets

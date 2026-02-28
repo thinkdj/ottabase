@@ -17,6 +17,8 @@
             "@ottabase/db/drizzle": ["../../packages/db/src/drizzle/drizzle.ts"],
             "@ottabase/db/*": ["../../packages/db/src/*"],
             "@ottabase/ottablog": ["../../packages/ottablog/src/index.ts"],
+            "@ottabase/recraft/handlers": ["../../packages/recraft/src/handlers/index.ts"],
+            "@ottabase/recraft/presets": ["../../packages/recraft/src/presets/index.ts"],
             "@ottabase/*": ["../../packages/*/src"]
         },
         "types": ["@cloudflare/workers-types"]

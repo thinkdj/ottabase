@@ -32,6 +32,7 @@ import {
     seriesTable,
 } from '@ottabase/ottablog';
 import type { Migration } from '@ottabase/ottaorm';
+import { recraftGenerationsTable, recraftSetsTable, recraftStylePresetsTable } from '@ottabase/recraft';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 

@@ -33,6 +33,7 @@ import {
     postsTable,
     seriesTable,
 } from '@ottabase/ottablog';
+import { recraftGenerationsTable, recraftSetsTable, recraftStylePresetsTable } from '@ottabase/recraft';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 
@@ -57,6 +58,9 @@ export {
     seriesTable,
     referralTrackingTable,
     shortlinksTable,
+    recraftSetsTable,
+    recraftGenerationsTable,
+    recraftStylePresetsTable,
 };
 
 // ============================================================

@@ -501,6 +501,37 @@ const dashboardRoute = new Route({
     ),
 });
 
+// Recraft routes (premium package — AI brand studio)
+const recraftSetsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/recraft',
+    component: lazyRouteComponent(() =>
+        import('@/pages/recraft/RecraftSetsPage').then((m) => ({
+            default: m.RecraftSetsPage,
+        })),
+    ),
+});
+
+const recraftSetDetailRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/recraft/$setId',
+    component: lazyRouteComponent(() =>
+        import('@/pages/recraft/RecraftSetDetailPage').then((m) => ({
+            default: m.RecraftSetDetailPage,
+        })),
+    ),
+});
+
+const recraftPresetsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/recraft/presets',
+    component: lazyRouteComponent(() =>
+        import('@/pages/recraft/RecraftPresetsPage').then((m) => ({
+            default: m.RecraftPresetsPage,
+        })),
+    ),
+});
+
 // Shortlinks route
 const shortlinksRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -980,6 +1011,10 @@ const coreRoutes = [
     organizationRegistrationRoute,
     organizationSettingsRoute,
     userProfileRoute,
+    // Recraft (premium package — AI brand studio)
+    recraftSetsRoute,
+    recraftPresetsRoute,
+    recraftSetDetailRoute,
 ];
 const routeTree = rootRoute.addChildren([
     ...coreRoutes,

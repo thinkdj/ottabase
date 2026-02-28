@@ -12,6 +12,7 @@
 // ============================================================
 
 import { defineOttabaseConfig } from '@ottabase/config';
+import { recraftGenerationsTable, recraftSetsTable, recraftStylePresetsTable } from '@ottabase/recraft';
 
 export default defineOttabaseConfig({
     // ── App Identity ──────────────────────────────────────────
@@ -52,7 +53,11 @@ export default defineOttabaseConfig({
     //   customPackages: {
     //     myPremiumFeature: { tables: { premiumTable } },
     //   },
-    customPackages: {},
+    customPackages: {
+        recraft: {
+            tables: { recraftSetsTable, recraftGenerationsTable, recraftStylePresetsTable },
+        },
+    },
 
     // ── Feature Configuration ─────────────────────────────────
     features: {

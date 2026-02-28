@@ -47,6 +47,7 @@
         "@ottabase/ottalayout": "workspace:*",
         "@ottabase/ottamenu": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/recraft": "workspace:*",
         "@ottabase/ottarenderer": "workspace:*",
         "@ottabase/ottaselect": "workspace:*",
         "@ottabase/ottaupload": "workspace:*",
