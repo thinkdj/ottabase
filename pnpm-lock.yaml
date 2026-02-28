@@ -437,7 +437,7 @@ importers:
         version: 16.1.1(@typescript-eslint/parser@8.52.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
       localflare:
         specifier: 'catalog:'
-        version: 0.1.2(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(vite@7.3.1(@types/node@20.19.28)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
+        version: 0.1.2(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(vite@7.3.1(@types/node@25.1.0)(jiti@1.21.7)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       postcss:
         specifier: 'catalog:'
         version: 8.5.6
@@ -658,6 +658,250 @@ importers:
       baseline-browser-mapping:
         specifier: ^2.9.14
         version: 2.9.14
+      cross-env:
+        specifier: 'catalog:'
+        version: 7.0.3
+      drizzle-kit:
+        specifier: 'catalog:'
+        version: 0.31.8
+      localflare:
+        specifier: 'catalog:'
+        version: 0.1.2(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(vite@5.4.21(@types/node@20.19.28)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0))
+      nodemailer:
+        specifier: 'catalog:'
+        version: 7.0.12
+      postcss:
+        specifier: 'catalog:'
+        version: 8.5.6
+      postcss-preset-env:
+        specifier: 'catalog:'
+        version: 9.6.0(postcss@8.5.6)
+      postcss-preset-mantine:
+        specifier: 'catalog:'
+        version: 1.18.0(postcss@8.5.6)
+      postcss-simple-vars:
+        specifier: 'catalog:'
+        version: 7.0.1(postcss@8.5.6)
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 3.4.19(tsx@4.21.0)(yaml@2.8.2)
+      tailwindcss-animate:
+        specifier: 'catalog:'
+        version: 1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vite:
+        specifier: 'catalog:'
+        version: 5.4.21(@types/node@20.19.28)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)
+      vite-tsconfig-paths:
+        specifier: 'catalog:'
+        version: 5.1.4(typescript@5.9.3)(vite@5.4.21(@types/node@20.19.28)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0))
+      wrangler:
+        specifier: 'catalog:'
+        version: 4.63.0(@cloudflare/workers-types@4.20251225.0)
+
+  apps/resumeme:
+    dependencies:
+      '@auth/core':
+        specifier: 'catalog:'
+        version: 0.34.3(nodemailer@7.0.12)
+      '@hookform/resolvers':
+        specifier: 'catalog:'
+        version: 3.10.0(react-hook-form@7.70.0(react@19.2.4))
+      '@mantine/carousel':
+        specifier: 'catalog:'
+        version: 8.3.15(@mantine/core@8.3.15(@mantine/hooks@8.3.15(react@19.2.4))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@mantine/hooks@8.3.15(react@19.2.4))(embla-carousel-react@8.6.0(react@19.2.4))(embla-carousel@8.6.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@mantine/core':
+        specifier: 'catalog:'
+        version: 8.3.15(@mantine/hooks@8.3.15(react@19.2.4))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@mantine/hooks':
+        specifier: 'catalog:'
+        version: 8.3.15(react@19.2.4)
+      '@mantine/modals':
+        specifier: 'catalog:'
+        version: 8.3.15(@mantine/core@8.3.15(@mantine/hooks@8.3.15(react@19.2.4))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@mantine/hooks@8.3.15(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@mantine/notifications':
+        specifier: 'catalog:'
+        version: 8.3.15(@mantine/core@8.3.15(@mantine/hooks@8.3.15(react@19.2.4))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@mantine/hooks@8.3.15(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@ottabase/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
+      '@ottabase/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      '@ottabase/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@ottabase/brand-engine':
+        specifier: workspace:*
+        version: link:../../packages/brand-engine
+      '@ottabase/brand-engine-react':
+        specifier: workspace:*
+        version: link:../../packages/brand-engine-react
+      '@ottabase/cf':
+        specifier: workspace:*
+        version: link:../../packages/cf
+      '@ottabase/cf-ai':
+        specifier: workspace:*
+        version: link:../../packages/cf-ai
+      '@ottabase/cf-realtime':
+        specifier: workspace:*
+        version: link:../../packages/cf-realtime
+      '@ottabase/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@ottabase/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@ottabase/docs':
+        specifier: workspace:*
+        version: link:../../packages/docs
+      '@ottabase/email':
+        specifier: workspace:*
+        version: link:../../packages/email
+      '@ottabase/forms':
+        specifier: workspace:*
+        version: link:../../packages/forms
+      '@ottabase/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
+      '@ottabase/logger':
+        specifier: workspace:*
+        version: link:../../packages/logger
+      '@ottabase/ottablog':
+        specifier: workspace:*
+        version: link:../../packages/ottablog
+      '@ottabase/ottadate':
+        specifier: workspace:*
+        version: link:../../packages/ottadate
+      '@ottabase/ottaeditor':
+        specifier: workspace:*
+        version: link:../../packages/ottaeditor
+      '@ottabase/ottalayout':
+        specifier: workspace:*
+        version: link:../../packages/ottalayout
+      '@ottabase/ottamenu':
+        specifier: workspace:*
+        version: link:../../packages/ottamenu
+      '@ottabase/ottaorm':
+        specifier: workspace:*
+        version: link:../../packages/ottaorm
+      '@ottabase/ottarenderer':
+        specifier: workspace:*
+        version: link:../../packages/ottarenderer
+      '@ottabase/ottaselect':
+        specifier: workspace:*
+        version: link:../../packages/ottaselect
+      '@ottabase/ottaupload':
+        specifier: workspace:*
+        version: link:../../packages/ottaupload
+      '@ottabase/queue':
+        specifier: workspace:*
+        version: link:../../packages/queue
+      '@ottabase/referrals':
+        specifier: workspace:*
+        version: link:../../packages/referrals
+      '@ottabase/shortlinks':
+        specifier: workspace:*
+        version: link:../../packages/shortlinks
+      '@ottabase/spotlight':
+        specifier: workspace:*
+        version: link:../../packages/spotlight
+      '@ottabase/state':
+        specifier: workspace:*
+        version: link:../../packages/state
+      '@ottabase/ui-base':
+        specifier: workspace:*
+        version: link:../../packages/ui-base
+      '@ottabase/ui-code-highlight':
+        specifier: workspace:*
+        version: link:../../packages/ui-code-highlight
+      '@ottabase/ui-components':
+        specifier: workspace:*
+        version: link:../../packages/ui-components
+      '@ottabase/ui-cropper':
+        specifier: workspace:*
+        version: link:../../packages/ui-cropper
+      '@ottabase/ui-mantine':
+        specifier: workspace:*
+        version: link:../../packages/ui-mantine
+      '@ottabase/ui-shadcn':
+        specifier: workspace:*
+        version: link:../../packages/ui-shadcn
+      '@ottabase/ui-split-pane':
+        specifier: workspace:*
+        version: link:../../packages/ui-split-pane
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
+      '@tabler/icons-react':
+        specifier: 'catalog:'
+        version: 3.35.0(react@19.2.4)
+      '@tanstack/react-query':
+        specifier: 'catalog:'
+        version: 5.90.16(react@19.2.4)
+      '@tanstack/react-router':
+        specifier: 'catalog:'
+        version: 1.147.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.38.4(@cloudflare/workers-types@4.20251225.0)(@opentelemetry/api@1.9.0)(@prisma/client@5.22.0(prisma@5.22.0))(@types/pg@8.15.6)(@types/react@19.2.7)(prisma@5.22.0)(react@19.2.4)
+      jotai:
+        specifier: 'catalog:'
+        version: 2.16.2(@babel/core@7.28.6)(@babel/template@7.28.6)(@types/react@19.2.7)(react@19.2.4)
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.468.0(react@19.2.4)
+      next-themes:
+        specifier: 'catalog:'
+        version: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react:
+        specifier: 'catalog:'
+        version: 19.2.4
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.4(react@19.2.4)
+      react-hook-form:
+        specifier: 'catalog:'
+        version: 7.70.0(react@19.2.4)
+      sonner:
+        specifier: 'catalog:'
+        version: 1.7.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 'catalog:'
+        version: 4.20251225.0
+      '@ottabase/ui-tailwind':
+        specifier: workspace:*
+        version: link:../../packages/ui-tailwind
+      '@tanstack/react-query-devtools':
+        specifier: 'catalog:'
+        version: 5.91.2(@tanstack/react-query@5.90.16(react@19.2.4))(react@19.2.4)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.19.28
+      '@types/nodemailer':
+        specifier: 'catalog:'
+        version: 7.0.5
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.7)
+      '@vitejs/plugin-react':
+        specifier: 'catalog:'
+        version: 4.7.0(vite@5.4.21(@types/node@20.19.28)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0))
+      autoprefixer:
+        specifier: 'catalog:'
+        version: 10.4.21(postcss@8.5.6)
+      baseline-browser-mapping:
+        specifier: ^2.9.14
+        version: 2.9.19
       cross-env:
         specifier: 'catalog:'
         version: 7.0.3
@@ -8780,9 +9024,6 @@ packages:
     resolution: {integrity: sha512-w9UMqWwJxHNOvoNzSJ2oPF5wvYcvP7jUvYzhp67yEhTi17ZDBBC1z9pTdGuzjD+EFIqLSYRweZjqfiPzQ06Ebg==}
     engines: {node: '>= 0.4'}
 
-  get-tsconfig@4.10.1:
-    resolution: {integrity: sha512-auHyJ4AgMz7vgS8Hp3N6HXSmlMdUyhSUrfBF16w153rxtLIEOE+HGqaBppczZvnHLqQJfiHotCYpNhl0lUROFQ==}
-
   get-tsconfig@4.13.1:
     resolution: {integrity: sha512-EoY1N2xCn44xU6750Sx7OjOIT59FkmstNc3X6y5xpz7D5cBtZRe/3pSlTkDJgqsOk3WwZPkWfonhhUJfttQo3w==}
 
@@ -14443,7 +14684,7 @@ snapshots:
   '@esbuild-kit/esm-loader@2.6.5':
     dependencies:
       '@esbuild-kit/core-utils': 3.3.2
-      get-tsconfig: 4.10.1
+      get-tsconfig: 4.13.1
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true
@@ -17306,12 +17547,12 @@ snapshots:
       tailwindcss: 4.1.18
       vite: 5.4.21(@types/node@20.19.28)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)
 
-  '@tailwindcss/vite@4.1.18(vite@7.3.1(@types/node@20.19.28)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))':
+  '@tailwindcss/vite@4.1.18(vite@7.3.1(@types/node@25.1.0)(jiti@1.21.7)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@tailwindcss/node': 4.1.18
       '@tailwindcss/oxide': 4.1.18
       tailwindcss: 4.1.18
-      vite: 7.3.1(@types/node@20.19.28)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+      vite: 7.3.1(@types/node@25.1.0)(jiti@1.21.7)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   '@tanstack/history@1.145.7': {}
 
@@ -19654,10 +19895,6 @@ snapshots:
       es-errors: 1.3.0
       get-intrinsic: 1.3.0
 
-  get-tsconfig@4.10.1:
-    dependencies:
-      resolve-pkg-maps: 1.0.0
-
   get-tsconfig@4.13.1:
     dependencies:
       resolve-pkg-maps: 1.0.0
@@ -20377,7 +20614,7 @@ snapshots:
       - '@types/react-dom'
       - vite
 
-  localflare-dashboard@0.1.2(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(vite@7.3.1(@types/node@20.19.28)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)):
+  localflare-dashboard@0.1.2(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(vite@7.3.1(@types/node@25.1.0)(jiti@1.21.7)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)):
     dependencies:
       '@base-ui/react': 1.0.0(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@fontsource-variable/figtree': 5.2.10
@@ -20388,7 +20625,7 @@ snapshots:
       '@radix-ui/react-select': 2.2.6(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@radix-ui/react-slot': 1.2.3(@types/react@19.2.7)(react@19.2.4)
       '@radix-ui/react-tabs': 1.1.13(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@tailwindcss/vite': 4.1.18(vite@7.3.1(@types/node@20.19.28)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
+      '@tailwindcss/vite': 4.1.18(vite@7.3.1(@types/node@25.1.0)(jiti@1.21.7)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@tanstack/react-query': 5.90.16(react@19.2.4)
       '@tanstack/react-table': 8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       class-variance-authority: 0.7.1
@@ -20428,11 +20665,11 @@ snapshots:
       - utf-8-validate
       - vite
 
-  localflare@0.1.2(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(vite@7.3.1(@types/node@20.19.28)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)):
+  localflare@0.1.2(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(vite@7.3.1(@types/node@25.1.0)(jiti@1.21.7)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)):
     dependencies:
       cac: 6.7.14
       localflare-core: 0.1.2
-      localflare-dashboard: 0.1.2(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(vite@7.3.1(@types/node@20.19.28)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
+      localflare-dashboard: 0.1.2(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(vite@7.3.1(@types/node@25.1.0)(jiti@1.21.7)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       localflare-server: 0.1.2
       picocolors: 1.1.1
     transitivePeerDependencies:
