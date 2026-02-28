@@ -136,14 +136,15 @@ export function AdminMenusListPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={() => {
                                 if (deleteMenuId) deleteMutation.mutate(deleteMenuId);
                                 setDeleteMenuId(null);
                             }}
+                            disabled={deleteMutation.isPending}
                         >
-                            Delete
+                            {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

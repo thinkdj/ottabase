@@ -228,14 +228,15 @@ function KitCard({
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={() => {
                                 onDelete();
                                 setDeleteOpen(false);
                             }}
+                            disabled={deleting}
                         >
-                            Delete
+                            {deleting ? 'Deleting…' : 'Delete'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

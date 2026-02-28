@@ -398,14 +398,15 @@ function MenuItemsEditor({ menu }: { menu: MenuWithItemsDto }) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={deleteItemMutation.isPending}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={() => {
                                 if (deleteItemId) deleteItemMutation.mutate(deleteItemId);
                                 setDeleteItemId(null);
                             }}
+                            disabled={deleteItemMutation.isPending}
                         >
-                            Remove
+                            {deleteItemMutation.isPending ? 'Removing…' : 'Remove'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
