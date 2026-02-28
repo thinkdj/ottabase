@@ -9,6 +9,8 @@ import {
     FONT_SIZE_DEFAULT,
     moveSectionUp,
     moveSectionDown,
+    DEFAULT_HEADING_LABELS,
+    resolveHeadingLabel,
     type SectionKey,
 } from '../pages/resume/types';
 
@@ -84,9 +86,9 @@ describe('Resume Types & Utilities', () => {
         });
 
         it('has sensible defaults', () => {
-            expect(FONT_SIZE_MIN).toBe(9);
-            expect(FONT_SIZE_MAX).toBe(16);
-            expect(FONT_SIZE_DEFAULT).toBe(12);
+            expect(FONT_SIZE_MIN).toBe(80);
+            expect(FONT_SIZE_MAX).toBe(130);
+            expect(FONT_SIZE_DEFAULT).toBe(100);
         });
     });
 
@@ -135,8 +137,13 @@ describe('Resume Types & Utilities', () => {
             const order: SectionKey[] = ['summary', 'workExperiences', 'educations'];
 
             it('swaps section with the one below', () => {
+                const result = moveSectionDown(order, 'workExperiences');
+                expect(result).toEqual(['summary', 'educations', 'workExperiences']);
+            });
+
+            it('returns same array when summary is pinned at first', () => {
                 const result = moveSectionDown(order, 'summary');
-                expect(result).toEqual(['workExperiences', 'summary', 'educations']);
+                expect(result).toBe(order);
             });
 
             it('returns same array when section is already last', () => {
@@ -151,9 +158,49 @@ describe('Resume Types & Utilities', () => {
 
             it('does not mutate the original array', () => {
                 const original = [...order];
-                moveSectionDown(order, 'summary');
+                moveSectionDown(order, 'workExperiences');
                 expect(order).toEqual(original);
             });
+        });
+
+        describe('summary pinning', () => {
+            const order: SectionKey[] = ['summary', 'workExperiences', 'educations', 'skillSets'];
+
+            it('prevents moving workExperiences above summary', () => {
+                const result = moveSectionUp(order, 'workExperiences');
+                expect(result).toBe(order);
+            });
+
+            it('allows moving educations up (not into summary position)', () => {
+                const result = moveSectionUp(order, 'educations');
+                expect(result).toEqual(['summary', 'educations', 'workExperiences', 'skillSets']);
+            });
+
+            it('prevents summary from moving down', () => {
+                const result = moveSectionDown(order, 'summary');
+                expect(result).toBe(order);
+            });
+        });
+    });
+
+    describe('Heading labels', () => {
+        it('DEFAULT_HEADING_LABELS has all section keys', () => {
+            for (const key of DEFAULT_SECTION_ORDER) {
+                expect(DEFAULT_HEADING_LABELS[key]).toBeTruthy();
+            }
+        });
+
+        it('resolveHeadingLabel returns override when provided', () => {
+            const overrides = { summary: 'About Me' };
+            expect(resolveHeadingLabel('summary', overrides)).toBe('About Me');
+        });
+
+        it('resolveHeadingLabel falls back to template default', () => {
+            expect(resolveHeadingLabel('summary', {}, 'Profile')).toBe('Profile');
+        });
+
+        it('resolveHeadingLabel falls back to global default', () => {
+            expect(resolveHeadingLabel('summary')).toBe('Summary');
         });
     });
 });

@@ -22,19 +22,36 @@ interface ResumePreviewProps {
     accentColor: string;
     fontSize: number;
     sectionOrder: SectionKey[];
+    headingLabels?: Partial<Record<SectionKey, string>>;
+    onHeadingChange?: (key: SectionKey, label: string) => void;
 }
 
 /**
  * Renders the selected resume template with given data.
  * Lazy-loads templates so only the active one is bundled on first paint.
  */
-export default function ResumePreview({ data, templateId, accentColor, fontSize, sectionOrder }: ResumePreviewProps) {
+export default function ResumePreview({
+    data,
+    templateId,
+    accentColor,
+    fontSize,
+    sectionOrder,
+    headingLabels,
+    onHeadingChange,
+}: ResumePreviewProps) {
     const Template = TEMPLATE_MAP[templateId] ?? TemplateClassic;
     return (
         <Suspense
             fallback={<div className="flex items-center justify-center py-20 text-gray-400">Loading template…</div>}
         >
-            <Template data={data} accentColor={accentColor} fontSize={fontSize} sectionOrder={sectionOrder} />
+            <Template
+                data={data}
+                accentColor={accentColor}
+                fontSize={fontSize}
+                sectionOrder={sectionOrder}
+                headingLabels={headingLabels}
+                onHeadingChange={onHeadingChange}
+            />
         </Suspense>
     );
 }
