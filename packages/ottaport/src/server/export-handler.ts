@@ -41,7 +41,8 @@ export async function processExport(config: ExportConfig): Promise<{
 
     if (search) {
         // Get searchable fields from model
-        const searchableFields = Object.entries(Model.getFieldDescriptors?.() ?? {})
+        const modelFields = (Model as any).getFields?.() ?? {};
+        const searchableFields = Object.entries(modelFields)
             .filter(([, desc]: [string, any]) => desc.searchable)
             .map(([key]: [string, any]) => key);
 

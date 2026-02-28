@@ -23,7 +23,7 @@ vi.mock('@ottabase/ottaorm', () => {
             const id = data.id || `generated-${mockRecords.size + 1}`;
             const record = { ...data, id };
             mockRecords.set(String(id), record);
-            return { get: (key: string) => record[key] };
+            return { get: (key: string) => (record as Record<string, unknown>)[key] };
         }),
         update: vi.fn(async (id: string, data: Record<string, unknown>) => {
             const existing = mockRecords.get(id);
