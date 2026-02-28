@@ -252,7 +252,7 @@ export default function TemplateClassic({ data, accentColor, fontSize, sectionOr
             </header>
 
             {/* ── Sections in user-defined order ── */}
-            {sectionOrder.map((key) => sectionRenderers[key]())}
+            {sectionOrder.map((key) => sectionRenderers[key]?.())}
 
             {/* ── Print styles ── */}
             <style>{`

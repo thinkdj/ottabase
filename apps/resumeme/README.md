@@ -50,9 +50,32 @@ Two-column layout. Dark sidebar with contact/skills/certifications, main area wi
 Both templates support:
 
 - Configurable accent colour (hex)
+- **Font size control** (9–16pt slider with live preview)
+- **Section reordering** (↑/↓ buttons to rearrange sections in real time)
 - Dark mode
 - Print-optimised CSS (`@media print`)
 - PDF export via browser print
+
+### Font Size Control
+
+Adjust resume density with the font size slider (9–16pt). The selected size applies to both on-screen preview and
+printed/PDF output.
+
+```typescript
+import { FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from './pages/resume/types';
+// 9pt – 16pt, default 12pt
+```
+
+### Section Reorder
+
+Rearrange resume sections using the ↑/↓ arrows next to each section header in the left sidebar. The preview updates
+instantly. In the Modern template, sidebar-pinned sections (Skills, Certifications) stay fixed while main-area sections
+reorder.
+
+```typescript
+import { DEFAULT_SECTION_ORDER, moveSectionUp, moveSectionDown } from './pages/resume/types';
+// DEFAULT_SECTION_ORDER: ['summary', 'workExperiences', 'educations', 'skillSets', 'projects', 'certifications']
+```
 
 ## Getting Started
 
