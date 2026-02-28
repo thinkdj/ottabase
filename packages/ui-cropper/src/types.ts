@@ -37,4 +37,6 @@ export interface CropperOptions {
     minZoom?: number;
     /** Max zoom level (default: 3) */
     maxZoom?: number;
+    /** Called whenever an image is loaded (from file picker, loadFromFile, or loadFromUrl) */
+    onImageLoad?: () => void;
 }

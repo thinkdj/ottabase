@@ -571,9 +571,8 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                         session.user.id = token.id as string;
                         session.user.email = token.email as string;
                         session.user.name = token.name as string;
-                        if (token.image) {
-                            session.user.image = token.image as string;
-                        }
+                        // Always sync image — use null when cleared (e.g. profile pic removal)
+                        session.user.image = (token.image as string) || null;
                         if (token.emailVerified) {
                             const emailVerified =
                                 typeof token.emailVerified === 'number'

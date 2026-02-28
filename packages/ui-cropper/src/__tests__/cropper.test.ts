@@ -129,6 +129,20 @@ describe('Cropper', () => {
         document.body.removeChild(el);
     });
 
+    it('accepts onImageLoad callback option', () => {
+        const el = document.createElement('div');
+        let called = false;
+        const c = new Cropper(el, {
+            onImageLoad: () => {
+                called = true;
+            },
+        });
+        // Callback is not called until an image actually loads
+        expect(called).toBe(false);
+        expect(typeof c.loadFromUrl).toBe('function');
+        c.destroy();
+    });
+
     it('zoom respects maxHeight constraint', () => {
         const el = document.createElement('div');
         const c = new Cropper(el, {

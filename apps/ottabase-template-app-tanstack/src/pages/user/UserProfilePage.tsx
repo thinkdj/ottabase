@@ -426,8 +426,11 @@ export function UserProfilePage() {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                                 <AlertDialogCancel disabled={isRemovingAvatar}>Cancel</AlertDialogCancel>
+                                {/* Prevent Radix auto-close so the loading state is visible
+                                    while the async PATCH completes. Close manually on success. */}
                                 <AlertDialogAction
-                                    onClick={async () => {
+                                    onClick={async (e) => {
+                                        e.preventDefault();
                                         setIsRemovingAvatar(true);
                                         try {
                                             await api('/api/users/me', {
@@ -440,6 +443,7 @@ export function UserProfilePage() {
                                             setRemoveConfirmOpen(false);
                                             toast.success('Profile picture removed', 'Your avatar has been removed.');
                                         } catch (err) {
+                                            setRemoveConfirmOpen(false);
                                             toast.error('Remove failed', 'Failed to remove profile picture');
                                         } finally {
                                             setIsRemovingAvatar(false);

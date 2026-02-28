@@ -63,6 +63,8 @@ cropper.destroy();
 | `setMaxHeight(px)`           | Set max display height                                                         |
 | `setPresetsVisible(visible)` | Show/hide aspect preset buttons                                                |
 | `getBlob(mime?, quality?)`   | Export cropped image as Blob                                                   |
+| `loadFromFile(file)`         | Load image from a File object                                                  |
+| `loadFromUrl(url)`           | Load image from URL (http, blob:, or data: base64)                             |
 | `destroy()`                  | Remove DOM and cleanup                                                         |
 
 ### Options
@@ -79,6 +81,7 @@ cropper.destroy();
 | `maxZoom`            | 3                      | Maximum zoom level                                             |
 | `transitions`        | true                   | Enable smooth CSS transitions                                  |
 | `transitionDuration` | 300                    | Transition duration in ms                                      |
+| `onImageLoad`        | —                      | Callback fired whenever an image finishes loading              |
 
 ## Interactions
 
@@ -144,6 +147,21 @@ new Cropper(container, {
 new Cropper(container, {
     transitions: false,
 });
+```
+
+### Image load callback
+
+```typescript
+const cropper = new Cropper(container, {
+    // Fires whenever an image loads — from the file picker, loadFromFile(), or loadFromUrl()
+    onImageLoad: () => {
+        console.log('Image ready');
+        saveButton.disabled = false;
+    },
+});
+
+// Also fires when loading from URL
+cropper.loadFromUrl('https://example.com/photo.jpg');
 ```
 
 ### Rotation and transforms

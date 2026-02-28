@@ -36,6 +36,7 @@ export class Cropper {
         minZoom: number;
         maxZoom: number;
         aspectPresets: CropperOptions['aspectPresets'];
+        onImageLoad?: () => void;
     };
     private presetBtns: Map<number | null, HTMLButtonElement> = new Map();
     private img: HTMLImageElement | null = null;
@@ -71,6 +72,7 @@ export class Cropper {
             zoom: options.zoom ?? 1,
             minZoom: options.minZoom ?? 0.5,
             maxZoom: options.maxZoom ?? 3,
+            onImageLoad: options.onImageLoad,
         };
         this.zoom = this.options.zoom;
         this.mount();
@@ -214,6 +216,7 @@ export class Cropper {
             if (presetsEl) presetsEl.style.display = 'flex';
             this.updatePresetActive();
             this.render();
+            this.options.onImageLoad?.();
             // Update filename label if present
             const nameLabel = this.container.querySelector<HTMLElement>('#cropper-file-name');
             if (nameLabel) {
@@ -252,6 +255,7 @@ export class Cropper {
             if (presetsEl) presetsEl.style.display = 'flex';
             this.updatePresetActive();
             this.render();
+            this.options.onImageLoad?.();
         };
         this.img.src = url;
     }

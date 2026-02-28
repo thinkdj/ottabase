@@ -74,12 +74,13 @@ export function AvatarEditModal({
                 maxHeight: 320,
                 transitions: true,
                 aspectPresets: false,
+                // Fires when any image is loaded (file picker or pre-load URL)
+                onImageLoad: () => setHasLoadedImage(true),
             });
 
             // Pre-load current avatar if available
             if (currentImageUrl) {
                 cropperRef.current.loadFromUrl(currentImageUrl);
-                setHasLoadedImage(true);
             }
         });
 
@@ -90,42 +91,22 @@ export function AvatarEditModal({
         };
     }, [open, currentImageUrl]);
 
-    // Listen for file changes via the cropper's own input to track hasLoadedImage
-    useEffect(() => {
-        if (!open || !containerRef.current) return;
-
-        const observer = new MutationObserver(() => {
-            // If the cropper canvas is visible, an image has been loaded
-            const wrap = containerRef.current?.querySelector<HTMLElement>('#cropper-wrap');
-            if (wrap && wrap.style.display !== 'none') {
-                setHasLoadedImage(true);
-            }
-        });
-
-        observer.observe(containerRef.current, { attributes: true, subtree: true, attributeFilter: ['style'] });
-        return () => observer.disconnect();
-    }, [open]);
-
     const handleRemove = async () => {
         if (!hasImage || !onRemove) return;
         setIsRemoving(true);
         try {
-            const patchRes = await api<Record<string, any>>('/api/users/me', {
+            // Send null image to clear profile picture server-side
+            await api('/api/users/me', {
                 method: 'PATCH',
                 body: { image: null },
             });
-            const updatedUser =
-                patchRes && typeof patchRes === 'object' && 'data' in patchRes
-                    ? (patchRes as { data?: Record<string, any> }).data
-                    : patchRes;
-            if (updatedUser?.image === null || updatedUser?.image === undefined) {
-                onRemove();
-                onOpenChange(false);
-            } else {
-                throw new Error('Failed to remove profile picture');
-            }
+            // Close dialogs first, then notify parent
+            setRemoveConfirmOpen(false);
+            onRemove();
+            onOpenChange(false);
         } catch (err) {
             console.error('Avatar remove failed:', err);
+            setRemoveConfirmOpen(false);
             onError?.(err instanceof Error ? err.message : 'Failed to remove profile picture');
         } finally {
             setIsRemoving(false);
@@ -259,8 +240,13 @@ export function AvatarEditModal({
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
+                        {/* Prevent Radix auto-close so the loading state is visible
+                            while the async PATCH completes. Close manually on success. */}
                         <AlertDialogAction
-                            onClick={handleRemove}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleRemove();
+                            }}
                             disabled={isRemoving}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
