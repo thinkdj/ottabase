@@ -38,7 +38,7 @@ interface PortJobItem {
 
 function formatDate(value: string | number | null): string {
     if (!value) return '—';
-    const date = new Date(typeof value === 'number' ? value : value);
+    const date = new Date(typeof value === 'number' ? value : Date.parse(value));
     if (isNaN(date.getTime())) return '—';
     return date.toLocaleString();
 }
