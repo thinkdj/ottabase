@@ -158,7 +158,7 @@ export function UserRBACPage() {
 
     const handleConfirmRemove = () => {
         if (removeMembership) {
-            removeMember.mutate(removeMembership.id as string);
+            removeMember.mutate(removeMembership.id);
         }
         setRemoveMembership(null);
     };
