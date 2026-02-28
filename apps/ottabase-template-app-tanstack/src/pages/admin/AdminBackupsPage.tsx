@@ -16,6 +16,13 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    Input,
+    Label,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@ottabase/ui-shadcn';
 import { api, isApiError } from '@/lib/api';
 import {
@@ -31,6 +38,8 @@ import {
     CheckCircle,
     XCircle,
     Shield,
+    Settings,
+    Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -49,6 +58,7 @@ interface BackupMetadata {
     label?: string;
     durationMs: number;
     contentHash: string;
+    filename?: string;
 }
 
 interface BackupSetupStatus {
@@ -69,6 +79,14 @@ interface BackupsResponse {
         newestBackup: string | null;
     };
     setup: BackupSetupStatus;
+}
+
+interface BackupSettings {
+    retentionDays: number;
+    schedule: string | null;
+    scheduleActive: boolean;
+    taskId: string | null;
+    taskName: string | null;
 }
 
 // ============================================================
@@ -97,6 +115,15 @@ function timeAgo(dateStr: string): string {
     return new Date(dateStr).toLocaleDateString();
 }
 
+const SCHEDULE_PRESETS = [
+    { label: 'Daily at 2:00 AM UTC', value: '0 2 * * *' },
+    { label: 'Daily at 4:00 AM UTC', value: '0 4 * * *' },
+    { label: 'Daily at midnight UTC', value: '0 0 * * *' },
+    { label: 'Every 12 hours', value: '0 */12 * * *' },
+    { label: 'Every 6 hours', value: '0 */6 * * *' },
+    { label: 'Weekly (Sunday 3 AM UTC)', value: '0 3 * * 0' },
+];
+
 // ============================================================
 // Component
 // ============================================================
@@ -104,6 +131,11 @@ function timeAgo(dateStr: string): string {
 export function AdminBackupsPage() {
     const queryClient = useQueryClient();
     const [deleteDialog, setDeleteDialog] = useState<{ id: string; label?: string } | null>(null);
+    const [showSettings, setShowSettings] = useState(false);
+    const [settingsForm, setSettingsForm] = useState({
+        schedule: '',
+        retentionDays: 30,
+    });
 
     // Fetch backups + setup status
     const {
@@ -115,6 +147,23 @@ export function AdminBackupsPage() {
         queryFn: () => api<BackupsResponse>('/api/admin/backups'),
         refetchInterval: 30000,
     });
+
+    // Fetch backup settings
+    const { data: settings, refetch: refetchSettings } = useQuery({
+        queryKey: ['admin', 'backups', 'settings'],
+        queryFn: () => api<BackupSettings>('/api/admin/backups/settings'),
+        refetchOnMount: true,
+    });
+
+    // Sync settings form when data loads
+    const syncSettingsForm = () => {
+        if (settings) {
+            setSettingsForm({
+                schedule: settings.schedule || '0 2 * * *',
+                retentionDays: settings.retentionDays || 30,
+            });
+        }
+    };
 
     // Create backup mutation
     const createMutation = useMutation({
@@ -145,14 +194,35 @@ export function AdminBackupsPage() {
         },
     });
 
+    // Save settings mutation
+    const saveSettingsMutation = useMutation({
+        mutationFn: (data: { schedule?: string; retentionDays?: number; isActive?: boolean }) =>
+            api('/api/admin/backups/settings', { method: 'PUT', body: data }),
+        onSuccess: () => {
+            toast.success('Backup settings saved');
+            queryClient.invalidateQueries({ queryKey: ['admin', 'backups'] });
+            refetchSettings();
+        },
+        onError: (error) => {
+            toast.error(isApiError(error) ? error.message : 'Failed to save settings');
+        },
+    });
+
     const handleDownload = (backup: BackupMetadata) => {
-        // Trigger download via direct link
         const link = document.createElement('a');
         link.href = `/api/admin/backups/${backup.id}`;
-        link.download = `backup-${backup.id}.sql`;
+        link.download = backup.filename || `backup-${backup.id}.sql`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    };
+
+    const handleSaveSettings = () => {
+        saveSettingsMutation.mutate({
+            schedule: settingsForm.schedule,
+            retentionDays: settingsForm.retentionDays,
+            isActive: true,
+        });
     };
 
     const setup = response?.setup;
@@ -174,6 +244,17 @@ export function AdminBackupsPage() {
                     <p className="text-muted-foreground">Automated D1→R2 database backups with retention management</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            syncSettingsForm();
+                            setShowSettings(!showSettings);
+                        }}
+                    >
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
                         <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                         Refresh
@@ -217,6 +298,81 @@ export function AdminBackupsPage() {
                                 </li>
                             ))}
                         </ul>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Settings Panel */}
+            {showSettings && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <Settings className="h-4 w-4" />
+                            Backup Settings
+                        </CardTitle>
+                        <CardDescription>
+                            Configure automated backup schedule and retention policy.
+                            {settings?.taskName && (
+                                <span className="ml-1 text-xs">
+                                    Current task: <strong>{settings.taskName}</strong>
+                                    {settings.scheduleActive ? ' (active)' : ' (paused)'}
+                                </span>
+                            )}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label>Backup Schedule</Label>
+                                <Select
+                                    value={settingsForm.schedule}
+                                    onValueChange={(v) => setSettingsForm((s) => ({ ...s, schedule: v }))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select schedule" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {SCHEDULE_PRESETS.map((p) => (
+                                            <SelectItem key={p.value} value={p.value}>
+                                                {p.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">
+                                    Cron expression:{' '}
+                                    <code className="rounded bg-muted px-1">{settingsForm.schedule}</code>
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Retention (days)</Label>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    max={365}
+                                    value={settingsForm.retentionDays}
+                                    onChange={(e) =>
+                                        setSettingsForm((s) => ({
+                                            ...s,
+                                            retentionDays: Math.max(1, Math.min(365, parseInt(e.target.value) || 30)),
+                                        }))
+                                    }
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Backups older than this will be automatically deleted (1–365 days).
+                                </p>
+                            </div>
+                        </div>
+                        <div className="mt-4 flex justify-end">
+                            <Button size="sm" onClick={handleSaveSettings} disabled={saveSettingsMutation.isPending}>
+                                {saveSettingsMutation.isPending ? (
+                                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Save className="mr-2 h-4 w-4" />
+                                )}
+                                {saveSettingsMutation.isPending ? 'Saving...' : 'Save Settings'}
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
             )}
@@ -286,9 +442,15 @@ export function AdminBackupsPage() {
                         </CardHeader>
                         {!setup.cronConfigured && (
                             <CardContent className="pt-0">
-                                <Link to="/admin/cron" className="text-xs text-primary hover:underline">
-                                    Configure in Scheduled Tasks →
-                                </Link>
+                                <button
+                                    onClick={() => {
+                                        syncSettingsForm();
+                                        setShowSettings(true);
+                                    }}
+                                    className="text-xs text-primary hover:underline"
+                                >
+                                    Configure backup schedule →
+                                </button>
                             </CardContent>
                         )}
                     </Card>
@@ -336,8 +498,10 @@ export function AdminBackupsPage() {
                                     className="flex items-center justify-between rounded-lg border p-4"
                                 >
                                     <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-medium text-sm">{backup.label || 'Backup'}</span>
+                                        <div className="mb-1 flex items-center gap-2">
+                                            <span className="text-sm font-medium">
+                                                {backup.filename || backup.label || 'Backup'}
+                                            </span>
                                             <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
                                                 {backup.type}
                                             </code>
@@ -373,7 +537,7 @@ export function AdminBackupsPage() {
                                         )}
                                     </div>
 
-                                    <div className="flex items-center gap-1 ml-4">
+                                    <div className="ml-4 flex items-center gap-1">
                                         <Button
                                             variant="outline"
                                             size="sm"

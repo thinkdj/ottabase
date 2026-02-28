@@ -9,6 +9,8 @@ import {
     handleAdminBackupDownload,
     handleAdminBackupsCreate,
     handleAdminBackupsList,
+    handleAdminBackupsSettingsGet,
+    handleAdminBackupsSettingsPut,
 } from './admin-backups';
 import {
     handleAdminDbRowDelete,
@@ -190,6 +192,11 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
 
     if (route === '/api/admin/backups') {
         return handleAdminBackupsList(context);
+    }
+
+    // GET /api/admin/backups/settings — must come before :id catch-all
+    if (route === '/api/admin/backups/settings') {
+        return handleAdminBackupsSettingsGet(context);
     }
 
     // GET /api/admin/backups/:id — download backup SQL
@@ -543,6 +550,10 @@ async function handlePutRoutes(context: ApiRouteContext): Promise<Response | nul
 
     if (packages.referrals && route === '/api/referrals/username') {
         return handleReferralUsernameUpdate(context);
+    }
+
+    if (route === '/api/admin/backups/settings') {
+        return handleAdminBackupsSettingsPut(context);
     }
 
     return null;
