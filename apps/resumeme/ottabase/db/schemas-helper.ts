@@ -1,21 +1,13 @@
 // ============================================================
-// Schema Collection Helper (ottabase-template-app-tanstack)
+// Schema Collection Helper (ResumeMe)
 // ============================================================
 //
-// This file provides utilities to collect and organize all table
-// schemas from different sources:
+// Collects and organizes all table schemas from different sources:
 // 1. CORE schemas (from @ottabase/ottaorm)
-// 2. APP schemas (app-specific models like Todo)
+// 2. APP schemas (resume models)
 // 3. PACKAGE schemas (from enabled packages)
-//
-// Usage in cloudflare-worker.ts:
-// import { getAllSchemas } from './ottabase/db/schemas-helper';
-// const allSchemas = getAllSchemas();
-// await autoInit({ driver, schema: allSchemas, ... });
 // ============================================================
 
-// Blog tables are included via package registry (getEnabledPackageTables)
-// No need to import them directly here to avoid duplication
 import {
     accountsTable,
     auditLogsTable,
@@ -32,13 +24,19 @@ import {
     verificationTokensTable,
 } from '@ottabase/ottaorm';
 import { getEnabledPackageTables } from '../config.migrations';
-import { todosTable } from '../models/Todo';
+import { resumeCertificationsTable } from '../models/ResumeCertification';
+import { resumeDataSetsTable } from '../models/ResumeDataSet';
+import { resumeEducationsTable } from '../models/ResumeEducation';
+import { resumeProfilesTable } from '../models/ResumeProfile';
+import { resumeProjectsTable } from '../models/ResumeProject';
+import { resumeSkillSetsTable } from '../models/ResumeSkillSet';
+import { resumeWorkExperiencesTable } from '../models/ResumeWorkExperience';
 
 /**
  * Get all table schemas organized by source
  */
 export function getAllSchemas() {
-    // 1. Core schemas from @ottabase/ottaorm (users, auth tables, etc.)
+    // 1. Core schemas from @ottabase/ottaorm
     const coreTables = {
         accountsTable,
         authenticatorsTable,
@@ -47,7 +45,6 @@ export function getAllSchemas() {
         usersTable,
         verificationTokensTable,
         scheduledTasksTable,
-        // Multi-tenant/RBAC tables
         organizationsTable,
         organizationMembersTable,
         rolesTable,
@@ -56,24 +53,25 @@ export function getAllSchemas() {
         auditLogsTable,
     };
 
-    // 2. App-specific schemas
+    // 2. App-specific schemas (resume models)
     const appTables = {
-        todosTable,
+        resumeProfilesTable,
+        resumeSkillSetsTable,
+        resumeWorkExperiencesTable,
+        resumeEducationsTable,
+        resumeProjectsTable,
+        resumeCertificationsTable,
+        resumeDataSetsTable,
     };
 
-    // 3. Package schemas from enabled packages (ottablog, shortlinks, referrals, etc.)
-    // This includes blog tables (posts, categories, series, etc.) from ottablog package
+    // 3. Package schemas from enabled packages
     const packageTables = getEnabledPackageTables();
 
-    // Combine all schemas
-    // Note: Later entries override earlier ones if there are duplicates
-    const allSchemas = {
+    return {
         ...coreTables,
         ...appTables,
         ...packageTables,
     };
-
-    return allSchemas;
 }
 
 /**
@@ -88,7 +86,6 @@ export function getSchemaSummary() {
         usersTable,
         verificationTokensTable,
         scheduledTasksTable,
-        // Multi-tenant/RBAC tables
         organizationsTable,
         organizationMembersTable,
         rolesTable,
@@ -98,7 +95,13 @@ export function getSchemaSummary() {
     };
 
     const appTables = {
-        todosTable,
+        resumeProfilesTable,
+        resumeSkillSetsTable,
+        resumeWorkExperiencesTable,
+        resumeEducationsTable,
+        resumeProjectsTable,
+        resumeCertificationsTable,
+        resumeDataSetsTable,
     };
 
     const packageTables = getEnabledPackageTables();

@@ -1,15 +1,5 @@
 import { BrandKit, LayoutRouteMapping, LayoutTemplate, MenuSlotAssignment } from '@ottabase/brand-engine/persistence';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import {
-    OttablogPlugin,
-    OttablogTheme,
-    Post,
-    PostCategory,
-    PostSeries,
-    PostTag,
-    PostTagLink,
-    PostVersion,
-} from '@ottabase/ottablog';
 import { clearConnection, hasConnection, initRLS, registerConnection, registerModels } from '@ottabase/ottaorm';
 import {
     Account,
@@ -23,11 +13,15 @@ import {
     UserRole,
     VerificationToken,
 } from '@ottabase/ottaorm/models';
-import { ReferralTracking } from '@ottabase/referrals';
-import { Shortlink } from '@ottabase/shortlinks';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
-import { Todo } from '../../ottabase/models/Todo';
+import { ResumeCertification } from '../../ottabase/models/ResumeCertification';
+import { ResumeDataSet } from '../../ottabase/models/ResumeDataSet';
+import { ResumeEducation } from '../../ottabase/models/ResumeEducation';
+import { ResumeProfile } from '../../ottabase/models/ResumeProfile';
+import { ResumeProject } from '../../ottabase/models/ResumeProject';
+import { ResumeSkillSet } from '../../ottabase/models/ResumeSkillSet';
+import { ResumeWorkExperience } from '../../ottabase/models/ResumeWorkExperience';
 import type { CloudflareEnv } from '../cloudflare-env';
 import { readJson } from './utils';
 
@@ -89,18 +83,20 @@ export function initDbConnection(env: CloudflareEnv): void {
         UserRole,
         Permission,
     ];
-    const ottablogModels = packages.ottablog
-        ? [Post, PostTag, PostTagLink, PostCategory, PostSeries, PostVersion, OttablogPlugin, OttablogTheme]
-        : [];
-    const packageModels = [
-        ...(packages.shortlinks ? [Shortlink] : []),
-        ...(packages.referrals ? [ReferralTracking] : []),
-    ];
+    const packageModels: (typeof Account)[] = [];
     // Menu, MenuItem: use /api/brand/menus (cache-invalidating CRUD), not OttaORM
     const brandModels = [BrandKit, LayoutTemplate, LayoutRouteMapping, MenuSlotAssignment];
-    const appModels = [Todo];
+    const appModels = [
+        ResumeProfile,
+        ResumeSkillSet,
+        ResumeWorkExperience,
+        ResumeEducation,
+        ResumeProject,
+        ResumeCertification,
+        ResumeDataSet,
+    ];
 
-    registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
+    registerModels([...coreModels, ...packageModels, ...brandModels, ...appModels]);
 
     initRLS();
 }

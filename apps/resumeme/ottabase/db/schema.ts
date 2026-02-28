@@ -1,5 +1,5 @@
 // ============================================================
-// Database Schema (ottabase-template-app-tanstack)
+// Database Schema (ResumeMe)
 // ============================================================
 //
 // This file exports all Drizzle table schemas for the application.
@@ -23,41 +23,19 @@ import {
     usersTable,
     verificationTokensTable,
 } from '@ottabase/ottaorm';
-import {
-    categoriesTable,
-    ottablogPluginsTable,
-    ottablogThemesTable,
-    postTagLinksTable,
-    postTagsTable,
-    postVersionsTable,
-    postsTable,
-    seriesTable,
-} from '@ottabase/ottablog';
-import { referralTrackingTable } from '@ottabase/referrals';
-import { shortlinksTable } from '@ottabase/shortlinks';
 
 export { accountsTable, authenticatorsTable, sessionsTable, usersTable, verificationTokensTable };
 
 // ============================================================
-// APP-SPECIFIC TABLES
+// APP-SPECIFIC TABLES (Resume models)
 // ============================================================
-export { todosTable } from '../models/Todo';
-
-// ============================================================
-// PACKAGE TABLES (from enabled packages)
-// ============================================================
-export {
-    categoriesTable,
-    ottablogPluginsTable,
-    ottablogThemesTable,
-    postTagLinksTable,
-    postTagsTable,
-    postVersionsTable,
-    postsTable,
-    seriesTable,
-    referralTrackingTable,
-    shortlinksTable,
-};
+export { resumeProfilesTable } from '../models/ResumeProfile';
+export { resumeSkillSetsTable } from '../models/ResumeSkillSet';
+export { resumeWorkExperiencesTable } from '../models/ResumeWorkExperience';
+export { resumeEducationsTable } from '../models/ResumeEducation';
+export { resumeProjectsTable } from '../models/ResumeProject';
+export { resumeCertificationsTable } from '../models/ResumeCertification';
+export { resumeDataSetsTable } from '../models/ResumeDataSet';
 
 // ============================================================
 // DYNAMIC PACKAGE TABLES (Configured in config.migrations.ts)
