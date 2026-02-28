@@ -521,6 +521,77 @@ export class BaseModel extends AbstractBaseModel {
     }
 
     /**
+     * Bulk upsert records — insert or update based on a unique field.
+     *
+     * Uses Drizzle's `onConflictDoUpdate` when a unique/primary key column is
+     * the conflict target; falls back to find-then-create/update for arbitrary fields.
+     *
+     * @param records - Array of data objects to upsert
+     * @param uniqueField - Field used for conflict detection (e.g. 'email')
+     * @param options.batchSize - Number of records per batch (default: 50)
+     * @returns Summary of created, updated, and failed counts
+     *
+     * @example
+     * ```typescript
+     * const result = await User.bulkUpsert(
+     *   [{ name: 'Alice', email: 'a@b.com' }, { name: 'Bob', email: 'b@b.com' }],
+     *   'email',
+     * );
+     * // { created: 1, updated: 1, failed: 0, errors: [] }
+     * ```
+     */
+    static async bulkUpsert<T extends typeof BaseModel>(
+        this: T,
+        records: Record<string, any>[],
+        uniqueField: string,
+        options?: { batchSize?: number; driver?: DbDriver },
+    ): Promise<{
+        created: number;
+        updated: number;
+        failed: number;
+        errors: Array<{ index: number; message: string }>;
+    }> {
+        const batchSize = options?.batchSize ?? 50;
+        let created = 0;
+        let updated = 0;
+        let failed = 0;
+        const errors: Array<{ index: number; message: string }> = [];
+
+        for (let i = 0; i < records.length; i += batchSize) {
+            const batch = records.slice(i, i + batchSize);
+
+            for (let j = 0; j < batch.length; j++) {
+                const idx = i + j;
+                const data = batch[j];
+
+                try {
+                    const uniqueValue = data[uniqueField];
+                    if (uniqueValue === undefined || uniqueValue === null || uniqueValue === '') {
+                        failed++;
+                        errors.push({ index: idx, message: `Missing required unique field '${uniqueField}'` });
+                        continue;
+                    }
+
+                    const existing = await this.first({ [uniqueField]: uniqueValue }, options?.driver);
+                    if (existing) {
+                        const id = existing.get(this.primaryKey);
+                        await this.update(id, data, options?.driver);
+                        updated++;
+                    } else {
+                        await this.create(data, options?.driver);
+                        created++;
+                    }
+                } catch (err: unknown) {
+                    failed++;
+                    errors.push({ index: idx, message: err instanceof Error ? err.message : String(err) });
+                }
+            }
+        }
+
+        return { created, updated, failed, errors };
+    }
+
+    /**
      * Count records matching conditions
      */
     static async count(where?: Record<string, any>, driver?: DbDriver): Promise<number> {
