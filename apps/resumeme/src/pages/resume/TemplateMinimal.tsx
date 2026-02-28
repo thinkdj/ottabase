@@ -1,5 +1,5 @@
 import type { ResumeTemplateProps } from './types';
-import { formatDateRange, formatResumeDate, type SectionKey } from './types';
+import { formatDateRange, formatResumeDate, resolveHeadingLabel, type SectionKey } from './types';
 import type { ReactNode } from 'react';
 
 /**
@@ -14,11 +14,35 @@ function SectionDivider() {
     return <hr className="my-5 border-0 border-t border-gray-200" />;
 }
 
-function SectionHeading({ title }: { title: string }) {
-    return <h2 className="mb-3 text-sm font-semibold tracking-wider text-[var(--resume-accent)]">{title}</h2>;
+function SectionHeading({
+    title,
+    sectionKey,
+    onHeadingChange,
+}: {
+    title: string;
+    sectionKey?: SectionKey;
+    onHeadingChange?: (key: SectionKey, label: string) => void;
+}) {
+    return (
+        <h2
+            className="mb-3 text-sm font-semibold tracking-wider text-[var(--resume-accent)]"
+            contentEditable={!!onHeadingChange}
+            suppressContentEditableWarning
+            onBlur={(e) => {
+                if (onHeadingChange && sectionKey) {
+                    const text = e.currentTarget.textContent?.trim() || title;
+                    onHeadingChange(sectionKey, text);
+                }
+            }}
+            style={onHeadingChange ? { cursor: 'text', outline: 'none' } : undefined}
+            title={onHeadingChange ? 'Click to edit heading' : undefined}
+        >
+            {title}
+        </h2>
+    );
 }
 
-export default function TemplateMinimal({ data, accentColor, fontSize, sectionOrder }: ResumeTemplateProps) {
+export default function TemplateMinimal({ data, accentColor, fontSize, sectionOrder, headingLabels, onHeadingChange }: ResumeTemplateProps) {
     const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
 
     // Contact items as minimal comma-separated line
@@ -36,7 +60,7 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
                 <div key="summary">
                     <SectionDivider />
                     <section>
-                        <SectionHeading title="About" />
+                        <SectionHeading title={resolveHeadingLabel('summary', headingLabels, 'About')} sectionKey="summary" onHeadingChange={onHeadingChange} />
                         <p className="max-w-prose text-sm leading-relaxed text-gray-500">{profile.summary}</p>
                     </section>
                 </div>
@@ -47,7 +71,7 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
                 <div key="workExperiences">
                     <SectionDivider />
                     <section>
-                        <SectionHeading title="Experience" />
+                        <SectionHeading title={resolveHeadingLabel('workExperiences', headingLabels, 'Experience')} sectionKey="workExperiences" onHeadingChange={onHeadingChange} />
                         <div className="space-y-5">
                             {workExperiences.map((exp) => (
                                 <div key={exp.id}>
@@ -86,7 +110,7 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
                 <div key="educations">
                     <SectionDivider />
                     <section>
-                        <SectionHeading title="Education" />
+                        <SectionHeading title={resolveHeadingLabel('educations', headingLabels, 'Education')} sectionKey="educations" onHeadingChange={onHeadingChange} />
                         <div className="space-y-3">
                             {educations.map((edu) => (
                                 <div key={edu.id}>
@@ -120,7 +144,7 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
                 <div key="skillSets">
                     <SectionDivider />
                     <section>
-                        <SectionHeading title="Skills" />
+                        <SectionHeading title={resolveHeadingLabel('skillSets', headingLabels, 'Skills')} sectionKey="skillSets" onHeadingChange={onHeadingChange} />
                         <div className="flex flex-wrap gap-x-8 gap-y-2">
                             {skillSets.map((set) => (
                                 <div key={set.id}>
@@ -138,7 +162,7 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
                 <div key="projects">
                     <SectionDivider />
                     <section>
-                        <SectionHeading title="Projects" />
+                        <SectionHeading title={resolveHeadingLabel('projects', headingLabels, 'Projects')} sectionKey="projects" onHeadingChange={onHeadingChange} />
                         <div className="space-y-3">
                             {projects.map((proj) => (
                                 <div key={proj.id}>
@@ -179,7 +203,7 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
                 <div key="certifications">
                     <SectionDivider />
                     <section>
-                        <SectionHeading title="Certifications" />
+                        <SectionHeading title={resolveHeadingLabel('certifications', headingLabels, 'Certifications')} sectionKey="certifications" onHeadingChange={onHeadingChange} />
                         <div className="space-y-2">
                             {certifications.map((cert) => (
                                 <div key={cert.id} className="flex flex-wrap items-baseline justify-between gap-x-4">
@@ -215,8 +239,7 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
             style={
                 {
                     '--resume-accent': accentColor,
-                    '--resume-font-size': `${fontSize}pt`,
-                    fontSize: `${fontSize}pt`,
+                    zoom: fontSize / 100,
                 } as React.CSSProperties
             }
         >
@@ -233,7 +256,7 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
             {/* ── Print styles ── */}
             <style>{`
                 @media print {
-                    .resume-minimal { font-size: ${fontSize}pt; color: #1a1a1a; }
+                    .resume-minimal { zoom: ${fontSize / 100}; color: #1a1a1a; }
                     .resume-minimal a { color: inherit; text-decoration: none; }
                     .resume-minimal section { break-inside: avoid; }
                 }
