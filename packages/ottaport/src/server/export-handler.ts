@@ -74,7 +74,8 @@ export async function processExport(config: ExportConfig): Promise<{
     });
 
     // Determine fields to export
-    const exportFields = fields && fields.length > 0 ? fields : Object.keys(plainRecords[0] || {});
+    const exportFields =
+        fields && fields.length > 0 ? fields : plainRecords.length > 0 ? Object.keys(plainRecords[0]) : [];
 
     // Format output
     const { content, contentType, extension } = formatOutput(plainRecords, exportFields, format);
