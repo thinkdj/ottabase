@@ -38,6 +38,7 @@ import {
     seriesTable,
 } from '@ottabase/ottablog';
 import type { Migration } from '@ottabase/ottaorm';
+import { portJobsTable } from '@ottabase/ottaport';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 import { getOttabaseConfig } from './config.loader';
@@ -68,6 +69,10 @@ const PACKAGE_REGISTRY = {
         tables: { referralTrackingTable },
         migrations: [] as Migration[],
     },
+    ottaport: {
+        tables: { portJobsTable },
+        migrations: [] as Migration[],
+    },
     brandEngine: {
         tables: {
             brandKitsTable,
@@ -92,7 +97,8 @@ export function getMigrationConfig(env?: Record<string, unknown>): Record<Migrat
     const config = getOttabaseConfig(env);
     const result: Record<string, boolean> = {};
     for (const pkg of Object.keys(PACKAGE_REGISTRY) as MigrationPackageName[]) {
-        result[pkg] = pkg === 'brandEngine' ? true : (config.packages[pkg as BuiltInPackageName] ?? false);
+        result[pkg] =
+            pkg === 'brandEngine' || pkg === 'ottaport' ? true : (config.packages[pkg as BuiltInPackageName] ?? false);
     }
     return result as Record<MigrationPackageName, boolean>;
 }
@@ -109,9 +115,9 @@ export function getEnabledPackageTables(env?: Record<string, unknown>) {
     const config = getOttabaseConfig(env);
     const tables: Record<string, unknown> = {};
 
-    // Built-in packages (brandEngine is core — always included)
+    // Built-in packages (brandEngine + ottaport are core — always included)
     for (const [pkgName, pkgConfig] of Object.entries(PACKAGE_REGISTRY)) {
-        if (pkgName === 'brandEngine' || config.packages[pkgName as BuiltInPackageName]) {
+        if (pkgName === 'brandEngine' || pkgName === 'ottaport' || config.packages[pkgName as BuiltInPackageName]) {
             Object.assign(tables, pkgConfig.tables);
         }
     }
@@ -134,9 +140,12 @@ export function getEnabledPackageMigrations(env?: Record<string, unknown>): Migr
     const config = getOttabaseConfig(env);
     const migrations: Migration[] = [];
 
-    // Built-in packages (brandEngine is core — always included)
+    // Built-in packages (brandEngine + ottaport are core — always included)
     for (const [pkgName, pkgConfig] of Object.entries(PACKAGE_REGISTRY)) {
-        if ((pkgName === 'brandEngine' || config.packages[pkgName as BuiltInPackageName]) && pkgConfig.migrations) {
+        if (
+            (pkgName === 'brandEngine' || pkgName === 'ottaport' || config.packages[pkgName as BuiltInPackageName]) &&
+            pkgConfig.migrations
+        ) {
             migrations.push(...pkgConfig.migrations);
         }
     }

@@ -74,6 +74,14 @@ import { handleEmailProviders, handleEmailTest } from './email';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
 import {
+    handleOttaportExport,
+    handleOttaportExportPreview,
+    handleOttaportImportExecute,
+    handleOttaportImportParse,
+    handleOttaportJobs,
+    handleOttaportModels,
+} from './ottaport';
+import {
     handleReferralStats,
     handleReferralTrack,
     handleReferralTrackingList,
@@ -299,6 +307,17 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleAdminDbTables(context);
     }
 
+    // OttaPort routes
+    if (route === '/api/admin/ottaport/models') {
+        return handleOttaportModels(context);
+    }
+    if (route === '/api/admin/ottaport/export/preview') {
+        return handleOttaportExportPreview(context);
+    }
+    if (route === '/api/admin/ottaport/jobs') {
+        return handleOttaportJobs(context);
+    }
+
     const tableMatch = route.match(/^\/api\/admin\/db\/tables\/([a-zA-Z0-9_]+)$/);
     if (tableMatch) {
         return handleAdminDbTableData({ ...context, tableName: tableMatch[1] });
@@ -417,6 +436,17 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
 
     if (route === '/api/admin/roles') {
         return handleAdminRoleCreate(context);
+    }
+
+    // OttaPort routes
+    if (route === '/api/admin/ottaport/import/parse') {
+        return handleOttaportImportParse(context);
+    }
+    if (route === '/api/admin/ottaport/import/execute') {
+        return handleOttaportImportExecute(context);
+    }
+    if (route === '/api/admin/ottaport/export') {
+        return handleOttaportExport(context);
     }
 
     if (route === '/api/ottaorm/init') {
