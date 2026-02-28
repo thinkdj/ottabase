@@ -205,7 +205,7 @@ export function resolveHeadingLabel(
     overrides?: Partial<Record<SectionKey, string>>,
     templateDefault?: string,
 ): string {
-    return overrides?.[key] || templateDefault || DEFAULT_HEADING_LABELS[key];
+    return overrides?.[key] || templateDefault || DEFAULT_HEADING_LABELS[key] || '';
 }
 
 // ---------------------------------------------------------------------------

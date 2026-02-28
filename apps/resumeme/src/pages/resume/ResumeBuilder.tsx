@@ -394,7 +394,7 @@ function LeftSidebar({
                 {sections.map((section, idx) => {
                     const isLocked = section.key === 'summary';
                     // For up/down buttons: first non-locked section can't move up
-                    const firstMovable = idx <= 1;
+                    const cannotMoveUp = idx <= 1;
                     return (
                         <div
                             key={section.key}
@@ -404,7 +404,7 @@ function LeftSidebar({
                                 label={section.label}
                                 count={section.count}
                                 isOpen={!!openSections[section.key]}
-                                isFirst={firstMovable}
+                                isFirst={cannotMoveUp}
                                 isLast={idx === sections.length - 1}
                                 isLocked={isLocked}
                                 sectionKey={section.key}
@@ -606,7 +606,8 @@ function loadSnapshots(): SavedResumeSnapshot[] {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         return raw ? JSON.parse(raw) : [];
-    } catch {
+    } catch (err) {
+        console.warn('[ResumeMe] Failed to load snapshots from localStorage:', err);
         return [];
     }
 }
@@ -629,8 +630,6 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     const [accentColor, setAccentColor] = useState('#475569');
     const [fontSize, setFontSize] = useState(FONT_SIZE_DEFAULT);
     const [sectionOrder, setSectionOrder] = useState<SectionKey[]>(DEFAULT_SECTION_ORDER);
-    const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
-    const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
     const [headingLabels, setHeadingLabels] = useState<Partial<Record<SectionKey, string>>>({});
 
     // Saved snapshot management
@@ -639,7 +638,15 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
 
     const isCompact = useIsCompact();
 
-    // On desktop (>= 1024px) sidebars default open; on compact mode they're closed
+    // Sidebars: open by default on desktop, closed on compact (< 1024px)
+    const [leftSidebarOpen, setLeftSidebarOpen] = useState(() =>
+        typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
+    );
+    const [rightSidebarOpen, setRightSidebarOpen] = useState(() =>
+        typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
+    );
+
+    // Sync sidebar open state when breakpoint changes
     const prevCompactRef = useRef(isCompact);
     useEffect(() => {
         if (prevCompactRef.current !== isCompact) {
@@ -648,13 +655,6 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
             setRightSidebarOpen(!isCompact);
         }
     }, [isCompact]);
-    // Initial open state for desktop
-    useEffect(() => {
-        if (!isCompact) {
-            setLeftSidebarOpen(true);
-            setRightSidebarOpen(true);
-        }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const data = guestMode ? GUEST_DATA : SAMPLE_DATA;
 

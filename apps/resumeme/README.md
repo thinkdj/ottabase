@@ -65,32 +65,56 @@ font weight for the name, minimal colour use, no backgrounds or borders.
 All templates support:
 
 - Configurable accent colour (hex)
-- **Font size control** (9–16pt slider with live preview)
-- **Section reordering** (↑/↓ buttons to rearrange sections in real time)
+- **Proportional page scaling** (80–130% zoom slider with live preview)
+- **Section reordering** (↑/↓ buttons and drag-and-drop to rearrange sections in real time)
+- **Editable headings** — click any section heading in the preview to customise its label
+- **Profile section pinning** — Profile/Summary always stays first and cannot be reordered
 - Dark mode
 - Print-optimised CSS (`@media print`)
 - PDF export via browser print
 
-### Font Size Control
+### Page Scale
 
-Adjust resume density with the font size slider (9–16pt). The selected size applies to both on-screen preview and
-printed/PDF output.
+Adjust resume size proportionally with the zoom slider (80–130%). Uses CSS `zoom` so all elements — headings, body text,
+spacing, badges — scale uniformly. The selected zoom applies to both on-screen preview and printed/PDF output.
 
 ```typescript
 import { FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from './pages/resume/types';
-// 9pt – 16pt, default 12pt
+// 80% – 130%, default 100%
 ```
 
 ### Section Reorder
 
-Rearrange resume sections using the ↑/↓ arrows next to each section header in the left sidebar. The preview updates
-instantly. In the Modern template, sidebar-pinned sections (Skills, Certifications) stay fixed while main-area sections
-reorder.
+Rearrange resume sections using ↑/↓ arrows or drag-and-drop handles in the left sidebar. The preview updates instantly.
+The Profile section is locked at the top and cannot be moved. In the Modern and Lisbon templates, sidebar-pinned
+sections (Skills, Certifications) stay fixed while main-area sections reorder.
 
 ```typescript
 import { DEFAULT_SECTION_ORDER, moveSectionUp, moveSectionDown } from './pages/resume/types';
 // DEFAULT_SECTION_ORDER: ['summary', 'workExperiences', 'educations', 'skillSets', 'projects', 'certifications']
+// 'summary' is pinned at index 0 — moveSectionUp/moveSectionDown enforce this
 ```
+
+### Editable Section Headings
+
+Click any section heading in the resume preview to edit its label inline. Overrides persist across template switches via
+`headingLabels` state. Templates use `resolveHeadingLabel()` to resolve: override → template default → global default.
+
+```typescript
+import { resolveHeadingLabel, DEFAULT_HEADING_LABELS } from './pages/resume/types';
+// resolveHeadingLabel('summary', overrides, 'Profile') → override || 'Profile' || 'Summary'
+```
+
+### Save Resume Snapshots
+
+Save the full resume state (template, accent colour, zoom, section order, heading overrides, and data) as a frozen
+snapshot. On save, a notice explains that the snapshot is a static copy — changes to profile/skills/experience won't
+update it automatically. Viewing a saved snapshot shows a "Refresh Data" button to pull in the latest data.
+
+### Responsive Sidebar Layout
+
+Below 1024px viewport width, left and right sidebars collapse into floating flyout panels. Floating toggle buttons
+appear at the left and right edges to open/close each panel. On desktop (≥ 1024px), sidebars display inline as before.
 
 ## Getting Started
 
@@ -126,8 +150,10 @@ Visit `/guest` to try the full resume builder without creating an account.
 **What works:**
 
 - All 5 templates (Classic, Modern, Lisbon, Executive, Minimal)
-- Accent colour and font size controls
-- Section reordering
+- Accent colour and page scale (zoom) controls
+- Section reordering (↑/↓ buttons and drag-and-drop)
+- Click-to-edit section headings in preview
+- Responsive floating sidebars on narrow viewports
 - Real-time preview updates
 
 **Restrictions:**
