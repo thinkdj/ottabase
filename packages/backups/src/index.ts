@@ -13,6 +13,7 @@ export {
     escapeSqlValue,
     formatBytes,
     isValidTableName,
+    generateBackupFilename,
 } from './backup-service';
 export type { D1Like, R2Like } from './backup-service';
 export * from './types';

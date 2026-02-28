@@ -6,6 +6,7 @@ import {
     escapeSqlValue,
     formatBytes,
     isValidTableName,
+    generateBackupFilename,
 } from '../backup-service';
 import type { D1Like, R2Like } from '../backup-service';
 import type { BackupMetadata } from '../types';
@@ -226,6 +227,31 @@ describe('BackupService', () => {
                 expect(isValidTableName("table'name")).toBe(false);
             });
         });
+        describe('generateBackupFilename', () => {
+            it('should generate a timestamped filename with appName', () => {
+                const date = new Date('2024-06-15T02:30:00Z');
+                const filename = generateBackupFilename('my-app', date);
+                expect(filename).toBe('2024-06-15-023000_my-app.sql');
+            });
+
+            it('should sanitize special characters in appName', () => {
+                const date = new Date('2024-01-01T00:00:00Z');
+                const filename = generateBackupFilename('My App (v2)', date);
+                expect(filename).toBe('2024-01-01-000000_my_app__v2_.sql');
+            });
+
+            it('should use current date when no date provided', () => {
+                const filename = generateBackupFilename('test');
+                // Should match pattern: yyyy-mm-dd-hhmmss_test.sql
+                expect(filename).toMatch(/^\d{4}-\d{2}-\d{2}-\d{6}_test\.sql$/);
+            });
+
+            it('should handle empty appName', () => {
+                const date = new Date('2024-01-01T00:00:00Z');
+                const filename = generateBackupFilename('', date);
+                expect(filename).toBe('2024-01-01-000000_.sql');
+            });
+        });
     });
 
     describe('createBackupService', () => {
@@ -329,6 +355,20 @@ describe('BackupService', () => {
 
             // Verify R2 was called
             expect(r2.put).toHaveBeenCalledTimes(1);
+        });
+
+        it('should use timestamped filename with appName', async () => {
+            const db = createMockD1({ users: [{ id: '1' }] });
+            const r2 = createMockR2();
+            const service = createBackupService(db, r2, { appName: 'my-test-app' });
+
+            const result = await service.createBackup();
+            expect(result.success).toBe(true);
+
+            // Verify the R2 key uses the new filename pattern
+            const putCall = (r2.put as any).mock.calls[0];
+            const key = putCall[0] as string;
+            expect(key).toMatch(/^backups\/d1\/\d{4}-\d{2}-\d{2}-\d{6}_my-test-app\.sql$/);
         });
 
         it('should fail when no tables exist', async () => {
@@ -435,7 +475,7 @@ describe('BackupService', () => {
     });
 
     describe('deleteBackup', () => {
-        it('should delete a backup from R2', async () => {
+        it('should delete a legacy backup from R2', async () => {
             const r2 = createMockR2([{ key: 'backups/d1/abc.sql', content: '-- data', metadata: { backupId: 'abc' } }]);
             const service = createBackupService(createMockD1(), r2);
 
@@ -443,6 +483,37 @@ describe('BackupService', () => {
 
             expect(result.success).toBe(true);
             expect(r2.delete).toHaveBeenCalledWith('backups/d1/abc.sql');
+        });
+
+        it('should delete a new-format backup by scanning metadata', async () => {
+            const r2 = createMockR2([
+                {
+                    key: 'backups/d1/2024-06-15-023000_myapp.sql',
+                    content: '-- data',
+                    metadata: {
+                        backupId: 'xyz-789',
+                        backupType: 'full',
+                        createdAt: '2024-06-15T02:30:00Z',
+                        tableCount: '1',
+                        totalRows: '5',
+                        contentHash: 'h',
+                        durationMs: '100',
+                        tables: '["users"]',
+                        filename: '2024-06-15-023000_myapp.sql',
+                    },
+                },
+            ]);
+            const service = createBackupService(createMockD1(), r2);
+
+            const result = await service.deleteBackup('xyz-789');
+            expect(result.success).toBe(true);
+        });
+
+        it('should return error for non-existent backup', async () => {
+            const service = createBackupService(createMockD1(), createMockR2());
+            const result = await service.deleteBackup('nonexistent');
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Backup not found');
         });
     });
 
@@ -457,6 +528,7 @@ describe('BackupService', () => {
 
             expect(result.success).toBe(true);
             expect(result.content).toBe('-- SQL backup content');
+            expect(result.filename).toBe('abc.sql');
         });
 
         it('should return error for non-existent backup', async () => {
@@ -569,6 +641,54 @@ describe('BackupService', () => {
             // The oldest backup (a) should have been deleted since we now have 3 but max is 2
             // After the backup is created, we'll have 3 (a, b, new) and need to delete 1
             expect(r2.delete).toHaveBeenCalled();
+        });
+
+        it('should delete backups older than retentionDays', async () => {
+            const now = new Date();
+            const oldDate = new Date(now.getTime() - 40 * 24 * 60 * 60 * 1000); // 40 days ago
+            const recentDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000); // 5 days ago
+
+            const r2 = createMockR2([
+                {
+                    key: 'backups/d1/old.sql',
+                    content: '-- old',
+                    metadata: {
+                        backupId: 'old',
+                        createdAt: oldDate.toISOString(),
+                        backupType: 'full',
+                        tableCount: '1',
+                        totalRows: '1',
+                        contentHash: 'h',
+                        durationMs: '1',
+                        tables: '["t"]',
+                    },
+                },
+                {
+                    key: 'backups/d1/recent.sql',
+                    content: '-- recent',
+                    metadata: {
+                        backupId: 'recent',
+                        createdAt: recentDate.toISOString(),
+                        backupType: 'full',
+                        tableCount: '1',
+                        totalRows: '1',
+                        contentHash: 'h',
+                        durationMs: '1',
+                        tables: '["t"]',
+                    },
+                },
+            ]);
+
+            const db = createMockD1({ users: [{ id: '1' }] });
+            // retentionDays = 30, so 40-day-old backup should be deleted
+            const service = createBackupService(db, r2, { retentionDays: 30, maxRetained: 100 });
+
+            await service.createBackup();
+
+            // The old backup should be deleted
+            const deleteCalls = (r2.delete as any).mock.calls;
+            const allDeletedKeys = deleteCalls.flatMap((c: any) => (Array.isArray(c[0]) ? c[0] : [c[0]]));
+            expect(allDeletedKeys).toContain('backups/d1/old.sql');
         });
     });
 });

@@ -31,6 +31,8 @@ export interface BackupMetadata {
     durationMs: number;
     /** SHA-256 hash of the backup content for integrity verification */
     contentHash: string;
+    /** Filename in R2 (e.g., "2024-06-15-023000_myapp.sql") */
+    filename?: string;
 }
 
 export type BackupType = 'full' | 'diff';
@@ -44,14 +46,20 @@ export interface BackupConfig {
     prefix?: string;
     /** Maximum number of backups to retain (default: 30) */
     maxRetained?: number;
+    /** Rolling window in days — backups older than this are deleted (default: 30) */
+    retentionDays?: number;
     /** Tables to exclude from backup */
     excludeTables?: string[];
+    /** App name used in backup filenames (default: "ottabase") */
+    appName?: string;
 }
 
 export const DEFAULT_BACKUP_CONFIG: Required<BackupConfig> = {
     prefix: 'backups/d1',
     maxRetained: 30,
+    retentionDays: 30,
     excludeTables: [],
+    appName: 'ottabase',
 };
 
 // ============================================================

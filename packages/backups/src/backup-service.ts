@@ -88,6 +88,19 @@ export function isValidTableName(name: string): boolean {
     return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
 }
 
+/**
+ * Generate a backup filename: yyyy-mm-dd-hhmmss_appName.sql
+ * Uses UTC time for consistency across timezones.
+ */
+export function generateBackupFilename(appName: string, date?: Date): string {
+    const d = date ?? new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const timestamp = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`;
+    // Sanitize appName: keep alphanumeric, hyphens, underscores
+    const safe = appName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    return `${timestamp}_${safe}.sql`;
+}
+
 // ============================================================
 // Backup Service
 // ============================================================
@@ -194,7 +207,8 @@ export class BackupService {
 
             const id = crypto.randomUUID();
             const createdAt = new Date().toISOString();
-            const key = `${this.config.prefix}/${id}.sql`;
+            const filename = generateBackupFilename(this.config.appName);
+            const key = `${this.config.prefix}/${filename}`;
 
             const metadata: BackupMetadata = {
                 id,
@@ -222,6 +236,7 @@ export class BackupService {
                     label: options?.label ?? '',
                     durationMs: String(durationMs),
                     tables: JSON.stringify(tables),
+                    filename,
                 },
             });
 
@@ -269,6 +284,7 @@ export class BackupService {
                         label: meta.label || undefined,
                         durationMs: parseInt(meta.durationMs ?? '0', 10),
                         contentHash: meta.contentHash ?? '',
+                        filename: meta.filename || obj.key.split('/').pop(),
                     });
                 }
             }
@@ -293,11 +309,15 @@ export class BackupService {
     }
 
     /**
-     * Delete a specific backup from R2
+     * Delete a specific backup from R2 by its ID.
+     * Scans the prefix to find the matching key (supports both legacy uuid.sql and new timestamped filenames).
      */
     async deleteBackup(backupId: string): Promise<{ success: boolean; error?: string }> {
         try {
-            const key = `${this.config.prefix}/${backupId}.sql`;
+            const key = await this.resolveBackupKey(backupId);
+            if (!key) {
+                return { success: false, error: 'Backup not found' };
+            }
             await this.bucket.delete(key);
             return { success: true };
         } catch (error) {
@@ -311,21 +331,51 @@ export class BackupService {
     /**
      * Download a backup's SQL content from R2
      */
-    async downloadBackup(backupId: string): Promise<{ success: boolean; content?: string; error?: string }> {
+    async downloadBackup(
+        backupId: string,
+    ): Promise<{ success: boolean; content?: string; filename?: string; error?: string }> {
         try {
-            const key = `${this.config.prefix}/${backupId}.sql`;
+            const key = await this.resolveBackupKey(backupId);
+            if (!key) {
+                return { success: false, error: 'Backup not found' };
+            }
             const obj = await this.bucket.get(key);
             if (!obj) {
                 return { success: false, error: 'Backup not found' };
             }
             const content = await obj.text();
-            return { success: true, content };
+            // Extract filename from key
+            const filename = key.split('/').pop() ?? `backup-${backupId}.sql`;
+            return { success: true, content, filename };
         } catch (error) {
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Download failed',
             };
         }
+    }
+
+    /**
+     * Resolve an R2 key for a given backup ID.
+     * Checks the new metadata-based lookup and falls back to legacy `{id}.sql` pattern.
+     */
+    private async resolveBackupKey(backupId: string): Promise<string | null> {
+        // Try legacy path first (fast path for old backups)
+        const legacyKey = `${this.config.prefix}/${backupId}.sql`;
+        const legacyHead = await this.bucket.head(legacyKey);
+        if (legacyHead) return legacyKey;
+
+        // Scan prefix for matching backupId in customMetadata
+        const { backups } = await this.listBackups();
+        const match = backups.find((b) => b.id === backupId);
+        if (!match) return null;
+
+        // Reconstruct key from the metadata filename or fall back
+        const meta = match as BackupMetadata & { filename?: string };
+        if (meta.filename) {
+            return `${this.config.prefix}/${meta.filename}`;
+        }
+        return null;
     }
 
     /**
@@ -383,19 +433,45 @@ export class BackupService {
     }
 
     /**
-     * Enforce backup retention policy — deletes oldest backups exceeding maxRetained
+     * Enforce backup retention policy:
+     * 1. Delete backups older than retentionDays
+     * 2. Delete oldest backups exceeding maxRetained count
      */
     private async enforceRetention(): Promise<void> {
         const { backups } = await this.listBackups();
 
-        if (backups.length <= this.config.maxRetained) return;
+        const keysToDelete: string[] = [];
 
-        // Delete oldest backups beyond retention limit
-        const toDelete = backups.slice(this.config.maxRetained);
-        const keys = toDelete.map((b) => `${this.config.prefix}/${b.id}.sql`);
+        // Day-based retention: delete backups older than retentionDays
+        if (this.config.retentionDays > 0) {
+            const cutoff = Date.now() - this.config.retentionDays * 24 * 60 * 60 * 1000;
+            for (const b of backups) {
+                if (new Date(b.createdAt).getTime() < cutoff) {
+                    const key = b.filename
+                        ? `${this.config.prefix}/${b.filename}`
+                        : `${this.config.prefix}/${b.id}.sql`;
+                    keysToDelete.push(key);
+                }
+            }
+        }
 
-        if (keys.length > 0) {
-            await this.bucket.delete(keys);
+        // Count-based retention: delete oldest beyond maxRetained
+        const remaining = backups.filter((b) => {
+            const key = b.filename ? `${this.config.prefix}/${b.filename}` : `${this.config.prefix}/${b.id}.sql`;
+            return !keysToDelete.includes(key);
+        });
+        if (remaining.length > this.config.maxRetained) {
+            const overflow = remaining.slice(this.config.maxRetained);
+            for (const b of overflow) {
+                const key = b.filename ? `${this.config.prefix}/${b.filename}` : `${this.config.prefix}/${b.id}.sql`;
+                if (!keysToDelete.includes(key)) {
+                    keysToDelete.push(key);
+                }
+            }
+        }
+
+        if (keysToDelete.length > 0) {
+            await this.bucket.delete(keysToDelete);
         }
     }
 }
