@@ -21,7 +21,7 @@ import { readJson } from '../lib/utils';
 import type { ApiRouteContext } from './router';
 
 /** Shared helper: create a BackupService from env bindings */
-function getBackupService(env: ApiRouteContext['env']) {
+function getBackupService(env: ApiRouteContext['env'], overrides?: { retentionDays?: number }) {
     if (!env.OBCF_D1) {
         return { error: errorResponse('D1 database binding not configured', 500, { code: 'CONFIG_ERROR' }) };
     }
@@ -31,8 +31,28 @@ function getBackupService(env: ApiRouteContext['env']) {
     const config = getOttabaseConfig(env);
     const appName = config.appName || config.appId || 'ottabase';
     return {
-        service: createBackupService(env.OBCF_D1 as unknown as D1Like, env.OBCF_R2 as unknown as R2Like, { appName }),
+        service: createBackupService(env.OBCF_D1 as unknown as D1Like, env.OBCF_R2 as unknown as R2Like, {
+            appName,
+            ...(overrides?.retentionDays ? { retentionDays: overrides.retentionDays } : {}),
+        }),
     };
+}
+
+/** Extract retentionDays from the backup cron task's payload, or default 30 */
+function getRetentionDaysFromTask(task: ScheduledTask | null): number {
+    if (!task) return 30;
+    try {
+        const payload = String(task.get('payload') ?? '');
+        if (payload) {
+            const parsed = JSON.parse(payload);
+            if (typeof parsed.retentionDays === 'number' && parsed.retentionDays >= 1 && parsed.retentionDays <= 365) {
+                return parsed.retentionDays;
+            }
+        }
+    } catch {
+        // Invalid JSON in payload
+    }
+    return 30;
 }
 
 /** Find the backup:database cron task if it exists */
@@ -92,7 +112,11 @@ export async function handleAdminBackupsCreate(context: ApiRouteContext): Promis
     const auth = await requireAdminAccess(context, { scope: 'system' });
     if (auth instanceof Response) return auth;
 
-    const { service, error } = getBackupService(context.env);
+    // Read retentionDays from cron task payload so enforcement uses saved setting
+    const task = await findBackupCronTask(context.env);
+    const retentionDays = getRetentionDaysFromTask(task);
+
+    const { service, error } = getBackupService(context.env, { retentionDays });
     if (error) return error;
 
     const body = await readJson<{ label?: string }>(context.request);
@@ -129,7 +153,7 @@ export async function handleAdminBackupsSettingsGet(context: ApiRouteContext): P
         const task = initErr ? null : await findBackupCronTask(context.env);
 
         return jsonResponse({
-            retentionDays: 30, // Default; admin can update via PUT
+            retentionDays: getRetentionDaysFromTask(task),
             schedule: task ? String(task.get('schedule')) : null,
             scheduleActive: task ? !!task.get('isActive') : false,
             taskId: task ? String(task.get('id')) : null,
@@ -181,6 +205,17 @@ export async function handleAdminBackupsSettingsPut(context: ApiRouteContext): P
             }
             if (body.isActive !== undefined) {
                 existingTask.set('isActive', body.isActive);
+            }
+            if (body.retentionDays !== undefined) {
+                const existingPayload = (() => {
+                    try {
+                        return JSON.parse(String(existingTask.get('payload') ?? '{}')) || {};
+                    } catch {
+                        return {};
+                    }
+                })();
+                existingPayload.retentionDays = body.retentionDays;
+                existingTask.set('payload', JSON.stringify(existingPayload));
             }
             await existingTask.save();
             return jsonResponse({
