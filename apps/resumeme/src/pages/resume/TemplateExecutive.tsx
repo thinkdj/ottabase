@@ -1,5 +1,5 @@
 import type { ResumeTemplateProps } from './types';
-import { formatDateRange, formatResumeDate, type SectionKey } from './types';
+import { formatDateRange, formatResumeDate, resolveHeadingLabel, type SectionKey } from './types';
 import type { ReactNode } from 'react';
 
 /**
@@ -10,10 +10,34 @@ import type { ReactNode } from 'react';
  * Accent colour used for name, divider lines, and subtle highlights.
  */
 
-function SectionHeading({ title }: { title: string }) {
+function SectionHeading({
+    title,
+    sectionKey,
+    onHeadingChange,
+}: {
+    title: string;
+    sectionKey?: SectionKey;
+    onHeadingChange?: (key: SectionKey, label: string) => void;
+}) {
     return (
         <div className="mb-3">
-            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--resume-accent)]">{title}</h2>
+            <h2
+                className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--resume-accent)]"
+                contentEditable={!!onHeadingChange}
+                suppressContentEditableWarning
+                onBlur={(e) => {
+                    if (onHeadingChange && sectionKey) {
+                        const text = e.currentTarget.textContent?.trim() || title;
+                        onHeadingChange(sectionKey, text);
+                    }
+                }}
+                role={onHeadingChange ? 'textbox' : undefined}
+                aria-label={onHeadingChange ? `Edit ${title} heading` : undefined}
+                style={onHeadingChange ? { cursor: 'text', outline: 'none' } : undefined}
+                title={onHeadingChange ? 'Click to edit heading' : undefined}
+            >
+                {title}
+            </h2>
             <div className="mt-1 h-px bg-[var(--resume-accent)] opacity-30" />
         </div>
     );
@@ -54,14 +78,14 @@ function ContactBar({ profile }: { profile: ResumeTemplateProps['data']['profile
     );
 }
 
-export default function TemplateExecutive({ data, accentColor, fontSize, sectionOrder }: ResumeTemplateProps) {
+export default function TemplateExecutive({ data, accentColor, fontSize, sectionOrder, headingLabels, onHeadingChange }: ResumeTemplateProps) {
     const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
 
     const sectionRenderers: Record<SectionKey, () => ReactNode> = {
         summary: () =>
             profile?.summary ? (
                 <section className="mb-6" key="summary">
-                    <SectionHeading title="Professional Summary" />
+                    <SectionHeading title={resolveHeadingLabel('summary', headingLabels, 'Professional Summary')} sectionKey="summary" onHeadingChange={onHeadingChange} />
                     <p className="whitespace-pre-line text-sm leading-relaxed text-gray-600">{profile.summary}</p>
                 </section>
             ) : null,
@@ -69,7 +93,7 @@ export default function TemplateExecutive({ data, accentColor, fontSize, section
         workExperiences: () =>
             workExperiences.length > 0 ? (
                 <section className="mb-6" key="workExperiences">
-                    <SectionHeading title="Professional Experience" />
+                    <SectionHeading title={resolveHeadingLabel('workExperiences', headingLabels, 'Professional Experience')} sectionKey="workExperiences" onHeadingChange={onHeadingChange} />
                     <div className="space-y-5">
                         {workExperiences.map((exp) => (
                             <div key={exp.id}>
@@ -105,7 +129,7 @@ export default function TemplateExecutive({ data, accentColor, fontSize, section
         educations: () =>
             educations.length > 0 ? (
                 <section className="mb-6" key="educations">
-                    <SectionHeading title="Education" />
+                    <SectionHeading title={resolveHeadingLabel('educations', headingLabels, 'Education')} sectionKey="educations" onHeadingChange={onHeadingChange} />
                     <div className="space-y-3">
                         {educations.map((edu) => (
                             <div key={edu.id} className="flex flex-wrap items-start justify-between gap-x-4">
@@ -134,7 +158,7 @@ export default function TemplateExecutive({ data, accentColor, fontSize, section
         skillSets: () =>
             skillSets.length > 0 ? (
                 <section className="mb-6" key="skillSets">
-                    <SectionHeading title="Core Competencies" />
+                    <SectionHeading title={resolveHeadingLabel('skillSets', headingLabels, 'Core Competencies')} sectionKey="skillSets" onHeadingChange={onHeadingChange} />
                     <div className="flex flex-wrap gap-x-6 gap-y-2">
                         {skillSets.map((set) => (
                             <div key={set.id} className="min-w-[180px]">
@@ -151,7 +175,7 @@ export default function TemplateExecutive({ data, accentColor, fontSize, section
         projects: () =>
             projects.length > 0 ? (
                 <section className="mb-6" key="projects">
-                    <SectionHeading title="Key Projects" />
+                    <SectionHeading title={resolveHeadingLabel('projects', headingLabels, 'Key Projects')} sectionKey="projects" onHeadingChange={onHeadingChange} />
                     <div className="space-y-3">
                         {projects.map((proj) => (
                             <div key={proj.id}>
@@ -187,7 +211,7 @@ export default function TemplateExecutive({ data, accentColor, fontSize, section
         certifications: () =>
             certifications.length > 0 ? (
                 <section className="mb-6" key="certifications">
-                    <SectionHeading title="Certifications" />
+                    <SectionHeading title={resolveHeadingLabel('certifications', headingLabels, 'Certifications')} sectionKey="certifications" onHeadingChange={onHeadingChange} />
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {certifications.map((cert) => (
                             <div key={cert.id} className="flex items-start gap-2">
@@ -223,8 +247,7 @@ export default function TemplateExecutive({ data, accentColor, fontSize, section
             style={
                 {
                     '--resume-accent': accentColor,
-                    '--resume-font-size': `${fontSize}pt`,
-                    fontSize: `${fontSize}pt`,
+                    zoom: fontSize / 100,
                 } as React.CSSProperties
             }
         >
@@ -248,7 +271,7 @@ export default function TemplateExecutive({ data, accentColor, fontSize, section
             {/* ── Print styles ── */}
             <style>{`
                 @media print {
-                    .resume-executive { font-size: ${fontSize}pt; color: #1a1a1a; }
+                    .resume-executive { zoom: ${fontSize / 100}; color: #1a1a1a; }
                     .resume-executive a { color: inherit; text-decoration: none; }
                     .resume-executive section { break-inside: avoid; }
                 }
