@@ -1,5 +1,5 @@
 import type { ResumeTemplateProps } from './types';
-import { formatDateRange, formatResumeDate, type SectionKey } from './types';
+import { formatDateRange, formatResumeDate, resolveHeadingLabel, type SectionKey } from './types';
 import type { ReactNode } from 'react';
 
 /**
@@ -52,9 +52,31 @@ function SkillDots() {
 
 // ─── Main-area helpers ──────────────────────────────────────────────────────
 
-function MainSectionHeading({ title }: { title: string }) {
+function MainSectionHeading({
+    title,
+    sectionKey,
+    onHeadingChange,
+}: {
+    title: string;
+    sectionKey?: SectionKey;
+    onHeadingChange?: (key: SectionKey, label: string) => void;
+}) {
     return (
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-widest text-[var(--resume-accent)]">
+        <h2
+            className="mb-3 text-sm font-bold uppercase tracking-widest text-[var(--resume-accent)]"
+            contentEditable={!!onHeadingChange}
+            suppressContentEditableWarning
+            onBlur={(e) => {
+                if (onHeadingChange && sectionKey) {
+                    const text = e.currentTarget.textContent?.trim() || title;
+                    onHeadingChange(sectionKey, text);
+                }
+            }}
+            role={onHeadingChange ? 'textbox' : undefined}
+            aria-label={onHeadingChange ? `Edit ${title} heading` : undefined}
+            style={onHeadingChange ? { cursor: 'text', outline: 'none' } : undefined}
+            title={onHeadingChange ? 'Click to edit heading' : undefined}
+        >
             {title}
             <div className="mt-1 h-px w-full bg-gray-200" />
         </h2>
@@ -63,7 +85,7 @@ function MainSectionHeading({ title }: { title: string }) {
 
 // ─── Template ───────────────────────────────────────────────────────────────
 
-export default function TemplateLisbon({ data, accentColor, fontSize, sectionOrder }: ResumeTemplateProps) {
+export default function TemplateLisbon({ data, accentColor, fontSize, sectionOrder, headingLabels, onHeadingChange }: ResumeTemplateProps) {
     const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
 
     // Sidebar sections: skills, educations, certifications (always in sidebar)
@@ -74,7 +96,7 @@ export default function TemplateLisbon({ data, accentColor, fontSize, sectionOrd
         summary: () =>
             profile?.summary ? (
                 <section className="mb-5" key="summary">
-                    <MainSectionHeading title="Profile" />
+                    <MainSectionHeading title={resolveHeadingLabel('summary', headingLabels, 'Profile')} sectionKey="summary" onHeadingChange={onHeadingChange} />
                     <p className="whitespace-pre-line text-sm leading-relaxed text-gray-600">{profile.summary}</p>
                 </section>
             ) : null,
@@ -82,7 +104,7 @@ export default function TemplateLisbon({ data, accentColor, fontSize, sectionOrd
         workExperiences: () =>
             workExperiences.length > 0 ? (
                 <section className="mb-5" key="workExperiences">
-                    <MainSectionHeading title="Employment History" />
+                    <MainSectionHeading title={resolveHeadingLabel('workExperiences', headingLabels, 'Employment History')} sectionKey="workExperiences" onHeadingChange={onHeadingChange} />
                     <div className="space-y-4">
                         {workExperiences.map((exp) => (
                             <div key={exp.id}>
@@ -113,7 +135,7 @@ export default function TemplateLisbon({ data, accentColor, fontSize, sectionOrd
         projects: () =>
             projects.length > 0 ? (
                 <section className="mb-5" key="projects">
-                    <MainSectionHeading title="Projects" />
+                    <MainSectionHeading title={resolveHeadingLabel('projects', headingLabels, 'Projects')} sectionKey="projects" onHeadingChange={onHeadingChange} />
                     <div className="space-y-3">
                         {projects.map((proj) => (
                             <div key={proj.id}>
@@ -162,8 +184,7 @@ export default function TemplateLisbon({ data, accentColor, fontSize, sectionOrd
             style={
                 {
                     '--resume-accent': accentColor,
-                    '--resume-font-size': `${fontSize}pt`,
-                    fontSize: `${fontSize}pt`,
+                    zoom: fontSize / 100,
                 } as React.CSSProperties
             }
         >
@@ -315,7 +336,7 @@ export default function TemplateLisbon({ data, accentColor, fontSize, sectionOrd
             {/* ── Print styles ── */}
             <style>{`
                 @media print {
-                    .resume-lisbon { font-size: ${fontSize}pt; }
+                    .resume-lisbon { zoom: ${fontSize / 100}; }
                     .resume-lisbon a { color: inherit; text-decoration: none; }
                     .resume-lisbon section { break-inside: avoid; }
                     .resume-lisbon aside {
