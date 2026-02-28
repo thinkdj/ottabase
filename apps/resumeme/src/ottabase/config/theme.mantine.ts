@@ -1,127 +1,102 @@
 import type { MantineThemeConfig } from '@ottabase/ui-mantine';
 
 /**
- * Mantine theme configuration for the Ottabase Template App (TanStack)
+ * ResumeMe — Mantine theme configuration
  *
- * This configuration extends the base mantine-slate theme from packages/ui-mantine/themes
- * with app-specific customizations for the template app's visual design language.
+ * Clean, professional, neutral design language. Tight spacing, subtle borders,
+ * high readability — inspired by modern SaaS productivity tools.
  */
 export const mantineThemeConfig: MantineThemeConfig = {
-    // Use the slate base theme as foundation
     baseTheme: 'mantine-slate',
 
-    // App-specific brand colors
-    primaryColor: 'blue',
+    // Neutral blue-gray primary — professional, not flashy
+    primaryColor: 'brand',
     primaryShade: 6,
 
-    // Custom brand colors that extend the base theme
     colors: {
-        // Template app's brand color palette
+        // Professional blue-gray palette
         brand: [
-            '#f0f9ff', // lightest
-            '#e0f2fe',
-            '#bae6fd',
-            '#7dd3fc',
-            '#38bdf8',
-            '#0ea5e9', // primary (shade 5)
-            '#0284c7', // primary (shade 6)
-            '#0369a1',
-            '#075985',
-            '#0c4a6e', // darkest
+            '#f8fafc',
+            '#f1f5f9',
+            '#e2e8f0',
+            '#cbd5e1',
+            '#94a3b8',
+            '#64748b',
+            '#475569', // primary (shade 6)
+            '#334155',
+            '#1e293b',
+            '#0f172a',
         ],
 
-        // Secondary accent color for the template app
+        // Subtle accent for interactive elements
         accent: [
-            '#fdf4ff',
-            '#fae8ff',
-            '#f5d0fe',
-            '#f0abfc',
-            '#e879f9',
-            '#d946ef',
-            '#c026d3',
-            '#a21caf',
-            '#86198f',
-            '#701a75',
+            '#eff6ff',
+            '#dbeafe',
+            '#bfdbfe',
+            '#93c5fd',
+            '#60a5fa',
+            '#3b82f6',
+            '#2563eb',
+            '#1d4ed8',
+            '#1e40af',
+            '#1e3a8a',
         ],
     },
 
-    // App-specific component customizations
     components: {
-        // Customize buttons for template app
         Button: {
             defaultProps: {
-                radius: 'md',
+                radius: 'sm',
             },
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             styles: (_theme: unknown) => ({
                 root: {
-                    fontWeight: '600',
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                        transform: 'translateY(-1px)',
-                    },
-                },
-                filled: {
-                    background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-                    border: 'none',
-                    '&:hover': {
-                        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                    },
+                    fontWeight: '500',
+                    fontSize: '13px',
+                    transition: 'all 0.15s ease',
                 },
             }),
         },
 
-        // Template app specific card styling
         Card: {
             defaultProps: {
-                shadow: 'sm',
-                radius: 'md',
+                shadow: 'xs',
+                radius: 'sm',
                 withBorder: true,
             },
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             styles: (_theme: unknown) => ({
                 root: {
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-                        transform: 'translateY(-2px)',
-                    },
+                    borderColor: 'var(--mantine-color-gray-2)',
                 },
             }),
         },
 
-        // Template app navigation styling
         Navbar: {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             styles: (_theme: unknown) => ({
                 root: {
                     backgroundColor: 'var(--mantine-color-body)',
-                    backdropFilter: 'blur(10px)',
-                    borderRight: `1px solid var(--mantine-color-default-border)`,
-                    opacity: 0.95,
+                    borderRight: '1px solid var(--mantine-color-default-border)',
                 },
             }),
         },
+
+        Input: {
+            defaultProps: {
+                radius: 'sm',
+            },
+        },
     },
 
-    // Template app specific design tokens
     designTokens: {
-        // Brand gradient for hero sections
-        brandGradient: 'linear-gradient(135deg, #0ea5e9 0%, #d946ef 100%)',
-
-        // Glass morphism effect
-        glassMorphism: 'rgba(255, 255, 255, 0.25)',
-        glassBlur: 'blur(10px)',
-
-        // Template app transitions
-        brandTransition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-
-        // Custom shadows for the template app
-        brandShadow: '0 25px 50px -12px rgba(14, 165, 233, 0.25)',
-
-        // Template app specific spacing
-        heroSpacing: '120px',
-        sectionSpacing: '80px',
+        brandGradient: 'linear-gradient(135deg, #475569 0%, #1e293b 100%)',
+        glassMorphism: 'rgba(255, 255, 255, 0.6)',
+        glassBlur: 'blur(8px)',
+        brandTransition: 'all 0.15s ease',
+        brandShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+        heroSpacing: '80px',
+        sectionSpacing: '48px',
     },
 };
 
