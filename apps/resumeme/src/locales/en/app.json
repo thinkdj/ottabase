@@ -1,0 +1,7 @@
+{
+    "app_title": "Ottabase Application",
+    "welcome": "Welcome to Ottabase (App Override)",
+    "dashboard": {
+        "title": "My Dashboard"
+    }
+}
