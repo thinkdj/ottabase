@@ -57,9 +57,9 @@ describe('Resume Types & Utilities', () => {
     });
 
     describe('RESUME_TEMPLATES', () => {
-        it('includes classic and modern templates', () => {
-            expect(RESUME_TEMPLATES).toHaveLength(2);
-            expect(RESUME_TEMPLATES.map((t) => t.id)).toEqual(['classic', 'modern']);
+        it('includes all five templates', () => {
+            expect(RESUME_TEMPLATES).toHaveLength(5);
+            expect(RESUME_TEMPLATES.map((t) => t.id)).toEqual(['classic', 'modern', 'lisbon', 'executive', 'minimal']);
         });
 
         it('each template has required metadata', () => {
@@ -68,6 +68,11 @@ describe('Resume Types & Utilities', () => {
                 expect(template.name).toBeTruthy();
                 expect(template.description).toBeTruthy();
             }
+        });
+
+        it('all template IDs are unique', () => {
+            const ids = RESUME_TEMPLATES.map((t) => t.id);
+            expect(new Set(ids).size).toBe(ids.length);
         });
     });
 

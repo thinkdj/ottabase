@@ -88,6 +88,21 @@ export const RESUME_TEMPLATES: ResumeTemplateMeta[] = [
         name: 'Modern',
         description: 'Two-column layout with sidebar for skills and contact',
     },
+    {
+        id: 'lisbon',
+        name: 'Lisbon',
+        description: 'Light sidebar with skill dots, airy professional layout',
+    },
+    {
+        id: 'executive',
+        name: 'Executive',
+        description: 'Premium corporate design with elegant typography',
+    },
+    {
+        id: 'minimal',
+        name: 'Minimal',
+        description: 'Ultra-clean, typography-focused with maximum whitespace',
+    },
 ];
 
 /** Format "YYYY-MM" to readable date like "Jan 2024" */

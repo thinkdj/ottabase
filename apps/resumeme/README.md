@@ -14,7 +14,7 @@ and export to PDF.
   differently.
 - **Data Sets**: Users mix-and-match skills, work experience, education, etc. into named collections. Each data set can
   use a different template and accent colour.
-- **Templates**: Configurable resume layouts. Two built-in: Classic (single-column) and Modern (two-column sidebar).
+- **Templates**: Configurable resume layouts. Five built-in: Classic, Modern, Lisbon, Executive, and Minimal.
 - **Name lock**: The user's name on the resume always comes from their app profile — it cannot be overridden per-resume.
 
 ## Tech Stack
@@ -47,7 +47,22 @@ Traditional single-column layout. Accent-coloured section borders, inline contac
 
 Two-column layout. Dark sidebar with contact/skills/certifications, main area with experience/education/projects.
 
-Both templates support:
+### Lisbon
+
+Inspired by resume.io's Lisbon. Light-tinted sidebar with contact details, skill dots, education, and certifications.
+Main area displays experience and projects. Accent-coloured name and section icons.
+
+### Executive
+
+Premium corporate design for senior professionals. Full-width centred layout with elegant uppercase headings,
+pipe-separated contact bar, accent-dot bullet points, and refined typographic hierarchy.
+
+### Minimal
+
+Ultra-clean, typography-focused single-column layout. Maximum whitespace with hairline dividers between sections. Light
+font weight for the name, minimal colour use, no backgrounds or borders.
+
+All templates support:
 
 - Configurable accent colour (hex)
 - **Font size control** (9–16pt slider with live preview)
