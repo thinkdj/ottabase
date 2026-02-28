@@ -593,3 +593,42 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 - **Escalation:** Open an issue with the `architecture` label or ping the `#dev-ops` channel for urgent infra problems.
 
 </INSTRUCTIONS>
+
+## Cursor Cloud specific instructions
+
+### Environment
+
+- **Node.js 24+** is required (`.nvmrc` says `24`). Use `nvm install 24 && nvm use 24` if needed.
+- **pnpm 10.27.0** is the package manager. Install via `corepack enable pnpm`.
+- **No Docker** required — all infrastructure is Cloudflare-native and emulated locally by Wrangler.
+
+### Starting the dev servers
+
+The `pnpm dev` command (or `node dev.js --noopen`) starts both Vite (port 3003) and Wrangler (port 3004) in parallel. Key caveats for Cloud agents:
+
+1. **Wrangler needs a `dist/` directory** in `apps/ottabase-template-app-tanstack/`. If it doesn't exist (first run, or after `pnpm clean`), create it: `mkdir -p apps/ottabase-template-app-tanstack/dist && echo '<html></html>' > apps/ottabase-template-app-tanstack/dist/index.html`.
+2. **Wrangler needs `CLOUDFLARE_API_TOKEN`** in non-interactive (headless) environments. Set a dummy value for local dev: `export CLOUDFLARE_API_TOKEN=dummy-local-dev`. Use `--local` flag if needed.
+3. Start the servers separately for better control:
+   - Backend: `cd apps/ottabase-template-app-tanstack && CLOUDFLARE_API_TOKEN=dummy-local-dev npx wrangler dev --port 3004 --local`
+   - Frontend: `cd apps/ottabase-template-app-tanstack && npx vite --port 3003`
+4. **Build scripts for native packages** (esbuild, workerd) may be ignored by pnpm. After `pnpm install`, run: `for dir in node_modules/.pnpm/esbuild@*/node_modules/esbuild; do (cd "$dir" && node install.js); done` and `for dir in node_modules/.pnpm/workerd@*/node_modules/workerd; do (cd "$dir" && node install.js); done`.
+
+### First-run bootstrap
+
+After both servers are running, the platform requires bootstrap (creates DB tables + seeds roles + creates owner account). Use the `/__bootstrap__` API:
+
+```bash
+BOOTSTRAP_SECRET=$(grep BOOTSTRAP_OWNER_SECRET apps/ottabase-template-app-tanstack/.env.local | cut -d= -f2)
+curl -s -X POST http://localhost:3004/__bootstrap__/api/init -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET"
+curl -s -X POST http://localhost:3004/__bootstrap__/api/seed -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET"
+curl -s -X POST http://localhost:3004/__bootstrap__/api/create-owner -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET" -H "Content-Type: application/json" -d '{"email":"admin@ottabase.dev","password":"Admin@12345","name":"Admin"}'
+curl -s -X POST http://localhost:3004/__bootstrap__/api/finalize -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET"
+```
+
+### Commands reference
+
+See `README.md` and `AGENTS.MD` above for full command reference. Key commands:
+- `pnpm build:pkg` — build shared packages (required before first dev run)
+- `pnpm lint` — lint all packages (note: `@ottabase/ottalayout` has a pre-existing lint failure)
+- `pnpm test` — run all tests via Vitest + Turborepo
+- `pnpm type-check` — TypeScript validation
