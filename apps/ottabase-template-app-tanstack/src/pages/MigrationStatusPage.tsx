@@ -1,7 +1,8 @@
-import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Button, Card, CardContent, CardHeader, CardTitle, Checkbox, Label } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface InitResult {
     success: boolean;
@@ -33,6 +34,8 @@ interface ModelsMetadataResponse {
 
 export function MigrationStatusPage() {
     const [initResult, setInitResult] = useState<InitResult | null>(null);
+    const [initError, setInitError] = useState<Error | null>(null);
+    const [initLoading, setInitLoading] = useState(true);
     const [categoryFilters, setCategoryFilters] = useState({
         App: true,
         Package: true,
@@ -40,10 +43,42 @@ export function MigrationStatusPage() {
         Unknown: true,
     });
 
-    const initDb = useApiMutation<InitResult>({
-        endpoint: '/api/ottaorm/init',
-        method: 'POST',
-    });
+    // Call /api/ottaorm/init via fetch so we can handle 401 (MIGRATION_SECRET) locally
+    // without triggering the global API client's "session expired" redirect.
+    const runInit = useCallback(async (secret?: string) => {
+        setInitLoading(true);
+        setInitError(null);
+        try {
+            const res = await fetch('/api/ottaorm/init', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(secret ? { secret } : {}),
+                credentials: 'include',
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const msg =
+                    (data as { error?: string; message?: string }).error ||
+                    (data as { error?: string; message?: string }).message ||
+                    res.statusText ||
+                    'Request failed';
+                const err = new Error(msg);
+                setInitError(err);
+                toast.error(msg, {
+                    description:
+                        (data as { messages?: string[] }).messages?.join(' • ') || (data as { hint?: string }).hint,
+                });
+                return;
+            }
+            setInitResult(data as InitResult);
+        } catch (e) {
+            const err = e instanceof Error ? e : new Error('Request failed');
+            setInitError(err);
+            toast.error(err.message);
+        } finally {
+            setInitLoading(false);
+        }
+    }, []);
 
     const { data: modelsMetadata } = useApiQuery<ModelsMetadataResponse>({
         entity: 'models',
@@ -53,22 +88,10 @@ export function MigrationStatusPage() {
 
     // Auto-run on mount
     useEffect(() => {
-        // Get secret from URL query params
         const searchParams = new URLSearchParams(window.location.search);
         const secret = searchParams.get('secret');
-
-        // Pass secret in the body (supported by checkMigrationAuth)
-        initDb.mutate(secret ? { secret } : {});
-    }, []);
-
-    useEffect(() => {
-        if (initDb.data) {
-            setInitResult(initDb.data);
-        }
-    }, [initDb.data]);
-
-    const isLoading = initDb.isPending;
-    const error = initDb.error;
+        runInit(secret ?? undefined);
+    }, [runInit]);
 
     // Map table variable names to actual table names and categories using metadata from API
     const getTableInfo = (tableVarName: string) => {
@@ -152,14 +175,14 @@ export function MigrationStatusPage() {
                 </p>
             </div>
 
-            {error ? (
+            {initError ? (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
                     <h3 className="font-semibold text-destructive">Error</h3>
-                    <p className="text-sm text-destructive">{error.message}</p>
+                    <p className="text-sm text-destructive">{initError.message}</p>
                 </div>
             ) : null}
 
-            {isLoading && (
+            {initLoading && (
                 <div className="rounded-lg border bg-muted/50 p-8 text-center animate-pulse">
                     <p>Initializing database...</p>
                     <p className="text-sm text-muted-foreground mt-2">
@@ -307,7 +330,7 @@ export function MigrationStatusPage() {
                                                     };
 
                                                     return (
-                                                        <tr key={i} className="hover:bg-muted/20">
+                                                        <tr key={tableVarName} className="hover:bg-muted/20">
                                                             <td className="px-4 py-2 font-mono text-xs">
                                                                 {actualName}
                                                             </td>
@@ -351,7 +374,7 @@ export function MigrationStatusPage() {
                                     <div className="p-4">
                                         <ul className="list-disc list-inside text-xs space-y-1">
                                             {initResult.details.columnsAdded.map((col, i) => (
-                                                <li key={i} className="font-mono text-muted-foreground">
+                                                <li key={col} className="font-mono text-muted-foreground">
                                                     {col}
                                                 </li>
                                             ))}
@@ -375,7 +398,7 @@ export function MigrationStatusPage() {
                                                 </p>
                                                 <ul className="list-disc list-inside text-xs space-y-1 ml-2">
                                                     {initResult.details.customMigrationsRun.map((mig, i) => (
-                                                        <li key={i} className="font-mono text-muted-foreground">
+                                                        <li key={mig} className="font-mono text-muted-foreground">
                                                             {mig}
                                                         </li>
                                                     ))}
@@ -390,7 +413,7 @@ export function MigrationStatusPage() {
                                                 </p>
                                                 <ul className="list-disc list-inside text-xs space-y-1 ml-2">
                                                     {initResult.details.customMigrationsSkipped.map((mig, i) => (
-                                                        <li key={i} className="font-mono text-muted-foreground">
+                                                        <li key={mig} className="font-mono text-muted-foreground">
                                                             {mig}
                                                         </li>
                                                     ))}
@@ -406,7 +429,7 @@ export function MigrationStatusPage() {
                                     <h3 className="font-semibold text-destructive mb-2">Detailed Errors</h3>
                                     <ul className="list-disc list-inside text-sm text-destructive space-y-1">
                                         {initResult.details.errors.map((err, i) => (
-                                            <li key={i}>{err}</li>
+                                            <li key={err}>{err}</li>
                                         ))}
                                     </ul>
                                 </div>
@@ -424,7 +447,7 @@ export function MigrationStatusPage() {
                             onClick={() => {
                                 const searchParams = new URLSearchParams(window.location.search);
                                 const secret = searchParams.get('secret');
-                                initDb.mutate(secret ? { secret } : {});
+                                runInit(secret ?? undefined);
                             }}
                         >
                             Run Again

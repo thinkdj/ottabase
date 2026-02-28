@@ -4,13 +4,13 @@
 // Complete CRUD interface combining list, detail, create, edit views
 // ============================================================
 
-import React, { useState, useCallback } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { clsx } from 'clsx';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ModelTable } from './ModelTable';
+import { useCallback, useState } from 'react';
+import type { CrudViewMode, ModelCrudProps } from '../types';
 import { ModelDetail } from './ModelDetail';
 import { ModelForm } from './ModelForm';
-import type { ModelCrudProps, CrudViewMode } from '../types';
+import { ModelTable } from './ModelTable';
 
 export type { ModelCrudProps } from '../types';
 
@@ -409,9 +409,9 @@ function DeleteConfirmModal({ entityName, recordId, isLoading, onConfirm, onCanc
             <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
 
             {/* Modal */}
-            <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Delete {entityName}?</h3>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            <div className="relative rounded-lg border border-border bg-background shadow-xl max-w-md w-full mx-4 p-6">
+                <h3 className="text-lg font-semibold text-foreground">Delete {entityName}?</h3>
+                <p className="mt-2 text-sm text-muted-foreground">
                     Are you sure you want to delete this {entityName.toLowerCase()} (ID: {recordId}
                     )? This action cannot be undone.
                 </p>
@@ -422,9 +422,9 @@ function DeleteConfirmModal({ entityName, recordId, isLoading, onConfirm, onCanc
                         disabled={isLoading}
                         className={clsx(
                             'px-4 py-2 rounded-lg font-medium transition-colors',
-                            'text-gray-700 dark:text-gray-300',
-                            'bg-gray-100 dark:bg-gray-700',
-                            'hover:bg-gray-200 dark:hover:bg-gray-600',
+                            'text-foreground',
+                            'border border-input bg-background',
+                            'hover:bg-accent hover:text-accent-foreground',
                             'disabled:opacity-50',
                         )}
                     >
@@ -435,7 +435,8 @@ function DeleteConfirmModal({ entityName, recordId, isLoading, onConfirm, onCanc
                         disabled={isLoading}
                         className={clsx(
                             'px-4 py-2 rounded-lg font-medium transition-colors',
-                            'text-white bg-red-600 hover:bg-red-700',
+                            'bg-destructive text-destructive-foreground',
+                            'hover:bg-destructive/90',
                             'disabled:opacity-50',
                         )}
                     >
@@ -453,8 +454,8 @@ interface ErrorBannerProps {
 
 function ErrorBanner({ error }: ErrorBannerProps) {
     return (
-        <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-4">
+            <p className="text-sm text-destructive">{error}</p>
         </div>
     );
 }

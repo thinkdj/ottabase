@@ -19,6 +19,9 @@ const SVG_ZOOM_IN =
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>';
 const SVG_ZOOM_OUT =
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><line x1="8" y1="11" x2="14" y2="11"/></svg>';
+// Upload icon for the file picker button
+const SVG_UPLOAD =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
 
 export class Cropper {
     private container: HTMLElement;
@@ -78,12 +81,60 @@ export class Cropper {
         this.container.style.cssText =
             'position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;';
 
+        // Hidden file input + styled upload button + filename label
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = this.options.accept;
-        input.style.cssText = 'margin-bottom:4px';
-        input.onchange = () => this.loadFile(input.files?.[0]);
+        input.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);border:0;';
+        input.id = 'cropper-file-input';
+
+        const fileNameLabel = document.createElement('span');
+        fileNameLabel.id = 'cropper-file-name';
+        fileNameLabel.textContent = 'No file selected';
+        fileNameLabel.style.cssText =
+            'font-size:0.875rem;color:var(--muted-foreground, #888);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;';
+
+        input.onchange = () => {
+            const file = input.files?.[0];
+            if (file) fileNameLabel.textContent = file.name;
+            this.loadFile(file);
+        };
+
+        const uploadBtn = document.createElement('button');
+        uploadBtn.type = 'button';
+        uploadBtn.title = 'Choose image';
+        uploadBtn.innerHTML = `${SVG_UPLOAD}<span style="margin-left:6px">Choose image</span>`;
+        uploadBtn.style.cssText = [
+            'display:inline-flex',
+            'align-items:center',
+            'gap:2px',
+            'padding:6px 14px',
+            'font-size:0.875rem',
+            'font-weight:500',
+            'line-height:1.25rem',
+            'border-radius:6px',
+            'cursor:pointer',
+            'transition:background 150ms,border-color 150ms',
+            'border:1px solid var(--border, #333)',
+            'background:var(--background, transparent)',
+            'color:var(--foreground, #fff)',
+        ].join(';');
+        uploadBtn.onmouseenter = () => {
+            uploadBtn.style.background = 'var(--accent, rgba(255,255,255,0.08))';
+        };
+        uploadBtn.onmouseleave = () => {
+            uploadBtn.style.background = 'var(--background, transparent)';
+        };
+        uploadBtn.onclick = () => input.click();
+
+        // Row wrapper for button + filename
+        const fileRow = document.createElement('div');
+        fileRow.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:4px;';
+        fileRow.appendChild(uploadBtn);
+        fileRow.appendChild(fileNameLabel);
+
         this.container.appendChild(input);
+        this.container.appendChild(fileRow);
 
         this.wrap = document.createElement('div');
         // Transparent bg for compatibility and aesthetics (circle crop shows through; rect works fine too)
@@ -142,6 +193,47 @@ export class Cropper {
     /** Public API: load image from File (e.g. after user selects from file input) */
     loadFromFile(file: File | undefined) {
         this.loadFile(file);
+    }
+
+    /** Public API: load image from a URL (http/https, blob:, or data: base64 URI) */
+    loadFromUrl(url: string) {
+        if (!url) return;
+        this.img = new Image();
+        // Allow cross-origin images to be exported via canvas
+        if (!url.startsWith('data:') && !url.startsWith('blob:')) {
+            this.img.crossOrigin = 'anonymous';
+        }
+        this.img.onload = () => {
+            this.rotation = 0;
+            this.zoom = this.options.zoom;
+            this.flipH = false;
+            this.flipV = false;
+            this.initCrop();
+            this.container.querySelector<HTMLElement>('#cropper-wrap')!.style.display = 'block';
+            const presetsEl = this.container.querySelector<HTMLElement>('#cropper-presets');
+            if (presetsEl) presetsEl.style.display = 'flex';
+            this.updatePresetActive();
+            this.render();
+            // Update filename label if present
+            const nameLabel = this.container.querySelector<HTMLElement>('#cropper-file-name');
+            if (nameLabel) {
+                if (url.startsWith('data:')) {
+                    nameLabel.textContent = 'Image loaded';
+                } else {
+                    // Extract filename from URL path
+                    try {
+                        const pathname = new URL(url).pathname;
+                        nameLabel.textContent = pathname.split('/').pop() || 'Image loaded';
+                    } catch {
+                        nameLabel.textContent = 'Image loaded';
+                    }
+                }
+            }
+        };
+        this.img.onerror = () => {
+            console.error('Cropper: failed to load image from URL');
+        };
+        this.img.src = url;
     }
 
     private loadFile(file: File | undefined) {

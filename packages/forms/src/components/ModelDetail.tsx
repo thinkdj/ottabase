@@ -4,9 +4,9 @@
 // Auto-generated detail view from model metadata
 // ============================================================
 
-import React, { useMemo } from 'react';
 import { clsx } from 'clsx';
-import { ArrowLeft, Edit2, Trash2, Check, X, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Check, Edit2, ExternalLink, Trash2, X } from 'lucide-react';
+import { useMemo } from 'react';
 import type { ModelDetailProps, ModelFieldDescriptor } from '../types';
 
 export type { ModelDetailProps } from '../types';
@@ -55,10 +55,10 @@ export function ModelDetail<T extends Record<string, unknown>>({
     if (isLoading) {
         return (
             <div className={clsx('animate-pulse space-y-4', className)}>
-                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+                <div className="h-8 bg-muted rounded w-1/3" />
                 <div className="space-y-3">
                     {[...Array(6)].map((_, i) => (
-                        <div key={i} className="h-12 bg-gray-100 dark:bg-gray-800 rounded" />
+                        <div key={i} className="h-12 bg-muted/60 rounded" />
                     ))}
                 </div>
             </div>
@@ -73,18 +73,14 @@ export function ModelDetail<T extends Record<string, unknown>>({
                     {onBack && (
                         <button
                             onClick={onBack}
-                            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent"
                         >
                             <ArrowLeft className="w-5 h-5" />
                         </button>
                     )}
                     <div>
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                            {displayName} Details
-                        </h2>
-                        {recordId != null && (
-                            <p className="text-sm text-gray-500 dark:text-gray-400">ID: {String(recordId)}</p>
-                        )}
+                        <h2 className="text-xl font-semibold text-foreground">{displayName} Details</h2>
+                        {recordId != null && <p className="text-sm text-muted-foreground">ID: {String(recordId)}</p>}
                     </div>
                 </div>
 
@@ -96,7 +92,7 @@ export function ModelDetail<T extends Record<string, unknown>>({
                                 onClick={onEdit}
                                 className={clsx(
                                     'px-4 py-2 rounded-lg font-medium transition-colors',
-                                    'bg-blue-600 hover:bg-blue-700 text-white',
+                                    'bg-primary hover:bg-primary/90 text-primary-foreground',
                                     'flex items-center gap-2',
                                 )}
                             >
@@ -109,7 +105,7 @@ export function ModelDetail<T extends Record<string, unknown>>({
                                 onClick={onDelete}
                                 className={clsx(
                                     'px-4 py-2 rounded-lg font-medium transition-colors',
-                                    'bg-red-600 hover:bg-red-700 text-white',
+                                    'bg-destructive hover:bg-destructive/90 text-destructive-foreground',
                                     'flex items-center gap-2',
                                 )}
                             >
@@ -122,18 +118,18 @@ export function ModelDetail<T extends Record<string, unknown>>({
             </div>
 
             {/* Detail Table */}
-            <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="overflow-hidden rounded-lg border border-border">
                 <table className="w-full">
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody className="divide-y divide-border">
                         {fields.map(({ key, field }) => (
-                            <tr key={key} className="bg-white dark:bg-gray-900">
+                            <tr key={key} className="bg-background">
                                 {/* Label */}
-                                <td className="px-4 py-3 w-1/4 bg-gray-50 dark:bg-gray-800">
-                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <td className="px-4 py-3 w-1/4 bg-muted/50">
+                                    <span className="text-sm font-medium text-foreground">
                                         {field.uiConfig?.label || capitalize(key)}
                                     </span>
                                     {field.uiConfig?.description && (
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                        <p className="text-xs text-muted-foreground mt-0.5">
                                             {field.uiConfig.description}
                                         </p>
                                     )}
@@ -166,7 +162,7 @@ function DetailValue({ value, field }: DetailValueProps) {
 
     // Handle null/undefined
     if (value === null || value === undefined) {
-        return <span className="text-gray-400 dark:text-gray-500 italic">Not set</span>;
+        return <span className="text-muted-foreground italic">Not set</span>;
     }
 
     // Handle specific formats
@@ -174,7 +170,7 @@ function DetailValue({ value, field }: DetailValueProps) {
         switch (format) {
             case 'date':
                 return (
-                    <span className="text-gray-900 dark:text-gray-100">
+                    <span className="text-foreground">
                         {new Date(value as string).toLocaleDateString(undefined, {
                             weekday: 'long',
                             year: 'numeric',
@@ -184,26 +180,22 @@ function DetailValue({ value, field }: DetailValueProps) {
                     </span>
                 );
             case 'datetime':
-                return (
-                    <span className="text-gray-900 dark:text-gray-100">
-                        {new Date(value as string).toLocaleString()}
-                    </span>
-                );
+                return <span className="text-foreground">{new Date(value as string).toLocaleString()}</span>;
             case 'boolean':
                 return value ? (
-                    <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
+                    <span className="inline-flex items-center gap-1 text-primary">
                         <Check className="w-4 h-4" />
                         Yes
                     </span>
                 ) : (
-                    <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                    <span className="inline-flex items-center gap-1 text-muted-foreground">
                         <X className="w-4 h-4" />
                         No
                     </span>
                 );
             case 'currency':
                 return (
-                    <span className="text-gray-900 dark:text-gray-100 font-medium">
+                    <span className="text-foreground font-medium">
                         {new Intl.NumberFormat('en-US', {
                             style: 'currency',
                             currency: 'USD',
@@ -211,20 +203,20 @@ function DetailValue({ value, field }: DetailValueProps) {
                     </span>
                 );
             case 'percentage':
-                return <span className="text-gray-900 dark:text-gray-100">{Number(value).toFixed(1)}%</span>;
+                return <span className="text-foreground">{Number(value).toFixed(1)}%</span>;
             case 'image':
                 return (
                     <div className="flex items-center gap-3">
                         <img
                             src={String(value)}
                             alt=""
-                            className="w-16 h-16 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                            className="w-16 h-16 rounded-lg object-cover border border-border"
                         />
                         <a
                             href={String(value)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                            className="text-sm text-primary hover:underline flex items-center gap-1"
                         >
                             View full size
                             <ExternalLink className="w-3 h-3" />
@@ -237,7 +229,7 @@ function DetailValue({ value, field }: DetailValueProps) {
                         href={String(value)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline flex items-center gap-1"
+                        className="text-primary hover:underline flex items-center gap-1"
                     >
                         {String(value)}
                         <ExternalLink className="w-3 h-3" />
@@ -250,12 +242,12 @@ function DetailValue({ value, field }: DetailValueProps) {
     switch (field.type) {
         case 'boolean':
             return value ? (
-                <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
+                <span className="inline-flex items-center gap-1 text-primary">
                     <Check className="w-4 h-4" />
                     Yes
                 </span>
             ) : (
-                <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                <span className="inline-flex items-center gap-1 text-muted-foreground">
                     <X className="w-4 h-4" />
                     No
                 </span>
@@ -263,7 +255,7 @@ function DetailValue({ value, field }: DetailValueProps) {
 
         case 'date':
             return (
-                <span className="text-gray-900 dark:text-gray-100">
+                <span className="text-foreground">
                     {new Date(value as string).toLocaleDateString(undefined, {
                         weekday: 'long',
                         year: 'numeric',
@@ -274,43 +266,34 @@ function DetailValue({ value, field }: DetailValueProps) {
             );
 
         case 'datetime':
-            return (
-                <span className="text-gray-900 dark:text-gray-100">{new Date(value as string).toLocaleString()}</span>
-            );
+            return <span className="text-foreground">{new Date(value as string).toLocaleString()}</span>;
 
         case 'json':
             return (
-                <pre className="text-sm bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto max-h-48">
-                    <code className="text-gray-800 dark:text-gray-200">{JSON.stringify(value, null, 2)}</code>
+                <pre className="text-sm bg-muted p-3 rounded-lg overflow-x-auto max-h-48">
+                    <code className="text-foreground">{JSON.stringify(value, null, 2)}</code>
                 </pre>
             );
 
         case 'array':
             if (Array.isArray(value)) {
                 if (value.length === 0) {
-                    return <span className="text-gray-400 italic">Empty</span>;
+                    return <span className="text-muted-foreground italic">Empty</span>;
                 }
                 return (
                     <div className="flex flex-wrap gap-1">
                         {value.map((item, index) => (
-                            <span
-                                key={index}
-                                className="px-2 py-1 text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded"
-                            >
+                            <span key={index} className="px-2 py-1 text-sm bg-muted text-foreground rounded">
                                 {typeof item === 'object' ? JSON.stringify(item) : String(item)}
                             </span>
                         ))}
                     </div>
                 );
             }
-            return <span className="text-gray-900 dark:text-gray-100">{String(value)}</span>;
+            return <span className="text-foreground">{String(value)}</span>;
 
         case 'id':
-            return (
-                <code className="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-700 dark:text-gray-300">
-                    {String(value)}
-                </code>
-            );
+            return <code className="text-sm bg-muted px-2 py-1 rounded text-foreground">{String(value)}</code>;
 
         default:
             // Check if it looks like a URL
@@ -320,7 +303,7 @@ function DetailValue({ value, field }: DetailValueProps) {
                         href={value}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline flex items-center gap-1"
+                        className="text-primary hover:underline flex items-center gap-1"
                     >
                         {value}
                         <ExternalLink className="w-3 h-3" />
@@ -335,7 +318,7 @@ function DetailValue({ value, field }: DetailValueProps) {
                         <img
                             src={value}
                             alt=""
-                            className="w-16 h-16 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                            className="w-16 h-16 rounded-lg object-cover border border-border"
                             onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = 'none';
                             }}
@@ -344,7 +327,7 @@ function DetailValue({ value, field }: DetailValueProps) {
                             href={value}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                            className="text-sm text-primary hover:underline flex items-center gap-1"
                         >
                             View image
                             <ExternalLink className="w-3 h-3" />
@@ -357,13 +340,13 @@ function DetailValue({ value, field }: DetailValueProps) {
             const stringValue = String(value);
             if (stringValue.length > 200 || stringValue.includes('\n')) {
                 return (
-                    <div className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap bg-gray-50 dark:bg-gray-800 p-3 rounded-lg max-h-48 overflow-y-auto">
+                    <div className="text-foreground whitespace-pre-wrap bg-muted/50 p-3 rounded-lg max-h-48 overflow-y-auto">
                         {stringValue}
                     </div>
                 );
             }
 
-            return <span className="text-gray-900 dark:text-gray-100">{stringValue}</span>;
+            return <span className="text-foreground">{stringValue}</span>;
     }
 }
 

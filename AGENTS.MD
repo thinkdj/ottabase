@@ -8,7 +8,9 @@ Monorepo using **pnpm workspaces** + **Turborepo**. TanStack Router + Vite app w
 1. **OttaORM First**: All data models MUST inherit from `BaseModel`. Do not write raw SQL or vanilla Drizzle queries
    unless absolutely necessary for performance. Logic belongs in the Model class, not in "Controllers" or "Services".
 2. **Schema Integrity**: Drizzle schema lives in `apps/*/ottabase/db/schema.ts`. Export all tables there. Package tables
-   come from package schemas (e.g. `@ottabase/shortlinks/schema`) and are wired via `schemas-helper.ts`.
+   come from package schemas (e.g. `@ottabase/shortlinks/schema`) and are wired via `config.migrations.ts`
+   PACKAGE_REGISTRY and `schemas-helper.ts`. The TanStack app uses Drizzle + OttaORM as primary; Prisma exists
+   optionally in @ottabase/db.
 3. **Workspace Protocol**: Always use `workspace:*` for internal package dependencies. Use `catalog:` for shared
    external dependencies (React, Drizzle, etc.).
 4. **Don't Reinvent**: Check `@ottabase/utils` for internal helpers (date, string, currency) and `@ottabase/ui-shadcn`
@@ -25,15 +27,20 @@ Use this as the default decision tree when shipping new work.
 1. **CRUD-first via OttaORM**
     - If it is standard entity CRUD, use model + `createModelHooks()` + `/api/ottaorm/{entity}`.
     - Do not introduce custom CRUD endpoints unless there is a real non-CRUD need.
+    - Exception: Menu, MenuItem use `/api/brand/menus` (cache-invalidating CRUD), not OttaORM.
 2. **Keep data logic in models**
     - Put domain logic in model methods, not page/component handlers.
 3. **Theme-safe UI**
     - Prefer design tokens/CSS variables and existing UI packages (`@ottabase/ui-shadcn`, `@ottabase/ui-mantine`).
     - Avoid hardcoded one-off colors/sizes that bypass theme runtime.
+    - Icons: `@tabler/icons-react` primary; Lucide/Radix fallback. Charts: Tremor where applicable.
+    - Always add dark mode classes for new UI.
 4. **Cloudflare edge-safe code**
     - Avoid Node-only APIs in app/worker code.
-5. **Minimal route logic**
+    - If modifying Cloudflare bindings, you MUST maintain sync between `wrangler.jsonc` and `cloudflare-env.d.ts`.
+5. **Minimal route logic & Error Handling**
     - Worker routes should orchestrate/auth/validate; model should own persistence behavior.
+    - Return API failures using `errorResponse(...)` from `@ottabase/utils/http-errors` instead of standard responses.
 6. **Docs + tests are required**
     - Every new feature must create/update its respective `README.MD` and include/update tests.
 
@@ -43,11 +50,14 @@ Use this as the default decision tree when shipping new work.
     - No DB persistence: keep package framework-agnostic and stateless where possible.
     - Needs DB persistence: follow OttaORM split below.
 2. **OttaORM persistence split (required)**
-    - Package exports table schema (`packages/<pkg>/src/schema.ts`).
+    - Package exports table schema (`packages/<pkg>/src/schema.ts` or `packages/<pkg>/src/persistence` for complex
+      packages).
+    - Add tables to `ottabase/config.migrations.ts` PACKAGE_REGISTRY (tables + optional migrations).
+    - Add package key to `ottabase.config.ts` `packages` (built-in) or `customPackages` (custom).
+    - For custom packages: also register routes in `ottabase/config.routes.ts`.
     - App owns the `BaseModel` class (`apps/*/ottabase/models/*`).
-    - App exports table from `apps/*/ottabase/db/schema.ts`.
-    - Ensure schema collector includes it for init/migrations.
-    - Register model for generic CRUD if entity should be API-accessible.
+    - Add model to `worker/lib/db-utils.ts` initDbConnection (registerModels array).
+    - App exports table from `apps/*/ottabase/db/schema.ts`; app tables also go in `ottabase/db/schemas-helper.ts`.
 3. **Dependency protocol**
     - Internal deps: `workspace:*`
     - Shared external deps: `catalog:`
@@ -87,6 +97,7 @@ ottabase/
 
 - **OS**: Windows 11
 - **Terminal**: Command Prompt (cmd) - avoid PowerShell due to path issues
+- **Deployment (CI/CD)**: would run on Ubuntu.
 - **Runtime**: Node.js 24+
 - **Package Manager**: pnpm with workspaces
 - **Build**: Turborepo
@@ -129,6 +140,7 @@ export class Todo extends BaseModel {
     };
 
     async user() {
+        // Use dynamic imports to avoid circular dependencies for model relationships
         const { User } = await import('@ottabase/ottaorm');
         return this.belongsTo(User, 'userId');
     }
@@ -140,40 +152,37 @@ export class Todo extends BaseModel {
 }
 ```
 
+### Row-Level Security (RLS)
+
+- **RLS Engine Enforcement**: RLS acts at the `ottaorm` level to automatically enforce context-based rules.
+- **Rules (`tenant`, `user`, `app`)**: Prevent accidental cross-visibility queries. E.g., tenant rules require a
+  matching `organizationId`.
+- **Pre-requisite**: An `initRLS()` must be executed during app initialization. Never bypass RLS rules without explicit
+  architecture approvals.
+
 ### Schema Collection (3 Sources)
 
-Tables are collected from 3 sources for auto-migrations:
+Tables are collected from 3 sources for auto-migrations. `getAllSchemas()` in `ottabase/db/schemas-helper.ts` combines:
 
-```typescript
-// ottabase/db/schemas-helper.ts
-export function getAllSchemas() {
-  // 1. CORE - from @ottabase/ottaorm (users, posts, auth tables)
-  const coreTables = { usersTable, postsTable, sessionsTable, ... };
+1. **CORE** — from @ottabase/ottaorm (users, auth tables, etc.)
+2. **APP** — app-specific tables (add to schemas-helper.ts appTables)
+3. **PACKAGES** — from `getEnabledPackageTables()` in config.migrations.ts
 
-  // 2. APP - app-specific models
-  const appTables = { todosTable };
-
-  // 3. PACKAGES - enabled packages (shortlinks, referrals)
-  const packageTables = getEnabledPackageTables();
-
-  return { ...coreTables, ...appTables, ...packageTables };
-}
-```
+Package tables are driven by `ottabase.config.ts` `packages` and `customPackages`. **brandEngine is core** — always
+enabled, not in ottabase.config packages. `schema.ts` exports for drizzle-kit (db:push, db:studio); schemas-helper feeds
+runtime migrations (api/ottaorm/init).
 
 ### Model Registry (for CRUD API)
 
-Register models for dynamic lookup by entity name:
+Models must be registered in `worker/lib/db-utils.ts` initDbConnection for `/api/ottaorm/{entity}` to work:
 
 ```typescript
-import { registerModels, User, Post, Tag } from '@ottabase/ottaorm';
-import { Todo } from './models/Todo';
-import { Shortlink } from './models/Shortlink';
-
-// Register all models for /api/ottaorm/{entity} CRUD
-registerModels([User, Post, Tag, Todo, Shortlink]);
+// worker/lib/db-utils.ts
+registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
 ```
 
-Then generic CRUD works: `GET /api/ottaorm/todos`, `POST /api/ottaorm/shortlinks`, etc.
+When adding a new model, add it to the appropriate array (packageModels, brandModels, appModels) in that file. Then
+generic CRUD works: `GET /api/ottaorm/todos`, `POST /api/ottaorm/shortlinks`, etc.
 
 ### Auto-Migrations
 
@@ -286,6 +295,16 @@ Blog engine core logic and models.
 import { Post, Tag } from '@ottabase/ottablog';
 ```
 
+### @ottabase/ui-datatable
+
+Advanced data table built on TanStack Table v8. Server-side sort/filter/pagination, column visibility, row selection,
+bulk actions. Powers the list view in `@ottabase/forms` ModelCrud.
+
+```typescript
+import { DataTable, useDataTable, createColumns, actionsColumn, selectColumn } from '@ottabase/ui-datatable';
+import { useServerTable } from '@ottabase/ui-datatable'; // OttaORM server-side integration
+```
+
 ### @ottabase/queue
 
 Laravel-style job queue for Cloudflare Queues.
@@ -329,10 +348,10 @@ await broadcaster.send('channel', 'event', { data });
 
 When a package provides its own database table:
 
-### 1. Package: Export schema only
+### 1. Package: Export schema
 
 ```typescript
-// packages/mypackage/src/schema.ts
+// packages/mypackage/src/schema.ts (or src/persistence for complex packages)
 import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const myTable = sqliteTable('mytable', {
@@ -341,7 +360,12 @@ export const myTable = sqliteTable('mytable', {
 });
 ```
 
-### 2. App: Create model
+### 2. App: Register in config.migrations.ts
+
+Add to PACKAGE_REGISTRY and ottabase.config.ts `packages` (built-in) or `customPackages` (custom). For custom packages,
+also add route handlers in `ottabase/config.routes.ts`.
+
+### 3. App: Create model
 
 ```typescript
 // apps/my-app/ottabase/models/MyModel.ts
@@ -352,28 +376,24 @@ export class MyModel extends BaseModel {
     static entity = 'mytable';
     static table = myTable;
     static primaryKey = 'id';
-
-    // App-specific logic here
 }
 ```
 
-### 3. App: Register in schema
+### 4. App: Register model in db-utils.ts
+
+Add `MyModel` to the appropriate array in `worker/lib/db-utils.ts` initDbConnection.
+
+### 5. App: Export table and create hooks
 
 ```typescript
 // ottabase/db/schema.ts
 export { myTable } from '@ottabase/mypackage/schema';
-```
 
-### 4. App: Create hooks
-
-```typescript
 // ottabase/hooks/useMyModel.ts
-import { createModelHooks } from '@ottabase/ottaorm/client';
-
 export const { useList, useCreate, useUpdate, useDelete } = createModelHooks({ entityName: 'mytable' });
 ```
 
-### 5. Run migrations
+### 6. Run migrations
 
 ```bash
 curl -X POST http://localhost:3004/api/ottaorm/init
@@ -464,14 +484,19 @@ pnpm install
 
 ## File Locations
 
-| Purpose      | Location                                          |
-| ------------ | ------------------------------------------------- |
-| Models       | `apps/*/ottabase/models/`                         |
-| Schema       | `apps/*/ottabase/db/schema.ts`                    |
-| Client hooks | `apps/*/ottabase/hooks/` or `src/ottabase/hooks/` |
-| Migrations   | `apps/*/ottabase/migrations/`                     |
-| API routes   | `apps/*/cloudflare-worker.ts`                     |
-| Pages        | `apps/*/src/pages/`                               |
+| Purpose           | Location                                           |
+| ----------------- | -------------------------------------------------- |
+| Models            | `apps/*/ottabase/models/`                          |
+| Schema            | `apps/*/ottabase/db/schema.ts`                     |
+| Schema collection | `apps/*/ottabase/db/schemas-helper.ts`             |
+| Package registry  | `apps/*/ottabase/config.migrations.ts`             |
+| Model registry    | `apps/*/worker/lib/db-utils.ts` (initDbConnection) |
+| Custom routes     | `apps/*/ottabase/config.routes.ts`                 |
+| App config        | `apps/*/ottabase/ottabase.config.ts`               |
+| Client hooks      | `apps/*/ottabase/hooks/` or `src/ottabase/hooks/`  |
+| Migrations        | `apps/*/ottabase/migrations/`                      |
+| API routes        | `apps/*/worker/routes/router.ts`                   |
+| Pages             | `apps/*/src/pages/`                                |
 
 ## Anti-Patterns
 
@@ -482,6 +507,8 @@ pnpm install
 - Implicit dependencies
 - Missing type definitions
 - Models without `static entity` and `static table`
+- Using npm or yarn instead of pnpm
+- Using OttaORM for Menu/MenuItem (use `/api/brand/menus` instead)
 
 ## Commands Reference
 
@@ -516,12 +543,12 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
   required.
 - Do not make stray .MD files after a task (like SUMMARY.MD)
 - Add comments in code snippets to explain what they do, especially for complex logic.
-- `README.MD`s should be concise, and with examples. Don't be too verbose. Keep text sharply focused on the task at
-  hand, and avoid unnecessary background information, tangents or noise. Do not add Possible Issues or Troubleshooting
-  sections unless they are directly relevant to the task.
-- Use consistent formatting and indentation in code snippets (check `.prettierrc`).
-- Make tests for new features, modify existing ones if needed, and ensure they pass before marking a task as complete.
+- **Create/Edit README.MD and Tests** - whenever you make changes to the codebase, update the appropriate README.MD and
+  tests accordingly. Keep `README.MD` concise and focused on the task at hand, with examples. Do not add Possible Issues
+  or Troubleshooting sections unless they are directly relevant to the task.
+- Use consistent formatting and indentation in code snippets (check `.prettierrc` — 4 spaces, single quotes, LF).
 - When adding new packages, ensure they follow the same structure and conventions as existing ones for consistency.
+- **Type Safety** — TypeScript only.
 - UI must follow minimal design, and use components from `@ottabase/ui-shadcn` where possible to maintain a cohesive
   look and feel across the app. If a new Component that requires design is to be made, add tailwind classes in the
   component, and avoid adding new CSS files unless absolutely necessary.
@@ -532,6 +559,22 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 - When writing code snippets in documentation, ensure they are complete and can be copy-pasted without modification.
   Include necessary imports and context.
 
+## Agent Workflow Checklist
+
+1. **Review documentation first** - Read this file and `AI_RULES.MD` before making changes.
+2. **Install dependencies** with `pnpm install` if needed; never use npm or yarn.
+3. **Build packages first** with `pnpm build:pkg` when working with shared code.
+4. **For code changes**, run quality checks:
+    - `pnpm lint` - Lint all packages
+    - `pnpm type-check` - TypeScript validation
+    - `pnpm test --filter=<package>` - Run tests scoped to the package you changed
+5. **When adding dependencies**, follow the decision flow above.
+6. **For model changes**, ensure:
+    - Model has `static entity` and `static table`
+    - Table is exported in `ottabase/db/schema.ts`
+    - Model is added to `worker/lib/db-utils.ts` initDbConnection if CRUD API needed
+    - Run `curl -X POST http://localhost:3004/api/ottaorm/init` to apply migrations
+
 ### CI / PR Checklist
 
 - **CI:** Run `pnpm build:pkg && pnpm test --filter=@ottabase/ottaorm` before opening a PR.
@@ -539,14 +582,14 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 - **Formatting:** Ensure Prettier formatting is applied; enforce via pre-commit hooks (`husky` + `lint-staged`).
 - **PR Description:** Add a short summary, list affected packages, testing notes, and any required migration steps.
 
-### Maintainers / Contacts
-
-- **Maintainer:** @thinkdj: architecture questions & exceptions.
-- **Escalation:** Open an issue with the `architecture` label or ping the `#dev-ops` channel for urgent infra problems.
-
 ### Formatting / Pre-commit
 
 - **Format command:** `pnpm format` (runs `prettier --write .` on the whole repo).
 - **Pre-commit:** We recommend `husky` + `lint-staged` to run format and basic lint on staged files.
+
+### Maintainers / Contacts
+
+- **Maintainer:** @thinkdj: architecture questions & exceptions.
+- **Escalation:** Open an issue with the `architecture` label or ping the `#dev-ops` channel for urgent infra problems.
 
 </INSTRUCTIONS>

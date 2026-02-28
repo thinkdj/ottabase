@@ -1,7 +1,8 @@
 {
-    "name": "@ottabase/forms",
+    "name": "@ottabase/ui-datatable",
     "version": "1.0.0",
-    "description": "Auto-generated CRUD forms from OttaORM model metadata",
+    "description": "Headless-first advanced data table built on TanStack Table v8 for ottabase",
+    "sideEffects": false,
     "main": "dist/index.js",
     "module": "dist/index.mjs",
     "types": "dist/index.d.ts",
@@ -17,37 +18,37 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup src/index.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+        "build": "tsup",
+        "dev": "tsup --watch",
         "clean": "rimraf dist",
         "lint": "eslint src --ext .ts,.tsx",
         "type-check": "tsc --noEmit",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage"
+        "test": "vitest"
     },
     "dependencies": {
-        "@ottabase/ottaselect": "workspace:*",
-        "@ottabase/ui-datatable": "workspace:*",
+        "@tanstack/react-table": "^8.21.3",
         "clsx": "catalog:",
-        "json-edit-react": "^1.29.0",
         "lucide-react": "catalog:"
     },
     "peerDependencies": {
-        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "react": "catalog:",
-        "react-dom": "catalog:",
-        "zod": "catalog:"
+        "react-dom": "catalog:"
     },
     "devDependencies": {
-        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ui-shadcn": "workspace:*",
         "@tanstack/react-query": "catalog:",
+        "@testing-library/jest-dom": "^6.6.3",
+        "@testing-library/react": "^16.1.0",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
         "eslint": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
         "rimraf": "catalog:",
         "tsup": "catalog:",
         "typescript": "catalog:",
-        "zod": "catalog:"
+        "vitest": "catalog:"
     }
 }

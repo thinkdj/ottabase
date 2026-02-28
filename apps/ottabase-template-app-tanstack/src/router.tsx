@@ -230,6 +230,16 @@ const demoSplitPaneRoute = new Route({
     ),
 });
 
+const demoDataTableRoute = new Route({
+    getParentRoute: () => demoLayoutRoute,
+    path: 'ui-datatable',
+    component: lazyRouteComponent(() =>
+        import('@/pages/demo/ui-datatable/DataTableDemoPage').then((m) => ({
+            default: m.DataTableDemoPage,
+        })),
+    ),
+});
+
 const demoCropperRoute = new Route({
     getParentRoute: () => demoLayoutRoute,
     path: 'ui-cropper',
@@ -907,6 +917,7 @@ demoLayoutRoute.addChildren([
     demoOttaOrmRoute,
     demoOttaFormsRoute,
     demoOttaSelectRoute,
+    demoDataTableRoute,
     demoSplitPaneRoute,
     demoCropperRoute,
     demoLoggerRoute,

@@ -2,7 +2,6 @@
  * Single source of truth for demo gallery items.
  * Used by both DemoLayout (sidemenu) and DemoIndexPage (cards).
  */
-import type { ElementType } from 'react';
 import {
     Bell,
     Clock,
@@ -26,6 +25,7 @@ import {
     Upload,
     Zap,
 } from 'lucide-react';
+import type { ElementType } from 'react';
 
 export interface DemoItem {
     to: string;
@@ -158,6 +158,15 @@ export const DEMO_ITEMS: DemoItem[] = [
         title: 'OttaSelect',
         description: 'Searchable select component with async data loading and custom rendering.',
         buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/ui-datatable',
+        icon: Layout,
+        label: 'DataTable',
+        title: 'DataTable',
+        description:
+            'Advanced data table on TanStack Table v8: server-side sort/filter/pagination, column visibility, row selection, bulk actions.',
+        buttonVariant: 'default',
     },
     {
         to: '/demo/cloudflare',

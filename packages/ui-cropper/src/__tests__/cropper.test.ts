@@ -11,7 +11,17 @@ describe('Cropper', () => {
         const el = document.createElement('div');
         document.body.appendChild(el);
         const c = new Cropper(el, { aspectRatio: 1 });
-        expect(el.querySelector('input[type="file"]')).toBeTruthy();
+        // Hidden file input should exist
+        const input = el.querySelector('input[type="file"]') as HTMLInputElement;
+        expect(input).toBeTruthy();
+        // Styled upload button should exist with "Choose image" text
+        const btn = el.querySelector('button[title="Choose image"]');
+        expect(btn).toBeTruthy();
+        expect(btn?.textContent).toContain('Choose image');
+        // Filename label should show default text
+        const nameLabel = el.querySelector('#cropper-file-name');
+        expect(nameLabel).toBeTruthy();
+        expect(nameLabel?.textContent).toBe('No file selected');
         expect(el.querySelector('canvas')).toBeTruthy();
         c.destroy();
         document.body.removeChild(el);
@@ -104,6 +114,19 @@ describe('Cropper', () => {
         c.setAspectRatio(null);
         expect(c).toBeDefined();
         c.destroy();
+    });
+
+    it('has loadFromUrl method for URL/base64 images', () => {
+        const el = document.createElement('div');
+        document.body.appendChild(el);
+        const c = new Cropper(el);
+        expect(typeof c.loadFromUrl).toBe('function');
+        // Should not throw when called with a data URI
+        expect(() => c.loadFromUrl('data:image/png;base64,iVBOR')).not.toThrow();
+        // Should not throw when called with empty string
+        expect(() => c.loadFromUrl('')).not.toThrow();
+        c.destroy();
+        document.body.removeChild(el);
     });
 
     it('zoom respects maxHeight constraint', () => {

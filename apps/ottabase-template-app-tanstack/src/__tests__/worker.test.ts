@@ -121,6 +121,22 @@ describe('Cloudflare Worker API', () => {
 
             updateSpy.mockRestore();
         });
+
+        it('should allow removing profile image with image: null', async () => {
+            const userJson = { id: 'user-1', name: 'Ada', email: 'ada@example.com', image: null };
+            (getSession as any).mockResolvedValue({ user: { id: 'user-1' } });
+            const updateSpy = vi.spyOn(User, 'update').mockResolvedValue({
+                toJson: () => userJson,
+            } as any);
+
+            const resp = await worker.fetch(createRequest('/api/users/me', 'PATCH', { image: null }), env);
+            expect(resp.status).toBe(200);
+            const data = (await resp.json()) as any;
+            expect(data.image).toBeNull();
+            expect(updateSpy).toHaveBeenCalledWith('user-1', expect.objectContaining({ image: null }));
+
+            updateSpy.mockRestore();
+        });
     });
 
     describe('/api/ottaorm/users', () => {

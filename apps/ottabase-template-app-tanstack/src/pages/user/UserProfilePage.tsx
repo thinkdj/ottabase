@@ -9,7 +9,16 @@ import { useRBACToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/auth';
 import { requestEmailVerification } from '@/lib/auth-api';
+import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Avatar,
     AvatarFallback,
     AvatarImage,
@@ -20,14 +29,16 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    Dialog,
+    DialogContent,
+    DialogTitle,
     Input,
     Label,
     Separator,
 } from '@ottabase/ui-shadcn';
-import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import { getTimezonesForSelect, setTimezoneConfig } from '@ottabase/utils/timezone';
+import { IconExternalLink, IconPencil, IconTrash } from '@tabler/icons-react';
 import { Calendar, Check, Loader2, Mail, User } from 'lucide-react';
-import { IconPencil } from '@tabler/icons-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AvatarEditModal } from './AvatarEditModal';
 
@@ -51,6 +62,9 @@ export function UserProfilePage() {
     const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccountRecord[]>([]);
     const [isAccountsLoading, setIsAccountsLoading] = useState(true);
     const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+    const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
+    const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+    const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
 
     const [isSaving, setIsSaving] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
@@ -308,13 +322,30 @@ export function UserProfilePage() {
                     {/* Avatar with edit pencil */}
                     <div className="flex items-center gap-4">
                         <div className="relative group">
-                            <Avatar className="h-20 w-20">
-                                <AvatarImage src={user.image || undefined} />
-                                <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
-                            </Avatar>
+                            {user.image ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setAvatarPreviewOpen(true)}
+                                    className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                    aria-label="View profile picture"
+                                >
+                                    <Avatar className="h-20 w-20 cursor-pointer ring-offset-background transition-opacity hover:opacity-90">
+                                        <AvatarImage src={user.image} />
+                                        <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
+                                    </Avatar>
+                                </button>
+                            ) : (
+                                <Avatar className="h-20 w-20">
+                                    <AvatarImage src={undefined} />
+                                    <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
+                                </Avatar>
+                            )}
                             <button
                                 type="button"
-                                onClick={() => setAvatarModalOpen(true)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAvatarModalOpen(true);
+                                }}
                                 className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted-foreground/20 hover:text-foreground dark:border-background dark:bg-muted"
                                 aria-label="Edit profile picture"
                             >
@@ -333,13 +364,102 @@ export function UserProfilePage() {
                     <AvatarEditModal
                         open={avatarModalOpen}
                         onOpenChange={setAvatarModalOpen}
+                        hasImage={!!user.image}
+                        currentImageUrl={user.image ?? undefined}
                         onSuccess={(imageUrl) => {
                             updateUser({ image: imageUrl });
                             if (refreshSession) refreshSession();
                             toast.success('Profile picture updated', 'Your avatar has been updated.');
                         }}
+                        onRemove={() => {
+                            updateUser({ image: null });
+                            if (refreshSession) refreshSession();
+                            toast.success('Profile picture removed', 'Your avatar has been removed.');
+                        }}
                         onError={(msg) => toast.error('Avatar update failed', msg)}
                     />
+
+                    {/* Avatar preview modal - shows image large when clicking existing avatar */}
+                    <Dialog open={avatarPreviewOpen} onOpenChange={setAvatarPreviewOpen}>
+                        <DialogContent className="max-w-2xl p-4 sm:p-6">
+                            <DialogTitle className="sr-only">Profile picture</DialogTitle>
+                            <div className="flex flex-col items-center gap-4">
+                                <img
+                                    src={user.image || ''}
+                                    alt="Profile picture"
+                                    className="max-h-[70vh] w-auto max-w-full rounded-full object-contain"
+                                />
+                                <div className="flex flex-wrap items-center justify-center gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-blue-600 hover:bg-blue-600/10 hover:text-blue-600 dark:text-blue-400 dark:hover:bg-blue-400/10"
+                                        onClick={() => window.open(user.image || '', '_blank', 'noopener,noreferrer')}
+                                    >
+                                        <IconExternalLink className="mr-2 h-4 w-4" />
+                                        Open in new tab
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        onClick={() => setRemoveConfirmOpen(true)}
+                                    >
+                                        <IconTrash className="mr-2 h-4 w-4" />
+                                        Remove profile picture
+                                    </Button>
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* Remove profile picture confirmation */}
+                    <AlertDialog open={removeConfirmOpen} onOpenChange={setRemoveConfirmOpen}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Remove profile picture?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Are you sure you want to remove your profile picture? You can add a new one anytime.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isRemovingAvatar}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={async () => {
+                                        setIsRemovingAvatar(true);
+                                        try {
+                                            await api('/api/users/me', {
+                                                method: 'PATCH',
+                                                body: { image: null },
+                                            });
+                                            updateUser({ image: null });
+                                            if (refreshSession) refreshSession();
+                                            setAvatarPreviewOpen(false);
+                                            setRemoveConfirmOpen(false);
+                                            toast.success('Profile picture removed', 'Your avatar has been removed.');
+                                        } catch (err) {
+                                            toast.error('Remove failed', 'Failed to remove profile picture');
+                                        } finally {
+                                            setIsRemovingAvatar(false);
+                                        }
+                                    }}
+                                    disabled={isRemovingAvatar}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                    {isRemovingAvatar ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Removing...
+                                        </>
+                                    ) : (
+                                        'Remove'
+                                    )}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
 
                     <Separator />
 

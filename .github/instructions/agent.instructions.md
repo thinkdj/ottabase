@@ -24,8 +24,10 @@
     - Add custom endpoints only for non-CRUD workflows.
 2. Keep business/data logic inside `BaseModel` methods.
 3. Reuse `@ottabase/ui-shadcn` and existing theme tokens/variables.
-4. Keep worker code edge-compatible (no Node-only APIs).
-5. Keep route handlers thin (auth/validation/orchestration), not data-heavy.
+4. Keep worker code edge-compatible (no Node-only APIs as far as possible). If modifying Cloudflare bindings, keep
+   `wrangler.jsonc` and `cloudflare-env.d.ts` strictly synced.
+5. Keep route handlers thin (auth/validation/orchestration), not data-heavy. Return failures using `errorResponse(...)`
+   from `@ottabase/utils/http-errors`.
 6. Every new feature must create/update its respective `README.MD` and include/update tests.
 
 ### New package
@@ -34,10 +36,11 @@
     - If no persistence: keep package stateless/framework-agnostic.
     - If persistence: package exports schema; app owns `BaseModel`.
 2. For persistence packages, always complete all wiring:
-    - Export table from package `src/schema.ts`
-    - Export table in app `ottabase/db/schema.ts`
-    - Ensure schema collection includes table for init/migrations
-    - Register model if generic CRUD API should expose the entity
+    - Export table from package `src/schema.ts` or `src/persistence`
+    - Add to `ottabase/config.migrations.ts` PACKAGE_REGISTRY
+    - Add to `ottabase.config.ts` packages or customPackages
+    - Add model to `worker/lib/db-utils.ts` initDbConnection
+    - For custom packages: register routes in `ottabase/config.routes.ts`
 3. Use dependency protocol:
     - Internal packages: `workspace:*`
     - Shared externals: `catalog:`
@@ -72,6 +75,7 @@ ottabase/
 
 - **OS**: Windows 11
 - **Terminal**: Command Prompt (cmd) - avoid PowerShell due to path issues
+- **Deployment (CI/CD)**: would run on Ubuntu.
 - **Runtime**: Node.js 24+
 - **Package Manager**: pnpm with workspaces
 - **Build**: Turborepo
@@ -125,38 +129,14 @@ export class Todo extends BaseModel {
 
 ## Schema Collection (3 Sources)
 
-Tables are collected from 3 sources for auto-migrations:
-
-```typescript
-// ottabase/db/schemas-helper.ts
-export function getAllSchemas() {
-  // 1. CORE - from @ottabase/ottaorm (users, posts, auth tables)
-  const coreTables = { usersTable, postsTable, sessionsTable, ... };
-
-  // 2. APP - app-specific models
-  const appTables = { todosTable };
-
-  // 3. PACKAGES - enabled packages (shortlinks, referrals)
-  const packageTables = getEnabledPackageTables();
-
-  return { ...coreTables, ...appTables, ...packageTables };
-}
-```
+Tables come from: (1) CORE @ottabase/ottaorm, (2) APP in schemas-helper.ts, (3) PACKAGES via config.migrations.ts
+getEnabledPackageTables(). brandEngine is core — always enabled. See AGENTS.MD for full detail.
 
 ## Model Registry (for CRUD API)
 
-Register models for dynamic lookup by entity name:
-
-```typescript
-import { registerModels, User, Post, Tag } from '@ottabase/ottaorm';
-import { Todo } from './models/Todo';
-import { Shortlink } from './models/Shortlink';
-
-// Register all models for /api/ottaorm/{entity} CRUD
-registerModels([User, Post, Tag, Todo, Shortlink]);
-```
-
-Then generic CRUD works: `GET /api/ottaorm/todos`, `POST /api/ottaorm/shortlinks`, etc.
+Models must be registered in `worker/lib/db-utils.ts` initDbConnection. Add new models to the appropriate array
+(coreModels, ottablogModels, packageModels, brandModels, appModels). Then generic CRUD works: `GET /api/ottaorm/todos`,
+`POST /api/ottaorm/shortlinks`, etc.
 
 ## Auto-Migrations
 
@@ -172,6 +152,13 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 - Add columns to existing tables
 - New NOT NULL columns need DEFAULT values
 - Cannot rename/drop columns (use custom migration)
+
+## Row-Level Security (RLS)
+
+- **RLS Engine Enforcement**: RLS acts at the `ottaorm` level to automatically enforce context-based rules (`tenant`,
+  `user`, `app`).
+- **Pre-requisite**: An `initRLS()` must be executed during app initialization. Agents must not bypass RLS rules and
+  ensure adequate context is generated for the query (`organizationId`, `userId`, etc.).
 
 ## Client Hooks (TanStack Query)
 
@@ -403,11 +390,12 @@ pnpm storybook
   required.
 - Do not make stray .MD files after a task (like SUMMARY.MD).
 - Add comments in code snippets to explain what they do, especially for complex logic.
-- `README.MD`s should be concise, with examples. Don't be too verbose. Keep text sharply focused on the task at hand. Do
-  not add Possible Issues or Troubleshooting sections unless directly relevant.
+- **Create/Edit README.MD and Tests** - whenever you make changes to the codebase, update the appropriate README.MD and
+  tests accordingly. Keep `README.MD` concise and focused on the task at hand, with examples. Do not add Possible Issues
+  or Troubleshooting sections unless directly relevant.
 - Use consistent formatting and indentation in code snippets (check `.prettierrc`).
-- Make tests for new features, modify existing ones if needed, and ensure they pass before marking a task as complete.
 - When adding new packages, ensure they follow the same structure and conventions as existing ones.
+- **Type Safety** — TypeScript only.
 - **UI:** Minimal design; use components from `@ottabase/ui-shadcn` where possible. Add tailwind classes in components;
   avoid new CSS files unless absolutely necessary. New UI should feel native (GitHub/Notion style - simple, clean,
   functional). Always add dark mode classes.
@@ -427,7 +415,7 @@ pnpm storybook
 6. **For model changes**, ensure:
     - Model has `static entity` and `static table`
     - Table is exported in `ottabase/db/schema.ts`
-    - Model is registered with `registerModels()` if CRUD API needed
+    - Model is added to `worker/lib/db-utils.ts` initDbConnection if CRUD API needed
     - Run `curl -X POST http://localhost:3004/api/ottaorm/init` to apply migrations
 
 ## CI / PR Checklist
@@ -445,6 +433,8 @@ pnpm storybook
 ## Anti-Patterns
 
 - Circular deps between packages
+- Circular deps inside `BaseModel` files (Always use dynamic imports:
+  `const { User } = await import('@ottabase/ottaorm')` inside `async` relationship definitions).
 - Direct file imports across package boundaries
 - Framework-specific code in generic packages
 - Package-specific lock files
