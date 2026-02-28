@@ -1,7 +1,6 @@
 import { api } from '@/lib/api';
 import enApp from '@/locales/en/app.json';
-import { BlogStudioProvider } from '@/ottabase/blog/BlogStudioContext';
-import { APP_ID, appConfig, PACKAGES_ENABLED } from '@/ottabase/config';
+import { APP_ID, appConfig } from '@/ottabase/config';
 import { i18nConfig } from '@/ottabase/config/i18n.config';
 import {
     headingFontFamily,
@@ -90,17 +89,9 @@ function ProvidersContent({
             resources={appResources}
         >
             <LanguageManager />
-            {PACKAGES_ENABLED.ottablog ? (
-                <BlogStudioProvider>
-                    <ProvidersInner fontFamilies={fontFamilies} queryConfig={queryConfig}>
-                        {children}
-                    </ProvidersInner>
-                </BlogStudioProvider>
-            ) : (
-                <ProvidersInner fontFamilies={fontFamilies} queryConfig={queryConfig}>
-                    {children}
-                </ProvidersInner>
-            )}
+            <ProvidersInner fontFamilies={fontFamilies} queryConfig={queryConfig}>
+                {children}
+            </ProvidersInner>
         </I18nProvider>
     );
 }
