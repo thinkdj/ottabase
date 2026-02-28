@@ -2,6 +2,7 @@ import {
     collectDocumentText,
     ensureFtsTable,
     mergeHybridResults,
+    normalizeFtsQuery,
     OTTASEARCH_FTS_TABLE,
     parseJsonStringArray,
 } from '@ottabase/ottasearch';
@@ -221,11 +222,22 @@ export async function handleOttaSearchReindex(context: ApiRouteContext): Promise
         if (!meta) continue;
 
         const ModelClass = meta.model as {
-            all: (options?: { limit?: number }) => Promise<Array<{ toJson: () => Record<string, unknown> }>>;
+            all: (options?: {
+                limit?: number;
+                offset?: number;
+            }) => Promise<Array<{ toJson: () => Record<string, unknown> }>>;
             primaryKey?: string;
         };
 
-        const rows = await ModelClass.all({ limit: 200 });
+        const rows: Array<{ toJson: () => Record<string, unknown> }> = [];
+        const pageSize = 200;
+        let offset = 0;
+        while (true) {
+            const page = await ModelClass.all({ limit: pageSize, offset });
+            rows.push(...page);
+            if (page.length < pageSize) break;
+            offset += pageSize;
+        }
         const fields = parseJsonStringArray(config.fieldsJson).length
             ? parseJsonStringArray(config.fieldsJson)
             : DEFAULT_SEARCH_FIELDS;
@@ -325,6 +337,9 @@ export async function handleOttaSearchQuery(context: ApiRouteContext): Promise<R
 
     const query = url.searchParams.get('q')?.trim() ?? '';
     if (!query) return jsonResponse({ results: [] });
+    const ftsQuery = normalizeFtsQuery(query);
+    // Normalization can strip unsafe/invalid FTS tokens; empty means no valid searchable terms remain.
+    if (!ftsQuery) return jsonResponse({ results: [] });
     if (!(await tableExists(context, 'search_documents'))) {
         return jsonResponse({ results: [] });
     }
@@ -341,7 +356,7 @@ export async function handleOttaSearchQuery(context: ApiRouteContext): Promise<R
          ORDER BY score DESC
          LIMIT ?`,
     )
-        .bind(query, limit)
+        .bind(ftsQuery, limit)
         .all<{
             id: string;
             entityName: string;

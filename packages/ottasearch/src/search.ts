@@ -1,6 +1,8 @@
 import type { IndexedSearchDocument } from './types';
 
 export const OTTASEARCH_FTS_TABLE = 'search_documents_fts';
+// Keep FTS queries bounded to avoid expensive broad MATCH scans from long user input.
+const MAX_FTS_TERMS = 8;
 
 export function collectDocumentText(record: Record<string, unknown>, fields: string[]): string {
     const parts = fields
@@ -25,6 +27,16 @@ export function parseJsonStringArray(value: unknown): string[] {
     } catch {
         return [];
     }
+}
+
+export function normalizeFtsQuery(query: string): string {
+    const terms = query
+        .split(/\s+/)
+        .map((term) => term.trim().replace(/["'*]|[^\p{L}\p{N}_-]/gu, ''))
+        .filter(Boolean)
+        .slice(0, MAX_FTS_TERMS);
+
+    return terms.map((term) => `${term}*`).join(' OR ');
 }
 
 export function mergeHybridResults(

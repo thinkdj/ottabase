@@ -2,6 +2,7 @@ import {
     collectDocumentText,
     ensureFtsTable,
     mergeHybridResults,
+    normalizeFtsQuery,
     OTTASEARCH_FTS_TABLE,
     parseJsonStringArray,
 } from '../search';
@@ -46,5 +47,13 @@ describe('ottasearch helpers', () => {
         expect(prepare).toHaveBeenCalledWith(
             expect.stringContaining(`CREATE VIRTUAL TABLE IF NOT EXISTS ${OTTASEARCH_FTS_TABLE}`),
         );
+    });
+
+    it('normalizes user query into safe FTS terms', () => {
+        expect(normalizeFtsQuery('hello "world" test*')).toBe('hello* OR world* OR test*');
+        expect(normalizeFtsQuery('***')).toBe('');
+        expect(normalizeFtsQuery('   ')).toBe('');
+        expect(normalizeFtsQuery('naïve café')).toBe('naïve* OR café*');
+        expect(normalizeFtsQuery('a b c d e f g h i j')).toBe('a* OR b* OR c* OR d* OR e* OR f* OR g* OR h*');
     });
 });

@@ -8,6 +8,7 @@ export {
     collectDocumentText,
     ensureFtsTable,
     mergeHybridResults,
+    normalizeFtsQuery,
     OTTASEARCH_FTS_TABLE,
     parseJsonStringArray,
     type D1DatabaseLike,
