@@ -63,6 +63,10 @@ export interface ResumeTemplateData {
 export interface ResumeTemplateProps {
     data: ResumeTemplateData;
     accentColor: string;
+    /** Base font size in pt (default 12) */
+    fontSize: number;
+    /** Ordered section keys — templates render sections in this order */
+    sectionOrder: SectionKey[];
 }
 
 /** Template metadata for template picker */
@@ -110,3 +114,49 @@ export function formatDateRange(
     if (!end) return start;
     return `${start} — ${end}`;
 }
+
+// ---------------------------------------------------------------------------
+// Section reordering
+// ---------------------------------------------------------------------------
+
+/** All reorderable section keys */
+export type SectionKey = 'summary' | 'workExperiences' | 'educations' | 'skillSets' | 'projects' | 'certifications';
+
+/** Default section order for new resumes */
+export const DEFAULT_SECTION_ORDER: SectionKey[] = [
+    'summary',
+    'workExperiences',
+    'educations',
+    'skillSets',
+    'projects',
+    'certifications',
+];
+
+/** Move a section one position earlier in the order. Returns new array. */
+export function moveSectionUp(order: SectionKey[], key: SectionKey): SectionKey[] {
+    const idx = order.indexOf(key);
+    if (idx <= 0) return order;
+    const next = [...order];
+    next[idx] = next[idx - 1]!;
+    next[idx - 1] = key;
+    return next;
+}
+
+/** Move a section one position later in the order. Returns new array. */
+export function moveSectionDown(order: SectionKey[], key: SectionKey): SectionKey[] {
+    const idx = order.indexOf(key);
+    if (idx < 0 || idx >= order.length - 1) return order;
+    const next = [...order];
+    next[idx] = next[idx + 1]!;
+    next[idx + 1] = key;
+    return next;
+}
+
+// ---------------------------------------------------------------------------
+// Font size
+// ---------------------------------------------------------------------------
+
+/** Font size limits for the resume (in pt) */
+export const FONT_SIZE_MIN = 9;
+export const FONT_SIZE_MAX = 16;
+export const FONT_SIZE_DEFAULT = 12;

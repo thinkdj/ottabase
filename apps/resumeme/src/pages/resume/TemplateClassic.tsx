@@ -1,5 +1,6 @@
 import type { ResumeTemplateProps } from './types';
-import { formatDateRange, formatResumeDate } from './types';
+import { formatDateRange, formatResumeDate, type SectionKey } from './types';
+import type { ReactNode } from 'react';
 
 /** Section heading with accent-colored left border */
 function SectionHeading({ title }: { title: string }) {
@@ -45,39 +46,24 @@ function ContactRow({ profile }: { profile: ResumeTemplateProps['data']['profile
     );
 }
 
-export default function TemplateClassic({ data, accentColor }: ResumeTemplateProps) {
+export default function TemplateClassic({ data, accentColor, fontSize, sectionOrder }: ResumeTemplateProps) {
     const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
 
-    return (
-        <div
-            className="resume-classic mx-auto max-w-[794px] bg-white px-10 py-8 text-gray-800 shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none dark:bg-gray-900 dark:text-gray-100"
-            style={{ '--resume-accent': accentColor } as React.CSSProperties}
-        >
-            {/* ── Header ── */}
-            <header className="mb-6 text-center">
-                <h1 className="text-3xl font-bold tracking-tight">{fullName}</h1>
-                <div className="mx-auto mt-1.5 h-[3px] w-16 rounded-full bg-[var(--resume-accent)]" />
-                {profile?.headline && (
-                    <p className="mt-2 text-base text-gray-500 dark:text-gray-400">{profile.headline}</p>
-                )}
-                <div className="mt-2">
-                    <ContactRow profile={profile} />
-                </div>
-            </header>
-
-            {/* ── Summary ── */}
-            {profile?.summary && (
-                <section className="mb-5">
+    /** Map each section key to its JSX — returns null if the section is empty */
+    const sectionRenderers: Record<SectionKey, () => ReactNode> = {
+        summary: () =>
+            profile?.summary ? (
+                <section className="mb-5" key="summary">
                     <SectionHeading title="Summary" />
                     <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                         {profile.summary}
                     </p>
                 </section>
-            )}
+            ) : null,
 
-            {/* ── Work Experience ── */}
-            {workExperiences.length > 0 && (
-                <section className="mb-5">
+        workExperiences: () =>
+            workExperiences.length > 0 ? (
+                <section className="mb-5" key="workExperiences">
                     <SectionHeading title="Experience" />
                     <div className="space-y-4">
                         {workExperiences.map((exp) => (
@@ -109,11 +95,11 @@ export default function TemplateClassic({ data, accentColor }: ResumeTemplatePro
                         ))}
                     </div>
                 </section>
-            )}
+            ) : null,
 
-            {/* ── Education ── */}
-            {educations.length > 0 && (
-                <section className="mb-5">
+        educations: () =>
+            educations.length > 0 ? (
+                <section className="mb-5" key="educations">
                     <SectionHeading title="Education" />
                     <div className="space-y-3">
                         {educations.map((edu) => (
@@ -138,11 +124,11 @@ export default function TemplateClassic({ data, accentColor }: ResumeTemplatePro
                         ))}
                     </div>
                 </section>
-            )}
+            ) : null,
 
-            {/* ── Skills ── */}
-            {skillSets.length > 0 && (
-                <section className="mb-5">
+        skillSets: () =>
+            skillSets.length > 0 ? (
+                <section className="mb-5" key="skillSets">
                     <SectionHeading title="Skills" />
                     <div className="space-y-2">
                         {skillSets.map((set) => (
@@ -155,11 +141,11 @@ export default function TemplateClassic({ data, accentColor }: ResumeTemplatePro
                         ))}
                     </div>
                 </section>
-            )}
+            ) : null,
 
-            {/* ── Projects ── */}
-            {projects.length > 0 && (
-                <section className="mb-5">
+        projects: () =>
+            projects.length > 0 ? (
+                <section className="mb-5" key="projects">
                     <SectionHeading title="Projects" />
                     <div className="space-y-3">
                         {projects.map((proj) => (
@@ -204,11 +190,11 @@ export default function TemplateClassic({ data, accentColor }: ResumeTemplatePro
                         ))}
                     </div>
                 </section>
-            )}
+            ) : null,
 
-            {/* ── Certifications ── */}
-            {certifications.length > 0 && (
-                <section className="mb-5">
+        certifications: () =>
+            certifications.length > 0 ? (
+                <section className="mb-5" key="certifications">
                     <SectionHeading title="Certifications" />
                     <div className="space-y-2">
                         {certifications.map((cert) => (
@@ -239,12 +225,39 @@ export default function TemplateClassic({ data, accentColor }: ResumeTemplatePro
                         ))}
                     </div>
                 </section>
-            )}
+            ) : null,
+    };
+
+    return (
+        <div
+            className="resume-classic mx-auto max-w-[794px] bg-white px-10 py-8 text-gray-800 shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none dark:bg-gray-900 dark:text-gray-100"
+            style={
+                {
+                    '--resume-accent': accentColor,
+                    '--resume-font-size': `${fontSize}pt`,
+                    fontSize: `${fontSize}pt`,
+                } as React.CSSProperties
+            }
+        >
+            {/* ── Header ── */}
+            <header className="mb-6 text-center">
+                <h1 className="text-3xl font-bold tracking-tight">{fullName}</h1>
+                <div className="mx-auto mt-1.5 h-[3px] w-16 rounded-full bg-[var(--resume-accent)]" />
+                {profile?.headline && (
+                    <p className="mt-2 text-base text-gray-500 dark:text-gray-400">{profile.headline}</p>
+                )}
+                <div className="mt-2">
+                    <ContactRow profile={profile} />
+                </div>
+            </header>
+
+            {/* ── Sections in user-defined order ── */}
+            {sectionOrder.map((key) => sectionRenderers[key]())}
 
             {/* ── Print styles ── */}
             <style>{`
                 @media print {
-                    .resume-classic { font-size: 11pt; color: #1a1a1a; }
+                    .resume-classic { font-size: ${fontSize}pt; color: #1a1a1a; }
                     .resume-classic a { color: inherit; text-decoration: none; }
                     .resume-classic section { break-inside: avoid; }
                 }

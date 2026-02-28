@@ -1,6 +1,16 @@
 import { useState, useCallback } from 'react';
 import ResumePreview from './ResumePreview';
-import { RESUME_TEMPLATES, type ResumeTemplateData } from './types';
+import {
+    RESUME_TEMPLATES,
+    DEFAULT_SECTION_ORDER,
+    FONT_SIZE_MIN,
+    FONT_SIZE_MAX,
+    FONT_SIZE_DEFAULT,
+    moveSectionUp,
+    moveSectionDown,
+    type ResumeTemplateData,
+    type SectionKey,
+} from './types';
 
 // ---------------------------------------------------------------------------
 // Sample data — realistic placeholder content for the builder shell.
@@ -109,20 +119,21 @@ const ACCENT_PRESETS = [
 // Content section labels — maps data keys to human-readable headings
 // ---------------------------------------------------------------------------
 interface ContentSection {
-    key: string;
+    key: SectionKey;
     label: string;
     count: number;
 }
 
-function buildContentSections(data: ResumeTemplateData): ContentSection[] {
-    return [
-        { key: 'profile', label: 'Profile', count: data.profile ? 1 : 0 },
-        { key: 'workExperiences', label: 'Work Experience', count: data.workExperiences.length },
-        { key: 'educations', label: 'Education', count: data.educations.length },
-        { key: 'skillSets', label: 'Skills', count: data.skillSets.length },
-        { key: 'projects', label: 'Projects', count: data.projects.length },
-        { key: 'certifications', label: 'Certifications', count: data.certifications.length },
-    ];
+function buildContentSections(data: ResumeTemplateData, order: SectionKey[]): ContentSection[] {
+    const sectionMap: Record<SectionKey, ContentSection> = {
+        summary: { key: 'summary', label: 'Profile', count: data.profile ? 1 : 0 },
+        workExperiences: { key: 'workExperiences', label: 'Work Experience', count: data.workExperiences.length },
+        educations: { key: 'educations', label: 'Education', count: data.educations.length },
+        skillSets: { key: 'skillSets', label: 'Skills', count: data.skillSets.length },
+        projects: { key: 'projects', label: 'Projects', count: data.projects.length },
+        certifications: { key: 'certifications', label: 'Certifications', count: data.certifications.length },
+    };
+    return order.map((key) => sectionMap[key]);
 }
 
 // ========================== Sub-components ==================================
@@ -132,36 +143,71 @@ function SectionHeader({
     label,
     count,
     isOpen,
+    isFirst,
+    isLast,
     onToggle,
+    onMoveUp,
+    onMoveDown,
 }: {
     label: string;
     count: number;
     isOpen: boolean;
+    isFirst: boolean;
+    isLast: boolean;
     onToggle: () => void;
+    onMoveUp: () => void;
+    onMoveDown: () => void;
 }) {
     return (
-        <button
-            type="button"
-            onClick={onToggle}
-            className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
-        >
-            <span className="flex items-center gap-2">
-                {/* Chevron */}
-                <svg
-                    className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-90' : ''}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
+        <div className="flex items-center gap-0.5">
+            {/* Reorder buttons */}
+            <div className="flex shrink-0 flex-col">
+                <button
+                    type="button"
+                    onClick={onMoveUp}
+                    disabled={isFirst}
+                    title="Move section up"
+                    className="flex h-4 w-5 items-center justify-center rounded text-gray-400 hover:text-gray-700 disabled:opacity-25 dark:text-gray-500 dark:hover:text-gray-200"
                 >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-                {label}
-            </span>
-            <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-600 dark:text-gray-300">
-                {count}
-            </span>
-        </button>
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    onClick={onMoveDown}
+                    disabled={isLast}
+                    title="Move section down"
+                    className="flex h-4 w-5 items-center justify-center rounded text-gray-400 hover:text-gray-700 disabled:opacity-25 dark:text-gray-500 dark:hover:text-gray-200"
+                >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+            </div>
+            <button
+                type="button"
+                onClick={onToggle}
+                className="flex min-w-0 flex-1 items-center justify-between rounded-md px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+            >
+                <span className="flex items-center gap-2">
+                    {/* Chevron */}
+                    <svg
+                        className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                    {label}
+                </span>
+                <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-600 dark:text-gray-300">
+                    {count}
+                </span>
+            </button>
+        </div>
     );
 }
 
@@ -191,8 +237,16 @@ function ItemCard({ title, subtitle }: { title: string; subtitle?: string }) {
 // ---------------------------------------------------------------------------
 // Left Sidebar — Content sections
 // ---------------------------------------------------------------------------
-function LeftSidebar({ data }: { data: ResumeTemplateData }) {
-    const sections = buildContentSections(data);
+function LeftSidebar({
+    data,
+    sectionOrder,
+    onReorder,
+}: {
+    data: ResumeTemplateData;
+    sectionOrder: SectionKey[];
+    onReorder: (newOrder: SectionKey[]) => void;
+}) {
+    const sections = buildContentSections(data, sectionOrder);
     const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
         Object.fromEntries(sections.map((s) => [s.key, true])),
     );
@@ -215,18 +269,22 @@ function LeftSidebar({ data }: { data: ResumeTemplateData }) {
 
             {/* Content sections */}
             <div className="flex-1 space-y-1 p-2">
-                {sections.map((section) => (
+                {sections.map((section, idx) => (
                     <div key={section.key}>
                         <SectionHeader
                             label={section.label}
                             count={section.count}
                             isOpen={!!openSections[section.key]}
+                            isFirst={idx === 0}
+                            isLast={idx === sections.length - 1}
                             onToggle={() => toggle(section.key)}
+                            onMoveUp={() => onReorder(moveSectionUp(sectionOrder, section.key))}
+                            onMoveDown={() => onReorder(moveSectionDown(sectionOrder, section.key))}
                         />
                         {openSections[section.key] && (
                             <div className="ml-6 mt-1 space-y-1">
                                 {/* Render item cards based on section type */}
-                                {section.key === 'profile' && data.profile && (
+                                {section.key === 'summary' && data.profile && (
                                     <ItemCard title={data.fullName} subtitle={data.profile.headline ?? undefined} />
                                 )}
                                 {section.key === 'workExperiences' &&
@@ -266,11 +324,15 @@ function RightSidebar({
     setTemplateId,
     accentColor,
     setAccentColor,
+    fontSize,
+    setFontSize,
 }: {
     templateId: string;
     setTemplateId: (id: string) => void;
     accentColor: string;
     setAccentColor: (color: string) => void;
+    fontSize: number;
+    setFontSize: (size: number) => void;
 }) {
     return (
         <div className="flex h-full flex-col overflow-y-auto p-3">
@@ -333,13 +395,24 @@ function RightSidebar({
                 </div>
             </div>
 
-            {/* Font size slider — future feature, shown disabled */}
-            <div className="opacity-50">
+            {/* Font size slider */}
+            <div>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Font Size
                 </h3>
-                <input type="range" min={10} max={16} defaultValue={12} disabled className="w-full" />
-                <p className="mt-1 text-xs italic text-gray-400">Coming soon</p>
+                <input
+                    type="range"
+                    min={FONT_SIZE_MIN}
+                    max={FONT_SIZE_MAX}
+                    value={fontSize}
+                    onChange={(e) => setFontSize(Number(e.target.value))}
+                    className="w-full accent-blue-600"
+                />
+                <div className="mt-1 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>{FONT_SIZE_MIN}pt</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-200">{fontSize}pt</span>
+                    <span>{FONT_SIZE_MAX}pt</span>
+                </div>
             </div>
         </div>
     );
@@ -368,6 +441,8 @@ function SidebarToggle({ side, isOpen, onClick }: { side: 'left' | 'right'; isOp
 export default function ResumeBuilder() {
     const [templateId, setTemplateId] = useState('classic');
     const [accentColor, setAccentColor] = useState('#475569');
+    const [fontSize, setFontSize] = useState(FONT_SIZE_DEFAULT);
+    const [sectionOrder, setSectionOrder] = useState<SectionKey[]>(DEFAULT_SECTION_ORDER);
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
     const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
 
@@ -419,7 +494,7 @@ export default function ResumeBuilder() {
                 {/* Left sidebar — Content sections */}
                 {leftSidebarOpen && (
                     <aside className="hidden w-[280px] shrink-0 border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 md:block print:hidden">
-                        <LeftSidebar data={data} />
+                        <LeftSidebar data={data} sectionOrder={sectionOrder} onReorder={setSectionOrder} />
                     </aside>
                 )}
 
@@ -427,7 +502,13 @@ export default function ResumeBuilder() {
                 <main className="flex flex-1 flex-col items-center overflow-y-auto p-4 md:p-8">
                     {/* Paper container — A4-ish proportions */}
                     <div className="w-full max-w-[816px] rounded-lg bg-white shadow-lg ring-1 ring-gray-200 dark:ring-gray-700">
-                        <ResumePreview data={data} templateId={templateId} accentColor={accentColor} />
+                        <ResumePreview
+                            data={data}
+                            templateId={templateId}
+                            accentColor={accentColor}
+                            fontSize={fontSize}
+                            sectionOrder={sectionOrder}
+                        />
                     </div>
                 </main>
 
@@ -439,6 +520,8 @@ export default function ResumeBuilder() {
                             setTemplateId={setTemplateId}
                             accentColor={accentColor}
                             setAccentColor={setAccentColor}
+                            fontSize={fontSize}
+                            setFontSize={setFontSize}
                         />
                     </aside>
                 )}
