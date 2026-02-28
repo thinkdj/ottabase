@@ -34,11 +34,10 @@ function SidebarSection({ icon, title, children }: { icon: string; title: string
     );
 }
 
-/** Skill dots — filled circles up to proficiency level (visual flair) */
-function SkillDots({ count }: { count: number }) {
+/** Skill dots — decorative proficiency indicator (fixed 4/5 for all skills) */
+function SkillDots() {
     const total = 5;
-    // Use skill name length as a simple deterministic "proficiency" visual
-    const filled = Math.max(2, Math.min(total, count));
+    const filled = 4;
     return (
         <div className="flex gap-1">
             {Array.from({ length: total }).map((_, i) => (
@@ -169,6 +168,7 @@ export default function TemplateLisbon({ data, accentColor, fontSize, sectionOrd
             }
         >
             {/* ── Left Sidebar ── */}
+            {/* Sidebar background uses accent colour at ~5% opacity for a subtle tint */}
             <aside className="w-[34%] shrink-0 px-5 py-8" style={{ backgroundColor: `${accentColor}0D` }}>
                 {/* Avatar */}
                 {profile?.avatarUrl && (

@@ -230,12 +230,10 @@ export default function TemplateExecutive({ data, accentColor, fontSize, section
         >
             {/* ── Header ── */}
             <header className="mb-8 text-center">
-                <h1 className="text-3xl font-bold tracking-wide text-[var(--resume-accent)]">
-                    {fullName.toUpperCase()}
-                </h1>
+                <h1 className="text-3xl font-bold uppercase tracking-wide text-[var(--resume-accent)]">{fullName}</h1>
                 {profile?.headline && (
-                    <p className="mt-1.5 text-sm font-light tracking-wider text-gray-500">
-                        {profile.headline.toUpperCase()}
+                    <p className="mt-1.5 text-sm font-light uppercase tracking-wider text-gray-500">
+                        {profile.headline}
                     </p>
                 )}
                 <div className="mx-auto mt-3 h-px w-24 bg-[var(--resume-accent)]" />
