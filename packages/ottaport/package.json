@@ -1,0 +1,35 @@
+{
+    "name": "@ottabase/ottaport",
+    "version": "0.0.1",
+    "description": "Data import/export engine for OttaORM models — CSV/JSON/TSV parsing, field mapping, bulk upserts, and export with filters",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./schema": {
+            "types": "./src/schema.ts",
+            "default": "./src/schema.ts"
+        },
+        "./server": {
+            "types": "./src/server/index.ts",
+            "default": "./src/server/index.ts"
+        }
+    },
+    "scripts": {
+        "clean": "rm -rf .turbo node_modules",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "peerDependencies": {
+        "drizzle-orm": "catalog:"
+    },
+    "dependencies": {
+        "@ottabase/ottaorm": "workspace:*"
+    },
+    "devDependencies": {
+        "drizzle-orm": "catalog:",
+        "typescript": "catalog:"
+    }
+}
