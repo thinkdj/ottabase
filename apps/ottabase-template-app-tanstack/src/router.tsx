@@ -701,6 +701,17 @@ const adminCronRoute = new Route({
     ),
 });
 
+// Admin Backups route
+const adminBackupsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/backups',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminBackupsPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminBackupsPage />),
+        })),
+    ),
+});
+
 // Admin Notifications route
 const adminNotificationsRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -998,6 +1009,7 @@ const coreRoutes = [
     adminRoute,
     adminQueueRoute,
     adminCronRoute,
+    adminBackupsRoute,
     adminNotificationsRoute,
     adminDbRoute,
     adminRBACRoute,

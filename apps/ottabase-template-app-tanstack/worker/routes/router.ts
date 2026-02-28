@@ -5,6 +5,12 @@ import type { CloudflareEnv } from '../../cloudflare-env';
 import { getKillSwitchStatus } from '../lib/killswitch';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import {
+    handleAdminBackupDelete,
+    handleAdminBackupDownload,
+    handleAdminBackupsCreate,
+    handleAdminBackupsList,
+} from './admin-backups';
+import {
     handleAdminDbRowDelete,
     handleAdminDbTableData,
     handleAdminDbTableDelete,
@@ -182,6 +188,16 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleAdminCronList(context);
     }
 
+    if (route === '/api/admin/backups') {
+        return handleAdminBackupsList(context);
+    }
+
+    // GET /api/admin/backups/:id — download backup SQL
+    const backupDownloadMatch = route.match(/^\/api\/admin\/backups\/([^/]+)$/);
+    if (backupDownloadMatch) {
+        return handleAdminBackupDownload(context, backupDownloadMatch[1]);
+    }
+
     // Ottablog package
     if (packages.ottablog) {
         if (route.startsWith('/api/blog/studio/') && route === '/api/blog/studio/state') {
@@ -336,6 +352,10 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleAdminCronCreate(context);
     }
 
+    if (route === '/api/admin/backups') {
+        return handleAdminBackupsCreate(context);
+    }
+
     if (route === '/api/admin/owner/promote') {
         return handleAdminPromoteOwner(context);
     }
@@ -477,6 +497,12 @@ async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | 
 
     if (route === '/api/admin/queues/dlq') {
         return handleAdminQueuesDLQPurge(context);
+    }
+
+    // DELETE /api/admin/backups/:id — delete a backup
+    const backupDeleteMatch = route.match(/^\/api\/admin\/backups\/([^/]+)$/);
+    if (backupDeleteMatch) {
+        return handleAdminBackupDelete(context, backupDeleteMatch[1]);
     }
 
     const tableMatch = route.match(/^\/api\/admin\/db\/tables\/([a-zA-Z0-9_]+)$/);

@@ -489,6 +489,9 @@ importers:
       '@ottabase/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@ottabase/backups':
+        specifier: workspace:*
+        version: link:../../packages/backups
       '@ottabase/brand-engine':
         specifier: workspace:*
         version: link:../../packages/brand-engine

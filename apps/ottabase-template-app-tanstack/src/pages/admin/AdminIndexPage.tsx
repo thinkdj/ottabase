@@ -9,6 +9,7 @@ import {
     Clock,
     Database,
     FileText,
+    HardDrive,
     Layers,
     Layout,
     Palette,
@@ -131,6 +132,13 @@ export function AdminIndexPage() {
             description: 'Manage DB-driven cron jobs, view run history, and schedule new tasks.',
             href: '/admin/cron',
             icon: Clock,
+            disabled: false,
+        },
+        {
+            title: 'Database Backups',
+            description: 'Manage automated D1→R2 database backups, view history, and download backups.',
+            href: '/admin/backups',
+            icon: HardDrive,
             disabled: false,
         },
         {
