@@ -712,6 +712,16 @@ const adminNotificationsRoute = new Route({
     ),
 });
 
+const adminSearchRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/search',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminSearchPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminSearchPage />),
+        })),
+    ),
+});
+
 // Admin Blog routes
 const adminBlogRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -999,6 +1009,7 @@ const coreRoutes = [
     adminQueueRoute,
     adminCronRoute,
     adminNotificationsRoute,
+    adminSearchRoute,
     adminDbRoute,
     adminRBACRoute,
     adminRBACRolesRoute,

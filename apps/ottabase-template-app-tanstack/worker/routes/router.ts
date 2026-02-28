@@ -71,6 +71,14 @@ import {
 import { handleCoreAnalytics } from './core-analytics';
 import { handleAuditLogs, handleDemo, handleDemoError } from './demo';
 import { handleEmailProviders, handleEmailTest } from './email';
+import {
+    handleOttaSearchConfig,
+    handleOttaSearchConfigUpsert,
+    handleOttaSearchQuery,
+    handleOttaSearchReindex,
+    handleOttaSearchSpotlight,
+    handleOttaSearchStatus,
+} from './ottasearch';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
 import {
@@ -299,6 +307,22 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleAdminDbTables(context);
     }
 
+    if (route === '/api/ottasearch/search') {
+        return handleOttaSearchQuery(context);
+    }
+
+    if (route === '/api/ottasearch/spotlight') {
+        return handleOttaSearchSpotlight(context);
+    }
+
+    if (route === '/api/ottasearch/status') {
+        return handleOttaSearchStatus(context);
+    }
+
+    if (route === '/api/ottasearch/config') {
+        return handleOttaSearchConfig(context);
+    }
+
     const tableMatch = route.match(/^\/api\/admin\/db\/tables\/([a-zA-Z0-9_]+)$/);
     if (tableMatch) {
         return handleAdminDbTableData({ ...context, tableName: tableMatch[1] });
@@ -423,6 +447,10 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleOttaormInit(context);
     }
 
+    if (route === '/api/ottasearch/reindex') {
+        return handleOttaSearchReindex(context);
+    }
+
     const dlqRetryMatch = context.url.pathname.match(/^\/api\/admin\/queues\/dlq\/([^/]+)\/retry$/);
     if (dlqRetryMatch) {
         return handleAdminQueuesDLQRetryJob(context, dlqRetryMatch[1]);
@@ -517,6 +545,10 @@ async function handlePutRoutes(context: ApiRouteContext): Promise<Response | nul
 
     if (packages.referrals && route === '/api/referrals/username') {
         return handleReferralUsernameUpdate(context);
+    }
+
+    if (route === '/api/ottasearch/config') {
+        return handleOttaSearchConfigUpsert(context);
     }
 
     return null;

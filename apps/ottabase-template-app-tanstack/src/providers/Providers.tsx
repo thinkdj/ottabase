@@ -22,7 +22,7 @@ import { ApiError } from '@ottabase/api';
 import { BrandProvider } from '@ottabase/brand-engine-react';
 import { I18nProvider } from '@ottabase/i18n/react';
 import { OttaQueryProvider } from '@ottabase/ottaorm/client';
-import { SpotlightProvider } from '@ottabase/spotlight';
+import { createApiSearchHandler, SpotlightProvider } from '@ottabase/spotlight';
 import { ProviderState } from '@ottabase/state';
 import { ProviderUIBase } from '@ottabase/ui-base';
 import { ShadcnProviders } from '@ottabase/ui-shadcn/providers';
@@ -132,6 +132,32 @@ function ProvidersCore({
     fontFamilies: { primary: string; heading: string; monospace: string };
     queryConfig: { defaultOptions: { queries: { retry: (n: number, err: unknown) => boolean } } };
 }) {
+    const spotlightSearch = React.useMemo(
+        () =>
+            createApiSearchHandler<{
+                id: string;
+                label: string;
+                description?: string;
+                href?: string;
+                keywords?: string[];
+            }>({
+                api,
+                endpoint: '/api/ottasearch/spotlight',
+                transform: (item) => ({
+                    id: item.id,
+                    label: item.label,
+                    description: item.description,
+                    keywords: item.keywords,
+                    onSelect: () => {
+                        if (item.href && typeof window !== 'undefined') {
+                            window.location.href = item.href;
+                        }
+                    },
+                }),
+            }),
+        [api],
+    );
+
     return (
         <OttaQueryProvider apiClient={api} config={queryConfig}>
             <ProviderUIBase
@@ -152,6 +178,9 @@ function ProvidersCore({
                                 <SpotlightProvider
                                     enabled={appConfig.features.spotlight.enabled}
                                     shortcuts={appConfig.features.spotlight.shortcuts}
+                                    onSearch={spotlightSearch}
+                                    minQueryLength={2}
+                                    placeholder="Search app, models, and records..."
                                 >
                                     {children}
                                 </SpotlightProvider>

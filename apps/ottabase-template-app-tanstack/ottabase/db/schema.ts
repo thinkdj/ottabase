@@ -33,6 +33,7 @@ import {
     postsTable,
     seriesTable,
 } from '@ottabase/ottablog';
+import { searchDocumentsTable, searchableModelsTable } from '@ottabase/ottasearch';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 
@@ -54,6 +55,8 @@ export {
     postTagsTable,
     postVersionsTable,
     postsTable,
+    searchDocumentsTable,
+    searchableModelsTable,
     seriesTable,
     referralTrackingTable,
     shortlinksTable,

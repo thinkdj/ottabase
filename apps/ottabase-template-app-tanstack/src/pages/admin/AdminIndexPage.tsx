@@ -14,6 +14,7 @@ import {
     Palette,
     Shield,
     ShieldCheck,
+    Search,
     UserPlus,
     Users,
     Power,
@@ -146,6 +147,13 @@ export function AdminIndexPage() {
                 'Configure global read-only mode or full lockdown (KILLSWITCH_READONLY_MODE / KILLSWITCH_LOCKDOWN).',
             href: '/admin/security/kill-switches',
             icon: Power,
+            disabled: false,
+        },
+        {
+            title: 'Search Admin',
+            description: 'Manage searchable models, run D1 FTS indexing, and monitor semantic setup.',
+            href: '/admin/search',
+            icon: Search,
             disabled: false,
         },
         {

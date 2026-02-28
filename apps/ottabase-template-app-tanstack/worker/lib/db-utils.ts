@@ -27,6 +27,8 @@ import { ReferralTracking } from '@ottabase/referrals';
 import { Shortlink } from '@ottabase/shortlinks';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { SearchDocument } from '../../ottabase/models/SearchDocument';
+import { SearchableModel } from '../../ottabase/models/SearchableModel';
 import { Todo } from '../../ottabase/models/Todo';
 import type { CloudflareEnv } from '../cloudflare-env';
 import { readJson } from './utils';
@@ -98,7 +100,7 @@ export function initDbConnection(env: CloudflareEnv): void {
     ];
     // Menu, MenuItem: use /api/brand/menus (cache-invalidating CRUD), not OttaORM
     const brandModels = [BrandKit, LayoutTemplate, LayoutRouteMapping, MenuSlotAssignment];
-    const appModels = [Todo];
+    const appModels = [Todo, SearchableModel, SearchDocument];
 
     registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
 
