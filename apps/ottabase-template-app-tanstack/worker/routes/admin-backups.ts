@@ -8,7 +8,7 @@
  * - DELETE /api/admin/backups/:id   — Delete a backup
  */
 
-import { createBackupService } from '@ottabase/backups';
+import { createBackupService, type D1Like, type R2Like } from '@ottabase/backups';
 import { ScheduledTask } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -25,13 +25,13 @@ function getBackupService(env: ApiRouteContext['env']) {
     if (!env.OBCF_R2) {
         return { error: errorResponse('R2 bucket binding not configured', 500, { code: 'CONFIG_ERROR' }) };
     }
-    return { service: createBackupService(env.OBCF_D1 as any, env.OBCF_R2 as any) };
+    return { service: createBackupService(env.OBCF_D1 as unknown as D1Like, env.OBCF_R2 as unknown as R2Like) };
 }
 
 /** Check if a backup:database cron job is configured */
 async function isCronConfigured(env: ApiRouteContext['env']): Promise<boolean> {
     try {
-        const initErr = initAdminCron(env as any);
+        const initErr = initAdminCron(env);
         if (initErr) return false;
 
         const tasks = await ScheduledTask.all();

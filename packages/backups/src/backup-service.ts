@@ -83,6 +83,11 @@ export function formatBytes(bytes: number): string {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
+/** Validate that a table name contains only safe characters (alphanumeric, underscores) */
+export function isValidTableName(name: string): boolean {
+    return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
+}
+
 // ============================================================
 // Backup Service
 // ============================================================
@@ -108,14 +113,16 @@ export class BackupService {
             )
             .all<{ name: string }>();
 
-        return result.results.map((r) => r.name).filter((name) => !this.config.excludeTables.includes(name));
+        return result.results
+            .map((r) => r.name)
+            .filter((name) => isValidTableName(name) && !this.config.excludeTables.includes(name));
     }
 
     /**
      * Get row count for a specific table
      */
     async getRowCount(table: string): Promise<number> {
-        // Table name is from sqlite_master, safe to use directly
+        if (!isValidTableName(table)) throw new Error(`Invalid table name: ${table}`);
         const result = await this.db.prepare(`SELECT COUNT(*) as count FROM "${table}"`).all<{ count: number }>();
         return result.results[0]?.count ?? 0;
     }
@@ -124,6 +131,7 @@ export class BackupService {
      * Export a single table as SQL INSERT statements
      */
     async exportTable(table: string): Promise<{ sql: string; rowCount: number }> {
+        if (!isValidTableName(table)) throw new Error(`Invalid table name: ${table}`);
         const rows = await this.db.prepare(`SELECT * FROM "${table}"`).all<Record<string, unknown>>();
         if (!rows.results.length) {
             return { sql: '', rowCount: 0 };

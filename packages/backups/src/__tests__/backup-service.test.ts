@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BackupService, createBackupService, sha256, escapeSqlValue, formatBytes } from '../backup-service';
+import {
+    BackupService,
+    createBackupService,
+    sha256,
+    escapeSqlValue,
+    formatBytes,
+    isValidTableName,
+} from '../backup-service';
 import type { D1Like, R2Like } from '../backup-service';
 import type { BackupMetadata } from '../types';
 
@@ -199,6 +206,24 @@ describe('BackupService', () => {
 
             it('should format megabytes', () => {
                 expect(formatBytes(1048576)).toBe('1 MB');
+            });
+        });
+
+        describe('isValidTableName', () => {
+            it('should accept valid table names', () => {
+                expect(isValidTableName('users')).toBe(true);
+                expect(isValidTableName('post_tags')).toBe(true);
+                expect(isValidTableName('_internal')).toBe(true);
+                expect(isValidTableName('Table123')).toBe(true);
+            });
+
+            it('should reject invalid table names', () => {
+                expect(isValidTableName('')).toBe(false);
+                expect(isValidTableName('123start')).toBe(false);
+                expect(isValidTableName('table name')).toBe(false);
+                expect(isValidTableName('table;DROP')).toBe(false);
+                expect(isValidTableName('table"name')).toBe(false);
+                expect(isValidTableName("table'name")).toBe(false);
             });
         });
     });
