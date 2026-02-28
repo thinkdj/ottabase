@@ -4,6 +4,7 @@ import { Link } from '@tanstack/react-router';
 import { IconMenu2 } from '@tabler/icons-react';
 import {
     Activity,
+    ArrowLeftRight,
     Bell,
     Building2,
     Clock,
@@ -117,6 +118,13 @@ export function AdminIndexPage() {
             description: 'View referral statistics, manage usernames, and track conversions.',
             href: '/admin/referrals',
             icon: UserPlus,
+            disabled: false,
+        },
+        {
+            title: 'Data Import/Export',
+            description: 'Import CSV/JSON/TSV data into models or export with filters. Track all operations.',
+            href: '/admin/ottaport',
+            icon: ArrowLeftRight,
             disabled: false,
         },
         {
