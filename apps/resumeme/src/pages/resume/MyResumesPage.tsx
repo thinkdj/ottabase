@@ -4,6 +4,7 @@
 // or delete it.
 // ---------------------------------------------------------------------------
 
+import { ShareResumeDialog } from '@/components/ShareResumeDialog';
 import { useDeleteResumeSaved, useResumeSavedList } from '@/ottabase/hooks/useResume';
 import {
     Button,
@@ -19,6 +20,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@ottabase/ui-shadcn';
+import { IconShare } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { ArrowRight, FileText, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
@@ -36,6 +38,7 @@ export function MyResumesPage() {
     const { data: resumesRaw, isLoading } = useResumeSavedList();
     const deleteResume = useDeleteResumeSaved();
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [shareTarget, setShareTarget] = useState<{ id: string; name: string } | null>(null);
 
     // Normalise list data (API may wrap in pagination envelope)
     const resumes = (Array.isArray(resumesRaw) ? resumesRaw : ((resumesRaw as any)?.data ?? [])) as any[];
@@ -114,6 +117,16 @@ export function MyResumesPage() {
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-1 shrink-0 ml-3">
+                                            {/* Share link */}
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-8 w-8"
+                                                onClick={() => setShareTarget({ id: r.id, name: r.name })}
+                                                title="Share resume"
+                                            >
+                                                <IconShare className="h-4 w-4" />
+                                            </Button>
                                             {/* Open in builder (view-only mode) */}
                                             <Button size="sm" variant="outline" asChild>
                                                 <Link
@@ -161,6 +174,14 @@ export function MyResumesPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Share dialog */}
+            <ShareResumeDialog
+                resumeId={shareTarget?.id ?? ''}
+                resumeName={shareTarget?.name ?? ''}
+                open={!!shareTarget}
+                onOpenChange={(open) => !open && setShareTarget(null)}
+            />
         </div>
     );
 }

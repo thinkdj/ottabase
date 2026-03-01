@@ -1,4 +1,5 @@
 import { useSession } from '@/lib/auth';
+import { ShareResumeDialog } from '@/components/ShareResumeDialog';
 import { exportAsPdfServerSide, exportAsPlainText } from '@/lib/resume-export';
 import {
     useCreateResumeDataSet,
@@ -29,7 +30,7 @@ import {
     DropdownMenuTrigger,
     Input,
 } from '@ottabase/ui-shadcn';
-import { IconAdjustments, IconChevronLeft, IconChevronRight, IconLayoutSidebar } from '@tabler/icons-react';
+import { IconAdjustments, IconChevronLeft, IconChevronRight, IconLayoutSidebar, IconShare } from '@tabler/icons-react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -713,6 +714,8 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     /** Save dialog state */
     const [showSaveDialog, setShowSaveDialog] = useState(false);
     const [saveName, setSaveName] = useState('');
+    /** Share dialog state */
+    const [showShareDialog, setShowShareDialog] = useState(false);
     const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
 
     const [selectedSkillSetIds, setSelectedSkillSetIds] = useState<string[]>([]);
@@ -1544,6 +1547,18 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                             {loadedResumeId ? 'Save' : 'Save Resume'}
                         </button>
                     )}
+                    {/* Share button — only when resume is saved */}
+                    {loadedResumeId && !guestMode && (
+                        <button
+                            type="button"
+                            onClick={() => setShowShareDialog(true)}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted"
+                            title="Share this resume"
+                        >
+                            <IconShare className="h-4 w-4" />
+                            Share
+                        </button>
+                    )}
                     {/* Download button — PDF (primary) + format dropdown */}
                     {guestMode ? (
                         // Locked state shown in guest mode
@@ -1894,6 +1909,14 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* ---- Share Dialog ---- */}
+            <ShareResumeDialog
+                resumeId={loadedResumeId ?? ''}
+                resumeName={saveName || 'Resume'}
+                open={showShareDialog}
+                onOpenChange={setShowShareDialog}
+            />
         </div>
     );
 }
