@@ -7,6 +7,7 @@ import { injectBrandCriticalCSS } from './worker/lib/brand-html-inject';
 import { initDbConnection } from './worker/lib/db-utils';
 import { checkKillSwitches } from './worker/lib/killswitch';
 import { resolveApiRoute } from './worker/routes/router';
+import { handleShortlinkFallback } from './worker/routes/shortlinks';
 
 export { RealtimeActor };
 
@@ -110,6 +111,18 @@ export default {
 
             if (apiResponse) {
                 return apiResponse;
+            }
+
+            // Shortlink vanity-URL fallback (skips /r/ paths — those are client-side)
+            if (!normalizedPathname.startsWith('/r/')) {
+                const shortlinkResponse = await handleShortlinkFallback({
+                    request,
+                    env,
+                    url,
+                });
+                if (shortlinkResponse) {
+                    return shortlinkResponse;
+                }
             }
 
             if (!env.OBCF_ASSETS) {

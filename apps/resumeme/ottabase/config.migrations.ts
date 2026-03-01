@@ -19,6 +19,7 @@ import {
 import { brandEngineMigrations } from '@ottabase/brand-engine/persistence';
 import type { BuiltInPackageName } from '@ottabase/config';
 import type { Migration } from '@ottabase/ottaorm';
+import { shortlinksTable } from '@ottabase/shortlinks';
 import { getOttabaseConfig } from './config.loader';
 
 /**
@@ -36,6 +37,10 @@ const PACKAGE_REGISTRY = {
             menuItemsTable,
         },
         migrations: brandEngineMigrations,
+    },
+    shortlinks: {
+        tables: { shortlinksTable },
+        migrations: [] as Migration[],
     },
 } as const;
 

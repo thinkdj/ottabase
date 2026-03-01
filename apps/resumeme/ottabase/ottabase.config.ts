@@ -21,7 +21,7 @@ export default defineOttabaseConfig({
 
     packages: {
         ottablog: false,
-        shortlinks: false,
+        shortlinks: true,
         referrals: false,
     },
 

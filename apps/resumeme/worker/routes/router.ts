@@ -64,6 +64,7 @@ import { handleEmailProviders, handleEmailTest } from './email';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
 import { handleResumePdf } from './resume-pdf';
+import { handleResumePublic, handleResumePublicByCode, handleResumeShare } from './resume-share';
 
 export interface ApiRouteContext {
     request: Request;
@@ -114,6 +115,17 @@ const METHOD_HANDLERS: Record<string, MethodHandler> = {
 
 async function handleGetRoutes(context: ApiRouteContext): Promise<Response | null> {
     const { route } = context;
+
+    // Public resume routes (no auth required) — must be checked before auth-gated routes
+    const publicCodeMatch = route.match(/^\/api\/resume\/public\/code\/([^/]+)$/);
+    if (publicCodeMatch) {
+        return handleResumePublicByCode(context, publicCodeMatch[1]);
+    }
+
+    const publicIdMatch = route.match(/^\/api\/resume\/public\/([^/]+)$/);
+    if (publicIdMatch) {
+        return handleResumePublic(context, publicIdMatch[1]);
+    }
 
     // Brand API (core — always enabled)
     if (route.startsWith('/api/brand')) {
@@ -315,6 +327,11 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
     // Server-side PDF generation via Cloudflare Browser Rendering (Puppeteer)
     if (route === '/api/resume/pdf') {
         return handleResumePdf(context);
+    }
+
+    // Create a shareable shortlink for a saved resume
+    if (route === '/api/resume/share') {
+        return handleResumeShare(context);
     }
 
     if (route === '/api/admin/roles') {

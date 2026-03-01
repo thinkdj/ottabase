@@ -39,6 +39,11 @@ export { resumeSkillSetsTable } from '../models/ResumeSkillSet';
 export { resumeWorkExperiencesTable } from '../models/ResumeWorkExperience';
 
 // ============================================================
+// PACKAGE TABLES (Shortlinks)
+// ============================================================
+export { shortlinksTable } from '@ottabase/shortlinks';
+
+// ============================================================
 // DYNAMIC PACKAGE TABLES (Configured in config.migrations.ts)
 // ============================================================
 import { getEnabledPackageTables } from '../config.migrations';

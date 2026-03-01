@@ -1,4 +1,5 @@
 import { BrandKit, LayoutRouteMapping, LayoutTemplate, MenuSlotAssignment } from '@ottabase/brand-engine/persistence';
+import { Shortlink } from '@ottabase/shortlinks';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import {
     clearConnection,
@@ -92,7 +93,7 @@ export function initDbConnection(env: CloudflareEnv): void {
         UserRole,
         Permission,
     ];
-    const packageModels: (typeof Account)[] = [];
+    const packageModels: (typeof Account)[] = [...(packages.shortlinks ? [Shortlink] : [])];
     // Menu, MenuItem: use /api/brand/menus (cache-invalidating CRUD), not OttaORM
     const brandModels = [BrandKit, LayoutTemplate, LayoutRouteMapping, MenuSlotAssignment];
     const appModels = [
