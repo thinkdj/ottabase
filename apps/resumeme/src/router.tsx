@@ -22,7 +22,18 @@ function RootLayout() {
     usePageViewTracking();
     const isAdminPath = pathname === '/admin' || pathname.startsWith('/admin/');
     const isMigrationStatusPath = pathname === '/migration-status';
+    const isPublicResumePath = pathname.startsWith('/r/');
     const useCenteredAppContainer = isAdminPath || isMigrationStatusPath;
+
+    // Public resume viewer renders its own standalone layout
+    if (isPublicResumePath) {
+        return (
+            <>
+                <Toaster />
+                <Outlet />
+            </>
+        );
+    }
 
     return (
         <>
@@ -487,6 +498,20 @@ const migrationStatusRoute = new Route({
     ),
 });
 
+// ── Public Resume Viewer (standalone layout — no ResumeMeLayout wrapper) ──
+const publicResumeRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/r/$code',
+    component: lazyRouteComponent(() =>
+        import('@/pages/resume/PublicResumePage').then((m) => ({
+            default: () => {
+                const { code } = publicResumeRoute.useParams();
+                return <m.PublicResumePage code={code} />;
+            },
+        })),
+    ),
+});
+
 const guestRoute = new Route({
     getParentRoute: () => rootRoute,
     path: '/guest',
@@ -572,6 +597,7 @@ const routeTree = rootRoute.addChildren([
     adminReferralsRoute,
     migrationStatusRoute,
     builderRoute,
+    publicResumeRoute,
     guestRoute,
     signinRoute,
     signupRoute,
