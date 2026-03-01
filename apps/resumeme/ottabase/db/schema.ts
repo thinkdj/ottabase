@@ -37,6 +37,8 @@ export { resumeProjectsTable } from '../models/ResumeProject';
 export { resumeSavedTable } from '../models/ResumeSaved';
 export { resumeSkillSetsTable } from '../models/ResumeSkillSet';
 export { resumeWorkExperiencesTable } from '../models/ResumeWorkExperience';
+export { knowledgeBasesTable } from '../models/KnowledgeBase';
+export { knowledgeBaseFilesTable } from '../models/KnowledgeBaseFile';
 
 // ============================================================
 // PACKAGE TABLES (Shortlinks)

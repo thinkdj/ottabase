@@ -32,6 +32,8 @@ import { ResumeProject } from '../../ottabase/models/ResumeProject';
 import { ResumeSaved } from '../../ottabase/models/ResumeSaved';
 import { ResumeSkillSet } from '../../ottabase/models/ResumeSkillSet';
 import { ResumeWorkExperience } from '../../ottabase/models/ResumeWorkExperience';
+import { KnowledgeBase } from '../../ottabase/models/KnowledgeBase';
+import { KnowledgeBaseFile } from '../../ottabase/models/KnowledgeBaseFile';
 import type { CloudflareEnv } from '../cloudflare-env';
 import { readJson } from './utils';
 
@@ -105,6 +107,8 @@ export function initDbConnection(env: CloudflareEnv): void {
         ResumeCertification,
         ResumeDataSet,
         ResumeSaved,
+        KnowledgeBase,
+        KnowledgeBaseFile,
     ];
 
     registerModels([...coreModels, ...packageModels, ...brandModels, ...appModels]);
@@ -121,6 +125,8 @@ export function initDbConnection(env: CloudflareEnv): void {
         'resume_certifications',
         'resume_data_sets',
         'resume_saved',
+        'knowledge_bases',
+        'knowledge_base_files',
     ];
     for (const entity of resumeEntities) {
         registerPolicy({ model: entity, policy: RLSPolicies.UserScoped(), auditEnabled: true });
