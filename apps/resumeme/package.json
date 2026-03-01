@@ -4,9 +4,11 @@
     "type": "module",
     "private": true,
     "scripts": {
-        "dev": "vite --open",
+        "dev": "node dev.cjs",
+        "dev:noopen": "node dev.cjs --noopen",
+        "dev:fe:open": "vite --open",
         "dev:worker": "wrangler dev",
-        "dev:fe": "vite --open",
+        "dev:fe": "vite",
         "dev:be": "wrangler dev",
         "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
         "preview": "pnpm build && wrangler dev",
