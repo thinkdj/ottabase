@@ -63,6 +63,15 @@ import { handleCoreAnalytics } from './core-analytics';
 import { handleEmailProviders, handleEmailTest } from './email';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
+import {
+    handleKnowledgeBaseAnalyse,
+    handleKnowledgeBaseById,
+    handleKnowledgeBaseCreate,
+    handleKnowledgeBaseFileDelete,
+    handleKnowledgeBaseFiles,
+    handleKnowledgeBaseFileUpload,
+    handleKnowledgeBaseList,
+} from './knowledge-base';
 import { handleResumePdf } from './resume-pdf';
 import { handleResumePublic, handleResumePublicByCode, handleResumeShare } from './resume-share';
 
@@ -241,6 +250,21 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleAdminDbTableData({ ...context, tableName: tableMatch[1] });
     }
 
+    // ── Knowledge Base routes ──
+    if (route === '/api/kb') {
+        return handleKnowledgeBaseList(context);
+    }
+
+    const kbFilesMatch = route.match(/^\/api\/kb\/([^/]+)\/files$/);
+    if (kbFilesMatch) {
+        return handleKnowledgeBaseFiles(context, kbFilesMatch[1]);
+    }
+
+    const kbDetailMatch = route.match(/^\/api\/kb\/([^/]+)$/);
+    if (kbDetailMatch) {
+        return handleKnowledgeBaseById(context, kbDetailMatch[1]);
+    }
+
     return null;
 }
 
@@ -347,6 +371,21 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleAdminQueuesDLQRetryJob(context, dlqRetryMatch[1]);
     }
 
+    // ── Knowledge Base routes ──
+    if (route === '/api/kb') {
+        return handleKnowledgeBaseCreate(context);
+    }
+
+    const kbFileUploadMatch = route.match(/^\/api\/kb\/([^/]+)\/files$/);
+    if (kbFileUploadMatch) {
+        return handleKnowledgeBaseFileUpload(context, kbFileUploadMatch[1]);
+    }
+
+    const kbAnalyseMatch = route.match(/^\/api\/kb\/([^/]+)\/analyse$/);
+    if (kbAnalyseMatch) {
+        return handleKnowledgeBaseAnalyse(context, kbAnalyseMatch[1]);
+    }
+
     return null;
 }
 
@@ -360,6 +399,12 @@ async function handlePatchRoutes(context: ApiRouteContext): Promise<Response | n
     const adminRolePatchMatch = route.match(/^\/api\/admin\/roles\/([^/]+)$/);
     if (adminRolePatchMatch) {
         return handleAdminRoleUpdate(context, adminRolePatchMatch[1]);
+    }
+
+    // ── Knowledge Base routes ──
+    const kbPatchMatch = route.match(/^\/api\/kb\/([^/]+)$/);
+    if (kbPatchMatch) {
+        return handleKnowledgeBaseById(context, kbPatchMatch[1]);
     }
 
     return null;
@@ -394,6 +439,17 @@ async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | 
     const adminRoleDeleteMatch = route.match(/^\/api\/admin\/roles\/([^/]+)$/);
     if (adminRoleDeleteMatch) {
         return handleAdminRoleDelete(context, adminRoleDeleteMatch[1]);
+    }
+
+    // ── Knowledge Base routes ──
+    const kbFileDeleteMatch = route.match(/^\/api\/kb\/([^/]+)\/files\/([^/]+)$/);
+    if (kbFileDeleteMatch) {
+        return handleKnowledgeBaseFileDelete(context, kbFileDeleteMatch[1], kbFileDeleteMatch[2]);
+    }
+
+    const kbDeleteMatch = route.match(/^\/api\/kb\/([^/]+)$/);
+    if (kbDeleteMatch) {
+        return handleKnowledgeBaseById(context, kbDeleteMatch[1]);
     }
 
     return null;
