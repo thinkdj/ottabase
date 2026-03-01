@@ -101,6 +101,9 @@ All templates support:
 Adjust resume size proportionally with the zoom slider (80–130%). Uses CSS `zoom` so all elements — headings, body text,
 spacing, badges — scale uniformly. The selected zoom applies to both on-screen preview and printed/PDF output.
 
+The builder preview keeps an A4 aspect ratio (`210/297`) even for short content, so the canvas always looks like a paper
+page. For print/PDF, this aspect lock is removed so long resumes flow naturally across pages.
+
 ```typescript
 import { FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from './pages/resume/types';
 // 80% – 130%, default 100%
@@ -197,6 +200,14 @@ Save the full resume state (template, accent colour, zoom, section order, headin
 server-persisted **ResumeSaved** record. On save, you're prompted for a filename. The snapshot stores entire
 `ResumeTemplateData` JSON so the resume is frozen in time.
 
+Default filename format for new resumes:
+
+`FName_Lname_Resume_ThemeName_YYYYMMDD`
+
+Example:
+
+`Deepak_Thomas_Resume_Lisbon_20260205`
+
 **Viewing a saved resume** opens the builder in **view-only mode** — sidebar checkboxes and items are disabled. A
 "Refresh Resume Data Set" button lets you pull in the latest data from the linked data set, switching to edit mode. You
 can then re-save to overwrite the snapshot.
@@ -259,7 +270,7 @@ Visit `/guest` to try the full resume builder without creating an account.
 
 **What works:**
 
-- All 5 templates (Classic, Modern, Lisbon, Executive, Minimal)
+- All 8 templates (Classic, Modern, Lisbon, Executive, Minimal, Clean, Creative, Bold)
 - Accent colour and page scale (zoom) controls
 - Section reordering (↑/↓ buttons and drag-and-drop)
 - Click-to-edit section headings in preview

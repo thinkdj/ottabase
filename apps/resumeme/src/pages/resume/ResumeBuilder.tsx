@@ -35,6 +35,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { GUEST_DATA } from './guestData';
 import {
+    buildDefaultResumeFileName,
     buildResumeDataSetPersistData,
     normalizeList,
     parseIdSelection,
@@ -1292,31 +1293,15 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         setHeadingLabels((prev) => ({ ...prev, [key]: label }));
     }, []);
 
-    const buildDefaultResumeFileName = useCallback(() => {
-        const rawName = (data.fullName || 'Resume').trim();
-        const nameParts = rawName.split(/\s+/).filter(Boolean);
-        const firstName = (nameParts[0] || 'First').replace(/[^a-zA-Z0-9]/g, '');
-        const lastName = (nameParts[nameParts.length - 1] || 'Last').replace(/[^a-zA-Z0-9]/g, '');
-        const templateName =
-            RESUME_TEMPLATES.find((template) => template.id === templateId)?.name.replace(/[^a-zA-Z0-9]/g, '') ||
-            'Theme';
-
-        const now = new Date();
-        const yyyy = String(now.getFullYear());
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-
-        return `${firstName}_${lastName}_Resume_${templateName}_${yyyy}${mm}${dd}`;
-    }, [data.fullName, templateId]);
-
     // ---- Open save dialog ----
     const handleOpenSaveDialog = useCallback(() => {
         if (guestMode) return;
         if (!saveName) {
-            setSaveName(buildDefaultResumeFileName());
+            const activeTemplateName = RESUME_TEMPLATES.find((template) => template.id === templateId)?.name;
+            setSaveName(buildDefaultResumeFileName(data.fullName, activeTemplateName));
         }
         setShowSaveDialog(true);
-    }, [guestMode, saveName, buildDefaultResumeFileName]);
+    }, [guestMode, saveName, data.fullName, templateId]);
 
     // ---- Confirm save — creates or overwrites a ResumeSaved via API ----
     const handleConfirmSave = useCallback(() => {

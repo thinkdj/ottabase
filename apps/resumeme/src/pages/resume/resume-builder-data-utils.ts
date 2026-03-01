@@ -77,3 +77,21 @@ export function buildResumeDataSetPersistData(input: ResumeDataSetPersistInput):
         selectedCertificationIds: JSON.stringify(input.selectedCertificationIds),
     };
 }
+
+export function buildDefaultResumeFileName(
+    fullName: string | null | undefined,
+    templateName: string | null | undefined,
+    now: Date = new Date(),
+): string {
+    const rawName = (fullName || '').trim();
+    const nameParts = rawName.split(/\s+/).filter(Boolean);
+    const firstName = (nameParts[0] || 'First').replace(/[^a-zA-Z0-9]/g, '') || 'First';
+    const lastName = (nameParts[nameParts.length - 1] || 'Last').replace(/[^a-zA-Z0-9]/g, '') || 'Last';
+    const safeTemplateName = (templateName || 'Theme').replace(/[^a-zA-Z0-9]/g, '') || 'Theme';
+
+    const yyyy = String(now.getFullYear());
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+
+    return `${firstName}_${lastName}_Resume_${safeTemplateName}_${yyyy}${mm}${dd}`;
+}

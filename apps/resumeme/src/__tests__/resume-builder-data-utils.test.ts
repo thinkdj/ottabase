@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    buildDefaultResumeFileName,
     buildResumeDataSetPersistData,
     normalizeList,
     parseIdSelection,
@@ -57,5 +58,20 @@ describe('ResumeBuilder data utilities', () => {
             selectedCertificationIds: '[]',
         });
         expect(payload).not.toHaveProperty('id');
+    });
+
+    it('builds default resume file name as First_Last_Resume_Theme_YYYYMMDD', () => {
+        const date = new Date('2026-02-05T09:00:00.000Z');
+        expect(buildDefaultResumeFileName('Deepak Thomas', 'Lisbon', date)).toBe(
+            'Deepak_Thomas_Resume_Lisbon_20260205',
+        );
+    });
+
+    it('sanitizes invalid characters and falls back to safe defaults for file name', () => {
+        const date = new Date('2026-02-05T09:00:00.000Z');
+        expect(buildDefaultResumeFileName('D!e@e#p$ak T^h&o*mas', 'Theme (Pro)', date)).toBe(
+            'Deepak_Thomas_Resume_ThemePro_20260205',
+        );
+        expect(buildDefaultResumeFileName('', '', date)).toBe('First_Last_Resume_Theme_20260205');
     });
 });
