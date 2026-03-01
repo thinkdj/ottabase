@@ -29,6 +29,7 @@ import { resumeDataSetsTable } from '../models/ResumeDataSet';
 import { resumeEducationsTable } from '../models/ResumeEducation';
 import { resumeProfilesTable } from '../models/ResumeProfile';
 import { resumeProjectsTable } from '../models/ResumeProject';
+import { resumeSavedTable } from '../models/ResumeSaved';
 import { resumeSkillSetsTable } from '../models/ResumeSkillSet';
 import { resumeWorkExperiencesTable } from '../models/ResumeWorkExperience';
 
@@ -62,6 +63,7 @@ export function getAllSchemas() {
         resumeProjectsTable,
         resumeCertificationsTable,
         resumeDataSetsTable,
+        resumeSavedTable,
     };
 
     // 3. Package schemas from enabled packages
@@ -102,6 +104,7 @@ export function getSchemaSummary() {
         resumeProjectsTable,
         resumeCertificationsTable,
         resumeDataSetsTable,
+        resumeSavedTable,
     };
 
     const packageTables = getEnabledPackageTables();

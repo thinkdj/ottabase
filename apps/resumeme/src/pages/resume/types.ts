@@ -224,10 +224,16 @@ export function resolveHeadingLabel(
 }
 
 // ---------------------------------------------------------------------------
-// Saved resume snapshot
+// Saved resume snapshot (deprecated — use ResumeSaved OttaORM model instead)
 // ---------------------------------------------------------------------------
 
-/** Full serialisable resume state for save/load */
+/**
+ * Legacy local-storage snapshot shape. Kept for reference only.
+ * Server-persisted resumes use the ResumeSaved model from
+ * `ottabase/models/ResumeSaved.ts`.
+ *
+ * @deprecated Use ResumeSaved model + API instead.
+ */
 export interface SavedResumeSnapshot {
     id: string;
     name: string;

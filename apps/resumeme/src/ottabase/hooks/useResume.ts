@@ -1,13 +1,14 @@
 // Resume hooks — client-side TanStack Query hooks for all resume entities
 
 import { createModelHooks } from '@ottabase/ottaorm/client';
-import type { ResumeProfileType } from '../../../../ottabase/models/ResumeProfile';
-import type { ResumeSkillSetType } from '../../../../ottabase/models/ResumeSkillSet';
-import type { ResumeWorkExperienceType } from '../../../../ottabase/models/ResumeWorkExperience';
-import type { ResumeEducationType } from '../../../../ottabase/models/ResumeEducation';
-import type { ResumeProjectType } from '../../../../ottabase/models/ResumeProject';
-import type { ResumeCertificationType } from '../../../../ottabase/models/ResumeCertification';
-import type { ResumeDataSetType } from '../../../../ottabase/models/ResumeDataSet';
+import type { ResumeCertificationType } from '../../../ottabase/models/ResumeCertification';
+import type { ResumeDataSetType } from '../../../ottabase/models/ResumeDataSet';
+import type { ResumeEducationType } from '../../../ottabase/models/ResumeEducation';
+import type { ResumeProfileType } from '../../../ottabase/models/ResumeProfile';
+import type { ResumeProjectType } from '../../../ottabase/models/ResumeProject';
+import type { ResumeSavedType } from '../../../ottabase/models/ResumeSaved';
+import type { ResumeSkillSetType } from '../../../ottabase/models/ResumeSkillSet';
+import type { ResumeWorkExperienceType } from '../../../ottabase/models/ResumeWorkExperience';
 
 // ── ResumeProfile ──────────────────────────────────────────
 export const {
@@ -71,3 +72,12 @@ export const {
     useUpdate: useUpdateResumeDataSet,
     useDelete: useDeleteResumeDataSet,
 } = createModelHooks<ResumeDataSetType>({ entityName: 'resume_data_sets' });
+
+// ── ResumeSaved ────────────────────────────────────────────
+export const {
+    useList: useResumeSavedList,
+    useDetail: useResumeSaved,
+    useCreate: useCreateResumeSaved,
+    useUpdate: useUpdateResumeSaved,
+    useDelete: useDeleteResumeSaved,
+} = createModelHooks<ResumeSavedType>({ entityName: 'resume_saved' });

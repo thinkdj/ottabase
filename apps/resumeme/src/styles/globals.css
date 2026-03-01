@@ -111,3 +111,66 @@ canvas.interactive {
 [data-movable='true'] {
     cursor: var(--cursor-move);
 }
+
+/* ===========================
+   Print Styles — Resume Builder
+   Only the resume preview (#resume-print-area) is printed.
+   Everything else (header, sidebars, toolbars, dialogs) is hidden.
+   =========================== */
+
+@media print {
+    /* Hide everything by default */
+    body > *:not(#root),
+    header,
+    nav,
+    aside,
+    dialog,
+    [role='dialog'],
+    .print\\:hidden {
+        display: none !important;
+    }
+
+    /* Strip layout chrome so the resume fills the page */
+    html,
+    body,
+    #root {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        overflow: visible !important;
+        height: auto !important;
+    }
+
+    /* Reset the builder wrapper to flow naturally */
+    #root > * {
+        display: contents !important;
+    }
+
+    /* The resume canvas area — make it fill the page */
+    #resume-print-area {
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* The resume card itself — remove shadow/ring, fill width */
+    #resume-print-area > div {
+        box-shadow: none !important;
+        ring: none !important;
+        outline: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
+    /* Ensure page break settings */
+    @page {
+        margin: 0.4in;
+        size: letter;
+    }
+}

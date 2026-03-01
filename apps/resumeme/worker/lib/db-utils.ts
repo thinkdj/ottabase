@@ -1,6 +1,14 @@
 import { BrandKit, LayoutRouteMapping, LayoutTemplate, MenuSlotAssignment } from '@ottabase/brand-engine/persistence';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { clearConnection, hasConnection, initRLS, registerConnection, registerModels } from '@ottabase/ottaorm';
+import {
+    clearConnection,
+    hasConnection,
+    initRLS,
+    registerConnection,
+    registerModels,
+    registerPolicy,
+    RLSPolicies,
+} from '@ottabase/ottaorm';
 import {
     Account,
     Authenticator,
@@ -20,6 +28,7 @@ import { ResumeDataSet } from '../../ottabase/models/ResumeDataSet';
 import { ResumeEducation } from '../../ottabase/models/ResumeEducation';
 import { ResumeProfile } from '../../ottabase/models/ResumeProfile';
 import { ResumeProject } from '../../ottabase/models/ResumeProject';
+import { ResumeSaved } from '../../ottabase/models/ResumeSaved';
 import { ResumeSkillSet } from '../../ottabase/models/ResumeSkillSet';
 import { ResumeWorkExperience } from '../../ottabase/models/ResumeWorkExperience';
 import type { CloudflareEnv } from '../cloudflare-env';
@@ -94,9 +103,25 @@ export function initDbConnection(env: CloudflareEnv): void {
         ResumeProject,
         ResumeCertification,
         ResumeDataSet,
+        ResumeSaved,
     ];
 
     registerModels([...coreModels, ...packageModels, ...brandModels, ...appModels]);
 
     initRLS();
+
+    // Register RLS policies for resume models — each is user-scoped (filtered by userId)
+    const resumeEntities = [
+        'resume_profiles',
+        'resume_skill_sets',
+        'resume_work_experiences',
+        'resume_educations',
+        'resume_projects',
+        'resume_certifications',
+        'resume_data_sets',
+        'resume_saved',
+    ];
+    for (const entity of resumeEntities) {
+        registerPolicy({ model: entity, policy: RLSPolicies.UserScoped(), auditEnabled: true });
+    }
 }

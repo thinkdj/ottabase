@@ -14,8 +14,28 @@ and export to PDF.
   differently.
 - **Data Sets**: Users mix-and-match skills, work experience, education, etc. into named collections. Each data set can
   use a different template and accent colour.
-- **Templates**: Configurable resume layouts. Five built-in: Classic, Modern, Lisbon, Executive, and Minimal.
+- **Templates**: Configurable resume layouts. Eight built-in: Classic, Modern, Lisbon, Executive, Minimal, Clean,
+  Creative, and Bold.
 - **Name lock**: The user's name on the resume always comes from their app profile — it cannot be overridden per-resume.
+
+## Architecture: Data → Data Set → Saved Resume
+
+The app separates resume content into three layers:
+
+1. **My Resume Data** (`/my-resume`) — Raw content entries: profiles, work experiences, education, skills, projects,
+   certifications. A user maintains one repository of career data that can be reused across many resumes.
+
+2. **Resume Data Sets** (managed inside My Resume Data) — A named collection that cherry-picks items from the raw data.
+   Each data set selects a profile (single) and a subset of work experiences, education, skills, projects, and
+   certifications (multi-select). Use data sets to curate different resume variants (e.g. "Frontend Focus",
+   "Full-Stack", "Leadership").
+
+3. **Saved Resumes** (`/my-resumes`) — A frozen snapshot produced by the builder. Contains the full expanded JSON of all
+   resume data, template settings, section order, heading labels, and a user-chosen filename. Once saved, the resume
+   opens in **view-only mode** in the builder. You can "Refresh Resume Data Set" to pull in the latest data from the
+   linked data set, edit, then re-save.
+
+**Typical flow:** Create data → Build a data set → Open in builder → Customise → Save → View in My Resumes.
 
 ## Tech Stack
 
@@ -25,15 +45,16 @@ and export to PDF.
 
 ## Data Models
 
-| Model                  | Table                     | Purpose                                              |
-| ---------------------- | ------------------------- | ---------------------------------------------------- |
-| `ResumeProfile`        | `resume_profiles`         | Contact info, headline, summary, social links        |
-| `ResumeSkillSet`       | `resume_skill_sets`       | Named group of skill tags                            |
-| `ResumeWorkExperience` | `resume_work_experiences` | Job entries with highlights                          |
-| `ResumeEducation`      | `resume_educations`       | Degrees and institutions                             |
-| `ResumeProject`        | `resume_projects`         | Portfolio projects                                   |
-| `ResumeCertification`  | `resume_certifications`   | Professional certifications                          |
-| `ResumeDataSet`        | `resume_data_sets`        | Assembled resume: selected items + template + colour |
+| Model                  | Table                     | Purpose                                                |
+| ---------------------- | ------------------------- | ------------------------------------------------------ |
+| `ResumeProfile`        | `resume_profiles`         | Contact info, headline, summary, social links          |
+| `ResumeSkillSet`       | `resume_skill_sets`       | Named group of skill tags                              |
+| `ResumeWorkExperience` | `resume_work_experiences` | Job entries with highlights                            |
+| `ResumeEducation`      | `resume_educations`       | Degrees and institutions                               |
+| `ResumeProject`        | `resume_projects`         | Portfolio projects                                     |
+| `ResumeCertification`  | `resume_certifications`   | Professional certifications                            |
+| `ResumeDataSet`        | `resume_data_sets`        | Assembled resume: selected items + template + colour   |
+| `ResumeSaved`          | `resume_saved`            | Full snapshot of a built resume (read-only after save) |
 
 All models use OttaORM's `BaseModel` with full CRUD via `/api/ottaorm/{entity}`.
 
@@ -107,9 +128,29 @@ import { resolveHeadingLabel, DEFAULT_HEADING_LABELS } from './pages/resume/type
 
 ### Save Resume Snapshots
 
-Save the full resume state (template, accent colour, zoom, section order, heading overrides, and data) as a frozen
-snapshot. On save, a notice explains that the snapshot is a static copy — changes to profile/skills/experience won't
-update it automatically. Viewing a saved snapshot shows a "Refresh Data" button to pull in the latest data.
+Save the full resume state (template, accent colour, zoom, section order, heading overrides, and all data) as a
+server-persisted **ResumeSaved** record. On save, you're prompted for a filename. The snapshot stores entire
+`ResumeTemplateData` JSON so the resume is frozen in time.
+
+**Viewing a saved resume** opens the builder in **view-only mode** — sidebar checkboxes and items are disabled. A
+"Refresh Resume Data Set" button lets you pull in the latest data from the linked data set, switching to edit mode. You
+can then re-save to overwrite the snapshot.
+
+### Live Data Sets in Builder
+
+`/builder` for authenticated users now reads from OttaORM models and `resume_data_sets` instead of static mock data.
+
+- Loads profile, work experience, education, skills, projects, and certifications via `useResume*` hooks.
+- Uses a **profile-scoped data set**: each profile maps to one data-set bucket containing template/accent + selected
+  IDs.
+- Builder dropdown selects **Profile** (not creating buckets in builder). Bucket creation/linking happens automatically.
+- Persists template/accent and include/exclude checkbox changes back to the active data set (debounced autosave).
+- Autosave writes writable fields only (excludes immutable IDs) to avoid CRUD write errors during PATCH requests.
+- All include/exclude checkboxes start in the **selected** state for new profile buckets.
+- Checkbox toggles are strict: unchecked items are hidden from the resume preview (including Education and all other
+  sections).
+- Creates/links a default data set automatically when a selected profile has no bucket yet.
+- Keeps `/guest` behavior unchanged (guest mock data, no persistence).
 
 ### Responsive Sidebar Layout
 
@@ -134,14 +175,18 @@ curl -X POST http://localhost:3006/api/ottaorm/init
 
 ## Routes
 
-| Path            | Description                             |
-| --------------- | --------------------------------------- |
-| `/`             | Landing page                            |
-| `/guest`        | Guest mode builder (public, no sign-up) |
-| `/builder`      | Resume builder (protected)              |
-| `/auth/signin`  | Sign in                                 |
-| `/auth/signup`  | Sign up                                 |
-| `/user/profile` | User profile                            |
+| Path                     | Description                                        |
+| ------------------------ | -------------------------------------------------- |
+| `/`                      | Landing page                                       |
+| `/guest`                 | Guest mode builder (public, no sign-up)            |
+| `/my-resume`             | My Resume Data — manage resume content (protected) |
+| `/my-resumes`            | My Resumes — list saved resumes (protected)        |
+| `/builder`               | Resume builder (protected)                         |
+| `/builder?dataSetId=xxx` | Open builder with a specific data set              |
+| `/builder?resumeId=xxx`  | Open a saved resume in view-only mode              |
+| `/auth/signin`           | Sign in                                            |
+| `/auth/signup`           | Sign up                                            |
+| `/user/profile`          | User profile                                       |
 
 ## Guest Mode
 
@@ -177,6 +222,11 @@ import {
     useResumeDataSets,
     useCreateResumeDataSet,
     useUpdateResumeDataSet,
+    useResumeSavedList,
+    useResumeSaved,
+    useCreateResumeSaved,
+    useUpdateResumeSaved,
+    useDeleteResumeSaved,
 } from '@/ottabase/hooks/useResume';
 ```
 
@@ -191,17 +241,17 @@ npx vitest run
 
 ## Project Structure
 
-```
+```text
 apps/resumeme/
 ├── ottabase/
 │   ├── db/             # Drizzle schema + helper
-│   ├── models/         # OttaORM fat models (7 resume + Todo)
+│   ├── models/         # OttaORM fat models (8 resume + Todo)
 │   ├── config.*        # App config, migrations, routes
 │   └── ottabase.config.ts
 ├── src/
 │   ├── __tests__/      # Tests
 │   ├── ottabase/hooks/ # Client hooks (useResume.ts)
-│   ├── pages/resume/   # Builder UI + templates
+│   ├── pages/resume/   # Builder UI + templates + MyResumesPage
 │   ├── providers/      # React providers
 │   ├── router.tsx      # TanStack Router
 │   └── main.tsx        # App entry

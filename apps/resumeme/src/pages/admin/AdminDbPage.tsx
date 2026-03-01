@@ -135,6 +135,7 @@ export function AdminDbPage() {
 
     const handlePageChange = (newPage: number) => {
         navigate({
+            to: '/admin/db',
             search: { ...search, page: newPage },
         });
     };

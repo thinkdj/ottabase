@@ -30,7 +30,7 @@ function useOrganizationSelection() {
 
 // ── User avatar + logout button ──
 const UserSection = memo(function UserSection() {
-    const { isAuthenticated, user, logout } = useSession();
+    const { isAuthenticated, user, logout } = useSession({ skipAutoSync: true });
     const navigate = useNavigate();
 
     const handleLogout = useCallback(() => {
@@ -83,7 +83,7 @@ const UserSection = memo(function UserSection() {
 
 // ── Mobile nav drawer ──
 function MobileNav() {
-    const { isAuthenticated } = useSession();
+    const { isAuthenticated } = useSession({ skipAutoSync: true });
     const location = useLocation();
     const [open, setOpen] = useState(false);
     const links = getNavLinks(!!isAuthenticated);
@@ -138,7 +138,7 @@ function MobileNav() {
 
 // ── Main layout ──
 export const ResumeMeLayout = memo(function ResumeMeLayout({ children }: { children: React.ReactNode }) {
-    const { isAuthenticated } = useSession();
+    const { isAuthenticated } = useSession({ skipAutoSync: true });
     const { currentOrgId, setOrganization } = useOrganizationSelection();
     const location = useLocation();
     const links = getNavLinks(!!isAuthenticated);

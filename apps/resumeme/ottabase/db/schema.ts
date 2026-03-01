@@ -29,13 +29,14 @@ export { accountsTable, authenticatorsTable, sessionsTable, usersTable, verifica
 // ============================================================
 // APP-SPECIFIC TABLES (Resume models)
 // ============================================================
-export { resumeProfilesTable } from '../models/ResumeProfile';
-export { resumeSkillSetsTable } from '../models/ResumeSkillSet';
-export { resumeWorkExperiencesTable } from '../models/ResumeWorkExperience';
-export { resumeEducationsTable } from '../models/ResumeEducation';
-export { resumeProjectsTable } from '../models/ResumeProject';
 export { resumeCertificationsTable } from '../models/ResumeCertification';
 export { resumeDataSetsTable } from '../models/ResumeDataSet';
+export { resumeEducationsTable } from '../models/ResumeEducation';
+export { resumeProfilesTable } from '../models/ResumeProfile';
+export { resumeProjectsTable } from '../models/ResumeProject';
+export { resumeSavedTable } from '../models/ResumeSaved';
+export { resumeSkillSetsTable } from '../models/ResumeSkillSet';
+export { resumeWorkExperiencesTable } from '../models/ResumeWorkExperience';
 
 // ============================================================
 // DYNAMIC PACKAGE TABLES (Configured in config.migrations.ts)
