@@ -302,7 +302,7 @@ export function UserProfilePage() {
     }
 
     return (
-        <div className="space-y-6 max-w-3xl">
+        <div className="mx-auto max-w-4xl px-4 py-8 space-y-6">
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold">Profile Settings</h1>

@@ -19,6 +19,9 @@ const UserSection = memo(function UserSection() {
     const navigate = useNavigate();
 
     const handleLogout = useCallback(() => {
+        // Simple confirmation to avoid accidental logouts
+        const confirmed = typeof window !== 'undefined' ? window.confirm('Are you sure you want to log out?') : true;
+        if (!confirmed) return;
         logout();
         navigate({ to: '/' });
     }, [logout, navigate]);

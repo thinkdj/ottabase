@@ -1,7 +1,7 @@
 import { PACKAGES_ENABLED } from '@/ottabase/config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
 import { IconMenu2 } from '@tabler/icons-react';
+import { Link } from '@tanstack/react-router';
 import {
     Activity,
     Bell,
@@ -12,11 +12,11 @@ import {
     Layers,
     Layout,
     Palette,
+    Power,
     Shield,
     ShieldCheck,
     UserPlus,
     Users,
-    Power,
 } from 'lucide-react';
 
 // brandEngine is core — BrandEngine/Theme Generator always shown
@@ -165,7 +165,7 @@ export function AdminIndexPage() {
     });
 
     return (
-        <div className="space-y-8">
+        <div className="mx-auto max-w-4xl px-4 py-8 space-y-8">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Admin Console</h1>
                 <p className="text-muted-foreground mt-2">Central hub for system administration and monitoring.</p>

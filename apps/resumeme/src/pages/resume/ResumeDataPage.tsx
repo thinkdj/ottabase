@@ -897,7 +897,8 @@ function MeCard({
 // ── Main Page ──
 export function ResumeDataPage() {
     // Current user session — for the "Me" card
-    const { user, updateUser, refreshSession } = useSession();
+    // Use skipAutoSync to prevent infinite session syncing
+    const { user, updateUser, refreshSession } = useSession({ skipAutoSync: true });
     const [avatarModalOpen, setAvatarModalOpen] = useState(false);
 
     // Fetch all resume entities for the current user
