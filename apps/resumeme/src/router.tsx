@@ -512,6 +512,37 @@ const publicResumeRoute = new Route({
     ),
 });
 
+const kbListRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/kb',
+    component: lazyRouteComponent(() =>
+        import('@/pages/kb/KnowledgeBasePage').then((m) => ({
+            default: () => (
+                <ProtectedRoute>
+                    <m.KnowledgeBasePage />
+                </ProtectedRoute>
+            ),
+        })),
+    ),
+});
+
+const kbDetailRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/kb/$kbId',
+    component: lazyRouteComponent(() =>
+        import('@/pages/kb/KnowledgeBaseDetailPage').then((m) => ({
+            default: () => {
+                const { kbId } = kbDetailRoute.useParams();
+                return (
+                    <ProtectedRoute>
+                        <m.KnowledgeBaseDetailPage kbId={kbId} />
+                    </ProtectedRoute>
+                );
+            },
+        })),
+    ),
+});
+
 const guestRoute = new Route({
     getParentRoute: () => rootRoute,
     path: '/guest',
@@ -571,6 +602,8 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     myResumeRoute,
     myResumesRoute,
+    kbListRoute,
+    kbDetailRoute,
     adminRoute,
     adminBrandEngineRoute,
     adminThemeGeneratorRoute,
