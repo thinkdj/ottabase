@@ -217,6 +217,8 @@ function captureResumeHtml(captureId: string): string {
     clone.style.borderRadius = '0';
     clone.style.outline = 'none';
     clone.style.maxWidth = 'none'; // let Puppeteer control page width
+    clone.style.aspectRatio = 'auto'; // allow content to flow across PDF pages
+    clone.style.overflow = 'visible';
 
     // Convert CSS zoom → transform:scale() on the resume container and any
     // child elements that use it (template root divs apply zoom for the
@@ -278,6 +280,22 @@ function captureResumeHtml(captureId: string): string {
         }
     }
 
+    // ── Capture :root font CSS variables ────────────────────────────────────
+    // Brand theme (BrandThemeApplicator) sets --font-heading, --font-body,
+    // --font-handwriting etc. on document.documentElement.style. These are NOT
+    // in any stylesheet — they're inline. Without them, var(--font-heading)
+    // resolves to fallback (system fonts) and Google Fonts never apply in PDF.
+    const rootVars: string[] = [];
+    const rootStyle = document.documentElement.style;
+    for (let i = 0; i < rootStyle.length; i++) {
+        const prop = rootStyle[i];
+        if (prop.startsWith('--font-') || prop.startsWith('--typography-')) {
+            const val = rootStyle.getPropertyValue(prop).trim();
+            if (val) rootVars.push(`${prop}: ${val}`);
+        }
+    }
+    const rootVarsCss = rootVars.length > 0 ? `:root {\n  ${rootVars.join(';\n  ')};\n}\n\n` : '';
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -311,6 +329,14 @@ function captureResumeHtml(captureId: string): string {
       break-inside: avoid;
     }
 
+    /* Template roots use max-w-[794px] etc. — override for edge-to-edge PDF */
+    #resume-capture > div {
+      max-width: 100% !important;
+      width: 100% !important;
+    }
+
+    /* Font/typography vars from brand theme — required for Google Fonts in PDF */
+    ${rootVarsCss}
     ${css}
   </style>
 </head>

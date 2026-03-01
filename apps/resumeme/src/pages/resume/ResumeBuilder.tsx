@@ -1292,14 +1292,31 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         setHeadingLabels((prev) => ({ ...prev, [key]: label }));
     }, []);
 
+    const buildDefaultResumeFileName = useCallback(() => {
+        const rawName = (data.fullName || 'Resume').trim();
+        const nameParts = rawName.split(/\s+/).filter(Boolean);
+        const firstName = (nameParts[0] || 'First').replace(/[^a-zA-Z0-9]/g, '');
+        const lastName = (nameParts[nameParts.length - 1] || 'Last').replace(/[^a-zA-Z0-9]/g, '');
+        const templateName =
+            RESUME_TEMPLATES.find((template) => template.id === templateId)?.name.replace(/[^a-zA-Z0-9]/g, '') ||
+            'Theme';
+
+        const now = new Date();
+        const yyyy = String(now.getFullYear());
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+
+        return `${firstName}_${lastName}_Resume_${templateName}_${yyyy}${mm}${dd}`;
+    }, [data.fullName, templateId]);
+
     // ---- Open save dialog ----
     const handleOpenSaveDialog = useCallback(() => {
         if (guestMode) return;
         if (!saveName) {
-            setSaveName(`Resume — ${new Date().toLocaleDateString()}`);
+            setSaveName(buildDefaultResumeFileName());
         }
         setShowSaveDialog(true);
-    }, [guestMode, saveName]);
+    }, [guestMode, saveName, buildDefaultResumeFileName]);
 
     // ---- Confirm save — creates or overwrites a ResumeSaved via API ----
     const handleConfirmSave = useCallback(() => {
@@ -1799,11 +1816,11 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                     ))}
 
                 {/* Center — Resume canvas */}
-                <main id="resume-print-area" className="flex flex-1 flex-col items-center overflow-y-auto p-4 lg:p-8">
+                <main id="resume-print-area" className="flex flex-1 flex-col items-center overflow-y-auto py-4 lg:py-8">
                     {/* id="resume-capture" is used by exportAsPdfServerSide to serialise the rendered DOM */}
                     <div
                         id="resume-capture"
-                        className="w-full max-w-[816px] overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-border dark:bg-gray-900"
+                        className="aspect-[210/297] w-full min-w-0 max-w-[816px] overflow-y-auto overflow-x-hidden rounded-lg bg-white shadow-lg ring-1 ring-border dark:bg-gray-900 print:max-w-none print:aspect-auto print:min-h-0"
                     >
                         <ResumePreview
                             data={data}

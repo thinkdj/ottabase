@@ -173,7 +173,7 @@ canvas.interactive {
         max-width: 100% !important;
     }
 
-    /* 5. The resume card — remove decorative chrome (shadow, border, radius) */
+    /* 5. The resume card — remove decorative chrome, aspect-ratio so content flows */
     #resume-print-area > div {
         box-shadow: none !important;
         outline: none !important;
@@ -183,6 +183,9 @@ canvas.interactive {
         width: 100% !important;
         margin: 0 !important;
         background: white !important;
+        aspect-ratio: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
     }
 
     /* 6. Template inner wrapper — fill width, white bg, dark text */
@@ -201,10 +204,9 @@ canvas.interactive {
         print-color-adjust: exact !important;
     }
 
-    /* 8. Page settings — letter size with comfortable margins.
-       Change to 'A4' if targeting European users. */
+    /* 8. Page settings — letter size, edge-to-edge (no page margin). */
     @page {
-        margin: 0.4in;
+        margin: 0;
         size: letter;
     }
 }

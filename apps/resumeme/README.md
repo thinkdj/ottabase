@@ -140,9 +140,11 @@ Body: { html: string, fileName?: string }
 // html = fully self-contained HTML captured from the browser DOM
 ```
 
-**Font handling:** Puppeteer's Chromium fetches external font stylesheets via `networkidle0` and then waits for
-`document.fonts.ready` (with a 5s safety timeout) before rendering. Google Fonts preconnect hints are always included
-even if the page didn't have them originally.
+**Font handling:** The capture includes `:root` font CSS variables (`--font-heading`, `--font-body`,
+`--font-handwriting`, `--typography-*`) from the brand theme so `var(--font-heading)` etc. resolve correctly in the PDF.
+Puppeteer's Chromium fetches external font stylesheets via `networkidle0` and then waits for `document.fonts.ready`
+(with a 5s safety timeout) before rendering. Google Fonts preconnect hints are always included even if the page didn't
+have them originally.
 
 During local `wrangler dev` without the binding the route returns `503 BROWSER_BINDING_UNAVAILABLE` and the client
 surfaces an error toast. PDF generation requires the binding — there is no silent fallback.
