@@ -18,7 +18,7 @@ import type { ApiRouteContext } from './router';
 /** Generate a random 8-character alphanumeric short code. */
 function generateShortCode(): string {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    return Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => chars[b % 36]).join('');
+    return Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => chars[b % 36]).join('');
 }
 
 /**
@@ -51,7 +51,16 @@ export async function handleResumeShare(context: ApiRouteContext): Promise<Respo
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
-    const shortCode = generateShortCode();
+    // Generate a unique short code with collision detection
+    let shortCode = generateShortCode();
+    let retries = 3;
+    while (retries > 0) {
+        const existing = await Shortlink.findByCode(shortCode);
+        if (!existing) break;
+        shortCode = generateShortCode();
+        retries--;
+    }
+
     const origin = new URL(request.url).origin;
     // Embed resumeId in the URL so the reverse lookup (code → resume) works
     const fullUrl = `${origin}/r/${shortCode}?resumeId=${encodeURIComponent(body.resumeId)}`;
