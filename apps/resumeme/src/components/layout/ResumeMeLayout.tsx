@@ -3,30 +3,15 @@
 // Clean header-focused layout with inline nav links (no sidebar).
 // ---------------------------------------------------------------------------
 
-import { OrganizationSwitcher } from '@/components/OrganizationSwitcher';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useSession } from '@/lib/auth';
 import { getNavLinks } from '@/ottabase/components/layout/layout.constants';
 import { APP_META } from '@/ottabase/config';
-import { organizationIdAtom } from '@/ottabase/state/appState';
 import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
 import { Avatar, AvatarFallback, AvatarImage, Button } from '@ottabase/ui-shadcn';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
-import { useSetAtom } from 'jotai';
 import { LogIn, LogOut, Menu, X } from 'lucide-react';
 import { memo, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-
-// ── Organization selection hook ──
-function useOrganizationSelection() {
-    const [currentOrgId, setCurrentOrgId] = useLocalStorage<string>('ottabase.current-org-id');
-    const setOrganizationId = useSetAtom(organizationIdAtom);
-    const setOrganization = (orgId: string) => {
-        setCurrentOrgId(orgId);
-        setOrganizationId(orgId);
-    };
-    return { currentOrgId, setOrganization };
-}
 
 // ── User avatar + logout button ──
 const UserSection = memo(function UserSection() {
@@ -83,10 +68,11 @@ const UserSection = memo(function UserSection() {
 
 // ── Mobile nav drawer ──
 function MobileNav() {
-    const { isAuthenticated } = useSession({ skipAutoSync: true });
+    const { isAuthenticated, user } = useSession({ skipAutoSync: true });
     const location = useLocation();
     const [open, setOpen] = useState(false);
-    const links = getNavLinks(!!isAuthenticated);
+    const permissions = (user as any)?.permissions ?? [];
+    const links = getNavLinks(!!isAuthenticated, permissions);
 
     const overlay = open
         ? createPortal(
@@ -138,15 +124,15 @@ function MobileNav() {
 
 // ── Main layout ──
 export const ResumeMeLayout = memo(function ResumeMeLayout({ children }: { children: React.ReactNode }) {
-    const { isAuthenticated } = useSession({ skipAutoSync: true });
-    const { currentOrgId, setOrganization } = useOrganizationSelection();
+    const { isAuthenticated, user } = useSession({ skipAutoSync: true });
     const location = useLocation();
-    const links = getNavLinks(!!isAuthenticated);
+    const permissions = (user as any)?.permissions ?? [];
+    const links = getNavLinks(!!isAuthenticated, permissions);
 
     return (
         <div className="min-h-screen bg-background font-sans flex flex-col">
             {/* ── Header ── */}
-            <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
+            <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 print:hidden">
                 <div className="mx-auto flex items-center justify-between px-4 py-2.5 max-w-screen-2xl">
                     {/* Left: mobile hamburger + logo */}
                     <div className="flex items-center gap-2">
@@ -173,9 +159,6 @@ export const ResumeMeLayout = memo(function ResumeMeLayout({ children }: { child
                     {/* Right: controls + user */}
                     <div className="flex items-center gap-1.5">
                         <DarkModeToggle type="button" title="Toggle dark/light mode" />
-                        {isAuthenticated && (
-                            <OrganizationSwitcher currentOrgId={currentOrgId} onOrgChange={setOrganization} />
-                        )}
                         <UserSection />
                     </div>
                 </div>
@@ -185,7 +168,7 @@ export const ResumeMeLayout = memo(function ResumeMeLayout({ children }: { child
             <main className="flex-1">{children}</main>
 
             {/* ── Footer ── */}
-            <footer className="border-t mt-auto">
+            <footer className="border-t mt-auto print:hidden">
                 <div className="mx-auto px-4 py-6 text-center text-xs text-muted-foreground max-w-screen-2xl">
                     Built with Ottabase
                 </div>

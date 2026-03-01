@@ -5,6 +5,8 @@ export interface NavLink {
     authRequired?: boolean;
     /** Only show when NOT authenticated */
     guestOnly?: boolean;
+    /** Only show when user has *:* (superadmin) permission */
+    superAdminOnly?: boolean;
 }
 
 /**
@@ -17,14 +19,16 @@ const NAV_LINKS: NavLink[] = [
     { to: '/my-resumes', label: 'My Resumes', authRequired: true },
     { to: '/builder', label: 'Resume Builder', authRequired: true },
     { to: '/guest', label: 'Try Free', guestOnly: true },
-    { to: '/admin', label: 'Admin', authRequired: true },
+    { to: '/admin', label: 'Admin', authRequired: true, superAdminOnly: true },
 ];
 
-/** Nav links filtered by auth state. */
-export function getNavLinks(isAuthenticated = false): NavLink[] {
+/** Nav links filtered by auth state and permissions. */
+export function getNavLinks(isAuthenticated = false, permissions: string[] = []): NavLink[] {
+    const isSuperAdmin = permissions.includes('*:*');
     return NAV_LINKS.filter((link) => {
         if (link.authRequired && !isAuthenticated) return false;
         if (link.guestOnly && isAuthenticated) return false;
+        if (link.superAdminOnly && !isSuperAdmin) return false;
         return true;
     });
 }

@@ -119,34 +119,43 @@ canvas.interactive {
    =========================== */
 
 @media print {
-    /* Hide everything by default */
-    body > *:not(#root),
-    header,
-    nav,
-    aside,
-    dialog,
-    [role='dialog'],
-    .print\\:hidden {
-        display: none !important;
-    }
-
-    /* Strip layout chrome so the resume fills the page */
+    /* 1. Reset page-level constraints */
     html,
-    body,
-    #root {
+    body {
         margin: 0 !important;
         padding: 0 !important;
         background: white !important;
         overflow: visible !important;
         height: auto !important;
+        min-height: 0 !important;
     }
 
-    /* Reset the builder wrapper to flow naturally */
-    #root > * {
-        display: contents !important;
+    /* 2. Strip flex/grid/height from the React root and its ancestor chain
+       so the resume content flows naturally for print pagination. */
+    #root,
+    #root > *,
+    #root > * > *,
+    #root > * > * > *,
+    #root > * > * > * > * {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+        position: static !important;
     }
 
-    /* The resume canvas area — make it fill the page */
+    /* 3. Hide everything that is not the resume canvas */
+    header,
+    footer,
+    nav,
+    aside,
+    dialog,
+    [role='dialog'] {
+        display: none !important;
+    }
+
+    /* 4. The resume canvas area — fill the page */
     #resume-print-area {
         display: block !important;
         padding: 0 !important;
@@ -156,19 +165,28 @@ canvas.interactive {
         max-width: 100% !important;
     }
 
-    /* The resume card itself — remove shadow/ring, fill width */
+    /* 5. The resume card — remove decorative chrome */
     #resume-print-area > div {
         box-shadow: none !important;
-        ring: none !important;
         outline: none !important;
         border: none !important;
         border-radius: 0 !important;
         max-width: 100% !important;
         width: 100% !important;
         margin: 0 !important;
+        background: white !important;
     }
 
-    /* Ensure page break settings */
+    /* 6. Template inner wrapper — fill width, white bg */
+    #resume-print-area > div > div {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        background: white !important;
+        color: #1a1a1a !important;
+    }
+
+    /* 7. Page settings */
     @page {
         margin: 0.4in;
         size: letter;

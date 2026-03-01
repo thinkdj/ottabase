@@ -23,6 +23,7 @@ import {
     DialogTitle,
     Input,
 } from '@ottabase/ui-shadcn';
+import { IconAdjustments, IconChevronLeft, IconChevronRight, IconLayoutSidebar } from '@tabler/icons-react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GUEST_DATA } from './guestData';
@@ -613,7 +614,8 @@ function RightSidebar({
 // ---------------------------------------------------------------------------
 function SidebarToggle({ side, isOpen, onClick }: { side: 'left' | 'right'; isOpen: boolean; onClick: () => void }) {
     // Arrow points inward when open, outward when closed
-    const arrow = side === 'left' ? (isOpen ? '◀' : '▶') : isOpen ? '▶' : '◀';
+    const Icon =
+        side === 'left' ? (isOpen ? IconChevronLeft : IconChevronRight) : isOpen ? IconChevronRight : IconChevronLeft;
     return (
         <button
             type="button"
@@ -621,7 +623,7 @@ function SidebarToggle({ side, isOpen, onClick }: { side: 'left' | 'right'; isOp
             title={isOpen ? `Hide ${side} sidebar` : `Show ${side} sidebar`}
             className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
         >
-            {arrow}
+            <Icon className="h-4 w-4" />
         </button>
     );
 }
@@ -1567,15 +1569,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                             className="fixed left-2 top-[50%] z-40 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-card shadow-lg ring-1 ring-border hover:bg-muted print:hidden"
                             title="Toggle content panel"
                         >
-                            <svg
-                                className="h-5 w-5 text-muted-foreground"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                            >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h10M4 18h16" />
-                            </svg>
+                            <IconLayoutSidebar className="h-5 w-5 text-muted-foreground" />
                         </button>
                         <button
                             type="button"
@@ -1586,19 +1580,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                             className="fixed right-2 top-[50%] z-40 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-card shadow-lg ring-1 ring-border hover:bg-muted print:hidden"
                             title="Toggle style panel"
                         >
-                            <svg
-                                className="h-5 w-5 text-muted-foreground"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-                                />
-                            </svg>
+                            <IconAdjustments className="h-5 w-5 text-muted-foreground" />
                         </button>
                     </>
                 )}
@@ -1674,7 +1656,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
 
                 {/* Center — Resume canvas */}
                 <main id="resume-print-area" className="flex flex-1 flex-col items-center overflow-y-auto p-4 lg:p-8">
-                    <div className="w-full max-w-[816px] rounded-lg bg-card shadow-lg ring-1 ring-border">
+                    <div className="w-full max-w-[816px] overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-border dark:bg-gray-900">
                         <ResumePreview
                             data={data}
                             templateId={templateId}
