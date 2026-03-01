@@ -95,7 +95,11 @@ export default function TemplateClassic({
         workExperiences: () =>
             workExperiences.length > 0 ? (
                 <section className="mb-5" key="workExperiences">
-                    <SectionHeading title={resolveHeadingLabel('workExperiences', headingLabels, 'Experience')} sectionKey="workExperiences" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('workExperiences', headingLabels, 'Experience')}
+                        sectionKey="workExperiences"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="space-y-4">
                         {workExperiences.map((exp) => (
                             <div key={exp.id}>
@@ -131,7 +135,11 @@ export default function TemplateClassic({
         educations: () =>
             educations.length > 0 ? (
                 <section className="mb-5" key="educations">
-                    <SectionHeading title={resolveHeadingLabel('educations', headingLabels, 'Education')} sectionKey="educations" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('educations', headingLabels, 'Education')}
+                        sectionKey="educations"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="space-y-3">
                         {educations.map((edu) => (
                             <div key={edu.id}>
@@ -160,7 +168,11 @@ export default function TemplateClassic({
         skillSets: () =>
             skillSets.length > 0 ? (
                 <section className="mb-5" key="skillSets">
-                    <SectionHeading title={resolveHeadingLabel('skillSets', headingLabels, 'Skills')} sectionKey="skillSets" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('skillSets', headingLabels, 'Skills')}
+                        sectionKey="skillSets"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="space-y-2">
                         {skillSets.map((set) => (
                             <div key={set.id}>
@@ -177,7 +189,11 @@ export default function TemplateClassic({
         projects: () =>
             projects.length > 0 ? (
                 <section className="mb-5" key="projects">
-                    <SectionHeading title={resolveHeadingLabel('projects', headingLabels, 'Projects')} sectionKey="projects" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('projects', headingLabels, 'Projects')}
+                        sectionKey="projects"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="space-y-3">
                         {projects.map((proj) => (
                             <div key={proj.id}>
@@ -226,7 +242,11 @@ export default function TemplateClassic({
         certifications: () =>
             certifications.length > 0 ? (
                 <section className="mb-5" key="certifications">
-                    <SectionHeading title={resolveHeadingLabel('certifications', headingLabels, 'Certifications')} sectionKey="certifications" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('certifications', headingLabels, 'Certifications')}
+                        sectionKey="certifications"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="space-y-2">
                         {certifications.map((cert) => (
                             <div key={cert.id} className="flex flex-wrap items-baseline justify-between gap-x-2">

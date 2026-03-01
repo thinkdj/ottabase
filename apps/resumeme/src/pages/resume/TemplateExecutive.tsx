@@ -78,14 +78,25 @@ function ContactBar({ profile }: { profile: ResumeTemplateProps['data']['profile
     );
 }
 
-export default function TemplateExecutive({ data, accentColor, fontSize, sectionOrder, headingLabels, onHeadingChange }: ResumeTemplateProps) {
+export default function TemplateExecutive({
+    data,
+    accentColor,
+    fontSize,
+    sectionOrder,
+    headingLabels,
+    onHeadingChange,
+}: ResumeTemplateProps) {
     const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
 
     const sectionRenderers: Record<SectionKey, () => ReactNode> = {
         summary: () =>
             profile?.summary ? (
                 <section className="mb-6" key="summary">
-                    <SectionHeading title={resolveHeadingLabel('summary', headingLabels, 'Professional Summary')} sectionKey="summary" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('summary', headingLabels, 'Professional Summary')}
+                        sectionKey="summary"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <p className="whitespace-pre-line text-sm leading-relaxed text-gray-600">{profile.summary}</p>
                 </section>
             ) : null,
@@ -93,7 +104,11 @@ export default function TemplateExecutive({ data, accentColor, fontSize, section
         workExperiences: () =>
             workExperiences.length > 0 ? (
                 <section className="mb-6" key="workExperiences">
-                    <SectionHeading title={resolveHeadingLabel('workExperiences', headingLabels, 'Professional Experience')} sectionKey="workExperiences" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('workExperiences', headingLabels, 'Professional Experience')}
+                        sectionKey="workExperiences"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="space-y-5">
                         {workExperiences.map((exp) => (
                             <div key={exp.id}>
@@ -129,7 +144,11 @@ export default function TemplateExecutive({ data, accentColor, fontSize, section
         educations: () =>
             educations.length > 0 ? (
                 <section className="mb-6" key="educations">
-                    <SectionHeading title={resolveHeadingLabel('educations', headingLabels, 'Education')} sectionKey="educations" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('educations', headingLabels, 'Education')}
+                        sectionKey="educations"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="space-y-3">
                         {educations.map((edu) => (
                             <div key={edu.id} className="flex flex-wrap items-start justify-between gap-x-4">
@@ -158,7 +177,11 @@ export default function TemplateExecutive({ data, accentColor, fontSize, section
         skillSets: () =>
             skillSets.length > 0 ? (
                 <section className="mb-6" key="skillSets">
-                    <SectionHeading title={resolveHeadingLabel('skillSets', headingLabels, 'Core Competencies')} sectionKey="skillSets" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('skillSets', headingLabels, 'Core Competencies')}
+                        sectionKey="skillSets"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="flex flex-wrap gap-x-6 gap-y-2">
                         {skillSets.map((set) => (
                             <div key={set.id} className="min-w-[180px]">
@@ -175,7 +198,11 @@ export default function TemplateExecutive({ data, accentColor, fontSize, section
         projects: () =>
             projects.length > 0 ? (
                 <section className="mb-6" key="projects">
-                    <SectionHeading title={resolveHeadingLabel('projects', headingLabels, 'Key Projects')} sectionKey="projects" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('projects', headingLabels, 'Key Projects')}
+                        sectionKey="projects"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="space-y-3">
                         {projects.map((proj) => (
                             <div key={proj.id}>
@@ -211,7 +238,11 @@ export default function TemplateExecutive({ data, accentColor, fontSize, section
         certifications: () =>
             certifications.length > 0 ? (
                 <section className="mb-6" key="certifications">
-                    <SectionHeading title={resolveHeadingLabel('certifications', headingLabels, 'Certifications')} sectionKey="certifications" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('certifications', headingLabels, 'Certifications')}
+                        sectionKey="certifications"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {certifications.map((cert) => (
                             <div key={cert.id} className="flex items-start gap-2">

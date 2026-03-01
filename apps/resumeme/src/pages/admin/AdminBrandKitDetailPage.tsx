@@ -655,10 +655,7 @@ export function AdminBrandKitDetailPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleConfirmDelete}
-                            disabled={deleteMutation.isPending}
-                        >
+                        <AlertDialogAction onClick={handleConfirmDelete} disabled={deleteMutation.isPending}>
                             {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
                         </AlertDialogAction>
                     </AlertDialogFooter>

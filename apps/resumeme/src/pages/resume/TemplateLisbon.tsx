@@ -85,7 +85,14 @@ function MainSectionHeading({
 
 // ─── Template ───────────────────────────────────────────────────────────────
 
-export default function TemplateLisbon({ data, accentColor, fontSize, sectionOrder, headingLabels, onHeadingChange }: ResumeTemplateProps) {
+export default function TemplateLisbon({
+    data,
+    accentColor,
+    fontSize,
+    sectionOrder,
+    headingLabels,
+    onHeadingChange,
+}: ResumeTemplateProps) {
     const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
 
     // Sidebar sections: skills, educations, certifications (always in sidebar)
@@ -96,7 +103,11 @@ export default function TemplateLisbon({ data, accentColor, fontSize, sectionOrd
         summary: () =>
             profile?.summary ? (
                 <section className="mb-5" key="summary">
-                    <MainSectionHeading title={resolveHeadingLabel('summary', headingLabels, 'Profile')} sectionKey="summary" onHeadingChange={onHeadingChange} />
+                    <MainSectionHeading
+                        title={resolveHeadingLabel('summary', headingLabels, 'Profile')}
+                        sectionKey="summary"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <p className="whitespace-pre-line text-sm leading-relaxed text-gray-600">{profile.summary}</p>
                 </section>
             ) : null,
@@ -104,7 +115,11 @@ export default function TemplateLisbon({ data, accentColor, fontSize, sectionOrd
         workExperiences: () =>
             workExperiences.length > 0 ? (
                 <section className="mb-5" key="workExperiences">
-                    <MainSectionHeading title={resolveHeadingLabel('workExperiences', headingLabels, 'Employment History')} sectionKey="workExperiences" onHeadingChange={onHeadingChange} />
+                    <MainSectionHeading
+                        title={resolveHeadingLabel('workExperiences', headingLabels, 'Employment History')}
+                        sectionKey="workExperiences"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="space-y-4">
                         {workExperiences.map((exp) => (
                             <div key={exp.id}>
@@ -135,7 +150,11 @@ export default function TemplateLisbon({ data, accentColor, fontSize, sectionOrd
         projects: () =>
             projects.length > 0 ? (
                 <section className="mb-5" key="projects">
-                    <MainSectionHeading title={resolveHeadingLabel('projects', headingLabels, 'Projects')} sectionKey="projects" onHeadingChange={onHeadingChange} />
+                    <MainSectionHeading
+                        title={resolveHeadingLabel('projects', headingLabels, 'Projects')}
+                        sectionKey="projects"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="space-y-3">
                         {projects.map((proj) => (
                             <div key={proj.id}>

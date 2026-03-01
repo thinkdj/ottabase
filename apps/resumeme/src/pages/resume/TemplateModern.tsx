@@ -50,7 +50,14 @@ function ContactItem({ label, href }: { label: string; href?: string }) {
     return <div className="text-xs leading-relaxed">{content}</div>;
 }
 
-export default function TemplateModern({ data, accentColor, fontSize, sectionOrder, headingLabels, onHeadingChange }: ResumeTemplateProps) {
+export default function TemplateModern({
+    data,
+    accentColor,
+    fontSize,
+    sectionOrder,
+    headingLabels,
+    onHeadingChange,
+}: ResumeTemplateProps) {
     const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
 
     // Sections that live in the sidebar (fixed position)
@@ -63,7 +70,11 @@ export default function TemplateModern({ data, accentColor, fontSize, sectionOrd
         summary: () =>
             profile?.summary ? (
                 <section className="mb-5" key="summary">
-                    <SectionHeading title={resolveHeadingLabel('summary', headingLabels, 'Summary')} sectionKey="summary" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('summary', headingLabels, 'Summary')}
+                        sectionKey="summary"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                         {profile.summary}
                     </p>
@@ -73,7 +84,11 @@ export default function TemplateModern({ data, accentColor, fontSize, sectionOrd
         workExperiences: () =>
             workExperiences.length > 0 ? (
                 <section className="mb-5" key="workExperiences">
-                    <SectionHeading title={resolveHeadingLabel('workExperiences', headingLabels, 'Experience')} sectionKey="workExperiences" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('workExperiences', headingLabels, 'Experience')}
+                        sectionKey="workExperiences"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="space-y-4">
                         {workExperiences.map((exp) => (
                             <div key={exp.id}>
@@ -108,7 +123,11 @@ export default function TemplateModern({ data, accentColor, fontSize, sectionOrd
         educations: () =>
             educations.length > 0 ? (
                 <section className="mb-5" key="educations">
-                    <SectionHeading title={resolveHeadingLabel('educations', headingLabels, 'Education')} sectionKey="educations" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('educations', headingLabels, 'Education')}
+                        sectionKey="educations"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="space-y-3">
                         {educations.map((edu) => (
                             <div key={edu.id}>
@@ -137,7 +156,11 @@ export default function TemplateModern({ data, accentColor, fontSize, sectionOrd
         projects: () =>
             projects.length > 0 ? (
                 <section className="mb-5" key="projects">
-                    <SectionHeading title={resolveHeadingLabel('projects', headingLabels, 'Projects')} sectionKey="projects" onHeadingChange={onHeadingChange} />
+                    <SectionHeading
+                        title={resolveHeadingLabel('projects', headingLabels, 'Projects')}
+                        sectionKey="projects"
+                        onHeadingChange={onHeadingChange}
+                    />
                     <div className="space-y-3">
                         {projects.map((proj) => (
                             <div key={proj.id}>

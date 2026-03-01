@@ -42,7 +42,14 @@ function SectionHeading({
     );
 }
 
-export default function TemplateMinimal({ data, accentColor, fontSize, sectionOrder, headingLabels, onHeadingChange }: ResumeTemplateProps) {
+export default function TemplateMinimal({
+    data,
+    accentColor,
+    fontSize,
+    sectionOrder,
+    headingLabels,
+    onHeadingChange,
+}: ResumeTemplateProps) {
     const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
 
     // Contact items as minimal comma-separated line
@@ -60,7 +67,11 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
                 <div key="summary">
                     <SectionDivider />
                     <section>
-                        <SectionHeading title={resolveHeadingLabel('summary', headingLabels, 'About')} sectionKey="summary" onHeadingChange={onHeadingChange} />
+                        <SectionHeading
+                            title={resolveHeadingLabel('summary', headingLabels, 'About')}
+                            sectionKey="summary"
+                            onHeadingChange={onHeadingChange}
+                        />
                         <p className="max-w-prose text-sm leading-relaxed text-gray-500">{profile.summary}</p>
                     </section>
                 </div>
@@ -71,7 +82,11 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
                 <div key="workExperiences">
                     <SectionDivider />
                     <section>
-                        <SectionHeading title={resolveHeadingLabel('workExperiences', headingLabels, 'Experience')} sectionKey="workExperiences" onHeadingChange={onHeadingChange} />
+                        <SectionHeading
+                            title={resolveHeadingLabel('workExperiences', headingLabels, 'Experience')}
+                            sectionKey="workExperiences"
+                            onHeadingChange={onHeadingChange}
+                        />
                         <div className="space-y-5">
                             {workExperiences.map((exp) => (
                                 <div key={exp.id}>
@@ -110,7 +125,11 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
                 <div key="educations">
                     <SectionDivider />
                     <section>
-                        <SectionHeading title={resolveHeadingLabel('educations', headingLabels, 'Education')} sectionKey="educations" onHeadingChange={onHeadingChange} />
+                        <SectionHeading
+                            title={resolveHeadingLabel('educations', headingLabels, 'Education')}
+                            sectionKey="educations"
+                            onHeadingChange={onHeadingChange}
+                        />
                         <div className="space-y-3">
                             {educations.map((edu) => (
                                 <div key={edu.id}>
@@ -144,7 +163,11 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
                 <div key="skillSets">
                     <SectionDivider />
                     <section>
-                        <SectionHeading title={resolveHeadingLabel('skillSets', headingLabels, 'Skills')} sectionKey="skillSets" onHeadingChange={onHeadingChange} />
+                        <SectionHeading
+                            title={resolveHeadingLabel('skillSets', headingLabels, 'Skills')}
+                            sectionKey="skillSets"
+                            onHeadingChange={onHeadingChange}
+                        />
                         <div className="flex flex-wrap gap-x-8 gap-y-2">
                             {skillSets.map((set) => (
                                 <div key={set.id}>
@@ -162,7 +185,11 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
                 <div key="projects">
                     <SectionDivider />
                     <section>
-                        <SectionHeading title={resolveHeadingLabel('projects', headingLabels, 'Projects')} sectionKey="projects" onHeadingChange={onHeadingChange} />
+                        <SectionHeading
+                            title={resolveHeadingLabel('projects', headingLabels, 'Projects')}
+                            sectionKey="projects"
+                            onHeadingChange={onHeadingChange}
+                        />
                         <div className="space-y-3">
                             {projects.map((proj) => (
                                 <div key={proj.id}>
@@ -203,7 +230,11 @@ export default function TemplateMinimal({ data, accentColor, fontSize, sectionOr
                 <div key="certifications">
                     <SectionDivider />
                     <section>
-                        <SectionHeading title={resolveHeadingLabel('certifications', headingLabels, 'Certifications')} sectionKey="certifications" onHeadingChange={onHeadingChange} />
+                        <SectionHeading
+                            title={resolveHeadingLabel('certifications', headingLabels, 'Certifications')}
+                            sectionKey="certifications"
+                            onHeadingChange={onHeadingChange}
+                        />
                         <div className="space-y-2">
                             {certifications.map((cert) => (
                                 <div key={cert.id} className="flex flex-wrap items-baseline justify-between gap-x-4">

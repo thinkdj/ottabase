@@ -389,10 +389,7 @@ export function UserRBACPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={removeMember.isPending}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleConfirmRemove}
-                            disabled={removeMember.isPending}
-                        >
+                        <AlertDialogAction onClick={handleConfirmRemove} disabled={removeMember.isPending}>
                             {removeMember.isPending ? 'Removing…' : 'Remove'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
