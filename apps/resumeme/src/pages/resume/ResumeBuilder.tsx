@@ -1656,7 +1656,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                     <div>
                                         <div className="font-medium">PDF</div>
                                         <div className="text-xs text-muted-foreground">
-                                            server-generated · best quality
+                                            Server-generated · Best quality
                                         </div>
                                     </div>
                                 </DropdownMenuItem>
@@ -1680,7 +1680,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                     </svg>
                                     <div>
                                         <div className="font-medium">Plain Text</div>
-                                        <div className="text-xs text-muted-foreground">.txt — ATS-friendly</div>
+                                        <div className="text-xs text-muted-foreground">ATS-friendly .txt</div>
                                     </div>
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -1805,7 +1805,9 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                     {/* id="resume-capture" is used by exportAsPdfServerSide to serialise the rendered DOM */}
                     <div
                         id="resume-capture"
-                        className="aspect-[210/297] w-full min-w-0 max-w-[816px] overflow-y-auto overflow-x-hidden rounded-lg bg-white shadow-lg ring-1 ring-border dark:bg-gray-900 print:max-w-none print:aspect-auto print:min-h-0"
+                        className="aspect-[210/297] w-full min-w-0 max-w-[816px] overflow-y-auto overflow-x-hidden bg-white shadow-lg ring-1 ring-border print:max-w-none
+                        print:aspect-auto print:min-h-0 [&>div]:min-h-full [&>div]:bg-white rounded-lg print:rounded-none p-0 mt-4 print:shadow-none
+                        print:ring-none print:border-none print:ring-border-none print:mt-0"
                     >
                         <ResumePreview
                             data={data}
