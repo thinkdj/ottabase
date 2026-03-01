@@ -60,10 +60,7 @@ export function useSession(options?: UseSessionOptions) {
     }, [
         sessionData.user,
         sessionData.isAuthenticated,
-        setGlobalUser,
-        setGlobalIsAuthenticated,
-        setAppId,
-        setOrganizationId,
+        // Remove setter functions from dependencies - they should be stable
     ]);
 
     return sessionData;

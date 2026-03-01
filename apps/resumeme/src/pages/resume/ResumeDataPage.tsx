@@ -4,6 +4,7 @@
 // skills, projects, and certifications from this page.
 // ---------------------------------------------------------------------------
 
+import { useSession } from '@/lib/auth';
 import {
     useCreateResumeCertification,
     useCreateResumeDataSet,
@@ -34,7 +35,11 @@ import {
     useUpdateResumeSkillSet,
     useUpdateResumeWorkExperience,
 } from '@/ottabase/hooks/useResume';
+import { AvatarEditModal } from '@/pages/user/AvatarEditModal';
 import {
+    Avatar,
+    AvatarFallback,
+    AvatarImage,
     Button,
     Card,
     CardContent,
@@ -50,6 +55,7 @@ import {
     Input,
     Textarea,
 } from '@ottabase/ui-shadcn';
+import { IconPencil } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import {
     ArrowRight,
@@ -801,8 +807,99 @@ function DataSetSection({
     );
 }
 
+// ── "Me" Card — shows user avatar, name, and primary profile info ──
+function MeCard({
+    user,
+    profile,
+    avatarModalOpen,
+    setAvatarModalOpen,
+    updateUser,
+    updateProfile,
+    refreshSession,
+}: {
+    user: { name?: string | null; email?: string | null; image?: string | null };
+    profile?: { id?: string; headline?: string; email?: string; location?: string; avatarUrl?: string } | null;
+    avatarModalOpen: boolean;
+    setAvatarModalOpen: (open: boolean) => void;
+    updateUser: (data: Record<string, unknown>) => void;
+    updateProfile: (id: string, data: Record<string, unknown>) => void;
+    refreshSession?: () => void;
+}) {
+    // Resolve avatar: prefer profile avatarUrl (used by templates), fall back to user account image
+    const avatarUrl = profile?.avatarUrl || user.image || null;
+    const initials = (user.name || 'U')
+        .split(' ')
+        .map((w) => w[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+
+    return (
+        <Card className="mb-6">
+            <CardContent className="flex items-center gap-4 py-5">
+                {/* Avatar with edit overlay */}
+                <div className="group relative shrink-0">
+                    <Avatar className="h-16 w-16 ring-2 ring-border">
+                        <AvatarImage src={avatarUrl ?? undefined} alt={user.name || 'Avatar'} />
+                        <AvatarFallback className="text-lg">{initials}</AvatarFallback>
+                    </Avatar>
+                    <button
+                        type="button"
+                        onClick={() => setAvatarModalOpen(true)}
+                        className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
+                        aria-label="Edit avatar"
+                    >
+                        <IconPencil className="h-3 w-3" />
+                    </button>
+                </div>
+
+                {/* Name, headline, contact info */}
+                <div className="min-w-0 flex-1">
+                    <h2 className="truncate text-lg font-semibold leading-tight">{user.name || 'Your Name'}</h2>
+                    {profile?.headline && (
+                        <p className="mt-0.5 truncate text-sm text-muted-foreground">{profile.headline}</p>
+                    )}
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                        {(profile?.email || user.email) && <span>{profile?.email || user.email}</span>}
+                        {profile?.location && <span>{profile.location}</span>}
+                    </div>
+                </div>
+            </CardContent>
+
+            {/* Avatar crop/upload modal — uploads to R2, then saves URL to both user and profile */}
+            <AvatarEditModal
+                open={avatarModalOpen}
+                onOpenChange={setAvatarModalOpen}
+                hasImage={!!avatarUrl}
+                currentImageUrl={avatarUrl ?? undefined}
+                onSuccess={(imageUrl: string) => {
+                    // Update user account image
+                    updateUser({ image: imageUrl });
+                    // Note: No need to call refreshSession() here as updateUser() already updates the local session
+                    // Also save to profile's avatarUrl so resume templates show it
+                    if (profile?.id) {
+                        updateProfile(profile.id, { avatarUrl: imageUrl });
+                    }
+                }}
+                onRemove={() => {
+                    updateUser({ image: null });
+                    // Note: No need to call refreshSession() here as updateUser() already updates the local session
+                    if (profile?.id) {
+                        updateProfile(profile.id, { avatarUrl: null });
+                    }
+                }}
+                onError={(msg: string) => console.error('Avatar update failed:', msg)}
+            />
+        </Card>
+    );
+}
+
 // ── Main Page ──
 export function ResumeDataPage() {
+    // Current user session — for the "Me" card
+    const { user, updateUser, refreshSession } = useSession();
+    const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+
     // Fetch all resume entities for the current user
     const { data: profiles, isLoading: profilesLoading } = useResumeProfiles();
     const { data: workExps, isLoading: workLoading } = useResumeWorkExperiences();
@@ -938,6 +1035,21 @@ export function ResumeDataPage() {
                     </Link>
                 </Button>
             </div>
+
+            {/* ── "Me" card — avatar, name, profile summary ── */}
+            {user && (
+                <MeCard
+                    user={user}
+                    profile={profileList[0]}
+                    avatarModalOpen={avatarModalOpen}
+                    setAvatarModalOpen={setAvatarModalOpen}
+                    updateUser={updateUser}
+                    updateProfile={(id: string, data: Record<string, unknown>) =>
+                        updateProfile.mutate({ id, data } as any)
+                    }
+                    refreshSession={refreshSession}
+                />
+            )}
 
             {/* Resume Data Sets — top-level bucket that curates the data below */}
             <DataSetSection

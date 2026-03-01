@@ -300,6 +300,8 @@ function LeftSidebar({
     onToggleProject,
     onToggleCertification,
     isViewOnly = false,
+    loadedResumeId,
+    onRefreshDataSet,
 }: {
     data: ResumeTemplateData;
     /** Unfiltered data — all items regardless of selection. Used to render sidebar item lists. */
@@ -321,6 +323,10 @@ function LeftSidebar({
     onToggleCertification: (id: string) => void;
     /** When true, checkboxes and profile selector are disabled (view-only mode) */
     isViewOnly?: boolean;
+    /** The loaded saved resume ID — used to show refresh button */
+    loadedResumeId?: string | null;
+    /** Callback to refresh data from the linked data set and exit view-only mode */
+    onRefreshDataSet?: () => void;
 }) {
     // Use sidebarData (unfiltered) for section counts so headers show total items
     const sections = buildContentSections(sidebarData, sectionOrder);
@@ -401,6 +407,30 @@ function LeftSidebar({
                 </select>
                 {profiles.length === 0 && (
                     <p className="mt-1 text-[11px] text-muted-foreground">Create a profile in My Resume Data first.</p>
+                )}
+                {/* Refresh data set — shown below disabled profile when viewing a saved resume */}
+                {isViewOnly && loadedResumeId && onRefreshDataSet && (
+                    <button
+                        type="button"
+                        onClick={onRefreshDataSet}
+                        className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-primary/40 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
+                        title="Refresh data from the linked data set and enable editing"
+                    >
+                        <svg
+                            className="h-3.5 w-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
+                        </svg>
+                        Refresh Resume Data Set
+                    </button>
                 )}
             </div>
 
@@ -1399,8 +1429,8 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                         />
                     </svg>
                     <span>
-                        <strong>View Only</strong> — This is a saved resume. Click &quot;Edit&quot; to make changes, or
-                        &quot;Refresh Resume Data Set&quot; to update data.
+                        <strong>View Only</strong> — This is a saved resume. Click &quot;Edit&quot; to change data, or
+                        adjust theme/colors and save directly.
                     </span>
                 </div>
             )}
@@ -1441,30 +1471,6 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    {/* Refresh Resume Data Set (when viewing a saved resume) */}
-                    {loadedResumeId && isViewOnly && !guestMode && (
-                        <button
-                            type="button"
-                            onClick={handleRefreshData}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
-                            title="Refresh data from the linked data set and enable editing"
-                        >
-                            <svg
-                                className="h-3.5 w-3.5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                />
-                            </svg>
-                            Refresh Resume Data Set
-                        </button>
-                    )}
                     {/* Edit / View toggle for saved resumes */}
                     {loadedResumeId && !guestMode && (
                         <button
@@ -1476,14 +1482,18 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                             {isViewOnly ? 'Edit' : 'View Only'}
                         </button>
                     )}
-                    {/* Save button */}
+                    {/* Save button — enabled even in view-only when a saved resume is loaded (for style changes) */}
                     {!guestMode && (
                         <button
                             type="button"
                             onClick={handleOpenSaveDialog}
-                            disabled={isViewOnly}
+                            disabled={isViewOnly && !loadedResumeId}
                             className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
-                            title={isViewOnly ? 'Switch to edit mode to save changes' : 'Save this resume'}
+                            title={
+                                isViewOnly && !loadedResumeId
+                                    ? 'Switch to edit mode to save changes'
+                                    : 'Save this resume'
+                            }
                         >
                             <svg
                                 className="h-4 w-4"
@@ -1620,6 +1630,8 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                     onToggleProject={toggleProject}
                                     onToggleCertification={toggleCertification}
                                     isViewOnly={isViewOnly}
+                                    loadedResumeId={loadedResumeId}
+                                    onRefreshDataSet={handleRefreshData}
                                 />
                             </aside>
                         </>
@@ -1650,6 +1662,8 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                 onToggleProject={toggleProject}
                                 onToggleCertification={toggleCertification}
                                 isViewOnly={isViewOnly}
+                                loadedResumeId={loadedResumeId}
+                                onRefreshDataSet={handleRefreshData}
                             />
                         </aside>
                     ))}

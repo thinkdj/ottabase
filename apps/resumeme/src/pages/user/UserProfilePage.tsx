@@ -368,12 +368,12 @@ export function UserProfilePage() {
                         currentImageUrl={user.image ?? undefined}
                         onSuccess={(imageUrl) => {
                             updateUser({ image: imageUrl });
-                            if (refreshSession) refreshSession();
+                            // Note: No need to call refreshSession() here as updateUser() already updates the local session
                             toast.success('Profile picture updated', 'Your avatar has been updated.');
                         }}
                         onRemove={() => {
                             updateUser({ image: null });
-                            if (refreshSession) refreshSession();
+                            // Note: No need to call refreshSession() here as updateUser() already updates the local session
                             toast.success('Profile picture removed', 'Your avatar has been removed.');
                         }}
                         onError={(msg) => toast.error('Avatar update failed', msg)}
@@ -438,7 +438,7 @@ export function UserProfilePage() {
                                                 body: { image: null },
                                             });
                                             updateUser({ image: null });
-                                            if (refreshSession) refreshSession();
+                                            // Note: No need to call refreshSession() here as updateUser() already updates the local session
                                             setAvatarPreviewOpen(false);
                                             setRemoveConfirmOpen(false);
                                             toast.success('Profile picture removed', 'Your avatar has been removed.');
