@@ -4,7 +4,8 @@ import type { ResumeTemplateData } from './types';
  * Dummy avatar for guest mode — a neutral placeholder silhouette.
  * Uses UI Avatars service for a deterministic "JD" placeholder.
  */
-export const GUEST_AVATAR_URL = 'https://ui-avatars.com/api/?name=John+Doe&size=200&background=475569&color=ffffff';
+// AI-generated portrait — stable URL from randomuser.me (CC-licensed placeholder faces)
+export const GUEST_AVATAR_URL = 'https://randomuser.me/api/portraits/men/32.jpg';
 
 /**
  * Mock resume data for guest/demo mode.

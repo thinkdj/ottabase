@@ -1,8 +1,8 @@
 import { useSession } from '@/lib/auth';
+import { APP_META } from '@/ottabase/config';
 import { useBrand } from '@ottabase/brand-engine-react';
 import type { ResolvedMenuSlotData } from '@ottabase/ottamenu';
 import { MenuSlotRenderer } from '@ottabase/ottamenu';
-import { APP_META } from '@/ottabase/config';
 import { Button } from '@ottabase/ui-shadcn';
 import { Link, useLocation } from '@tanstack/react-router';
 import { memo } from 'react';
@@ -25,7 +25,7 @@ export const TopbarHeader = memo(function TopbarHeader({
     const location = useLocation();
     const { config } = useBrand();
 
-    const navLinks = getNavLinks().filter((l) => !l.authRequired || isAuthenticated);
+    const navLinks = getNavLinks(!!isAuthenticated);
     const staticNav = (
         <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
@@ -88,7 +88,7 @@ export const MinimalHeader = memo(function MinimalHeader({
     const location = useLocation();
     const { config } = useBrand();
 
-    const navLinks = getNavLinks().filter((l) => !l.authRequired || isAuthenticated);
+    const navLinks = getNavLinks(!!isAuthenticated);
     const staticNav = (
         <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (

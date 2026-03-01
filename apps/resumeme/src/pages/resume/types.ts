@@ -107,6 +107,21 @@ export const RESUME_TEMPLATES: ResumeTemplateMeta[] = [
         name: 'Minimal',
         description: 'Ultra-clean, typography-focused with maximum whitespace',
     },
+    {
+        id: 'clean',
+        name: 'Clean',
+        description: 'Structured two-column body with full-width header and thin divider',
+    },
+    {
+        id: 'creative',
+        name: 'Creative',
+        description: 'Editorial portfolio style with avatar hero and timeline experience',
+    },
+    {
+        id: 'bold',
+        name: 'Bold',
+        description: 'Structured two-column with avatar blob and accent-bar job titles',
+    },
 ];
 
 /** Format "YYYY-MM" to readable date like "Jan 2024" */

@@ -3,11 +3,7 @@
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
-import {
-    resumeCertificationsTable,
-    type NewResumeCertificationType,
-    type ResumeCertificationType,
-} from './ResumeCertification.schema';
+import { resumeCertificationsTable } from './ResumeCertification.schema';
 
 export {
     resumeCertificationsTable,
@@ -107,7 +103,7 @@ export class ResumeCertification extends BaseModel {
             sortable: true,
             uiConfig: {
                 label: 'Issuer',
-                description: 'Issuing organisation',
+                description: 'Issuing Organization',
                 placeholder: 'e.g. Amazon Web Services',
             },
             formConfig: {

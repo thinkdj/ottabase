@@ -1,8 +1,8 @@
 import { useSession } from '@/lib/auth';
+import { APP_META } from '@/ottabase/config';
 import { useBrand } from '@ottabase/brand-engine-react';
 import type { ResolvedMenuSlotData } from '@ottabase/ottamenu';
 import { MenuSlotRenderer } from '@ottabase/ottamenu';
-import { APP_META } from '@/ottabase/config';
 import { Button } from '@ottabase/ui-shadcn';
 import { Link, useLocation } from '@tanstack/react-router';
 import { Menu, X } from 'lucide-react';
@@ -16,7 +16,7 @@ export function DrawerNav() {
     const { config } = useBrand();
     const [open, setOpen] = useState(false);
 
-    const links = getNavLinks().filter((l) => !l.authRequired || isAuthenticated);
+    const links = getNavLinks(!!isAuthenticated);
     const staticNav = links.map((link) => {
         const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
         return (

@@ -3,11 +3,7 @@
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
-import {
-    resumeWorkExperiencesTable,
-    type NewResumeWorkExperienceType,
-    type ResumeWorkExperienceType,
-} from './ResumeWorkExperience.schema';
+import { resumeWorkExperiencesTable } from './ResumeWorkExperience.schema';
 
 export {
     resumeWorkExperiencesTable,
@@ -89,7 +85,7 @@ export class ResumeWorkExperience extends BaseModel {
             sortable: true,
             uiConfig: {
                 label: 'Company',
-                description: 'Company or organisation name',
+                description: 'Company or Organization name',
                 placeholder: 'e.g. Acme Inc.',
             },
             formConfig: {

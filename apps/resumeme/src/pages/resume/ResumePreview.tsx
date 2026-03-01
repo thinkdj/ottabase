@@ -6,6 +6,9 @@ const TemplateModern = lazy(() => import('./TemplateModern'));
 const TemplateLisbon = lazy(() => import('./TemplateLisbon'));
 const TemplateExecutive = lazy(() => import('./TemplateExecutive'));
 const TemplateMinimal = lazy(() => import('./TemplateMinimal'));
+const TemplateClean = lazy(() => import('./TemplateClean'));
+const TemplateCreative = lazy(() => import('./TemplateCreative'));
+const TemplateBold = lazy(() => import('./TemplateBold'));
 
 /** Map template IDs to their lazy-loaded components */
 const TEMPLATE_MAP: Record<string, React.LazyExoticComponent<React.ComponentType<any>>> = {
@@ -14,6 +17,9 @@ const TEMPLATE_MAP: Record<string, React.LazyExoticComponent<React.ComponentType
     lisbon: TemplateLisbon,
     executive: TemplateExecutive,
     minimal: TemplateMinimal,
+    clean: TemplateClean,
+    creative: TemplateCreative,
+    bold: TemplateBold,
 };
 
 interface ResumePreviewProps {

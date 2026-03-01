@@ -6,7 +6,8 @@
     "scripts": {
         "dev": "vite --open",
         "dev:worker": "wrangler dev",
-        "dev:full": "pnpm build && pnpm dev:worker",
+        "dev:fe": "vite --open",
+        "dev:be": "wrangler dev",
         "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
         "preview": "pnpm build && wrangler dev",
         "deploy": "pnpm build && wrangler deploy",

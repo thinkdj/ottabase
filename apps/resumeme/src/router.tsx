@@ -1,9 +1,9 @@
 import { NotFoundPage } from '@/components/NotFoundPage';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { RouteLoadingFallback } from '@/components/RouteLoadingFallback';
+import { ResumeMeLayout } from '@/components/layout/ResumeMeLayout';
 import { usePageViewTracking } from '@/hooks/usePageViewTracking';
-import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
-import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
+import { BrandPathSync } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
 import { Toaster } from '@ottabase/ui-shadcn';
 import {
@@ -16,7 +16,7 @@ import {
     Router,
 } from '@tanstack/react-router';
 
-// ── Root Layout ──
+// ── Root Layout — uses the custom ResumeMe header-based layout ──
 function RootLayout() {
     const pathname = tanstackRouterAdapter.usePathname();
     usePageViewTracking();
@@ -25,9 +25,9 @@ function RootLayout() {
         <>
             <Toaster />
             <BrandPathSync pathname={pathname} />
-            <LayoutResolver router={tanstackRouterAdapter} layoutComponent={ConfigurableLayout}>
+            <ResumeMeLayout>
                 <Outlet />
-            </LayoutResolver>
+            </ResumeMeLayout>
         </>
     );
 }
