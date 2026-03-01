@@ -13,6 +13,12 @@ import { LogIn, LogOut, Menu, X } from 'lucide-react';
 import { memo, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+function isPathActive(pathname: string, linkTo: string): boolean {
+    if (pathname === linkTo) return true;
+    if (linkTo === '/') return pathname === '/';
+    return pathname.startsWith(`${linkTo}/`);
+}
+
 // ── User avatar + logout button ──
 const UserSection = memo(function UserSection() {
     const { isAuthenticated, user, logout } = useSession({ skipAutoSync: true });
@@ -91,9 +97,7 @@ function MobileNav() {
                           </Button>
                       </div>
                       {links.map((link) => {
-                          const active =
-                              location.pathname === link.to ||
-                              (link.to !== '/' && location.pathname.startsWith(link.to));
+                          const active = isPathActive(location.pathname, link.to);
                           return (
                               <Link
                                   key={link.to}
@@ -148,9 +152,7 @@ export const ResumeMeLayout = memo(function ResumeMeLayout({ children }: { child
                     {/* Centre: desktop nav links */}
                     <nav className="hidden md:flex items-center gap-1">
                         {links.map((link) => {
-                            const active =
-                                location.pathname === link.to ||
-                                (link.to !== '/' && location.pathname.startsWith(link.to));
+                            const active = isPathActive(location.pathname, link.to);
                             return (
                                 <Button asChild variant={active ? 'secondary' : 'ghost'} size="sm" key={link.to}>
                                     <Link to={link.to}>{link.label}</Link>

@@ -17,6 +17,12 @@ const WIDTH_MAP: Record<string, string> = {
 /** Static CSS for sidebar width — hoisted to avoid re-injecting on every render */
 const SIDEBAR_WIDTH_CSS = `@media (min-width: 768px) { aside[style*="--sidebar-width"] { width: var(--sidebar-width); } }`;
 
+function isPathActive(pathname: string, linkTo: string): boolean {
+    if (pathname === linkTo) return true;
+    if (linkTo === '/') return pathname === '/';
+    return pathname.startsWith(`${linkTo}/`);
+}
+
 export const SidebarNav = memo(function SidebarNav({ widthClass = 'w-56' }: { widthClass?: string }) {
     const { isAuthenticated } = useSession();
     const location = useLocation();
@@ -24,7 +30,7 @@ export const SidebarNav = memo(function SidebarNav({ widthClass = 'w-56' }: { wi
     const links = getNavLinks(!!isAuthenticated);
 
     const staticContent = links.map((link) => {
-        const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
+        const isActive = isPathActive(location.pathname, link.to);
         return (
             <Link
                 key={link.to}

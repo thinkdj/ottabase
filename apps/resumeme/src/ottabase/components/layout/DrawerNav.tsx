@@ -10,6 +10,12 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getNavLinks } from './layout.constants';
 
+function isPathActive(pathname: string, linkTo: string): boolean {
+    if (pathname === linkTo) return true;
+    if (linkTo === '/') return pathname === '/';
+    return pathname.startsWith(`${linkTo}/`);
+}
+
 export function DrawerNav() {
     const { isAuthenticated } = useSession();
     const location = useLocation();
@@ -18,7 +24,7 @@ export function DrawerNav() {
 
     const links = getNavLinks(!!isAuthenticated);
     const staticNav = links.map((link) => {
-        const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
+        const isActive = isPathActive(location.pathname, link.to);
         return (
             <Link
                 key={link.to}
