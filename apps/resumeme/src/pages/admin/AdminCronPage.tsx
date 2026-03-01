@@ -201,7 +201,7 @@ export function AdminCronPage() {
     const stats = overview?.stats;
 
     return (
-        <div className="mx-auto max-w-6xl space-y-6 px-4 py-12">
+        <div className="space-y-6">
             <Button asChild variant="ghost" className="w-fit">
                 <Link to="/admin">
                     <ArrowLeft className="mr-2 h-4 w-4" />

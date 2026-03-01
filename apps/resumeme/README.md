@@ -264,6 +264,9 @@ curl -X POST http://localhost:3006/api/ottaorm/init
 | `/auth/signup`           | Sign up                                            |
 | `/user/profile`          | User profile                                       |
 
+All `/admin/**` pages use a shared centered container (`max-w-4xl`) for consistent alignment and width across nested
+admin routes.
+
 ## Guest Mode
 
 Visit `/guest` to try the full resume builder without creating an account.

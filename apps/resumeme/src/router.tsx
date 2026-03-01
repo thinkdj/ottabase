@@ -20,13 +20,22 @@ import {
 function RootLayout() {
     const pathname = tanstackRouterAdapter.usePathname();
     usePageViewTracking();
+    const isAdminPath = pathname === '/admin' || pathname.startsWith('/admin/');
+    const isMigrationStatusPath = pathname === '/migration-status';
+    const useCenteredAppContainer = isAdminPath || isMigrationStatusPath;
 
     return (
         <>
             <Toaster />
             <BrandPathSync pathname={pathname} />
             <ResumeMeLayout>
-                <Outlet />
+                {useCenteredAppContainer ? (
+                    <div className="mx-auto w-full max-w-4xl px-4 py-8">
+                        <Outlet />
+                    </div>
+                ) : (
+                    <Outlet />
+                )}
             </ResumeMeLayout>
         </>
     );

@@ -149,7 +149,7 @@ export function MigrationStatusPage() {
     };
 
     return (
-        <div className="mx-auto max-w-5xl space-y-6 px-4 py-12">
+        <div className="space-y-6">
             <Button asChild variant="ghost" className="w-fit">
                 <Link to="/">← Back to Home</Link>
             </Button>
