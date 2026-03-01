@@ -122,6 +122,15 @@
         "binding": "OBCF_AI",
     },
 
+    // Browser Rendering API — headless Chromium via @cloudflare/puppeteer
+    // Requires Browser Rendering to be enabled in your Cloudflare dashboard:
+    //   Workers > resumeme > Settings > Browser Rendering > Enable
+    // Not available in local wrangler dev — worker route falls back gracefully.
+    // @see https://developers.cloudflare.com/browser-rendering/
+    "browser": {
+        "binding": "OBCF_BROWSER",
+    },
+
     // Durable Objects bindings for real-time features
     "durable_objects": {
         "bindings": [

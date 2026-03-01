@@ -1,16 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-    formatResumeDate,
-    formatDateRange,
-    RESUME_TEMPLATES,
-    DEFAULT_SECTION_ORDER,
-    FONT_SIZE_MIN,
-    FONT_SIZE_MAX,
-    FONT_SIZE_DEFAULT,
-    moveSectionUp,
-    moveSectionDown,
     DEFAULT_HEADING_LABELS,
+    DEFAULT_SECTION_ORDER,
+    FONT_SIZE_DEFAULT,
+    FONT_SIZE_MAX,
+    FONT_SIZE_MIN,
+    formatDateRange,
+    formatResumeDate,
+    moveSectionDown,
+    moveSectionUp,
     resolveHeadingLabel,
+    RESUME_TEMPLATES,
     type SectionKey,
 } from '../pages/resume/types';
 
@@ -59,9 +59,18 @@ describe('Resume Types & Utilities', () => {
     });
 
     describe('RESUME_TEMPLATES', () => {
-        it('includes all five templates', () => {
-            expect(RESUME_TEMPLATES).toHaveLength(5);
-            expect(RESUME_TEMPLATES.map((t) => t.id)).toEqual(['classic', 'modern', 'lisbon', 'executive', 'minimal']);
+        it('includes all eight templates', () => {
+            expect(RESUME_TEMPLATES).toHaveLength(8);
+            expect(RESUME_TEMPLATES.map((t) => t.id)).toEqual([
+                'classic',
+                'modern',
+                'lisbon',
+                'executive',
+                'minimal',
+                'clean',
+                'creative',
+                'bold',
+            ]);
         });
 
         it('each template has required metadata', () => {

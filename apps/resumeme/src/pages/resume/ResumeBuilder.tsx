@@ -1,4 +1,5 @@
 import { useSession } from '@/lib/auth';
+import { exportAsPdfServerSide, exportAsPlainText } from '@/lib/resume-export';
 import {
     useCreateResumeDataSet,
     useCreateResumeSaved,
@@ -21,11 +22,17 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
     Input,
 } from '@ottabase/ui-shadcn';
 import { IconAdjustments, IconChevronLeft, IconChevronRight, IconLayoutSidebar } from '@tabler/icons-react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { GUEST_DATA } from './guestData';
 import {
     buildResumeDataSetPersistData,
@@ -700,6 +707,8 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     /** When true the builder is in view-only mode (data items cannot be toggled) */
     const [isViewOnly, setIsViewOnly] = useState(!!urlResumeId);
     const [showSaveNotice, setShowSaveNotice] = useState(false);
+    /** True while a server-side PDF is being generated */
+    const [isPdfGenerating, setIsPdfGenerating] = useState(false);
     /** Save dialog state */
     const [showSaveDialog, setShowSaveDialog] = useState(false);
     const [saveName, setSaveName] = useState('');
@@ -1252,10 +1261,32 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         setSelectedCertificationIds((prev) => toggleSelectedId(prev, id));
     }, []);
 
-    const handlePrint = useCallback(() => {
+    /**
+     * Download as PDF.
+     * - Authenticated users: captures the live rendered DOM (`#resume-capture`)
+     *   + all page CSS and sends to POST /api/resume/pdf (Cloudflare Puppeteer)
+     *   for a pixel-perfect replica. Requires OBCF_BROWSER binding.
+     * - Guest mode: no-op (button is locked in the UI).
+     */
+    const handleDownloadPdf = useCallback(async () => {
         if (guestMode) return;
-        window.print();
-    }, [guestMode]);
+        const pdfFileName = saveName || data.fullName || 'resume';
+        setIsPdfGenerating(true);
+        try {
+            await exportAsPdfServerSide('resume-capture', pdfFileName);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'PDF generation failed';
+            toast.error(message, { description: 'Ensure the Browser Rendering API is enabled in Cloudflare.' });
+        } finally {
+            setIsPdfGenerating(false);
+        }
+    }, [guestMode, saveName, data.fullName]);
+
+    /** Download as plain text (.txt) suitable for ATS/copy-paste. */
+    const handleDownloadText = useCallback(() => {
+        if (guestMode) return;
+        exportAsPlainText(data, saveName || data.fullName || 'resume');
+    }, [guestMode, data, saveName]);
 
     const handleHeadingChange = useCallback((key: SectionKey, label: string) => {
         setHeadingLabels((prev) => ({ ...prev, [key]: label }));
@@ -1511,10 +1542,11 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                             {loadedResumeId ? 'Save' : 'Save Resume'}
                         </button>
                     )}
-                    {/* Print button */}
+                    {/* Download button — PDF (primary) + format dropdown */}
                     {guestMode ? (
+                        // Locked state shown in guest mode
                         <span
-                            title="Sign up to unlock printing and PDF export"
+                            title="Sign up to unlock PDF download"
                             className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-muted-foreground"
                         >
                             <svg
@@ -1530,29 +1562,127 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                     d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                                 />
                             </svg>
-                            Print
+                            Download
                         </span>
                     ) : (
-                        <button
-                            type="button"
-                            onClick={handlePrint}
-                            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90"
-                        >
-                            <svg
-                                className="h-4 w-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                                />
-                            </svg>
-                            Print
-                        </button>
+                        // Split button: primary PDF action + chevron opens format menu
+                        <DropdownMenu>
+                            <div className="flex items-stretch rounded-md shadow-sm">
+                                {/* Primary action: Download PDF */}
+                                <button
+                                    type="button"
+                                    onClick={handleDownloadPdf}
+                                    disabled={isPdfGenerating}
+                                    className="inline-flex items-center gap-1.5 rounded-l-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:cursor-wait disabled:opacity-70"
+                                    title="Download PDF — generated server-side for perfect print quality"
+                                >
+                                    {isPdfGenerating ? (
+                                        // Spinning indicator while the server generates the PDF
+                                        <svg
+                                            className="h-4 w-4 animate-spin"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth={2}
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M12 3v3m0 12v3M3 12h3m12 0h3m-2.636-6.364l-2.121 2.121M8.757 15.243l-2.121 2.121M17.364 17.364l-2.121-2.121M8.757 8.757L6.636 6.636"
+                                            />
+                                        </svg>
+                                    ) : (
+                                        <svg
+                                            className="h-4 w-4"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth={2}
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                            />
+                                        </svg>
+                                    )}
+                                    {isPdfGenerating ? 'Generating…' : 'Download PDF'}
+                                </button>
+
+                                {/* Chevron trigger for format dropdown */}
+                                <DropdownMenuTrigger asChild>
+                                    <button
+                                        type="button"
+                                        disabled={isPdfGenerating}
+                                        className="inline-flex items-center rounded-r-md border-l border-primary-foreground/30 bg-primary px-1.5 py-1.5 text-primary-foreground hover:opacity-90 disabled:cursor-wait disabled:opacity-70"
+                                        title="More export formats"
+                                        aria-label="More export formats"
+                                    >
+                                        <svg
+                                            className="h-3.5 w-3.5"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth={2.5}
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                </DropdownMenuTrigger>
+                            </div>
+
+                            <DropdownMenuContent align="end" className="w-48">
+                                {/* PDF option — server-side for logged-in users */}
+                                <DropdownMenuItem
+                                    onClick={handleDownloadPdf}
+                                    className="cursor-pointer"
+                                    disabled={isPdfGenerating}
+                                >
+                                    <svg
+                                        className="mr-2 h-4 w-4 shrink-0"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        strokeWidth={2}
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                        />
+                                    </svg>
+                                    <div>
+                                        <div className="font-medium">PDF</div>
+                                        <div className="text-xs text-muted-foreground">
+                                            server-generated · best quality
+                                        </div>
+                                    </div>
+                                </DropdownMenuItem>
+
+                                <DropdownMenuSeparator />
+
+                                {/* Plain text — for ATS / copy-paste */}
+                                <DropdownMenuItem onClick={handleDownloadText} className="cursor-pointer">
+                                    <svg
+                                        className="mr-2 h-4 w-4 shrink-0"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        strokeWidth={2}
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                        />
+                                    </svg>
+                                    <div>
+                                        <div className="font-medium">Plain Text</div>
+                                        <div className="text-xs text-muted-foreground">.txt — ATS-friendly</div>
+                                    </div>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     )}
                     {/* Desktop sidebar toggle */}
                     {!isCompact && (
@@ -1670,7 +1800,11 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
 
                 {/* Center — Resume canvas */}
                 <main id="resume-print-area" className="flex flex-1 flex-col items-center overflow-y-auto p-4 lg:p-8">
-                    <div className="w-full max-w-[816px] overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-border dark:bg-gray-900">
+                    {/* id="resume-capture" is used by exportAsPdfServerSide to serialise the rendered DOM */}
+                    <div
+                        id="resume-capture"
+                        className="w-full max-w-[816px] overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-border dark:bg-gray-900"
+                    >
                         <ResumePreview
                             data={data}
                             templateId={templateId}

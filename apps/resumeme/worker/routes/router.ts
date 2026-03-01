@@ -2,6 +2,7 @@ import { handleAnalyticsTrack } from '@ottabase/analytics/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { handleCustomRoutes } from '../../ottabase/config.routes';
 import { getKillSwitchStatus } from '../lib/killswitch';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import {
@@ -41,6 +42,13 @@ import {
     handleVerifyEmailResend,
 } from './auth';
 import { handleBrandApi } from './brand';
+import {
+    handleAIChat,
+    handleAIGatewayChat,
+    handleAIProviders,
+    handleAIStatus,
+    handleAIUniversalChat,
+} from './cloudflare-ai';
 import { handleCloudflareQueue } from './cloudflare-queue';
 import { handleRateLimiting } from './cloudflare-rate';
 import { handleRealtimeBroadcast, handleRealtimeStats, handleRealtimeWebsocket } from './cloudflare-realtime';
@@ -51,18 +59,11 @@ import {
     handleUpload,
     handleUploadFile,
 } from './cloudflare-storage';
-import {
-    handleAIChat,
-    handleAIGatewayChat,
-    handleAIProviders,
-    handleAIStatus,
-    handleAIUniversalChat,
-} from './cloudflare-ai';
 import { handleCoreAnalytics } from './core-analytics';
 import { handleEmailProviders, handleEmailTest } from './email';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
-import { handleCustomRoutes } from '../../ottabase/config.routes';
+import { handleResumePdf } from './resume-pdf';
 
 export interface ApiRouteContext {
     request: Request;
@@ -309,6 +310,11 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
 
     if (route === '/api/upload') {
         return handleUpload(context);
+    }
+
+    // Server-side PDF generation via Cloudflare Browser Rendering (Puppeteer)
+    if (route === '/api/resume/pdf') {
+        return handleResumePdf(context);
     }
 
     if (route === '/api/admin/roles') {

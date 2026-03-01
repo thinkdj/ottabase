@@ -92,7 +92,9 @@ All templates support:
 - **Profile section pinning** — Profile/Summary always stays first and cannot be reordered
 - Dark mode
 - Print-optimised CSS (`@media print`)
-- PDF export via browser print
+- **PDF export** — server-side via Puppeteer/Cloudflare Browser Rendering API; pixel-perfect replica of the on-screen
+  preview
+- **Plain Text export** (`.txt`) — ATS-friendly one-click download
 
 ### Page Scale
 
@@ -103,6 +105,59 @@ spacing, badges — scale uniformly. The selected zoom applies to both on-screen
 import { FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from './pages/resume/types';
 // 80% – 130%, default 100%
 ```
+
+### Export (PDF & Plain Text)
+
+The **Download PDF** split button in the toolbar has two export modes:
+
+| Format     | Mechanism                          | Notes                                 |
+| ---------- | ---------------------------------- | ------------------------------------- |
+| PDF        | `POST /api/resume/pdf` → Puppeteer | Requires `OBCF_BROWSER` binding       |
+| Plain Text | Client-side blob download          | ATS-friendly `.txt` with all sections |
+
+#### Server-side PDF (`POST /api/resume/pdf`)
+
+Requires the **Cloudflare Browser Rendering API** binding (`OBCF_BROWSER`). Enable it in the Cloudflare dashboard under
+**Workers > resumeme > Settings > Browser Rendering**, then it is picked up automatically via `wrangler.jsonc`.
+
+**How it works — DOM capture approach:**
+
+1. The client serialises the live React-rendered DOM (`#resume-capture`) + every CSS rule from `document.styleSheets`
+   into a fully self-contained HTML string.
+2. The HTML (including all Tailwind classes, CSS variables like `--resume-accent`, and inline styles) is POSTed to the
+   worker.
+3. Puppeteer renders that exact HTML — the PDF is a pixel-perfect replica of what the user sees on screen.
+
+The worker never builds its own HTML — it just runs Puppeteer on what the browser already rendered.
+
+```typescript
+// worker/routes/resume-pdf.ts — body shape
+POST /api/resume/pdf
+Body: { html: string, fileName?: string }
+// html = fully self-contained HTML captured from the browser DOM
+```
+
+During local `wrangler dev` without the binding the route returns `503 BROWSER_BINDING_UNAVAILABLE` and the client
+surfaces an error toast. PDF generation requires the binding — there is no silent fallback.
+
+Client utilities in `src/lib/resume-export.ts`:
+
+```typescript
+import {
+    exportAsPdfServerSide, // server-side DOM capture → Puppeteer PDF
+    exportAsPlainText, // ATS .txt download
+    buildPlainText, // serialise to string (no download)
+} from '@/lib/resume-export';
+
+// Server-side PDF — pass the id of the resume preview wrapper div
+await exportAsPdfServerSide('resume-capture', 'My Resume');
+```
+
+The preview wrapper in `ResumeBuilder.tsx` carries `id="resume-capture"` so `exportAsPdfServerSide` can locate and clone
+the rendered DOM before upload.
+
+The print stylesheet (`src/styles/globals.css`) hides UI chrome (header, sidebars, Radix portals, dialogs) and preserves
+accent colours with `print-color-adjust: exact`.
 
 ### Section Reorder
 
@@ -204,7 +259,7 @@ Visit `/guest` to try the full resume builder without creating an account.
 **Restrictions:**
 
 - Name is locked to **John Doe** with a placeholder avatar
-- **Printing / PDF export** is disabled (greyed out with lock icon)
+- **Download (PDF / Plain Text)** is disabled (greyed out with lock icon)
 - Changes are **not saved** — they live only in browser memory
 - A banner at the top encourages sign-up to unlock full features
 

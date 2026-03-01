@@ -23,6 +23,7 @@
         "localflare": "localflare"
     },
     "dependencies": {
+        "@cloudflare/puppeteer": "^0.0.12",
         "@auth/core": "catalog:",
         "@hookform/resolvers": "catalog:",
         "@mantine/carousel": "catalog:",
