@@ -158,11 +158,51 @@ export function exportAsPlainText(data: ResumeTemplateData, fileName?: string): 
 // ---------------------------------------------------------------------------
 
 /**
+ * Converts a CSS `zoom` property on an element to an equivalent
+ * `transform: scale()` — `zoom` is a non-standard property that behaves
+ * inconsistently in Puppeteer's print/PDF context. `transform: scale()`
+ * is standards-based and produces reliable results.
+ *
+ * Also adjusts the container's `transform-origin` and width so the scaled
+ * content fills the page correctly.
+ */
+export function convertZoomToTransform(element: HTMLElement): void {
+    const zoomValue = element.style.zoom;
+    if (!zoomValue) return;
+
+    const zoom = parseFloat(zoomValue);
+    if (isNaN(zoom) || zoom === 0) return;
+
+    // Remove the non-standard zoom property
+    element.style.zoom = '';
+
+    // Apply standards-based transform instead
+    element.style.transform = `scale(${zoom})`;
+    element.style.transformOrigin = 'top left';
+
+    // When an element is scaled with transform, it still occupies its
+    // original layout box. Widen the container so the scaled content
+    // can fill the full page width.
+    if (zoom !== 1) {
+        element.style.width = `${100 / zoom}%`;
+    }
+}
+
+/**
  * Serialises the live rendered resume DOM (identified by `captureId`) together
  * with every CSS rule loaded on the page into a fully self-contained HTML string.
  *
  * The string is sent to `POST /api/resume/pdf` where Puppeteer renders it and
  * returns a PDF that is a pixel-perfect replica of what the user sees on screen.
+ *
+ * Key design decisions:
+ *  - CSS `zoom` is converted to `transform: scale()` for reliable PDF rendering.
+ *  - `@page` CSS is injected for explicit page size control inside Puppeteer.
+ *  - External font `<link>` tags (Google Fonts etc.) are re-attached so Puppeteer's
+ *    Chromium can fetch them with full network access.
+ *  - `@media print` blocks from the app shell are stripped — they contain rules
+ *    like `header { display:none }` that would hide the resume template's own
+ *    `<header>` element.
  */
 function captureResumeHtml(captureId: string): string {
     const el = document.getElementById(captureId);
@@ -178,6 +218,15 @@ function captureResumeHtml(captureId: string): string {
     clone.style.outline = 'none';
     clone.style.maxWidth = 'none'; // let Puppeteer control page width
 
+    // Convert CSS zoom → transform:scale() on the resume container and any
+    // child elements that use it (template root divs apply zoom for the
+    // proportional scaling feature). zoom is non-standard and Puppeteer's
+    // print context handles it inconsistently.
+    convertZoomToTransform(clone);
+    for (const child of Array.from(clone.querySelectorAll<HTMLElement>('[style*="zoom"]'))) {
+        convertZoomToTransform(child);
+    }
+
     // ── Collect CSS ──────────────────────────────────────────────────────────
     // Iterate every stylesheet loaded on the page:
     //  • Skip cross-origin sheets (Google Fonts etc.) — they throw SecurityError.
@@ -186,6 +235,8 @@ function captureResumeHtml(captureId: string): string {
     //    from the full app shell and contain rules like `header { display:none }`
     //    that would hide the resume template's <header> element when Puppeteer
     //    renders the PDF (which also uses the print media context).
+    //  • Rewrite any inline `zoom:` declarations to their `transform: scale()`
+    //    equivalents so CSS class-based zoom also works correctly in PDF.
     let css = '';
     for (const sheet of Array.from(document.styleSheets)) {
         try {
@@ -206,9 +257,25 @@ function captureResumeHtml(captureId: string): string {
     // therefore skipped above. We include them directly so Puppeteer (which
     // has full network access) can fetch the font files and render correct
     // typefaces instead of falling back to system serif.
+    //
+    // We also add <link rel="preconnect"> hints for Google Fonts' CDN domains
+    // so Chromium can start the TLS handshake early and reduce font load time.
     const fontLinks: string[] = [];
-    for (const el of Array.from(document.head.querySelectorAll('link[rel="stylesheet"], link[rel="preconnect"]'))) {
-        fontLinks.push(el.outerHTML);
+    const seenHrefs = new Set<string>();
+    for (const linkEl of Array.from(document.head.querySelectorAll('link[rel="stylesheet"], link[rel="preconnect"]'))) {
+        const href = linkEl.getAttribute('href') ?? '';
+        if (seenHrefs.has(href)) continue;
+        seenHrefs.add(href);
+        fontLinks.push(linkEl.outerHTML);
+    }
+
+    // Ensure Google Fonts preconnect hints are always present — even if the
+    // page didn't include them, Puppeteer benefits from early DNS + TLS.
+    const preconnectDomains = ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'];
+    for (const domain of preconnectDomains) {
+        if (!seenHrefs.has(domain)) {
+            fontLinks.unshift(`<link rel="preconnect" href="${domain}" crossorigin>`);
+        }
     }
 
     return `<!DOCTYPE html>
@@ -218,12 +285,32 @@ function captureResumeHtml(captureId: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   ${fontLinks.join('\n  ')}
   <style>
-    /* Ensure colours print exactly as shown on screen */
+    /* ── Page geometry — explicit @page tells Puppeteer's Chromium exactly
+       how to lay out the page, independent of the Puppeteer API options. ── */
+    @page {
+      size: letter;
+      margin: 0;
+    }
+
+    /* Ensure colours/backgrounds print exactly as shown on screen */
     *, *::before, *::after {
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
-    html, body { margin: 0; padding: 0; background: white; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: white;
+      /* Force light mode in Puppeteer — avoids inheriting prefers-color-scheme:dark */
+      color-scheme: light;
+    }
+
+    /* Prevent sections from being split across page breaks */
+    section, .break-inside-avoid {
+      break-inside: avoid;
+    }
+
     ${css}
   </style>
 </head>

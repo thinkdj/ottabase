@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildPlainText, exportAsPlainText } from '../lib/resume-export';
+import { buildPlainText, convertZoomToTransform, exportAsPlainText } from '../lib/resume-export';
 import type { ResumeTemplateData } from '../pages/resume/types';
 
 // ---------------------------------------------------------------------------
@@ -169,6 +169,7 @@ describe('exportAsPlainText', () => {
 
     afterEach(() => {
         vi.unstubAllGlobals();
+        vi.restoreAllMocks();
         vi.clearAllTimers();
     });
 
@@ -210,5 +211,63 @@ describe('exportAsPlainText', () => {
         exportAsPlainText(SAMPLE_DATA, 'My Resume: Final/Draft');
         // Illegal chars replaced with underscores; .txt suffix appended
         expect(anchors[0]?.download).toBe('My Resume_ Final_Draft.txt');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// convertZoomToTransform — CSS zoom → transform:scale() for PDF rendering
+// ---------------------------------------------------------------------------
+
+describe('convertZoomToTransform', () => {
+    it('converts zoom to transform:scale() with correct origin', () => {
+        const el = document.createElement('div');
+        el.style.zoom = '0.9';
+
+        convertZoomToTransform(el);
+
+        expect(el.style.zoom).toBe('');
+        expect(el.style.transform).toBe('scale(0.9)');
+        expect(el.style.transformOrigin).toBe('top left');
+    });
+
+    it('adjusts width to compensate for scale factor', () => {
+        const el = document.createElement('div');
+        el.style.zoom = '0.8';
+
+        convertZoomToTransform(el);
+
+        // 100 / 0.8 = 125%
+        expect(el.style.width).toBe('125%');
+    });
+
+    it('does not adjust width when zoom is 1', () => {
+        const el = document.createElement('div');
+        el.style.zoom = '1';
+
+        convertZoomToTransform(el);
+
+        expect(el.style.transform).toBe('scale(1)');
+        // width should not be set when zoom is 1 (no scaling needed)
+        expect(el.style.width).toBe('');
+    });
+
+    it('is a no-op when element has no zoom', () => {
+        const el = document.createElement('div');
+        el.style.color = 'red';
+
+        convertZoomToTransform(el);
+
+        expect(el.style.transform).toBe('');
+        expect(el.style.color).toBe('red');
+    });
+
+    it('ignores invalid zoom values', () => {
+        const el = document.createElement('div');
+        el.style.zoom = 'invalid';
+
+        convertZoomToTransform(el);
+
+        // Should be a no-op since parseFloat('invalid') is NaN
+        expect(el.style.transform).toBe('');
     });
 });

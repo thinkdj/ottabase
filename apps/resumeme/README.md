@@ -124,9 +124,12 @@ Requires the **Cloudflare Browser Rendering API** binding (`OBCF_BROWSER`). Enab
 
 1. The client serialises the live React-rendered DOM (`#resume-capture`) + every CSS rule from `document.styleSheets`
    into a fully self-contained HTML string.
-2. The HTML (including all Tailwind classes, CSS variables like `--resume-accent`, and inline styles) is POSTed to the
-   worker.
-3. Puppeteer renders that exact HTML — the PDF is a pixel-perfect replica of what the user sees on screen.
+2. CSS `zoom` properties (used for the proportional scaling slider) are converted to standards-based
+   `transform: scale()` — `zoom` is non-standard and behaves inconsistently in Puppeteer's print context.
+3. `@page { size: letter; margin: 0 }` CSS is injected for explicit page geometry control.
+4. External font `<link>` tags (Google Fonts etc.) are re-attached with `<link rel="preconnect">` hints so Chromium can
+   start TLS handshakes early.
+5. Puppeteer renders that exact HTML — the PDF is a pixel-perfect replica of what the user sees on screen.
 
 The worker never builds its own HTML — it just runs Puppeteer on what the browser already rendered.
 
@@ -136,6 +139,10 @@ POST /api/resume/pdf
 Body: { html: string, fileName?: string }
 // html = fully self-contained HTML captured from the browser DOM
 ```
+
+**Font handling:** Puppeteer's Chromium fetches external font stylesheets via `networkidle0` and then waits for
+`document.fonts.ready` (with a 5s safety timeout) before rendering. Google Fonts preconnect hints are always included
+even if the page didn't have them originally.
 
 During local `wrangler dev` without the binding the route returns `503 BROWSER_BINDING_UNAVAILABLE` and the client
 surfaces an error toast. PDF generation requires the binding — there is no silent fallback.
@@ -147,6 +154,7 @@ import {
     exportAsPdfServerSide, // server-side DOM capture → Puppeteer PDF
     exportAsPlainText, // ATS .txt download
     buildPlainText, // serialise to string (no download)
+    convertZoomToTransform, // CSS zoom → transform:scale() for PDF
 } from '@/lib/resume-export';
 
 // Server-side PDF — pass the id of the resume preview wrapper div

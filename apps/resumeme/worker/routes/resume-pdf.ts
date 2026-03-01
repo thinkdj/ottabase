@@ -90,13 +90,24 @@ export async function handleResumePdf(context: ApiRouteContext): Promise<Respons
         await page.setViewport({ width: 816, height: 1056 });
 
         // Inject the captured HTML directly — avoids data: URL length limits.
+        // networkidle0 waits until there are no more than 0 network connections
+        // for 500ms — this ensures all external font stylesheets (Google Fonts
+        // etc.) and their referenced .woff2 files are fully downloaded.
         await page.setContent(body.html, { waitUntil: 'networkidle0' });
 
-        // Ensure web fonts (Google Fonts etc.) are fully loaded before rendering.
-        await page.evaluateHandle('document.fonts.ready');
+        // Wait for web fonts to be fully loaded and ready for rendering.
+        // document.fonts.ready resolves when all font-face rules referenced by
+        // visible text have finished loading. We add a 5s timeout as a safety
+        // net — if fonts fail to load, we still generate the PDF (with fallback
+        // system fonts) rather than hanging indefinitely.
+        await page.evaluate(() => {
+            return Promise.race([document.fonts.ready, new Promise((resolve) => setTimeout(resolve, 5000))]);
+        });
 
         // No Puppeteer margins — the HTML already carries its own padding.
         // printBackground preserves accent colours and backgrounds.
+        // The captured HTML includes @page { size: letter; margin: 0 } for
+        // consistency between CSS-level and API-level page geometry.
         const pdf = await page.pdf({
             format: 'Letter',
             printBackground: true,
