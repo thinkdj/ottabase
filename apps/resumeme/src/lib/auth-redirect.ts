@@ -2,7 +2,7 @@
 const AUTH_ROUTE_PATHS = new Set(['/login', '/register', '/verify-email', '/reset-password']);
 
 const RETURN_PATH_KEY = 'ottabase.auth.returnTo';
-export const DEFAULT_AUTH_REDIRECT = '/dashboard';
+export const DEFAULT_AUTH_REDIRECT = '/user/profile';
 
 /**
  * Validates and normalizes a redirect target path
