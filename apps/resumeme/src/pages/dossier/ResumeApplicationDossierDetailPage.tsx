@@ -42,6 +42,9 @@ import { Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+// ── Configuration ────────────────────────────────────────────
+const MAX_FILES_PER_DOSSIER = 3;
+
 // ── Types ────────────────────────────────────────────────────
 
 interface ResumeApplicationDossierDetail {
@@ -175,6 +178,8 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
     const [analysing, setAnalysing] = useState(false);
     const [deleteFileId, setDeleteFileId] = useState<string | null>(null);
     const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+    const [addContentOpen, setAddContentOpen] = useState(false);
+    const [contentText, setContentText] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Editable form fields
@@ -298,6 +303,35 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
         },
         [dossierId],
     );
+
+    const handleAddContent = useCallback(async () => {
+        if (!contentText.trim()) {
+            toast.error('Please enter some content');
+            return;
+        }
+
+        if (files.length >= MAX_FILES_PER_DOSSIER) {
+            toast.error(`Maximum ${MAX_FILES_PER_DOSSIER} files allowed per dossier`);
+            return;
+        }
+
+        try {
+            // Create a timestamp-based filename
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const fileName = `content-${timestamp}.txt`;
+
+            // Create a File object from the text and upload it
+            const file = new File([contentText], fileName, { type: 'text/plain' });
+            await handleFileUpload(file);
+
+            // Reset form and close modal
+            setContentText('');
+            setAddContentOpen(false);
+            toast.success('Content saved as text file');
+        } catch {
+            toast.error('Failed to save content');
+        }
+    }, [contentText, files.length, dossierId]);
 
     const handleAnalyse = useCallback(async () => {
         setAnalysing(true);
@@ -466,22 +500,34 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
                ════════════════════════════════════════════════════ */}
             <Card className="mb-8">
                 <CardContent className="p-6">
-                    <div className="mb-4 flex items-center justify-between">
+                    <div className="mb-4 flex items-center justify-between gap-2">
                         <div>
                             <h2 className="text-lg font-semibold tracking-tight">Files</h2>
                             <p className="mt-0.5 text-xs text-muted-foreground">
-                                Upload job descriptions, company info, and other documents.
+                                {files.length}/{MAX_FILES_PER_DOSSIER} files — Upload job descriptions, company info,
+                                and other documents.
                             </p>
                         </div>
-                        <Button
-                            variant="outline"
-                            className="gap-2"
-                            disabled={uploading}
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            <IconUpload className="h-4 w-4" />
-                            {uploading ? 'Uploading…' : 'Upload File'}
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                className="gap-2"
+                                disabled={uploading || files.length >= MAX_FILES_PER_DOSSIER}
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <IconUpload className="h-4 w-4" />
+                                {uploading ? 'Uploading…' : 'Upload File'}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="gap-2"
+                                disabled={files.length >= MAX_FILES_PER_DOSSIER}
+                                onClick={() => setAddContentOpen(true)}
+                            >
+                                <IconFileText className="h-4 w-4" />
+                                Add Content
+                            </Button>
+                        </div>
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -850,6 +896,46 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
                         </Button>
                         <Button variant="destructive" onClick={() => deleteFileId && handleDeleteFile(deleteFileId)}>
                             Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Add Content modal ──────────────────────────── */}
+            <Dialog open={addContentOpen} onOpenChange={setAddContentOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Add Content</DialogTitle>
+                        <DialogDescription>
+                            Paste job descriptions, requirements, or any text content. It will be saved as a .txt file.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="content-text">Content</Label>
+                            <Textarea
+                                id="content-text"
+                                placeholder="Paste job description, requirements, or other relevant text..."
+                                value={contentText}
+                                onChange={(e) => setContentText(e.target.value)}
+                                rows={8}
+                                className="resize-none"
+                            />
+                            <p className="text-xs text-muted-foreground">{contentText.length} characters</p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setContentText('');
+                                setAddContentOpen(false);
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button onClick={handleAddContent} disabled={!contentText.trim()}>
+                            Save as Text File
                         </Button>
                     </DialogFooter>
                 </DialogContent>

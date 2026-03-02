@@ -124,17 +124,17 @@ export function ResumeApplicationDossierPage() {
     // ── Render ───────────────────────────────────────────────
 
     return (
-        <div className="mx-auto max-w-5xl px-4 py-8">
-            {/* Page header */}
+        <div className="mx-auto max-w-4xl px-4 py-8">
+            {/* Page header (mirrors My Resumes layout) */}
             <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Application Dossier</h1>
-                    <p className="mt-1 max-w-lg text-sm text-muted-foreground">
+                    <p className="mt-1 text-sm text-muted-foreground">
                         Organise job descriptions, company info, and requirements into dossiers. Use AI to match your
                         profile against each opportunity.
                     </p>
                 </div>
-                <Button onClick={() => setCreateOpen(true)} className="flex items-center gap-2 shrink-0">
+                <Button onClick={() => setCreateOpen(true)} className="flex items-center gap-2">
                     <IconPlus className="h-4 w-4" />
                     New Dossier
                 </Button>
