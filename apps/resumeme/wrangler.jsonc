@@ -155,6 +155,7 @@
     "assets": {
         "directory": "dist",
         "binding": "OBCF_ASSETS", // Per-deployment binding
+        "not_found_handling": "single-page-application"
     },
 
     // Environment variables
@@ -209,6 +210,7 @@
             "assets": {
                 "binding": "OBCF_ASSETS",
                 "directory": "dist",
+                "not_found_handling": "single-page-application"
             },
             // Production D1 – placeholder value = GitHub Secret name; CI substitutes the real UUID at deploy time
             // Any value works (e.g. "MY_DB_ID") — just add a matching GitHub Secret with the real UUID
@@ -276,6 +278,7 @@
             "assets": {
                 "binding": "OBCF_ASSETS",
                 "directory": "dist",
+                "not_found_handling": "single-page-application"
             },
             // Preview D1 – placeholder = GitHub Secret name; CI substitutes at deploy time
             "d1_databases": [

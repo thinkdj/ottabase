@@ -281,7 +281,7 @@ export default function TemplateClassic({
 
     return (
         <div
-            className="resume-classic mx-auto max-w-[794px] bg-white px-10 py-8 text-gray-800 shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none dark:bg-gray-900 dark:text-gray-100"
+            className="resume-classic mx-auto max-w-[794px] bg-white py-8 text-gray-800 shadow-sm print:max-w-none print:py-0 print:shadow-none dark:bg-gray-900 dark:text-gray-100"
             style={
                 {
                     '--resume-accent': accentColor,

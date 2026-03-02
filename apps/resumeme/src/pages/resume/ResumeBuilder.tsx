@@ -691,7 +691,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     // Read search params: ?resumeId=xxx or ?dataSetId=xxx
     let searchParams: { resumeId?: string; dataSetId?: string } = {};
     try {
-        searchParams = useSearch({ from: '/builder' }) as { resumeId?: string; dataSetId?: string };
+        searchParams = useSearch({ from: '/resume-builder' }) as { resumeId?: string; dataSetId?: string };
     } catch {
         // Guest route may not have search validation
     }
@@ -718,11 +718,21 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     const [showShareDialog, setShowShareDialog] = useState(false);
     const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
 
-    const [selectedSkillSetIds, setSelectedSkillSetIds] = useState<string[]>([]);
-    const [selectedWorkExperienceIds, setSelectedWorkExperienceIds] = useState<string[]>([]);
-    const [selectedEducationIds, setSelectedEducationIds] = useState<string[]>([]);
-    const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
-    const [selectedCertificationIds, setSelectedCertificationIds] = useState<string[]>([]);
+    const [selectedSkillSetIds, setSelectedSkillSetIds] = useState<string[]>(() =>
+        guestMode ? GUEST_DATA.skillSets.map((s) => s.id) : [],
+    );
+    const [selectedWorkExperienceIds, setSelectedWorkExperienceIds] = useState<string[]>(() =>
+        guestMode ? GUEST_DATA.workExperiences.map((w) => w.id) : [],
+    );
+    const [selectedEducationIds, setSelectedEducationIds] = useState<string[]>(() =>
+        guestMode ? GUEST_DATA.educations.map((e) => e.id) : [],
+    );
+    const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>(() =>
+        guestMode ? GUEST_DATA.projects.map((p) => p.id) : [],
+    );
+    const [selectedCertificationIds, setSelectedCertificationIds] = useState<string[]>(() =>
+        guestMode ? GUEST_DATA.certifications.map((c) => c.id) : [],
+    );
 
     const dataSetHydrationRef = useRef<string | null>(null);
     const profileDataSetCreateAttemptRef = useRef<Set<string>>(new Set());
@@ -987,7 +997,22 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     }, [isViewOnly, savedResumeResult]);
 
     const data = useMemo<ResumeTemplateData>(() => {
-        if (guestMode) return GUEST_DATA;
+        if (guestMode) {
+            // Filter guest data based on selected IDs so toggling in sidebar reflects in preview
+            const selectedSkillsSet = new Set(selectedSkillSetIds);
+            const selectedWorkSet = new Set(selectedWorkExperienceIds);
+            const selectedEducationSet = new Set(selectedEducationIds);
+            const selectedProjectSet = new Set(selectedProjectIds);
+            const selectedCertificationSet = new Set(selectedCertificationIds);
+            return {
+                ...GUEST_DATA,
+                skillSets: GUEST_DATA.skillSets.filter((s) => selectedSkillsSet.has(s.id)),
+                workExperiences: GUEST_DATA.workExperiences.filter((w) => selectedWorkSet.has(w.id)),
+                educations: GUEST_DATA.educations.filter((e) => selectedEducationSet.has(e.id)),
+                projects: GUEST_DATA.projects.filter((p) => selectedProjectSet.has(p.id)),
+                certifications: GUEST_DATA.certifications.filter((c) => selectedCertificationSet.has(c.id)),
+            };
+        }
 
         // If viewing a saved resume, use the frozen snapshot data
         if (savedSnapshotData) return savedSnapshotData;
@@ -1340,7 +1365,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                         setIsViewOnly(true);
                         // Update URL to include resumeId
                         navigate({
-                            to: '/builder',
+                            to: '/resume-builder',
                             search: { resumeId: String(newId), dataSetId: undefined },
                             replace: true,
                         });
@@ -1547,8 +1572,8 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                             {loadedResumeId ? 'Save' : 'Save Resume'}
                         </button>
                     )}
-                    {/* Share button — only when resume is saved */}
-                    {loadedResumeId && !guestMode && (
+                    {/* Share button — only when resume is saved (or locked in guest mode) */}
+                    {loadedResumeId && !guestMode ? (
                         <button
                             type="button"
                             onClick={() => setShowShareDialog(true)}
@@ -1558,6 +1583,28 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                             <IconShare className="h-4 w-4" />
                             Share
                         </button>
+                    ) : guestMode ? (
+                        <span
+                            title="Sign up to share resumes"
+                            className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-muted-foreground"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Share
+                        </span>
+                    ) : null}
+                    {/* Print button — locked in guest mode */}
+                    {guestMode && (
+                        <span
+                            title="Sign up to print resumes"
+                            className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-muted-foreground"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Print
+                        </span>
                     )}
                     {/* Download button — PDF (primary) + format dropdown */}
                     {guestMode ? (
@@ -1579,7 +1626,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                     d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                                 />
                             </svg>
-                            Download
+                            Download PDF
                         </span>
                     ) : (
                         // Split button: primary PDF action + chevron opens format menu

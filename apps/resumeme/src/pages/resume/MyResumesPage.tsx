@@ -63,7 +63,7 @@ export function MyResumesPage() {
                 </div>
                 <Button asChild>
                     <Link
-                        to="/builder"
+                        to="/resume-builder"
                         search={{ resumeId: undefined, dataSetId: undefined }}
                         className="flex items-center gap-2"
                     >
@@ -92,7 +92,7 @@ export function MyResumesPage() {
                         <div className="py-8 text-center text-sm text-muted-foreground">
                             You haven&apos;t saved any resumes yet.{' '}
                             <Link
-                                to="/builder"
+                                to="/resume-builder"
                                 search={{ resumeId: undefined, dataSetId: undefined }}
                                 className="text-primary underline"
                             >
@@ -130,7 +130,7 @@ export function MyResumesPage() {
                                             {/* Open in builder (view-only mode) */}
                                             <Button size="sm" variant="outline" asChild>
                                                 <Link
-                                                    to="/builder"
+                                                    to="/resume-builder"
                                                     search={{ resumeId: r.id, dataSetId: undefined }}
                                                     className="flex items-center gap-1.5"
                                                 >

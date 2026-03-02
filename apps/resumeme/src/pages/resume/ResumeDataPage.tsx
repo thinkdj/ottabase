@@ -638,7 +638,7 @@ function DataSetSection({
                                     <div className="flex items-center gap-1 shrink-0 ml-2">
                                         <Button size="sm" variant="ghost" asChild>
                                             <Link
-                                                to="/builder"
+                                                to="/resume-builder"
                                                 search={{ dataSetId: ds.id, resumeId: undefined }}
                                                 className="text-xs text-primary"
                                             >
@@ -1016,7 +1016,7 @@ export function ResumeDataPage() {
                     <p className="mt-1 text-sm text-muted-foreground">
                         Manage your profile, experience, education, and skills. Then head to the{' '}
                         <Link
-                            to="/builder"
+                            to="/resume-builder"
                             search={{ resumeId: undefined, dataSetId: undefined }}
                             className="text-primary underline"
                         >
@@ -1027,7 +1027,7 @@ export function ResumeDataPage() {
                 </div>
                 <Button asChild>
                     <Link
-                        to="/builder"
+                        to="/resume-builder"
                         search={{ resumeId: undefined, dataSetId: undefined }}
                         className="flex items-center gap-2"
                     >

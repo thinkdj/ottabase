@@ -133,7 +133,7 @@ function HomePage() {
                     }}
                 >
                     <Link
-                        to="/builder"
+                        to="/resume-builder"
                         search={{ resumeId: undefined, dataSetId: undefined }}
                         className="rounded-md bg-gray-800 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
                     >
@@ -199,7 +199,7 @@ const homeRoute = new Route({
 
 const myResumeRoute = new Route({
     getParentRoute: () => rootRoute,
-    path: '/my-resume',
+    path: '/my-data',
     component: lazyRouteComponent(() =>
         import('@/pages/resume/ResumeDataPage').then((m) => ({
             default: () => (
@@ -556,7 +556,7 @@ const adminReferralsRoute = new Route({
 
 const builderRoute = new Route({
     getParentRoute: () => rootRoute,
-    path: '/builder',
+    path: '/resume-builder',
     validateSearch: (search: Record<string, unknown>) => ({
         resumeId: typeof search.resumeId === 'string' ? search.resumeId : undefined,
         dataSetId: typeof search.dataSetId === 'string' ? search.dataSetId : undefined,
