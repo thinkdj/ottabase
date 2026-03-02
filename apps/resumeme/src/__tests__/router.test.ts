@@ -22,7 +22,12 @@ describe('Router config', () => {
 
     it('has builder route', () => {
         const routeIds = Object.keys(router.routesById);
-        expect(routeIds).toContain('/builder');
+        expect(routeIds).toContain('/resume-builder');
+    });
+
+    it('has my-data route', () => {
+        const routeIds = Object.keys(router.routesById);
+        expect(routeIds).toContain('/my-data');
     });
 
     it('has guest route', () => {

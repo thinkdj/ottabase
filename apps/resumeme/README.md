@@ -22,7 +22,7 @@ and export to PDF.
 
 The app separates resume content into three layers:
 
-1. **My Resume Data** (`/my-resume`) — Raw content entries: profiles, work experiences, education, skills, projects,
+1. **My Resume Data** (`/my-data`) — Raw content entries: profiles, work experiences, education, skills, projects,
    certifications. A user maintains one repository of career data that can be reused across many resumes.
 
 2. **Resume Data Sets** (managed inside My Resume Data) — A named collection that cherry-picks items from the raw data.
@@ -216,7 +216,8 @@ can then re-save to overwrite the snapshot.
 
 ### Live Data Sets in Builder
 
-`/builder` for authenticated users now reads from OttaORM models and `resume_data_sets` instead of static mock data.
+`/resume-builder` for authenticated users now reads from OttaORM models and `resume_data_sets` instead of static mock
+data.
 
 - Loads profile, work experience, education, skills, projects, and certifications via `useResume*` hooks.
 - Uses a **profile-scoped data set**: each profile maps to one data-set bucket containing template/accent + selected
@@ -253,21 +254,21 @@ curl -X POST http://localhost:3006/api/ottaorm/init
 
 ## Routes
 
-| Path                     | Description                                        |
-| ------------------------ | -------------------------------------------------- |
-| `/`                      | Landing page                                       |
-| `/guest`                 | Guest mode builder (public, no sign-up)            |
-| `/my-resume`             | My Resume Data — manage resume content (protected) |
-| `/my-resumes`            | My Resumes — list saved resumes (protected)        |
-| `/dossier`               | Application Dossier — folder list (protected)      |
-| `/dossier/:id`           | Dossier detail — files, metadata, AI analysis      |
-| `/builder`               | Resume builder (protected)                         |
-| `/builder?dataSetId=xxx` | Open builder with a specific data set              |
-| `/builder?resumeId=xxx`  | Open a saved resume in view-only mode              |
-| `/r/:code`               | Public resume viewer (no auth, standalone layout)  |
-| `/auth/signin`           | Sign in                                            |
-| `/auth/signup`           | Sign up                                            |
-| `/user/profile`          | User profile                                       |
+| Path                            | Description                                        |
+| ------------------------------- | -------------------------------------------------- |
+| `/`                             | Landing page                                       |
+| `/guest`                        | Guest mode builder (public, no sign-up)            |
+| `/my-data`                      | My Resume Data — manage resume content (protected) |
+| `/my-resumes`                   | My Resumes — list saved resumes (protected)        |
+| `/dossier`                      | Application Dossier — folder list (protected)      |
+| `/dossier/:id`                  | Dossier detail — files, metadata, AI analysis      |
+| `/resume-builder`               | Resume builder (protected)                         |
+| `/resume-builder?dataSetId=xxx` | Open builder with a specific data set              |
+| `/resume-builder?resumeId=xxx`  | Open a saved resume in view-only mode              |
+| `/r/:code`                      | Public resume viewer (no auth, standalone layout)  |
+| `/auth/signin`                  | Sign in                                            |
+| `/auth/signup`                  | Sign up                                            |
+| `/user/profile`                 | User profile                                       |
 
 All `/admin/**` pages use a shared centered container (`max-w-4xl`) for consistent alignment and width across nested
 admin routes.
