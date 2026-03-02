@@ -127,8 +127,21 @@ export default defineConfig(({ command }) => ({
                 },
             ]),
         ),
+        // Explicit HMR config — ensures WebSocket hot-reload works reliably on Windows
+        hmr: {
+            host: '127.0.0.1',
+            port: parseInt(process.env.PORT_FE || '3005'),
+            protocol: 'ws',
+        },
         // Allow dev server to read files from repo root (for docs markdown)
         fs: { strict: true, allow: ['../..'] },
+        // Enable polling for file watching on Windows for more reliable change detection
+        watch: {
+            usePolling: true,
+            interval: 300, // Poll every 300ms — balances responsiveness and CPU usage
+            // Ignore heavy dirs that are irrelevant to FE HMR to reduce watcher load
+            ignored: ['**/node_modules/**', '**/.wrangler/**', '**/dist/**'],
+        },
     },
     preview: {
         port: 4173,

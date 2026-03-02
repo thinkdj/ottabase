@@ -57,7 +57,7 @@ const frontend = spawn(isWindows ? 'pnpm.cmd' : 'pnpm', frontendArgs, {
     cwd: appDir,
     stdio: 'pipe',
     shell: true,
-    env: { ...process.env, PORT: PORT_FE },
+    env: { ...process.env, PORT: PORT_FE, PORT_FE: String(PORT_FE), PORT_BE: String(PORT_BE) },
 });
 
 // Start backend (Wrangler)
@@ -66,7 +66,14 @@ const backend = spawn(isWindows ? 'pnpm.cmd' : 'pnpm', ['dev:worker', '--', '--p
     cwd: appDir,
     stdio: 'pipe',
     shell: true,
-    env: { ...process.env, PORT: PORT_BE },
+    env: {
+        ...process.env,
+        PORT: PORT_BE,
+        PORT_FE: String(PORT_FE),
+        PORT_BE: String(PORT_BE),
+        // Force polling-based file watching for wrangler on Windows (chokidar)
+        CHOKIDAR_USEPOLLING: '1',
+    },
 });
 
 // Handle frontend output
