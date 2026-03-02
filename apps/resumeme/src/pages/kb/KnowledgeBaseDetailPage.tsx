@@ -192,7 +192,9 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
             const [kbRes, filesRes] = await Promise.all([fetch(`/api/kb/${kbId}`), fetch(`/api/kb/${kbId}/files`)]);
 
             if (kbRes.ok) {
-                const kbData = (await kbRes.json()) as KnowledgeBaseDetail;
+                const kbJson = await kbRes.json();
+                // API returns { success, data: {...} } envelope
+                const kbData = (kbJson?.data ?? kbJson) as KnowledgeBaseDetail;
                 setKb(kbData);
                 setForm({
                     name: kbData.name ?? '',
@@ -203,9 +205,10 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
             }
 
             if (filesRes.ok) {
-                const filesData = (await filesRes.json()) as KnowledgeBaseFile[] | { data: KnowledgeBaseFile[] };
-                // Handle paginated or bare array response
-                setFiles(Array.isArray(filesData) ? filesData : (filesData?.data ?? []));
+                const filesJson = await filesRes.json();
+                // API returns { success, data: [...] } envelope
+                const filesData = filesJson?.data ?? filesJson;
+                setFiles(Array.isArray(filesData) ? filesData : []);
             }
         } catch {
             toast.error('Failed to load knowledge base');
@@ -238,7 +241,8 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
                 }),
             });
             if (!res.ok) throw new Error('Save failed');
-            const updated = (await res.json()) as KnowledgeBaseDetail;
+            const json = await res.json();
+            const updated = (json?.data ?? json) as KnowledgeBaseDetail;
             setKb(updated);
             toast.success('Changes saved');
         } catch {
@@ -264,8 +268,9 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
                 // Refresh file list
                 const filesRes = await fetch(`/api/kb/${kbId}/files`);
                 if (filesRes.ok) {
-                    const filesData = (await filesRes.json()) as KnowledgeBaseFile[] | { data: KnowledgeBaseFile[] };
-                    setFiles(Array.isArray(filesData) ? filesData : (filesData?.data ?? []));
+                    const filesJson = await filesRes.json();
+                    const filesData = filesJson?.data ?? filesJson;
+                    setFiles(Array.isArray(filesData) ? filesData : []);
                 }
             } catch {
                 toast.error(`Failed to upload ${file.name}`);
@@ -300,13 +305,16 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
                 body: JSON.stringify({}),
             });
             if (!res.ok) throw new Error('Analysis failed');
-            const result = await res.json();
+            const json = await res.json();
+            // API returns { success, data: analysisObject }
+            const analysisData = json?.data ?? json;
             // Update KB with new analysis result
             setKb((prev) =>
                 prev
                     ? {
                           ...prev,
-                          analysisResult: typeof result === 'string' ? result : JSON.stringify(result),
+                          analysisResult:
+                              typeof analysisData === 'string' ? analysisData : JSON.stringify(analysisData),
                           lastAnalysisAt: Date.now(),
                       }
                     : prev,

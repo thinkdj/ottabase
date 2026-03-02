@@ -17,6 +17,7 @@ const NAV_LINKS: NavLink[] = [
     { to: '/', label: 'Home' },
     { to: '/my-resume', label: 'My Resume Data', authRequired: true },
     { to: '/my-resumes', label: 'My Resumes', authRequired: true },
+    { to: '/kb', label: 'Knowledge Base', authRequired: true },
     { to: '/builder', label: 'Resume Builder', authRequired: true },
     { to: '/guest', label: 'Try Free', guestOnly: true },
     { to: '/admin', label: 'Admin', authRequired: true, superAdminOnly: true },

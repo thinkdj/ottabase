@@ -55,6 +55,8 @@ The app separates resume content into three layers:
 | `ResumeCertification`  | `resume_certifications`   | Professional certifications                            |
 | `ResumeDataSet`        | `resume_data_sets`        | Assembled resume: selected items + template + colour   |
 | `ResumeSaved`          | `resume_saved`            | Full snapshot of a built resume (read-only after save) |
+| `KnowledgeBase`        | `knowledge_bases`         | KB folder for job-application context (JD, docs)       |
+| `KnowledgeBaseFile`    | `knowledge_base_files`    | File uploaded to a KB folder (R2 storage + text)       |
 
 All models use OttaORM's `BaseModel` with full CRUD via `/api/ottaorm/{entity}`.
 
@@ -257,9 +259,12 @@ curl -X POST http://localhost:3006/api/ottaorm/init
 | `/guest`                 | Guest mode builder (public, no sign-up)            |
 | `/my-resume`             | My Resume Data — manage resume content (protected) |
 | `/my-resumes`            | My Resumes — list saved resumes (protected)        |
+| `/kb`                    | Knowledge Base — folder list (protected)           |
+| `/kb/:id`                | KB detail — files, metadata, AI analysis           |
 | `/builder`               | Resume builder (protected)                         |
 | `/builder?dataSetId=xxx` | Open builder with a specific data set              |
 | `/builder?resumeId=xxx`  | Open a saved resume in view-only mode              |
+| `/r/:code`               | Public resume viewer (no auth, standalone layout)  |
 | `/auth/signin`           | Sign in                                            |
 | `/auth/signup`           | Sign up                                            |
 | `/user/profile`          | User profile                                       |
@@ -289,6 +294,96 @@ Visit `/guest` to try the full resume builder without creating an account.
 
 The guest data lives in `src/pages/resume/guestData.ts` — a self-contained mock JSON with realistic work experience,
 skills, projects, and certifications.
+
+## Resume Sharing & Public Links
+
+Share any saved resume via a short, public URL that renders a read-only, styled web version — no login required.
+
+**How it works:**
+
+1. Open **My Resumes** (`/my-resumes`) and click the **Share** button on any saved resume.
+2. A dialog generates a short URL using `@ottabase/shortlinks` (e.g. `/r/abc123`).
+3. Copy the link and share it on LinkedIn, email, or anywhere.
+4. Recipients see the full resume rendered with the original template, accent colour, and section order.
+5. **OG meta tags** are injected server-side so link previews on social media show the resume title and description.
+
+```typescript
+// Share API
+POST /api/resume/share
+Body: { resumeId: string }
+// Returns: { success: true, data: { code: "abc123", url: "/r/abc123" } }
+
+// Public viewer (no auth required)
+GET /api/resume/public/code/:code  → resume data for rendering
+```
+
+The share dialog includes a copy-to-clipboard button. The builder toolbar also has a Share button for the active resume.
+
+## Knowledge Base (AI Job Matching)
+
+The Knowledge Base is the app's USP — a **NotebookLM-style folder concept** for job applications. Each folder groups
+documents (job descriptions, company info, requirements) around a specific opportunity, and AI analyses your resume
+profile against the job requirements.
+
+### Concept
+
+1. **Create a folder** (`/kb`) — name it after the role/company (e.g. "Google SWE Application").
+2. **Upload files** — add job descriptions, company info, requirements (.pdf, .txt, .md, .docx, images).
+3. **Run AI analysis** — the app sends your resume profile (skills, work experience, headline) + all extracted text from
+   uploaded files to Cloudflare Workers AI (`@cf/meta/llama-3.1-8b-instruct`).
+4. **Get actionable insights** — match score (0–100%), skill matches, skill gaps, resume improvements, talking points,
+   and interview tips.
+
+### AI Analysis Output
+
+The analysis returns a structured JSON result:
+
+```typescript
+interface AnalysisResult {
+    matchScore: number; // 0–100
+    summary: string;
+    skillMatches: Array<{ skill: string; relevance: 'high' | 'medium' | 'low'; note: string }>;
+    skillGaps: Array<{ skill: string; importance: 'critical' | 'important' | 'nice-to-have'; suggestion: string }>;
+    resumeImprovements: Array<{ section: string; suggestion: string; priority: 'high' | 'medium' | 'low' }>;
+    talkingPoints: string[];
+    interviewTips: string[];
+}
+```
+
+### KB API Routes
+
+| Method   | Path                        | Description                   |
+| -------- | --------------------------- | ----------------------------- |
+| `GET`    | `/api/kb`                   | List user's knowledge bases   |
+| `POST`   | `/api/kb`                   | Create a knowledge base       |
+| `GET`    | `/api/kb/:id`               | Get KB detail with file count |
+| `PATCH`  | `/api/kb/:id`               | Update KB fields              |
+| `DELETE` | `/api/kb/:id`               | Delete KB and all files       |
+| `GET`    | `/api/kb/:id/files`         | List files for a KB           |
+| `POST`   | `/api/kb/:id/files`         | Upload file to KB             |
+| `DELETE` | `/api/kb/:id/files/:fileId` | Delete a single file          |
+| `POST`   | `/api/kb/:id/analyse`       | Run AI job match analysis     |
+
+### KB Client Hooks
+
+```typescript
+import {
+    useKnowledgeBases,
+    useKnowledgeBase,
+    useCreateKnowledgeBase,
+    useUpdateKnowledgeBase,
+    useDeleteKnowledgeBase,
+    useKnowledgeBaseFiles,
+    useCreateKnowledgeBaseFile,
+    useDeleteKnowledgeBaseFile,
+} from '@/ottabase/hooks/useKnowledgeBase';
+```
+
+### Requirements
+
+- **OBCF_AI** binding — Cloudflare Workers AI must be enabled for the analysis endpoint.
+- **OBCF_R2** binding — R2 bucket for file storage.
+- Text-based files (.pdf, .txt, .md, .docx) are required for AI analysis. Image-only folders cannot be analysed.
 
 ## Client Hooks
 
@@ -324,13 +419,14 @@ npx vitest run
 apps/resumeme/
 ├── ottabase/
 │   ├── db/             # Drizzle schema + helper
-│   ├── models/         # OttaORM fat models (8 resume + Todo)
+│   ├── models/         # OttaORM fat models (8 resume + KB + Todo)
 │   ├── config.*        # App config, migrations, routes
 │   └── ottabase.config.ts
 ├── src/
 │   ├── __tests__/      # Tests
-│   ├── ottabase/hooks/ # Client hooks (useResume.ts)
+│   ├── ottabase/hooks/ # Client hooks (useResume.ts, useKnowledgeBase.ts)
 │   ├── pages/resume/   # Builder UI + templates + MyResumesPage
+│   ├── pages/kb/       # Knowledge Base pages (list + detail)
 │   ├── providers/      # React providers
 │   ├── router.tsx      # TanStack Router
 │   └── main.tsx        # App entry
