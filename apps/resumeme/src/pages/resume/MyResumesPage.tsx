@@ -54,7 +54,7 @@ export function MyResumesPage() {
     return (
         <div className="mx-auto max-w-4xl px-4 py-8">
             {/* Page header */}
-            <div className="mb-8 flex items-center justify-between">
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">My Resumes</h1>
                     <p className="mt-1 text-sm text-muted-foreground">

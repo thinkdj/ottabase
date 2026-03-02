@@ -30,7 +30,7 @@ function hasValidStoredSession(): boolean {
 
 export function ProtectedRoute({
     children,
-    redirectTo = '/login',
+    redirectTo = '/auth/signin',
     requiredPermissions,
     requiredRoles,
     fallback,
@@ -53,7 +53,7 @@ export function ProtectedRoute({
             rememberReturnPath();
             navigate({ to: redirectTo, replace: true });
         }
-    }, [isAuthenticated, isLoading, initialCheck, navigate, redirectTo]);
+    }, [isAuthenticated, isLoading, initialCheck, redirectTo]);
 
     if (isLoading) {
         return (
