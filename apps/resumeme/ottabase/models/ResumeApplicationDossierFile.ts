@@ -1,27 +1,27 @@
 // ============================================================
-// KnowledgeBaseFile Model (App-specific)
+// ResumeApplicationDossierFile Model (App-specific)
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
-import { knowledgeBaseFilesTable } from './KnowledgeBaseFile.schema';
+import { resumeApplicationDossierFilesTable } from './ResumeApplicationDossierFile.schema';
 
 export {
-    knowledgeBaseFilesTable,
-    type KnowledgeBaseFileType,
-    type NewKnowledgeBaseFileType,
-} from './KnowledgeBaseFile.schema';
+    resumeApplicationDossierFilesTable,
+    type NewResumeApplicationDossierFileType,
+    type ResumeApplicationDossierFileType,
+} from './ResumeApplicationDossierFile.schema';
 
 /**
- * KnowledgeBaseFile model — a file uploaded to a knowledge base folder.
+ * ResumeApplicationDossierFile model — a file uploaded to an application dossier folder.
  *
  * Files are stored in R2 and optionally have their text extracted for AI
  * processing. Supported types include PDF, TXT, DOCX, and images.
  *
  * @example
  * ```typescript
- * const file = await KnowledgeBaseFile.create({
+ * const file = await ResumeApplicationDossierFile.create({
  *     userId: 'user-123',
- *     knowledgeBaseId: 'kb-abc',
+ *     dossierApplicationId: 'dossier-abc',
  *     fileName: 'resume.pdf',
  *     fileType: 'pdf',
  *     mimeType: 'application/pdf',
@@ -30,9 +30,9 @@ export {
  * });
  * ```
  */
-export class KnowledgeBaseFile extends BaseModel {
-    static entity = 'knowledge_base_files';
-    static table = knowledgeBaseFilesTable;
+export class ResumeApplicationDossierFile extends BaseModel {
+    static entity = 'resume_application_dossier_files';
+    static table = resumeApplicationDossierFilesTable;
     static primaryKey = 'id';
     static packageName = 'app';
     static packageType: PackageType = 'app';
@@ -65,13 +65,13 @@ export class KnowledgeBaseFile extends BaseModel {
             formConfig: { visible: true, fieldType: 'select' },
             tableConfig: { visible: false },
         },
-        knowledgeBaseId: {
+        dossierApplicationId: {
             type: 'string',
             editable: true,
             filterable: true,
             uiConfig: {
-                label: 'Knowledge Base',
-                description: 'Parent knowledge base',
+                label: 'Application Dossier',
+                description: 'Parent application dossier',
             },
             formConfig: { visible: true, fieldType: 'select' },
             tableConfig: { visible: false },
@@ -183,9 +183,9 @@ export class KnowledgeBaseFile extends BaseModel {
 
     // ── Convenience ──────────────────────────────────────────
 
-    /** Get all files for a given knowledge base */
-    static async forKnowledgeBase(knowledgeBaseId: string) {
-        return this.where({ knowledgeBaseId });
+    /** Get all files for a given application dossier */
+    static async forDossier(dossierApplicationId: string) {
+        return this.where({ dossierApplicationId });
     }
 
     /** Get all files for a given user */

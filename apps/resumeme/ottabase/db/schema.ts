@@ -29,6 +29,8 @@ export { accountsTable, authenticatorsTable, sessionsTable, usersTable, verifica
 // ============================================================
 // APP-SPECIFIC TABLES (Resume models)
 // ============================================================
+export { resumeApplicationDossiersTable } from '../models/ResumeApplicationDossier';
+export { resumeApplicationDossierFilesTable } from '../models/ResumeApplicationDossierFile';
 export { resumeCertificationsTable } from '../models/ResumeCertification';
 export { resumeDataSetsTable } from '../models/ResumeDataSet';
 export { resumeEducationsTable } from '../models/ResumeEducation';
@@ -37,8 +39,6 @@ export { resumeProjectsTable } from '../models/ResumeProject';
 export { resumeSavedTable } from '../models/ResumeSaved';
 export { resumeSkillSetsTable } from '../models/ResumeSkillSet';
 export { resumeWorkExperiencesTable } from '../models/ResumeWorkExperience';
-export { knowledgeBasesTable } from '../models/KnowledgeBase';
-export { knowledgeBaseFilesTable } from '../models/KnowledgeBaseFile';
 
 // ============================================================
 // PACKAGE TABLES (Shortlinks)

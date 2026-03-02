@@ -1,22 +1,22 @@
 // ============================================================
-// KnowledgeBaseFile table schema (App-specific)
+// ResumeApplicationDossierFile table schema (App-specific)
 // ============================================================
 
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
- * KnowledgeBaseFile table schema
+ * ResumeApplicationDossierFile table schema
  *
- * Files uploaded to a knowledge base folder. Each file is stored in R2 and
+ * Files uploaded to an application dossier folder. Each file is stored in R2 and
  * optionally has its text content extracted for AI processing.
  */
-export const knowledgeBaseFilesTable = sqliteTable('knowledge_base_files', {
+export const resumeApplicationDossierFilesTable = sqliteTable('resume_application_dossier_files', {
     id: text('id')
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
     userId: text('user_id').notNull(),
-    /** FK to knowledge_bases */
-    knowledgeBaseId: text('knowledge_base_id').notNull(),
+    /** FK to resume_application_dossiers */
+    dossierApplicationId: text('dossier_application_id').notNull(),
     /** Original file name */
     fileName: text('file_name').notNull(),
     /** File type (e.g. 'pdf', 'txt', 'image', 'docx') */
@@ -40,5 +40,5 @@ export const knowledgeBaseFilesTable = sqliteTable('knowledge_base_files', {
         .notNull(),
 });
 
-export type KnowledgeBaseFileType = typeof knowledgeBaseFilesTable.$inferSelect;
-export type NewKnowledgeBaseFileType = typeof knowledgeBaseFilesTable.$inferInsert;
+export type ResumeApplicationDossierFileType = typeof resumeApplicationDossierFilesTable.$inferSelect;
+export type NewResumeApplicationDossierFileType = typeof resumeApplicationDossierFilesTable.$inferInsert;

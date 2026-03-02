@@ -1,15 +1,15 @@
 // ============================================================
-// Knowledge Base API Routes (ResumeMe)
+// Resume Application Dossier API Routes (ResumeMe)
 // ============================================================
-// GET    /api/kb                      — list user's knowledge bases
-// POST   /api/kb                      — create a knowledge base
-// GET    /api/kb/:id                  — get KB detail with file count
-// PATCH  /api/kb/:id                  — update KB fields
-// DELETE /api/kb/:id                  — delete KB and all its files
-// GET    /api/kb/:id/files            — list files for a KB
-// POST   /api/kb/:id/files            — upload file to KB
-// DELETE /api/kb/:id/files/:fileId    — delete a single file
-// POST   /api/kb/:id/analyse          — AI-powered job match analysis
+// GET    /api/dossier                      — list user's application dossiers
+// POST   /api/dossier                      — create an application dossier
+// GET    /api/dossier/:id                  — get dossier detail with file count
+// PATCH  /api/dossier/:id                  — update dossier fields
+// DELETE /api/dossier/:id                  — delete dossier and all its files
+// GET    /api/dossier/:id/files            — list files for a dossier
+// POST   /api/dossier/:id/files            — upload file to dossier
+// DELETE /api/dossier/:id/files/:fileId    — delete a single file
+// POST   /api/dossier/:id/analyse          — AI-powered job match analysis
 // ============================================================
 
 import { getSession } from '@ottabase/auth/backend';
@@ -17,8 +17,8 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
 import type { CloudflareEnv } from '../../cloudflare-env';
-import { KnowledgeBase } from '../../ottabase/models/KnowledgeBase';
-import { KnowledgeBaseFile } from '../../ottabase/models/KnowledgeBaseFile';
+import { ResumeApplicationDossier } from '../../ottabase/models/ResumeApplicationDossier';
+import { ResumeApplicationDossierFile } from '../../ottabase/models/ResumeApplicationDossierFile';
 import { ResumeProfile } from '../../ottabase/models/ResumeProfile';
 import { ResumeSkillSet } from '../../ottabase/models/ResumeSkillSet';
 import { ResumeWorkExperience } from '../../ottabase/models/ResumeWorkExperience';
@@ -46,8 +46,8 @@ async function requireAuth(request: Request, env: CloudflareEnv): Promise<string
 
 // ── Handlers ─────────────────────────────────────────────────
 
-/** GET /api/kb — paginated list of user's knowledge bases */
-export async function handleKnowledgeBaseList(context: ApiRouteContext): Promise<Response> {
+/** GET /api/dossier — paginated list of user's application dossiers */
+export async function handleResumeApplicationDossierList(context: ApiRouteContext): Promise<Response> {
     const { request, env, url } = context;
 
     const auth = await requireAuth(request, env);
@@ -56,19 +56,24 @@ export async function handleKnowledgeBaseList(context: ApiRouteContext): Promise
 
     const { page, perPage, orderBy, order } = parsePaginationParams(url.searchParams);
 
-    const result = await KnowledgeBase.paginate(page, perPage, { userId }, { orderBy, orderDirection: order });
+    const result = await ResumeApplicationDossier.paginate(
+        page,
+        perPage,
+        { userId },
+        { orderBy, orderDirection: order },
+    );
 
     return paginatedJsonResponse({
-        data: result.data.map((kb) => kb.toJson()),
+        data: result.data.map((d) => d.toJson()),
         total: result.total,
         page: result.page,
         perPage: result.perPage,
-        path: '/api/kb',
+        path: '/api/dossier',
     });
 }
 
-/** POST /api/kb — create a new knowledge base */
-export async function handleKnowledgeBaseCreate(context: ApiRouteContext): Promise<Response> {
+/** POST /api/dossier — create a new application dossier */
+export async function handleResumeApplicationDossierCreate(context: ApiRouteContext): Promise<Response> {
     const { request, env } = context;
 
     const auth = await requireAuth(request, env);
@@ -87,7 +92,7 @@ export async function handleKnowledgeBaseCreate(context: ApiRouteContext): Promi
     }
 
     try {
-        const kb = await KnowledgeBase.create({
+        const dossier = await ResumeApplicationDossier.create({
             userId,
             name: body.name,
             description: body.description ?? null,
@@ -95,36 +100,36 @@ export async function handleKnowledgeBaseCreate(context: ApiRouteContext): Promi
             targetCompany: body.targetCompany ?? null,
         });
 
-        return jsonResponse({ success: true, data: kb.toJson() }, 201);
+        return jsonResponse({ success: true, data: dossier.toJson() }, 201);
     } catch (error) {
-        return errorResponse(error instanceof Error ? error.message : 'Failed to create knowledge base', 500, {
+        return errorResponse(error instanceof Error ? error.message : 'Failed to create application dossier', 500, {
             code: 'INTERNAL_ERROR',
         });
     }
 }
 
-/** GET/PATCH/DELETE /api/kb/:id */
-export async function handleKnowledgeBaseById(context: ApiRouteContext, id: string): Promise<Response> {
+/** GET/PATCH/DELETE /api/dossier/:id */
+export async function handleResumeApplicationDossierById(context: ApiRouteContext, id: string): Promise<Response> {
     const { request, env, method } = context;
 
     const auth = await requireAuth(request, env);
     if (auth instanceof Response) return auth;
     const userId = auth;
 
-    const kb = await KnowledgeBase.find(id);
-    if (!kb) {
-        return errorResponse('Knowledge base not found', 404, { code: 'NOT_FOUND' });
+    const dossier = await ResumeApplicationDossier.find(id);
+    if (!dossier) {
+        return errorResponse('Application dossier not found', 404, { code: 'NOT_FOUND' });
     }
-    if (kb.get('userId') !== userId) {
+    if (dossier.get('userId') !== userId) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
     // ── GET ──
     if (method === 'GET') {
-        const files = await KnowledgeBaseFile.forKnowledgeBase(id);
+        const files = await ResumeApplicationDossierFile.forDossier(id);
         return jsonResponse({
             success: true,
-            data: { ...kb.toJson(), fileCount: files.length },
+            data: { ...dossier.toJson(), fileCount: files.length },
         });
     }
 
@@ -141,15 +146,15 @@ export async function handleKnowledgeBaseById(context: ApiRouteContext, id: stri
         const updatable = ['name', 'description', 'targetRole', 'targetCompany', 'status'] as const;
         for (const field of updatable) {
             if (body[field] !== undefined) {
-                kb.set(field, body[field]);
+                dossier.set(field, body[field]);
             }
         }
 
         try {
-            await kb.save();
-            return jsonResponse({ success: true, data: kb.toJson() });
+            await dossier.save();
+            return jsonResponse({ success: true, data: dossier.toJson() });
         } catch (error) {
-            return errorResponse(error instanceof Error ? error.message : 'Failed to update knowledge base', 500, {
+            return errorResponse(error instanceof Error ? error.message : 'Failed to update application dossier', 500, {
                 code: 'INTERNAL_ERROR',
             });
         }
@@ -159,7 +164,7 @@ export async function handleKnowledgeBaseById(context: ApiRouteContext, id: stri
     if (method === 'DELETE') {
         try {
             // Delete all files from R2 and DB
-            const files = await KnowledgeBaseFile.forKnowledgeBase(id);
+            const files = await ResumeApplicationDossierFile.forDossier(id);
             for (const file of files) {
                 const r2Key = file.get('r2Key') as string | null;
                 if (r2Key && env.OBCF_R2) {
@@ -167,10 +172,10 @@ export async function handleKnowledgeBaseById(context: ApiRouteContext, id: stri
                 }
                 await file.destroy();
             }
-            await kb.destroy();
-            return jsonResponse({ success: true, message: 'Knowledge base deleted' });
+            await dossier.destroy();
+            return jsonResponse({ success: true, message: 'Application dossier deleted' });
         } catch (error) {
-            return errorResponse(error instanceof Error ? error.message : 'Failed to delete knowledge base', 500, {
+            return errorResponse(error instanceof Error ? error.message : 'Failed to delete application dossier', 500, {
                 code: 'INTERNAL_ERROR',
             });
         }
@@ -179,42 +184,48 @@ export async function handleKnowledgeBaseById(context: ApiRouteContext, id: stri
     return errorResponse('Method not allowed', 405, { code: 'METHOD_NOT_ALLOWED' });
 }
 
-/** GET /api/kb/:id/files — list files for a KB */
-export async function handleKnowledgeBaseFiles(context: ApiRouteContext, kbId: string): Promise<Response> {
+/** GET /api/dossier/:id/files — list files for a dossier */
+export async function handleResumeApplicationDossierFiles(
+    context: ApiRouteContext,
+    dossierId: string,
+): Promise<Response> {
     const { request, env } = context;
 
     const auth = await requireAuth(request, env);
     if (auth instanceof Response) return auth;
     const userId = auth;
 
-    const kb = await KnowledgeBase.find(kbId);
-    if (!kb) {
-        return errorResponse('Knowledge base not found', 404, { code: 'NOT_FOUND' });
+    const dossier = await ResumeApplicationDossier.find(dossierId);
+    if (!dossier) {
+        return errorResponse('Application dossier not found', 404, { code: 'NOT_FOUND' });
     }
-    if (kb.get('userId') !== userId) {
+    if (dossier.get('userId') !== userId) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
-    const files = await KnowledgeBaseFile.forKnowledgeBase(kbId);
+    const files = await ResumeApplicationDossierFile.forDossier(dossierId);
     return jsonResponse({
         success: true,
         data: files.map((f) => f.toJson()),
     });
 }
 
-/** POST /api/kb/:id/files — upload file to KB */
-export async function handleKnowledgeBaseFileUpload(context: ApiRouteContext, kbId: string): Promise<Response> {
+/** POST /api/dossier/:id/files — upload file to dossier */
+export async function handleResumeApplicationDossierFileUpload(
+    context: ApiRouteContext,
+    dossierId: string,
+): Promise<Response> {
     const { request, env } = context;
 
     const auth = await requireAuth(request, env);
     if (auth instanceof Response) return auth;
     const userId = auth;
 
-    const kb = await KnowledgeBase.find(kbId);
-    if (!kb) {
-        return errorResponse('Knowledge base not found', 404, { code: 'NOT_FOUND' });
+    const dossier = await ResumeApplicationDossier.find(dossierId);
+    if (!dossier) {
+        return errorResponse('Application dossier not found', 404, { code: 'NOT_FOUND' });
     }
-    if (kb.get('userId') !== userId) {
+    if (dossier.get('userId') !== userId) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
@@ -252,7 +263,7 @@ export async function handleKnowledgeBaseFileUpload(context: ApiRouteContext, kb
 
     // Generate file ID and R2 key
     const fileId = crypto.randomUUID();
-    const r2Key = `kb/${userId}/${kbId}/${fileId}/${file.name}`;
+    const r2Key = `dossier/${userId}/${dossierId}/${fileId}/${file.name}`;
 
     try {
         // Read file content once as ArrayBuffer for both R2 upload and text extraction
@@ -261,7 +272,7 @@ export async function handleKnowledgeBaseFileUpload(context: ApiRouteContext, kb
         // Upload to R2
         await env.OBCF_R2.put(r2Key, fileBuffer, {
             httpMetadata: { contentType: file.type },
-            customMetadata: { originalName: file.name, kbId, userId },
+            customMetadata: { originalName: file.name, dossierId, userId },
         });
 
         // Extract text content for text files
@@ -273,10 +284,10 @@ export async function handleKnowledgeBaseFileUpload(context: ApiRouteContext, kb
         }
 
         // Create DB record
-        const kbFile = await KnowledgeBaseFile.create({
+        const dossierFile = await ResumeApplicationDossierFile.create({
             id: fileId,
             userId,
-            knowledgeBaseId: kbId,
+            dossierApplicationId: dossierId,
             fileName: file.name,
             fileType,
             mimeType: file.type || 'application/octet-stream',
@@ -286,7 +297,7 @@ export async function handleKnowledgeBaseFileUpload(context: ApiRouteContext, kb
             status,
         });
 
-        return jsonResponse({ success: true, data: kbFile.toJson() }, 201);
+        return jsonResponse({ success: true, data: dossierFile.toJson() }, 201);
     } catch (error) {
         return errorResponse(error instanceof Error ? error.message : 'Failed to upload file', 500, {
             code: 'INTERNAL_ERROR',
@@ -294,10 +305,10 @@ export async function handleKnowledgeBaseFileUpload(context: ApiRouteContext, kb
     }
 }
 
-/** DELETE /api/kb/:id/files/:fileId — delete a file */
-export async function handleKnowledgeBaseFileDelete(
+/** DELETE /api/dossier/:id/files/:fileId — delete a file */
+export async function handleResumeApplicationDossierFileDelete(
     context: ApiRouteContext,
-    kbId: string,
+    dossierId: string,
     fileId: string,
 ): Promise<Response> {
     const { request, env } = context;
@@ -306,11 +317,11 @@ export async function handleKnowledgeBaseFileDelete(
     if (auth instanceof Response) return auth;
     const userId = auth;
 
-    const file = await KnowledgeBaseFile.find(fileId);
+    const file = await ResumeApplicationDossierFile.find(fileId);
     if (!file) {
         return errorResponse('File not found', 404, { code: 'NOT_FOUND' });
     }
-    if (file.get('userId') !== userId || file.get('knowledgeBaseId') !== kbId) {
+    if (file.get('userId') !== userId || file.get('dossierApplicationId') !== dossierId) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
@@ -328,19 +339,22 @@ export async function handleKnowledgeBaseFileDelete(
     }
 }
 
-/** POST /api/kb/:id/analyse — AI-powered job match analysis */
-export async function handleKnowledgeBaseAnalyse(context: ApiRouteContext, kbId: string): Promise<Response> {
+/** POST /api/dossier/:id/analyse — AI-powered job match analysis */
+export async function handleResumeApplicationDossierAnalyse(
+    context: ApiRouteContext,
+    dossierId: string,
+): Promise<Response> {
     const { request, env } = context;
 
     const auth = await requireAuth(request, env);
     if (auth instanceof Response) return auth;
     const userId = auth;
 
-    const kb = await KnowledgeBase.find(kbId);
-    if (!kb) {
-        return errorResponse('Knowledge base not found', 404, { code: 'NOT_FOUND' });
+    const dossier = await ResumeApplicationDossier.find(dossierId);
+    if (!dossier) {
+        return errorResponse('Application dossier not found', 404, { code: 'NOT_FOUND' });
     }
-    if (kb.get('userId') !== userId) {
+    if (dossier.get('userId') !== userId) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
@@ -353,7 +367,7 @@ export async function handleKnowledgeBaseAnalyse(context: ApiRouteContext, kbId:
         ResumeProfile.forUser(userId),
         ResumeSkillSet.forUser(userId),
         ResumeWorkExperience.forUser(userId),
-        KnowledgeBaseFile.forKnowledgeBase(kbId),
+        ResumeApplicationDossierFile.forDossier(dossierId),
     ]);
 
     // Build candidate profile section
@@ -387,22 +401,20 @@ export async function handleKnowledgeBaseAnalyse(context: ApiRouteContext, kbId:
               .join('\n\n')
         : 'No work experience listed';
 
-    // Collect extracted text from KB files
+    // Collect extracted text from dossier files
     const fileTexts = files
         .map((f) => f.get('extractedText') as string | null)
         .filter(Boolean)
         .join('\n\n---\n\n');
 
     if (!fileTexts) {
-        return errorResponse(
-            'No extracted text found in knowledge base files. Upload text or markdown files first.',
-            400,
-            { code: 'NO_CONTENT' },
-        );
+        return errorResponse('No extracted text found in dossier files. Upload text or markdown files first.', 400, {
+            code: 'NO_CONTENT',
+        });
     }
 
-    const targetRole = (kb.get('targetRole') as string) || 'Not specified';
-    const targetCompany = (kb.get('targetCompany') as string) || 'Not specified';
+    const targetRole = (dossier.get('targetRole') as string) || 'Not specified';
+    const targetCompany = (dossier.get('targetCompany') as string) || 'Not specified';
 
     const systemPrompt = `You are an expert career coach and resume analyst. Analyse the following candidate data against a job description and provide a structured assessment. Always respond with valid JSON only, no markdown fences or extra text.`;
 
@@ -454,9 +466,9 @@ Provide your analysis in the following JSON format:
             analysis = { rawResponse: rawText, matchScore: 0, summary: 'Analysis could not be parsed as JSON.' };
         }
 
-        // Persist analysis to the KB
-        kb.setAnalysisResult(analysis);
-        await kb.save();
+        // Persist analysis to the dossier
+        dossier.setAnalysisResult(analysis);
+        await dossier.save();
 
         return jsonResponse({ success: true, data: analysis });
     } catch (error) {

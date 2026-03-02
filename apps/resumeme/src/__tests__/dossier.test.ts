@@ -1,116 +1,116 @@
-import { describe, it, expect } from 'vitest';
-import { KnowledgeBase } from '../../ottabase/models/KnowledgeBase';
-import { KnowledgeBaseFile } from '../../ottabase/models/KnowledgeBaseFile';
+import { describe, expect, it } from 'vitest';
+import { ResumeApplicationDossier } from '../../ottabase/models/ResumeApplicationDossier';
+import { ResumeApplicationDossierFile } from '../../ottabase/models/ResumeApplicationDossierFile';
 import { router } from '../router';
 
-// ── KB Fat Models ───────────────────────────────────────────
+// ── Application Dossier Fat Models ──────────────────────────
 
-describe('KnowledgeBase Model', () => {
-    it('has entity "knowledge_bases"', () => {
-        expect(KnowledgeBase.entity).toBe('knowledge_bases');
+describe('ResumeApplicationDossier Model', () => {
+    it('has entity "resume_application_dossiers"', () => {
+        expect(ResumeApplicationDossier.entity).toBe('resume_application_dossiers');
     });
 
     it('has table defined', () => {
-        expect(KnowledgeBase.table).toBeDefined();
+        expect(ResumeApplicationDossier.table).toBeDefined();
     });
 
     it('has primaryKey "id"', () => {
-        expect(KnowledgeBase.primaryKey).toBe('id');
+        expect(ResumeApplicationDossier.primaryKey).toBe('id');
     });
 
     it('has packageType "app"', () => {
-        expect(KnowledgeBase.packageType).toBe('app');
+        expect(ResumeApplicationDossier.packageType).toBe('app');
     });
 
     it('has date casts', () => {
-        expect(KnowledgeBase.casts).toHaveProperty('createdAt', 'date');
-        expect(KnowledgeBase.casts).toHaveProperty('updatedAt', 'date');
-        expect(KnowledgeBase.casts).toHaveProperty('lastAnalysisAt', 'date');
+        expect(ResumeApplicationDossier.casts).toHaveProperty('createdAt', 'date');
+        expect(ResumeApplicationDossier.casts).toHaveProperty('updatedAt', 'date');
+        expect(ResumeApplicationDossier.casts).toHaveProperty('lastAnalysisAt', 'date');
     });
 
     it('has default status "active"', () => {
-        const defaults = (KnowledgeBase as any).defaults;
+        const defaults = (ResumeApplicationDossier as any).defaults;
         expect(defaults).toBeDefined();
         expect(defaults.status).toBe('active');
     });
 
     it('has forUser static method', () => {
-        expect(typeof KnowledgeBase.forUser).toBe('function');
+        expect(typeof ResumeApplicationDossier.forUser).toBe('function');
     });
 
     it('getAnalysisResult returns null for empty', () => {
-        const kb = new KnowledgeBase({ data: {} });
-        expect(kb.getAnalysisResult()).toBeNull();
+        const dossier = new ResumeApplicationDossier({ data: {} });
+        expect(dossier.getAnalysisResult()).toBeNull();
     });
 
     it('getAnalysisResult parses valid JSON', () => {
-        const kb = new KnowledgeBase({ data: { analysisResult: JSON.stringify({ matchScore: 75 }) } });
-        const result = kb.getAnalysisResult<{ matchScore: number }>();
+        const dossier = new ResumeApplicationDossier({ data: { analysisResult: JSON.stringify({ matchScore: 75 }) } });
+        const result = dossier.getAnalysisResult<{ matchScore: number }>();
         expect(result).toEqual({ matchScore: 75 });
     });
 
     it('getAnalysisResult returns null for invalid JSON', () => {
-        const kb = new KnowledgeBase({ data: { analysisResult: 'not-json' } });
-        expect(kb.getAnalysisResult()).toBeNull();
+        const dossier = new ResumeApplicationDossier({ data: { analysisResult: 'not-json' } });
+        expect(dossier.getAnalysisResult()).toBeNull();
     });
 
     it('setAnalysisResult stores JSON and sets lastAnalysisAt', () => {
-        const kb = new KnowledgeBase({ data: {} });
-        kb.setAnalysisResult({ matchScore: 80 });
-        const stored = kb.get('analysisResult') as string;
+        const dossier = new ResumeApplicationDossier({ data: {} });
+        dossier.setAnalysisResult({ matchScore: 80 });
+        const stored = dossier.get('analysisResult') as string;
         expect(JSON.parse(stored)).toEqual({ matchScore: 80 });
-        expect(kb.get('lastAnalysisAt')).toBeDefined();
+        expect(dossier.get('lastAnalysisAt')).toBeDefined();
     });
 
     it('has validation rules for name', () => {
-        const rules = (KnowledgeBase as any).validationRules;
+        const rules = (ResumeApplicationDossier as any).validationRules;
         expect(rules).toHaveProperty('name');
         expect(rules.name.rules).toBe('required');
     });
 });
 
-describe('KnowledgeBaseFile Model', () => {
-    it('has entity "knowledge_base_files"', () => {
-        expect(KnowledgeBaseFile.entity).toBe('knowledge_base_files');
+describe('ResumeApplicationDossierFile Model', () => {
+    it('has entity "resume_application_dossier_files"', () => {
+        expect(ResumeApplicationDossierFile.entity).toBe('resume_application_dossier_files');
     });
 
     it('has table defined', () => {
-        expect(KnowledgeBaseFile.table).toBeDefined();
+        expect(ResumeApplicationDossierFile.table).toBeDefined();
     });
 
     it('has primaryKey "id"', () => {
-        expect(KnowledgeBaseFile.primaryKey).toBe('id');
+        expect(ResumeApplicationDossierFile.primaryKey).toBe('id');
     });
 
     it('has packageType "app"', () => {
-        expect(KnowledgeBaseFile.packageType).toBe('app');
+        expect(ResumeApplicationDossierFile.packageType).toBe('app');
     });
 
     it('has date casts', () => {
-        expect(KnowledgeBaseFile.casts).toHaveProperty('createdAt', 'date');
-        expect(KnowledgeBaseFile.casts).toHaveProperty('updatedAt', 'date');
+        expect(ResumeApplicationDossierFile.casts).toHaveProperty('createdAt', 'date');
+        expect(ResumeApplicationDossierFile.casts).toHaveProperty('updatedAt', 'date');
     });
 
     it('casts fileSize as number', () => {
-        expect(KnowledgeBaseFile.casts).toHaveProperty('fileSize', 'number');
+        expect(ResumeApplicationDossierFile.casts).toHaveProperty('fileSize', 'number');
     });
 
     it('has default status "uploaded"', () => {
-        const defaults = (KnowledgeBaseFile as any).defaults;
+        const defaults = (ResumeApplicationDossierFile as any).defaults;
         expect(defaults).toBeDefined();
         expect(defaults.status).toBe('uploaded');
     });
 
-    it('has forKnowledgeBase static method', () => {
-        expect(typeof KnowledgeBaseFile.forKnowledgeBase).toBe('function');
+    it('has forDossier static method', () => {
+        expect(typeof ResumeApplicationDossierFile.forDossier).toBe('function');
     });
 
     it('has forUser static method', () => {
-        expect(typeof KnowledgeBaseFile.forUser).toBe('function');
+        expect(typeof ResumeApplicationDossierFile.forUser).toBe('function');
     });
 
     it('has validation rules for fileName', () => {
-        const rules = (KnowledgeBaseFile as any).validationRules;
+        const rules = (ResumeApplicationDossierFile as any).validationRules;
         expect(rules).toHaveProperty('fileName');
         expect(rules.fileName.rules).toBe('required');
     });
@@ -118,22 +118,22 @@ describe('KnowledgeBaseFile Model', () => {
 
 // ── Router ──────────────────────────────────────────────────
 
-describe('KB routes in Router', () => {
-    it('has /kb route', () => {
+describe('Dossier routes in Router', () => {
+    it('has /dossier route', () => {
         const routeIds = Object.keys(router.routesById);
-        expect(routeIds).toContain('/kb');
+        expect(routeIds).toContain('/dossier');
     });
 
-    it('has /kb/$kbId route', () => {
+    it('has /dossier/$dossierId route', () => {
         const routeIds = Object.keys(router.routesById);
-        expect(routeIds).toContain('/kb/$kbId');
+        expect(routeIds).toContain('/dossier/$dossierId');
     });
 });
 
-// ── KnowledgeBasePage helper: formatDate ────────────────────
+// ── Dossier helper: formatDate ────────────────────────────────
 
-describe('KB helper: getMatchScore', () => {
-    // Re-implement the getMatchScore function for testing (same logic as in KnowledgeBasePage)
+describe('Dossier helper: getMatchScore', () => {
+    // Re-implement the getMatchScore function for testing (same logic as in ResumeApplicationDossierPage)
     function getMatchScore(analysisResult: string | null | undefined): number | null {
         if (!analysisResult) return null;
         try {
@@ -180,7 +180,7 @@ describe('KB helper: getMatchScore', () => {
 
 // ── Detail page helpers ─────────────────────────────────────
 
-describe('KB detail helpers', () => {
+describe('Dossier detail helpers', () => {
     // Re-implement parseAnalysisResult for testing
     function parseAnalysisResult(raw: string | null | undefined) {
         if (!raw) return null;
@@ -237,20 +237,20 @@ describe('KB detail helpers', () => {
 
 // ── Layout nav ──────────────────────────────────────────────
 
-describe('Nav links include Knowledge Base', () => {
-    // Import and test that getNavLinks includes /kb for authenticated users
-    it('includes /kb for authenticated users', async () => {
+describe('Nav links include Application Dossier', () => {
+    // Import and test that getNavLinks includes /dossier for authenticated users
+    it('includes /dossier for authenticated users', async () => {
         const { getNavLinks } = await import('../ottabase/components/layout/layout.constants');
         const links = getNavLinks(true, []);
-        const kbLink = links.find((l) => l.to === '/kb');
-        expect(kbLink).toBeDefined();
-        expect(kbLink!.label).toBe('Knowledge Base');
+        const dossierLink = links.find((l) => l.to === '/dossier');
+        expect(dossierLink).toBeDefined();
+        expect(dossierLink!.label).toBe('Application Dossier');
     });
 
-    it('excludes /kb for unauthenticated users', async () => {
+    it('excludes /dossier for unauthenticated users', async () => {
         const { getNavLinks } = await import('../ottabase/components/layout/layout.constants');
         const links = getNavLinks(false, []);
-        const kbLink = links.find((l) => l.to === '/kb');
-        expect(kbLink).toBeUndefined();
+        const dossierLink = links.find((l) => l.to === '/dossier');
+        expect(dossierLink).toBeUndefined();
     });
 });

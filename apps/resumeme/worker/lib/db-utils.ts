@@ -1,5 +1,4 @@
 import { BrandKit, LayoutRouteMapping, LayoutTemplate, MenuSlotAssignment } from '@ottabase/brand-engine/persistence';
-import { Shortlink } from '@ottabase/shortlinks';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import {
     clearConnection,
@@ -22,8 +21,11 @@ import {
     UserRole,
     VerificationToken,
 } from '@ottabase/ottaorm/models';
+import { Shortlink } from '@ottabase/shortlinks';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { ResumeApplicationDossier } from '../../ottabase/models/ResumeApplicationDossier';
+import { ResumeApplicationDossierFile } from '../../ottabase/models/ResumeApplicationDossierFile';
 import { ResumeCertification } from '../../ottabase/models/ResumeCertification';
 import { ResumeDataSet } from '../../ottabase/models/ResumeDataSet';
 import { ResumeEducation } from '../../ottabase/models/ResumeEducation';
@@ -32,8 +34,6 @@ import { ResumeProject } from '../../ottabase/models/ResumeProject';
 import { ResumeSaved } from '../../ottabase/models/ResumeSaved';
 import { ResumeSkillSet } from '../../ottabase/models/ResumeSkillSet';
 import { ResumeWorkExperience } from '../../ottabase/models/ResumeWorkExperience';
-import { KnowledgeBase } from '../../ottabase/models/KnowledgeBase';
-import { KnowledgeBaseFile } from '../../ottabase/models/KnowledgeBaseFile';
 import type { CloudflareEnv } from '../cloudflare-env';
 import { readJson } from './utils';
 
@@ -107,8 +107,8 @@ export function initDbConnection(env: CloudflareEnv): void {
         ResumeCertification,
         ResumeDataSet,
         ResumeSaved,
-        KnowledgeBase,
-        KnowledgeBaseFile,
+        ResumeApplicationDossier,
+        ResumeApplicationDossierFile,
     ];
 
     registerModels([...coreModels, ...packageModels, ...brandModels, ...appModels]);
@@ -125,8 +125,8 @@ export function initDbConnection(env: CloudflareEnv): void {
         'resume_certifications',
         'resume_data_sets',
         'resume_saved',
-        'knowledge_bases',
-        'knowledge_base_files',
+        'resume_application_dossiers',
+        'resume_application_dossier_files',
     ];
     for (const entity of resumeEntities) {
         registerPolicy({ model: entity, policy: RLSPolicies.UserScoped(), auditEnabled: true });

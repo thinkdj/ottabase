@@ -25,8 +25,8 @@ import {
 } from '@ottabase/ottaorm';
 import { shortlinksTable } from '@ottabase/shortlinks';
 import { getEnabledPackageTables } from '../config.migrations';
-import { knowledgeBasesTable } from '../models/KnowledgeBase';
-import { knowledgeBaseFilesTable } from '../models/KnowledgeBaseFile';
+import { resumeApplicationDossiersTable } from '../models/ResumeApplicationDossier';
+import { resumeApplicationDossierFilesTable } from '../models/ResumeApplicationDossierFile';
 import { resumeCertificationsTable } from '../models/ResumeCertification';
 import { resumeDataSetsTable } from '../models/ResumeDataSet';
 import { resumeEducationsTable } from '../models/ResumeEducation';
@@ -68,8 +68,8 @@ export function getAllSchemas() {
         resumeCertificationsTable,
         resumeDataSetsTable,
         resumeSavedTable,
-        knowledgeBasesTable,
-        knowledgeBaseFilesTable,
+        resumeApplicationDossiersTable,
+        resumeApplicationDossierFilesTable,
     };
 
     // 3. Package schemas from enabled packages
@@ -112,8 +112,8 @@ export function getSchemaSummary() {
         resumeCertificationsTable,
         resumeDataSetsTable,
         resumeSavedTable,
-        knowledgeBasesTable,
-        knowledgeBaseFilesTable,
+        resumeApplicationDossiersTable,
+        resumeApplicationDossierFilesTable,
     };
 
     const packageTables = getEnabledPackageTables();

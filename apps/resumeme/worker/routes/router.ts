@@ -27,8 +27,8 @@ import {
 import {
     handleAdminRoleCreate,
     handleAdminRoleDelete,
-    handleAdminRoleUpdate,
     handleAdminRolesList,
+    handleAdminRoleUpdate,
 } from './admin-roles';
 import { handleAdminUserById, handleAdminUsers } from './admin-users';
 import {
@@ -64,14 +64,14 @@ import { handleEmailProviders, handleEmailTest } from './email';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
 import {
-    handleKnowledgeBaseAnalyse,
-    handleKnowledgeBaseById,
-    handleKnowledgeBaseCreate,
-    handleKnowledgeBaseFileDelete,
-    handleKnowledgeBaseFiles,
-    handleKnowledgeBaseFileUpload,
-    handleKnowledgeBaseList,
-} from './knowledge-base';
+    handleResumeApplicationDossierAnalyse,
+    handleResumeApplicationDossierById,
+    handleResumeApplicationDossierCreate,
+    handleResumeApplicationDossierFileDelete,
+    handleResumeApplicationDossierFiles,
+    handleResumeApplicationDossierFileUpload,
+    handleResumeApplicationDossierList,
+} from './resume-application-dossier';
 import { handleResumePdf } from './resume-pdf';
 import { handleResumePublic, handleResumePublicByCode, handleResumeShare } from './resume-share';
 
@@ -250,19 +250,19 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleAdminDbTableData({ ...context, tableName: tableMatch[1] });
     }
 
-    // ── Knowledge Base routes ──
-    if (route === '/api/kb') {
-        return handleKnowledgeBaseList(context);
+    // ── Application Dossier routes (GET list) ──
+    if (route === '/api/dossier') {
+        return handleResumeApplicationDossierList(context);
     }
 
-    const kbFilesMatch = route.match(/^\/api\/kb\/([^/]+)\/files$/);
-    if (kbFilesMatch) {
-        return handleKnowledgeBaseFiles(context, kbFilesMatch[1]);
+    const dossierFilesMatch = route.match(/^\/api\/dossier\/([^\/]+)\/files$/);
+    if (dossierFilesMatch) {
+        return handleResumeApplicationDossierFiles(context, dossierFilesMatch[1]);
     }
 
-    const kbDetailMatch = route.match(/^\/api\/kb\/([^/]+)$/);
-    if (kbDetailMatch) {
-        return handleKnowledgeBaseById(context, kbDetailMatch[1]);
+    const dossierDetailMatch = route.match(/^\/api\/dossier\/([^\/]+)$/);
+    if (dossierDetailMatch) {
+        return handleResumeApplicationDossierById(context, dossierDetailMatch[1]);
     }
 
     return null;
@@ -371,19 +371,19 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleAdminQueuesDLQRetryJob(context, dlqRetryMatch[1]);
     }
 
-    // ── Knowledge Base routes ──
-    if (route === '/api/kb') {
-        return handleKnowledgeBaseCreate(context);
+    // ── Application Dossier routes (POST create) ──
+    if (route === '/api/dossier') {
+        return handleResumeApplicationDossierCreate(context);
     }
 
-    const kbFileUploadMatch = route.match(/^\/api\/kb\/([^/]+)\/files$/);
-    if (kbFileUploadMatch) {
-        return handleKnowledgeBaseFileUpload(context, kbFileUploadMatch[1]);
+    const dossierFileUploadMatch = route.match(/^\/api\/dossier\/([^\/]+)\/files$/);
+    if (dossierFileUploadMatch) {
+        return handleResumeApplicationDossierFileUpload(context, dossierFileUploadMatch[1]);
     }
 
-    const kbAnalyseMatch = route.match(/^\/api\/kb\/([^/]+)\/analyse$/);
-    if (kbAnalyseMatch) {
-        return handleKnowledgeBaseAnalyse(context, kbAnalyseMatch[1]);
+    const dossierAnalyseMatch = route.match(/^\/api\/dossier\/([^\/]+)\/analyse$/);
+    if (dossierAnalyseMatch) {
+        return handleResumeApplicationDossierAnalyse(context, dossierAnalyseMatch[1]);
     }
 
     return null;
@@ -401,10 +401,10 @@ async function handlePatchRoutes(context: ApiRouteContext): Promise<Response | n
         return handleAdminRoleUpdate(context, adminRolePatchMatch[1]);
     }
 
-    // ── Knowledge Base routes ──
-    const kbPatchMatch = route.match(/^\/api\/kb\/([^/]+)$/);
-    if (kbPatchMatch) {
-        return handleKnowledgeBaseById(context, kbPatchMatch[1]);
+    // ── Application Dossier routes (PATCH/GET detail) ──
+    const dossierPatchMatch = route.match(/^\/api\/dossier\/([^\/]+)$/);
+    if (dossierPatchMatch) {
+        return handleResumeApplicationDossierById(context, dossierPatchMatch[1]);
     }
 
     return null;
@@ -441,15 +441,15 @@ async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | 
         return handleAdminRoleDelete(context, adminRoleDeleteMatch[1]);
     }
 
-    // ── Knowledge Base routes ──
-    const kbFileDeleteMatch = route.match(/^\/api\/kb\/([^/]+)\/files\/([^/]+)$/);
-    if (kbFileDeleteMatch) {
-        return handleKnowledgeBaseFileDelete(context, kbFileDeleteMatch[1], kbFileDeleteMatch[2]);
+    // ── Application Dossier routes (DELETE file and dossier) ──
+    const dossierFileDeleteMatch = route.match(/^\/api\/dossier\/([^\/]+)\/files\/([^\/]+)$/);
+    if (dossierFileDeleteMatch) {
+        return handleResumeApplicationDossierFileDelete(context, dossierFileDeleteMatch[1], dossierFileDeleteMatch[2]);
     }
 
-    const kbDeleteMatch = route.match(/^\/api\/kb\/([^/]+)$/);
-    if (kbDeleteMatch) {
-        return handleKnowledgeBaseById(context, kbDeleteMatch[1]);
+    const dossierDeleteMatch = route.match(/^\/api\/dossier\/([^\/]+)$/);
+    if (dossierDeleteMatch) {
+        return handleResumeApplicationDossierById(context, dossierDeleteMatch[1]);
     }
 
     return null;

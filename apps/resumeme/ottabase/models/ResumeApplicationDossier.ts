@@ -1,31 +1,35 @@
 // ============================================================
-// KnowledgeBase Model (App-specific)
+// ResumeApplicationDossier Model (App-specific)
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
-import { knowledgeBasesTable } from './KnowledgeBase.schema';
+import { resumeApplicationDossiersTable } from './ResumeApplicationDossier.schema';
 
-export { knowledgeBasesTable, type KnowledgeBaseType, type NewKnowledgeBaseType } from './KnowledgeBase.schema';
+export {
+    resumeApplicationDossiersTable,
+    type NewResumeApplicationDossierType,
+    type ResumeApplicationDossierType,
+} from './ResumeApplicationDossier.schema';
 
 /**
- * KnowledgeBase model — a "folder" for grouping related documents around a
+ * ResumeApplicationDossier model — a "folder" for grouping related documents around a
  * specific job application context (like NotebookLM).
  *
  * @example
  * ```typescript
- * const kb = await KnowledgeBase.create({
+ * const dossier = await ResumeApplicationDossier.create({
  *     userId: 'user-123',
  *     name: 'Google SWE Application',
  *     targetRole: 'Senior Software Engineer',
  *     targetCompany: 'Google',
  * });
  *
- * const result = kb.getAnalysisResult<{ score: number }>();
+ * const result = dossier.getAnalysisResult<{ score: number }>();
  * ```
  */
-export class KnowledgeBase extends BaseModel {
-    static entity = 'knowledge_bases';
-    static table = knowledgeBasesTable;
+export class ResumeApplicationDossier extends BaseModel {
+    static entity = 'resume_application_dossiers';
+    static table = resumeApplicationDossiersTable;
     static primaryKey = 'id';
     static packageName = 'app';
     static packageType: PackageType = 'app';
@@ -53,7 +57,7 @@ export class KnowledgeBase extends BaseModel {
             filterable: true,
             uiConfig: {
                 label: 'User',
-                description: 'Knowledge base owner',
+                description: 'Application dossier owner',
             },
             formConfig: { visible: true, fieldType: 'select' },
             tableConfig: { visible: false },
@@ -65,7 +69,7 @@ export class KnowledgeBase extends BaseModel {
             sortable: true,
             uiConfig: {
                 label: 'Name',
-                description: 'Knowledge base name',
+                description: 'Application dossier name',
                 placeholder: 'e.g. Google SWE Application',
             },
             formConfig: { visible: true, fieldType: 'input' },
@@ -81,7 +85,7 @@ export class KnowledgeBase extends BaseModel {
             searchable: true,
             uiConfig: {
                 label: 'Description',
-                description: 'Brief description of this knowledge base',
+                description: 'Brief description of this application dossier',
                 placeholder: 'e.g. Documents for my Google application',
             },
             formConfig: { visible: true, fieldType: 'textarea' },
@@ -117,7 +121,7 @@ export class KnowledgeBase extends BaseModel {
             filterable: true,
             uiConfig: {
                 label: 'Status',
-                description: 'Knowledge base status',
+                description: 'Application dossier status',
                 defaultValue: 'active',
             },
             formConfig: { visible: true, fieldType: 'select' },
@@ -183,7 +187,7 @@ export class KnowledgeBase extends BaseModel {
         this.set('lastAnalysisAt', Date.now());
     }
 
-    /** Get all knowledge bases for a given user */
+    /** Get all application dossiers for a given user */
     static async forUser(userId: string) {
         return this.where({ userId });
     }

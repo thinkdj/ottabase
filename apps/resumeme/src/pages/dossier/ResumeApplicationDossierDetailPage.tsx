@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// KnowledgeBaseDetailPage — Detail view for a single Knowledge Base folder.
+// ResumeApplicationDossierDetailPage — Detail view for a single Application Dossier.
 // Shows metadata editing, file management, and AI analysis results.
 // This is the app's USP page — the core experience.
 // ---------------------------------------------------------------------------
@@ -44,7 +44,7 @@ import { toast } from 'sonner';
 
 // ── Types ────────────────────────────────────────────────────
 
-interface KnowledgeBaseDetail {
+interface ResumeApplicationDossierDetail {
     id: string;
     name: string;
     description?: string;
@@ -58,7 +58,7 @@ interface KnowledgeBaseDetail {
     updatedAt?: number | string;
 }
 
-interface KnowledgeBaseFile {
+interface ResumeApplicationDossierFile {
     id: string;
     fileName: string;
     fileType?: string;
@@ -165,10 +165,10 @@ function scoreBg(score: number): string {
 
 // ── Component ────────────────────────────────────────────────
 
-export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
+export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: string }) {
     // ── State ────────────────────────────────────────────────
-    const [kb, setKb] = useState<KnowledgeBaseDetail | null>(null);
-    const [files, setFiles] = useState<KnowledgeBaseFile[]>([]);
+    const [dossier, setDossier] = useState<ResumeApplicationDossierDetail | null>(null);
+    const [files, setFiles] = useState<ResumeApplicationDossierFile[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -189,33 +189,36 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
 
     const loadData = useCallback(async () => {
         try {
-            const [kbRes, filesRes] = await Promise.all([fetch(`/api/kb/${kbId}`), fetch(`/api/kb/${kbId}/files`)]);
+            const [dossierRes, filesRes] = await Promise.all([
+                fetch(`/api/dossier/${dossierId}`),
+                fetch(`/api/dossier/${dossierId}/files`),
+            ]);
 
-            if (kbRes.ok) {
-                const kbJson = await kbRes.json();
+            if (dossierRes.ok) {
+                const dossierJson = (await dossierRes.json()) as any;
                 // API returns { success, data: {...} } envelope
-                const kbData = (kbJson?.data ?? kbJson) as KnowledgeBaseDetail;
-                setKb(kbData);
+                const dossierData = (dossierJson?.data ?? dossierJson) as ResumeApplicationDossierDetail;
+                setDossier(dossierData);
                 setForm({
-                    name: kbData.name ?? '',
-                    description: kbData.description ?? '',
-                    targetRole: kbData.targetRole ?? '',
-                    targetCompany: kbData.targetCompany ?? '',
+                    name: dossierData.name ?? '',
+                    description: dossierData.description ?? '',
+                    targetRole: dossierData.targetRole ?? '',
+                    targetCompany: dossierData.targetCompany ?? '',
                 });
             }
 
             if (filesRes.ok) {
-                const filesJson = await filesRes.json();
+                const filesJson = (await filesRes.json()) as any;
                 // API returns { success, data: [...] } envelope
                 const filesData = filesJson?.data ?? filesJson;
                 setFiles(Array.isArray(filesData) ? filesData : []);
             }
         } catch {
-            toast.error('Failed to load knowledge base');
+            toast.error('Failed to load application dossier');
         } finally {
             setLoading(false);
         }
-    }, [kbId]);
+    }, [dossierId]);
 
     useEffect(() => {
         loadData();
@@ -230,7 +233,7 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
         }
         setSaving(true);
         try {
-            const res = await fetch(`/api/kb/${kbId}`, {
+            const res = await fetch(`/api/dossier/${dossierId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -241,16 +244,16 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
                 }),
             });
             if (!res.ok) throw new Error('Save failed');
-            const json = await res.json();
-            const updated = (json?.data ?? json) as KnowledgeBaseDetail;
-            setKb(updated);
+            const json = (await res.json()) as any;
+            const updated = (json?.data ?? json) as ResumeApplicationDossierDetail;
+            setDossier(updated);
             toast.success('Changes saved');
         } catch {
             toast.error('Failed to save changes');
         } finally {
             setSaving(false);
         }
-    }, [kbId, form]);
+    }, [dossierId, form]);
 
     const handleFileUpload = useCallback(
         async (file: File) => {
@@ -259,16 +262,16 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
                 const formData = new FormData();
                 formData.append('file', file);
 
-                const res = await fetch(`/api/kb/${kbId}/files`, {
+                const res = await fetch(`/api/dossier/${dossierId}/files`, {
                     method: 'POST',
                     body: formData,
                 });
                 if (!res.ok) throw new Error('Upload failed');
                 toast.success(`Uploaded ${file.name}`);
                 // Refresh file list
-                const filesRes = await fetch(`/api/kb/${kbId}/files`);
+                const filesRes = await fetch(`/api/dossier/${dossierId}/files`);
                 if (filesRes.ok) {
-                    const filesJson = await filesRes.json();
+                    const filesJson = (await filesRes.json()) as any;
                     const filesData = filesJson?.data ?? filesJson;
                     setFiles(Array.isArray(filesData) ? filesData : []);
                 }
@@ -278,13 +281,13 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
                 setUploading(false);
             }
         },
-        [kbId],
+        [dossierId],
     );
 
     const handleDeleteFile = useCallback(
         async (fileId: string) => {
             try {
-                const res = await fetch(`/api/kb/${kbId}/files/${fileId}`, { method: 'DELETE' });
+                const res = await fetch(`/api/dossier/${dossierId}/files/${fileId}`, { method: 'DELETE' });
                 if (!res.ok) throw new Error('Delete failed');
                 setFiles((prev) => prev.filter((f) => f.id !== fileId));
                 toast.success('File deleted');
@@ -293,23 +296,23 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
             }
             setDeleteFileId(null);
         },
-        [kbId],
+        [dossierId],
     );
 
     const handleAnalyse = useCallback(async () => {
         setAnalysing(true);
         try {
-            const res = await fetch(`/api/kb/${kbId}/analyse`, {
+            const res = await fetch(`/api/dossier/${dossierId}/analyse`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({}),
             });
             if (!res.ok) throw new Error('Analysis failed');
-            const json = await res.json();
+            const json = (await res.json()) as any;
             // API returns { success, data: analysisObject }
             const analysisData = json?.data ?? json;
-            // Update KB with new analysis result
-            setKb((prev) =>
+            // Update dossier with new analysis result
+            setDossier((prev) =>
                 prev
                     ? {
                           ...prev,
@@ -325,7 +328,7 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
         } finally {
             setAnalysing(false);
         }
-    }, [kbId]);
+    }, [dossierId]);
 
     const toggleFileExpanded = useCallback((fileId: string) => {
         setExpandedFiles((prev) => {
@@ -338,7 +341,7 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
 
     // ── Derived state ────────────────────────────────────────
 
-    const analysis = parseAnalysisResult(kb?.analysisResult);
+    const analysis = parseAnalysisResult(dossier?.analysisResult);
     const hasExtractedText = files.some((f) => f.extractedText && f.extractedText.trim().length > 0);
 
     // ── Loading state ────────────────────────────────────────
@@ -348,20 +351,20 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
             <div className="mx-auto max-w-4xl px-4 py-16">
                 <div className="flex flex-col items-center gap-3 text-center">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary" />
-                    <p className="text-sm text-muted-foreground">Loading knowledge base…</p>
+                    <p className="text-sm text-muted-foreground">Loading application dossier…</p>
                 </div>
             </div>
         );
     }
 
-    if (!kb) {
+    if (!dossier) {
         return (
             <div className="mx-auto max-w-4xl px-4 py-16 text-center">
-                <p className="text-muted-foreground">Knowledge base not found.</p>
+                <p className="text-muted-foreground">Application dossier not found.</p>
                 <Button variant="outline" asChild className="mt-4 gap-2">
-                    <Link to={'/kb' as any}>
+                    <Link to={'/dossier' as any}>
                         <IconArrowLeft className="h-4 w-4" />
-                        Back to Knowledge Base
+                        Back to Application Dossier
                     </Link>
                 </Button>
             </div>
@@ -374,11 +377,11 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
         <div className="mx-auto max-w-4xl px-4 py-8">
             {/* ── Breadcrumb & Back ───────────────────────────── */}
             <nav className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
-                <Link to={'/kb' as any} className="hover:text-foreground transition-colors">
-                    Knowledge Base
+                <Link to={'/dossier' as any} className="hover:text-foreground transition-colors">
+                    Application Dossier
                 </Link>
                 <span>/</span>
-                <span className="text-foreground font-medium truncate">{kb.name}</span>
+                <span className="text-foreground font-medium truncate">{dossier.name}</span>
             </nav>
 
             {/* ════════════════════════════════════════════════════
@@ -389,15 +392,15 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
                     <div className="mb-5 flex items-start justify-between gap-4">
                         <div className="flex items-center gap-3">
                             <Button variant="ghost" size="icon" asChild className="shrink-0 h-9 w-9">
-                                <Link to={'/kb' as any}>
+                                <Link to={'/dossier' as any}>
                                     <IconArrowLeft className="h-4 w-4" />
                                 </Link>
                             </Button>
                             <div>
-                                <h1 className="text-xl font-bold tracking-tight">{kb.name}</h1>
-                                {kb.createdAt && (
+                                <h1 className="text-xl font-bold tracking-tight">{dossier.name}</h1>
+                                {dossier.createdAt && (
                                     <p className="mt-0.5 text-xs text-muted-foreground">
-                                        Created {formatDate(kb.createdAt)}
+                                        Created {formatDate(dossier.createdAt)}
                                     </p>
                                 )}
                             </div>
@@ -410,44 +413,44 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
 
                     <div className="grid gap-4">
                         <div className="grid gap-1.5">
-                            <Label htmlFor="kb-name">Name *</Label>
+                            <Label htmlFor="dossier-name">Name *</Label>
                             <Input
-                                id="kb-name"
+                                id="dossier-name"
                                 value={form.name}
                                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                                 placeholder="e.g. Google SWE Application"
                             />
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="kb-desc">Description</Label>
+                            <Label htmlFor="dossier-desc">Description</Label>
                             <Textarea
-                                id="kb-desc"
+                                id="dossier-desc"
                                 rows={2}
                                 value={form.description}
                                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                                placeholder="Brief description of this knowledge base"
+                                placeholder="Brief description of this application dossier"
                             />
                         </div>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="grid gap-1.5">
-                                <Label htmlFor="kb-role" className="flex items-center gap-1.5">
+                                <Label htmlFor="dossier-role" className="flex items-center gap-1.5">
                                     <IconTarget className="h-3.5 w-3.5 text-muted-foreground" />
                                     Target Role
                                 </Label>
                                 <Input
-                                    id="kb-role"
+                                    id="dossier-role"
                                     value={form.targetRole}
                                     onChange={(e) => setForm((f) => ({ ...f, targetRole: e.target.value }))}
                                     placeholder="e.g. Senior Frontend Engineer"
                                 />
                             </div>
                             <div className="grid gap-1.5">
-                                <Label htmlFor="kb-company" className="flex items-center gap-1.5">
+                                <Label htmlFor="dossier-company" className="flex items-center gap-1.5">
                                     <IconBuildingSkyscraper className="h-3.5 w-3.5 text-muted-foreground" />
                                     Target Company
                                 </Label>
                                 <Input
-                                    id="kb-company"
+                                    id="dossier-company"
                                     value={form.targetCompany}
                                     onChange={(e) => setForm((f) => ({ ...f, targetCompany: e.target.value }))}
                                     placeholder="e.g. Google"
@@ -484,6 +487,7 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
                             type="file"
                             className="hidden"
                             accept=".pdf,.txt,.md,.docx,.png,.jpg,.jpeg"
+                            aria-hidden="true"
                             onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) handleFileUpload(file);
@@ -646,9 +650,9 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
                         )}
                     </Button>
 
-                    {kb.lastAnalysisAt && (
+                    {dossier.lastAnalysisAt && (
                         <p className="mt-2 text-center text-xs text-muted-foreground">
-                            Last analysed {formatDate(kb.lastAnalysisAt)}
+                            Last analysed {formatDate(dossier.lastAnalysisAt)}
                         </p>
                     )}
 
@@ -836,7 +840,7 @@ export function KnowledgeBaseDetailPage({ kbId }: { kbId: string }) {
                     <DialogHeader>
                         <DialogTitle>Delete File?</DialogTitle>
                         <DialogDescription>
-                            This will permanently delete this file from the knowledge base. This action cannot be
+                            This will permanently delete this file from the application dossier. This action cannot be
                             undone.
                         </DialogDescription>
                     </DialogHeader>

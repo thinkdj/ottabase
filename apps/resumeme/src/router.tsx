@@ -512,30 +512,30 @@ const publicResumeRoute = new Route({
     ),
 });
 
-const kbListRoute = new Route({
+const dossierListRoute = new Route({
     getParentRoute: () => rootRoute,
-    path: '/kb',
+    path: '/dossier',
     component: lazyRouteComponent(() =>
-        import('@/pages/kb/KnowledgeBasePage').then((m) => ({
+        import('@/pages/dossier/ResumeApplicationDossierPage').then((m) => ({
             default: () => (
                 <ProtectedRoute>
-                    <m.KnowledgeBasePage />
+                    <m.ResumeApplicationDossierPage />
                 </ProtectedRoute>
             ),
         })),
     ),
 });
 
-const kbDetailRoute = new Route({
+const dossierDetailRoute = new Route({
     getParentRoute: () => rootRoute,
-    path: '/kb/$kbId',
+    path: '/dossier/$dossierId',
     component: lazyRouteComponent(() =>
-        import('@/pages/kb/KnowledgeBaseDetailPage').then((m) => ({
+        import('@/pages/dossier/ResumeApplicationDossierDetailPage').then((m) => ({
             default: () => {
-                const { kbId } = kbDetailRoute.useParams();
+                const { dossierId } = dossierDetailRoute.useParams();
                 return (
                     <ProtectedRoute>
-                        <m.KnowledgeBaseDetailPage kbId={kbId} />
+                        <m.ResumeApplicationDossierDetailPage dossierId={dossierId} />
                     </ProtectedRoute>
                 );
             },
@@ -602,8 +602,8 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     myResumeRoute,
     myResumesRoute,
-    kbListRoute,
-    kbDetailRoute,
+    dossierListRoute,
+    dossierDetailRoute,
     adminRoute,
     adminBrandEngineRoute,
     adminThemeGeneratorRoute,

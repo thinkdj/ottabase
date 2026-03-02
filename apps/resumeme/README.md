@@ -45,18 +45,18 @@ The app separates resume content into three layers:
 
 ## Data Models
 
-| Model                  | Table                     | Purpose                                                |
-| ---------------------- | ------------------------- | ------------------------------------------------------ |
-| `ResumeProfile`        | `resume_profiles`         | Contact info, headline, summary, social links          |
-| `ResumeSkillSet`       | `resume_skill_sets`       | Named group of skill tags                              |
-| `ResumeWorkExperience` | `resume_work_experiences` | Job entries with highlights                            |
-| `ResumeEducation`      | `resume_educations`       | Degrees and institutions                               |
-| `ResumeProject`        | `resume_projects`         | Portfolio projects                                     |
-| `ResumeCertification`  | `resume_certifications`   | Professional certifications                            |
-| `ResumeDataSet`        | `resume_data_sets`        | Assembled resume: selected items + template + colour   |
-| `ResumeSaved`          | `resume_saved`            | Full snapshot of a built resume (read-only after save) |
-| `KnowledgeBase`        | `knowledge_bases`         | KB folder for job-application context (JD, docs)       |
-| `KnowledgeBaseFile`    | `knowledge_base_files`    | File uploaded to a KB folder (R2 storage + text)       |
+| Model                          | Table                              | Purpose                                                           |
+| ------------------------------ | ---------------------------------- | ----------------------------------------------------------------- |
+| `ResumeProfile`                | `resume_profiles`                  | Contact info, headline, summary, social links                     |
+| `ResumeSkillSet`               | `resume_skill_sets`                | Named group of skill tags                                         |
+| `ResumeWorkExperience`         | `resume_work_experiences`          | Job entries with highlights                                       |
+| `ResumeEducation`              | `resume_educations`                | Degrees and institutions                                          |
+| `ResumeProject`                | `resume_projects`                  | Portfolio projects                                                |
+| `ResumeCertification`          | `resume_certifications`            | Professional certifications                                       |
+| `ResumeDataSet`                | `resume_data_sets`                 | Assembled resume: selected items + template + colour              |
+| `ResumeSaved`                  | `resume_saved`                     | Full snapshot of a built resume (read-only after save)            |
+| `ResumeApplicationDossier`     | `resume_application_dossiers`      | Application Dossier folder for job-application context (JD, docs) |
+| `ResumeApplicationDossierFile` | `resume_application_dossier_files` | File uploaded to an Application Dossier (R2 storage + text)       |
 
 All models use OttaORM's `BaseModel` with full CRUD via `/api/ottaorm/{entity}`.
 
@@ -259,8 +259,8 @@ curl -X POST http://localhost:3006/api/ottaorm/init
 | `/guest`                 | Guest mode builder (public, no sign-up)            |
 | `/my-resume`             | My Resume Data — manage resume content (protected) |
 | `/my-resumes`            | My Resumes — list saved resumes (protected)        |
-| `/kb`                    | Knowledge Base — folder list (protected)           |
-| `/kb/:id`                | KB detail — files, metadata, AI analysis           |
+| `/dossier`               | Application Dossier — folder list (protected)      |
+| `/dossier/:id`           | Dossier detail — files, metadata, AI analysis      |
 | `/builder`               | Resume builder (protected)                         |
 | `/builder?dataSetId=xxx` | Open builder with a specific data set              |
 | `/builder?resumeId=xxx`  | Open a saved resume in view-only mode              |
@@ -319,15 +319,15 @@ GET /api/resume/public/code/:code  → resume data for rendering
 
 The share dialog includes a copy-to-clipboard button. The builder toolbar also has a Share button for the active resume.
 
-## Knowledge Base (AI Job Matching)
+## Application Dossier (AI Job Matching)
 
-The Knowledge Base is the app's USP — a **NotebookLM-style folder concept** for job applications. Each folder groups
-documents (job descriptions, company info, requirements) around a specific opportunity, and AI analyses your resume
-profile against the job requirements.
+The Application Dossier is the app's USP — a **NotebookLM-style folder concept** for job applications. Each folder
+groups documents (job descriptions, company info, requirements) around a specific opportunity, and AI analyses your
+resume profile against the job requirements.
 
 ### Concept
 
-1. **Create a folder** (`/kb`) — name it after the role/company (e.g. "Google SWE Application").
+1. **Create a folder** (`/dossier`) — name it after the role/company (e.g. "Google SWE Application").
 2. **Upload files** — add job descriptions, company info, requirements (.pdf, .txt, .md, .docx, images).
 3. **Run AI analysis** — the app sends your resume profile (skills, work experience, headline) + all extracted text from
    uploaded files to Cloudflare Workers AI (`@cf/meta/llama-3.1-8b-instruct`).
@@ -352,31 +352,31 @@ interface AnalysisResult {
 
 ### KB API Routes
 
-| Method   | Path                        | Description                   |
-| -------- | --------------------------- | ----------------------------- |
-| `GET`    | `/api/kb`                   | List user's knowledge bases   |
-| `POST`   | `/api/kb`                   | Create a knowledge base       |
-| `GET`    | `/api/kb/:id`               | Get KB detail with file count |
-| `PATCH`  | `/api/kb/:id`               | Update KB fields              |
-| `DELETE` | `/api/kb/:id`               | Delete KB and all files       |
-| `GET`    | `/api/kb/:id/files`         | List files for a KB           |
-| `POST`   | `/api/kb/:id/files`         | Upload file to KB             |
-| `DELETE` | `/api/kb/:id/files/:fileId` | Delete a single file          |
-| `POST`   | `/api/kb/:id/analyse`       | Run AI job match analysis     |
+| Method   | Path                             | Description                        |
+| -------- | -------------------------------- | ---------------------------------- |
+| `GET`    | `/api/dossier`                   | List user's application dossiers   |
+| `POST`   | `/api/dossier`                   | Create an application dossier      |
+| `GET`    | `/api/dossier/:id`               | Get dossier detail with file count |
+| `PATCH`  | `/api/dossier/:id`               | Update dossier fields              |
+| `DELETE` | `/api/dossier/:id`               | Delete dossier and all files       |
+| `GET`    | `/api/dossier/:id/files`         | List files for a dossier           |
+| `POST`   | `/api/dossier/:id/files`         | Upload file to dossier             |
+| `DELETE` | `/api/dossier/:id/files/:fileId` | Delete a single file               |
+| `POST`   | `/api/dossier/:id/analyse`       | Run AI job match analysis          |
 
 ### KB Client Hooks
 
 ```typescript
 import {
-    useKnowledgeBases,
-    useKnowledgeBase,
-    useCreateKnowledgeBase,
-    useUpdateKnowledgeBase,
-    useDeleteKnowledgeBase,
-    useKnowledgeBaseFiles,
-    useCreateKnowledgeBaseFile,
-    useDeleteKnowledgeBaseFile,
-} from '@/ottabase/hooks/useKnowledgeBase';
+    useApplicationDossiers,
+    useApplicationDossier,
+    useCreateApplicationDossier,
+    useUpdateApplicationDossier,
+    useDeleteApplicationDossier,
+    useApplicationDossierFiles,
+    useCreateApplicationDossierFile,
+    useDeleteApplicationDossierFile,
+} from '@/ottabase/hooks/useApplicationDossier';
 ```
 
 ### Requirements
@@ -424,9 +424,9 @@ apps/resumeme/
 │   └── ottabase.config.ts
 ├── src/
 │   ├── __tests__/      # Tests
-│   ├── ottabase/hooks/ # Client hooks (useResume.ts, useKnowledgeBase.ts)
+│   ├── ottabase/hooks/ # Client hooks (useResume.ts, useApplicationDossier.ts)
 │   ├── pages/resume/   # Builder UI + templates + MyResumesPage
-│   ├── pages/kb/       # Knowledge Base pages (list + detail)
+│   ├── pages/dossier/  # Application Dossier pages (list + detail)
 │   ├── providers/      # React providers
 │   ├── router.tsx      # TanStack Router
 │   └── main.tsx        # App entry

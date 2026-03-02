@@ -1,10 +1,14 @@
 // ---------------------------------------------------------------------------
-// KnowledgeBasePage — Main listing page for Knowledge Base "folders".
+// ResumeApplicationDossierPage — Main listing page for Application Dossier "folders".
 // Each folder groups documents (JDs, company info, etc.) around a single
 // job-application context, similar to NotebookLM notebooks.
 // ---------------------------------------------------------------------------
 
-import { useKnowledgeBases, useCreateKnowledgeBase, useDeleteKnowledgeBase } from '@/ottabase/hooks/useKnowledgeBase';
+import {
+    useApplicationDossiers,
+    useCreateApplicationDossier,
+    useDeleteApplicationDossier,
+} from '@/hooks/useApplicationDossier';
 import {
     Badge,
     Button,
@@ -21,13 +25,13 @@ import {
     Textarea,
 } from '@ottabase/ui-shadcn';
 import {
+    IconBuildingSkyscraper,
     IconFolder,
     IconFolderOpen,
     IconPlus,
-    IconTrash,
-    IconTarget,
-    IconBuildingSkyscraper,
     IconSparkles,
+    IconTarget,
+    IconTrash,
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useCallback, useState } from 'react';
@@ -56,7 +60,7 @@ function getMatchScore(analysisResult: string | null | undefined): number | null
     }
 }
 
-// ── Create-Folder form state ─────────────────────────────────
+// ── Create-Dossier form state ─────────────────────────────────
 
 interface CreateFormState {
     name: string;
@@ -69,13 +73,13 @@ const EMPTY_FORM: CreateFormState = { name: '', description: '', targetRole: '',
 
 // ── Component ────────────────────────────────────────────────
 
-export function KnowledgeBasePage() {
-    const { data: kbRaw, isLoading } = useKnowledgeBases();
-    const createKb = useCreateKnowledgeBase();
-    const deleteKb = useDeleteKnowledgeBase();
+export function ResumeApplicationDossierPage() {
+    const { data: dossiersRaw, isLoading } = useApplicationDossiers();
+    const createDossier = useCreateApplicationDossier();
+    const deleteDossier = useDeleteApplicationDossier();
 
     // Normalise API envelope — may be paginated or bare array
-    const knowledgeBases = (Array.isArray(kbRaw) ? kbRaw : ((kbRaw as any)?.data ?? [])) as any[];
+    const dossiers = (Array.isArray(dossiersRaw) ? dossiersRaw : ((dossiersRaw as any)?.data ?? [])) as any[];
 
     // Dialog state
     const [createOpen, setCreateOpen] = useState(false);
@@ -90,31 +94,31 @@ export function KnowledgeBasePage() {
             return;
         }
         try {
-            await createKb.mutateAsync({
+            await createDossier.mutateAsync({
                 name: form.name.trim(),
                 description: form.description.trim() || undefined,
                 targetRole: form.targetRole.trim() || undefined,
                 targetCompany: form.targetCompany.trim() || undefined,
             } as any);
-            toast.success('Folder created');
+            toast.success('Application Dossier created');
             setForm(EMPTY_FORM);
             setCreateOpen(false);
         } catch {
-            toast.error('Failed to create folder');
+            toast.error('Failed to create Application Dossier');
         }
-    }, [form, createKb]);
+    }, [form, createDossier]);
 
     const handleDelete = useCallback(
         async (id: string) => {
             try {
-                await deleteKb.mutateAsync(id);
-                toast.success('Folder deleted');
+                await deleteDossier.mutateAsync(id);
+                toast.success('Application Dossier deleted');
             } catch {
-                toast.error('Failed to delete folder');
+                toast.error('Failed to delete Application Dossier');
             }
             setDeleteId(null);
         },
-        [deleteKb],
+        [deleteDossier],
     );
 
     // ── Render ───────────────────────────────────────────────
@@ -124,15 +128,15 @@ export function KnowledgeBasePage() {
             {/* Page header */}
             <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Knowledge Base</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">Application Dossier</h1>
                     <p className="mt-1 max-w-lg text-sm text-muted-foreground">
-                        Organise job descriptions, company info, and requirements into folders. Use AI to match your
+                        Organise job descriptions, company info, and requirements into dossiers. Use AI to match your
                         profile against each opportunity.
                     </p>
                 </div>
                 <Button onClick={() => setCreateOpen(true)} className="flex items-center gap-2 shrink-0">
                     <IconPlus className="h-4 w-4" />
-                    New Folder
+                    New Dossier
                 </Button>
             </div>
 
@@ -140,27 +144,29 @@ export function KnowledgeBasePage() {
             {isLoading && <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>}
 
             {/* Empty state */}
-            {!isLoading && knowledgeBases.length === 0 && (
+            {!isLoading && dossiers.length === 0 && (
                 <div className="flex flex-col items-center gap-3 py-16 text-center">
                     <IconFolder className="h-12 w-12 text-muted-foreground/50" />
-                    <p className="text-sm text-muted-foreground">No knowledge bases yet. Create one to get started!</p>
+                    <p className="text-sm text-muted-foreground">
+                        No application dossiers yet. Create one to get started!
+                    </p>
                     <Button variant="outline" onClick={() => setCreateOpen(true)} className="mt-2 gap-2">
                         <IconPlus className="h-4 w-4" />
-                        Create your first folder
+                        Create your first dossier
                     </Button>
                 </div>
             )}
 
-            {/* Knowledge base cards grid */}
-            {!isLoading && knowledgeBases.length > 0 && (
+            {/* Application dossier cards grid */}
+            {!isLoading && dossiers.length > 0 && (
                 <div className="grid gap-4 sm:grid-cols-2">
-                    {knowledgeBases.map((kb: any) => {
-                        const matchScore = getMatchScore(kb.analysisResult);
-                        const isArchived = kb.status === 'archived';
+                    {dossiers.map((dossier: any) => {
+                        const matchScore = getMatchScore(dossier.analysisResult);
+                        const isArchived = dossier.status === 'archived';
 
                         return (
                             <Card
-                                key={kb.id}
+                                key={dossier.id}
                                 className="group relative transition-shadow hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-white/5"
                             >
                                 <CardContent className="flex flex-col gap-3 p-5">
@@ -172,14 +178,14 @@ export function KnowledgeBasePage() {
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <Link
-                                                to={`/kb/${kb.id}` as any}
+                                                to={`/dossier/${dossier.id}` as any}
                                                 className="font-semibold text-foreground hover:underline line-clamp-1"
                                             >
-                                                {kb.name}
+                                                {dossier.name}
                                             </Link>
-                                            {kb.description && (
+                                            {dossier.description && (
                                                 <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-                                                    {kb.description}
+                                                    {dossier.description}
                                                 </p>
                                             )}
                                         </div>
@@ -191,30 +197,30 @@ export function KnowledgeBasePage() {
                                                     : 'border-green-500/40 text-green-600 dark:text-green-400'
                                             }
                                         >
-                                            {kb.status ?? 'active'}
+                                            {dossier.status ?? 'active'}
                                         </Badge>
                                     </div>
 
                                     {/* Target role / company badges */}
-                                    {(kb.targetRole || kb.targetCompany) && (
+                                    {(dossier.targetRole || dossier.targetCompany) && (
                                         <div className="flex flex-wrap gap-1.5">
-                                            {kb.targetRole && (
+                                            {dossier.targetRole && (
                                                 <Badge variant="secondary" className="gap-1 text-xs font-normal">
                                                     <IconTarget className="h-3 w-3" />
-                                                    {kb.targetRole}
+                                                    {dossier.targetRole}
                                                 </Badge>
                                             )}
-                                            {kb.targetCompany && (
+                                            {dossier.targetCompany && (
                                                 <Badge variant="secondary" className="gap-1 text-xs font-normal">
                                                     <IconBuildingSkyscraper className="h-3 w-3" />
-                                                    {kb.targetCompany}
+                                                    {dossier.targetCompany}
                                                 </Badge>
                                             )}
                                         </div>
                                     )}
 
                                     {/* Meta row: analysis score + last analysis date */}
-                                    {(matchScore !== null || kb.lastAnalysisAt) && (
+                                    {(matchScore !== null || dossier.lastAnalysisAt) && (
                                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                             {matchScore !== null && (
                                                 <Badge
@@ -225,18 +231,20 @@ export function KnowledgeBasePage() {
                                                     {matchScore}% match
                                                 </Badge>
                                             )}
-                                            {kb.lastAnalysisAt && <span>Analysed {formatDate(kb.lastAnalysisAt)}</span>}
+                                            {dossier.lastAnalysisAt && (
+                                                <span>Analysed {formatDate(dossier.lastAnalysisAt)}</span>
+                                            )}
                                         </div>
                                     )}
 
                                     {/* Actions */}
                                     <div className="flex items-center justify-between border-t pt-3 dark:border-white/10">
                                         <span className="text-xs text-muted-foreground">
-                                            Created {formatDate(kb.createdAt)}
+                                            Created {formatDate(dossier.createdAt)}
                                         </span>
                                         <div className="flex items-center gap-1">
                                             <Button size="sm" variant="outline" asChild>
-                                                <Link to={`/kb/${kb.id}` as any} className="gap-1.5">
+                                                <Link to={`/dossier/${dossier.id}` as any} className="gap-1.5">
                                                     Open
                                                 </Link>
                                             </Button>
@@ -244,7 +252,7 @@ export function KnowledgeBasePage() {
                                                 size="icon"
                                                 variant="ghost"
                                                 className="h-8 w-8 text-destructive hover:text-destructive"
-                                                onClick={() => setDeleteId(kb.id)}
+                                                onClick={() => setDeleteId(dossier.id)}
                                             >
                                                 <IconTrash className="h-4 w-4" />
                                             </Button>
@@ -257,7 +265,7 @@ export function KnowledgeBasePage() {
                 </div>
             )}
 
-            {/* ── Create folder dialog ──────────────────────────── */}
+            {/* ── Create dossier dialog ──────────────────────────── */}
             <Dialog
                 open={createOpen}
                 onOpenChange={(open) => {
@@ -267,17 +275,17 @@ export function KnowledgeBasePage() {
             >
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>New Folder</DialogTitle>
+                        <DialogTitle>New Application Dossier</DialogTitle>
                         <DialogDescription>
-                            Create a knowledge base folder for a job opportunity. You can add documents later.
+                            Create an application dossier for a job opportunity. You can add documents later.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="grid gap-4 py-2">
                         <div className="grid gap-1.5">
-                            <Label htmlFor="kb-name">Name *</Label>
+                            <Label htmlFor="dossier-name">Name *</Label>
                             <Input
-                                id="kb-name"
+                                id="dossier-name"
                                 placeholder="e.g. Google SWE Application"
                                 value={form.name}
                                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -285,10 +293,10 @@ export function KnowledgeBasePage() {
                             />
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="kb-desc">Description</Label>
+                            <Label htmlFor="dossier-desc">Description</Label>
                             <Textarea
-                                id="kb-desc"
-                                placeholder="Brief description of this folder"
+                                id="dossier-desc"
+                                placeholder="Brief description of this dossier"
                                 rows={2}
                                 value={form.description}
                                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -296,18 +304,18 @@ export function KnowledgeBasePage() {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="grid gap-1.5">
-                                <Label htmlFor="kb-role">Target Role</Label>
+                                <Label htmlFor="dossier-role">Target Role</Label>
                                 <Input
-                                    id="kb-role"
+                                    id="dossier-role"
                                     placeholder="e.g. Senior SWE"
                                     value={form.targetRole}
                                     onChange={(e) => setForm((f) => ({ ...f, targetRole: e.target.value }))}
                                 />
                             </div>
                             <div className="grid gap-1.5">
-                                <Label htmlFor="kb-company">Target Company</Label>
+                                <Label htmlFor="dossier-company">Target Company</Label>
                                 <Input
-                                    id="kb-company"
+                                    id="dossier-company"
                                     placeholder="e.g. Google"
                                     value={form.targetCompany}
                                     onChange={(e) => setForm((f) => ({ ...f, targetCompany: e.target.value }))}
@@ -320,8 +328,8 @@ export function KnowledgeBasePage() {
                         <Button variant="outline" onClick={() => setCreateOpen(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={handleCreate} disabled={createKb.isPending} className="gap-1.5">
-                            {createKb.isPending ? 'Creating…' : 'Create Folder'}
+                        <Button onClick={handleCreate} disabled={createDossier.isPending} className="gap-1.5">
+                            {createDossier.isPending ? 'Creating…' : 'Create Dossier'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -331,10 +339,9 @@ export function KnowledgeBasePage() {
             <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Folder?</DialogTitle>
+                        <DialogTitle>Delete Application Dossier?</DialogTitle>
                         <DialogDescription>
-                            This will permanently delete this knowledge base and all its files. This action cannot be
-                            undone.
+                            This will permanently delete this dossier and all its files. This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
