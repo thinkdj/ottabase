@@ -23,8 +23,8 @@
         "localflare": "localflare"
     },
     "dependencies": {
-        "@cloudflare/puppeteer": "^0.0.12",
         "@auth/core": "catalog:",
+        "@cloudflare/puppeteer": "^0.0.12",
         "@hookform/resolvers": "catalog:",
         "@mantine/carousel": "catalog:",
         "@mantine/core": "catalog:",
@@ -40,7 +40,6 @@
         "@ottabase/cf-ai": "workspace:*",
         "@ottabase/cf-realtime": "workspace:*",
         "@ottabase/config": "workspace:*",
-        "@ottabase/ui-cropper": "workspace:*",
         "@ottabase/db": "workspace:*",
         "@ottabase/docs": "workspace:*",
         "@ottabase/email": "workspace:*",
@@ -48,10 +47,10 @@
         "@ottabase/i18n": "workspace:*",
         "@ottabase/logger": "workspace:*",
         "@ottabase/ottablog": "workspace:*",
+        "@ottabase/ottadate": "workspace:*",
         "@ottabase/ottaeditor": "workspace:*",
         "@ottabase/ottalayout": "workspace:*",
         "@ottabase/ottamenu": "workspace:*",
-        "@ottabase/ottadate": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottarenderer": "workspace:*",
         "@ottabase/ottaselect": "workspace:*",
@@ -64,6 +63,7 @@
         "@ottabase/ui-base": "workspace:*",
         "@ottabase/ui-code-highlight": "workspace:*",
         "@ottabase/ui-components": "workspace:*",
+        "@ottabase/ui-cropper": "workspace:*",
         "@ottabase/ui-mantine": "workspace:*",
         "@ottabase/ui-shadcn": "workspace:*",
         "@ottabase/ui-split-pane": "workspace:*",
@@ -79,6 +79,7 @@
         "react-dom": "catalog:",
         "react-hook-form": "catalog:",
         "sonner": "catalog:",
+        "unpdf": "^1.4.0",
         "zod": "catalog:"
     },
     "devDependencies": {
