@@ -319,10 +319,10 @@ export default function TemplateCreative({
             {/* ── Hero Section ── */}
             <header className="relative px-10 pt-10 pb-6 overflow-hidden">
                 <div className="flex items-end gap-6">
-                    {/* Avatar with accent blob backdrop */}
+                    {/* Avatar with accent backdrop */}
                     <div className="relative shrink-0">
                         <div
-                            className="absolute -inset-3 rounded-full opacity-80"
+                            className="absolute -inset-2 rounded-full opacity-80"
                             style={{ backgroundColor: accentColor }}
                         />
                         {profile?.avatarUrl ? (
@@ -346,11 +346,11 @@ export default function TemplateCreative({
                         >
                             Hi,
                             <br />
-                            I&apos;m {firstName}
+                            I&apos;m {firstName} {/* I'm */}
                             {profile?.headline && (
                                 <>
                                     <br />
-                                    <span className="text-3xl">&amp; {profile.headline.toLowerCase()}.</span>
+                                    <span className="text-3xl">a {profile.headline.toLowerCase()}.</span>
                                 </>
                             )}
                         </h1>

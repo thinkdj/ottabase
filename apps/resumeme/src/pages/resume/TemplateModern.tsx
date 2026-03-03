@@ -1,6 +1,6 @@
+import type { ReactNode } from 'react';
 import type { ResumeTemplateProps } from './types';
 import { formatDateRange, formatResumeDate, resolveHeadingLabel, type SectionKey } from './types';
-import type { ReactNode } from 'react';
 
 /** Section heading with accent-colored bottom border */
 function SectionHeading({
@@ -218,7 +218,7 @@ export default function TemplateModern({
             }
         >
             {/* ── Sidebar ── */}
-            <aside className="w-[30%] shrink-0 bg-gray-800 py-8 text-gray-100 print:bg-gray-800 print:text-gray-100 dark:bg-gray-950">
+            <aside className="w-[30%] shrink-0 bg-gray-800 px-5 py-8 text-gray-100 print:bg-gray-800 print:text-gray-100 dark:bg-gray-950">
                 {/* Avatar */}
                 {profile?.avatarUrl && (
                     <div className="mb-4 flex justify-center">
@@ -302,7 +302,7 @@ export default function TemplateModern({
             </aside>
 
             {/* ── Main Content ── */}
-            <main className="flex-1 py-8">
+            <main className="flex-1 px-6 py-8">
                 {/* Header */}
                 <header className="mb-5">
                     <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">{fullName}</h1>
