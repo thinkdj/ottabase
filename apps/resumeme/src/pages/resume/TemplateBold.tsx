@@ -105,7 +105,7 @@ export default function TemplateBold({
     headingLabels,
     onHeadingChange,
 }: ResumeTemplateProps) {
-    const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
+    const { fullName, profile, summary, skillSets, workExperiences, educations, projects, certifications } = data;
 
     const [firstName, ...restName] = fullName.split(' ');
     const lastName = restName.join(' ');
@@ -206,14 +206,14 @@ export default function TemplateBold({
     // ── Right column renderers (summary, experience, projects) ──
     const rightRenderers: Record<string, () => ReactNode> = {
         summary: () =>
-            profile?.summary ? (
+            summary?.content ? (
                 <section key="summary" className="mb-6">
                     <SectionHeading
                         title={resolveHeadingLabel('summary', headingLabels, 'Profile')}
                         sectionKey="summary"
                         onHeadingChange={onHeadingChange}
                     />
-                    <p className="text-sm leading-relaxed text-gray-600">{profile.summary}</p>
+                    <p className="text-sm leading-relaxed text-gray-600">{summary.content}</p>
                 </section>
             ) : null,
 

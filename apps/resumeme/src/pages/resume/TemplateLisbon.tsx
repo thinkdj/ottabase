@@ -1,6 +1,6 @@
+import type { ReactNode } from 'react';
 import type { ResumeTemplateProps } from './types';
 import { formatDateRange, formatResumeDate, resolveHeadingLabel, type SectionKey } from './types';
-import type { ReactNode } from 'react';
 
 /**
  * Lisbon template — inspired by resume.io's Lisbon design.
@@ -93,7 +93,7 @@ export default function TemplateLisbon({
     headingLabels,
     onHeadingChange,
 }: ResumeTemplateProps) {
-    const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
+    const { fullName, profile, summary, skillSets, workExperiences, educations, projects, certifications } = data;
 
     // Sidebar sections: skills, educations, certifications (always in sidebar)
     const SIDEBAR_SECTIONS = new Set<SectionKey>(['skillSets', 'educations', 'certifications']);
@@ -101,14 +101,14 @@ export default function TemplateLisbon({
 
     const mainRenderers: Record<string, () => ReactNode> = {
         summary: () =>
-            profile?.summary ? (
+            summary?.content ? (
                 <section className="mb-5" key="summary">
                     <MainSectionHeading
                         title={resolveHeadingLabel('summary', headingLabels, 'Profile')}
                         sectionKey="summary"
                         onHeadingChange={onHeadingChange}
                     />
-                    <p className="whitespace-pre-line text-sm leading-relaxed text-gray-600">{profile.summary}</p>
+                    <p className="whitespace-pre-line text-sm leading-relaxed text-gray-600">{summary.content}</p>
                 </section>
             ) : null,
 

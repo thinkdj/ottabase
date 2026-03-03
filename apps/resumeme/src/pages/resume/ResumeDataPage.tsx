@@ -12,6 +12,7 @@ import {
     useCreateResumeProfile,
     useCreateResumeProject,
     useCreateResumeSkillSet,
+    useCreateResumeSummary,
     useCreateResumeWorkExperience,
     useDeleteResumeCertification,
     useDeleteResumeDataSet,
@@ -19,6 +20,7 @@ import {
     useDeleteResumeProfile,
     useDeleteResumeProject,
     useDeleteResumeSkillSet,
+    useDeleteResumeSummary,
     useDeleteResumeWorkExperience,
     useResumeCertifications,
     useResumeDataSets,
@@ -26,6 +28,7 @@ import {
     useResumeProfiles,
     useResumeProjects,
     useResumeSkillSets,
+    useResumeSummaries,
     useResumeWorkExperiences,
     useUpdateResumeCertification,
     useUpdateResumeDataSet,
@@ -33,6 +36,7 @@ import {
     useUpdateResumeProfile,
     useUpdateResumeProject,
     useUpdateResumeSkillSet,
+    useUpdateResumeSummary,
     useUpdateResumeWorkExperience,
 } from '@/ottabase/hooks/useResume';
 import { AvatarEditModal } from '@/pages/user/AvatarEditModal';
@@ -62,6 +66,7 @@ import {
     Award,
     Briefcase,
     Database,
+    FileText,
     FolderOpen,
     GraduationCap,
     Pencil,
@@ -322,7 +327,17 @@ const PROFILE_FIELDS: FormField[] = [
     { key: 'website', label: 'Website', type: 'text', placeholder: 'https://yoursite.dev' },
     { key: 'linkedinUrl', label: 'LinkedIn URL', type: 'text', placeholder: 'https://linkedin.com/in/you' },
     { key: 'githubUrl', label: 'GitHub URL', type: 'text', placeholder: 'https://github.com/you' },
-    { key: 'summary', label: 'Summary', type: 'textarea', placeholder: 'Brief professional summary…' },
+];
+
+const SUMMARY_FIELDS: FormField[] = [
+    { key: 'title', label: 'Title', type: 'text', required: true, placeholder: 'e.g. Backend summary' },
+    {
+        key: 'content',
+        label: 'Summary Text',
+        type: 'textarea',
+        required: true,
+        placeholder: 'Concise professional summary…',
+    },
 ];
 
 const WORK_FIELDS: FormField[] = [
@@ -474,6 +489,7 @@ function DataSetSection({
     dataSets,
     isLoading,
     categories,
+    summaries,
     onCreate,
     onUpdate,
     onDelete,
@@ -481,6 +497,7 @@ function DataSetSection({
     dataSets: Array<{ id: string; name: string; profileId?: string; [k: string]: unknown }>;
     isLoading: boolean;
     categories: SelectionCategory[];
+    summaries: Array<{ id: string; title: string; subtitle?: string }>;
     onCreate: (data: Record<string, unknown>) => void;
     onUpdate: (id: string, data: Record<string, unknown>) => void;
     onDelete: (id: string) => void;
@@ -490,15 +507,18 @@ function DataSetSection({
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [dsName, setDsName] = useState('');
     const [dsProfileId, setDsProfileId] = useState('');
+    const [dsSummaryId, setDsSummaryId] = useState('');
     // Selection state — keyed by category key, each is a Set of selected IDs
     const [selections, setSelections] = useState<Record<string, Set<string>>>({});
 
     const profileCategory = categories.find((c) => c.key === 'profiles');
+    const summaryOptions = summaries;
 
     const openCreate = useCallback(() => {
         setEditingItem(null);
         setDsName('');
         setDsProfileId(profileCategory?.items[0]?.id ?? '');
+        setDsSummaryId(summaryOptions?.[0]?.id ?? '');
         // Default: select all items in each category
         const defaults: Record<string, Set<string>> = {};
         for (const cat of categories) {
@@ -506,13 +526,14 @@ function DataSetSection({
         }
         setSelections(defaults);
         setDialogOpen(true);
-    }, [categories, profileCategory]);
+    }, [categories, profileCategory, summaryOptions]);
 
     const openEdit = useCallback(
         (ds: (typeof dataSets)[number]) => {
             setEditingItem(ds);
             setDsName(String(ds.name ?? ''));
             setDsProfileId(String(ds.profileId ?? ''));
+            setDsSummaryId(String((ds as any).summaryId ?? ''));
             // Hydrate selections from stored JSON arrays
             const sel: Record<string, Set<string>> = {};
             const fieldMap: Record<string, string> = {
@@ -569,6 +590,7 @@ function DataSetSection({
         const payload: Record<string, unknown> = {
             name: dsName,
             profileId: dsProfileId,
+            summaryId: dsSummaryId,
             selectedSkillSetIds: JSON.stringify([...(selections.skillSets ?? [])]),
             selectedWorkExperienceIds: JSON.stringify([...(selections.workExperiences ?? [])]),
             selectedEducationIds: JSON.stringify([...(selections.educations ?? [])]),
@@ -581,7 +603,7 @@ function DataSetSection({
             onCreate(payload);
         }
         setDialogOpen(false);
-    }, [dsName, dsProfileId, selections, editingItem, onCreate, onUpdate]);
+    }, [dsName, dsProfileId, dsSummaryId, selections, editingItem, onCreate, onUpdate]);
 
     const handleDelete = useCallback(
         (id: string) => {
@@ -624,6 +646,7 @@ function DataSetSection({
                     <div className="space-y-2">
                         {dataSets.map((ds) => {
                             const profileLabel = profileCategory?.items.find((p) => p.id === ds.profileId)?.title;
+                            const summaryLabel = summaryOptions?.find((s) => s.id === (ds as any).summaryId)?.title;
                             return (
                                 <div
                                     key={ds.id}
@@ -633,6 +656,9 @@ function DataSetSection({
                                         <p className="font-medium text-foreground truncate">{ds.name}</p>
                                         <p className="text-xs text-muted-foreground truncate">
                                             Profile: {profileLabel ?? 'None'}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground truncate">
+                                            Summary: {summaryLabel ?? 'None'}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0 ml-2">
@@ -703,6 +729,25 @@ function DataSetSection({
                                     {profileCategory.items.map((p) => (
                                         <option key={p.id} value={p.id}>
                                             {p.title}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Summary selector (single select) */}
+                        {summaryOptions && summaryOptions.length > 0 && (
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Summary</label>
+                                <select
+                                    className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                                    value={dsSummaryId}
+                                    onChange={(e) => setDsSummaryId(e.target.value)}
+                                >
+                                    <option value="">None</option>
+                                    {summaryOptions.map((s) => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.title}
                                         </option>
                                     ))}
                                 </select>
@@ -863,11 +908,6 @@ function MeCard({
                         {(profile?.email || user.email) && <span>{profile?.email || user.email}</span>}
                         {profile?.location && <span>{profile.location}</span>}
                     </div>
-                    {profile?.summary && (
-                        <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
-                            {profile.summary}
-                        </p>
-                    )}
                 </div>
             </CardContent>
 
@@ -908,6 +948,7 @@ export function ResumeDataPage() {
 
     // Fetch all resume entities for the current user
     const { data: profiles, isLoading: profilesLoading } = useResumeProfiles();
+    const { data: summaries, isLoading: summariesLoading } = useResumeSummaries();
     const { data: workExps, isLoading: workLoading } = useResumeWorkExperiences();
     const { data: educations, isLoading: eduLoading } = useResumeEducations();
     const { data: skillSets, isLoading: skillsLoading } = useResumeSkillSets();
@@ -918,6 +959,10 @@ export function ResumeDataPage() {
     const createProfile = useCreateResumeProfile();
     const updateProfile = useUpdateResumeProfile();
     const deleteProfile = useDeleteResumeProfile();
+
+    const createSummary = useCreateResumeSummary();
+    const updateSummary = useUpdateResumeSummary();
+    const deleteSummary = useDeleteResumeSummary();
 
     const createWork = useCreateResumeWorkExperience();
     const updateWork = useUpdateResumeWorkExperience();
@@ -947,6 +992,7 @@ export function ResumeDataPage() {
 
     // Normalise list data (API may wrap in pagination envelope)
     const profileList = (Array.isArray(profiles) ? profiles : ((profiles as any)?.data ?? [])) as any[];
+    const summaryList = (Array.isArray(summaries) ? summaries : ((summaries as any)?.data ?? [])) as any[];
     const workList = (Array.isArray(workExps) ? workExps : ((workExps as any)?.data ?? [])) as any[];
     const eduList = (Array.isArray(educations) ? educations : ((educations as any)?.data ?? [])) as any[];
     const skillList = (Array.isArray(skillSets) ? skillSets : ((skillSets as any)?.data ?? [])) as any[];
@@ -1019,7 +1065,7 @@ export function ResumeDataPage() {
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">My Resume Data</h1>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        Manage your profile, experience, education, and skills. Then head to the{' '}
+                        Manage your profile, summaries, experience, education, and skills. Then head to the{' '}
                         <Link
                             to="/resume-builder"
                             search={{ resumeId: undefined, dataSetId: undefined }}
@@ -1042,7 +1088,7 @@ export function ResumeDataPage() {
                 </Button>
             </div>
 
-            {/* ── "Me" card — avatar, name, profile summary ── */}
+            {/* ── "Me" card — avatar, name, profile basics ── */}
             {user && (
                 <MeCard
                     user={user}
@@ -1060,8 +1106,13 @@ export function ResumeDataPage() {
             {/* Resume Data Sets — top-level bucket that curates the data below */}
             <DataSetSection
                 dataSets={dataSetList}
-                isLoading={dataSetsLoading}
+                isLoading={dataSetsLoading || summariesLoading}
                 categories={selectionCategories}
+                summaries={summaryList.map((s: any) => ({
+                    id: s.id,
+                    title: s.title || 'Untitled Summary',
+                    subtitle: s.content,
+                }))}
                 onCreate={(data) => createDataSet.mutate(data as any)}
                 onUpdate={(id, data) => updateDataSet.mutate({ id, data } as any)}
                 onDelete={(id) => deleteDataSet.mutate(id)}
@@ -1079,7 +1130,7 @@ export function ResumeDataPage() {
                 {/* Profile (singleton — show only first, or create) */}
                 <CrudSection
                     title="Profile"
-                    description="Your headline, contact info, and summary"
+                    description="Your headline and contact info"
                     icon={<UserCircle className="h-5 w-5 text-muted-foreground" />}
                     items={profileList}
                     isLoading={profilesLoading}
@@ -1091,6 +1142,23 @@ export function ResumeDataPage() {
                     onCreate={(data) => createProfile.mutate(data as any)}
                     onUpdate={(id, data) => updateProfile.mutate({ id, data } as any)}
                     onDelete={(id) => deleteProfile.mutate(id)}
+                />
+
+                {/* Summaries */}
+                <CrudSection
+                    title="Summaries"
+                    description="Short elevator pitches for different roles"
+                    icon={<FileText className="h-5 w-5 text-muted-foreground" />}
+                    items={summaryList}
+                    isLoading={summariesLoading}
+                    fields={SUMMARY_FIELDS}
+                    renderItem={(s: any) => ({
+                        title: s.title || 'Untitled Summary',
+                        subtitle: s.content,
+                    })}
+                    onCreate={(data) => createSummary.mutate(data as any)}
+                    onUpdate={(id, data) => updateSummary.mutate({ id, data } as any)}
+                    onDelete={(id) => deleteSummary.mutate(id)}
                 />
 
                 {/* Work Experience */}

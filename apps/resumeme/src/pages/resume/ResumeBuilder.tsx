@@ -11,6 +11,7 @@ import {
     useResumeProjects,
     useResumeSaved,
     useResumeSkillSets,
+    useResumeSummaries,
     useResumeWorkExperiences,
     useUpdateResumeDataSet,
     useUpdateResumeSaved,
@@ -91,7 +92,7 @@ interface ContentSection {
 
 function buildContentSections(data: ResumeTemplateData, order: SectionKey[]): ContentSection[] {
     const sectionMap: Record<SectionKey, ContentSection> = {
-        summary: { key: 'summary', label: 'Profile', count: data.profile?.summary ? 1 : 0 },
+        summary: { key: 'summary', label: 'Summary', count: data.summary ? 1 : 0 },
         workExperiences: { key: 'workExperiences', label: 'Work Experience', count: data.workExperiences.length },
         educations: { key: 'educations', label: 'Education', count: data.educations.length },
         skillSets: { key: 'skillSets', label: 'Skills', count: data.skillSets.length },
@@ -480,14 +481,15 @@ function LeftSidebar({
                             {openSections[section.key] && (
                                 <div className="ml-6 mt-1 space-y-1">
                                     {/* Render item cards based on section type */}
-                                    {section.key === 'summary' && sidebarData.profile && (
+                                    {section.key === 'summary' && (
                                         <ItemCard
                                             title={sidebarData.fullName}
                                             subtitle={
                                                 summaryAvailable
-                                                    ? (sidebarData.profile.summary ??
-                                                      sidebarData.profile.headline ??
-                                                      undefined)
+                                                    ? sidebarData.summary?.title ||
+                                                      sidebarData.summary?.content ||
+                                                      sidebarData.profile?.headline ||
+                                                      undefined
                                                     : 'Add a summary in My Data to enable'
                                             }
                                             checked={summaryAvailable ? summaryChecked : false}
@@ -787,6 +789,9 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     const { data: certificationsResult, isLoading: certificationsLoading } = useResumeCertifications(undefined, {
         enabled: !guestMode,
     });
+    const { data: summariesResult, isLoading: summariesLoading } = useResumeSummaries(undefined, {
+        enabled: !guestMode,
+    });
     const { data: dataSetsResult, isLoading: dataSetsLoading } = useResumeDataSets(undefined, {
         enabled: !guestMode,
     });
@@ -813,10 +818,25 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         () => normalizeList<Record<string, unknown>>(certificationsResult),
         [certificationsResult],
     );
+    const summaries = useMemo(() => normalizeList<Record<string, unknown>>(summariesResult), [summariesResult]);
     const dataSets = useMemo(
         () => sortByUpdatedAtDesc(normalizeList<Record<string, unknown>>(dataSetsResult)),
         [dataSetsResult],
     );
+
+    const summaryMap = useMemo(() => {
+        const map = new Map<string, ResumeTemplateData['summary']>();
+        for (const summary of summaries) {
+            const id = String(summary.id ?? '');
+            if (!id) continue;
+            map.set(id, {
+                id,
+                title: (summary.title as string | null | undefined) ?? null,
+                content: (summary.content as string | null | undefined) ?? '',
+            });
+        }
+        return map;
+    }, [summaries]);
 
     const dataSetByProfileId = useMemo(() => {
         const map = new Map<string, Record<string, unknown>>();
@@ -853,6 +873,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
             educationsLoading ||
             projectsLoading ||
             certificationsLoading ||
+            summariesLoading ||
             dataSetsLoading);
 
     // ── Hydrate from a saved resume (urlResumeId) ─────────────────────────
@@ -901,6 +922,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         () => certifications.map((item) => String(item.id ?? '')).filter(Boolean),
         [certifications],
     );
+    const summaryIds = useMemo(() => summaries.map((item) => String(item.id ?? '')).filter(Boolean), [summaries]);
 
     useEffect(() => {
         if (guestMode) return;
@@ -927,6 +949,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
             profileId: activeProfileId,
             templateId,
             accentColor,
+            summaryId: summaryIds[0] ?? '',
             selectedSkillSetIds: JSON.stringify(skillSetIds),
             selectedWorkExperienceIds: JSON.stringify(workExperienceIds),
             selectedEducationIds: JSON.stringify(educationIds),
@@ -948,6 +971,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         educationIds,
         projectIds,
         certificationIds,
+        summaryIds,
     ]);
 
     useEffect(() => {
@@ -978,6 +1002,8 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         if (nextAccentColor) {
             setAccentColor(nextAccentColor);
         }
+
+        setIncludeSummary(Boolean(activeDataSet.summaryId));
     }, [guestMode, activeDataSet, skillSetIds, workExperienceIds, educationIds, projectIds, certificationIds]);
 
     useEffect(() => {
@@ -1011,6 +1037,14 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         }
     }, [isViewOnly, savedResumeResult]);
 
+    const selectedSummary = useMemo<ResumeTemplateData['summary'] | null>(() => {
+        if (guestMode) return GUEST_DATA.summary ?? null;
+        if (savedSnapshotData) return savedSnapshotData.summary ?? null;
+        const summaryId = activeDataSet?.summaryId ? String(activeDataSet.summaryId) : null;
+        if (!summaryId) return null;
+        return summaryMap.get(summaryId) ?? null;
+    }, [guestMode, savedSnapshotData, activeDataSet, summaryMap]);
+
     const data = useMemo<ResumeTemplateData>(() => {
         if (guestMode) {
             // Filter guest data based on selected IDs so toggling in sidebar reflects in preview
@@ -1021,10 +1055,10 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
             const selectedCertificationSet = new Set(selectedCertificationIds);
             return {
                 ...GUEST_DATA,
+                summary: includeSummary ? (GUEST_DATA.summary ?? null) : null,
                 profile: GUEST_DATA.profile
                     ? {
                           ...GUEST_DATA.profile,
-                          summary: includeSummary ? GUEST_DATA.profile.summary : null,
                       }
                     : null,
                 skillSets: GUEST_DATA.skillSets.filter((s) => selectedSkillsSet.has(s.id)),
@@ -1052,10 +1086,10 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
 
         const liveData: ResumeTemplateData = {
             fullName,
+            summary: includeSummary ? (selectedSummary ?? null) : null,
             profile: selectedProfile
                 ? {
                       headline: (selectedProfile.headline as string | null | undefined) ?? null,
-                      summary: includeSummary ? ((selectedProfile.summary as string | null | undefined) ?? null) : null,
                       avatarUrl: (selectedProfile.avatarUrl as string | null | undefined) ?? null,
                       phone: (selectedProfile.phone as string | null | undefined) ?? null,
                       email: (selectedProfile.email as string | null | undefined) ?? user?.email ?? null,
@@ -1066,7 +1100,6 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                   }
                 : {
                       headline: null,
-                      summary: null,
                       avatarUrl: null,
                       phone: null,
                       email: user?.email ?? null,
@@ -1146,6 +1179,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         educations,
         projects,
         certifications,
+        selectedSummary,
         selectedSkillSetIds,
         selectedWorkExperienceIds,
         selectedEducationIds,
@@ -1170,10 +1204,10 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
 
         return {
             fullName,
+            summary: selectedSummary,
             profile: selectedProfile
                 ? {
                       headline: (selectedProfile.headline as string | null | undefined) ?? null,
-                      summary: (selectedProfile.summary as string | null | undefined) ?? null,
                       avatarUrl: (selectedProfile.avatarUrl as string | null | undefined) ?? null,
                       phone: (selectedProfile.phone as string | null | undefined) ?? null,
                       email: (selectedProfile.email as string | null | undefined) ?? user?.email ?? null,
@@ -1184,7 +1218,6 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                   }
                 : {
                       headline: null,
-                      summary: null,
                       avatarUrl: null,
                       phone: null,
                       email: user?.email ?? null,
@@ -1249,6 +1282,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         projects,
         certifications,
         activeProfileId,
+        selectedSummary,
         user?.name,
         user?.email,
     ]);
@@ -1262,6 +1296,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
             templateId,
             accentColor,
             profileId: String(activeProfileId ?? activeDataSet.profileId ?? profileIds[0] ?? ''),
+            summaryId: activeDataSet.summaryId ? String(activeDataSet.summaryId) : '',
             selectedSkillSetIds,
             selectedWorkExperienceIds,
             selectedEducationIds,
@@ -1348,8 +1383,8 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         setHeadingLabels((prev) => ({ ...prev, [key]: label }));
     }, []);
 
-    const summaryAvailable = Boolean(sidebarData.profile?.summary);
-    const summaryChecked = summaryAvailable && (isViewOnly ? Boolean(data.profile?.summary) : includeSummary);
+    const summaryAvailable = Boolean(selectedSummary);
+    const summaryChecked = summaryAvailable && (isViewOnly ? Boolean(data.summary) : includeSummary);
 
     // ---- Open save dialog ----
     const handleOpenSaveDialog = useCallback(() => {

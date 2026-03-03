@@ -3,7 +3,7 @@
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
-import { resumeDataSetsTable, type NewResumeDataSetType, type ResumeDataSetType } from './ResumeDataSet.schema';
+import { resumeDataSetsTable } from './ResumeDataSet.schema';
 
 export { resumeDataSetsTable, type NewResumeDataSetType, type ResumeDataSetType } from './ResumeDataSet.schema';
 
@@ -107,6 +107,21 @@ export class ResumeDataSet extends BaseModel {
             uiConfig: {
                 label: 'Profile',
                 description: 'Linked resume profile ID',
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'select',
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+        summaryId: {
+            type: 'string',
+            editable: true,
+            uiConfig: {
+                label: 'Summary',
+                description: 'Linked resume summary ID',
             },
             formConfig: {
                 visible: true,

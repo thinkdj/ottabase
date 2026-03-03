@@ -58,7 +58,7 @@ export default function TemplateModern({
     headingLabels,
     onHeadingChange,
 }: ResumeTemplateProps) {
-    const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
+    const { fullName, profile, summary, skillSets, workExperiences, educations, projects, certifications } = data;
 
     // Sections that live in the sidebar (fixed position)
     const SIDEBAR_SECTIONS = new Set<SectionKey>(['skillSets', 'certifications']);
@@ -68,7 +68,7 @@ export default function TemplateModern({
     /** Map each main-area section key to its JSX */
     const mainRenderers: Record<string, () => ReactNode> = {
         summary: () =>
-            profile?.summary ? (
+            summary?.content ? (
                 <section className="mb-5" key="summary">
                     <SectionHeading
                         title={resolveHeadingLabel('summary', headingLabels, 'Summary')}
@@ -76,7 +76,7 @@ export default function TemplateModern({
                         onHeadingChange={onHeadingChange}
                     />
                     <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                        {profile.summary}
+                        {summary.content}
                     </p>
                 </section>
             ) : null,

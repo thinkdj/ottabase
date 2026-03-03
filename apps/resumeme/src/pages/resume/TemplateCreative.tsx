@@ -126,7 +126,7 @@ export default function TemplateCreative({
     headingLabels,
     onHeadingChange,
 }: ResumeTemplateProps) {
-    const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
+    const { fullName, profile, summary, skillSets, workExperiences, educations, projects, certifications } = data;
 
     // Split name for the big hero typography
     const firstName = fullName.split(' ')[0] || fullName;
@@ -134,7 +134,7 @@ export default function TemplateCreative({
     const sectionRenderers: Record<SectionKey, () => ReactNode> = {
         // ── Summary — two-column prose ──
         summary: () =>
-            profile?.summary ? (
+            summary?.content ? (
                 <section key="summary" className="mb-8">
                     <div className="flex items-start gap-8">
                         <SectionHeading
@@ -143,7 +143,7 @@ export default function TemplateCreative({
                             onHeadingChange={onHeadingChange}
                         />
                         <div className="flex-1 columns-2 gap-8 text-sm leading-relaxed text-gray-600">
-                            {profile.summary}
+                            {summary.content}
                         </div>
                     </div>
                     <hr className="mt-6 border-gray-200" />
@@ -318,7 +318,7 @@ export default function TemplateCreative({
         >
             {/* ── Hero Section ── */}
             <header className="relative px-10 pt-10 pb-6 overflow-hidden">
-                <div className="flex items-end gap-6">
+                <div className="flex items-start gap-6">
                     {/* Avatar with accent backdrop */}
                     <div className="relative shrink-0">
                         <div

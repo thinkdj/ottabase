@@ -4,9 +4,14 @@
 export interface ResumeTemplateData {
     /** Full name from user's app profile */
     fullName: string;
+    /** Selected summary content */
+    summary: {
+        id: string;
+        title?: string | null;
+        content: string;
+    } | null;
     profile: {
         headline?: string | null;
-        summary?: string | null;
         avatarUrl?: string | null;
         phone?: string | null;
         email?: string | null;

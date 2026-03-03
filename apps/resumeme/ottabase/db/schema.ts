@@ -38,6 +38,7 @@ export { resumeProfilesTable } from '../models/ResumeProfile';
 export { resumeProjectsTable } from '../models/ResumeProject';
 export { resumeSavedTable } from '../models/ResumeSaved';
 export { resumeSkillSetsTable } from '../models/ResumeSkillSet';
+export { resumeSummariesTable } from '../models/ResumeSummary';
 export { resumeWorkExperiencesTable } from '../models/ResumeWorkExperience';
 
 // ============================================================

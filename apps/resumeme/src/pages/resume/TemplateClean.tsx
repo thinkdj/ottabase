@@ -49,7 +49,7 @@ export default function TemplateClean({
     headingLabels,
     onHeadingChange,
 }: ResumeTemplateProps) {
-    const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
+    const { fullName, profile, summary, skillSets, workExperiences, educations, projects, certifications } = data;
 
     // Contact items joined by pipes
     const contactItems: Array<{ label: string; href?: string }> = [];
@@ -270,9 +270,9 @@ export default function TemplateClean({
             </header>
 
             {/* ── Summary (full-width, above divider) ── */}
-            {profile?.summary && (
+            {summary?.content && (
                 <section className="mb-6">
-                    <p className="text-sm leading-relaxed text-gray-600">{profile.summary}</p>
+                    <p className="text-sm leading-relaxed text-gray-600">{summary.content}</p>
                 </section>
             )}
 

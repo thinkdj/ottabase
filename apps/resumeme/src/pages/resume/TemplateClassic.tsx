@@ -74,12 +74,12 @@ export default function TemplateClassic({
     headingLabels,
     onHeadingChange,
 }: ResumeTemplateProps) {
-    const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
+    const { fullName, profile, summary, skillSets, workExperiences, educations, projects, certifications } = data;
 
     /** Map each section key to its JSX — returns null if the section is empty */
     const sectionRenderers: Record<SectionKey, () => ReactNode> = {
         summary: () =>
-            profile?.summary ? (
+            summary?.content ? (
                 <section className="mb-5" key="summary">
                     <SectionHeading
                         title={resolveHeadingLabel('summary', headingLabels, 'Summary')}
@@ -87,7 +87,7 @@ export default function TemplateClassic({
                         onHeadingChange={onHeadingChange}
                     />
                     <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                        {profile.summary}
+                        {summary.content}
                     </p>
                 </section>
             ) : null,

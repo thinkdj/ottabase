@@ -33,6 +33,7 @@ import { ResumeProfile } from '../../ottabase/models/ResumeProfile';
 import { ResumeProject } from '../../ottabase/models/ResumeProject';
 import { ResumeSaved } from '../../ottabase/models/ResumeSaved';
 import { ResumeSkillSet } from '../../ottabase/models/ResumeSkillSet';
+import { ResumeSummary } from '../../ottabase/models/ResumeSummary';
 import { ResumeWorkExperience } from '../../ottabase/models/ResumeWorkExperience';
 import type { CloudflareEnv } from '../cloudflare-env';
 import { readJson } from './utils';
@@ -100,6 +101,7 @@ export function initDbConnection(env: CloudflareEnv): void {
     const brandModels = [BrandKit, LayoutTemplate, LayoutRouteMapping, MenuSlotAssignment];
     const appModels = [
         ResumeProfile,
+        ResumeSummary,
         ResumeSkillSet,
         ResumeWorkExperience,
         ResumeEducation,
@@ -118,6 +120,7 @@ export function initDbConnection(env: CloudflareEnv): void {
     // Register RLS policies for resume models — each is user-scoped (filtered by userId)
     const resumeEntities = [
         'resume_profiles',
+        'resume_summaries',
         'resume_skill_sets',
         'resume_work_experiences',
         'resume_educations',

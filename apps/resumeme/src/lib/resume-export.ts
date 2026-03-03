@@ -48,11 +48,11 @@ export function buildPlainText(data: ResumeTemplateData): string {
     }
 
     // ---- Summary ----
-    if (data.profile?.summary) {
+    if (data.summary?.content) {
         sep();
         lines.push(sectionRule('SUMMARY'));
         sep();
-        lines.push(data.profile.summary);
+        lines.push(data.summary.content);
     }
 
     // ---- Work Experience ----

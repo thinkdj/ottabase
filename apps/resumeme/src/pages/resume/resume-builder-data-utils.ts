@@ -58,6 +58,7 @@ export interface ResumeDataSetPersistInput {
     templateId: string;
     accentColor: string;
     profileId: string;
+    summaryId: string | null;
     selectedSkillSetIds: string[];
     selectedWorkExperienceIds: string[];
     selectedEducationIds: string[];
@@ -70,6 +71,7 @@ export function buildResumeDataSetPersistData(input: ResumeDataSetPersistInput):
         templateId: input.templateId,
         accentColor: input.accentColor,
         profileId: input.profileId,
+        summaryId: input.summaryId ?? '',
         selectedSkillSetIds: JSON.stringify(input.selectedSkillSetIds),
         selectedWorkExperienceIds: JSON.stringify(input.selectedWorkExperienceIds),
         selectedEducationIds: JSON.stringify(input.selectedEducationIds),

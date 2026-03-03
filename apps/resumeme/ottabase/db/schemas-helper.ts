@@ -34,6 +34,7 @@ import { resumeProfilesTable } from '../models/ResumeProfile';
 import { resumeProjectsTable } from '../models/ResumeProject';
 import { resumeSavedTable } from '../models/ResumeSaved';
 import { resumeSkillSetsTable } from '../models/ResumeSkillSet';
+import { resumeSummariesTable } from '../models/ResumeSummary';
 import { resumeWorkExperiencesTable } from '../models/ResumeWorkExperience';
 
 /**
@@ -61,6 +62,7 @@ export function getAllSchemas() {
     const appTables = {
         shortlinksTable,
         resumeProfilesTable,
+        resumeSummariesTable,
         resumeSkillSetsTable,
         resumeWorkExperiencesTable,
         resumeEducationsTable,
@@ -105,6 +107,7 @@ export function getSchemaSummary() {
     const appTables = {
         shortlinksTable,
         resumeProfilesTable,
+        resumeSummariesTable,
         resumeSkillSetsTable,
         resumeWorkExperiencesTable,
         resumeEducationsTable,

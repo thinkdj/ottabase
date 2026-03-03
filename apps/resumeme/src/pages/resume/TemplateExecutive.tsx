@@ -1,6 +1,6 @@
+import type { ReactNode } from 'react';
 import type { ResumeTemplateProps } from './types';
 import { formatDateRange, formatResumeDate, resolveHeadingLabel, type SectionKey } from './types';
-import type { ReactNode } from 'react';
 
 /**
  * Executive template — premium corporate design for senior professionals.
@@ -86,18 +86,18 @@ export default function TemplateExecutive({
     headingLabels,
     onHeadingChange,
 }: ResumeTemplateProps) {
-    const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
+    const { fullName, profile, summary, skillSets, workExperiences, educations, projects, certifications } = data;
 
     const sectionRenderers: Record<SectionKey, () => ReactNode> = {
         summary: () =>
-            profile?.summary ? (
+            summary?.content ? (
                 <section className="mb-6" key="summary">
                     <SectionHeading
                         title={resolveHeadingLabel('summary', headingLabels, 'Professional Summary')}
                         sectionKey="summary"
                         onHeadingChange={onHeadingChange}
                     />
-                    <p className="whitespace-pre-line text-sm leading-relaxed text-gray-600">{profile.summary}</p>
+                    <p className="whitespace-pre-line text-sm leading-relaxed text-gray-600">{summary.content}</p>
                 </section>
             ) : null,
 

@@ -16,6 +16,7 @@ export const resumeDataSetsTable = sqliteTable('resume_data_sets', {
     userId: text('user_id').notNull(),
     name: text('name').notNull(),
     profileId: text('profile_id'),
+    summaryId: text('summary_id'),
     templateId: text('template_id').default('classic'),
     accentColor: text('accent_color').default('#475569'),
     selectedSkillSetIds: text('selected_skill_set_ids'), // JSON array of IDs

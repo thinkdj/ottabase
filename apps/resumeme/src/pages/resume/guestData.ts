@@ -17,12 +17,16 @@ export const GUEST_AVATAR_URL = 'https://randomuser.me/api/portraits/men/32.jpg'
  */
 export const GUEST_DATA: ResumeTemplateData = {
     fullName: 'John Doe',
-    profile: {
-        headline: 'Full-Stack Software Engineer',
-        summary:
+    summary: {
+        id: 'g-sum-1',
+        title: 'Default summary',
+        content:
             'Results-driven software engineer with 6+ years of experience designing, building, and shipping ' +
             'web applications at scale. Adept at translating business requirements into clean, maintainable code. ' +
             'Strong communicator who thrives in cross-functional teams and fast-paced environments.',
+    },
+    profile: {
+        headline: 'Full-Stack Software Engineer',
         avatarUrl: GUEST_AVATAR_URL,
         email: 'john.doe@example.com',
         phone: '+1 555-987-6543',

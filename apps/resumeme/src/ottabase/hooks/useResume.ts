@@ -8,6 +8,7 @@ import type { ResumeProfileType } from '../../../ottabase/models/ResumeProfile';
 import type { ResumeProjectType } from '../../../ottabase/models/ResumeProject';
 import type { ResumeSavedType } from '../../../ottabase/models/ResumeSaved';
 import type { ResumeSkillSetType } from '../../../ottabase/models/ResumeSkillSet';
+import type { ResumeSummaryType } from '../../../ottabase/models/ResumeSummary';
 import type { ResumeWorkExperienceType } from '../../../ottabase/models/ResumeWorkExperience';
 
 // ── ResumeProfile ──────────────────────────────────────────
@@ -18,6 +19,15 @@ export const {
     useUpdate: useUpdateResumeProfile,
     useDelete: useDeleteResumeProfile,
 } = createModelHooks<ResumeProfileType>({ entityName: 'resume_profiles' });
+
+// ── ResumeSummary ──────────────────────────────────────────
+export const {
+    useList: useResumeSummaries,
+    useDetail: useResumeSummary,
+    useCreate: useCreateResumeSummary,
+    useUpdate: useUpdateResumeSummary,
+    useDelete: useDeleteResumeSummary,
+} = createModelHooks<ResumeSummaryType>({ entityName: 'resume_summaries' });
 
 // ── ResumeSkillSet ─────────────────────────────────────────
 export const {

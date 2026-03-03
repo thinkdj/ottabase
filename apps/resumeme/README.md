@@ -22,13 +22,13 @@ and export to PDF.
 
 The app separates resume content into three layers:
 
-1. **My Resume Data** (`/my-data`) — Raw content entries: profiles, work experiences, education, skills, projects,
-   certifications. A user maintains one repository of career data that can be reused across many resumes.
+1. **My Resume Data** (`/my-data`) — Raw content entries: profiles, summaries, work experiences, education, skills,
+   projects, certifications. A user maintains one repository of career data that can be reused across many resumes.
 
 2. **Resume Data Sets** (managed inside My Resume Data) — A named collection that cherry-picks items from the raw data.
-   Each data set selects a profile (single) and a subset of work experiences, education, skills, projects, and
-   certifications (multi-select). Use data sets to curate different resume variants (e.g. "Frontend Focus",
-   "Full-Stack", "Leadership").
+   Each data set selects a profile (single), a summary (single), and a subset of work experiences, education, skills,
+   projects, and certifications (multi-select). Use data sets to curate different resume variants (e.g. "Frontend
+   Focus", "Full-Stack", "Leadership").
 
 3. **Saved Resumes** (`/my-resumes`) — A frozen snapshot produced by the builder. Contains the full expanded JSON of all
    resume data, template settings, section order, heading labels, and a user-chosen filename. Once saved, the resume
@@ -47,7 +47,8 @@ The app separates resume content into three layers:
 
 | Model                          | Table                              | Purpose                                                           |
 | ------------------------------ | ---------------------------------- | ----------------------------------------------------------------- |
-| `ResumeProfile`                | `resume_profiles`                  | Contact info, headline, summary, social links                     |
+| `ResumeProfile`                | `resume_profiles`                  | Contact info, headline, social links                              |
+| `ResumeSummary`                | `resume_summaries`                 | Reusable professional summaries                                   |
 | `ResumeSkillSet`               | `resume_skill_sets`                | Named group of skill tags                                         |
 | `ResumeWorkExperience`         | `resume_work_experiences`          | Job entries with highlights                                       |
 | `ResumeEducation`              | `resume_educations`                | Degrees and institutions                                          |

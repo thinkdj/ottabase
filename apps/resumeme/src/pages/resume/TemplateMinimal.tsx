@@ -1,6 +1,6 @@
+import type { ReactNode } from 'react';
 import type { ResumeTemplateProps } from './types';
 import { formatDateRange, formatResumeDate, resolveHeadingLabel, type SectionKey } from './types';
-import type { ReactNode } from 'react';
 
 /**
  * Minimal template — ultra-clean, typography-focused design.
@@ -50,7 +50,7 @@ export default function TemplateMinimal({
     headingLabels,
     onHeadingChange,
 }: ResumeTemplateProps) {
-    const { fullName, profile, skillSets, workExperiences, educations, projects, certifications } = data;
+    const { fullName, profile, summary, skillSets, workExperiences, educations, projects, certifications } = data;
 
     // Contact items as minimal comma-separated line
     const contactItems: string[] = [];
@@ -63,7 +63,7 @@ export default function TemplateMinimal({
 
     const sectionRenderers: Record<SectionKey, () => ReactNode> = {
         summary: () =>
-            profile?.summary ? (
+            summary?.content ? (
                 <div key="summary">
                     <SectionDivider />
                     <section>
@@ -72,7 +72,7 @@ export default function TemplateMinimal({
                             sectionKey="summary"
                             onHeadingChange={onHeadingChange}
                         />
-                        <p className="max-w-prose text-sm leading-relaxed text-gray-500">{profile.summary}</p>
+                        <p className="max-w-prose text-sm leading-relaxed text-gray-500">{summary.content}</p>
                     </section>
                 </div>
             ) : null,
