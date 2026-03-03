@@ -1,5 +1,6 @@
 import { ResumeTag } from '@/components/ResumeTag';
 import { ShareResumeDialog } from '@/components/ShareResumeDialog';
+import { calculateAtsScore } from '@/lib/ats-score';
 import { useSession } from '@/lib/auth';
 import { exportAsPdfServerSide, exportAsPlainText } from '@/lib/resume-export';
 import {
@@ -584,6 +585,7 @@ function RightSidebar({
     setAccentColor,
     fontSize,
     setFontSize,
+    data,
 }: {
     templateId: string;
     setTemplateId: (id: string) => void;
@@ -591,9 +593,13 @@ function RightSidebar({
     setAccentColor: (color: string) => void;
     fontSize: number;
     setFontSize: (size: number) => void;
+    data: ResumeTemplateData;
 }) {
     return (
         <div className="flex h-full flex-col overflow-y-auto p-3">
+            {/* ATS Score panel */}
+            <AtsScorePanel data={data} />
+
             {/* Template picker */}
             <div className="mb-5">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Template</h3>
@@ -672,6 +678,151 @@ function RightSidebar({
                     <span>{FONT_SIZE_MAX}%</span>
                 </div>
             </div>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// ATS Score Panel — shows ATS friendliness score + tips in right sidebar
+// ---------------------------------------------------------------------------
+function AtsScorePanel({ data }: { data: ResumeTemplateData }) {
+    const [expanded, setExpanded] = useState(false);
+    const result = useMemo(() => calculateAtsScore(data), [data]);
+
+    // Colour for the score ring
+    const ringColor =
+        result.score >= 85
+            ? '#16a34a' // green-600
+            : result.score >= 70
+              ? '#2563eb' // blue-600
+              : result.score >= 50
+                ? '#d97706' // amber-600
+                : '#dc2626'; // red-600
+
+    const circumference = 2 * Math.PI * 36; // radius 36
+    const dashOffset = circumference - (result.score / 100) * circumference;
+
+    return (
+        <div className="mb-5">
+            {/* Header + score ring */}
+            <button
+                type="button"
+                onClick={() => setExpanded((o) => !o)}
+                className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted/50"
+            >
+                {/* Mini circular gauge */}
+                <svg width="52" height="52" viewBox="0 0 80 80" className="shrink-0">
+                    <circle
+                        cx="40"
+                        cy="40"
+                        r="36"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="6"
+                        className="text-muted/30"
+                    />
+                    <circle
+                        cx="40"
+                        cy="40"
+                        r="36"
+                        fill="none"
+                        stroke={ringColor}
+                        strokeWidth="6"
+                        strokeLinecap="round"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={dashOffset}
+                        transform="rotate(-90 40 40)"
+                        className="transition-all duration-500"
+                    />
+                    <text
+                        x="40"
+                        y="44"
+                        textAnchor="middle"
+                        className="text-foreground"
+                        style={{ fontSize: '20px', fontWeight: 700 }}
+                    >
+                        {result.score}
+                    </text>
+                </svg>
+                <div className="min-w-0 flex-1">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">ATS Score</h3>
+                    <p className="text-sm font-medium" style={{ color: ringColor }}>
+                        {result.label}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                        {result.tips.length} tip{result.tips.length !== 1 ? 's' : ''} · click to{' '}
+                        {expanded ? 'hide' : 'expand'}
+                    </p>
+                </div>
+                <svg
+                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            {/* Expanded breakdown + tips */}
+            {expanded && (
+                <div className="mt-2 space-y-3 rounded-lg border border-border bg-card p-3">
+                    {/* Category breakdown bars */}
+                    <div className="space-y-1.5">
+                        {Object.entries(result.breakdown).map(([cat, { earned, max }]) => (
+                            <div key={cat}>
+                                <div className="flex items-center justify-between text-[10px]">
+                                    <span className="text-muted-foreground">{cat}</span>
+                                    <span className="font-medium text-foreground">
+                                        {earned}/{max}
+                                    </span>
+                                </div>
+                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
+                                    <div
+                                        className="h-full rounded-full transition-all duration-300"
+                                        style={{
+                                            width: `${max > 0 ? (earned / max) * 100 : 0}%`,
+                                            backgroundColor:
+                                                earned === max
+                                                    ? '#16a34a'
+                                                    : earned >= max * 0.5
+                                                      ? '#2563eb'
+                                                      : '#d97706',
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Tips list */}
+                    {result.tips.length > 0 && (
+                        <div className="space-y-1.5 border-t border-border pt-2">
+                            <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                Improvement Tips
+                            </h4>
+                            {result.tips.map((tip, i) => (
+                                <div
+                                    key={i}
+                                    className={`flex items-start gap-1.5 rounded-md px-2 py-1.5 text-[11px] leading-snug ${
+                                        tip.severity === 'critical'
+                                            ? 'bg-red-500/10 text-red-700 dark:text-red-400'
+                                            : tip.severity === 'warning'
+                                              ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                                              : 'bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                                    }`}
+                                >
+                                    <span className="mt-px shrink-0">
+                                        {tip.severity === 'critical' ? '🔴' : tip.severity === 'warning' ? '🟡' : '🔵'}
+                                    </span>
+                                    <span>{tip.message}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
@@ -2025,6 +2176,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                     setAccentColor={setAccentColor}
                                     fontSize={fontSize}
                                     setFontSize={setFontSize}
+                                    data={data}
                                 />
                             </aside>
                         </>
@@ -2037,6 +2189,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                 setAccentColor={setAccentColor}
                                 fontSize={fontSize}
                                 setFontSize={setFontSize}
+                                data={data}
                             />
                         </aside>
                     ))}
