@@ -147,8 +147,7 @@ describe('BrandLayout', () => {
             render(<BrandLayout />);
             // "/" link appears twice: logo link + nav "Home" link
             expect(screen.getAllByTestId('link-/').length).toBeGreaterThanOrEqual(2);
-            expect(screen.getByTestId('link-/blog')).toBeTruthy();
-            expect(screen.getByTestId('link-/demo')).toBeTruthy();
+            expect(screen.getByTestId('link-/guest')).toBeTruthy();
         });
 
         it('renders minimal header', () => {
@@ -181,8 +180,8 @@ describe('BrandLayout', () => {
             setLayout({ navigation: 'sidebar' });
             render(<BrandLayout />);
             // Sidebar links present
-            expect(screen.getByTestId('link-/blog')).toBeTruthy();
-            expect(screen.getByTestId('link-/admin')).toBeTruthy();
+            expect(screen.getAllByTestId('link-/').length).toBeGreaterThanOrEqual(1);
+            expect(screen.getByTestId('link-/guest')).toBeTruthy();
         });
 
         it('renders drawer trigger for drawer navigation', () => {
@@ -275,8 +274,10 @@ describe('BrandLayout', () => {
             mockSession.isAuthenticated = false;
             setLayout({ navigation: 'sidebar' });
             render(<BrandLayout />);
-            expect(screen.queryByTestId('link-/dashboard')).toBeNull();
-            expect(screen.queryByTestId('link-/referrals')).toBeNull();
+            expect(screen.queryByTestId('link-/my-data')).toBeNull();
+            expect(screen.queryByTestId('link-/my-resumes')).toBeNull();
+            expect(screen.queryByTestId('link-/resume-builder')).toBeNull();
+            expect(screen.queryByTestId('link-/dossier')).toBeNull();
         });
 
         it('shows auth-required links when authenticated', () => {
@@ -284,8 +285,10 @@ describe('BrandLayout', () => {
             mockSession.user = { name: 'Test User', email: 'test@example.com' } as any;
             setLayout({ navigation: 'sidebar' });
             render(<BrandLayout />);
-            expect(screen.getByTestId('link-/dashboard')).toBeTruthy();
-            expect(screen.getByTestId('link-/referrals')).toBeTruthy();
+            expect(screen.getByTestId('link-/my-data')).toBeTruthy();
+            expect(screen.getByTestId('link-/my-resumes')).toBeTruthy();
+            expect(screen.getByTestId('link-/resume-builder')).toBeTruthy();
+            expect(screen.getByTestId('link-/dossier')).toBeTruthy();
         });
 
         it('shows login button when not authenticated', () => {

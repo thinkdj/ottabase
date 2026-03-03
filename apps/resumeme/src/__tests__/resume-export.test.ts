@@ -8,15 +8,19 @@ import type { ResumeTemplateData } from '../pages/resume/types';
 
 const SAMPLE_DATA: ResumeTemplateData = {
     fullName: 'Jane Smith',
+    summary: {
+        id: 'summary-1',
+        title: 'Profile Summary',
+        content: 'Seasoned design engineer with over 10 years of experience.',
+    },
     profile: {
         headline: 'Senior Software Engineer',
-        summary: 'Seasoned engineer with 10 years of experience.',
         email: 'jane@example.com',
         phone: '+1-555-0100',
         location: 'San Francisco, CA',
         website: 'https://janesmith.dev',
-        linkedinUrl: 'https://linkedin.com/in/janesmith',
-        githubUrl: 'https://github.com/janesmith',
+        linkedinUrl: 'https://linkedin.com/in/janesmith.js',
+        githubUrl: 'https://github.com/janesmith.js',
         avatarUrl: null,
     },
     workExperiences: [
@@ -99,7 +103,7 @@ describe('buildPlainText', () => {
     it('includes the SUMMARY section', () => {
         const text = buildPlainText(SAMPLE_DATA);
         expect(text).toContain('SUMMARY');
-        expect(text).toContain('Seasoned engineer');
+        expect(text).toContain('Seasoned design engineer');
     });
 
     it('includes work experience with bullet highlights', () => {

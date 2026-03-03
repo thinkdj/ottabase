@@ -18,6 +18,7 @@ import {
     useUpdateResumeDataSet,
     useUpdateResumeSaved,
 } from '@/ottabase/hooks/useResume';
+import { OttaSelect, type ItemRendererProps, type OttaSelectItem } from '@ottabase/ottaselect';
 import {
     Button,
     Dialog,
@@ -595,6 +596,43 @@ function RightSidebar({
     setFontSize: (size: number) => void;
     data: ResumeTemplateData;
 }) {
+    const templateItems = useMemo<OttaSelectItem[]>(
+        () => RESUME_TEMPLATES.map((template) => ({ ...template, label: template.name })),
+        [],
+    );
+
+    const selectedTemplate = useMemo<OttaSelectItem | null>(
+        () => templateItems.find((item) => item.id === templateId) ?? templateItems[0] ?? null,
+        [templateId, templateItems],
+    );
+
+    const renderTemplateItem = useCallback(
+        ({ item }: ItemRendererProps) => (
+            <div className="flex flex-col gap-1 py-1">
+                <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground">{item.name}</span>
+                    {templateId === item.id && (
+                        <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[11px] uppercase text-primary">
+                            Active
+                        </span>
+                    )}
+                </div>
+                <span className="text-xs text-muted-foreground">{item.description}</span>
+            </div>
+        ),
+        [templateId],
+    );
+
+    const renderTemplateValue = useCallback(
+        (item: OttaSelectItem) => (
+            <div className="flex flex-col">
+                <span className="font-medium leading-tight text-foreground">{item.name}</span>
+                <span className="text-xs leading-tight text-muted-foreground">{item.description}</span>
+            </div>
+        ),
+        [],
+    );
+
     return (
         <div className="flex h-full flex-col overflow-y-auto p-3">
             {/* ATS Score panel */}
@@ -603,23 +641,20 @@ function RightSidebar({
             {/* Template picker */}
             <div className="mb-5">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Template</h3>
-                <div className="space-y-2">
-                    {RESUME_TEMPLATES.map((t) => (
-                        <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => setTemplateId(t.id)}
-                            className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
-                                templateId === t.id
-                                    ? 'border-primary bg-primary/10 text-primary'
-                                    : 'border-border bg-card text-foreground hover:border-primary/40'
-                            }`}
-                        >
-                            <span className="font-medium">{t.name}</span>
-                            <span className="mt-0.5 block text-xs opacity-70">{t.description}</span>
-                        </button>
-                    ))}
-                </div>
+                <OttaSelect
+                    mode="single"
+                    items={templateItems}
+                    value={selectedTemplate}
+                    onChange={(value) => {
+                        const next = value as OttaSelectItem | null;
+                        if (next?.id) setTemplateId(String(next.id));
+                    }}
+                    placeholder="Choose a template"
+                    renderItem={renderTemplateItem}
+                    renderValue={renderTemplateValue}
+                    dropdownClassName="max-h-72"
+                    showSelectedFirst
+                />
             </div>
 
             {/* Accent colour picker */}
