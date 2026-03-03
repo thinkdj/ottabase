@@ -1,7 +1,8 @@
 // ============================================================
 // Resume Sharing Routes (ResumeMe)
 // ============================================================
-// POST /api/resume/share         — create a shareable shortlink for a saved resume
+// POST/PATCH /api/resume/share   — create share link / toggle sharing for a saved resume
+// GET  /api/resume/share?resumeId=123 — fetch share state (auth required)
 // GET  /api/resume/public/:id    — fetch public snapshot by resume ID (no auth)
 // GET  /api/resume/public/code/:code — fetch public snapshot by short code (no auth)
 // ============================================================
@@ -32,26 +33,28 @@ function extractResumeIdFromShortlink(shortlink: InstanceType<typeof Shortlink>)
 }
 
 /**
- * POST /api/resume/share
- * Creates a shortlink pointing to the public resume viewer.
+ * POST/PATCH/GET /api/resume/share
+ * Creates or fetches a shortlink pointing to the public resume viewer, and
+ * allows toggling shareEnabled on the saved resume.
  * The resumeId is embedded in the fullUrl as a query parameter so it can
  * be resolved later via `handleResumePublicByCode`.
  * Requires authentication.
  */
 export async function handleResumeShare(context: ApiRouteContext): Promise<Response> {
-    const { request, env } = context;
+    const { request, env, method, url } = context;
 
     const session = await getSession(request, env as any, getAuthOptions(env));
     if (!session?.user?.id) {
         return errorResponse('Unauthorised', 401, { code: 'UNAUTHORISED' });
     }
 
-    const body = await readJson<{ resumeId?: string }>(request);
-    if (!body.resumeId) {
+    const body = method === 'GET' ? null : await readJson<{ resumeId?: string; shareEnabled?: boolean }>(request);
+    const resumeId = body?.resumeId || url.searchParams.get('resumeId');
+    if (!resumeId) {
         return errorResponse('resumeId is required', 400, { code: 'VALIDATION_ERROR' });
     }
 
-    const resume = await ResumeSaved.find(body.resumeId);
+    const resume = await ResumeSaved.find(resumeId);
     if (!resume) {
         return errorResponse('Resume not found', 404, { code: 'NOT_FOUND' });
     }
@@ -63,7 +66,7 @@ export async function handleResumeShare(context: ApiRouteContext): Promise<Respo
 
     // Reuse existing shortlink for this resume if one already exists (one-per-resume invariant)
     const existingLinks = await Shortlink.where({ appId: 'resumeme', type: 'internal' });
-    const existingForResume = existingLinks.find((link) => extractResumeIdFromShortlink(link) === body.resumeId);
+    const existingForResume = existingLinks.find((link) => extractResumeIdFromShortlink(link) === resumeId);
 
     // Generate a unique short code with collision detection (only if no existing link)
     let shortCode = existingForResume?.get('shortCode') as string | undefined;
@@ -80,7 +83,7 @@ export async function handleResumeShare(context: ApiRouteContext): Promise<Respo
 
     const origin = new URL(request.url).origin;
     // Embed resumeId in the URL so the reverse lookup (code → resume) works
-    const fullUrl = `${origin}/r/${shortCode}?resumeId=${encodeURIComponent(body.resumeId)}`;
+    const fullUrl = `${origin}/r/${shortCode}?resumeId=${encodeURIComponent(resumeId)}`;
 
     try {
         const shortlink =
@@ -92,11 +95,33 @@ export async function handleResumeShare(context: ApiRouteContext): Promise<Respo
                 appId: 'resumeme',
             }));
 
+        // PATCH can toggle shareEnabled
+        if (method === 'PATCH') {
+            const enabled = body?.shareEnabled;
+            if (enabled !== undefined) {
+                resume.set('shareEnabled', Boolean(enabled));
+                await resume.save();
+            }
+        }
+
+        // GET returns share state without altering anything
+        if (method === 'GET') {
+            return jsonResponse({
+                success: true,
+                data: {
+                    shareEnabled: Boolean(resume.get('shareEnabled')),
+                    shareUrl: `${origin}/r/${shortCode}`,
+                },
+            });
+        }
+
         return jsonResponse({
             success: true,
             data: {
                 ...shortlink.toJson(),
-                resumeId: body.resumeId,
+                resumeId,
+                shareEnabled: Boolean(resume.get('shareEnabled')),
+                shareUrl: `${origin}/r/${shortCode}`,
             },
         });
     } catch (error) {
@@ -130,6 +155,10 @@ export async function handleResumePublic(_context: ApiRouteContext, resumeId: st
         return errorResponse('Resume not found', 404, { code: 'NOT_FOUND' });
     }
 
+    if (!resume.get('shareEnabled')) {
+        return errorResponse('Sharing disabled by owner', 403, { code: 'SHARE_DISABLED' });
+    }
+
     return jsonResponse({ success: true, data: buildPublicPayload(resume) });
 }
 
@@ -161,6 +190,10 @@ export async function handleResumePublicByCode(_context: ApiRouteContext, code: 
     const resume = await ResumeSaved.find(resumeId);
     if (!resume) {
         return errorResponse('Resume not found', 404, { code: 'NOT_FOUND' });
+    }
+
+    if (!resume.get('shareEnabled')) {
+        return errorResponse('Sharing disabled by owner', 403, { code: 'SHARE_DISABLED' });
     }
 
     return jsonResponse({ success: true, data: buildPublicPayload(resume) });

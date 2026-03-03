@@ -42,6 +42,7 @@ export class ResumeSaved extends BaseModel {
         fontSize: 'number' as const,
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
+        shareEnabled: 'boolean' as const,
     };
 
     protected static defaults = {
@@ -158,6 +159,17 @@ export class ResumeSaved extends BaseModel {
             },
             formConfig: { visible: false },
             tableConfig: { visible: false },
+        },
+        shareEnabled: {
+            type: 'boolean',
+            editable: true,
+            uiConfig: {
+                label: 'Sharing Enabled',
+                description: 'Allow public access via share link',
+                defaultValue: true,
+            },
+            formConfig: { visible: true, fieldType: 'toggle' },
+            tableConfig: { visible: true, colWidth: 140 },
         },
         createdAt: {
             type: 'date',

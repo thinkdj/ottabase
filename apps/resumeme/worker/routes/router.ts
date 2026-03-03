@@ -241,6 +241,10 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleAdminRolesList(context);
     }
 
+    if (route === '/api/resume/share') {
+        return handleResumeShare(context);
+    }
+
     if (route === '/api/admin/db/tables') {
         return handleAdminDbTables(context);
     }
@@ -394,6 +398,10 @@ async function handlePatchRoutes(context: ApiRouteContext): Promise<Response | n
 
     if (route === '/api/users/me') {
         return handleUserProfile(context);
+    }
+
+    if (route === '/api/resume/share') {
+        return handleResumeShare(context);
     }
 
     const adminRolePatchMatch = route.match(/^\/api\/admin\/roles\/([^/]+)$/);

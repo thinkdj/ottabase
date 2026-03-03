@@ -1,3 +1,4 @@
+import { IconEyeOff } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import ResumePreview from './ResumePreview';
 import type { ResumeTemplateData, SectionKey } from './types';
@@ -34,9 +35,14 @@ export function PublicResumePage({ code }: { code: string }) {
         setError(null);
 
         fetch(`/api/resume/public/code/${encodeURIComponent(code)}`)
-            .then((res) => {
-                if (!res.ok) throw new Error(res.status === 404 ? 'Resume not found' : 'Failed to load resume');
-                return res.json();
+            .then(async (res) => {
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const codeMsg = (json as any)?.code === 'SHARE_DISABLED' ? 'disabled' : null;
+                    if (codeMsg) throw new Error('SHARE_DISABLED');
+                    throw new Error((json as any)?.error || 'Failed to load resume');
+                }
+                return json;
             })
             .then((json: any) => {
                 if (!cancelled) setData(json.data);
@@ -68,6 +74,28 @@ export function PublicResumePage({ code }: { code: string }) {
                         <div className="h-4 w-1/2 rounded bg-gray-200 dark:bg-gray-800" />
                         <div className="h-4 w-5/6 rounded bg-gray-200 dark:bg-gray-800" />
                     </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (error === 'SHARE_DISABLED') {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 text-center dark:bg-gray-950">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-200">
+                        <IconEyeOff className="h-7 w-7" />
+                    </div>
+                    <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-50">This resume is private</h1>
+                    <p className="max-w-md text-sm text-gray-500 dark:text-gray-400">
+                        The owner has disabled sharing for this link. Ask them to re-enable sharing to view the resume.
+                    </p>
+                    <a
+                        href="/"
+                        className="mt-2 inline-block rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+                    >
+                        Build your own resume
+                    </a>
                 </div>
             </div>
         );

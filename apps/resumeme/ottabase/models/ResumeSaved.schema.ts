@@ -34,6 +34,8 @@ export const resumeSavedTable = sqliteTable('resume_saved', {
     sectionOrder: text('section_order'),
     /** Custom heading label overrides — JSON object { sectionKey: label } */
     headingLabels: text('heading_labels'),
+    /** Share toggle — when false, public links are disabled */
+    shareEnabled: integer('share_enabled', { mode: 'boolean' }).notNull().default(true),
     /**
      * Full expanded resume snapshot data — JSON string of ResumeTemplateData.
      * This is the complete data including profile, work, education, skills,

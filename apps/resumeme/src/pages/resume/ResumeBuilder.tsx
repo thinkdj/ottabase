@@ -288,6 +288,16 @@ function ItemCard({
     );
 }
 
+function ellipsize(text: string, max = 120): string {
+    const clean = (text || '').trim();
+    if (!clean) return '';
+    return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}…` : clean;
+}
+
+function ToolbarTag({ label, className = '' }: { label: string; className?: string }) {
+    return <span className={`rounded px-1.5 py-0.5 text-xs font-normal  ${className}`.trim()}>{label}</span>;
+}
+
 // ---------------------------------------------------------------------------
 // Left Sidebar — Content sections
 // ---------------------------------------------------------------------------
@@ -483,13 +493,18 @@ function LeftSidebar({
                                     {/* Render item cards based on section type */}
                                     {section.key === 'summary' && (
                                         <ItemCard
-                                            title={sidebarData.fullName}
+                                            title={
+                                                summaryAvailable
+                                                    ? sidebarData.summary?.title?.trim() || 'Summary'
+                                                    : 'Summary'
+                                            }
                                             subtitle={
                                                 summaryAvailable
-                                                    ? sidebarData.summary?.title ||
-                                                      sidebarData.summary?.content ||
-                                                      sidebarData.profile?.headline ||
-                                                      undefined
+                                                    ? ellipsize(
+                                                          sidebarData.summary?.content ||
+                                                              sidebarData.profile?.headline ||
+                                                              '',
+                                                      ) || 'Add summary text in My Data.'
                                                     : 'Add a summary in My Data to enable'
                                             }
                                             checked={summaryAvailable ? summaryChecked : false}
@@ -851,7 +866,8 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     // If we're opening from a saved resume, also pick the data set from it
     const effectiveDataSetId = useMemo(() => {
         if (urlDataSetId) return urlDataSetId;
-        const sr = savedResumeResult as Record<string, unknown> | null;
+        const srEnvelope = (savedResumeResult as any)?.data ?? savedResumeResult;
+        const sr = (srEnvelope as any)?.data ?? srEnvelope;
         if (sr?.dataSetId) return String(sr.dataSetId);
         return null;
     }, [urlDataSetId, savedResumeResult]);
@@ -880,7 +896,8 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     const savedResumeHydrated = useRef(false);
     useEffect(() => {
         if (guestMode || !urlResumeId || savedResumeLoading || savedResumeHydrated.current) return;
-        const sr = savedResumeResult as Record<string, unknown> | null | undefined;
+        const srEnvelope = (savedResumeResult as any)?.data ?? savedResumeResult;
+        const sr = (srEnvelope as any)?.data ?? srEnvelope;
         if (!sr || !sr.id) return;
         savedResumeHydrated.current = true;
         setLoadedResumeId(String(sr.id));
@@ -1027,7 +1044,8 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     // When in view-only mode with a saved resume, parse snapshot data
     const savedSnapshotData = useMemo<ResumeTemplateData | null>(() => {
         if (!isViewOnly || !savedResumeResult) return null;
-        const sr = savedResumeResult as Record<string, unknown>;
+        const srEnvelope = (savedResumeResult as any)?.data ?? savedResumeResult;
+        const sr = (srEnvelope as any)?.data ?? srEnvelope;
         if (!sr.snapshotData) return null;
         try {
             const parsed = typeof sr.snapshotData === 'string' ? JSON.parse(sr.snapshotData) : sr.snapshotData;
@@ -1426,7 +1444,14 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
             // Create new saved resume
             createSavedResume.mutate(payload as any, {
                 onSuccess: (result: any) => {
-                    const newId = result?.id ?? result?.data?.id;
+                    const maybeIds = [
+                        result?.id,
+                        result?.data?.id,
+                        result?.data?.data?.id,
+                        Array.isArray(result?.data) ? result.data[0]?.id : null,
+                        Array.isArray(result?.data?.data) ? result.data.data[0]?.id : null,
+                    ];
+                    const newId = maybeIds.map((id) => (id ? String(id) : null)).find(Boolean);
                     if (newId) {
                         setLoadedResumeId(String(newId));
                         setIsViewOnly(true);
@@ -1564,7 +1589,30 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
             )}
 
             {/* ---- Toolbar ---- */}
-            <header className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-2 print:hidden">
+            <header className="relative flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-2 print:hidden">
+                {!guestMode && (
+                    <span className="pointer-events-none absolute left-1/2 -translate-x-1/2">
+                        {(() => {
+                            if (!loadedResumeId) {
+                                return (
+                                    <ToolbarTag
+                                        label="New"
+                                        className="border border-blue-200/70 bg-blue-100 text-blue-700 dark:border-blue-800/60 dark:bg-blue-900/40 dark:text-blue-100"
+                                    />
+                                );
+                            }
+                            if (isViewOnly) {
+                                return (
+                                    <ToolbarTag
+                                        label="Saved — View Only"
+                                        className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                                    />
+                                );
+                            }
+                            return <ToolbarTag label="Editing" className="bg-primary/10 text-primary" />;
+                        })()}
+                    </span>
+                )}
                 <div className="flex items-center gap-3">
                     {/* Desktop sidebar toggle */}
                     {!isCompact && (
@@ -1576,21 +1624,9 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                     )}
                     <h1 className="text-sm font-semibold text-foreground">
                         Resume Builder
-                        {guestMode ? (
-                            <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal text-foreground">
-                                Guest Mode
-                            </span>
-                        ) : loadedResumeId && isViewOnly ? (
-                            <span className="ml-2 rounded bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 text-xs font-normal text-amber-700 dark:text-amber-300">
-                                Saved — View Only
-                            </span>
-                        ) : loadedResumeId ? (
-                            <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-xs font-normal text-primary">
-                                Editing
-                            </span>
-                        ) : (
-                            <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
-                                Live Data
+                        {guestMode && (
+                            <span className="ml-2 inline-flex">
+                                <ToolbarTag label="Guest Mode" className="bg-muted text-foreground" />
                             </span>
                         )}
                     </h1>
