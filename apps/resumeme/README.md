@@ -98,6 +98,28 @@ All templates support:
 - **PDF export** — server-side via Puppeteer/Cloudflare Browser Rendering API; pixel-perfect replica of the on-screen
   preview
 - **Plain Text export** (`.txt`) — ATS-friendly one-click download
+- **ATS Friendliness Score** — Real-time scoring (0–100) with 8 categories, severity-rated tips, and a circular gauge in
+  the builder sidebar. Runs entirely in the browser — no AI APIs
+
+### ATS Friendliness Score
+
+The right sidebar displays a real-time ATS (Applicant Tracking System) friendliness score that updates as you edit.
+
+| Category          | Max Points | What It Checks                                              |
+| ----------------- | ---------- | ----------------------------------------------------------- |
+| Contact Info      | 15         | Name, email, phone, location, LinkedIn, website/GitHub      |
+| Summary           | 10         | Presence and word count (30–80 words ideal)                 |
+| Work Experience   | 25         | Role count, date completeness, bullet-point highlights      |
+| Education         | 10         | Degree, institution, dates                                  |
+| Skills            | 15         | Skill count (8+ ideal), multiple categories                 |
+| Measurable Impact | 10         | Percentage of bullet points containing numbers/metrics      |
+| Structure         | 10         | Professional headline, projects/certs, section completeness |
+| Content Length    | 5          | Total word count (200–600 ideal)                            |
+
+Tips are colour-coded: 🔴 critical → 🟡 warning → 🔵 info. The panel is collapsible — click the score gauge to
+expand/collapse the breakdown and tips.
+
+**Source:** `src/lib/ats-score.ts` — pure local logic, no AI APIs.
 
 ### Page Scale
 
