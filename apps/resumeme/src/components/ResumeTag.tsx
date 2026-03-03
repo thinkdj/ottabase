@@ -8,7 +8,7 @@ interface ResumeTagProps extends HTMLAttributes<HTMLSpanElement> {
 export function ResumeTag({ label, className = '', ...rest }: ResumeTagProps) {
     return (
         <span
-            className={`inline-flex items-center rounded px-2.5 py-0.5 text-xs font-normal ${className}`.trim()}
+            className={`inline-flex capitalize items-center rounded px-2.5 py-0.5 text-xs font-normal ${className}`.trim()}
             {...rest}
         >
             {label}

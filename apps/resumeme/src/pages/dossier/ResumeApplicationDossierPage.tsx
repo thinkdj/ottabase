@@ -194,8 +194,8 @@ export function ResumeApplicationDossierPage() {
                                             label={dossier.status ?? 'active'}
                                             className={
                                                 isArchived
-                                                    ? 'shadow-none border border-border bg-muted text-muted-foreground'
-                                                    : 'shadow-none border border-green-500/40 bg-green-950/20 text-green-600 dark:text-green-300'
+                                                    ? 'border border-border text-muted-foreground'
+                                                    : 'border border-green-500/40 text-green-600 dark:text-green-300'
                                             }
                                         />
                                     </div>
