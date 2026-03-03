@@ -4,6 +4,7 @@
 // job-application context, similar to NotebookLM notebooks.
 // ---------------------------------------------------------------------------
 
+import { ResumeTag } from '@/components/ResumeTag';
 import {
     useApplicationDossiers,
     useCreateApplicationDossier,
@@ -78,7 +79,7 @@ export function ResumeApplicationDossierPage() {
     const createDossier = useCreateApplicationDossier();
     const deleteDossier = useDeleteApplicationDossier();
 
-    // Normalise API envelope — may be paginated or bare array
+    // Normalize API envelope — may be paginated or bare array
     const dossiers = (Array.isArray(dossiersRaw) ? dossiersRaw : ((dossiersRaw as any)?.data ?? [])) as any[];
 
     // Dialog state
@@ -189,16 +190,14 @@ export function ResumeApplicationDossierPage() {
                                                 </p>
                                             )}
                                         </div>
-                                        <Badge
-                                            variant={isArchived ? 'secondary' : 'outline'}
+                                        <ResumeTag
+                                            label={dossier.status ?? 'active'}
                                             className={
                                                 isArchived
-                                                    ? 'text-muted-foreground'
-                                                    : 'border-green-500/40 text-green-600 dark:text-green-400'
+                                                    ? 'shadow-none border border-border bg-muted text-muted-foreground'
+                                                    : 'shadow-none border border-green-500/40 bg-green-950/20 text-green-600 dark:text-green-300'
                                             }
-                                        >
-                                            {dossier.status ?? 'active'}
-                                        </Badge>
+                                        />
                                     </div>
 
                                     {/* Target role / company badges */}

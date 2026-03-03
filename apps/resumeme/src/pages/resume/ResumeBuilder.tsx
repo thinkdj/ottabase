@@ -1,3 +1,4 @@
+import { ResumeTag } from '@/components/ResumeTag';
 import { ShareResumeDialog } from '@/components/ShareResumeDialog';
 import { useSession } from '@/lib/auth';
 import { exportAsPdfServerSide, exportAsPlainText } from '@/lib/resume-export';
@@ -31,7 +32,7 @@ import {
     DropdownMenuTrigger,
     Input,
 } from '@ottabase/ui-shadcn';
-import { IconAdjustments, IconChevronLeft, IconChevronRight, IconLayoutSidebar, IconShare } from '@tabler/icons-react';
+import { IconAdjustments, IconLayoutSidebar, IconMenu2, IconShare } from '@tabler/icons-react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -292,10 +293,6 @@ function ellipsize(text: string, max = 120): string {
     const clean = (text || '').trim();
     if (!clean) return '';
     return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}…` : clean;
-}
-
-function ToolbarTag({ label, className = '' }: { label: string; className?: string }) {
-    return <span className={`rounded px-1.5 py-0.5 text-xs font-normal  ${className}`.trim()}>{label}</span>;
 }
 
 // ---------------------------------------------------------------------------
@@ -683,17 +680,16 @@ function RightSidebar({
 // Sidebar toggle button (used for both sidebars)
 // ---------------------------------------------------------------------------
 function SidebarToggle({ side, isOpen, onClick }: { side: 'left' | 'right'; isOpen: boolean; onClick: () => void }) {
-    // Arrow points inward when open, outward when closed
-    const Icon =
-        side === 'left' ? (isOpen ? IconChevronLeft : IconChevronRight) : isOpen ? IconChevronRight : IconChevronLeft;
     return (
         <button
             type="button"
             onClick={onClick}
             title={isOpen ? `Hide ${side} sidebar` : `Show ${side} sidebar`}
             className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+            aria-pressed={isOpen}
+            aria-label={isOpen ? `Hide ${side} sidebar` : `Show ${side} sidebar`}
         >
-            <Icon className="h-4 w-4" />
+            <IconMenu2 className={`h-5 w-5 transition-transform ${isOpen ? 'rotate-0' : 'rotate-90'}`} />
         </button>
     );
 }
@@ -1595,21 +1591,21 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                         {(() => {
                             if (!loadedResumeId) {
                                 return (
-                                    <ToolbarTag
+                                    <ResumeTag
                                         label="New"
-                                        className="border border-blue-200/70 bg-blue-100 text-blue-700 dark:border-blue-800/60 dark:bg-blue-900/40 dark:text-blue-100"
+                                        className="shadow-none border border-blue-200/70 bg-blue-100 text-blue-700 dark:border-blue-800/60 dark:bg-blue-900/40 dark:text-blue-100"
                                     />
                                 );
                             }
                             if (isViewOnly) {
                                 return (
-                                    <ToolbarTag
+                                    <ResumeTag
                                         label="Saved — View Only"
-                                        className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                                        className="shadow-none bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
                                     />
                                 );
                             }
-                            return <ToolbarTag label="Editing" className="bg-primary/10 text-primary" />;
+                            return <ResumeTag label="Editing" className="shadow-none bg-primary/10 text-primary" />;
                         })()}
                     </span>
                 )}
@@ -1626,12 +1622,12 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                         Resume Builder
                         {guestMode && (
                             <span className="ml-2 inline-flex">
-                                <ToolbarTag label="Guest Mode" className="bg-muted text-foreground" />
+                                <ResumeTag label="Guest Mode" className="shadow-none bg-muted text-foreground" />
                             </span>
                         )}
                     </h1>
                     {isLiveDataLoading && (
-                        <span className="rounded bg-primary/10 px-2 py-0.5 text-xs text-primary">Syncing profile…</span>
+                        <ResumeTag label="Syncing profile…" className="shadow-none bg-primary/10 text-primary" />
                     )}
                 </div>
                 <div className="flex items-center gap-2">

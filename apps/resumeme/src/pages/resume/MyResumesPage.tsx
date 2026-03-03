@@ -40,7 +40,7 @@ export function MyResumesPage() {
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [shareTarget, setShareTarget] = useState<{ id: string; name: string } | null>(null);
 
-    // Normalise list data (API may wrap in pagination envelope)
+    // Normalize list data (API may wrap in pagination envelope)
     const resumes = (Array.isArray(resumesRaw) ? resumesRaw : ((resumesRaw as any)?.data ?? [])) as any[];
 
     const handleDelete = useCallback(

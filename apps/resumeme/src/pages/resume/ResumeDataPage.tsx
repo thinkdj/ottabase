@@ -990,7 +990,7 @@ export function ResumeDataPage() {
     const updateDataSet = useUpdateResumeDataSet();
     const deleteDataSet = useDeleteResumeDataSet();
 
-    // Normalise list data (API may wrap in pagination envelope)
+    // Normalize list data (API may wrap in pagination envelope)
     const profileList = (Array.isArray(profiles) ? profiles : ((profiles as any)?.data ?? [])) as any[];
     const summaryList = (Array.isArray(summaries) ? summaries : ((summaries as any)?.data ?? [])) as any[];
     const workList = (Array.isArray(workExps) ? workExps : ((workExps as any)?.data ?? [])) as any[];
