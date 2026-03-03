@@ -1358,7 +1358,12 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
             profile: selectedProfile
                 ? {
                       headline: (selectedProfile.headline as string | null | undefined) ?? null,
-                      avatarUrl: (selectedProfile.avatarUrl as string | null | undefined) ?? null,
+                      // Prefer the profile-specific avatar; fall back to the OAuth account image
+                      // so templates show the pic the user sees in their profile card.
+                      avatarUrl:
+                          (selectedProfile.avatarUrl as string | null | undefined) ||
+                          (user?.image as string | null | undefined) ||
+                          null,
                       phone: (selectedProfile.phone as string | null | undefined) ?? null,
                       email: (selectedProfile.email as string | null | undefined) ?? user?.email ?? null,
                       website: (selectedProfile.website as string | null | undefined) ?? null,
@@ -1368,7 +1373,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                   }
                 : {
                       headline: null,
-                      avatarUrl: null,
+                      avatarUrl: (user?.image as string | null | undefined) || null,
                       phone: null,
                       email: user?.email ?? null,
                       website: null,
@@ -1456,6 +1461,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         includeSummary,
         user?.name,
         user?.email,
+        user?.image,
     ]);
 
     const atsResult = useMemo(() => calculateAtsScore(data), [data]);
@@ -1478,7 +1484,11 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
             profile: selectedProfile
                 ? {
                       headline: (selectedProfile.headline as string | null | undefined) ?? null,
-                      avatarUrl: (selectedProfile.avatarUrl as string | null | undefined) ?? null,
+                      // Prefer the profile-specific avatar; fall back to the OAuth account image.
+                      avatarUrl:
+                          (selectedProfile.avatarUrl as string | null | undefined) ||
+                          (user?.image as string | null | undefined) ||
+                          null,
                       phone: (selectedProfile.phone as string | null | undefined) ?? null,
                       email: (selectedProfile.email as string | null | undefined) ?? user?.email ?? null,
                       website: (selectedProfile.website as string | null | undefined) ?? null,
@@ -1488,7 +1498,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                   }
                 : {
                       headline: null,
-                      avatarUrl: null,
+                      avatarUrl: (user?.image as string | null | undefined) || null,
                       phone: null,
                       email: user?.email ?? null,
                       website: null,
@@ -1555,6 +1565,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         selectedSummary,
         user?.name,
         user?.email,
+        user?.image,
     ]);
 
     useEffect(() => {
