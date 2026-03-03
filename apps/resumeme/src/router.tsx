@@ -119,9 +119,9 @@ function HomePage() {
                         filter: "url('#goo')",
                     }}
                 >
-                    <strong>Resume your hunt</strong> for the next job with AI-powered resume building. Enter your data
-                    once, then generate unlimited resume variations <strong>tailored to each opportunity</strong>. Get
-                    past ATS blocks and land more interviews - all for free.
+                    <strong>Resume your hunt</strong> with an AI resume engine that remembers everything and spins out
+                    laser-targeted <strong>tailored variations for every opportunity</strong>. Beat the ATS filters,
+                    stay interview-ready, and ship limitless customized resumes - for free.
                 </p>
 
                 {/* Buttons */}

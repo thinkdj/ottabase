@@ -863,6 +863,11 @@ function MeCard({
                         {(profile?.email || user.email) && <span>{profile?.email || user.email}</span>}
                         {profile?.location && <span>{profile.location}</span>}
                     </div>
+                    {profile?.summary && (
+                        <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+                            {profile.summary}
+                        </p>
+                    )}
                 </div>
             </CardContent>
 

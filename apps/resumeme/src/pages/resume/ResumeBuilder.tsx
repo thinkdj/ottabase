@@ -1,5 +1,5 @@
-import { useSession } from '@/lib/auth';
 import { ShareResumeDialog } from '@/components/ShareResumeDialog';
+import { useSession } from '@/lib/auth';
 import { exportAsPdfServerSide, exportAsPlainText } from '@/lib/resume-export';
 import {
     useCreateResumeDataSet,
@@ -91,7 +91,7 @@ interface ContentSection {
 
 function buildContentSections(data: ResumeTemplateData, order: SectionKey[]): ContentSection[] {
     const sectionMap: Record<SectionKey, ContentSection> = {
-        summary: { key: 'summary', label: 'Profile', count: data.profile ? 1 : 0 },
+        summary: { key: 'summary', label: 'Profile', count: data.profile?.summary ? 1 : 0 },
         workExperiences: { key: 'workExperiences', label: 'Work Experience', count: data.workExperiences.length },
         educations: { key: 'educations', label: 'Education', count: data.educations.length },
         skillSets: { key: 'skillSets', label: 'Skills', count: data.skillSets.length },
@@ -298,6 +298,9 @@ function LeftSidebar({
     profiles,
     activeProfileId,
     onProfileChange,
+    summaryAvailable,
+    summaryChecked,
+    onToggleSummary,
     selectedSkillSetIds,
     selectedWorkExperienceIds,
     selectedEducationIds,
@@ -320,6 +323,9 @@ function LeftSidebar({
     profiles: Array<{ id: string; label: string }>;
     activeProfileId: string | null;
     onProfileChange: (id: string) => void;
+    summaryAvailable: boolean;
+    summaryChecked: boolean;
+    onToggleSummary: () => void;
     selectedSkillSetIds: string[];
     selectedWorkExperienceIds: string[];
     selectedEducationIds: string[];
@@ -477,8 +483,16 @@ function LeftSidebar({
                                     {section.key === 'summary' && sidebarData.profile && (
                                         <ItemCard
                                             title={sidebarData.fullName}
-                                            subtitle={sidebarData.profile.headline ?? undefined}
-                                            showCheckbox={false}
+                                            subtitle={
+                                                summaryAvailable
+                                                    ? (sidebarData.profile.summary ??
+                                                      sidebarData.profile.headline ??
+                                                      undefined)
+                                                    : 'Add a summary in My Data to enable'
+                                            }
+                                            checked={summaryAvailable ? summaryChecked : false}
+                                            onToggle={onToggleSummary}
+                                            disabled={isViewOnly || !summaryAvailable}
                                         />
                                     )}
                                     {section.key === 'workExperiences' &&
@@ -733,6 +747,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     const [selectedCertificationIds, setSelectedCertificationIds] = useState<string[]>(() =>
         guestMode ? GUEST_DATA.certifications.map((c) => c.id) : [],
     );
+    const [includeSummary, setIncludeSummary] = useState(true);
 
     const dataSetHydrationRef = useRef<string | null>(null);
     const profileDataSetCreateAttemptRef = useRef<Set<string>>(new Set());
@@ -1006,6 +1021,12 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
             const selectedCertificationSet = new Set(selectedCertificationIds);
             return {
                 ...GUEST_DATA,
+                profile: GUEST_DATA.profile
+                    ? {
+                          ...GUEST_DATA.profile,
+                          summary: includeSummary ? GUEST_DATA.profile.summary : null,
+                      }
+                    : null,
                 skillSets: GUEST_DATA.skillSets.filter((s) => selectedSkillsSet.has(s.id)),
                 workExperiences: GUEST_DATA.workExperiences.filter((w) => selectedWorkSet.has(w.id)),
                 educations: GUEST_DATA.educations.filter((e) => selectedEducationSet.has(e.id)),
@@ -1034,7 +1055,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
             profile: selectedProfile
                 ? {
                       headline: (selectedProfile.headline as string | null | undefined) ?? null,
-                      summary: (selectedProfile.summary as string | null | undefined) ?? null,
+                      summary: includeSummary ? ((selectedProfile.summary as string | null | undefined) ?? null) : null,
                       avatarUrl: (selectedProfile.avatarUrl as string | null | undefined) ?? null,
                       phone: (selectedProfile.phone as string | null | undefined) ?? null,
                       email: (selectedProfile.email as string | null | undefined) ?? user?.email ?? null,
@@ -1130,6 +1151,7 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         selectedEducationIds,
         selectedProjectIds,
         selectedCertificationIds,
+        includeSummary,
         user?.name,
         user?.email,
     ]);
@@ -1274,6 +1296,11 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         updateDataSet,
     ]);
 
+    const toggleSummary = useCallback(() => {
+        if (isViewOnly) return;
+        setIncludeSummary((prev) => !prev);
+    }, [isViewOnly]);
+
     const toggleSkillSet = useCallback((id: string) => {
         setSelectedSkillSetIds((prev) => toggleSelectedId(prev, id));
     }, []);
@@ -1320,6 +1347,9 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     const handleHeadingChange = useCallback((key: SectionKey, label: string) => {
         setHeadingLabels((prev) => ({ ...prev, [key]: label }));
     }, []);
+
+    const summaryAvailable = Boolean(sidebarData.profile?.summary);
+    const summaryChecked = summaryAvailable && (isViewOnly ? Boolean(data.profile?.summary) : includeSummary);
 
     // ---- Open save dialog ----
     const handleOpenSaveDialog = useCallback(() => {
@@ -1588,8 +1618,18 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                             title="Sign up to share resumes"
                             className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-muted-foreground"
                         >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                />
                             </svg>
                             Share
                         </span>
@@ -1600,8 +1640,18 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                             title="Sign up to print resumes"
                             className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-muted-foreground"
                         >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                />
                             </svg>
                             Print
                         </span>
@@ -1813,6 +1863,9 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                     }))}
                                     activeProfileId={activeProfileId}
                                     onProfileChange={setActiveProfileId}
+                                    summaryAvailable={summaryAvailable}
+                                    summaryChecked={summaryChecked}
+                                    onToggleSummary={toggleSummary}
                                     selectedSkillSetIds={selectedSkillSetIds}
                                     selectedWorkExperienceIds={selectedWorkExperienceIds}
                                     selectedEducationIds={selectedEducationIds}
@@ -1845,6 +1898,9 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                 }))}
                                 activeProfileId={activeProfileId}
                                 onProfileChange={setActiveProfileId}
+                                summaryAvailable={summaryAvailable}
+                                summaryChecked={summaryChecked}
+                                onToggleSummary={toggleSummary}
                                 selectedSkillSetIds={selectedSkillSetIds}
                                 selectedWorkExperienceIds={selectedWorkExperienceIds}
                                 selectedEducationIds={selectedEducationIds}

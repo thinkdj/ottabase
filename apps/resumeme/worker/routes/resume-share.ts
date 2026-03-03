@@ -21,6 +21,16 @@ function generateShortCode(): string {
     return Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => chars[b % 36]).join('');
 }
 
+function extractResumeIdFromShortlink(shortlink: InstanceType<typeof Shortlink>): string | null {
+    const linkUrl = shortlink.get('fullUrl') as string;
+    try {
+        const parsed = new URL(linkUrl);
+        return parsed.searchParams.get('resumeId');
+    } catch {
+        return null;
+    }
+}
+
 /**
  * POST /api/resume/share
  * Creates a shortlink pointing to the public resume viewer.
@@ -51,14 +61,21 @@ export async function handleResumeShare(context: ApiRouteContext): Promise<Respo
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
-    // Generate a unique short code with collision detection
-    let shortCode = generateShortCode();
-    let retries = 3;
-    while (retries > 0) {
-        const existing = await Shortlink.findByCode(shortCode);
-        if (!existing) break;
+    // Reuse existing shortlink for this resume if one already exists (one-per-resume invariant)
+    const existingLinks = await Shortlink.where({ appId: 'resumeme', type: 'internal' });
+    const existingForResume = existingLinks.find((link) => extractResumeIdFromShortlink(link) === body.resumeId);
+
+    // Generate a unique short code with collision detection (only if no existing link)
+    let shortCode = existingForResume?.get('shortCode') as string | undefined;
+    if (!shortCode) {
         shortCode = generateShortCode();
-        retries--;
+        let retries = 3;
+        while (retries > 0) {
+            const existing = await Shortlink.findByCode(shortCode);
+            if (!existing) break;
+            shortCode = generateShortCode();
+            retries--;
+        }
     }
 
     const origin = new URL(request.url).origin;
@@ -66,12 +83,14 @@ export async function handleResumeShare(context: ApiRouteContext): Promise<Respo
     const fullUrl = `${origin}/r/${shortCode}?resumeId=${encodeURIComponent(body.resumeId)}`;
 
     try {
-        const shortlink = await Shortlink.create({
-            fullUrl,
-            shortCode,
-            type: 'internal',
-            appId: 'resumeme',
-        });
+        const shortlink =
+            existingForResume ||
+            (await Shortlink.create({
+                fullUrl,
+                shortCode,
+                type: 'internal',
+                appId: 'resumeme',
+            }));
 
         return jsonResponse({
             success: true,
