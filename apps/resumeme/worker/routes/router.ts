@@ -71,6 +71,7 @@ import {
     handleResumeApplicationDossierFiles,
     handleResumeApplicationDossierFileUpload,
     handleResumeApplicationDossierList,
+    handleResumeApplicationDossierPdfExtract,
 } from './resume-application-dossier';
 import { handleResumePdf } from './resume-pdf';
 import { handleResumePublic, handleResumePublicByCode, handleResumeShare } from './resume-share';
@@ -378,6 +379,11 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
     // ── Application Dossier routes (POST create) ──
     if (route === '/api/dossier') {
         return handleResumeApplicationDossierCreate(context);
+    }
+
+    // Extract plain text from a PDF — must match before :id-based patterns
+    if (route === '/api/dossier/pdf-extract') {
+        return handleResumeApplicationDossierPdfExtract(context);
     }
 
     const dossierFileUploadMatch = route.match(/^\/api\/dossier\/([^\/]+)\/files$/);

@@ -32,6 +32,7 @@ import {
     IconDeviceFloppy,
     IconFile,
     IconFileText,
+    IconFileTypePdf,
     IconPhoto,
     IconSparkles,
     IconTarget,
@@ -44,6 +45,8 @@ import { toast } from 'sonner';
 
 // ── Configuration ────────────────────────────────────────────
 const MAX_FILES_PER_DOSSIER = 3;
+/** Matches the server-side 50 KB per-file upload cap (for textarea soft-limit warning) */
+const MAX_TEXT_CHARS = 50 * 1024;
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -180,7 +183,10 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
     const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
     const [addContentOpen, setAddContentOpen] = useState(false);
     const [contentText, setContentText] = useState('');
+    const [extractingPdf, setExtractingPdf] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    // Separate ref for PDF file input inside the Add Content modal
+    const pdfInputRef = useRef<HTMLInputElement>(null);
 
     // Editable form fields
     const [form, setForm] = useState({
@@ -364,6 +370,41 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
         }
     }, [dossierId]);
 
+    /**
+     * Uploads a PDF to /api/dossier/pdf-extract, extracts plain text server-side
+     * via unpdf/pdfjs-dist, and populates the "Add Content" textarea.
+     */
+    const handlePdfExtract = useCallback(async (file: File) => {
+        setExtractingPdf(true);
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch('/api/dossier/pdf-extract', { method: 'POST', body: fd });
+            if (!res.ok) {
+                const err = (await res.json().catch(() => ({}))) as any;
+                throw new Error(err?.message ?? 'PDF extraction failed');
+            }
+            const json = (await res.json()) as any;
+            const { text, truncated } = json?.data ?? {};
+            if (typeof text === 'string' && text.trim()) {
+                setContentText(text);
+                if (truncated) {
+                    toast.warning('PDF text was truncated to 50 KB. Review the content before saving.');
+                } else {
+                    toast.success('Text extracted from PDF. Review and save.');
+                }
+            } else {
+                toast.error('No readable text found in this PDF.');
+            }
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Failed to extract PDF text');
+        } finally {
+            setExtractingPdf(false);
+            // Reset input so the same file can be re-selected
+            if (pdfInputRef.current) pdfInputRef.current.value = '';
+        }
+    }, []);
+
     const toggleFileExpanded = useCallback((fileId: string) => {
         setExpandedFiles((prev) => {
             const next = new Set(prev);
@@ -504,8 +545,8 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
                         <div>
                             <h2 className="text-lg font-semibold tracking-tight">Files</h2>
                             <p className="mt-0.5 text-xs text-muted-foreground">
-                                {files.length}/{MAX_FILES_PER_DOSSIER} files — Upload job descriptions, company info,
-                                and other documents.
+                                Plaintext &bull; {files.length}/{MAX_FILES_PER_DOSSIER} files — Upload job descriptions,
+                                company info, and other documents.
                             </p>
                         </div>
                         <div className="flex gap-2">
@@ -515,8 +556,7 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
                                 disabled={uploading || files.length >= MAX_FILES_PER_DOSSIER}
                                 onClick={() => fileInputRef.current?.click()}
                             >
-                                <IconUpload className="h-4 w-4" />
-                                {uploading ? 'Uploading…' : 'Upload File'}
+                                {uploading ? 'Uploading…' : 'Upload Text File'}
                             </Button>
                             <Button
                                 variant="outline"
@@ -524,8 +564,7 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
                                 disabled={files.length >= MAX_FILES_PER_DOSSIER}
                                 onClick={() => setAddContentOpen(true)}
                             >
-                                <IconFileText className="h-4 w-4" />
-                                Add Content
+                                Add Content (Text/PDF)
                             </Button>
                         </div>
                         <input
@@ -594,7 +633,7 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
                                                 </div>
                                                 <Badge
                                                     variant="outline"
-                                                    className={`text-xs font-normal ${fileStatusBadge[file.status ?? ''] ?? ''}`}
+                                                    className={`capitalize text-xs font-normal ${fileStatusBadge[file.status ?? ''] ?? ''}`}
                                                 >
                                                     {file.status ?? 'uploaded'}
                                                 </Badge>
@@ -903,25 +942,74 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
 
             {/* ── Add Content modal ──────────────────────────── */}
             <Dialog open={addContentOpen} onOpenChange={setAddContentOpen}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Add Content</DialogTitle>
                         <DialogDescription>
-                            Paste job descriptions, requirements, or any text content. It will be saved as a .txt file.
+                            Paste text directly, or upload a PDF to extract its text. Saved as a .txt file.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
+                        {/* PDF upload strip */}
+                        <div className="flex items-center gap-3 rounded-lg border border-dashed p-3 dark:border-white/10">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-red-500/10 text-red-500">
+                                <IconFileTypePdf className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium">
+                                    {extractingPdf ? 'Extracting text from PDF…' : 'Extract text from a PDF'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    Max 5 MB &bull; text is extracted and placed in the editor below
+                                </p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="shrink-0 gap-1.5"
+                                disabled={extractingPdf}
+                                onClick={() => pdfInputRef.current?.click()}
+                            >
+                                {extractingPdf ? (
+                                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
+                                ) : (
+                                    <IconUpload className="h-3.5 w-3.5" />
+                                )}
+                                Upload PDF
+                            </Button>
+                            {/* Hidden PDF file input */}
+                            <input
+                                ref={pdfInputRef}
+                                type="file"
+                                accept=".pdf,application/pdf"
+                                className="hidden"
+                                aria-hidden="true"
+                                onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) handlePdfExtract(f);
+                                }}
+                            />
+                        </div>
+
+                        {/* Text content area */}
                         <div className="grid gap-1.5">
                             <Label htmlFor="content-text">Content</Label>
                             <Textarea
                                 id="content-text"
-                                placeholder="Paste job description, requirements, or other relevant text..."
+                                placeholder="Paste job description, requirements, or other relevant text…"
                                 value={contentText}
                                 onChange={(e) => setContentText(e.target.value)}
                                 rows={8}
                                 className="resize-none"
                             />
-                            <p className="text-xs text-muted-foreground">{contentText.length} characters</p>
+                            <p
+                                className={`text-xs ${
+                                    contentText.length > MAX_TEXT_CHARS ? 'text-red-500' : 'text-muted-foreground'
+                                }`}
+                            >
+                                {contentText.length.toLocaleString()} / {MAX_TEXT_CHARS.toLocaleString()} characters
+                                {contentText.length > MAX_TEXT_CHARS && ' — exceeds 50 KB limit'}
+                            </p>
                         </div>
                     </div>
                     <DialogFooter>
@@ -934,7 +1022,10 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
                         >
                             Cancel
                         </Button>
-                        <Button onClick={handleAddContent} disabled={!contentText.trim()}>
+                        <Button
+                            onClick={handleAddContent}
+                            disabled={!contentText.trim() || contentText.length > MAX_TEXT_CHARS}
+                        >
                             Save as Text File
                         </Button>
                     </DialogFooter>

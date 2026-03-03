@@ -10,6 +10,7 @@
 // POST   /api/dossier/:id/files            — upload file to dossier
 // DELETE /api/dossier/:id/files/:fileId    — delete a single file
 // POST   /api/dossier/:id/analyse          — AI-powered job match analysis
+// POST   /api/dossier/pdf-extract          — extract plain text from a PDF upload
 // ============================================================
 
 import { getSession } from '@ottabase/auth/backend';
@@ -477,6 +478,73 @@ Provide your analysis in the following JSON format:
     } catch (error) {
         return errorResponse(error instanceof Error ? error.message : 'AI analysis failed', 500, {
             code: 'AI_ERROR',
+        });
+    }
+}
+
+// ── PDF text extraction constants ───────────────────────────
+
+/** Maximum PDF upload size: 5 MB */
+const MAX_PDF_FILE_SIZE = 5 * 1024 * 1024;
+
+/**
+ * Maximum extracted text length to return (50 KB).
+ * Matches the per-file size cap enforced on file uploads so the caller can
+ * paste the text straight into the "Add Content" textarea and save it.
+ */
+const MAX_TEXT_EXTRACT_LENGTH = 50 * 1024;
+
+/** POST /api/dossier/pdf-extract — extract plain text from a PDF file */
+export async function handleResumeApplicationDossierPdfExtract(context: ApiRouteContext): Promise<Response> {
+    const { request, env } = context;
+
+    // Auth is required so random users can't use the extraction endpoint for free
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+
+    let formData: FormData;
+    try {
+        formData = await request.formData();
+    } catch {
+        return errorResponse('Invalid multipart form data', 400, { code: 'VALIDATION_ERROR' });
+    }
+
+    const file = formData.get('file') as File | null;
+    if (!file || !(file instanceof File)) {
+        return errorResponse('file is required', 400, { code: 'VALIDATION_ERROR' });
+    }
+
+    // Validate MIME type / extension
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    if (ext !== 'pdf' && file.type !== 'application/pdf') {
+        return errorResponse('Only PDF files (.pdf) are supported', 400, { code: 'VALIDATION_ERROR' });
+    }
+
+    if (file.size > MAX_PDF_FILE_SIZE) {
+        return errorResponse('PDF too large. Maximum allowed size is 5 MB.', 400, { code: 'VALIDATION_ERROR' });
+    }
+
+    try {
+        const buffer = await file.arrayBuffer();
+
+        // unpdf wraps pdfjs-dist and works in Cloudflare Workers (no Node.js FS required)
+        const { extractText } = await import('unpdf');
+        const { text } = await extractText(new Uint8Array(buffer), { mergePages: true });
+
+        // Trim whitespace artefacts common in PDF text extraction
+        const cleaned = text
+            .replace(/\r\n/g, '\n')
+            .replace(/[ \t]+\n/g, '\n')
+            .trim();
+
+        // Truncate to the per-file upload cap so the saved .txt file stays within limits
+        const truncated = cleaned.length > MAX_TEXT_EXTRACT_LENGTH;
+        const finalText = truncated ? cleaned.slice(0, MAX_TEXT_EXTRACT_LENGTH) : cleaned;
+
+        return jsonResponse({ success: true, data: { text: finalText, truncated } });
+    } catch (error) {
+        return errorResponse(error instanceof Error ? error.message : 'Failed to extract text from PDF', 500, {
+            code: 'PDF_EXTRACT_ERROR',
         });
     }
 }

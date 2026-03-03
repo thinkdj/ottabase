@@ -268,14 +268,41 @@ function ItemCard({
     /** When true the checkbox is disabled (view-only mode) */
     disabled?: boolean;
 }) {
+    const handleToggle = useCallback(() => {
+        if (disabled) return;
+        onToggle?.();
+    }, [disabled, onToggle]);
+
     return (
-        <div className="flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2">
+        <div
+            className="flex cursor-pointer items-start gap-2 rounded-md border border-border bg-card px-3 py-2 transition-colors hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            onClick={(e) => {
+                if (disabled) return;
+                if (e.target instanceof HTMLInputElement) return;
+                handleToggle();
+            }}
+            onKeyDown={(e) => {
+                if (disabled) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleToggle();
+                }
+            }}
+            role="checkbox"
+            aria-checked={checked}
+            aria-disabled={disabled}
+            tabIndex={disabled ? -1 : 0}
+        >
             {/* Include/exclude checkbox */}
             {showCheckbox ? (
                 <input
                     type="checkbox"
                     checked={checked}
-                    onChange={() => onToggle?.()}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                        e.stopPropagation();
+                        handleToggle();
+                    }}
                     title={`Toggle ${title}`}
                     className="mt-1 accent-primary disabled:opacity-50"
                     disabled={disabled}
@@ -587,6 +614,9 @@ function RightSidebar({
     fontSize,
     setFontSize,
     data,
+    atsResult,
+    atsPanelOpen,
+    onToggleAtsPanel,
 }: {
     templateId: string;
     setTemplateId: (id: string) => void;
@@ -595,6 +625,9 @@ function RightSidebar({
     fontSize: number;
     setFontSize: (size: number) => void;
     data: ResumeTemplateData;
+    atsResult: ReturnType<typeof calculateAtsScore>;
+    atsPanelOpen: boolean;
+    onToggleAtsPanel: () => void;
 }) {
     const templateItems = useMemo<OttaSelectItem[]>(
         () => RESUME_TEMPLATES.map((template) => ({ ...template, label: template.name })),
@@ -636,7 +669,7 @@ function RightSidebar({
     return (
         <div className="flex h-full flex-col overflow-y-auto p-3">
             {/* ATS Score panel */}
-            <AtsScorePanel data={data} />
+            <AtsScorePanel result={atsResult} expanded={atsPanelOpen} onToggle={onToggleAtsPanel} />
 
             {/* Template picker */}
             <div className="mb-5">
@@ -728,10 +761,15 @@ const TIP_CLASSES: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-function AtsScorePanel({ data }: { data: ResumeTemplateData }) {
-    const [expanded, setExpanded] = useState(false);
-    const result = useMemo(() => calculateAtsScore(data), [data]);
-
+function AtsScorePanel({
+    result,
+    expanded,
+    onToggle,
+}: {
+    result: ReturnType<typeof calculateAtsScore>;
+    expanded: boolean;
+    onToggle: () => void;
+}) {
     // Colour for the score ring
     const ringColor =
         result.score >= 85
@@ -750,7 +788,7 @@ function AtsScorePanel({ data }: { data: ResumeTemplateData }) {
             {/* Header + score ring */}
             <button
                 type="button"
-                onClick={() => setExpanded((o) => !o)}
+                onClick={onToggle}
                 className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted/50"
             >
                 {/* Mini circular gauge */}
@@ -807,58 +845,81 @@ function AtsScorePanel({ data }: { data: ResumeTemplateData }) {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
             </button>
+        </div>
+    );
+}
 
-            {/* Expanded breakdown + tips */}
-            {expanded && (
-                <div className="mt-2 space-y-3 rounded-lg border border-border bg-card p-3">
-                    {/* Category breakdown bars */}
-                    <div className="space-y-1.5">
-                        {Object.entries(result.breakdown).map(([cat, { earned, max }]) => (
-                            <div key={cat}>
-                                <div className="flex items-center justify-between text-[10px]">
-                                    <span className="text-muted-foreground">{cat}</span>
-                                    <span className="font-medium text-foreground">
-                                        {earned}/{max}
-                                    </span>
-                                </div>
-                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
-                                    <div
-                                        className="h-full rounded-full transition-all duration-300"
-                                        style={{
-                                            width: `${max > 0 ? (earned / max) * 100 : 0}%`,
-                                            backgroundColor:
-                                                earned === max
-                                                    ? '#16a34a'
-                                                    : earned >= max * 0.5
-                                                      ? '#2563eb'
-                                                      : '#d97706',
-                                        }}
-                                    />
-                                </div>
+function AtsInsightsPanel({
+    result,
+    onClose,
+    as = 'aside',
+}: {
+    result: ReturnType<typeof calculateAtsScore>;
+    onClose: () => void;
+    as?: 'aside' | 'div';
+}) {
+    const Wrapper = as === 'div' ? 'div' : 'aside';
+
+    return (
+        <Wrapper className="w-[280px] shrink-0 border-l border-border bg-card print:hidden">
+            <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">ATS Score</p>
+                    <p className="text-sm font-medium text-foreground">{result.label}</p>
+                </div>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+                    aria-label="Close ATS insights"
+                >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div className="space-y-3 p-3">
+                <div className="space-y-1.5">
+                    {Object.entries(result.breakdown).map(([cat, { earned, max }]) => (
+                        <div key={cat}>
+                            <div className="flex items-center justify-between text-[10px]">
+                                <span className="text-muted-foreground">{cat}</span>
+                                <span className="font-medium text-foreground">
+                                    {earned}/{max}
+                                </span>
+                            </div>
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
+                                <div
+                                    className="h-full rounded-full transition-all duration-300"
+                                    style={{
+                                        width: `${max > 0 ? (earned / max) * 100 : 0}%`,
+                                        backgroundColor:
+                                            earned === max ? '#16a34a' : earned >= max * 0.5 ? '#2563eb' : '#d97706',
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {result.tips.length > 0 && (
+                    <div className="space-y-1.5 border-t border-border pt-2">
+                        <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Improvement Tips
+                        </h4>
+                        {result.tips.map((tip, i) => (
+                            <div
+                                key={i}
+                                className={`flex items-start gap-1.5 rounded-md px-2 py-1.5 text-[11px] leading-snug ${TIP_CLASSES[tip.severity] ?? TIP_CLASSES.info}`}
+                            >
+                                <span className="mt-px shrink-0">{TIP_EMOJI[tip.severity] ?? TIP_EMOJI.info}</span>
+                                <span>{tip.message}</span>
                             </div>
                         ))}
                     </div>
-
-                    {/* Tips list */}
-                    {result.tips.length > 0 && (
-                        <div className="space-y-1.5 border-t border-border pt-2">
-                            <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                Improvement Tips
-                            </h4>
-                            {result.tips.map((tip, i) => (
-                                <div
-                                    key={i}
-                                    className={`flex items-start gap-1.5 rounded-md px-2 py-1.5 text-[11px] leading-snug ${TIP_CLASSES[tip.severity] ?? TIP_CLASSES.info}`}
-                                >
-                                    <span className="mt-px shrink-0">{TIP_EMOJI[tip.severity] ?? TIP_EMOJI.info}</span>
-                                    <span>{tip.message}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
+                )}
+            </div>
+        </Wrapper>
     );
 }
 
@@ -930,6 +991,10 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     /** Share dialog state */
     const [showShareDialog, setShowShareDialog] = useState(false);
     const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+    const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+    const [atsPanelOpen, setAtsPanelOpen] = useState(false);
 
     const [selectedSkillSetIds, setSelectedSkillSetIds] = useState<string[]>(() =>
         guestMode ? GUEST_DATA.skillSets.map((s) => s.id) : [],
@@ -951,6 +1016,9 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
     const dataSetHydrationRef = useRef<string | null>(null);
     const profileDataSetCreateAttemptRef = useRef<Set<string>>(new Set());
     const persistSignatureRef = useRef<string>('');
+    const markUnsaved = useCallback(() => {
+        if (loadedResumeId) setHasUnsavedChanges(true);
+    }, [loadedResumeId]);
 
     const isCompact = useIsCompact();
 
@@ -1389,6 +1457,8 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         user?.name,
         user?.email,
     ]);
+
+    const atsResult = useMemo(() => calculateAtsScore(data), [data]);
 
     // Unfiltered data for the sidebar — all items shown, checkboxes toggle visibility in preview
     const sidebarData = useMemo<ResumeTemplateData>(() => {
@@ -2027,9 +2097,9 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                         </div>
                                     </div>
                                 </DropdownMenuItem>
-
                                 <DropdownMenuSeparator />
-
+                                AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+                                AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
                                 {/* Plain text — for ATS / copy-paste */}
                                 <DropdownMenuItem onClick={handleDownloadText} className="cursor-pointer">
                                     <svg
@@ -2194,6 +2264,11 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                     </div>
                 </main>
 
+                {/* ATS insights panel */}
+                {atsPanelOpen && !isCompact && (
+                    <AtsInsightsPanel result={atsResult} onClose={() => setAtsPanelOpen(false)} />
+                )}
+
                 {/* Right sidebar — Style controls */}
                 {rightSidebarOpen &&
                     (isCompact ? (
@@ -2204,6 +2279,15 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                 onClick={() => setRightSidebarOpen(false)}
                             />
                             <aside className="fixed right-0 top-0 z-30 mt-[var(--toolbar-h,56px)] h-[calc(100vh-var(--toolbar-h,56px))] w-[300px] border-l border-border bg-card shadow-xl print:hidden">
+                                {atsPanelOpen && (
+                                    <div className="border-b border-border">
+                                        <AtsInsightsPanel
+                                            as="div"
+                                            result={atsResult}
+                                            onClose={() => setAtsPanelOpen(false)}
+                                        />
+                                    </div>
+                                )}
                                 <RightSidebar
                                     templateId={templateId}
                                     setTemplateId={setTemplateId}
@@ -2212,6 +2296,9 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                     fontSize={fontSize}
                                     setFontSize={setFontSize}
                                     data={data}
+                                    atsResult={atsResult}
+                                    atsPanelOpen={atsPanelOpen}
+                                    onToggleAtsPanel={() => setAtsPanelOpen((o) => !o)}
                                 />
                             </aside>
                         </>
@@ -2225,6 +2312,9 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                 fontSize={fontSize}
                                 setFontSize={setFontSize}
                                 data={data}
+                                atsResult={atsResult}
+                                atsPanelOpen={atsPanelOpen}
+                                onToggleAtsPanel={() => setAtsPanelOpen((o) => !o)}
                             />
                         </aside>
                     ))}
