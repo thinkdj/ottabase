@@ -2,7 +2,7 @@
  * Resume export utilities — PDF (server-side DOM capture) and Plain Text (.txt).
  *
  * PDF strategy:
- *  - `exportAsPdfServerSide()` — serialises the live rendered DOM + all page CSS
+ *  - `exportAsPdfServerSide()` — serializes the live rendered DOM + all page CSS
  *    into a self-contained HTML string, POSTs it to `POST /api/resume/pdf`, and
  *    Puppeteer produces a pixel-perfect PDF.
  *  - Requires Cloudflare Browser Rendering API (`OBCF_BROWSER` binding).
@@ -10,6 +10,89 @@
 
 import type { ResumeTemplateData } from '@/pages/resume/types';
 import { formatDateRange } from '@/pages/resume/types';
+
+// ---------------------------------------------------------------------------
+// PDF metadata
+// ---------------------------------------------------------------------------
+
+/** Structured PDF document metadata injected via pdf-lib after Puppeteer renders. */
+export interface PdfMetadata {
+    /** e.g. "Jane Doe - Software Engineer" */
+    title: string;
+    /** Always "ResumeMe" */
+    author: string;
+    /** Short description of the document, e.g. "Software Engineer Resume" */
+    subject: string;
+    /** Comma-separated keywords drawn from skills, titles, tech stack, certs, etc. */
+    keywords: string;
+}
+
+/**
+ * Derives meaningful PDF metadata from the resolved resume data.
+ *
+ * - **Title**: `{fullName} - {headline}` (or just fullName when no headline)
+ * - **Author**: `ResumeMe` (constant)
+ * - **Subject**: `{headline || firstDesignation || "Professional"} Resume`
+ * - **Keywords**: deduplicated bag of skills, job titles, tech stack, cert names,
+ *   degree fields, and location — trimmed to the 30 most-significant tokens.
+ */
+export function buildPdfMetadata(data: ResumeTemplateData): PdfMetadata {
+    const headline = data.profile?.headline?.trim() ?? '';
+    const fullName = data.fullName?.trim() || 'Resume';
+
+    // ── Title ────────────────────────────────────────────────────────────────
+    const title = headline ? `${fullName} - ${headline}` : fullName;
+
+    // ── Subject ──────────────────────────────────────────────────────────────
+    // Use headline if present; otherwise fall back to the first job designation.
+    const firstDesignation = data.workExperiences[0]?.designation?.trim() ?? '';
+    const subjectRole = headline || firstDesignation || 'Professional';
+    const subject = `${subjectRole} Resume`;
+
+    // ── Keywords ─────────────────────────────────────────────────────────────
+    // Gather tokens from every section of the resume that signals domain/tech.
+    const tokens: string[] = [];
+
+    // Individual skills (most granular and ATS-relevant)
+    data.skillSets.forEach((ss) => tokens.push(...ss.skills));
+
+    // Skill set category names (e.g. "Frontend", "DevOps")
+    data.skillSets.forEach((ss) => ss.name && tokens.push(ss.name));
+
+    // Job designations
+    data.workExperiences.forEach((w) => w.designation && tokens.push(w.designation));
+
+    // Tech stack entries across all projects
+    data.projects.forEach((p) => tokens.push(...p.techStack));
+
+    // Certification names
+    data.certifications.forEach((c) => c.name && tokens.push(c.name));
+
+    // Education degrees and fields
+    data.educations.forEach((e) => {
+        e.degree && tokens.push(e.degree);
+        e.field && tokens.push(e.field);
+    });
+
+    // Location — useful for geo-targeted searches
+    if (data.profile?.location) tokens.push(data.profile.location);
+
+    // Deduplicate (case-insensitive), strip blanks, cap at 30 keywords.
+    const seen = new Set<string>();
+    const keywords = tokens
+        .map((t) => t.trim())
+        .filter((t) => {
+            if (!t) return false;
+            const key = t.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        })
+        .slice(0, 30)
+        .join(', ');
+
+    return { title, author: 'ResumeMe', subject, keywords };
+}
 
 // ---------------------------------------------------------------------------
 // Plain text export
@@ -204,7 +287,7 @@ export function convertZoomToTransform(element: HTMLElement): void {
  *    like `header { display:none }` that would hide the resume template's own
  *    `<header>` element.
  */
-function captureResumeHtml(captureId: string): string {
+function captureResumeHtml(captureId: string, docTitle?: string): string {
     const el = document.getElementById(captureId);
     if (!el) {
         throw new Error('Resume preview element not found. Ensure the resume is fully rendered before exporting.');
@@ -296,11 +379,15 @@ function captureResumeHtml(captureId: string): string {
     }
     const rootVarsCss = rootVars.length > 0 ? `:root {\n  ${rootVars.join(';\n  ')};\n}\n\n` : '';
 
+    // Escape any HTML entities that could break the <title> tag.
+    const safeTitle = (docTitle ?? 'Resume').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${safeTitle}</title>
   ${fontLinks.join('\n  ')}
   <style>
     /* ── Page geometry — explicit @page tells Puppeteer's Chromium exactly
@@ -310,7 +397,7 @@ function captureResumeHtml(captureId: string): string {
       margin: 0;
     }
 
-    /* Ensure colours/backgrounds print exactly as shown on screen */
+    /* Ensure colors/backgrounds print exactly as shown on screen */
     *, *::before, *::after {
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
@@ -322,6 +409,15 @@ function captureResumeHtml(captureId: string): string {
       background: white;
       /* Force light mode in Puppeteer — avoids inheriting prefers-color-scheme:dark */
       color-scheme: light;
+    }
+
+    /* Override any app-shell height utilities (e.g. Tailwind's h-full / min-h-screen)
+       that would force body to be exactly one viewport-page tall, causing Chromium's
+       PDF renderer to emit a trailing blank page when content is shorter than a page.
+       Placed here AND repeated after ${css} so it wins regardless of specificity. */
+    html, body {
+      height: fit-content !important;
+      min-height: unset !important;
     }
 
     /* Prevent sections from being split across page breaks */
@@ -338,6 +434,17 @@ function captureResumeHtml(captureId: string): string {
     /* Font/typography vars from brand theme — required for Google Fonts in PDF */
     ${rootVarsCss}
     ${css}
+
+    /* ── Trailing-blank-page guard (must come AFTER collected CSS to win) ──
+       App-shell CSS (e.g. Tailwind base) often sets html/body height to 100%
+       or min-height: 100vh.  In Puppeteer's print context this forces the body
+       to fill exactly one letter-page, so any resume whose content is shorter
+       than 1 full page (or lands exactly at a page boundary) gets an empty
+       trailing page.  Resetting to fit-content lets Chromium size to content. */
+    html, body {
+      height: fit-content !important;
+      min-height: unset !important;
+    }
   </style>
 </head>
 <body>
@@ -352,24 +459,33 @@ function captureResumeHtml(captureId: string): string {
  * Captures the live rendered DOM + all CSS and ships it to the worker where
  * Puppeteer renders an exact visual replica as a PDF.
  *
- * Fallback behaviour:
+ * Fallback behavior:
  *  - `503 BROWSER_BINDING_UNAVAILABLE` — throws with a clear message (Browser
  *    Rendering binding not configured in this environment).
  *  - Any other error — throws so the caller can surface a toast.
  *
  * @param captureElementId  `id` attribute of the resume preview wrapper div.
  * @param fileName          Suggested download filename (no extension).
+ * @param resumeData        Resolved template data used to derive PDF metadata.
  */
-export async function exportAsPdfServerSide(captureElementId: string, fileName?: string): Promise<void> {
+export async function exportAsPdfServerSide(
+    captureElementId: string,
+    fileName?: string,
+    resumeData?: ResumeTemplateData,
+): Promise<void> {
+    // Build PDF metadata from resume data before touching the DOM so the
+    // title can be injected into the captured HTML as a <title> tag.
+    const metadata: PdfMetadata | undefined = resumeData ? buildPdfMetadata(resumeData) : undefined;
+
     // Capture the DOM + CSS synchronously before going async — the UI must
     // still be fully rendered and visible at the point of capture.
-    const html = captureResumeHtml(captureElementId);
+    const html = captureResumeHtml(captureElementId, metadata?.title);
 
     const response = await fetch('/api/resume/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include', // forward session cookie
-        body: JSON.stringify({ html, fileName }),
+        body: JSON.stringify({ html, fileName, metadata }),
     });
 
     if (!response.ok) {

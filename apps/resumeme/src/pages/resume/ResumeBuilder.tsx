@@ -1634,14 +1634,15 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
         const pdfFileName = saveName || data.fullName || 'resume';
         setIsPdfGenerating(true);
         try {
-            await exportAsPdfServerSide('resume-capture', pdfFileName);
+            // Pass resolved resume data so the worker can embed title/author/subject/keywords.
+            await exportAsPdfServerSide('resume-capture', pdfFileName, data);
         } catch (err) {
             const message = err instanceof Error ? err.message : 'PDF generation failed';
             toast.error(message, { description: 'Ensure the Browser Rendering API is enabled in Cloudflare.' });
         } finally {
             setIsPdfGenerating(false);
         }
-    }, [guestMode, saveName, data.fullName]);
+    }, [guestMode, saveName, data]);
 
     /** Download as plain text (.txt) suitable for ATS/copy-paste. */
     const handleDownloadText = useCallback(() => {
@@ -2098,8 +2099,6 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
                                     </div>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-                                AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
                                 {/* Plain text — for ATS / copy-paste */}
                                 <DropdownMenuItem onClick={handleDownloadText} className="cursor-pointer">
                                     <svg

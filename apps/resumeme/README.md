@@ -96,7 +96,8 @@ All templates support:
 - Dark mode
 - Print-optimised CSS (`@media print`)
 - **PDF export** — server-side via Puppeteer/Cloudflare Browser Rendering API; pixel-perfect replica of the on-screen
-  preview
+  preview. PDF Info dictionary (Title, Author, Subject, Keywords, Creator, Producer, CreationDate, ModDate) is
+  automatically populated from the resume data via an incremental binary append — no external library required.
 - **Plain Text export** (`.txt`) — ATS-friendly one-click download
 - **ATS Friendliness Score** — Real-time scoring (0–100) with 8 categories, severity-rated tips, and a circular gauge in
   the builder sidebar. Runs entirely in the browser — no AI APIs
@@ -164,9 +165,21 @@ The worker never builds its own HTML — it just runs Puppeteer on what the brow
 ```typescript
 // worker/routes/resume-pdf.ts — body shape
 POST /api/resume/pdf
-Body: { html: string, fileName?: string }
-// html = fully self-contained HTML captured from the browser DOM
+Body: {
+  html: string,        // fully self-contained HTML captured from the browser DOM
+  fileName?: string,   // suggested download filename (no extension)
+  metadata?: {
+    title: string,     // e.g. "Jane Doe - Senior UX Engineer"
+    author: string,    // always "ResumeMe"
+    subject: string,   // e.g. "Senior UX Engineer Resume"
+    keywords: string,  // comma-separated: skills, tech stack, certs, location …
+  }
+}
 ```
+
+**PDF metadata injection** — after Puppeteer renders, a zero-dependency incremental PDF update is appended to the
+buffer. It sets the Info dictionary fields (`/Title`, `/Author`, `/Subject`, `/Keywords`, `/Creator`, `/Producer`,
+`/CreationDate`, `/ModDate`) using raw byte manipulation that works with any PDF version/structure.
 
 **Font handling:** The capture includes `:root` font CSS variables (`--font-heading`, `--font-body`,
 `--font-handwriting`, `--typography-*`) from the brand theme so `var(--font-heading)` etc. resolve correctly in the PDF.
@@ -184,11 +197,13 @@ import {
     exportAsPdfServerSide, // server-side DOM capture → Puppeteer PDF
     exportAsPlainText, // ATS .txt download
     buildPlainText, // serialise to string (no download)
+    buildPdfMetadata, // derive PDF Info dict fields from resume data
     convertZoomToTransform, // CSS zoom → transform:scale() for PDF
 } from '@/lib/resume-export';
 
-// Server-side PDF — pass the id of the resume preview wrapper div
-await exportAsPdfServerSide('resume-capture', 'My Resume');
+// Server-side PDF — pass the preview div id and the resolved resume data
+// (metadata is derived automatically from resumeData)
+await exportAsPdfServerSide('resume-capture', 'My Resume', resumeData);
 ```
 
 The preview wrapper in `ResumeBuilder.tsx` carries `id="resume-capture"` so `exportAsPdfServerSide` can locate and clone

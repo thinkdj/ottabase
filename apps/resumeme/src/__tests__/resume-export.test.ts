@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildPlainText, convertZoomToTransform, exportAsPlainText } from '../lib/resume-export';
+import { buildPdfMetadata, buildPlainText, convertZoomToTransform, exportAsPlainText } from '../lib/resume-export';
 import type { ResumeTemplateData } from '../pages/resume/types';
 
 // ---------------------------------------------------------------------------
@@ -215,6 +215,123 @@ describe('exportAsPlainText', () => {
         exportAsPlainText(SAMPLE_DATA, 'My Resume: Final/Draft');
         // Illegal chars replaced with underscores; .txt suffix appended
         expect(anchors[0]?.download).toBe('My Resume_ Final_Draft.txt');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// buildPdfMetadata — derives PDF document metadata from resolved resume data
+// ---------------------------------------------------------------------------
+
+describe('buildPdfMetadata', () => {
+    it('sets title as "fullName - headline" when headline is present', () => {
+        const meta = buildPdfMetadata(SAMPLE_DATA);
+        expect(meta.title).toBe('Jane Smith - Senior Software Engineer');
+    });
+
+    it('sets title to just fullName when headline is absent', () => {
+        const data: ResumeTemplateData = { ...SAMPLE_DATA, profile: { ...SAMPLE_DATA.profile!, headline: null } };
+        const meta = buildPdfMetadata(data);
+        expect(meta.title).toBe('Jane Smith');
+    });
+
+    it('always sets author to "ResumeMe"', () => {
+        const meta = buildPdfMetadata(SAMPLE_DATA);
+        expect(meta.author).toBe('ResumeMe');
+    });
+
+    it('sets subject using headline when present', () => {
+        const meta = buildPdfMetadata(SAMPLE_DATA);
+        expect(meta.subject).toBe('Senior Software Engineer Resume');
+    });
+
+    it('falls back to first job designation for subject when no headline', () => {
+        const data: ResumeTemplateData = { ...SAMPLE_DATA, profile: { ...SAMPLE_DATA.profile!, headline: '' } };
+        const meta = buildPdfMetadata(data);
+        expect(meta.subject).toBe('Software Engineer Resume');
+    });
+
+    it('falls back to "Professional Resume" when no headline or job', () => {
+        const data: ResumeTemplateData = {
+            ...SAMPLE_DATA,
+            profile: { ...SAMPLE_DATA.profile!, headline: null },
+            workExperiences: [],
+        };
+        const meta = buildPdfMetadata(data);
+        expect(meta.subject).toBe('Professional Resume');
+    });
+
+    it('includes individual skills in keywords', () => {
+        const meta = buildPdfMetadata(SAMPLE_DATA);
+        expect(meta.keywords).toContain('React');
+        expect(meta.keywords).toContain('TypeScript');
+        expect(meta.keywords).toContain('CSS');
+    });
+
+    it('includes tech stack entries in keywords', () => {
+        const meta = buildPdfMetadata(SAMPLE_DATA);
+        expect(meta.keywords).toContain('Drizzle');
+    });
+
+    it('includes certification names in keywords', () => {
+        const meta = buildPdfMetadata(SAMPLE_DATA);
+        expect(meta.keywords).toContain('AWS Solutions Architect');
+    });
+
+    it('includes education degree and field in keywords', () => {
+        const meta = buildPdfMetadata(SAMPLE_DATA);
+        expect(meta.keywords).toContain('B.Sc Computer Science');
+        expect(meta.keywords).toContain('Computer Science');
+    });
+
+    it('includes location in keywords', () => {
+        const meta = buildPdfMetadata(SAMPLE_DATA);
+        expect(meta.keywords).toContain('San Francisco, CA');
+    });
+
+    it('deduplicates keywords case-insensitively', () => {
+        // "TypeScript" appears in both skillSets and techStack — should only appear once
+        const meta = buildPdfMetadata(SAMPLE_DATA);
+        const keywordList = meta.keywords.split(', ');
+        const lowerList = keywordList.map((k) => k.toLowerCase());
+        expect(lowerList.filter((k) => k === 'typescript')).toHaveLength(1);
+    });
+
+    it('caps keywords at 30 items', () => {
+        // Build a data set with 50 unique skills
+        const data: ResumeTemplateData = {
+            ...SAMPLE_DATA,
+            skillSets: [{ id: 's1', name: 'All', skills: Array.from({ length: 50 }, (_, i) => `Skill${i}`) }],
+        };
+        const meta = buildPdfMetadata(data);
+        const keywordList = meta.keywords.split(', ');
+        expect(keywordList.length).toBeLessThanOrEqual(30);
+    });
+
+    it('handles a resume with no skills, projects or certs gracefully', () => {
+        const minimal: ResumeTemplateData = {
+            fullName: 'John Doe',
+            profile: {
+                headline: null,
+                email: null,
+                phone: null,
+                location: null,
+                avatarUrl: null,
+                website: null,
+                linkedinUrl: null,
+                githubUrl: null,
+            },
+            summary: null,
+            workExperiences: [],
+            educations: [],
+            skillSets: [],
+            projects: [],
+            certifications: [],
+        };
+        const meta = buildPdfMetadata(minimal);
+        expect(meta.title).toBe('John Doe');
+        expect(meta.author).toBe('ResumeMe');
+        expect(meta.subject).toBe('Professional Resume');
+        expect(meta.keywords).toBe('');
     });
 });
 
