@@ -38,6 +38,7 @@
         "@ottabase/brand-engine-react": "workspace:*",
         "@ottabase/cf": "workspace:*",
         "@ottabase/cf-ai": "workspace:*",
+        "@ottabase/cf-pdf": "workspace:*",
         "@ottabase/cf-realtime": "workspace:*",
         "@ottabase/config": "workspace:*",
         "@ottabase/db": "workspace:*",
