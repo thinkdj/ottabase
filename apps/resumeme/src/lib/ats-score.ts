@@ -17,6 +17,9 @@
 
 import type { ResumeTemplateData } from '@/pages/resume/types';
 
+/** Matches any string containing at least one digit — used for impact quantification checks */
+const CONTAINS_NUMBER = /\d/;
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -85,7 +88,7 @@ export function calculateAtsScore(data: ResumeTemplateData): AtsScoreResult {
 
     // Sort tips: critical → warning → info
     const severityOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 };
-    tips.sort((a, b) => severityOrder[a.severity]! - severityOrder[b.severity]!);
+    tips.sort((a, b) => (severityOrder[a.severity] ?? 999) - (severityOrder[b.severity] ?? 999));
 
     return {
         score,
@@ -351,7 +354,7 @@ function scoreImpact(data: ResumeTemplateData, tips: AtsTip[]): number {
     if (allHighlights.length === 0) return 0;
 
     // Count highlights containing numbers (e.g. "40%", "10M", "$500K", "200+")
-    const quantified = allHighlights.filter((h) => /\d/.test(h)).length;
+    const quantified = allHighlights.filter((h) => CONTAINS_NUMBER.test(h)).length;
     const ratio = quantified / allHighlights.length;
 
     let pts: number;

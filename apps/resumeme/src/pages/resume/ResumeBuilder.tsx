@@ -684,6 +684,14 @@ function RightSidebar({
 
 // ---------------------------------------------------------------------------
 // ATS Score Panel — shows ATS friendliness score + tips in right sidebar
+// Severity → emoji / CSS class maps for the ATS tips
+const TIP_EMOJI: Record<string, string> = { critical: '🔴', warning: '🟡', info: '🔵' };
+const TIP_CLASSES: Record<string, string> = {
+    critical: 'bg-red-500/10 text-red-700 dark:text-red-400',
+    warning: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    info: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
+};
+
 // ---------------------------------------------------------------------------
 function AtsScorePanel({ data }: { data: ResumeTemplateData }) {
     const [expanded, setExpanded] = useState(false);
@@ -805,17 +813,9 @@ function AtsScorePanel({ data }: { data: ResumeTemplateData }) {
                             {result.tips.map((tip, i) => (
                                 <div
                                     key={i}
-                                    className={`flex items-start gap-1.5 rounded-md px-2 py-1.5 text-[11px] leading-snug ${
-                                        tip.severity === 'critical'
-                                            ? 'bg-red-500/10 text-red-700 dark:text-red-400'
-                                            : tip.severity === 'warning'
-                                              ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
-                                              : 'bg-blue-500/10 text-blue-700 dark:text-blue-400'
-                                    }`}
+                                    className={`flex items-start gap-1.5 rounded-md px-2 py-1.5 text-[11px] leading-snug ${TIP_CLASSES[tip.severity] ?? TIP_CLASSES.info}`}
                                 >
-                                    <span className="mt-px shrink-0">
-                                        {tip.severity === 'critical' ? '🔴' : tip.severity === 'warning' ? '🟡' : '🔵'}
-                                    </span>
+                                    <span className="mt-px shrink-0">{TIP_EMOJI[tip.severity] ?? TIP_EMOJI.info}</span>
                                     <span>{tip.message}</span>
                                 </div>
                             ))}
