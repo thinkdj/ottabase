@@ -184,8 +184,14 @@ interface DomCaptureOptions {
     stripPrintMedia?: boolean; // Remove @media print rules (default: true)
     preconnectDomains?: string[]; // DNS hint domains (default: Google Fonts CDN)
     cssVariablePatterns?: string[]; // :root var prefixes to capture (default: ['--font-', '--typography-'])
+    fitHeight?: boolean; // Force min-height = 1 page on element + first child (default: false)
 }
 ```
+
+**`fitHeight`** sets `min-height` equal to one full page in CSS pixels (`letter` = 1056 px, `a4` = 1123 px, etc.) on
+both the captured element **and its direct child**. This makes flex sidebar themes (e.g. a dark left column) stretch to
+fill the full page via `align-items: stretch` instead of stopping at content height. It is safe to use alongside the
+blank-page guard because `html`/`body` are not affected — only the inner divs.
 
 ### Metadata (`@ottabase/cf-pdf/metadata`)
 

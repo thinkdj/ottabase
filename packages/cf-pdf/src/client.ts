@@ -67,6 +67,21 @@ const DEFAULT_PRECONNECT = ['https://fonts.googleapis.com', 'https://fonts.gstat
 const DEFAULT_CSS_VAR_PATTERNS = ['--font-', '--typography-'];
 
 /**
+ * CSS pixel heights for common print page sizes at 96 dpi.
+ * Used by the `fitHeight` option to enforce minimum page-height on
+ * the captured element so sidebar backgrounds fill the full first page.
+ *
+ * Calculation: inches × 96 px/in  (or mm / 25.4 × 96).
+ */
+const PAGE_HEIGHT_PX: Record<string, number> = {
+    letter: 1056, // 11 in × 96
+    a4: 1123, // 297 mm / 25.4 × 96 ≈ 1122.5 → 1123
+    legal: 1344, // 14 in × 96
+    a3: 1587, // 420 mm / 25.4 × 96 ≈ 1586.9 → 1587
+    tabloid: 1584, // 17 in × 96 (same as A3 landscape — landscape not handled here)
+};
+
+/**
  * Serialises a live DOM element (identified by `elementId`) together with
  * every CSS rule loaded on the page into a fully self-contained HTML string.
  *
@@ -96,6 +111,7 @@ export function captureDomAsHtml(elementId: string, options: DomCaptureOptions =
         stripPrintMedia = true,
         preconnectDomains = DEFAULT_PRECONNECT,
         cssVariablePatterns = DEFAULT_CSS_VAR_PATTERNS,
+        fitHeight = false,
     } = options;
 
     const el = document.getElementById(elementId);
@@ -113,6 +129,24 @@ export function captureDomAsHtml(elementId: string, options: DomCaptureOptions =
     clone.style.maxWidth = 'none'; // let Puppeteer control page width
     clone.style.aspectRatio = 'auto'; // allow content to flow across PDF pages
     clone.style.overflow = 'visible';
+    // Reset any screen-layout margin (e.g. Tailwind's .mt-4 on the preview container)
+    // so no decorative top/bottom whitespace bleeds into the PDF.
+    clone.style.margin = '0';
+    clone.style.padding = '0';
+
+    // fitHeight: force the capture element and its direct child template wrapper to
+    // be at least one full page tall. This ensures that sidebar flex children stretch
+    // to fill the page background (e.g. TemplateModern's dark sidebar column).
+    if (fitHeight) {
+        const pageHeightPx = PAGE_HEIGHT_PX[pageSize.toLowerCase()] ?? PAGE_HEIGHT_PX.letter;
+        clone.style.minHeight = `${pageHeightPx}px`;
+        // Also apply min-height to the direct child (the flex template wrapper) so
+        // `align-items: stretch` propagates the height to sidebar & main columns.
+        const firstChild = clone.firstElementChild as HTMLElement | null;
+        if (firstChild) {
+            firstChild.style.minHeight = `${pageHeightPx}px`;
+        }
+    }
 
     // Convert CSS zoom → transform:scale() on the container and children.
     convertZoomToTransform(clone);

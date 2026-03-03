@@ -118,4 +118,24 @@ export interface DomCaptureOptions {
      * Default: `['--font-', '--typography-']`
      */
     cssVariablePatterns?: string[];
+
+    /**
+     * When `true`, forces the captured element AND its first child (typically the
+     * template wrapper flex container) to have `min-height` equal to one full page
+     * height in CSS pixels (derived from `pageSize`).
+     *
+     * **Why this matters for sidebar themes:** In PDF rendering, a flex container
+     * with `align-items: stretch` (default) stretches all children to equal height.
+     * Without an explicit `min-height`, a short sidebar (e.g. Modern, Bold) only
+     * fills as far as its content — leaving the bottom of the page with no sidebar
+     * background colour. Setting `fitHeight` ensures the sidebar background fills
+     * the full first page even when the sidebar content is shorter than the main area.
+     *
+     * **Blank-page safety:** The guard (`html, body { height: fit-content }`) stays
+     * in place. Setting `min-height` on inner divs — NOT on `html`/`body` — is safe
+     * because it won't expand the document beyond its content height.
+     *
+     * Default: `false`
+     */
+    fitHeight?: boolean;
 }
