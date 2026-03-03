@@ -1,3 +1,4 @@
+import { captureDomAsHtml } from '@ottabase/cf-pdf/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildPdfMetadata, buildPlainText, convertZoomToTransform, exportAsPlainText } from '../lib/resume-export';
 import type { ResumeTemplateData } from '../pages/resume/types';
@@ -390,5 +391,106 @@ describe('convertZoomToTransform', () => {
 
         // Should be a no-op since parseFloat('invalid') is NaN
         expect(el.style.transform).toBe('');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// captureDomAsHtml — DOM serialisation for server-side PDF rendering
+// ---------------------------------------------------------------------------
+
+describe('captureDomAsHtml', () => {
+    let el: HTMLDivElement;
+    let child: HTMLDivElement;
+
+    beforeEach(() => {
+        el = document.createElement('div');
+        el.id = 'pdf-capture-test';
+        child = document.createElement('div');
+        child.className = 'template-wrapper';
+        el.appendChild(child);
+        document.body.appendChild(el);
+    });
+
+    afterEach(() => {
+        document.body.removeChild(el);
+    });
+
+    it('throws when the element id is not found', () => {
+        expect(() => captureDomAsHtml('does-not-exist')).toThrow(/does-not-exist/);
+    });
+
+    it('does not mutate the original element or its children', () => {
+        el.style.margin = '16px';
+        el.style.padding = '8px';
+        el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+
+        captureDomAsHtml('pdf-capture-test');
+
+        // The function clones the element — original must be untouched
+        expect(el.style.margin).toBe('16px');
+        expect(el.style.padding).toBe('8px');
+        expect(el.style.boxShadow).toBe('0 4px 12px rgba(0,0,0,0.2)');
+    });
+
+    it('includes the document title in the output', () => {
+        const html = captureDomAsHtml('pdf-capture-test', { title: 'Test Resume' });
+        expect(html).toContain('<title>Test Resume</title>');
+    });
+
+    it('injects @page size into the output CSS', () => {
+        const html = captureDomAsHtml('pdf-capture-test', { pageSize: 'a4' });
+        expect(html).toContain('@page');
+        expect(html).toContain('a4');
+    });
+
+    // ── fitHeight ────────────────────────────────────────────────────────────
+
+    describe('fitHeight', () => {
+        it('does not add min-height by default (fitHeight omitted)', () => {
+            const html = captureDomAsHtml('pdf-capture-test');
+            // The blank-page guard emits "min-height: unset !important" which is fine;
+            // we assert that no numeric pixel height is applied to any element.
+            expect(html).not.toMatch(/min-height:\s*\d+px/);
+        });
+
+        it('does not add min-height when fitHeight is explicitly false', () => {
+            const html = captureDomAsHtml('pdf-capture-test', { fitHeight: false });
+            expect(html).not.toMatch(/min-height:\s*\d+px/);
+        });
+
+        it('sets min-height: 1056px on element and first child for letter page size', () => {
+            const html = captureDomAsHtml('pdf-capture-test', { fitHeight: true, pageSize: 'letter' });
+            // Should appear twice — once on the capture wrapper, once on the first child (flex template)
+            const matches = [...html.matchAll(/min-height:\s*1056px/g)];
+            expect(matches.length).toBe(2);
+        });
+
+        it('sets min-height: 1123px for a4 page size', () => {
+            const html = captureDomAsHtml('pdf-capture-test', { fitHeight: true, pageSize: 'a4' });
+            const matches = [...html.matchAll(/min-height:\s*1123px/g)];
+            expect(matches.length).toBe(2);
+        });
+
+        it('sets min-height: 1344px for legal page size', () => {
+            const html = captureDomAsHtml('pdf-capture-test', { fitHeight: true, pageSize: 'legal' });
+            const matches = [...html.matchAll(/min-height:\s*1344px/g)];
+            expect(matches.length).toBe(2);
+        });
+
+        it('falls back to letter height (1056px) for an unrecognised page size', () => {
+            const html = captureDomAsHtml('pdf-capture-test', { fitHeight: true, pageSize: 'executive' });
+            expect(html).toContain('min-height: 1056px');
+        });
+
+        it('does not throw when the element has no first child', () => {
+            el.innerHTML = ''; // strip the child
+            expect(() => captureDomAsHtml('pdf-capture-test', { fitHeight: true })).not.toThrow();
+        });
+
+        it('still applies min-height on the element itself when there is no first child', () => {
+            el.innerHTML = '';
+            const html = captureDomAsHtml('pdf-capture-test', { fitHeight: true, pageSize: 'letter' });
+            expect(html).toContain('min-height: 1056px');
+        });
     });
 });

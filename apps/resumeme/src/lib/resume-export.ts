@@ -267,6 +267,10 @@ export async function exportAsPdfServerSide(
         title: metadata?.title ?? 'Resume',
         pageSize: 'letter',
         containerSelector: '#resume-capture > div',
+        // Ensures the template wrapper (flex container) is at least one page tall
+        // so sidebar backgrounds (e.g. TemplateModern's dark column) fill the full
+        // first page via flex align-items:stretch rather than stopping at content height.
+        fitHeight: true,
     });
 
     // POST to the worker and trigger browser download
