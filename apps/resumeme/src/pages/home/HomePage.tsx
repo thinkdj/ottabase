@@ -7,7 +7,7 @@ export function HomePage() {
             <div
                 className="absolute inset-0 z-0"
                 style={{
-                    backgroundImage: 'url(/resumemehero.png)',
+                    backgroundImage: 'url(/resumemehero.svg)',
                     backgroundPosition: 'center center',
                     backgroundRepeat: 'no-repeat',
                     backgroundSize: 'contain',
