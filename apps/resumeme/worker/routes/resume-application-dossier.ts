@@ -28,9 +28,10 @@ import type { ApiRouteContext } from './router';
 
 // ── Constants ────────────────────────────────────────────────
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_FILE_SIZE = 50 * 1024; // 50 KB per file
 
-const ALLOWED_EXTENSIONS = new Set(['pdf', 'txt', 'md', 'docx', 'png', 'jpg', 'jpeg']);
+// Only allow raw text or markdown for AI ingestion
+const ALLOWED_EXTENSIONS = new Set(['txt', 'md']);
 
 const TEXT_EXTENSIONS = new Set(['txt', 'md']);
 
@@ -245,21 +246,27 @@ export async function handleResumeApplicationDossierFileUpload(
         return errorResponse('file is required', 400, { code: 'VALIDATION_ERROR' });
     }
 
+    // Enforce per-dossier file count cap (max 3)
+    const existingFiles = await ResumeApplicationDossierFile.forDossier(dossierId);
+    if (existingFiles.length >= 3) {
+        return errorResponse('Maximum of 3 files per dossier', 400, { code: 'LIMIT_EXCEEDED' });
+    }
+
     // Validate extension
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
     if (!ALLOWED_EXTENSIONS.has(ext)) {
-        return errorResponse(`Unsupported file type: .${ext}. Allowed: ${[...ALLOWED_EXTENSIONS].join(', ')}`, 400, {
+        return errorResponse(`Unsupported file type: .${ext}. Allowed: txt, md`, 400, {
             code: 'VALIDATION_ERROR',
         });
     }
 
     // Validate size
     if (file.size > MAX_FILE_SIZE) {
-        return errorResponse(`File too large. Maximum size is 10 MB.`, 400, { code: 'VALIDATION_ERROR' });
+        return errorResponse('File too large. Maximum size is 50 KB.', 400, { code: 'VALIDATION_ERROR' });
     }
 
-    // Determine file type category
-    const fileType = TEXT_EXTENSIONS.has(ext) ? ext : ['png', 'jpg', 'jpeg'].includes(ext) ? 'image' : ext;
+    // Only text/markdown are allowed and processed
+    const fileType = ext;
 
     // Generate file ID and R2 key
     const fileId = crypto.randomUUID();
@@ -275,13 +282,9 @@ export async function handleResumeApplicationDossierFileUpload(
             customMetadata: { originalName: file.name, dossierId, userId },
         });
 
-        // Extract text content for text files
-        let extractedText: string | null = null;
-        let status = 'uploaded';
-        if (TEXT_EXTENSIONS.has(ext)) {
-            extractedText = new TextDecoder().decode(fileBuffer);
-            status = 'processed';
-        }
+        // Extract text content (all allowed files are text/markdown)
+        const extractedText = new TextDecoder().decode(fileBuffer);
+        const status = 'processed';
 
         // Create DB record
         const dossierFile = await ResumeApplicationDossierFile.create({

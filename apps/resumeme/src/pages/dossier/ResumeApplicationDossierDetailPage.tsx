@@ -532,7 +532,7 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
                             ref={fileInputRef}
                             type="file"
                             className="hidden"
-                            accept=".pdf,.txt,.md,.docx,.png,.jpg,.jpeg"
+                            accept=".txt,.md"
                             aria-hidden="true"
                             onChange={(e) => {
                                 const file = e.target.files?.[0];
@@ -639,7 +639,7 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
 
                     {/* Supported types hint */}
                     <p className="mt-3 text-[11px] text-muted-foreground/60">
-                        Supported: .pdf, .txt, .md, .docx, .png, .jpg, .jpeg — max 10 MB
+                        Supported: .txt, .md — max 50 KB each, up to 3 files per dossier
                     </p>
                 </CardContent>
             </Card>
@@ -665,8 +665,8 @@ export function ResumeApplicationDossierDetailPage({ dossierId }: { dossierId: s
                     {!hasExtractedText && files.length > 0 ? (
                         <div className="mb-5 rounded-lg border border-dashed border-yellow-500/30 bg-yellow-500/5 p-4 text-center">
                             <p className="text-sm text-yellow-700 dark:text-yellow-400">
-                                Upload text-based files (.pdf, .txt, .md, .docx) to enable AI analysis. Image files
-                                alone cannot be analysed.
+                                Upload text-based files (.txt, .md) up to 50 KB to enable AI analysis. Image or other
+                                file types are blocked and cannot be analyzed.
                             </p>
                         </div>
                     ) : files.length === 0 ? (

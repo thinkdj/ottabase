@@ -1411,9 +1411,11 @@ export default function ResumeBuilder({ guestMode = false }: { guestMode?: boole
             snapshotData: JSON.stringify(data),
         };
 
-        if (loadedResumeId) {
+        const resumeIdToUpdate = loadedResumeId || urlResumeId || null;
+
+        if (resumeIdToUpdate) {
             // Overwrite existing saved resume
-            updateSavedResume.mutate({ id: loadedResumeId, data: payload } as any, {
+            updateSavedResume.mutate({ id: resumeIdToUpdate, data: payload } as any, {
                 onSuccess: () => {
                     setShowSaveDialog(false);
                     setShowSaveNotice(true);

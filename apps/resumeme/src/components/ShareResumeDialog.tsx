@@ -7,7 +7,7 @@ import {
     DialogTitle,
     Input,
 } from '@ottabase/ui-shadcn';
-import { IconCheck, IconCopy, IconLink, IconLoader2 } from '@tabler/icons-react';
+import { IconCheck, IconCopy, IconExternalLink, IconLink, IconLoader2 } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -75,8 +75,11 @@ export function ShareResumeDialog({ resumeId, resumeName, open, onOpenChange }: 
                         <IconLink className="h-5 w-5" />
                         Share Resume
                     </DialogTitle>
-                    <DialogDescription>
-                        Anyone with this link can view <strong>{resumeName}</strong> — no sign-in required.
+                    <DialogDescription className="space-y-1">
+                        <span>Anyone with this link can view — no sign-in required.</span>
+                        <div className="text-foreground/80">
+                            Resume: <strong>{resumeName}</strong>
+                        </div>
                     </DialogDescription>
                 </DialogHeader>
 
@@ -97,6 +100,14 @@ export function ShareResumeDialog({ resumeId, resumeName, open, onOpenChange }: 
                     {shareUrl && !loading && (
                         <div className="flex items-center gap-2">
                             <Input value={shareUrl} readOnly className="flex-1 text-sm" />
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => window.open(shareUrl, '_blank', 'noopener,noreferrer')}
+                                title="Open link in new tab"
+                            >
+                                <IconExternalLink className="h-4 w-4" />
+                            </Button>
                             <Button variant="outline" size="icon" onClick={handleCopy} title="Copy link">
                                 {copied ? (
                                     <IconCheck className="h-4 w-4 text-green-600" />

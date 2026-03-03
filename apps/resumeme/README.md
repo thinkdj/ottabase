@@ -330,7 +330,7 @@ resume profile against the job requirements.
 ### Concept
 
 1. **Create a folder** (`/dossier`) — name it after the role/company (e.g. "Google SWE Application").
-2. **Upload files** — add job descriptions, company info, requirements (.pdf, .txt, .md, .docx, images).
+2. **Upload files** — add job descriptions, company info, requirements (.txt, .md only; max 3 files, 50 KB each).
 3. **Run AI analysis** — the app sends your resume profile (skills, work experience, headline) + all extracted text from
    uploaded files to Cloudflare Workers AI (`@cf/meta/llama-3.1-8b-instruct`).
 4. **Get actionable insights** — match score (0–100%), skill matches, skill gaps, resume improvements, talking points,
@@ -385,7 +385,8 @@ import {
 
 - **OBCF_AI** binding — Cloudflare Workers AI must be enabled for the analysis endpoint.
 - **OBCF_R2** binding — R2 bucket for file storage.
-- Text-based files (.pdf, .txt, .md, .docx) are required for AI analysis. Image-only folders cannot be analysed.
+- Only text/markdown files (.txt, .md) are accepted for AI analysis — max 3 files per dossier, 50 KB each. Other types
+  are blocked.
 
 ## Client Hooks
 
