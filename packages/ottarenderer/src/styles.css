@@ -675,3 +675,84 @@
     border-color: #374151;
     background: #111827;
 }
+
+/* ======================================= */
+/* Steps Block Styles (fallback when Tailwind is absent) */
+/* ======================================= */
+
+.cdc-content-steps {
+    display: block;
+    clear: both;
+    margin: 1.5rem auto;
+    width: 100%;
+}
+
+.cdc-content-steps [role='list'] {
+    margin: 0;
+    padding: 0;
+}
+
+.cdc-content-steps [role='listitem'] {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: 1rem;
+    padding-bottom: 2rem;
+}
+
+.cdc-content-steps [role='listitem']:last-child {
+    padding-bottom: 0;
+}
+
+.cdc-content-steps [aria-hidden='true'] {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 0.125rem;
+}
+
+.cdc-content-steps [aria-hidden='true'] > div:first-child {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;
+    border: none;
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.cdc-content-steps [aria-hidden='true'] > div:nth-child(2) {
+    margin-top: 0.5rem;
+    width: 1px;
+    flex: 1;
+    background: hsl(var(--border));
+}
+
+.cdc-content-steps article {
+    min-width: 0;
+    padding-top: 0.125rem;
+}
+
+.cdc-content-steps h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 500;
+    line-height: 1.7;
+    color: hsl(var(--muted-foreground));
+}
+
+.cdc-content-steps p {
+    margin: 0.75rem 0 0;
+    white-space: pre-line;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: hsl(var(--foreground));
+}
+
+@media (prefers-color-scheme: dark) {
+    /* Steps block relies on theme variables; no extra overrides needed */
+}

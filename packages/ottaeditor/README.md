@@ -4,7 +4,7 @@ A flexible EditorJS wrapper with typesafe plugin management for React applicatio
 
 ## Features
 
-- **21 pre-installed plugins** (15 Editor.js + 6 custom blocks)
+- **22 pre-installed plugins** (15 Editor.js + 7 custom blocks)
 - **Type-safe plugin selection** with autocomplete
 - **TypeScript support**
 - **Custom plugin integration**
@@ -34,6 +34,7 @@ Raw HTML blocks are sanitized on save to remove wrapper/executable tags (for exa
 - **Layout** – Multi-column layout with six preset splits; each column hosts a full nested editor
 - **Disclosure** – Transparency block with AI usage disclosure (slight/mid/high/custom %) and sponsored-content
   disclaimer (preset or custom wording)
+- **Steps** – Minimal step-by-step timeline editor with add, reorder, and delete controls
 
 CTA and Disclosure generate instance-scoped input IDs/names so multiple blocks can coexist without DOM ID or radio-group
 collisions.
@@ -90,7 +91,7 @@ Use these names with `defaultPlugins`:
 
 `'header'`, `'paragraph'`, `'list'`, `'checklist'`, `'code'`, `'quote'`, `'table'`, `'warning'`, `'delimiter'`,
 `'linkTool'`, `'embed'`, `'raw'`, `'Marker'`, `'underline'`, `'inlineCode'`, `'spoiler'`, `'cta'`, `'review'`, `'map'`,
-`'layout'`, `'disclosure'`
+`'layout'`, `'disclosure'`, `'steps'`
 
 ## API
 
@@ -171,6 +172,18 @@ interface DisclosureData {
 interface LayoutData {
     preset: '1-1' | '1-3' | '3-1' | '1-2' | '2-1' | '1-1-1';
     columns: Array<{ content: OutputData }>;
+}
+```
+
+### Steps
+
+```typescript
+// Saved data shape
+interface StepsData {
+    items: Array<{
+        title: string;
+        content: string;
+    }>;
 }
 ```
 

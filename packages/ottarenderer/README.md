@@ -6,7 +6,7 @@ React renderer for [Editor.js](https://editorjs.io/) content and generic HTML.
 
 - **Editor.js Support**: Renders blocks from Editor.js (headers, paragraphs, lists, images, etc.).
 - **Custom Blocks**: Includes renderers for `@ottabase/ottaeditor` custom blocks (AdvancedImage, CTA, Disclosure,
-  Layout, Review, Spoiler, etc.).
+  Layout, Review, Spoiler, Steps, etc.).
 - **HTML Renderer**: Safe HTML rendering utility.
 - **Tailwind Configured**: Styled with Tailwind CSS via `@ottabase/ui-base`.
 - **Global Theming**: Components use semantic theme token classes (`bg-primary`, `text-foreground`, `border-border`) and
@@ -79,6 +79,7 @@ Header, Paragraph, List, Quote, Code, Table, Delimiter, Attaches.
 | `Quote`              | Styled pull-quote with attribution                                                   |
 | `Review`             | Product/service review card with star rating, pros/cons, CTA link, and verdict       |
 | `Spoiler`            | Click-to-reveal blurred text                                                         |
+| `Steps`              | Minimal numbered timeline for tutorials, onboarding, and walkthroughs                |
 | `Table`              | Data table                                                                           |
 | `Warning`            | Alert/callout box                                                                    |
 
@@ -133,6 +134,24 @@ import { CTA } from '@ottabase/ottarenderer';
         style: 'primary', // 'primary' | 'secondary' | 'outline' | 'ghost'
         alignment: 'center', // 'left' | 'center' | 'right'
         openInNewTab: false,
+    }}
+/>;
+```
+
+## Steps Block
+
+The `Steps` component renders a compact vertical timeline with numbered markers and theme-safe light/dark styling.
+
+```tsx
+import { Steps } from '@ottabase/ottarenderer';
+
+<Steps
+    data={{
+        items: [
+            { title: 'Choose a template', content: 'Pick the layout that fits your guide.' },
+            { title: 'Add the details', content: 'Write short, scannable content for each step.' },
+            { title: 'Publish', content: 'Render the saved steps data in your frontend.' },
+        ],
     }}
 />;
 ```

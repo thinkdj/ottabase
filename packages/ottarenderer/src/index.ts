@@ -14,6 +14,7 @@ export { default as Map } from './components/Map';
 export { default as Quote } from './components/Quote';
 export { default as Review } from './components/Review';
 export { default as Spoiler } from './components/Spoiler';
+export { default as Steps } from './components/Steps';
 export { default as Table } from './components/Table';
 export { default as Warning } from './components/Warning';
 
@@ -26,6 +27,7 @@ export type { LayoutData, LayoutPreset } from './components/Layout';
 export type { MapData, MapProvider, MapTheme } from './components/Map';
 export type { QuoteData } from './components/Quote';
 export type { ReviewData } from './components/Review';
+export type { StepItem, StepsData } from './components/Steps';
 
 // Export configuration and utilities
 export { blockClass, customRenderers, defaultEJSRConfigs, shouldRenderContentBlocks } from './EditorJsRenderer';

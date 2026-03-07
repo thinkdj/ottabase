@@ -13,6 +13,7 @@ import Map from './components/Map';
 import Quote from './components/Quote';
 import Review from './components/Review';
 import Spoiler from './components/Spoiler';
+import Steps from './components/Steps';
 import Table from './components/Table';
 import Warning from './components/Warning';
 
@@ -30,4 +31,5 @@ export const baseRenderers = {
     disclosure: Disclosure,
     review: Review,
     map: Map,
+    steps: Steps,
 };

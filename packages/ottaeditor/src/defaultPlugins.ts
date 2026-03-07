@@ -21,6 +21,7 @@ import MapTool from './tools/MapTool/MapTool';
 import RawHtmlTool from './tools/RawHtmlTool/RawHtmlTool';
 import ReviewTool from './tools/ReviewTool/ReviewTool';
 import SpoilerTool from './tools/SpoilerTool/SpoilerTool';
+import StepsTool from './tools/StepsTool/StepsTool';
 import type { OttaEditorPlugin } from './types';
 
 const Raw = RawHtmlTool;
@@ -50,6 +51,7 @@ export const DEFAULT_PLUGIN_NAMES = {
     MAP: 'map',
     LAYOUT: 'layout',
     DISCLOSURE: 'disclosure',
+    STEPS: 'steps',
 } as const;
 
 /**
@@ -218,6 +220,11 @@ export const defaultPlugins: OttaEditorPlugin[] = [
         tool: DisclosureTool as any,
         config: {} as any,
     },
+    {
+        name: DEFAULT_PLUGIN_NAMES.STEPS,
+        tool: StepsTool as any,
+        config: {} as any,
+    },
 ];
 
 /**
@@ -265,6 +272,7 @@ export {
     Raw,
     ReviewTool,
     SpoilerTool,
+    StepsTool,
     Table,
     Underline,
     Warning,
