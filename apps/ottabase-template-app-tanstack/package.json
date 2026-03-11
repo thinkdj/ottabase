@@ -49,6 +49,7 @@
         "@ottabase/ottamenu": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottarenderer": "workspace:*",
+        "@ottabase/ottasearch": "workspace:*",
         "@ottabase/ottaselect": "workspace:*",
         "@ottabase/ottaupload": "workspace:*",
         "@ottabase/queue": "workspace:*",

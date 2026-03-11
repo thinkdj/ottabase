@@ -10,6 +10,7 @@ TanStack Router + Query template with automated OttaORM migrations and Cloudflar
 - **Auth.js** - OAuth, Magic Link, and Credentials authentication
 - **Vite** - Fast development server and optimized builds
 - **Cloudflare Workers** - D1, KV, R2, Queues, Rate Limiting, Durable Objects
+- **In-house Search** - `@ottabase/ottasearch` with D1 FTS + optional Vectorize semantic ranking
 - **Mantine + shadcn/ui** - Flexible UI component libraries
 - **Jotai** - Global state management
 
@@ -30,6 +31,13 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 
 # Done! Visit http://localhost:3003 (frontend) or http://localhost:3004 (when using dev:worker only)
 ```
+
+## Search setup (admin)
+
+- Open **`/admin/search`** to configure searchable models and index fields.
+- Run **Reindex** once after migrations to initialize FTS and build search documents.
+- Global spotlight (`/` shortcut) queries `/api/ottasearch/spotlight`.
+- If Vectorize binding is missing, admin shows pending setup and search falls back to D1 FTS only.
 
 ## Configuration
 

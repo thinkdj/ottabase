@@ -12,6 +12,7 @@
 // ============================================================
 
 import { defineOttabaseConfig } from '@ottabase/config';
+import { searchDocumentsTable, searchableModelsTable } from '@ottabase/ottasearch';
 
 export default defineOttabaseConfig({
     // ── App Identity ──────────────────────────────────────────
@@ -52,7 +53,14 @@ export default defineOttabaseConfig({
     //   customPackages: {
     //     myPremiumFeature: { tables: { premiumTable } },
     //   },
-    customPackages: {},
+    customPackages: {
+        ottasearch: {
+            tables: {
+                searchableModelsTable,
+                searchDocumentsTable,
+            },
+        },
+    },
 
     // ── Feature Configuration ─────────────────────────────────
     features: {
