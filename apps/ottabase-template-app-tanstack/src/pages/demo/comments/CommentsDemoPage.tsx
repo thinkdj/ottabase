@@ -216,6 +216,7 @@ function CommentNode({
                                 onClick={() => onModerate(comment.id, 'flag')}
                                 className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-yellow-600 transition-colors"
                                 title="Flag comment"
+                                aria-label="Flag comment"
                             >
                                 <IconFlag size={13} />
                             </button>
@@ -225,6 +226,7 @@ function CommentNode({
                                 onClick={() => onModerate(comment.id, 'hide')}
                                 className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-gray-600 transition-colors"
                                 title="Hide comment"
+                                aria-label="Hide comment"
                             >
                                 <IconShieldCheck size={13} />
                                 Hide
@@ -234,6 +236,7 @@ function CommentNode({
                             onClick={() => onModerate(comment.id, 'delete')}
                             className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors"
                             title="Soft-delete comment"
+                            aria-label="Soft-delete comment"
                         >
                             <IconTrash size={13} />
                         </button>
@@ -360,7 +363,16 @@ export function CommentsDemoPage() {
             hide: 'hidden',
             delete: 'deleted',
         };
-        setComments((prev) => prev.map((c) => (c.id === id ? { ...c, status: statusMap[action] } : c)));
+        setComments((prev) =>
+            prev.map((c) => {
+                if (c.id !== id) return c;
+                // Mirror Comment.softDelete() behaviour: clear body and reactions on delete
+                if (action === 'delete') {
+                    return { ...c, status: statusMap[action], body: '[deleted]', reactions: {} };
+                }
+                return { ...c, status: statusMap[action] };
+            }),
+        );
     }
 
     function handleReply(parentId: string) {

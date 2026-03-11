@@ -23,10 +23,10 @@ export class Comment extends BaseModel {
         updatedAt: 'date' as const,
     };
 
-    // Fields allowed for create/update via the CRUD API
+    // Only user-editable fields are writable via generic CRUD; status/depth are set server-side
     static writable = {
-        create: ['body', 'targetType', 'targetId', 'parentId', 'userId', 'status', 'depth'],
-        update: ['body', 'status'],
+        create: ['body', 'targetType', 'targetId', 'parentId', 'userId'],
+        update: ['body'],
     };
 
     protected static defaults = {
@@ -125,6 +125,24 @@ export class Comment extends BaseModel {
             editable: false,
             sortable: true,
             uiConfig: { label: 'Updated' },
+            tableConfig: { visible: false },
+        },
+        appId: {
+            type: 'string',
+            editable: false,
+            filterable: true,
+            sortable: false,
+            uiConfig: { label: 'App ID' },
+            formConfig: { visible: false },
+            tableConfig: { visible: false },
+        },
+        organizationId: {
+            type: 'string',
+            editable: false,
+            filterable: true,
+            sortable: false,
+            uiConfig: { label: 'Organization ID' },
+            formConfig: { visible: false },
             tableConfig: { visible: false },
         },
     };
