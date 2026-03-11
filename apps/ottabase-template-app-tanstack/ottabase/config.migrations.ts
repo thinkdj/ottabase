@@ -38,6 +38,7 @@ import {
     seriesTable,
 } from '@ottabase/ottablog';
 import type { Migration } from '@ottabase/ottaorm';
+import { commentsTable } from '@ottabase/comments';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 import { getOttabaseConfig } from './config.loader';
@@ -58,6 +59,10 @@ const PACKAGE_REGISTRY = {
             ottablogPluginsTable,
             ottablogThemesTable,
         },
+        migrations: [] as Migration[],
+    },
+    comments: {
+        tables: { commentsTable },
         migrations: [] as Migration[],
     },
     shortlinks: {

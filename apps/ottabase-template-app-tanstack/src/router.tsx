@@ -480,6 +480,16 @@ const demoOttaDateRoute = new Route({
     ),
 });
 
+const commentsDemoRoute = new Route({
+    getParentRoute: () => demoLayoutRoute,
+    path: 'comments',
+    component: lazyRouteComponent(() =>
+        import('@/pages/demo/comments/CommentsDemoPage').then((m) => ({
+            default: m.CommentsDemoPage,
+        })),
+    ),
+});
+
 // Auth routes
 const loginRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -963,6 +973,7 @@ demoLayoutRoute.addChildren([
     demoCodeBlockRoute,
     demoNotificationsRoute,
     demoOttaDateRoute,
+    commentsDemoRoute,
 ]);
 
 // Package-gated routes (SSOT from ottabase.config.ts). brandEngine is core — always included.

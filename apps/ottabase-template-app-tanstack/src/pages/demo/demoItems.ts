@@ -2,6 +2,7 @@
  * Single source of truth for demo gallery items.
  * Used by both DemoLayout (sidemenu) and DemoIndexPage (cards).
  */
+import { IconMessageCircle } from '@tabler/icons-react';
 import {
     Bell,
     Bot,
@@ -142,6 +143,14 @@ export const DEMO_ITEMS: DemoItem[] = [
         label: 'OttaORM',
         title: 'OttaORM',
         description: 'Class-based Drizzle ORM demo running on D1 via Worker endpoints',
+        buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/comments',
+        icon: IconMessageCircle,
+        label: 'Comments',
+        title: 'Comments',
+        description: 'Threaded comments with reactions, moderation, and polymorphic targeting',
         buttonVariant: 'outline',
     },
     {

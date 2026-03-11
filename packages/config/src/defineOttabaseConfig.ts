@@ -5,14 +5,14 @@
 // ============================================================
 
 import type {
-    OttabaseConfig,
-    OttabaseConfigInput,
-    ReferralsFeatureConfig,
-    SpotlightFeatureConfig,
-    PaginationFeatureConfig,
-    CrudHubFeatureConfig,
     AuthBehaviorConfig,
     BuiltInPackageName,
+    CrudHubFeatureConfig,
+    OttabaseConfig,
+    OttabaseConfigInput,
+    PaginationFeatureConfig,
+    ReferralsFeatureConfig,
+    SpotlightFeatureConfig,
 } from './ottabase-types';
 import { BUILT_IN_PACKAGES } from './ottabase-types';
 
@@ -47,6 +47,7 @@ const DEFAULT_AUTH_BEHAVIOR: AuthBehaviorConfig = {
 };
 
 const DEFAULT_PACKAGES: Record<BuiltInPackageName, boolean> = {
+    comments: true,
     ottablog: true,
     shortlinks: true,
     referrals: true,

@@ -70,7 +70,7 @@ export interface OttabaseUIConfig {
 }
 
 /** Built-in package keys. Extend when adding new built-in packages. brandEngine is core, not a package. */
-export const BUILT_IN_PACKAGES = ['ottablog', 'shortlinks', 'referrals'] as const;
+export const BUILT_IN_PACKAGES = ['comments', 'ottablog', 'referrals', 'shortlinks'] as const;
 
 export type BuiltInPackageName = (typeof BUILT_IN_PACKAGES)[number];
 

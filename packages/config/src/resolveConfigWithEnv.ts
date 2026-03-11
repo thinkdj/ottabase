@@ -5,12 +5,12 @@
 // Secrets (AUTH_SECRET, OAuth keys, API keys) must come from env only.
 // ============================================================
 
-import type { BuiltInPackageName } from './ottabase-types';
-import { BUILT_IN_PACKAGES } from './ottabase-types';
 import { ENV_KEYS } from './env-keys';
-import type { OttabaseConfig } from './ottabase-types';
+import type { BuiltInPackageName, OttabaseConfig } from './ottabase-types';
+import { BUILT_IN_PACKAGES } from './ottabase-types';
 
 const PACKAGE_ENV_KEYS: Record<BuiltInPackageName, string> = {
+    comments: ENV_KEYS.OTTABASE_PKG_COMMENTS,
     ottablog: ENV_KEYS.OTTABASE_PKG_OTTABLOG,
     shortlinks: ENV_KEYS.OTTABASE_PKG_SHORTLINKS,
     referrals: ENV_KEYS.OTTABASE_PKG_REFERRALS,

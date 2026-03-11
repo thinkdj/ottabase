@@ -1,4 +1,5 @@
 import { BrandKit, LayoutRouteMapping, LayoutTemplate, MenuSlotAssignment } from '@ottabase/brand-engine/persistence';
+import { Comment } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import {
     OttablogPlugin,
@@ -93,6 +94,7 @@ export function initDbConnection(env: CloudflareEnv): void {
         ? [Post, PostTag, PostTagLink, PostCategory, PostSeries, PostVersion, OttablogPlugin, OttablogTheme]
         : [];
     const packageModels = [
+        ...(packages.comments ? [Comment] : []),
         ...(packages.shortlinks ? [Shortlink] : []),
         ...(packages.referrals ? [ReferralTracking] : []),
     ];

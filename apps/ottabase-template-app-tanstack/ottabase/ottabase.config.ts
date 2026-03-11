@@ -37,6 +37,7 @@ export default defineOttabaseConfig({
     // database tables and API routes from your app.
     // brandEngine is core — always enabled, not configurable.
     packages: {
+        comments: true,
         ottablog: true,
         shortlinks: true,
         referrals: true,
