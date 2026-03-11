@@ -10,6 +10,7 @@ import {
     PostTagLink,
     PostVersion,
 } from '@ottabase/ottablog';
+import { PortJob } from '@ottabase/ottaport';
 import { clearConnection, hasConnection, initRLS, registerConnection, registerModels } from '@ottabase/ottaorm';
 import {
     Account,
@@ -93,6 +94,7 @@ export function initDbConnection(env: CloudflareEnv): void {
         ? [Post, PostTag, PostTagLink, PostCategory, PostSeries, PostVersion, OttablogPlugin, OttablogTheme]
         : [];
     const packageModels = [
+        PortJob,
         ...(packages.shortlinks ? [Shortlink] : []),
         ...(packages.referrals ? [ReferralTracking] : []),
     ];

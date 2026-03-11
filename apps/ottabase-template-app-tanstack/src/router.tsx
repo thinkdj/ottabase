@@ -929,6 +929,17 @@ const adminKillSwitchesRoute = new Route({
     ),
 });
 
+// Admin OttaPort (Import/Export) route
+const adminOttaportRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/ottaport',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/ottaport').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminOttaportPage />),
+        })),
+    ),
+});
+
 demoLayoutRoute.addChildren([
     demoIndexRoute,
     demoMantineRoute,
@@ -1006,6 +1017,7 @@ const coreRoutes = [
     adminAuditRoute,
     adminSecurityRLSRoute,
     adminKillSwitchesRoute,
+    adminOttaportRoute,
     adminUsersRoute,
     adminUserRBACRoute,
     organizationsRoute,

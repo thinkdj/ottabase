@@ -33,6 +33,7 @@ import {
     postsTable,
     seriesTable,
 } from '@ottabase/ottablog';
+import { portJobsTable } from '@ottabase/ottaport';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 
@@ -55,6 +56,7 @@ export {
     postVersionsTable,
     postsTable,
     seriesTable,
+    portJobsTable,
     referralTrackingTable,
     shortlinksTable,
 };
