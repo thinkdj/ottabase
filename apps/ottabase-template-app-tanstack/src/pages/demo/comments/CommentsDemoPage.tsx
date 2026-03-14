@@ -366,9 +366,9 @@ export function CommentsDemoPage() {
         setComments((prev) =>
             prev.map((c) => {
                 if (c.id !== id) return c;
-                // Mirror Comment.softDelete() behaviour: clear body and reactions on delete
+                // Mirror Comment.softDelete() behaviour: set status and replace body on delete
                 if (action === 'delete') {
-                    return { ...c, status: statusMap[action], body: '[deleted]', reactions: {} };
+                    return { ...c, status: statusMap[action], body: '[deleted]' };
                 }
                 return { ...c, status: statusMap[action] };
             }),
