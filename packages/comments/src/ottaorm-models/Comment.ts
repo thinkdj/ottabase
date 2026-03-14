@@ -23,10 +23,13 @@ export class Comment extends BaseModel {
         updatedAt: 'date' as const,
     };
 
-    // Fields allowed for create/update via the CRUD API
+    // Only safe user-supplied fields are writable via generic CRUD.
+    // userId must be injected server-side (e.g. via allowedWritableFields in the route handler)
+    // to prevent impersonation. depth must be computed via computeDepthForParent() and also
+    // injected server-side. status is managed by dedicated moderation methods (flag/hide/restore).
     static writable = {
-        create: ['body', 'targetType', 'targetId', 'parentId', 'userId', 'status', 'depth'],
-        update: ['body', 'status'],
+        create: ['body', 'targetType', 'targetId', 'parentId'],
+        update: ['body'],
     };
 
     protected static defaults = {
@@ -127,6 +130,24 @@ export class Comment extends BaseModel {
             uiConfig: { label: 'Updated' },
             tableConfig: { visible: false },
         },
+        appId: {
+            type: 'string',
+            editable: false,
+            filterable: true,
+            sortable: false,
+            uiConfig: { label: 'App ID' },
+            formConfig: { visible: false },
+            tableConfig: { visible: false },
+        },
+        organizationId: {
+            type: 'string',
+            editable: false,
+            filterable: true,
+            sortable: false,
+            uiConfig: { label: 'Organization ID' },
+            formConfig: { visible: false },
+            tableConfig: { visible: false },
+        },
     };
 
     // ─── Relationships ─────────────────────────────────────────
@@ -150,10 +171,11 @@ export class Comment extends BaseModel {
 
     // ─── Instance methods ──────────────────────────────────────
 
-    /** Soft-delete this comment (sets status to 'deleted' and clears body) */
+    /** Soft-delete this comment (sets status to 'deleted', clears body and reactions) */
     async softDelete() {
         this.set('status', 'deleted');
         this.set('body', '[deleted]');
+        this.set('reactions', {});
         return this.save();
     }
 
@@ -219,5 +241,29 @@ export class Comment extends BaseModel {
     /** Check if this comment is active */
     isActive(): boolean {
         return this.get('status') === 'active';
+    }
+
+    // ─── Static helpers ────────────────────────────────────────
+
+    /**
+     * Compute the nesting depth for a new comment given its parent ID.
+     * Returns 0 for top-level comments.
+     *
+     * Route handlers must call this and inject the result as an
+     * `allowedWritableFields` entry (e.g. set depth on the body before
+     * forwarding to handleCrud) so depth stays correct even though it is
+     * excluded from the generic CRUD writable allowlist.
+     *
+     * @example
+     * ```ts
+     * const depth = await Comment.computeDepthForParent(body.parentId ?? null);
+     * // then pass depth alongside userId via allowedWritableFields or pre-set body
+     * ```
+     */
+    static async computeDepthForParent(parentId: string | null): Promise<number> {
+        if (!parentId) return 0;
+        const parent = await Comment.find(parentId);
+        if (!parent) return 0;
+        return ((parent.get('depth') as number) ?? 0) + 1;
     }
 }
