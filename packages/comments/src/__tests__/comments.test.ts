@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { CommentRecord, CommentStatus, NewCommentRecord, ReactionsMap } from '../index';
 import { Comment, commentsTable, DEFAULT_REACTIONS } from '../index';
 
@@ -48,7 +48,8 @@ describe('@ottabase/comments', () => {
             expect(Comment.writable.create).toContain('targetType');
             expect(Comment.writable.create).toContain('targetId');
             expect(Comment.writable.create).toContain('parentId');
-            expect(Comment.writable.create).toContain('userId');
+            // userId must NOT be writable — set server-side to prevent impersonation
+            expect(Comment.writable.create).not.toContain('userId');
             // status and depth must NOT be writable via generic CRUD (set server-side)
             expect(Comment.writable.create).not.toContain('status');
             expect(Comment.writable.create).not.toContain('depth');
@@ -166,7 +167,7 @@ describe('@ottabase/comments', () => {
          */
         function makeStub(initial: Record<string, unknown> = {}) {
             const data: Record<string, unknown> = { ...initial };
-            const saveCalls: Record<string, unknown>[][] = [];
+            const saveCalls: Record<string, unknown>[] = [];
 
             const instance = Object.create(Comment.prototype) as Comment & {
                 _data: typeof data;
@@ -193,10 +194,20 @@ describe('@ottabase/comments', () => {
 
         describe('softDelete', () => {
             it('sets status to deleted and body to [deleted]', async () => {
-                const comment = makeStub({ status: 'active', body: 'Hello world' });
+                const comment = makeStub({ status: 'active', body: 'Hello world', reactions: { '👍': ['u1'] } });
                 await comment.softDelete();
                 expect((comment as unknown as { _data: Record<string, unknown> })._data.status).toBe('deleted');
                 expect((comment as unknown as { _data: Record<string, unknown> })._data.body).toBe('[deleted]');
+            });
+
+            it('clears reactions on soft-delete', async () => {
+                const comment = makeStub({
+                    status: 'active',
+                    body: 'Hello world',
+                    reactions: { '👍': ['u1'], '❤️': ['u2'] },
+                });
+                await comment.softDelete();
+                expect((comment as unknown as { _data: Record<string, unknown> })._data.reactions).toEqual({});
             });
 
             it('calls save once', async () => {
@@ -288,6 +299,32 @@ describe('@ottabase/comments', () => {
                 const comment = makeStub({ status: 'deleted' });
                 expect(comment.isActive()).toBe(false);
             });
+        });
+    });
+
+    describe('Comment.computeDepthForParent', () => {
+        it('returns 0 when parentId is null (top-level comment)', async () => {
+            const depth = await Comment.computeDepthForParent(null);
+            expect(depth).toBe(0);
+        });
+
+        it('returns 0 when parentId is provided but parent does not exist', async () => {
+            // Stub Comment.find to return null (parent not found)
+            const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(null as never);
+            const depth = await Comment.computeDepthForParent('nonexistent-id');
+            expect(depth).toBe(0);
+            findSpy.mockRestore();
+        });
+
+        it('returns parent.depth + 1 for a reply to an existing comment', async () => {
+            // Create a stub parent with depth 1
+            const parentStub = Object.create(Comment.prototype);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (parentStub as any).get = (key: string) => (key === 'depth' ? 1 : undefined);
+            const findSpy = vi.spyOn(Comment, 'find').mockResolvedValueOnce(parentStub as never);
+            const depth = await Comment.computeDepthForParent('parent-id');
+            expect(depth).toBe(2);
+            findSpy.mockRestore();
         });
     });
 });
