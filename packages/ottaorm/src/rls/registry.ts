@@ -223,16 +223,10 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
-    // Example: Comments that anyone in org can read, but only owner can edit
+    // Comments: scoped to org on reads; organizationId auto-injected on writes
     {
         model: 'comments',
-        policy: {
-            level: 'custom',
-            filter: (context) => ({
-                organizationId: context.organizationId,
-            }),
-            // Additional owner check happens in validateWrite
-        },
+        policy: RLSPolicies.TenantScoped(false),
         auditEnabled: true,
     },
 ];

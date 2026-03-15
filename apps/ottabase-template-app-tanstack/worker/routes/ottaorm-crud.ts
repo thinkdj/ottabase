@@ -2,7 +2,7 @@ import { getSession, hashPassword } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { Post } from '@ottabase/ottablog';
 import { executeSecureCrudRequest, parseCrudRequest, registerConnection } from '@ottabase/ottaorm';
-import { OrganizationMember } from '@ottabase/ottaorm/models';
+import { OrganizationMember, User } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
@@ -87,6 +87,19 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         (crudRequest.body as any).appId = securityContext.appId ?? (crudRequest.body as any).appId ?? 'web';
     }
 
+    // Inject server-side context for comments (userId + organizationId)
+    if (
+        crudRequest.model === 'comments' &&
+        crudRequest.body &&
+        (crudRequest.method === 'POST' || crudRequest.method === 'PATCH')
+    ) {
+        const user = session?.user;
+        if (crudRequest.method === 'POST') {
+            (crudRequest.body as any).userId = user?.id ?? null;
+            (crudRequest.body as any).organizationId = securityContext.organizationId ?? null;
+        }
+    }
+
     if (crudRequest.model === 'organizations' && crudRequest.body && crudRequest.method === 'POST') {
         const userId = session?.user?.id;
         if (!userId) {
@@ -141,6 +154,29 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                     details: err instanceof Error ? err.message : 'Unknown error',
                 });
             }
+        }
+    }
+
+    // Enrich comment list responses with author info (name, image, createdAt)
+    if (crudRequest.model === 'comments' && crudRequest.method === 'GET' && result.data && !crudRequest.id) {
+        try {
+            const payload = result.data as { data?: any[]; pagination?: any };
+            const rows = Array.isArray(payload.data) ? payload.data : Array.isArray(payload) ? payload : [];
+            const userIds = [...new Set(rows.map((r: any) => r.userId).filter(Boolean))] as string[];
+            if (userIds.length > 0) {
+                const users = await User.whereIn('id', userIds);
+                const userMap = new Map(
+                    users.map((u) => [
+                        u.get('id'),
+                        { id: u.get('id'), name: u.get('name'), image: u.get('image'), createdAt: u.get('createdAt') },
+                    ]),
+                );
+                for (const row of rows) {
+                    (row as any)._user = userMap.get(row.userId) ?? null;
+                }
+            }
+        } catch {
+            // Non-fatal: comments still returned without user enrichment
         }
     }
 

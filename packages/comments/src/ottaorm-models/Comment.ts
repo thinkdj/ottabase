@@ -23,13 +23,13 @@ export class Comment extends BaseModel {
         updatedAt: 'date' as const,
     };
 
-    // Only safe user-supplied fields are writable via generic CRUD.
-    // userId must be injected server-side (e.g. via allowedWritableFields in the route handler)
-    // to prevent impersonation. depth must be computed via computeDepthForParent() and also
-    // injected server-side. status is managed by dedicated moderation methods (flag/hide/restore).
+    // User-supplied fields plus server-injected context fields (userId, organizationId).
+    // The route handler MUST overwrite userId and organizationId from session/context
+    // to prevent client impersonation — they are listed here only so the sanitizer
+    // doesn't strip them after server-side injection.
     static writable = {
-        create: ['body', 'targetType', 'targetId', 'parentId'],
-        update: ['body'],
+        create: ['body', 'targetType', 'targetId', 'parentId', 'depth', 'userId', 'organizationId'],
+        update: ['body', 'status', 'reactions'],
     };
 
     protected static defaults = {

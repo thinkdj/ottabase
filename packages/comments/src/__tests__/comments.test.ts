@@ -48,14 +48,18 @@ describe('@ottabase/comments', () => {
             expect(Comment.writable.create).toContain('targetType');
             expect(Comment.writable.create).toContain('targetId');
             expect(Comment.writable.create).toContain('parentId');
-            // userId must NOT be writable — set server-side to prevent impersonation
-            expect(Comment.writable.create).not.toContain('userId');
-            // status and depth must NOT be writable via generic CRUD (set server-side)
+            expect(Comment.writable.create).toContain('depth');
+            // userId and organizationId are in writable.create so the server-side
+            // injection passes through the sanitizer; the route handler always
+            // overwrites them from session context to prevent impersonation.
+            expect(Comment.writable.create).toContain('userId');
+            expect(Comment.writable.create).toContain('organizationId');
+            // status must NOT be writable on create (defaults to 'active')
             expect(Comment.writable.create).not.toContain('status');
-            expect(Comment.writable.create).not.toContain('depth');
             expect(Comment.writable.update).toContain('body');
-            // status must NOT be updatable via generic CRUD (managed by moderation endpoints)
-            expect(Comment.writable.update).not.toContain('status');
+            // status and reactions are writable to support moderation and reaction toggle via CRUD
+            expect(Comment.writable.update).toContain('status');
+            expect(Comment.writable.update).toContain('reactions');
             // targetType and targetId should NOT be updatable
             expect(Comment.writable.update).not.toContain('targetType');
             expect(Comment.writable.update).not.toContain('targetId');

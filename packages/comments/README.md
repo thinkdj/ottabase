@@ -91,18 +91,33 @@ await comment.restore(); // status → 'active'
 
 ### Querying via CRUD API
 
+```bash
+GET /api/ottaorm/comments?where={"targetType":"post","targetId":"post-abc-123"}
+GET /api/ottaorm/comments?where={"targetType":"post","targetId":"post-abc-123","status":"active"}
+GET /api/ottaorm/comments?where={"parentId":"comment-id-123"}
 ```
-GET /api/ottaorm/comments?filter[targetType]=post&filter[targetId]=post-abc-123
-GET /api/ottaorm/comments?filter[targetType]=post&filter[targetId]=post-abc-123&filter[status]=active
-GET /api/ottaorm/comments?filter[parentId]=comment-id-123
-```
+
+> **Note:** `userId` and `organizationId` are injected server-side from the session/security context on POST. The route
+> handler in `worker/routes/ottaorm-crud.ts` always overwrites these fields, so clients cannot impersonate other users.
+> RLS uses `TenantScoped` policy to automatically scope reads to the current organization.
 
 ### Client hooks
 
 ```typescript
 // src/hooks/commentHooks.ts
+import { type CommentRecord } from '@ottabase/comments';
 import { createModelHooks } from '@ottabase/ottaorm/client';
-import type { CommentRecord } from '@ottabase/comments';
+
+/** User data attached by the server-side enrichment in ottaorm-crud.ts */
+export interface CommentUser {
+    id: string;
+    name: string | null;
+    image: string | null;
+    createdAt: number;
+}
+
+/** Comment row enriched with optional user data */
+export type CommentType = CommentRecord & { _user?: CommentUser | null };
 
 export const {
     useList: useComments,
@@ -110,13 +125,27 @@ export const {
     useCreate: useCreateComment,
     useUpdate: useUpdateComment,
     useDelete: useDeleteComment,
-} = createModelHooks<CommentRecord>({ entityName: 'comments' });
+} = createModelHooks<CommentType>({ entityName: 'comments' });
 
 // Usage in a component:
 const { data: comments } = useComments({
-    filters: { targetType: 'post', targetId: 'post-abc-123', status: 'active' },
+    where: { targetType: 'post', targetId: 'post-abc-123', status: 'active' },
 });
+
+// Each comment has `_user` with { id, name, image, createdAt } for avatar rendering
+comments?.forEach((c) => console.log(c._user?.name));
 ```
+
+### User enrichment
+
+When fetching comments via `GET /api/ottaorm/comments`, the CRUD route handler automatically enriches each comment with
+the author's `name`, `image`, and `createdAt` from the User model. The enriched data is available under the `_user`
+property.
+
+This enables rendering user avatars and "member since" tooltips without extra API calls. The enrichment is a batch
+lookup (`User.whereIn`) — one query regardless of how many unique authors appear in the result set.
+
+If the User lookup fails, comments are returned normally with `_user: null`.
 
 ## App Integration
 
@@ -132,6 +161,22 @@ Then run migrations:
 ```bash
 curl -X POST http://localhost:3004/api/ottaorm/init
 ```
+
+## Demo Page
+
+The template app includes a demo at `/demo/comments` with two modes:
+
+- **In-memory** (default) — local state with mock users/comments; works offline, no database required
+- **Database** — reads and writes to the actual D1 database via the CRUD API
+
+Both modes use the same `CommentThread` renderer which supports:
+
+- **User avatars** — rendered from `_user.name`/`_user.image` with initials fallback and "member since" tooltip
+- **Load-more for root comments** — initially shows 5 root comments, click to load more
+- **Load-more for nested replies** — initially shows 3 replies per parent, click to expand
+- **Reaction toggling** — per-user emoji reactions
+- **Inline reply form** — reply to any comment up to depth 3
+- **Moderation actions** — flag, hide, soft-delete
 
 ## Types
 

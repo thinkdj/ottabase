@@ -1,92 +1,124 @@
 /**
  * Demo page for the @ottabase/comments package.
  * Showcases threaded comments, reactions, moderation, and the Model API.
- * Uses local state only — no actual API calls.
+ * Supports in-memory (default) and database-backed modes via a toggle.
  */
-import { Button, Card, CardContent, Textarea } from '@ottabase/ui-shadcn';
-import { IconFlag, IconMessageCircle, IconMessageReply, IconShieldCheck, IconTrash } from '@tabler/icons-react';
-import { useState } from 'react';
+import { DEFAULT_REACTIONS } from '@ottabase/comments';
+import { Badge, Button, Card, CardContent, Skeleton, Textarea, toast } from '@ottabase/ui-shadcn';
+import { Alert, AlertDescription } from '@ottabase/ui-shadcn/alert';
+import {
+    IconDatabase,
+    IconFlag,
+    IconLoader2,
+    IconMessageCircle,
+    IconMessageReply,
+    IconRefresh,
+    IconShieldCheck,
+    IconTrash,
+} from '@tabler/icons-react';
+import { useState, useCallback, useMemo } from 'react';
+
+import {
+    useComments,
+    useCreateComment,
+    useUpdateComment,
+    type CommentType,
+    type CommentUser,
+} from '@/hooks/commentHooks';
+import { useSession } from '@/lib/auth';
 
 // ---------------------------------------------------------------------------
-// Types
+// Constants
 // ---------------------------------------------------------------------------
 
-interface MockComment {
-    id: string;
-    body: string;
-    userId: string;
-    userName: string;
-    status: 'active' | 'flagged' | 'hidden' | 'deleted';
-    reactions: Record<string, string[]>;
-    depth: number;
-    parentId: string | null;
-    createdAt: number;
+const DEMO_TARGET_TYPE = 'demo';
+const DEMO_TARGET_ID = 'comments-demo-page';
+const REACTIONS = DEFAULT_REACTIONS.slice(0, 4); // 👍 ❤️ 😂 😮
+
+/** Max root-level comments shown before "load more" */
+const ROOT_PAGE_SIZE = 5;
+/** Max nested replies shown per parent before "show more" */
+const REPLY_PAGE_SIZE = 3;
+
+// ---------------------------------------------------------------------------
+// Mock data for in-memory demo
+// ---------------------------------------------------------------------------
+
+const MOCK_USERS: Record<string, CommentUser> = {
+    'user-alice': { id: 'user-alice', name: 'Alice Martin', image: null, createdAt: Date.now() - 86400000 * 120 },
+    'user-bob': { id: 'user-bob', name: 'Bob Chen', image: null, createdAt: Date.now() - 86400000 * 60 },
+    'user-carol': { id: 'user-carol', name: 'Carol Diaz', image: null, createdAt: Date.now() - 86400000 * 30 },
+    'user-dave': { id: 'user-dave', name: 'Dave Kim', image: null, createdAt: Date.now() - 86400000 * 10 },
+};
+
+function makeMock(id: string, body: string, userId: string, opts: Partial<CommentType> = {}): CommentType {
+    return {
+        id,
+        body,
+        targetType: DEMO_TARGET_TYPE,
+        targetId: DEMO_TARGET_ID,
+        parentId: null,
+        userId,
+        status: 'active',
+        reactions: {},
+        depth: 0,
+        appId: null,
+        organizationId: null,
+        createdAt: Date.now() - Math.random() * 600000,
+        updatedAt: Date.now(),
+        _user: MOCK_USERS[userId] ?? null,
+        ...opts,
+    };
 }
 
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-
-const MOCK_COMMENTS: MockComment[] = [
-    {
-        id: '1',
-        body: 'This is a fantastic article! Really helped me understand the concept.',
-        userId: 'user-1',
-        userName: 'Alice Chen',
-        status: 'active',
-        reactions: { '👍': ['u2', 'u3'], '❤️': ['u3'] },
-        depth: 0,
-        parentId: null,
-        createdAt: Date.now() - 3600000,
-    },
-    {
-        id: '2',
-        body: 'Totally agree! The examples were super clear.',
-        userId: 'user-2',
-        userName: 'Bob Smith',
-        status: 'active',
-        reactions: { '👍': ['u1'] },
-        depth: 1,
-        parentId: '1',
-        createdAt: Date.now() - 1800000,
-    },
-    {
-        id: '3',
-        body: 'Could you elaborate on the threading implementation?',
-        userId: 'user-3',
-        userName: 'Carol Diaz',
-        status: 'active',
-        reactions: {},
-        depth: 1,
-        parentId: '1',
-        createdAt: Date.now() - 900000,
-    },
-    {
-        id: '4',
-        body: 'I have a different perspective on this...',
-        userId: 'user-4',
-        userName: 'Dan Kim',
-        status: 'flagged',
-        reactions: { '😮': ['u1'] },
-        depth: 0,
-        parentId: null,
-        createdAt: Date.now() - 7200000,
-    },
-    {
-        id: '5',
-        body: '[deleted]',
-        userId: 'user-5',
-        userName: 'Eve Park',
-        status: 'deleted',
-        reactions: {},
-        depth: 0,
-        parentId: null,
-        createdAt: Date.now() - 10800000,
-    },
-];
-
-const REACTIONS = ['👍', '❤️', '😂', '😮'];
-const CURRENT_USER = 'u-demo';
+function createInitialMockComments(): CommentType[] {
+    return [
+        makeMock('m1', 'Great article! Polymorphic targeting is exactly what I needed.', 'user-alice', {
+            createdAt: Date.now() - 300000,
+            reactions: { '👍': ['user-bob', 'user-carol'], '❤️': ['user-dave'] },
+        }),
+        makeMock('m2', 'How does this compare to a separate table per target type?', 'user-bob', {
+            createdAt: Date.now() - 240000,
+        }),
+        makeMock('m3', 'It saves a lot of schema boilerplate — one table covers all target types.', 'user-alice', {
+            parentId: 'm2',
+            depth: 1,
+            createdAt: Date.now() - 180000,
+        }),
+        makeMock('m4', 'Agreed! And you get cross-entity queries for free.', 'user-carol', {
+            parentId: 'm2',
+            depth: 1,
+            createdAt: Date.now() - 150000,
+            reactions: { '👍': ['user-alice'] },
+        }),
+        makeMock('m5', 'The trade-off is you lose strict FK constraints though.', 'user-dave', {
+            parentId: 'm2',
+            depth: 1,
+            createdAt: Date.now() - 120000,
+        }),
+        makeMock('m6', 'True, but the flexibility is worth it in most cases.', 'user-bob', {
+            parentId: 'm5',
+            depth: 2,
+            createdAt: Date.now() - 90000,
+        }),
+        makeMock('m7', 'The reaction system with per-user tracking is clever. 🎉', 'user-carol', {
+            createdAt: Date.now() - 60000,
+            reactions: { '😂': ['user-alice', 'user-bob'] },
+        }),
+        makeMock('m8', 'Would love to see pagination support for deeply nested threads.', 'user-dave', {
+            createdAt: Date.now() - 30000,
+        }),
+        makeMock('m9', '[deleted]', 'user-alice', {
+            createdAt: Date.now() - 20000,
+            status: 'deleted',
+            reactions: {},
+        }),
+        makeMock('m10', 'This comment was flagged for review.', 'user-bob', {
+            createdAt: Date.now() - 10000,
+            status: 'flagged',
+        }),
+    ];
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -109,30 +141,72 @@ function formatRelative(ts: number) {
     return `${Math.floor(diff / 86400000)}d ago`;
 }
 
+function formatDate(ts: number) {
+    return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 const AVATAR_COLORS = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500', 'bg-teal-500'];
 
-function avatarColor(userId: string) {
-    const idx = userId.charCodeAt(userId.length - 1) % AVATAR_COLORS.length;
+function avatarColor(seed: string | null | undefined) {
+    if (!seed) return AVATAR_COLORS[0];
+    const idx = seed.charCodeAt(seed.length - 1) % AVATAR_COLORS.length;
     return AVATAR_COLORS[idx];
 }
 
-function statusBadge(status: MockComment['status']) {
+function statusBadge(status: string) {
     if (status === 'active') return null;
-    const map: Record<string, string> = {
-        flagged: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-        hidden: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-        deleted: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    const variantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+        flagged: 'outline',
+        hidden: 'secondary',
+        deleted: 'destructive',
     };
-    return <span className={`ml-2 rounded px-1.5 py-0.5 text-xs font-medium ${map[status]}`}>{status}</span>;
+    return (
+        <Badge variant={variantMap[status] ?? 'outline'} className="ml-2 text-[10px]">
+            {status}
+        </Badge>
+    );
 }
 
 // ---------------------------------------------------------------------------
-// CommentNode
+// UserAvatar — shows image or initials with "member since" tooltip
+// ---------------------------------------------------------------------------
+
+function UserAvatar({ user, userId }: { user?: CommentUser | null; userId?: string | null }) {
+    const displayName = user?.name ?? userId ?? 'Anonymous';
+    const initials = getInitials(displayName);
+    const title = user?.createdAt ? `${displayName} · Member since ${formatDate(user.createdAt)}` : displayName;
+
+    if (user?.image) {
+        return (
+            <img
+                src={user.image}
+                alt={displayName}
+                title={title}
+                className="h-7 w-7 shrink-0 rounded-full object-cover"
+            />
+        );
+    }
+
+    return (
+        <div
+            title={title}
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(user?.id ?? userId)}`}
+        >
+            {initials}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// CommentNode — single comment with nested replies + load-more for children
 // ---------------------------------------------------------------------------
 
 interface CommentNodeProps {
-    comment: MockComment;
-    allComments: MockComment[];
+    comment: CommentType;
+    allComments: CommentType[];
+    currentUserId: string | null;
+    /** Show user name/avatar from `_user` enrichment (default true) */
+    fetchUser?: boolean;
     onReact: (id: string, emoji: string) => void;
     onReply: (parentId: string) => void;
     onModerate: (id: string, action: 'flag' | 'hide' | 'delete') => void;
@@ -140,11 +214,14 @@ interface CommentNodeProps {
     replyText: string;
     onReplyTextChange: (v: string) => void;
     onSubmitReply: () => void;
+    isSubmittingReply: boolean;
 }
 
 function CommentNode({
     comment,
     allComments,
+    currentUserId,
+    fetchUser = true,
     onReact,
     onReply,
     onModerate,
@@ -152,21 +229,28 @@ function CommentNode({
     replyText,
     onReplyTextChange,
     onSubmitReply,
+    isSubmittingReply,
 }: CommentNodeProps) {
+    const [showAllReplies, setShowAllReplies] = useState(false);
+
     const children = allComments.filter((c) => c.parentId === comment.id);
+    const visibleChildren = showAllReplies ? children : children.slice(0, REPLY_PAGE_SIZE);
+    const hiddenCount = children.length - REPLY_PAGE_SIZE;
+
     const isDeleted = comment.status === 'deleted';
+    const reactions = (comment.reactions ?? {}) as Record<string, string[]>;
+    const depth = comment.depth ?? 0;
+
+    const user = fetchUser ? comment._user : undefined;
+    const displayName = user?.name ?? comment.userId ?? 'Anonymous';
 
     return (
-        <div className={comment.depth > 0 ? 'ml-8 border-l-2 border-border pl-4' : ''}>
+        <div className={depth > 0 ? 'ml-8 border-l-2 border-border pl-4' : ''}>
             <div className="py-3">
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-1">
-                    <div
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(comment.userId)}`}
-                    >
-                        {getInitials(comment.userName)}
-                    </div>
-                    <span className="text-sm font-semibold text-foreground">{comment.userName}</span>
+                    <UserAvatar user={fetchUser ? comment._user : undefined} userId={comment.userId} />
+                    <span className="text-sm font-semibold text-foreground">{displayName}</span>
                     {statusBadge(comment.status)}
                     <span className="text-xs text-muted-foreground ml-auto">{formatRelative(comment.createdAt)}</span>
                 </div>
@@ -179,10 +263,9 @@ function CommentNode({
                 {/* Actions */}
                 {!isDeleted && (
                     <div className="ml-9 mt-2 flex flex-wrap items-center gap-1">
-                        {/* Reaction buttons */}
                         {REACTIONS.map((emoji) => {
-                            const users = comment.reactions[emoji] ?? [];
-                            const active = users.includes(CURRENT_USER);
+                            const users = reactions[emoji] ?? [];
+                            const active = currentUserId ? users.includes(currentUserId) : false;
                             return (
                                 <button
                                     key={emoji}
@@ -199,8 +282,7 @@ function CommentNode({
                             );
                         })}
 
-                        {/* Reply */}
-                        {comment.depth < 3 && (
+                        {depth < 3 && (
                             <button
                                 onClick={() => onReply(comment.id)}
                                 className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -210,7 +292,6 @@ function CommentNode({
                             </button>
                         )}
 
-                        {/* Moderate */}
                         {comment.status === 'active' && (
                             <button
                                 onClick={() => onModerate(comment.id, 'flag')}
@@ -247,13 +328,14 @@ function CommentNode({
                 {replyingTo === comment.id && (
                     <div className="ml-9 mt-3 flex flex-col gap-2">
                         <Textarea
-                            placeholder={`Reply to ${comment.userName}…`}
+                            placeholder={`Reply to ${displayName}…`}
                             value={replyText}
                             onChange={(e) => onReplyTextChange(e.target.value)}
                             className="min-h-[60px] text-sm"
                         />
                         <div className="flex gap-2">
-                            <Button size="sm" onClick={onSubmitReply} disabled={!replyText.trim()}>
+                            <Button size="sm" onClick={onSubmitReply} disabled={!replyText.trim() || isSubmittingReply}>
+                                {isSubmittingReply && <IconLoader2 size={14} className="mr-1 animate-spin" />}
                                 Post reply
                             </Button>
                             <Button size="sm" variant="ghost" onClick={() => onReply('')}>
@@ -264,12 +346,14 @@ function CommentNode({
                 )}
             </div>
 
-            {/* Nested children */}
-            {children.map((child) => (
+            {/* Nested children with load-more */}
+            {visibleChildren.map((child) => (
                 <CommentNode
                     key={child.id}
                     comment={child}
                     allComments={allComments}
+                    currentUserId={currentUserId}
+                    fetchUser={fetchUser}
                     onReact={onReact}
                     onReply={onReply}
                     onModerate={onModerate}
@@ -277,9 +361,377 @@ function CommentNode({
                     replyText={replyText}
                     onReplyTextChange={onReplyTextChange}
                     onSubmitReply={onSubmitReply}
+                    isSubmittingReply={isSubmittingReply}
                 />
             ))}
+
+            {!showAllReplies && hiddenCount > 0 && (
+                <button
+                    onClick={() => setShowAllReplies(true)}
+                    className="ml-8 py-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                >
+                    Show {hiddenCount} more {hiddenCount === 1 ? 'reply' : 'replies'}…
+                </button>
+            )}
         </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// In-memory comment engine — local state, no server calls
+// ---------------------------------------------------------------------------
+
+function useInMemoryComments() {
+    const [comments, setComments] = useState<CommentType[]>(createInitialMockComments);
+
+    const createComment = useCallback((data: Partial<CommentType>) => {
+        const id = `m${Date.now()}`;
+        const userId = data.userId ?? 'user-alice';
+        const newComment: CommentType = {
+            id,
+            body: data.body ?? '',
+            targetType: DEMO_TARGET_TYPE,
+            targetId: DEMO_TARGET_ID,
+            parentId: data.parentId ?? null,
+            userId,
+            status: 'active',
+            reactions: {},
+            depth: data.depth ?? 0,
+            appId: null,
+            organizationId: null,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            _user: MOCK_USERS[userId] ?? { id: userId, name: userId, image: null, createdAt: Date.now() },
+        };
+        setComments((prev) => [...prev, newComment]);
+    }, []);
+
+    const updateComment = useCallback((id: string, data: Record<string, unknown>) => {
+        setComments((prev) => prev.map((c) => (c.id === id ? { ...c, ...data, updatedAt: Date.now() } : c)));
+    }, []);
+
+    return { comments, createComment, updateComment };
+}
+
+// ---------------------------------------------------------------------------
+// CommentThread — shared UI for both modes
+// ---------------------------------------------------------------------------
+
+interface CommentThreadProps {
+    comments: CommentType[];
+    currentUserId: string | null;
+    isLoading?: boolean;
+    error?: Error | null;
+    fetchUser?: boolean;
+    onRefetch?: () => void;
+    onCreateComment: (body: string) => void;
+    onCreateReply: (body: string, parentId: string, depth: number) => void;
+    onReact: (id: string, emoji: string) => void;
+    onModerate: (id: string, action: 'flag' | 'hide' | 'delete') => void;
+    isPending?: boolean;
+    mutationError?: string | null;
+    onDismissError?: () => void;
+}
+
+function CommentThread({
+    comments,
+    currentUserId,
+    isLoading = false,
+    error,
+    fetchUser = true,
+    onRefetch,
+    onCreateComment,
+    onCreateReply,
+    onReact,
+    onModerate,
+    isPending = false,
+    mutationError,
+    onDismissError,
+}: CommentThreadProps) {
+    const [newComment, setNewComment] = useState('');
+    const [replyingTo, setReplyingTo] = useState<string | null>(null);
+    const [replyText, setReplyText] = useState('');
+    const [visibleRootCount, setVisibleRootCount] = useState(ROOT_PAGE_SIZE);
+
+    const rootComments = useMemo(
+        () => comments.filter((c) => c.parentId === null || c.parentId === undefined),
+        [comments],
+    );
+    const visibleRoots = rootComments.slice(0, visibleRootCount);
+    const moreRoots = rootComments.length - visibleRootCount;
+
+    function getDepth(parentId: string | null): number {
+        if (!parentId) return 0;
+        const parent = comments.find((c) => c.id === parentId);
+        return parent ? (parent.depth ?? 0) + 1 : 0;
+    }
+
+    function handleSubmitNew() {
+        if (!newComment.trim()) return;
+        onCreateComment(newComment.trim());
+        setNewComment('');
+    }
+
+    function handleSubmitReply() {
+        if (!replyText.trim() || !replyingTo) return;
+        onCreateReply(replyText.trim(), replyingTo, getDepth(replyingTo));
+        setReplyText('');
+        setReplyingTo(null);
+    }
+
+    function handleReply(parentId: string) {
+        setReplyingTo(parentId || null);
+        setReplyText('');
+    }
+
+    return (
+        <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-foreground">Comment Thread</h2>
+                {onRefetch && (
+                    <Button size="sm" variant="ghost" onClick={onRefetch} disabled={isLoading}>
+                        <IconRefresh size={14} className={isLoading ? 'animate-spin' : ''} />
+                    </Button>
+                )}
+            </div>
+
+            {/* Mutation error banner */}
+            {mutationError && (
+                <Alert variant="destructive">
+                    <AlertDescription className="flex items-center justify-between">
+                        <span>{mutationError}</span>
+                        <Button variant="ghost" size="sm" onClick={onDismissError}>
+                            Dismiss
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            )}
+
+            {/* Mock target entity card */}
+            <Card className="border-dashed">
+                <CardContent className="py-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">
+                        Target: {DEMO_TARGET_TYPE} / {DEMO_TARGET_ID}
+                    </p>
+                    <h3 className="font-semibold text-foreground">
+                        Understanding Polymorphic Relationships in OttaORM
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        A deep dive into attaching behaviour to any entity type without changing the core schema…
+                    </p>
+                </CardContent>
+            </Card>
+
+            {/* Query error */}
+            {error && (
+                <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                    {error.message ?? 'Failed to load comments'}
+                </div>
+            )}
+
+            {/* New comment form */}
+            <div className="flex flex-col gap-2">
+                <Textarea
+                    placeholder="Write a comment…"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    className="min-h-[80px] text-sm"
+                />
+                <div className="flex justify-end">
+                    <Button size="sm" onClick={handleSubmitNew} disabled={!newComment.trim() || isPending}>
+                        {isPending && <IconLoader2 size={14} className="mr-1 animate-spin" />}
+                        Post comment
+                    </Button>
+                </div>
+            </div>
+
+            {/* Comment list */}
+            {isLoading ? (
+                <div className="flex flex-col gap-3">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex gap-3 p-4">
+                            <Skeleton className="h-7 w-7 rounded-full shrink-0" />
+                            <div className="flex-1 space-y-2">
+                                <Skeleton className="h-4 w-24" />
+                                <Skeleton className="h-4 w-full" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="divide-y divide-border rounded-lg border bg-card">
+                    {visibleRoots.map((c) => (
+                        <div key={c.id} className="px-4">
+                            <CommentNode
+                                comment={c}
+                                allComments={comments}
+                                currentUserId={currentUserId}
+                                fetchUser={fetchUser}
+                                onReact={onReact}
+                                onReply={handleReply}
+                                onModerate={onModerate}
+                                replyingTo={replyingTo}
+                                replyText={replyText}
+                                onReplyTextChange={setReplyText}
+                                onSubmitReply={handleSubmitReply}
+                                isSubmittingReply={isPending}
+                            />
+                        </div>
+                    ))}
+
+                    {comments.length === 0 && !isLoading && (
+                        <p className="p-6 text-center text-sm text-muted-foreground">
+                            No comments yet. Be the first to comment!
+                        </p>
+                    )}
+
+                    {moreRoots > 0 && (
+                        <button
+                            onClick={() => setVisibleRootCount((n) => n + ROOT_PAGE_SIZE)}
+                            className="w-full p-3 text-center text-sm text-blue-600 hover:bg-muted/50 dark:text-blue-400 transition-colors"
+                        >
+                            Load more comments… ({moreRoots} remaining)
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* Stat bar */}
+            {!isLoading && comments.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                    {comments.filter((c) => c.status === 'active').length} active ·{' '}
+                    {comments.filter((c) => c.status === 'flagged').length} flagged ·{' '}
+                    {comments.filter((c) => c.status === 'deleted').length} deleted · {comments.length} total
+                </p>
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// InMemoryDemo — wraps CommentThread with local state
+// ---------------------------------------------------------------------------
+
+function InMemoryDemo() {
+    const currentUserId = 'user-alice';
+    const { comments, createComment, updateComment } = useInMemoryComments();
+
+    function handleReact(id: string, emoji: string) {
+        const comment = comments.find((c) => c.id === id);
+        if (!comment) return;
+        const reactions = { ...((comment.reactions as Record<string, string[]>) ?? {}) };
+        const users = reactions[emoji] ?? [];
+        const has = users.includes(currentUserId);
+        reactions[emoji] = has ? users.filter((u) => u !== currentUserId) : [...users, currentUserId];
+        if (reactions[emoji].length === 0) delete reactions[emoji];
+        updateComment(id, { reactions });
+    }
+
+    function handleModerate(id: string, action: 'flag' | 'hide' | 'delete') {
+        const statusMap: Record<string, string> = { flag: 'flagged', hide: 'hidden', delete: 'deleted' };
+        if (action === 'delete') {
+            updateComment(id, { status: statusMap[action], body: '[deleted]', reactions: {} });
+        } else {
+            updateComment(id, { status: statusMap[action] });
+        }
+    }
+
+    return (
+        <CommentThread
+            comments={comments}
+            currentUserId={currentUserId}
+            onCreateComment={(body) => createComment({ body, userId: currentUserId })}
+            onCreateReply={(body, parentId, depth) => createComment({ body, userId: currentUserId, parentId, depth })}
+            onReact={handleReact}
+            onModerate={handleModerate}
+        />
+    );
+}
+
+// ---------------------------------------------------------------------------
+// DatabaseDemo — wraps CommentThread with real CRUD hooks
+// ---------------------------------------------------------------------------
+
+function DatabaseDemo() {
+    const { user } = useSession({ skipAutoSync: true });
+    const currentUserId = user?.id ?? null;
+    const [mutationError, setMutationError] = useState<string | null>(null);
+
+    const {
+        data: comments = [],
+        isLoading,
+        error,
+        refetch,
+    } = useComments({
+        where: { targetType: DEMO_TARGET_TYPE, targetId: DEMO_TARGET_ID },
+        orderBy: 'createdAt',
+        orderDirection: 'asc',
+    });
+
+    const createMutation = useCreateComment();
+    const updateMutation = useUpdateComment();
+
+    function onError(err: Error) {
+        setMutationError(err.message || 'Something went wrong');
+    }
+
+    function handleCreate(body: string) {
+        setMutationError(null);
+        createMutation.mutate(
+            { body, targetType: DEMO_TARGET_TYPE, targetId: DEMO_TARGET_ID },
+            { onSuccess: () => toast.success('Comment posted'), onError },
+        );
+    }
+
+    function handleReply(body: string, parentId: string, depth: number) {
+        setMutationError(null);
+        createMutation.mutate(
+            { body, targetType: DEMO_TARGET_TYPE, targetId: DEMO_TARGET_ID, parentId, depth },
+            { onSuccess: () => toast.success('Reply posted'), onError },
+        );
+    }
+
+    function handleReact(id: string, emoji: string) {
+        const comment = comments.find((c) => c.id === id);
+        if (!comment || !currentUserId) return;
+        const reactions = { ...((comment.reactions as Record<string, string[]>) ?? {}) };
+        const users = reactions[emoji] ?? [];
+        const has = users.includes(currentUserId);
+        reactions[emoji] = has ? users.filter((u) => u !== currentUserId) : [...users, currentUserId];
+        if (reactions[emoji].length === 0) delete reactions[emoji];
+        updateMutation.mutate({ id, data: { reactions } as Record<string, unknown> }, { onError });
+    }
+
+    function handleModerate(id: string, action: 'flag' | 'hide' | 'delete') {
+        const statusMap: Record<string, string> = { flag: 'flagged', hide: 'hidden', delete: 'deleted' };
+        if (action === 'delete') {
+            updateMutation.mutate(
+                {
+                    id,
+                    data: { status: statusMap[action], body: '[deleted]', reactions: {} } as Record<string, unknown>,
+                },
+                { onError },
+            );
+        } else {
+            updateMutation.mutate({ id, data: { status: statusMap[action] } as Record<string, unknown> }, { onError });
+        }
+    }
+
+    return (
+        <CommentThread
+            comments={comments}
+            currentUserId={currentUserId}
+            isLoading={isLoading}
+            error={error}
+            onRefetch={() => refetch()}
+            onCreateComment={handleCreate}
+            onCreateReply={handleReply}
+            onReact={handleReact}
+            onModerate={handleModerate}
+            isPending={createMutation.isPending}
+            mutationError={mutationError}
+            onDismissError={() => setMutationError(null)}
+        />
     );
 }
 
@@ -288,101 +740,7 @@ function CommentNode({
 // ---------------------------------------------------------------------------
 
 export function CommentsDemoPage() {
-    const [comments, setComments] = useState<MockComment[]>(MOCK_COMMENTS);
-    const [newComment, setNewComment] = useState('');
-    const [replyingTo, setReplyingTo] = useState<string | null>(null);
-    const [replyText, setReplyText] = useState('');
-    const [showAll, setShowAll] = useState(false);
-
-    // Find parent comment depth when replying
-    function getDepth(parentId: string | null): number {
-        if (!parentId) return 0;
-        const parent = comments.find((c) => c.id === parentId);
-        return parent ? parent.depth + 1 : 0;
-    }
-
-    function handleSubmitNew() {
-        if (!newComment.trim()) return;
-        setComments((prev) => [
-            ...prev,
-            {
-                id: String(Date.now()),
-                body: newComment.trim(),
-                userId: CURRENT_USER,
-                userName: 'You',
-                status: 'active',
-                reactions: {},
-                depth: 0,
-                parentId: null,
-                createdAt: Date.now(),
-            },
-        ]);
-        setNewComment('');
-    }
-
-    function handleSubmitReply() {
-        if (!replyText.trim() || !replyingTo) return;
-        setComments((prev) => [
-            ...prev,
-            {
-                id: String(Date.now()),
-                body: replyText.trim(),
-                userId: CURRENT_USER,
-                userName: 'You',
-                status: 'active',
-                reactions: {},
-                depth: getDepth(replyingTo),
-                parentId: replyingTo,
-                createdAt: Date.now(),
-            },
-        ]);
-        setReplyText('');
-        setReplyingTo(null);
-    }
-
-    function handleReact(id: string, emoji: string) {
-        setComments((prev) =>
-            prev.map((c) => {
-                if (c.id !== id) return c;
-                const users = c.reactions[emoji] ?? [];
-                const has = users.includes(CURRENT_USER);
-                return {
-                    ...c,
-                    reactions: {
-                        ...c.reactions,
-                        [emoji]: has ? users.filter((u) => u !== CURRENT_USER) : [...users, CURRENT_USER],
-                    },
-                };
-            }),
-        );
-    }
-
-    function handleModerate(id: string, action: 'flag' | 'hide' | 'delete') {
-        const statusMap: Record<string, MockComment['status']> = {
-            flag: 'flagged',
-            hide: 'hidden',
-            delete: 'deleted',
-        };
-        setComments((prev) =>
-            prev.map((c) => {
-                if (c.id !== id) return c;
-                // Mirror Comment.softDelete() behaviour: set status and replace body on delete
-                if (action === 'delete') {
-                    return { ...c, status: statusMap[action], body: '[deleted]' };
-                }
-                return { ...c, status: statusMap[action] };
-            }),
-        );
-    }
-
-    function handleReply(parentId: string) {
-        setReplyingTo(parentId || null);
-        setReplyText('');
-    }
-
-    // Top-level comments only for rendering root nodes
-    const rootComments = comments.filter((c) => c.parentId === null);
-    const visibleRoots = showAll ? rootComments : rootComments.slice(0, 4);
+    const [mode, setMode] = useState<'memory' | 'database'>('memory');
 
     return (
         <div className="flex flex-col gap-8">
@@ -398,85 +756,43 @@ export function CommentsDemoPage() {
                 </p>
             </div>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* Section 1 – Thread Demo                                           */}
-            {/* ---------------------------------------------------------------- */}
-            <section className="flex flex-col gap-4">
-                <h2 className="text-base font-semibold text-foreground">Comment Thread Demo</h2>
-
-                {/* Mock target entity */}
-                <Card className="border-dashed">
-                    <CardContent className="py-4">
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">
-                            Target: Blog Post
-                        </p>
-                        <h3 className="font-semibold text-foreground">
-                            Understanding Polymorphic Relationships in OttaORM
-                        </h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            A deep dive into attaching behaviour to any entity type without changing the core schema…
-                        </p>
-                    </CardContent>
-                </Card>
-
-                {/* New comment form */}
-                <div className="flex flex-col gap-2">
-                    <Textarea
-                        placeholder="Write a comment…"
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        className="min-h-[80px] text-sm"
-                    />
-                    <div className="flex justify-end">
-                        <Button size="sm" onClick={handleSubmitNew} disabled={!newComment.trim()}>
-                            Post comment
-                        </Button>
-                    </div>
+            {/* Mode toggle */}
+            <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Data source:</span>
+                <div className="inline-flex rounded-lg border bg-muted p-0.5">
+                    <button
+                        onClick={() => setMode('memory')}
+                        className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                            mode === 'memory'
+                                ? 'bg-background text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        In-memory
+                    </button>
+                    <button
+                        onClick={() => setMode('database')}
+                        className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                            mode === 'database'
+                                ? 'bg-background text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        <IconDatabase size={14} />
+                        Database
+                    </button>
                 </div>
+                <span className="text-xs text-muted-foreground">
+                    {mode === 'memory'
+                        ? 'Using local state with mock data'
+                        : 'Reading & writing to the actual D1 database'}
+                </span>
+            </div>
 
-                {/* Comment list */}
-                <div className="divide-y divide-border rounded-lg border bg-card">
-                    {visibleRoots.map((c) => (
-                        <div key={c.id} className="px-4">
-                            <CommentNode
-                                comment={c}
-                                allComments={comments}
-                                onReact={handleReact}
-                                onReply={handleReply}
-                                onModerate={handleModerate}
-                                replyingTo={replyingTo}
-                                replyText={replyText}
-                                onReplyTextChange={setReplyText}
-                                onSubmitReply={handleSubmitReply}
-                            />
-                        </div>
-                    ))}
+            {/* Active demo */}
+            <section>{mode === 'memory' ? <InMemoryDemo /> : <DatabaseDemo />}</section>
 
-                    {rootComments.length === 0 && (
-                        <p className="p-6 text-center text-sm text-muted-foreground">No comments yet.</p>
-                    )}
-
-                    {!showAll && rootComments.length > 4 && (
-                        <button
-                            onClick={() => setShowAll(true)}
-                            className="w-full p-3 text-center text-sm text-blue-600 hover:bg-muted/50 dark:text-blue-400 transition-colors"
-                        >
-                            Load {rootComments.length - 4} more comment{rootComments.length - 4 > 1 ? 's' : ''}…
-                        </button>
-                    )}
-                </div>
-
-                {/* Live stat bar */}
-                <p className="text-xs text-muted-foreground">
-                    {comments.filter((c) => c.status === 'active').length} active ·{' '}
-                    {comments.filter((c) => c.status === 'flagged').length} flagged ·{' '}
-                    {comments.filter((c) => c.status === 'deleted').length} deleted
-                </p>
-            </section>
-
-            {/* ---------------------------------------------------------------- */}
-            {/* Section 2 – Model API                                             */}
-            {/* ---------------------------------------------------------------- */}
+            {/* Model API */}
             <section className="flex flex-col gap-4">
                 <h2 className="text-base font-semibold text-foreground">Model API</h2>
                 <Card>
@@ -511,9 +827,7 @@ await comment.softDelete();`}
                 </Card>
             </section>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* Section 3 – Features grid                                         */}
-            {/* ---------------------------------------------------------------- */}
+            {/* Features grid */}
             <section className="flex flex-col gap-4">
                 <h2 className="text-base font-semibold text-foreground">Features</h2>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
