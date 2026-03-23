@@ -16,6 +16,7 @@
 export interface SignInCredentials {
     email: string;
     password: string;
+    totp?: string;
 }
 
 /**
@@ -160,6 +161,9 @@ export async function signInWithCredentials(
         const form = new URLSearchParams();
         form.set('email', credentials.email);
         form.set('password', credentials.password);
+        if (credentials.totp) {
+            form.set('totp', credentials.totp);
+        }
         if (csrfToken) {
             form.set('csrfToken', csrfToken);
         }

@@ -1,5 +1,5 @@
 import { useSession } from '@/lib/auth';
-import { requestPasswordReset, sendMagicLink, signInWithCredentials, signInWithProvider } from '@/lib/auth-api';
+import { preflightCredentials, requestPasswordReset, sendMagicLink, signInWithCredentials, signInWithProvider } from '@/lib/auth-api';
 import { resolveAuthRedirect } from '@/lib/auth-redirect';
 import { getLoginConfig, LoginForm } from '@ottabase/auth/components';
 import {
@@ -19,7 +19,7 @@ import {
     Label,
 } from '@ottabase/ui-shadcn';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 export function LoginPage() {
@@ -35,6 +35,12 @@ export function LoginPage() {
     const [forgotError, setForgotError] = useState<string | null>(null);
     const hasNavigated = useRef(false);
     const redirectTarget = useRef(resolveAuthRedirect());
+
+    // TOTP 2FA state
+    const [totpRequired, setTotpRequired] = useState(false);
+    const [totpCode, setTotpCode] = useState('');
+    const [totpError, setTotpError] = useState<string | null>(null);
+    const pendingCredentials = useRef<{ email: string; password: string; rememberMe: boolean } | null>(null);
 
     // Auto-detect configured providers from env
     // This will check process.env for OAuth provider credentials
@@ -148,25 +154,76 @@ export function LoginPage() {
         setError(undefined);
 
         try {
-            const result = await signInWithCredentials({ email, password }, { redirect: false });
+            // Preflight check: validate credentials and check if TOTP is required
+            const preflight = await preflightCredentials({ email, password });
 
-            if (!result.success) {
-                setError(result.error || 'Invalid credentials');
+            if (!preflight.valid) {
+                setError('Invalid email or password');
                 setIsLoading(false);
                 return;
             }
 
-            if (result.session) {
-                login(result.session, { remember: rememberMe });
+            if (preflight.totpRequired) {
+                // Store credentials and show TOTP dialog
+                pendingCredentials.current = { email, password, rememberMe };
+                setTotpRequired(true);
+                setTotpCode('');
+                setTotpError(null);
+                setIsLoading(false);
+                return;
             }
 
-            setIsLoading(false);
-            hasNavigated.current = true;
-            navigate({ to: redirectTarget.current, replace: true });
+            // No TOTP required — proceed with normal login
+            await completeCredentialsLogin(email, password, undefined, rememberMe);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Login failed');
             setIsLoading(false);
         }
+    };
+
+    const handleTotpSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!pendingCredentials.current || totpCode.length !== 6) return;
+
+        setIsLoading(true);
+        setTotpError(null);
+
+        try {
+            const { email, password, rememberMe } = pendingCredentials.current;
+            await completeCredentialsLogin(email, password, totpCode, rememberMe);
+        } catch (err) {
+            setTotpError(err instanceof Error ? err.message : 'Verification failed');
+            setIsLoading(false);
+        }
+    };
+
+    const completeCredentialsLogin = async (
+        email: string,
+        password: string,
+        totp: string | undefined,
+        rememberMe: boolean,
+    ) => {
+        const result = await signInWithCredentials({ email, password, totp }, { redirect: false });
+
+        if (!result.success) {
+            if (totpRequired) {
+                setTotpError(result.error || 'Invalid verification code');
+            } else {
+                setError(result.error || 'Invalid credentials');
+            }
+            setIsLoading(false);
+            return;
+        }
+
+        if (result.session) {
+            login(result.session, { remember: rememberMe });
+        }
+
+        setTotpRequired(false);
+        pendingCredentials.current = null;
+        setIsLoading(false);
+        hasNavigated.current = true;
+        navigate({ to: redirectTarget.current, replace: true });
     };
 
     const handleMagicLinkSend = async (email: string) => {
@@ -340,6 +397,68 @@ export function LoginPage() {
                             {forgotStatus === 'sending' ? 'Sending...' : 'Send reset link'}
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* TOTP Verification Dialog */}
+            <Dialog
+                open={totpRequired}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setTotpRequired(false);
+                        pendingCredentials.current = null;
+                        setTotpCode('');
+                        setTotpError(null);
+                    }
+                }}
+            >
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <ShieldCheck className="h-5 w-5 text-primary" />
+                            Two-factor authentication
+                        </DialogTitle>
+                        <DialogDescription>
+                            Enter the 6-digit code from your authenticator app to continue signing in.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleTotpSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="totp-login-code">Verification code</Label>
+                            <Input
+                                id="totp-login-code"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                maxLength={6}
+                                placeholder="000000"
+                                value={totpCode}
+                                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                autoFocus
+                                autoComplete="one-time-code"
+                                disabled={isLoading}
+                                className="text-center text-lg tracking-[0.5em] font-mono"
+                            />
+                        </div>
+                        {totpError && <p className="text-sm text-destructive">{totpError}</p>}
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setTotpRequired(false);
+                                    pendingCredentials.current = null;
+                                }}
+                                disabled={isLoading}
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={totpCode.length !== 6 || isLoading}>
+                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Verify
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
         </div>

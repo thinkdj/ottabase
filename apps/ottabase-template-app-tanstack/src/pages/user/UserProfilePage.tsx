@@ -38,9 +38,12 @@ import {
 } from '@ottabase/ui-shadcn';
 import { getTimezonesForSelect, setTimezoneConfig } from '@ottabase/utils/timezone';
 import { IconExternalLink, IconPencil, IconTrash } from '@tabler/icons-react';
-import { Calendar, Check, Loader2, Mail, User } from 'lucide-react';
+import { Calendar, Check, Loader2, Mail, ShieldCheck, User } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AvatarEditModal } from './AvatarEditModal';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
+import { PasskeyManager } from './PasskeyManager';
+import { TotpSetupDialog } from './TotpSetupDialog';
 
 interface LinkedAccountRecord {
     provider: string;
@@ -70,6 +73,12 @@ export function UserProfilePage() {
     const [hasChanges, setHasChanges] = useState(false);
     const [verificationStatus, setVerificationStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
     const [verificationError, setVerificationError] = useState<string | null>(null);
+
+    // Security section state
+    const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+    const [totpDialogOpen, setTotpDialogOpen] = useState(false);
+    const [totpEnabled, setTotpEnabled] = useState(false);
+    const [hasPassword, setHasPassword] = useState(false);
 
     const normalize = useCallback((value: string) => value.trim(), []);
 
@@ -135,10 +144,15 @@ export function UserProfilePage() {
                         name?: string;
                         email?: string;
                         timezone?: string;
+                        totpEnabled?: boolean;
                     } & Record<string, unknown>
                 >('/api/users/me');
                 if (!cancelled && data) {
                     setLinkedAccounts(data?.linkedAccounts || []);
+                    setTotpEnabled(!!data.totpEnabled);
+                    // Infer if user has password from linked accounts
+                    const accounts = data?.linkedAccounts || [];
+                    setHasPassword(!accounts.length || accounts.some((a) => a.provider === 'credentials'));
                     const tz = data.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
                     setFormData((prev) => ({
                         ...prev,
@@ -656,31 +670,80 @@ export function UserProfilePage() {
                     <CardDescription>Manage your account security settings</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {/* Password */}
                     <div className="flex items-center justify-between">
                         <div>
                             <h4 className="font-medium">Password</h4>
                             <p className="text-sm text-muted-foreground">
-                                Password management is not available from this app.
+                                Change your account password
                             </p>
                         </div>
-                        <Button variant="outline" size="sm" disabled>
-                            Change Password
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setChangePasswordOpen(true)}
+                        >
+                            Change password
                         </Button>
                     </div>
 
                     <Separator />
 
+                    {/* Two-Factor Authentication */}
                     <div className="flex items-center justify-between">
-                        <div>
-                            <h4 className="font-medium">Two-Factor Authentication</h4>
-                            <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
+                        <div className="flex items-center gap-2">
+                            <div>
+                                <h4 className="font-medium">Two-factor authentication</h4>
+                                <p className="text-sm text-muted-foreground">
+                                    {totpEnabled
+                                        ? 'Your account is protected with an authenticator app'
+                                        : 'Add an extra layer of security with an authenticator app'}
+                                </p>
+                            </div>
+                            {totpEnabled && (
+                                <Badge variant="outline" className="border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 shrink-0">
+                                    <ShieldCheck className="h-3 w-3 mr-1" />
+                                    Enabled
+                                </Badge>
+                            )}
                         </div>
-                        <Button variant="outline" size="sm" disabled>
-                            Enable 2FA
+                        <Button
+                            variant={totpEnabled ? 'outline' : 'default'}
+                            size="sm"
+                            onClick={() => setTotpDialogOpen(true)}
+                        >
+                            {totpEnabled ? 'Manage 2FA' : 'Enable 2FA'}
                         </Button>
                     </div>
+
+                    <Separator />
+
+                    {/* Passkeys */}
+                    <PasskeyManager />
                 </CardContent>
             </Card>
+
+            {/* Dialogs */}
+            <ChangePasswordDialog
+                open={changePasswordOpen}
+                onOpenChange={setChangePasswordOpen}
+                onSuccess={() => {
+                    toast.success('Password updated', 'Your password has been changed successfully.');
+                }}
+            />
+            <TotpSetupDialog
+                open={totpDialogOpen}
+                onOpenChange={setTotpDialogOpen}
+                enabled={totpEnabled}
+                onStatusChange={(enabled) => {
+                    setTotpEnabled(enabled);
+                    if (enabled) {
+                        toast.success('2FA enabled', 'Two-factor authentication is now active.');
+                    } else {
+                        toast.success('2FA disabled', 'Two-factor authentication has been removed.');
+                    }
+                }}
+            />
         </div>
     );
 }
