@@ -14,6 +14,8 @@ Framework-agnostic Auth.js integration for Ottabase with Cloudflare D1 and Drizz
 - **Error Handling** - Production-ready with custom handlers
 - **Smart Session Refresh** - Profile updates bump a KV version so `/api/auth/session` refreshes a JWT only when needed,
   keeping local storage/current tab in sync without constant D1 reads
+- **Two-factor (TOTP + WebAuthn)** - Optional `@ottabase/auth/two-factor` helpers: encrypted TOTP secrets, backup codes,
+  passkeys (Windows Hello / Touch ID / security keys), short-lived pre-auth tokens to finish Auth.js credentials sign-in
 
 ## Installation
 

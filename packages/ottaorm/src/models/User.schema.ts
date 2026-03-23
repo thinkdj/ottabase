@@ -17,6 +17,12 @@ export const usersTable = sqliteTable('users', {
     image: text('image'),
     timezone: text('timezone'),
     passwordHash: text('password_hash'),
+    /** AES-GCM encrypted base32 TOTP secret (null when TOTP not configured) */
+    totpSecretEnc: text('totp_secret_enc'),
+    /** Unix ms when TOTP was verified and enabled; null if TOTP off */
+    totpEnabledAt: integer('totp_enabled_at'),
+    /** JSON array of PBKDF2 hashes for one-time backup codes (empty array when none) */
+    backupCodesJson: text('backup_codes_json'),
     // Referral fields
     referralUsername: text('referral_username').unique(),
     referredById: text('referred_by_id'),

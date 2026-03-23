@@ -12,6 +12,7 @@ export default defineConfig({
         'src/backend-handler.ts',
         'src/client-api.ts',
         'src/react-hooks.ts',
+        'src/two-factor/index.ts',
     ],
     format: ['cjs', 'esm'],
     // Use explicit DTS compiler options to avoid inheriting path mappings
@@ -34,5 +35,7 @@ export default defineConfig({
         'jotai',
         'jotai/utils',
         '@auth/core',
+        '@simplewebauthn/server',
+        'otplib',
     ],
 });

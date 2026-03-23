@@ -47,6 +47,17 @@ import {
     handleVerifyEmailResend,
 } from './auth';
 import {
+    handleTotpDisable,
+    handleTotpEnable,
+    handleTotpSetupStart,
+    handleTwoFactorPassword,
+    handleTwoFactorStatus,
+    handleTwoFactorVerify,
+    handleWebAuthnCredentialDelete,
+    handleWebAuthnRegisterOptions,
+    handleWebAuthnRegisterVerify,
+} from './two-factor';
+import {
     handleBlogPostBySlug,
     handleBlogPostUnlock,
     handleBlogPostsList,
@@ -178,6 +189,10 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
 
     if (route === '/api/users/me') {
         return handleUserProfile(context);
+    }
+
+    if (route === '/api/auth/two-factor/status') {
+        return handleTwoFactorStatus(context);
     }
 
     if (route === '/api/email/providers') {
@@ -390,6 +405,38 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
             dataset: context.env.OBCF_ANALYTICS_CORE,
             defaultAppId: 'ottabase-template',
         });
+    }
+
+    if (route === '/api/auth/two-factor/password') {
+        return handleTwoFactorPassword(context);
+    }
+
+    if (route === '/api/auth/two-factor/verify') {
+        return handleTwoFactorVerify(context);
+    }
+
+    if (route === '/api/auth/two-factor/totp/setup') {
+        return handleTotpSetupStart(context);
+    }
+
+    if (route === '/api/auth/two-factor/totp/enable') {
+        return handleTotpEnable(context);
+    }
+
+    if (route === '/api/auth/two-factor/totp/disable') {
+        return handleTotpDisable(context);
+    }
+
+    if (route === '/api/auth/webauthn/register/options') {
+        return handleWebAuthnRegisterOptions(context);
+    }
+
+    if (route === '/api/auth/webauthn/register/verify') {
+        return handleWebAuthnRegisterVerify(context);
+    }
+
+    if (route === '/api/auth/webauthn/credential/remove') {
+        return handleWebAuthnCredentialDelete(context);
     }
 
     if (route === '/api/auth/register') {

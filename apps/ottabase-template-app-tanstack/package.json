@@ -65,6 +65,8 @@
         "@ottabase/ui-shadcn": "workspace:*",
         "@ottabase/ui-split-pane": "workspace:*",
         "@ottabase/utils": "workspace:*",
+        "@simplewebauthn/browser": "catalog:",
+        "@simplewebauthn/server": "catalog:",
         "@tabler/icons-react": "catalog:",
         "@tanstack/react-query": "catalog:",
         "@tanstack/react-router": "catalog:",
@@ -76,6 +78,7 @@
         "react": "catalog:",
         "react-dom": "catalog:",
         "react-hook-form": "catalog:",
+        "react-qr-code": "catalog:",
         "sonner": "catalog:",
         "zod": "catalog:"
     },

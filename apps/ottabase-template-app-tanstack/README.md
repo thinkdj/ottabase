@@ -73,18 +73,30 @@ This template ships with Auth.js + D1 integration and tighter session handling:
   session picks up the KV-triggered profile version bump immediately.
 - **Tenant/app headers**: The client now sets `X-App-Id: ottabase-template-app` and, when available, `X-Org-Id` from the
   current session into all API calls; these values are also mirrored in global state atoms for UI needs.
+- **Two-factor**: TOTP (authenticator apps) and WebAuthn passkeys (e.g. Windows Hello). Requires **KV** for login
+  challenges and TOTP setup. After password reset, TOTP and passkeys are cleared. Run `POST /api/ottaorm/init` to add
+  `users.totp_*` / `backup_codes_json` columns.
 
 ### Auth API Endpoints
 
-| Endpoint                           | Method  | Notes                                                                                                                                                   |
-| ---------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/api/auth/register`               | `POST`  | Credentials registration + auto organization/role setup. Returns `{ user, organizationId, organizationRole, assignedRole, requiresEmailVerification }`. |
-| `/api/auth/verify-email`           | `POST`  | Consume verification token from email link after registration or resend.                                                                                |
-| `/api/auth/verify-email/resend`    | `POST`  | Sends a new verification token; rate-limited by `enforceRateLimit`.                                                                                     |
-| `/api/auth/password/reset/request` | `POST`  | Sends reset token email (supports Resend/Ses/KV mailers).                                                                                               |
-| `/api/auth/password/reset/confirm` | `POST`  | Applies a new password and revokes existing JWTs via `auth:usr:{userId}:revoked`.                                                                       |
-| `/api/users/me`                    | `GET`   | Returns the authenticated user (filters out password data).                                                                                             |
-| `/api/users/me`                    | `PATCH` | Updates profile fields (`name`, `image`), enforces validation, and bumps `auth:usr:{userId}:profile:version` in KV for session refresh.                 |
+| Endpoint                               | Method  | Notes                                                                                                                                                   |
+| -------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/auth/register`                   | `POST`  | Credentials registration + auto organization/role setup. Returns `{ user, organizationId, organizationRole, assignedRole, requiresEmailVerification }`. |
+| `/api/auth/verify-email`               | `POST`  | Consume verification token from email link after registration or resend.                                                                                |
+| `/api/auth/verify-email/resend`        | `POST`  | Sends a new verification token; rate-limited by `enforceRateLimit`.                                                                                     |
+| `/api/auth/password/reset/request`     | `POST`  | Sends reset token email (supports Resend/Ses/KV mailers).                                                                                               |
+| `/api/auth/password/reset/confirm`     | `POST`  | Applies a new password and revokes existing JWTs via `auth:usr:{userId}:revoked`.                                                                       |
+| `/api/users/me`                        | `GET`   | Returns the authenticated user (filters out password data).                                                                                             |
+| `/api/users/me`                        | `PATCH` | Updates profile fields (`name`, `image`), enforces validation, and bumps `auth:usr:{userId}:profile:version` in KV for session refresh.                 |
+| `/api/auth/two-factor/password`        | `POST`  | Validates password; returns `{ requiresTwoFactor, challengeId, webauthnOptions? }` or `{ ok, requiresTwoFactor: false }`.                               |
+| `/api/auth/two-factor/verify`          | `POST`  | Completes login with `challengeId` + `totpCode` or `backupCode` or `webauthn` assertion; returns `{ preAuthToken, email }`.                             |
+| `/api/auth/two-factor/status`          | `GET`   | Session: TOTP/passkey status for the profile UI.                                                                                                        |
+| `/api/auth/two-factor/totp/setup`      | `POST`  | Session: begin TOTP enrollment (returns `secret`, `otpauthUrl`).                                                                                        |
+| `/api/auth/two-factor/totp/enable`     | `POST`  | Session: confirm TOTP and receive one-time backup codes.                                                                                                |
+| `/api/auth/two-factor/totp/disable`    | `POST`  | Session: disable TOTP (password + current code).                                                                                                        |
+| `/api/auth/webauthn/register/options`  | `POST`  | Session: WebAuthn registration options for passkeys.                                                                                                    |
+| `/api/auth/webauthn/register/verify`   | `POST`  | Session: complete passkey registration.                                                                                                                 |
+| `/api/auth/webauthn/credential/remove` | `POST`  | Session: remove a passkey (password + `credentialId`).                                                                                                  |
 
 ### Required Env (production)
 

@@ -1,5 +1,11 @@
 import { useSession } from '@/lib/auth';
-import { requestPasswordReset, sendMagicLink, signInWithCredentials, signInWithProvider } from '@/lib/auth-api';
+import {
+    requestPasswordReset,
+    sendMagicLink,
+    signInWithCredentials,
+    signInWithPreAuthToken,
+    signInWithProvider,
+} from '@/lib/auth-api';
 import { resolveAuthRedirect } from '@/lib/auth-redirect';
 import { getLoginConfig, LoginForm } from '@ottabase/auth/components';
 import {
@@ -33,7 +39,15 @@ export function LoginPage() {
     const [forgotEmail, setForgotEmail] = useState('');
     const [forgotStatus, setForgotStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
     const [forgotError, setForgotError] = useState<string | null>(null);
+    const [twoFactorChallenge, setTwoFactorChallenge] = useState<{
+        challengeId: string;
+        email: string;
+        webauthnOptions: Record<string, unknown> | null;
+    } | null>(null);
+    const [totpCode, setTotpCode] = useState('');
+    const [backupCode, setBackupCode] = useState('');
     const hasNavigated = useRef(false);
+    const rememberMeFor2fa = useRef(false);
     const redirectTarget = useRef(resolveAuthRedirect());
 
     // Auto-detect configured providers from env
@@ -146,8 +160,43 @@ export function LoginPage() {
     }) => {
         setIsLoading(true);
         setError(undefined);
+        setTwoFactorChallenge(null);
+        setTotpCode('');
+        setBackupCode('');
 
         try {
+            const check = await fetch('/api/auth/two-factor/password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email, password }),
+            });
+            const checkData = (await check.json()) as {
+                ok?: boolean;
+                requiresTwoFactor?: boolean;
+                challengeId?: string;
+                webauthnOptions?: Record<string, unknown> | null;
+                error?: string;
+                message?: string;
+            };
+
+            if (!check.ok) {
+                setError(checkData.error || checkData.message || 'Invalid credentials');
+                setIsLoading(false);
+                return;
+            }
+
+            if (checkData.requiresTwoFactor && checkData.challengeId) {
+                rememberMeFor2fa.current = rememberMe;
+                setTwoFactorChallenge({
+                    challengeId: checkData.challengeId,
+                    email: email.trim().toLowerCase(),
+                    webauthnOptions: checkData.webauthnOptions ?? null,
+                });
+                setIsLoading(false);
+                return;
+            }
+
             const result = await signInWithCredentials({ email, password }, { redirect: false });
 
             if (!result.success) {
@@ -165,6 +214,118 @@ export function LoginPage() {
             navigate({ to: redirectTarget.current, replace: true });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Login failed');
+            setIsLoading(false);
+        }
+    };
+
+    const completeSecondFactor = async () => {
+        if (!twoFactorChallenge) return;
+        const t = totpCode.replace(/\s/g, '');
+        const b = backupCode.trim();
+        if (t.length < 6 && !b) {
+            setError('Enter a 6-digit code or a backup code');
+            return;
+        }
+        setIsLoading(true);
+        setError(undefined);
+        try {
+            const body: Record<string, unknown> = {
+                challengeId: twoFactorChallenge.challengeId,
+            };
+            if (t.length >= 6) body.totpCode = t;
+            if (b) body.backupCode = b;
+
+            const r = await fetch('/api/auth/two-factor/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(body),
+            });
+            const data = (await r.json()) as {
+                ok?: boolean;
+                preAuthToken?: string;
+                email?: string;
+                error?: string;
+                message?: string;
+            };
+            if (!r.ok || !data.preAuthToken || !data.email) {
+                setError(data.error || data.message || 'Second factor failed');
+                setIsLoading(false);
+                return;
+            }
+
+            const result = await signInWithPreAuthToken(
+                { email: data.email, preAuthToken: data.preAuthToken },
+                { redirect: false },
+            );
+            if (!result.success) {
+                setError(result.error || 'Sign-in failed');
+                setIsLoading(false);
+                return;
+            }
+            if (result.session) {
+                login(result.session, { remember: rememberMeFor2fa.current });
+            }
+            setTwoFactorChallenge(null);
+            setIsLoading(false);
+            hasNavigated.current = true;
+            navigate({ to: redirectTarget.current, replace: true });
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Verification failed');
+            setIsLoading(false);
+        }
+    };
+
+    const webAuthnSecondFactor = async () => {
+        if (!twoFactorChallenge?.webauthnOptions) {
+            setError('Passkey sign-in is not available for this account');
+            return;
+        }
+        setIsLoading(true);
+        setError(undefined);
+        try {
+            const assertion = await startAuthentication({
+                optionsJSON: twoFactorChallenge.webauthnOptions as any,
+            });
+            const r = await fetch('/api/auth/two-factor/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    challengeId: twoFactorChallenge.challengeId,
+                    webauthn: assertion,
+                }),
+            });
+            const data = (await r.json()) as {
+                ok?: boolean;
+                preAuthToken?: string;
+                email?: string;
+                error?: string;
+                message?: string;
+            };
+            if (!r.ok || !data.preAuthToken || !data.email) {
+                setError(data.error || data.message || 'Passkey verification failed');
+                setIsLoading(false);
+                return;
+            }
+            const result = await signInWithPreAuthToken(
+                { email: data.email, preAuthToken: data.preAuthToken },
+                { redirect: false },
+            );
+            if (!result.success) {
+                setError(result.error || 'Sign-in failed');
+                setIsLoading(false);
+                return;
+            }
+            if (result.session) {
+                login(result.session, { remember: rememberMeFor2fa.current });
+            }
+            setTwoFactorChallenge(null);
+            setIsLoading(false);
+            hasNavigated.current = true;
+            navigate({ to: redirectTarget.current, replace: true });
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Passkey failed');
             setIsLoading(false);
         }
     };
@@ -243,28 +404,92 @@ export function LoginPage() {
                     </Card>
                 )}
 
-                {/* Login Form */}
-                <LoginForm
-                    socialProviders={loginConfig.socialProviders}
-                    showCredentials={loginConfig.showCredentials}
-                    showMagicLink={loginConfig.showMagicLink}
-                    onSocialLogin={handleSocialLogin}
-                    onCredentialsLogin={handleCredentialsLogin}
-                    onMagicLinkSend={handleMagicLinkSend}
-                    onForgotPassword={() => {
-                        setForgotEmail('');
-                        setForgotStatus('idle');
-                        setForgotError(null);
-                        setForgotOpen(true);
-                    }}
-                    isLoading={isLoading}
-                    error={error}
-                    magicLinkSuccess={magicLinkSent}
-                    title="Sign in to your account"
-                    description="Choose your preferred login method"
-                    showSignUp
-                    onSignUpClick={() => navigate({ to: '/register' })}
-                />
+                {/* Login Form or 2FA step */}
+                {twoFactorChallenge ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Two-step verification</CardTitle>
+                            <CardDescription>
+                                Enter your authenticator code for {twoFactorChallenge.email}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {error && <p className="text-sm text-destructive">{error}</p>}
+                            <div className="space-y-2">
+                                <Label htmlFor="login-totp">6-digit code</Label>
+                                <Input
+                                    id="login-totp"
+                                    inputMode="numeric"
+                                    autoComplete="one-time-code"
+                                    value={totpCode}
+                                    onChange={(e) => setTotpCode(e.target.value)}
+                                    placeholder="000000"
+                                    className="dark:bg-background"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="login-backup">Backup code (optional)</Label>
+                                <Input
+                                    id="login-backup"
+                                    value={backupCode}
+                                    onChange={(e) => setBackupCode(e.target.value)}
+                                    placeholder="xxxx-xxxx-xxxxx"
+                                    className="dark:bg-background"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <Button type="button" onClick={completeSecondFactor} disabled={isLoading}>
+                                    {isLoading ? 'Verifying…' : 'Continue'}
+                                </Button>
+                                {twoFactorChallenge.webauthnOptions && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={webAuthnSecondFactor}
+                                        disabled={isLoading}
+                                        className="dark:border-border"
+                                    >
+                                        Use passkey or Windows Hello
+                                    </Button>
+                                )}
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        setTwoFactorChallenge(null);
+                                        setError(undefined);
+                                        setTotpCode('');
+                                        setBackupCode('');
+                                    }}
+                                >
+                                    Back to sign in
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <LoginForm
+                        socialProviders={loginConfig.socialProviders}
+                        showCredentials={loginConfig.showCredentials}
+                        showMagicLink={loginConfig.showMagicLink}
+                        onSocialLogin={handleSocialLogin}
+                        onCredentialsLogin={handleCredentialsLogin}
+                        onMagicLinkSend={handleMagicLinkSend}
+                        onForgotPassword={() => {
+                            setForgotEmail('');
+                            setForgotStatus('idle');
+                            setForgotError(null);
+                            setForgotOpen(true);
+                        }}
+                        isLoading={isLoading}
+                        error={error}
+                        magicLinkSuccess={magicLinkSent}
+                        title="Sign in to your account"
+                        description="Choose your preferred login method"
+                        showSignUp
+                        onSignUpClick={() => navigate({ to: '/register' })}
+                    />
+                )}
 
                 {/* Sign Up Link */}
                 <Card>

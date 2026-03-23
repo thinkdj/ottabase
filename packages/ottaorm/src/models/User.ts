@@ -33,7 +33,7 @@ export class User extends BaseModel {
     static primaryKey = 'id';
     static packageName = '@ottabase/ottaorm';
     static packageType: PackageType = 'core';
-    static hidden = ['passwordHash'];
+    static hidden = ['passwordHash', 'totpSecretEnc', 'backupCodesJson'];
 
     // UI/Forms metadata
     static displayName = 'User';
@@ -45,6 +45,7 @@ export class User extends BaseModel {
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
         emailVerified: 'date' as const,
+        totpEnabledAt: 'date' as const,
     };
 
     static writable = {

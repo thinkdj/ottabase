@@ -18,124 +18,32 @@ import { Auth, type AuthConfig } from '@auth/core';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { userKey } from '@ottabase/cf/cache-keys';
 import { createKvEmailTrapStore } from '@ottabase/email/providers/dev-trap';
+import type { AuthEnv, CredentialsAuthorizeOptions } from './auth-types';
 import { bootstrapFirstUser, parseBooleanFlag, SYSTEM_ORGANIZATION_ID } from './bootstrap';
 import { createOttabaseAuthConfig } from './config';
-import type { ProviderEnv } from './providers';
+import { hashPassword, verifyPassword } from './password-hash';
+import { credentialsAuthorizeWithTwoFactor } from './two-factor/credentials-authorize';
 import {
     autoConfigureProviders,
-    createCredentialsProvider,
+    createCustomCredentialsProvider,
     createDevEmailTrapProvider,
     createNodemailerProvider,
     createResendProvider,
     isDevEmailTrapConfigured,
 } from './providers';
 
-/**
- * Environment interface for auth handler
- * Your CloudflareEnv should extend this
- */
-export interface AuthEnv extends ProviderEnv {
-    AUTH_SECRET?: string;
-    AUTH_URL?: string;
-    NEXTAUTH_URL?: string;
-    ENVIRONMENT?: string;
-    OBCF_D1?: D1Database;
-    OBCF_KV?: KVNamespace;
-}
-
-/**
- * Options for credentials authorization callback
- */
-export interface CredentialsAuthorizeOptions {
-    /**
-     * Custom authorization function
-     * Return user object on success, null on failure
-     */
-    authorize?: (credentials: { email: string; password: string }) => Promise<{
-        id: string;
-        email: string;
-        name?: string;
-        [key: string]: any;
-    } | null>;
-
-    /**
-     * Minimum password length (default: 6)
-     */
-    minPasswordLength?: number;
-
-    /**
-     * Require verified email for credentials sign-in
-     */
-    requireVerifiedEmail?: boolean;
-}
+export type { AuthEnv, CredentialsAuthorizeOptions } from './auth-types';
 
 /**
  * Default credentials authorization (demo/placeholder)
  * In production, override with your own validation logic
  */
 async function defaultCredentialsAuthorize(
-    credentials: { email: string; password: string },
+    credentials: Record<string, any>,
     env: AuthEnv,
     options?: CredentialsAuthorizeOptions,
 ): Promise<any> {
-    const email = typeof credentials.email === 'string' ? credentials.email.trim().toLowerCase() : '';
-    const password = typeof credentials.password === 'string' ? credentials.password : '';
-    const minLength = options?.minPasswordLength ?? 6;
-
-    if (!email || !password) {
-        return null;
-    }
-
-    // Validate password length (avoid leaking details)
-    if (password.length < minLength) {
-        return null;
-    }
-
-    if (!env.OBCF_D1) {
-        throw new Error('OBCF_D1 database binding is required for credentials authentication');
-    }
-
-    let result: any | null = null;
-    try {
-        result = await env.OBCF_D1.prepare(
-            `SELECT id, name, email, image, email_verified, password_hash
-                 FROM users
-                 WHERE email = ?`,
-        )
-            .bind(email)
-            .first<any>();
-    } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (message.includes('no such column: email_verified') || message.includes('no such column: password_hash')) {
-            throw new Error('Missing auth columns on users table. Run /api/ottaorm/init to apply migrations.');
-        }
-        throw error;
-    }
-
-    if (!result || !result.password_hash) {
-        if (result && !result.password_hash) {
-            console.warn('Credentials sign-in failed: user has no password_hash (OAuth-only or missing migration).');
-        }
-        return null;
-    }
-
-    const valid = await verifyPassword(password, String(result.password_hash));
-    if (!valid) {
-        return null;
-    }
-
-    const emailVerifiedMs = result.email_verified ? Number(result.email_verified) : null;
-    if (options?.requireVerifiedEmail && !emailVerifiedMs) {
-        return null;
-    }
-
-    return {
-        id: result.id,
-        email: result.email,
-        name: result.name ?? undefined,
-        image: result.image ?? undefined,
-        emailVerified: emailVerifiedMs,
-    };
+    return credentialsAuthorizeWithTwoFactor(credentials as Record<string, unknown>, env, options);
 }
 
 /**
@@ -246,14 +154,21 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
 
     if (!disableCredentials) {
         providers.push(
-            createCredentialsProvider(async (credentials: any) => {
-                if (options?.authorize) {
-                    return options.authorize(credentials);
-                }
-                return defaultCredentialsAuthorize(credentials, env, {
-                    ...options,
-                    requireVerifiedEmail,
-                });
+            createCustomCredentialsProvider({
+                credentials: {
+                    email: { label: 'Email', type: 'email' },
+                    password: { label: 'Password', type: 'password' },
+                    preAuthToken: { label: 'preAuthToken', type: 'text' },
+                },
+                authorize: async (credentials: Record<string, any>) => {
+                    if (options?.authorize) {
+                        return options.authorize(credentials as any);
+                    }
+                    return defaultCredentialsAuthorize(credentials as any, env, {
+                        ...options,
+                        requireVerifiedEmail,
+                    });
+                },
             }),
         );
 
@@ -723,88 +638,4 @@ export async function getSession(request: Request, env: AuthEnv, options?: Creat
     }
 }
 
-const PBKDF2_PREFIX = 'pbkdf2';
-// Cloudflare Workers limits PBKDF2 to 100k iterations; OWASP recommends >= 100k for PBKDF2-SHA256
-const PBKDF2_ITERATIONS = 100000;
-const PBKDF2_SALT_BYTES = 16;
-const PBKDF2_HASH_BYTES = 32;
-
-function bufferToBase64(buffer: Uint8Array): string {
-    let binary = '';
-    for (const byte of buffer) {
-        binary += String.fromCharCode(byte);
-    }
-    return btoa(binary);
-}
-
-function base64ToBuffer(base64: string): Uint8Array {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-}
-
-function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
-    if (a.length !== b.length) {
-        return false;
-    }
-    let diff = 0;
-    for (let i = 0; i < a.length; i++) {
-        diff |= a[i] ^ b[i];
-    }
-    return diff === 0;
-}
-
-async function derivePbkdf2(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
-    const encoder = new TextEncoder();
-    const passwordBytes = encoder.encode(password);
-    const passwordBuffer = Uint8Array.from(passwordBytes).buffer;
-    const saltBuffer = Uint8Array.from(salt).buffer;
-    const keyMaterial = await crypto.subtle.importKey('raw', passwordBuffer, 'PBKDF2', false, ['deriveBits']);
-    const derivedBits = await crypto.subtle.deriveBits(
-        {
-            name: 'PBKDF2',
-            salt: saltBuffer,
-            iterations,
-            hash: 'SHA-256',
-        },
-        keyMaterial,
-        PBKDF2_HASH_BYTES * 8,
-    );
-    return new Uint8Array(derivedBits);
-}
-
-/**
- * Password hashing using PBKDF2 (SHA-256)
- * Output format: pbkdf2$iterations$saltBase64$hashBase64
- */
-export async function hashPassword(password: string): Promise<string> {
-    const salt = crypto.getRandomValues(new Uint8Array(PBKDF2_SALT_BYTES));
-    const derived = await derivePbkdf2(password, salt, PBKDF2_ITERATIONS);
-    return `${PBKDF2_PREFIX}$${PBKDF2_ITERATIONS}$${bufferToBase64(salt)}$${bufferToBase64(derived)}`;
-}
-
-/**
- * Verify password against stored hash
- * Supports PBKDF2 format only.
- */
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-    if (!hash) return false;
-
-    if (hash.startsWith(`${PBKDF2_PREFIX}$`)) {
-        const parts = hash.split('$');
-        if (parts.length !== 4) return false;
-
-        const iterations = Number(parts[1]);
-        if (!Number.isFinite(iterations) || iterations <= 0) return false;
-
-        const salt = base64ToBuffer(parts[2]);
-        const expected = base64ToBuffer(parts[3]);
-        const derived = await derivePbkdf2(password, salt, iterations);
-        return timingSafeEqual(derived, expected);
-    }
-
-    return false;
-}
+export { hashPassword, verifyPassword } from './password-hash';

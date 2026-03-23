@@ -40,6 +40,7 @@ import { getTimezonesForSelect, setTimezoneConfig } from '@ottabase/utils/timezo
 import { IconExternalLink, IconPencil, IconTrash } from '@tabler/icons-react';
 import { Calendar, Check, Loader2, Mail, User } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { UserTwoFactorSection } from './components/UserTwoFactorSection';
 import { AvatarEditModal } from './AvatarEditModal';
 
 interface LinkedAccountRecord {
@@ -649,38 +650,7 @@ export function UserProfilePage() {
                 </CardContent>
             </Card>
 
-            {/* Security */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Security</CardTitle>
-                    <CardDescription>Manage your account security settings</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h4 className="font-medium">Password</h4>
-                            <p className="text-sm text-muted-foreground">
-                                Password management is not available from this app.
-                            </p>
-                        </div>
-                        <Button variant="outline" size="sm" disabled>
-                            Change Password
-                        </Button>
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h4 className="font-medium">Two-Factor Authentication</h4>
-                            <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
-                        </div>
-                        <Button variant="outline" size="sm" disabled>
-                            Enable 2FA
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+            <UserTwoFactorSection />
         </div>
     );
 }

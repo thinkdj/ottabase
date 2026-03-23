@@ -1,3 +1,4 @@
+import { clearUserTwoFactor } from '@ottabase/auth/two-factor';
 import { getSession, handleAuthRequest, hashPassword } from '@ottabase/auth/backend';
 import { getLoginConfig } from '@ottabase/auth/components';
 import { userKey } from '@ottabase/cf/cache-keys';
@@ -317,6 +318,12 @@ export async function handlePasswordResetConfirm(context: AuthRouteContext): Pro
     const passwordHash = await hashPassword(password);
     user.set('passwordHash', passwordHash);
     await user.save();
+
+    try {
+        await clearUserTwoFactor(env.OBCF_D1, String(user.get('id')));
+    } catch {
+        // non-fatal
+    }
 
     await VerificationToken.deleteByIdentifierAndToken(identifier, token);
 

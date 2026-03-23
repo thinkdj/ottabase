@@ -99,6 +99,7 @@ export {
     resetPassword,
     sendMagicLink,
     signInWithCredentials,
+    signInWithPreAuthToken,
     signInWithProvider,
     signOut,
     verifyEmail,
@@ -110,6 +111,7 @@ export {
     type RegisterCredentials,
     type RegisterResponse,
     type SignInCredentials,
+    type SignInPreAuth,
 } from './client-api';
 
 // ============================================================

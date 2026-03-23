@@ -219,6 +219,89 @@ export async function signInWithCredentials(
     }
 }
 
+export interface SignInPreAuth {
+    email: string;
+    preAuthToken: string;
+}
+
+/**
+ * Complete sign-in after TOTP or WebAuthn second factor (uses preAuthToken from /api/auth/two-factor/verify).
+ */
+export async function signInWithPreAuthToken(
+    params: SignInPreAuth,
+    options?: {
+        redirect?: boolean;
+        redirectTo?: string;
+        clientOptions?: AuthClientOptions;
+    },
+): Promise<AuthResponse> {
+    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
+    const csrfToken = await getCsrfToken(options?.clientOptions);
+
+    try {
+        const form = new URLSearchParams();
+        form.set('email', params.email);
+        form.set('password', '');
+        form.set('preAuthToken', params.preAuthToken);
+        if (csrfToken) {
+            form.set('csrfToken', csrfToken);
+        }
+        form.set('redirect', String(options?.redirect ?? false));
+        form.set('callbackUrl', options?.redirectTo ?? '/dashboard');
+        form.set('json', 'true');
+
+        const response = await fetch(`${baseUrl}/callback/credentials`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Auth-Return-Redirect': '1',
+            },
+            credentials: 'include',
+            redirect: 'manual',
+            body: form.toString(),
+        });
+
+        if (response.status >= 300 && response.status < 400) {
+            const location = response.headers.get('Location');
+            const parsedError = parseAuthError(location);
+            if (parsedError) {
+                return { success: false, error: parsedError };
+            }
+        }
+
+        const data = await response.json().catch(() => null);
+
+        const redirectError = parseAuthErrorFromUrl(data?.url);
+        if (redirectError) {
+            return { success: false, error: redirectError };
+        }
+
+        if (!response.ok || data?.error) {
+            return {
+                success: false,
+                error: data?.error || 'Authentication failed',
+            };
+        }
+
+        if (options?.redirect && data?.url && typeof window !== 'undefined') {
+            window.location.href = data.url;
+            return { success: true, url: data.url };
+        }
+
+        const session = await getSession(options?.clientOptions);
+
+        return {
+            success: true,
+            session: session || undefined,
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Authentication failed',
+        };
+    }
+}
+
 /**
  * Sign in with an OAuth provider (Google, GitHub, Discord, etc.)
  */
