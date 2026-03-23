@@ -68,7 +68,8 @@ export interface KvDevEmailTrapStoreOptions {
 }
 
 export interface DevEmailTrapMailerOptions {
-    store: DevEmailTrapStore;
+    /** Only `storeMessage` is required by the mailer; the full store is accepted too. */
+    store: Pick<DevEmailTrapStore, 'storeMessage'>;
     providerName?: string;
 }
 

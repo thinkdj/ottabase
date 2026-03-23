@@ -17,6 +17,7 @@
 import { Auth, type AuthConfig } from '@auth/core';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { userKey } from '@ottabase/cf/cache-keys';
+import { createKvEmailTrapStore } from '@ottabase/email/providers/dev-trap';
 import { bootstrapFirstUser, parseBooleanFlag, SYSTEM_ORGANIZATION_ID } from './bootstrap';
 import { createOttabaseAuthConfig } from './config';
 import type { ProviderEnv } from './providers';
@@ -24,60 +25,10 @@ import {
     autoConfigureProviders,
     createCredentialsProvider,
     createDevEmailTrapProvider,
-    type DevEmailTrapMessage,
-    type DevEmailTrapStore,
     createNodemailerProvider,
     createResendProvider,
     isDevEmailTrapConfigured,
 } from './providers';
-
-const DEV_EMAIL_TRAP_PREFIX = 'dev-email-trap:';
-
-async function listAllTrapKeys(kv: KVNamespace, prefix: string): Promise<string[]> {
-    const keys: string[] = [];
-    let cursor: string | undefined;
-
-    do {
-        const result = await kv.list({ prefix, limit: 1000, cursor });
-        keys.push(...result.keys.map((entry) => entry.name));
-        cursor = result.list_complete ? undefined : result.cursor;
-    } while (cursor);
-
-    return keys;
-}
-
-function createKvEmailTrapStore(kv: KVNamespace, maxEntries: number): DevEmailTrapStore {
-    async function prune(): Promise<void> {
-        const keys = await listAllTrapKeys(kv, DEV_EMAIL_TRAP_PREFIX);
-        if (keys.length <= maxEntries) {
-            return;
-        }
-
-        const messages = await Promise.all(
-            keys.map(async (key) => {
-                const value = await kv.get<DevEmailTrapMessage>(key, 'json');
-                return value ? { key, createdAt: value.createdAt } : null;
-            }),
-        );
-
-        const overflow = messages
-            .filter((value): value is { key: string; createdAt: number } => value !== null)
-            .sort((left, right) => right.createdAt - left.createdAt)
-            .slice(maxEntries);
-
-        await Promise.all(overflow.map((entry) => kv.delete(entry.key)));
-    }
-
-    return {
-        async storeMessage(message: DevEmailTrapMessage): Promise<void> {
-            await kv.put(`${DEV_EMAIL_TRAP_PREFIX}${message.id}`, JSON.stringify(message), {
-                expirationTtl: 7 * 24 * 60 * 60,
-                metadata: { createdAt: message.createdAt, subject: message.subject },
-            });
-            await prune();
-        },
-    };
-}
 
 /**
  * Environment interface for auth handler
@@ -275,10 +226,9 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
     if (isDevEmailTrapConfigured(env) && env.OBCF_KV) {
         providers.push(
             createDevEmailTrapProvider(env, {
-                store: createKvEmailTrapStore(
-                    env.OBCF_KV as any,
-                    Math.max(1, Number(env.DEV_EMAIL_TRAP_MAX_EMAILS) || 50),
-                ),
+                store: createKvEmailTrapStore(env.OBCF_KV as any, {
+                    maxEntries: Math.max(1, Number(env.DEV_EMAIL_TRAP_MAX_EMAILS) || 50),
+                }),
             }),
         );
         if (verbose) console.log('✅ Magic Link via Dev Email Trap enabled');

@@ -10,7 +10,12 @@ import {
     handleAdminDbTableDelete,
     handleAdminDbTables,
 } from './admin-db';
-import { handleAdminDevMailClear, handleAdminDevMailDelete, handleAdminDevMailList } from './admin-dev-mail';
+import {
+    handleAdminDevMailClear,
+    handleAdminDevMailDelete,
+    handleAdminDevMailGet,
+    handleAdminDevMailList,
+} from './admin-dev-mail';
 import { handleAdminPromoteOwner } from './admin-owner';
 import {
     handleAdminQueuesDLQJob,
@@ -302,6 +307,11 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
 
     if (route === '/api/admin/dev-mail') {
         return handleAdminDevMailList(context);
+    }
+
+    const devMailGetMatch = route.match(/^\/api\/admin\/dev-mail\/([^/]+)$/);
+    if (devMailGetMatch) {
+        return handleAdminDevMailGet(context, decodeURIComponent(devMailGetMatch[1]));
     }
 
     const tableMatch = route.match(/^\/api\/admin\/db\/tables\/([a-zA-Z0-9_]+)$/);

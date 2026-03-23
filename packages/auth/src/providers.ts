@@ -20,7 +20,13 @@ import Google from '@auth/core/providers/google';
 import Nodemailer from '@auth/core/providers/nodemailer';
 import Resend from '@auth/core/providers/resend';
 import { sendTemplatedEmail } from '@ottabase/email/mailer';
+import { createDevEmailTrapMailer } from '@ottabase/email/providers/dev-trap';
 import { createResendMailer } from '@ottabase/email/providers/resend';
+
+// Re-export dev-trap types so existing consumers keep working
+export type { DevEmailTrapAddress, DevEmailTrapMessage, DevEmailTrapStore } from '@ottabase/email/providers/dev-trap';
+
+import type { DevEmailTrapStore } from '@ottabase/email/providers/dev-trap';
 
 type TemplateVariables = Record<string, unknown>;
 
@@ -28,26 +34,6 @@ interface TemplateContent {
     header?: string;
     body: string;
     footer?: string;
-}
-
-type SendEmailAddress =
-    | string
-    | {
-          email: string;
-          name?: string;
-      };
-
-interface SendEmailInput {
-    from: SendEmailAddress;
-    to: SendEmailAddress | SendEmailAddress[];
-    subject: string;
-    html: string;
-    text?: string;
-    cc?: SendEmailAddress | SendEmailAddress[];
-    bcc?: SendEmailAddress | SendEmailAddress[];
-    replyTo?: SendEmailAddress;
-    headers?: Record<string, string>;
-    tags?: string[];
 }
 
 interface SendVerificationRequestParams {
@@ -94,70 +80,6 @@ export interface ProviderEnv {
     DEV_EMAIL_TRAP_MAX_EMAILS?: string;
     ENVIRONMENT?: string;
     OBCF_KV?: unknown;
-}
-
-export interface DevEmailTrapAddress {
-    email: string;
-    name?: string;
-}
-
-export interface DevEmailTrapMessage {
-    id: string;
-    provider: string;
-    createdAt: number;
-    from: DevEmailTrapAddress;
-    to: DevEmailTrapAddress[];
-    cc: DevEmailTrapAddress[];
-    bcc: DevEmailTrapAddress[];
-    replyTo?: DevEmailTrapAddress;
-    subject: string;
-    html: string;
-    text?: string;
-    headers?: Record<string, string>;
-    tags?: string[];
-    previewText: string;
-}
-
-export interface DevEmailTrapStore {
-    storeMessage(message: DevEmailTrapMessage): Promise<void>;
-}
-
-function normalizeTrapAddress(address: SendEmailInput['from']): DevEmailTrapAddress {
-    if (typeof address === 'string') {
-        return { email: address };
-    }
-
-    return {
-        email: address.email,
-        ...(address.name ? { name: address.name } : {}),
-    };
-}
-
-function normalizeTrapAddressList(address?: SendEmailInput['to'] | SendEmailInput['cc'] | SendEmailInput['bcc']) {
-    if (!address) {
-        return [];
-    }
-
-    if (Array.isArray(address)) {
-        return address.map(normalizeTrapAddress);
-    }
-
-    return [normalizeTrapAddress(address)];
-}
-
-function stripHtml(html: string): string {
-    return html
-        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/&nbsp;/gi, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-}
-
-function createPreviewText(input: SendEmailInput): string {
-    const source = input.text?.trim() || stripHtml(input.html);
-    return source.length > 180 ? `${source.slice(0, 177)}...` : source;
 }
 
 function parseBoolean(value: string | boolean | undefined): boolean | null {
@@ -577,7 +499,7 @@ export function createResendProvider(
 export function createDevEmailTrapProvider(
     env: ProviderEnv,
     options: {
-        store: DevEmailTrapStore;
+        store: Pick<DevEmailTrapStore, 'storeMessage'>;
         from?: string;
         template?: string;
         subject?: string;
@@ -587,44 +509,7 @@ export function createDevEmailTrapProvider(
     },
 ) {
     const from = options.from || env.EMAIL_FROM || 'noreply@example.com';
-    const mailer: {
-        provider: string;
-        send(input: SendEmailInput): Promise<{
-            provider: string;
-            success: boolean;
-            id: string;
-            raw: DevEmailTrapMessage;
-        }>;
-    } = {
-        provider: 'dev-trap',
-        async send(input: SendEmailInput) {
-            const message: DevEmailTrapMessage = {
-                id: crypto.randomUUID(),
-                provider: 'dev-trap',
-                createdAt: Date.now(),
-                from: normalizeTrapAddress(input.from),
-                to: normalizeTrapAddressList(input.to),
-                cc: normalizeTrapAddressList(input.cc),
-                bcc: normalizeTrapAddressList(input.bcc),
-                ...(input.replyTo ? { replyTo: normalizeTrapAddress(input.replyTo) } : {}),
-                subject: input.subject,
-                html: input.html,
-                ...(input.text ? { text: input.text } : {}),
-                ...(input.headers ? { headers: input.headers } : {}),
-                ...(input.tags ? { tags: input.tags } : {}),
-                previewText: createPreviewText(input),
-            };
-
-            await options.store.storeMessage(message);
-
-            return {
-                provider: 'dev-trap',
-                success: true,
-                id: message.id,
-                raw: message,
-            };
-        },
-    };
+    const mailer = createDevEmailTrapMailer({ store: options.store });
 
     return {
         id: 'email',
