@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDevEmailTrapMailer, createKvEmailTrapStore, type KVLike } from '../providers/dev-trap';
 
 class MemoryKv implements KVLike {
@@ -40,6 +40,14 @@ class MemoryKv implements KVLike {
 }
 
 describe('dev email trap provider', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
     it('captures messages and lists them newest first', async () => {
         const kv = new MemoryKv();
         const store = createKvEmailTrapStore(kv, { maxEntries: 10 });
@@ -52,7 +60,7 @@ describe('dev email trap provider', () => {
             html: '<p>First email</p>',
         });
 
-        await new Promise((resolve) => setTimeout(resolve, 5));
+        vi.advanceTimersByTime(100);
 
         await mailer.send({
             from: 'sender@example.com',
@@ -81,7 +89,7 @@ describe('dev email trap provider', () => {
             html: '<p>First email</p>',
         });
 
-        await new Promise((resolve) => setTimeout(resolve, 5));
+        vi.advanceTimersByTime(100);
 
         await mailer.send({
             from: 'sender@example.com',
@@ -168,7 +176,7 @@ describe('dev email trap provider', () => {
                 subject: `Msg ${i}`,
                 html: `<p>${i}</p>`,
             });
-            await new Promise((resolve) => setTimeout(resolve, 2));
+            vi.advanceTimersByTime(100);
         }
 
         const page1 = await store.listMessages({ limit: 2 });
