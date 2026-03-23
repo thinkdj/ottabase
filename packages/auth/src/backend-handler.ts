@@ -54,7 +54,13 @@ function base32DecodeTOTP(input: string): Uint8Array {
 async function generateHotpCode(secret: Uint8Array, counter: bigint): Promise<string> {
     const counterBuf = new ArrayBuffer(8);
     new DataView(counterBuf).setBigUint64(0, counter, false);
-    const key = await crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+    const key = await crypto.subtle.importKey(
+        'raw',
+        secret.buffer as ArrayBuffer,
+        { name: 'HMAC', hash: 'SHA-1' },
+        false,
+        ['sign'],
+    );
     const hmac = new Uint8Array(await crypto.subtle.sign('HMAC', key, counterBuf));
     const offset = hmac[hmac.length - 1] & 0x0f;
     const code =
