@@ -741,7 +741,7 @@ export function UserProfilePage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <ShieldAlert className="h-5 w-5" />
-                        Data &amp; Privacy
+                        Data & Privacy
                     </CardTitle>
                     <CardDescription>Export your data or delete your account</CardDescription>
                 </CardHeader>

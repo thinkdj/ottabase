@@ -28,6 +28,9 @@ export interface UserDataRouteContext {
 // HELPERS
 // ============================================================
 
+/** Placeholder email for anonymized audit log records */
+const ANONYMIZED_USER_EMAIL = 'deleted-user';
+
 /** Resolve the authenticated user from the session, returning userId or an error Response */
 async function resolveAuthenticatedUser(
     request: Request,
@@ -129,7 +132,7 @@ async function collectUserData(userId: string, env: CloudflareEnv) {
         exportedAt: new Date().toISOString(),
         profile,
         accounts,
-        sessions: sessions.map((s) => ({ ...s, note: 'Session tokens redacted' })),
+        sessions,
         roles,
         memberships,
         auditLogs,
@@ -288,7 +291,7 @@ async function deleteAllUserData(userId: string, env: CloudflareEnv): Promise<{ 
         const auditLogs = await AuditLog.where({ userId });
         for (const log of auditLogs) {
             log.set('userId', null);
-            log.set('userEmail', 'deleted-user');
+            log.set('userEmail', ANONYMIZED_USER_EMAIL);
             log.set('ipAddress', null);
             log.set('userAgent', null);
             await log.save();
