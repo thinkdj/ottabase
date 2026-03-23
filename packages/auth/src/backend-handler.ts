@@ -30,6 +30,60 @@ import {
     isDevEmailTrapConfigured,
 } from './providers';
 
+// ── Inline TOTP verification (edge-compatible, no deps) ──────
+const BASE32_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+function base32DecodeTOTP(input: string): Uint8Array {
+    const cleaned = input.replace(/[\s=]/g, '').toUpperCase();
+    const bytes: number[] = [];
+    let bits = 0;
+    let value = 0;
+    for (const char of cleaned) {
+        const idx = BASE32_CHARS.indexOf(char);
+        if (idx === -1) throw new Error(`Invalid base32 character: ${char}`);
+        value = (value << 5) | idx;
+        bits += 5;
+        if (bits >= 8) {
+            bytes.push((value >>> (bits - 8)) & 0xff);
+            bits -= 8;
+        }
+    }
+    return new Uint8Array(bytes);
+}
+
+async function generateHotpCode(secret: Uint8Array, counter: bigint): Promise<string> {
+    const counterBuf = new ArrayBuffer(8);
+    new DataView(counterBuf).setBigUint64(0, counter, false);
+    const key = await crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+    const hmac = new Uint8Array(await crypto.subtle.sign('HMAC', key, counterBuf));
+    const offset = hmac[hmac.length - 1] & 0x0f;
+    const code =
+        ((hmac[offset] & 0x7f) << 24) |
+        ((hmac[offset + 1] & 0xff) << 16) |
+        ((hmac[offset + 2] & 0xff) << 8) |
+        (hmac[offset + 3] & 0xff);
+    return String(code % 1000000).padStart(6, '0');
+}
+
+function totpTimingSafeEqual(a: string, b: string): boolean {
+    if (a.length !== b.length) return false;
+    let result = 0;
+    for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return result === 0;
+}
+
+async function verifyTotpCode(secret: string, code: string, window = 1): Promise<boolean> {
+    if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) return false;
+    const secretBytes = base32DecodeTOTP(secret);
+    const timeStep = BigInt(Math.floor(Date.now() / 30000));
+    for (let i = -window; i <= window; i++) {
+        const expected = await generateHotpCode(secretBytes, timeStep + BigInt(i));
+        if (totpTimingSafeEqual(code, expected)) return true;
+    }
+    return false;
+}
+// ── End TOTP ─────────────────────────────────────────────────
+
 /**
  * Environment interface for auth handler
  * Your CloudflareEnv should extend this
@@ -74,12 +128,13 @@ export interface CredentialsAuthorizeOptions {
  * In production, override with your own validation logic
  */
 async function defaultCredentialsAuthorize(
-    credentials: { email: string; password: string },
+    credentials: { email: string; password: string; totp?: string },
     env: AuthEnv,
     options?: CredentialsAuthorizeOptions,
 ): Promise<any> {
     const email = typeof credentials.email === 'string' ? credentials.email.trim().toLowerCase() : '';
     const password = typeof credentials.password === 'string' ? credentials.password : '';
+    const totpCode = typeof credentials.totp === 'string' ? credentials.totp.trim() : '';
     const minLength = options?.minPasswordLength ?? 6;
 
     if (!email || !password) {
@@ -98,7 +153,7 @@ async function defaultCredentialsAuthorize(
     let result: any | null = null;
     try {
         result = await env.OBCF_D1.prepare(
-            `SELECT id, name, email, image, email_verified, password_hash
+            `SELECT id, name, email, image, email_verified, password_hash, totp_enabled, totp_secret
                  FROM users
                  WHERE email = ?`,
         )
@@ -109,7 +164,22 @@ async function defaultCredentialsAuthorize(
         if (message.includes('no such column: email_verified') || message.includes('no such column: password_hash')) {
             throw new Error('Missing auth columns on users table. Run /api/ottaorm/init to apply migrations.');
         }
-        throw error;
+        // Gracefully handle missing TOTP columns (pre-migration)
+        if (message.includes('no such column: totp_')) {
+            try {
+                result = await env.OBCF_D1.prepare(
+                    `SELECT id, name, email, image, email_verified, password_hash
+                         FROM users
+                         WHERE email = ?`,
+                )
+                    .bind(email)
+                    .first<any>();
+            } catch {
+                throw error;
+            }
+        } else {
+            throw error;
+        }
     }
 
     if (!result || !result.password_hash) {
@@ -122,6 +192,18 @@ async function defaultCredentialsAuthorize(
     const valid = await verifyPassword(password, String(result.password_hash));
     if (!valid) {
         return null;
+    }
+
+    // TOTP verification: if enabled, require valid code
+    if (result.totp_enabled && result.totp_secret) {
+        if (!totpCode) {
+            // No TOTP code provided but required — reject
+            return null;
+        }
+        const totpValid = await verifyTotpCode(result.totp_secret, totpCode);
+        if (!totpValid) {
+            return null;
+        }
     }
 
     const emailVerifiedMs = result.email_verified ? Number(result.email_verified) : null;

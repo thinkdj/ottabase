@@ -33,7 +33,7 @@ export class User extends BaseModel {
     static primaryKey = 'id';
     static packageName = '@ottabase/ottaorm';
     static packageType: PackageType = 'core';
-    static hidden = ['passwordHash'];
+    static hidden = ['passwordHash', 'totpSecret'];
 
     // UI/Forms metadata
     static displayName = 'User';
@@ -45,6 +45,7 @@ export class User extends BaseModel {
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
         emailVerified: 'date' as const,
+        totpEnabled: 'boolean' as const,
     };
 
     static writable = {
@@ -148,6 +149,34 @@ export class User extends BaseModel {
             },
             tableConfig: {
                 visible: false,
+            },
+        },
+        totpSecret: {
+            type: 'string',
+            editable: false,
+            uiConfig: {
+                label: 'TOTP Secret',
+                description: 'Encrypted TOTP secret (never exposed in UI)',
+            },
+            formConfig: {
+                visible: false,
+            },
+            tableConfig: {
+                visible: false,
+            },
+        },
+        totpEnabled: {
+            type: 'boolean',
+            editable: false,
+            uiConfig: {
+                label: 'TOTP Enabled',
+                description: 'Whether two-factor authentication is enabled',
+            },
+            formConfig: {
+                visible: false,
+            },
+            tableConfig: {
+                visible: true,
             },
         },
         referralUsername: {

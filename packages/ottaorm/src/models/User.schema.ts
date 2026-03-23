@@ -17,6 +17,9 @@ export const usersTable = sqliteTable('users', {
     image: text('image'),
     timezone: text('timezone'),
     passwordHash: text('password_hash'),
+    // TOTP 2FA fields
+    totpSecret: text('totp_secret'), // Base32-encoded TOTP secret (nullable = disabled)
+    totpEnabled: integer('totp_enabled').default(0).notNull(), // SQLite boolean (0 or 1)
     // Referral fields
     referralUsername: text('referral_username').unique(),
     referredById: text('referred_by_id'),
