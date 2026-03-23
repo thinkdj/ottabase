@@ -38,7 +38,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { getTimezonesForSelect, setTimezoneConfig } from '@ottabase/utils/timezone';
 import { IconExternalLink, IconPencil, IconTrash } from '@tabler/icons-react';
-import { Calendar, Check, Loader2, Mail, User } from 'lucide-react';
+import { Calendar, Check, Download, Loader2, Mail, ShieldAlert, User } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AvatarEditModal } from './AvatarEditModal';
 
@@ -70,6 +70,12 @@ export function UserProfilePage() {
     const [hasChanges, setHasChanges] = useState(false);
     const [verificationStatus, setVerificationStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
     const [verificationError, setVerificationError] = useState<string | null>(null);
+
+    // Data & Privacy state
+    const [isExporting, setIsExporting] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const normalize = useCallback((value: string) => value.trim(), []);
 
@@ -294,6 +300,54 @@ export function UserProfilePage() {
             setVerificationError(message);
             toast.error('Verification failed', message);
             setVerificationStatus('idle');
+        }
+    };
+
+    const handleDataExport = async () => {
+        setIsExporting(true);
+        try {
+            const response = await fetch('/api/users/me/export', {
+                credentials: 'include',
+                headers: { Accept: 'application/json' },
+            });
+            if (!response.ok) {
+                throw new Error(`Export failed: ${response.status}`);
+            }
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `user-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            toast.success('Export complete', 'Your data has been downloaded.');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to export data';
+            toast.error('Export failed', message);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleAccountDelete = async () => {
+        if (!user?.email) return;
+        setIsDeleting(true);
+        try {
+            await api('/api/users/me/delete', {
+                method: 'POST',
+                body: { confirmEmail: deleteConfirmEmail },
+            });
+            toast.success('Account deleted', 'Your account and all data have been removed.');
+            setDeleteDialogOpen(false);
+            // Sign out and redirect to home
+            window.location.href = '/';
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to delete account';
+            toast.error('Deletion failed', message);
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -681,6 +735,112 @@ export function UserProfilePage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Data & Privacy */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <ShieldAlert className="h-5 w-5" />
+                        Data &amp; Privacy
+                    </CardTitle>
+                    <CardDescription>Export your data or delete your account</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h4 className="font-medium">Download your data</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Export all your personal data as a JSON file.
+                            </p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleDataExport} disabled={isExporting}>
+                            {isExporting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Exporting...
+                                </>
+                            ) : (
+                                <>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Export Data
+                                </>
+                            )}
+                        </Button>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h4 className="font-medium text-destructive">Delete account</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Permanently delete your account and all associated data. This action cannot be undone.
+                            </p>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            onClick={() => {
+                                setDeleteConfirmEmail('');
+                                setDeleteDialogOpen(true);
+                            }}
+                        >
+                            Delete Account
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Delete Account Confirmation Dialog */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-2">
+                            <span className="block">
+                                This will permanently delete your account and all associated data including your
+                                profile, sessions, roles, and any content you have created. This action cannot be
+                                undone.
+                            </span>
+                            <span className="block font-medium text-foreground">
+                                Type your email address to confirm:
+                            </span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Input
+                        placeholder={user.email || 'your@email.com'}
+                        value={deleteConfirmEmail}
+                        onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+                        disabled={isDeleting}
+                        autoComplete="off"
+                        data-1p-ignore
+                    />
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={async (e) => {
+                                e.preventDefault();
+                                await handleAccountDelete();
+                            }}
+                            disabled={
+                                isDeleting ||
+                                deleteConfirmEmail.trim().toLowerCase() !== (user.email || '').trim().toLowerCase()
+                            }
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Deleting...
+                                </>
+                            ) : (
+                                'Delete my account'
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
