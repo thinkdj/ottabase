@@ -108,6 +108,10 @@ EMAIL_RESEND_API_KEY=...
 EMAIL_SERVER=smtp://user:pass@smtp.example.com:587
 EMAIL_FROM=noreply@yourdomain.com
 
+# Local dev catchall inbox
+DEV_EMAIL_TRAP_ENABLED=true
+DEV_EMAIL_TRAP_MAX_EMAILS=50
+
 # Auth toggles
 AUTH_DISABLE_CREDENTIALS=false
 AUTH_REQUIRE_EMAIL_VERIFIED=false
@@ -123,6 +127,12 @@ CLOUDFLARE_ACCOUNT_ID=            # 32-char account ID (wrangler vars)
 CLOUDFLARE_ANALYTICS_API_TOKEN=  # Secret: Account Analytics Read; set via: pnpm wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN
 # Bindings: OBCF_ANALYTICS_SHORTLINKS (shortlink_clicks), OBCF_ANALYTICS_REFERRALS (referral_clicks)
 ```
+
+### Local dev email trap
+
+- Set `DEV_EMAIL_TRAP_ENABLED=true` in local worker env to capture emails in KV instead of sending them.
+- Open `/admin/dev-mail` to inspect magic links, verification emails, password reset emails, and queue-driven emails.
+- The trap uses the existing `OBCF_KV` binding, so no extra service is required.
 
 ### First-user + admin guard
 

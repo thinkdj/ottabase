@@ -482,6 +482,21 @@ const emailProvider = createNodemailerProvider(env, {
 });
 ```
 
+#### Using the Dev Email Trap
+
+```typescript
+import { createDevEmailTrapProvider } from '@ottabase/auth';
+import { createKvEmailTrapStore } from '@ottabase/email/providers/dev-trap';
+
+const emailProvider = createDevEmailTrapProvider(env, {
+    store: createKvEmailTrapStore(env.OBCF_KV, { maxEntries: 50 }),
+    from: 'noreply@example.com',
+});
+```
+
+This is intended for local development. It captures rendered emails in KV so your app can expose a local inbox instead
+of sending through SMTP or an external API.
+
 ## Session Utilities
 
 ```typescript

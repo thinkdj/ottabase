@@ -19,10 +19,42 @@ import GitHub from '@auth/core/providers/github';
 import Google from '@auth/core/providers/google';
 import Nodemailer from '@auth/core/providers/nodemailer';
 import Resend from '@auth/core/providers/resend';
-import type { TemplateContent, TemplateVariables } from '@ottabase/email';
 import { sendTemplatedEmail } from '@ottabase/email/mailer';
 import { createResendMailer } from '@ottabase/email/providers/resend';
 
+type TemplateVariables = Record<string, unknown>;
+
+interface TemplateContent {
+    header?: string;
+    body: string;
+    footer?: string;
+}
+
+type SendEmailAddress =
+    | string
+    | {
+          email: string;
+          name?: string;
+      };
+
+interface SendEmailInput {
+    from: SendEmailAddress;
+    to: SendEmailAddress | SendEmailAddress[];
+    subject: string;
+    html: string;
+    text?: string;
+    cc?: SendEmailAddress | SendEmailAddress[];
+    bcc?: SendEmailAddress | SendEmailAddress[];
+    replyTo?: SendEmailAddress;
+    headers?: Record<string, string>;
+    tags?: string[];
+}
+
+interface SendVerificationRequestParams {
+    identifier: string;
+    url: string;
+    expires?: Date;
+}
 /**
  * Environment variables for provider credentials
  * These should be set in your .env file or Cloudflare Workers environment
@@ -56,6 +88,101 @@ export interface ProviderEnv {
     // Email (Magic Link) - Nodemailer/SMTP
     EMAIL_SERVER?: string; // smtp://user:pass@smtp.example.com:587
     EMAIL_FROM?: string;
+
+    // Dev email trap
+    DEV_EMAIL_TRAP_ENABLED?: string;
+    DEV_EMAIL_TRAP_MAX_EMAILS?: string;
+    ENVIRONMENT?: string;
+    OBCF_KV?: unknown;
+}
+
+export interface DevEmailTrapAddress {
+    email: string;
+    name?: string;
+}
+
+export interface DevEmailTrapMessage {
+    id: string;
+    provider: string;
+    createdAt: number;
+    from: DevEmailTrapAddress;
+    to: DevEmailTrapAddress[];
+    cc: DevEmailTrapAddress[];
+    bcc: DevEmailTrapAddress[];
+    replyTo?: DevEmailTrapAddress;
+    subject: string;
+    html: string;
+    text?: string;
+    headers?: Record<string, string>;
+    tags?: string[];
+    previewText: string;
+}
+
+export interface DevEmailTrapStore {
+    storeMessage(message: DevEmailTrapMessage): Promise<void>;
+}
+
+function normalizeTrapAddress(address: SendEmailInput['from']): DevEmailTrapAddress {
+    if (typeof address === 'string') {
+        return { email: address };
+    }
+
+    return {
+        email: address.email,
+        ...(address.name ? { name: address.name } : {}),
+    };
+}
+
+function normalizeTrapAddressList(address?: SendEmailInput['to'] | SendEmailInput['cc'] | SendEmailInput['bcc']) {
+    if (!address) {
+        return [];
+    }
+
+    if (Array.isArray(address)) {
+        return address.map(normalizeTrapAddress);
+    }
+
+    return [normalizeTrapAddress(address)];
+}
+
+function stripHtml(html: string): string {
+    return html
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function createPreviewText(input: SendEmailInput): string {
+    const source = input.text?.trim() || stripHtml(input.html);
+    return source.length > 180 ? `${source.slice(0, 177)}...` : source;
+}
+
+function parseBoolean(value: string | boolean | undefined): boolean | null {
+    if (typeof value === 'boolean') {
+        return value;
+    }
+
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+        return true;
+    }
+    if (['0', 'false', 'no', 'off'].includes(normalized)) {
+        return false;
+    }
+
+    return null;
+}
+
+export function isDevEmailTrapConfigured(env: ProviderEnv): boolean {
+    const explicit = parseBoolean(env.DEV_EMAIL_TRAP_ENABLED);
+    return explicit === true && !!env.OBCF_KV;
 }
 
 /**
@@ -410,7 +537,7 @@ export function createResendProvider(
     return Resend({
         apiKey: env.EMAIL_RESEND_API_KEY,
         from,
-        async sendVerificationRequest({ identifier, url, expires }) {
+        async sendVerificationRequest({ identifier, url, expires }: SendVerificationRequestParams) {
             const appName = options?.appName || 'Ottabase';
             const expiresAtMs = expires ? expires.getTime() : null;
             const expiresAt = expiresAtMs ? String(expiresAtMs) : '';
@@ -445,6 +572,100 @@ export function createResendProvider(
             }
         },
     });
+}
+
+export function createDevEmailTrapProvider(
+    env: ProviderEnv,
+    options: {
+        store: DevEmailTrapStore;
+        from?: string;
+        template?: string;
+        subject?: string;
+        appName?: string;
+        content?: TemplateContent;
+        variables?: TemplateVariables;
+    },
+) {
+    const from = options.from || env.EMAIL_FROM || 'noreply@example.com';
+    const mailer: {
+        provider: string;
+        send(input: SendEmailInput): Promise<{
+            provider: string;
+            success: boolean;
+            id: string;
+            raw: DevEmailTrapMessage;
+        }>;
+    } = {
+        provider: 'dev-trap',
+        async send(input: SendEmailInput) {
+            const message: DevEmailTrapMessage = {
+                id: crypto.randomUUID(),
+                provider: 'dev-trap',
+                createdAt: Date.now(),
+                from: normalizeTrapAddress(input.from),
+                to: normalizeTrapAddressList(input.to),
+                cc: normalizeTrapAddressList(input.cc),
+                bcc: normalizeTrapAddressList(input.bcc),
+                ...(input.replyTo ? { replyTo: normalizeTrapAddress(input.replyTo) } : {}),
+                subject: input.subject,
+                html: input.html,
+                ...(input.text ? { text: input.text } : {}),
+                ...(input.headers ? { headers: input.headers } : {}),
+                ...(input.tags ? { tags: input.tags } : {}),
+                previewText: createPreviewText(input),
+            };
+
+            await options.store.storeMessage(message);
+
+            return {
+                provider: 'dev-trap',
+                success: true,
+                id: message.id,
+                raw: message,
+            };
+        },
+    };
+
+    return {
+        id: 'email',
+        name: 'Email',
+        type: 'email' as const,
+        from,
+        async sendVerificationRequest({ identifier, url, expires }: SendVerificationRequestParams) {
+            const appName = options.appName || 'Ottabase';
+            const expiresAtMs = expires ? expires.getTime() : null;
+            const expiresAt = expiresAtMs ? String(expiresAtMs) : '';
+            const subject = options.subject || `Sign in to ${appName}`;
+
+            const content: TemplateContent = options.content || {
+                header: `Sign in to ${appName}`,
+                body:
+                    '<p>Hello,</p>' +
+                    '<p>Click the link below to sign in:</p>' +
+                    '<p><a href="{{url}}">Sign in</a></p>',
+                footer: '<p>This link expires at {{expiresAt}}.</p>',
+            };
+
+            const result = await sendTemplatedEmail(mailer, {
+                from,
+                to: identifier,
+                template: options.template || 'default',
+                subject,
+                variables: {
+                    url,
+                    email: identifier,
+                    appName,
+                    expiresAt,
+                    ...options.variables,
+                },
+                content,
+            });
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to capture login email');
+            }
+        },
+    };
 }
 
 /**

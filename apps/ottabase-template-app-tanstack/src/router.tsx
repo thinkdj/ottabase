@@ -700,6 +700,16 @@ const adminQueueRoute = new Route({
     ),
 });
 
+const adminDevMailRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/dev-mail',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminDevMailPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminDevMailPage />),
+        })),
+    ),
+});
+
 // Admin Cron/Scheduled Tasks route
 const adminCronRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -1007,6 +1017,7 @@ const coreRoutes = [
     analyticsRoute,
     migrationStatusRoute,
     adminRoute,
+    adminDevMailRoute,
     adminQueueRoute,
     adminCronRoute,
     adminNotificationsRoute,

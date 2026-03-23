@@ -76,6 +76,22 @@ vi.mock('@/ottabase/config/i18n.config', () => ({
     i18nConfig: { enabledLanguages: ['en'] },
 }));
 vi.mock('@ottabase/ui-shadcn', () => ({
+    AlertDialog: ({ children }: any) => <div data-testid="alert-dialog">{children}</div>,
+    AlertDialogAction: ({ children, onClick, ...props }: any) => (
+        <button data-testid="alert-dialog-action" onClick={onClick} {...props}>
+            {children}
+        </button>
+    ),
+    AlertDialogCancel: ({ children, ...props }: any) => (
+        <button data-testid="alert-dialog-cancel" {...props}>
+            {children}
+        </button>
+    ),
+    AlertDialogContent: ({ children }: any) => <div data-testid="alert-dialog-content">{children}</div>,
+    AlertDialogDescription: ({ children }: any) => <div>{children}</div>,
+    AlertDialogFooter: ({ children }: any) => <div>{children}</div>,
+    AlertDialogHeader: ({ children }: any) => <div>{children}</div>,
+    AlertDialogTitle: ({ children }: any) => <div>{children}</div>,
     Avatar: ({ children, className }: any) => <div className={className}>{children}</div>,
     AvatarFallback: ({ children }: any) => <span>{children}</span>,
     AvatarImage: ({ src }: any) => <img src={src} alt="" />,

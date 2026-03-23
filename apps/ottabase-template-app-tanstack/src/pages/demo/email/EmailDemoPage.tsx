@@ -96,8 +96,11 @@ export function EmailDemoPage() {
         | { state: 'success'; results: Array<{ email: string; ok: boolean }> }
         | { state: 'error'; message: string }
     >({ state: 'idle' });
-    const [selectedProvider, setSelectedProvider] = useState<'auto' | 'resend' | 'ses' | 'nodemailer'>('auto');
+    const [selectedProvider, setSelectedProvider] = useState<'auto' | 'dev-trap' | 'resend' | 'ses' | 'nodemailer'>(
+        'auto',
+    );
     const [providers, setProviders] = useState<{
+        devTrap?: { available: boolean; required: string[]; optional: string[] };
         resend?: { available: boolean; required: string[]; optional: string[] };
         ses?: { available: boolean; required: string[]; optional: string[] };
         nodemailer?: {
@@ -358,7 +361,7 @@ export function EmailDemoPage() {
                         <Select
                             value={selectedProvider}
                             onValueChange={(value) =>
-                                setSelectedProvider(value as 'auto' | 'resend' | 'ses' | 'nodemailer')
+                                setSelectedProvider(value as 'auto' | 'dev-trap' | 'resend' | 'ses' | 'nodemailer')
                             }
                         >
                             <SelectTrigger>
@@ -366,6 +369,7 @@ export function EmailDemoPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="auto">Auto (use first available)</SelectItem>
+                                <SelectItem value="dev-trap">Dev Trap</SelectItem>
                                 <SelectItem value="resend">Resend</SelectItem>
                                 <SelectItem value="ses">AWS SES</SelectItem>
                                 <SelectItem value="nodemailer">Nodemailer (SMTP)</SelectItem>
@@ -437,6 +441,26 @@ export function EmailDemoPage() {
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
                             <div>
+                                <strong>Dev Trap</strong> (KV-backed local inbox)
+                            </div>
+                            {providers.devTrap?.available ? (
+                                <Badge variant="outline">✓ Configured</Badge>
+                            ) : (
+                                <Badge variant="destructive">Not configured</Badge>
+                            )}
+                        </div>
+                        <p className="text-muted-foreground text-xs">
+                            Required: <code>DEV_EMAIL_TRAP_ENABLED</code>, <code>OBCF_KV</code>
+                            <br />
+                            Optional: <code>DEV_EMAIL_TRAP_MAX_EMAILS</code>
+                            <br />
+                            Captured emails are viewable in the admin inbox at <code>/admin/dev-mail</code>.
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <div>
                                 <strong>Resend</strong> (HTTP API - Edge Compatible)
                             </div>
                             {providers.resend?.available ? (
@@ -495,8 +519,8 @@ export function EmailDemoPage() {
                     <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs dark:border-blue-800 dark:bg-blue-950">
                         <p className="font-semibold text-blue-900 dark:text-blue-100">Edge Compatibility</p>
                         <p className="mt-1 text-blue-700 dark:text-blue-300">
-                            Resend and AWS SES use HTTP APIs and work perfectly in Cloudflare Workers. Nodemailer uses
-                            SMTP (TCP sockets) and only works in Node.js environments.
+                            The dev trap, Resend, and AWS SES work in Cloudflare Workers. Nodemailer uses SMTP (TCP
+                            sockets) and only works in Node.js environments.
                         </p>
                     </div>
                 </CardContent>

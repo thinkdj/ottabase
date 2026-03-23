@@ -1,33 +1,13 @@
 import { CreateAuthConfigOptions } from '@ottabase/auth/backend';
 import { invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
-import { createResendMailer, createSESMailer } from '@ottabase/email';
 import { SecurityContext } from '@ottabase/ottaorm';
 import { Account, Organization, OrganizationMember, VerificationToken } from '@ottabase/ottaorm/models';
 import type { CloudflareEnv } from '../cloudflare-env';
+import { resolveAppMailer } from './email-provider';
 import { createSecureToken } from './utils';
 
 export async function resolveMailer(env: CloudflareEnv) {
-    const from = env.EMAIL_FROM || 'noreply@example.com';
-    let mailer: any = null;
-    let provider: 'resend' | 'ses' | 'nodemailer' | null = null;
-
-    if (env.EMAIL_RESEND_API_KEY) {
-        mailer = createResendMailer({ apiKey: env.EMAIL_RESEND_API_KEY });
-        provider = 'resend';
-    } else if (env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY) {
-        mailer = createSESMailer({
-            accessKeyId: env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
-            region: env.AWS_REGION || 'us-east-1',
-        });
-        provider = 'ses';
-    } else if (env.EMAIL_SERVER) {
-        const { createNodemailerMailer } = await import('@ottabase/email/providers/nodemailer');
-        mailer = createNodemailerMailer({ server: env.EMAIL_SERVER });
-        provider = 'nodemailer';
-    }
-
-    return { mailer, from, provider };
+    return resolveAppMailer(env, 'auto');
 }
 
 export async function createVerificationToken(

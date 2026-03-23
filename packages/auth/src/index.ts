@@ -45,9 +45,11 @@ export {
     // Credentials Provider
     createCredentialsProvider,
     createCustomCredentialsProvider,
+    createDevEmailTrapProvider,
     createDiscordProvider,
     createGitHubProvider,
     createGoogleProvider,
+    isDevEmailTrapConfigured,
     createNodemailerProvider,
     // Email Providers (Magic Link)
     createResendProvider,

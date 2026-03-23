@@ -11,6 +11,7 @@ import {
     FileText,
     Layers,
     Layout,
+    Mail,
     Palette,
     Shield,
     ShieldCheck,
@@ -138,6 +139,14 @@ export function AdminIndexPage() {
             description: 'Send notifications to users and broadcast system alerts to administrators.',
             href: '/admin/notifications',
             icon: Bell,
+            disabled: false,
+        },
+        {
+            title: 'Dev Mail Trap',
+            description:
+                'Inspect locally captured emails for magic links, verification, password resets, and queue sends.',
+            href: '/admin/dev-mail',
+            icon: Mail,
             disabled: false,
         },
         {

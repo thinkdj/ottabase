@@ -40,6 +40,11 @@
             "import": "./dist/providers/cloudflare.mjs",
             "require": "./dist/providers/cloudflare.js"
         },
+        "./providers/dev-trap": {
+            "types": "./dist/providers/dev-trap.d.ts",
+            "import": "./dist/providers/dev-trap.mjs",
+            "require": "./dist/providers/dev-trap.js"
+        },
         "./providers/nodemailer": {
             "types": "./dist/providers/nodemailer.d.ts",
             "import": "./dist/providers/nodemailer.mjs",
