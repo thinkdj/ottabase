@@ -71,19 +71,32 @@ function formatDate(timestamp: number): string {
 
 /**
  * Convert HTML to readable plain text:
+ * - Guard against empty, malformed, or oversized input
+ * - Remove non-content / unsafe blocks completely
  * - Block-level elements (p, div, br, li, h1-h6, tr) become newlines
  * - Strip all remaining tags
  * - Decode common HTML entities
  * - Collapse excessive blank lines
  */
 function stripHtml(html: string): string {
+    if (typeof html !== 'string' || html.trim() === '') {
+        return '';
+    }
+
+    const MAX_HTML_TO_TEXT_LENGTH = 200_000;
+    const normalizedHtml = html
+        .slice(0, MAX_HTML_TO_TEXT_LENGTH)
+        .replace(/\r\n?/g, '\n')
+        .replace(/\u0000/g, '')
+        .replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+
     return (
-        html
-            // Remove script and style blocks including their entire content
-            .replace(/<script(\s[^>]*)?>[\s\S]*?<\/script>/gi, '')
-            .replace(/<style(\s[^>]*)?>[\s\S]*?<\/style>/gi, '')
-            .replace(/<(br\s*\/?|p|div|li|h[1-6]|tr|blockquote)(\s[^>]*)?>\s*/gi, '\n')
-            .replace(/<\/?(p|div|li|h[1-6]|tr|blockquote)>/gi, '\n')
+        normalizedHtml
+            // Remove script-like and non-content blocks including their entire content.
+            .replace(/<(script|style|noscript|iframe|object|embed|svg|canvas|template)(\s[^>]*)?>[\s\S]*?<\/\1>/gi, '')
+            .replace(/<!--([\s\S]*?)-->/g, '')
+            .replace(/<(br\s*\/?|p|div|li|h[1-6]|tr|blockquote|section|article|header|footer)(\s[^>]*)?>\s*/gi, '\n')
+            .replace(/<\/?(p|div|li|h[1-6]|tr|blockquote|section|article|header|footer)>/gi, '\n')
             .replace(/<[^>]+>/g, '')
             .replace(/&amp;/g, '&')
             .replace(/&lt;/g, '<')
@@ -91,6 +104,8 @@ function stripHtml(html: string): string {
             .replace(/&quot;/g, '"')
             .replace(/&#39;/g, "'")
             .replace(/&nbsp;/g, ' ')
+            .replace(/[ \t]+\n/g, '\n')
+            .replace(/\n[ \t]+/g, '\n')
             .replace(/\n{3,}/g, '\n\n')
             .trim()
     );
@@ -165,8 +180,7 @@ export function AdminDevMailPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-                        <RefreshCw className="h-4 w-4" />
-                        Refresh
+                        <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
                     </Button>
                     {/* Clear all with confirmation */}
                     <AlertDialog>
@@ -176,8 +190,7 @@ export function AdminDevMailPage() {
                                 size="sm"
                                 disabled={clearMutation.isPending || messages.length === 0}
                             >
-                                <Trash2 className="h-4 w-4" />
-                                Clear inbox
+                                <Trash2 className="h-4 w-4 mr-1.5" /> Clear inbox
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
