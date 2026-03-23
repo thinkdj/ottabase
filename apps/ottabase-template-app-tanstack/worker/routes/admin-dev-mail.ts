@@ -47,6 +47,25 @@ export async function handleAdminDevMailClear(context: ApiRouteContext): Promise
     return jsonResponse({ success: true, deleted });
 }
 
+export async function handleAdminDevMailGet(context: ApiRouteContext, id: string): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) {
+        return auth;
+    }
+
+    const store = getDevEmailTrapStore(context.env);
+    if (!store) {
+        return errorResponse('Dev email trap is not enabled', 400, { code: 'CONFIG_ERROR' });
+    }
+
+    const message = await store.getMessage(id);
+    if (!message) {
+        return errorResponse('Message not found', 404, { code: 'NOT_FOUND' });
+    }
+
+    return jsonResponse(message);
+}
+
 export async function handleAdminDevMailDelete(context: ApiRouteContext, id: string): Promise<Response> {
     const auth = await requireAdminAccess(context, { scope: 'system' });
     if (auth instanceof Response) {
