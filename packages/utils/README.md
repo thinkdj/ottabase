@@ -120,6 +120,8 @@ import {
 - **`ucFirst(str: string): string`** - Uppercase the first letter
 - **`replaceStringTokens(str: string, replacements: object, identifier?: string): string`** - Replace tokens in strings
 - **`generateUUID(length: number, alphanumeric?: boolean): string`** - Generate unique alphanumeric ID
+- **`stripHtml(html: string): string`** - Convert HTML to readable plain text, removing scripts/styles and decoding
+  entities
 
 ### URL Utilities (`@ottabase/utils/url`)
 
