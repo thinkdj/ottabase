@@ -78,7 +78,6 @@ export function UserProfilePage() {
     const [changePasswordOpen, setChangePasswordOpen] = useState(false);
     const [totpDialogOpen, setTotpDialogOpen] = useState(false);
     const [totpEnabled, setTotpEnabled] = useState(false);
-    const [hasPassword, setHasPassword] = useState(false);
 
     const normalize = useCallback((value: string) => value.trim(), []);
 
@@ -150,9 +149,6 @@ export function UserProfilePage() {
                 if (!cancelled && data) {
                     setLinkedAccounts(data?.linkedAccounts || []);
                     setTotpEnabled(!!data.totpEnabled);
-                    // Infer if user has password from linked accounts
-                    const accounts = data?.linkedAccounts || [];
-                    setHasPassword(!accounts.length || accounts.some((a) => a.provider === 'credentials'));
                     const tz = data.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
                     setFormData((prev) => ({
                         ...prev,
@@ -674,15 +670,9 @@ export function UserProfilePage() {
                     <div className="flex items-center justify-between">
                         <div>
                             <h4 className="font-medium">Password</h4>
-                            <p className="text-sm text-muted-foreground">
-                                Change your account password
-                            </p>
+                            <p className="text-sm text-muted-foreground">Change your account password</p>
                         </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setChangePasswordOpen(true)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => setChangePasswordOpen(true)}>
                             Change password
                         </Button>
                     </div>
@@ -701,7 +691,10 @@ export function UserProfilePage() {
                                 </p>
                             </div>
                             {totpEnabled && (
-                                <Badge variant="outline" className="border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 shrink-0">
+                                <Badge
+                                    variant="outline"
+                                    className="border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 shrink-0"
+                                >
                                     <ShieldCheck className="h-3 w-3 mr-1" />
                                     Enabled
                                 </Badge>

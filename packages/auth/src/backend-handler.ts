@@ -130,8 +130,15 @@ export interface CredentialsAuthorizeOptions {
 }
 
 /**
- * Default credentials authorization (demo/placeholder)
- * In production, override with your own validation logic
+ * Default credentials authorization with TOTP support.
+ *
+ * Validates email + password, and optionally verifies a TOTP code
+ * when two-factor authentication is enabled for the user.
+ *
+ * @param credentials - Email, password, and optional TOTP code
+ * @param env - Environment bindings (requires OBCF_D1)
+ * @param options - Additional options (minPasswordLength, requireVerifiedEmail)
+ * @returns User object if valid, null if rejected
  */
 async function defaultCredentialsAuthorize(
     credentials: { email: string; password: string; totp?: string },
@@ -158,6 +165,8 @@ async function defaultCredentialsAuthorize(
 
     let result: any | null = null;
     try {
+        // Note: totp_secret is fetched for server-side verification only.
+        // It is never returned to clients (hidden in User model).
         result = await env.OBCF_D1.prepare(
             `SELECT id, name, email, image, email_verified, password_hash, totp_enabled, totp_secret
                  FROM users

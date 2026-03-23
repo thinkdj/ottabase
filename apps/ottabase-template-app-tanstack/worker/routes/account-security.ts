@@ -77,7 +77,8 @@ export async function handlePasswordChange(ctx: SecurityRouteContext): Promise<R
     }
 
     // Load user with password hash (hidden field, use raw query)
-    const row = await env.OBCF_D1!.prepare(`SELECT password_hash FROM users WHERE id = ? LIMIT 1`)
+    const row = await env
+        .OBCF_D1!.prepare(`SELECT password_hash FROM users WHERE id = ? LIMIT 1`)
         .bind(auth.userId)
         .first<{ password_hash: string | null }>();
 
@@ -121,7 +122,9 @@ export async function handleTotpSetup(ctx: SecurityRouteContext): Promise<Respon
     if (!user) return withAuthCors(errorResponse('User not found', 404, { code: 'NOT_FOUND' }));
 
     if (user.get('totpEnabled')) {
-        return withAuthCors(errorResponse('Two-factor authentication is already enabled', 400, { code: 'TOTP_ALREADY_ENABLED' }));
+        return withAuthCors(
+            errorResponse('Two-factor authentication is already enabled', 400, { code: 'TOTP_ALREADY_ENABLED' }),
+        );
     }
 
     const secret = generateTotpSecret();
@@ -152,20 +155,26 @@ export async function handleTotpEnable(ctx: SecurityRouteContext): Promise<Respo
     const code = typeof body.code === 'string' ? body.code.trim() : '';
 
     if (!secret || !code) {
-        return withAuthCors(errorResponse('Secret and verification code are required', 400, { code: 'VALIDATION_ERROR' }));
+        return withAuthCors(
+            errorResponse('Secret and verification code are required', 400, { code: 'VALIDATION_ERROR' }),
+        );
     }
 
     // Verify the code against the provided secret
     const valid = await verifyTotp(secret, code);
     if (!valid) {
-        return withAuthCors(errorResponse('Invalid verification code. Please try again.', 400, { code: 'INVALID_TOTP' }));
+        return withAuthCors(
+            errorResponse('Invalid verification code. Please try again.', 400, { code: 'INVALID_TOTP' }),
+        );
     }
 
     const user = await User.find(auth.userId);
     if (!user) return withAuthCors(errorResponse('User not found', 404, { code: 'NOT_FOUND' }));
 
     if (user.get('totpEnabled')) {
-        return withAuthCors(errorResponse('Two-factor authentication is already enabled', 400, { code: 'TOTP_ALREADY_ENABLED' }));
+        return withAuthCors(
+            errorResponse('Two-factor authentication is already enabled', 400, { code: 'TOTP_ALREADY_ENABLED' }),
+        );
     }
 
     user.set('totpSecret', secret);
@@ -201,11 +210,14 @@ export async function handleTotpDisable(ctx: SecurityRouteContext): Promise<Resp
     if (!user) return withAuthCors(errorResponse('User not found', 404, { code: 'NOT_FOUND' }));
 
     if (!user.get('totpEnabled')) {
-        return withAuthCors(errorResponse('Two-factor authentication is not enabled', 400, { code: 'TOTP_NOT_ENABLED' }));
+        return withAuthCors(
+            errorResponse('Two-factor authentication is not enabled', 400, { code: 'TOTP_NOT_ENABLED' }),
+        );
     }
 
     // Verify the code against the stored secret (need raw query since totpSecret is hidden)
-    const row = await env.OBCF_D1!.prepare(`SELECT totp_secret FROM users WHERE id = ? LIMIT 1`)
+    const row = await env
+        .OBCF_D1!.prepare(`SELECT totp_secret FROM users WHERE id = ? LIMIT 1`)
         .bind(auth.userId)
         .first<{ totp_secret: string | null }>();
 
@@ -334,14 +346,15 @@ export async function handlePasskeysRegisterOptions(ctx: SecurityRouteContext): 
             displayName: userName,
         },
         pubKeyCredParams: [
-            { alg: -7, type: 'public-key' },   // ES256
-            { alg: -257, type: 'public-key' },  // RS256
+            { alg: -7, type: 'public-key' }, // ES256
+            { alg: -257, type: 'public-key' }, // RS256
         ],
         timeout: 60000,
         attestation: 'none',
         excludeCredentials,
         authenticatorSelection: {
-            authenticatorAttachment: 'platform' as const,
+            // No authenticatorAttachment specified — allows both platform (Windows Hello,
+            // Touch ID) and cross-platform (USB/NFC/BLE security keys)
             residentKey: 'preferred' as const,
             requireResidentKey: false,
             userVerification: 'preferred' as const,
@@ -724,15 +737,18 @@ function decodeCborSimple(data: Uint8Array): any {
                 return decodeLength(additional);
             case 1: // negative integer
                 return -1 - decodeLength(additional);
-            case 2: { // byte string
+            case 2: {
+                // byte string
                 const len = decodeLength(additional);
                 return readBytes(len);
             }
-            case 3: { // text string
+            case 3: {
+                // text string
                 const len = decodeLength(additional);
                 return new TextDecoder().decode(readBytes(len));
             }
-            case 4: { // array
+            case 4: {
+                // array
                 const len = decodeLength(additional);
                 const arr: any[] = [];
                 for (let i = 0; i < len; i++) {
@@ -740,7 +756,8 @@ function decodeCborSimple(data: Uint8Array): any {
                 }
                 return arr;
             }
-            case 5: { // map
+            case 5: {
+                // map
                 const len = decodeLength(additional);
                 const obj: Record<string | number, any> = {};
                 for (let i = 0; i < len; i++) {
@@ -750,7 +767,8 @@ function decodeCborSimple(data: Uint8Array): any {
                 }
                 return obj;
             }
-            case 7: { // simple/float
+            case 7: {
+                // simple/float
                 if (additional === 20) return false;
                 if (additional === 21) return true;
                 if (additional === 22) return null;
@@ -771,8 +789,8 @@ function decodeCborSimple(data: Uint8Array): any {
 // ── COSE Key Import ──────────────────────────────────────────
 
 async function importCosePublicKey(coseKey: Record<number, any>): Promise<CryptoKey | null> {
-    const kty = coseKey[1];  // Key type
-    const alg = coseKey[3];  // Algorithm
+    const kty = coseKey[1]; // Key type
+    const alg = coseKey[3]; // Algorithm
 
     if (kty === 2) {
         // EC2 key (ECDSA)

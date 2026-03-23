@@ -186,14 +186,14 @@ describe('TOTP Utility', () => {
 
         it('rejects an incorrect code', async () => {
             const secret = generateTotpSecret();
-            const result = await verifyTotp(secret, '000000');
-            // May occasionally pass if 000000 is the actual code, but extremely unlikely
-            // We test with a known-bad scenario instead
             const code = await generateTotp(secret);
+            // Create a code that differs by 1 (guaranteed different from the actual code)
             const badCode = String((parseInt(code) + 1) % 1000000).padStart(6, '0');
-            const result2 = await verifyTotp(secret, badCode);
-            // The bad code should fail (unless it matches an adjacent window, very unlikely)
-            expect(result || result2).toBeDefined();
+            // With window=0, only the exact current code is valid
+            const result = await verifyTotp(secret, badCode, 0);
+            // It's theoretically possible (but extremely unlikely) that the adjacent
+            // time step generates badCode, so we test with window=0
+            expect(result).toBe(false);
         });
 
         it('rejects empty code', async () => {
