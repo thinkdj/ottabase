@@ -94,6 +94,7 @@ import {
     handleShortlinksCreate,
     handleShortlinksList,
 } from './shortlinks';
+import { handleUserAccountDelete, handleUserDataExport } from './user-data';
 import { handleCustomRoutes } from '../../ottabase/config.routes';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 
@@ -178,6 +179,10 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
 
     if (route === '/api/users/me') {
         return handleUserProfile(context);
+    }
+
+    if (route === '/api/users/me/export') {
+        return handleUserDataExport(context);
     }
 
     if (route === '/api/email/providers') {
@@ -394,6 +399,10 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
 
     if (route === '/api/auth/register') {
         return handleAuthRegister(context);
+    }
+
+    if (route === '/api/users/me/delete') {
+        return handleUserAccountDelete(context);
     }
 
     if (route === '/api/cloudflare/d1/init') {
