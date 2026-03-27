@@ -356,7 +356,17 @@ export default class StepsTool implements BlockTool {
 	}
 
 	validate(savedData: StepsData): boolean {
-		return Array.isArray(savedData.items) && savedData.items.some((item) => item.title.trim() || item.content.trim());
+		if (!Array.isArray(savedData?.items)) {
+			return false;
+		}
+
+		return savedData.items.some((item) => {
+			if (!item || typeof item.title !== 'string' || typeof item.content !== 'string') {
+				return false;
+			}
+
+			return item.title.trim() !== '' || item.content.trim() !== '';
+		});
 	}
 
 	destroy(): void {

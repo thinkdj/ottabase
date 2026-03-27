@@ -81,4 +81,12 @@ describe('StepsTool', () => {
 		expect(tool.validate({ items: [] })).toBe(false);
 		expect(tool.validate({ items: [{ title: 'Ready', content: '' }] })).toBe(true);
 	});
+
+	it('rejects malformed payloads during validation without throwing', () => {
+		const { tool } = createTool();
+
+		expect(tool.validate({ items: [null as any] })).toBe(false);
+		expect(tool.validate({ items: [{ title: null as any, content: '' }] })).toBe(false);
+		expect(tool.validate({ items: [{ title: '', content: 123 as any }] })).toBe(false);
+	});
 });
