@@ -187,6 +187,8 @@ interface StepsData {
 }
 ```
 
+Validation is defensive for imported content: malformed `items` entries are rejected instead of throwing during save-time checks.
+
 ## Styling
 
 All custom plugins use common classes from `ottaeditor-common.css` (imported by `editorjs-brandkit-theme.css`):

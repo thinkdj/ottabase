@@ -107,6 +107,15 @@ export function isDevEmailTrapConfigured(env: ProviderEnv): boolean {
     return explicit === true && !!env.OBCF_KV;
 }
 
+export function parseDevEmailTrapMaxEmails(value: string | undefined, fallback = 50): number {
+    const maxEmails = Math.floor(Number(value));
+    if (!Number.isFinite(maxEmails) || maxEmails < 1) {
+        return fallback;
+    }
+
+    return maxEmails;
+}
+
 /**
  * Options for configuring OAuth providers
  */

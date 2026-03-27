@@ -4,7 +4,7 @@ import {
     createKvEmailTrapStore,
     type DevEmailTrapStore,
 } from '@ottabase/email/providers/dev-trap';
-import { isDevEmailTrapConfigured } from '@ottabase/auth/providers';
+import { isDevEmailTrapConfigured, parseDevEmailTrapMaxEmails } from '@ottabase/auth/providers';
 import type { CloudflareEnv } from '../../cloudflare-env';
 
 export type AppEmailProvider = 'auto' | 'dev-trap' | 'resend' | 'ses' | 'nodemailer';
@@ -17,15 +17,6 @@ export interface ResolvedMailerResult {
     error?: string;
 }
 
-function toPositiveInteger(value: string | undefined, fallback: number): number {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-        return fallback;
-    }
-
-    return Math.floor(parsed);
-}
-
 export function isDevTrapAvailable(env: CloudflareEnv): boolean {
     return isDevEmailTrapConfigured(env as any) && !!env.OBCF_KV;
 }
@@ -36,7 +27,7 @@ export function getDevEmailTrapStore(env: CloudflareEnv): DevEmailTrapStore | nu
     }
 
     return createKvEmailTrapStore(env.OBCF_KV as any, {
-        maxEntries: toPositiveInteger(env.DEV_EMAIL_TRAP_MAX_EMAILS, 50),
+        maxEntries: parseDevEmailTrapMaxEmails(env.DEV_EMAIL_TRAP_MAX_EMAILS, 50),
     });
 }
 
