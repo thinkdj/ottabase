@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createAuthConfig } from '../backend-handler';
+import * as emailTrapModule from '@ottabase/email/providers/dev-trap';
 
 function createMockD1() {
     const prepare = vi.fn((sql: string) => {
@@ -164,5 +165,21 @@ describe('Auth Backend Handler', () => {
 
         expect(result).toBe(true);
         expect(d1.prepare).toHaveBeenCalledWith(expect.stringContaining('UPDATE users SET email_verified'));
+    });
+
+    it('uses the fallback dev trap inbox size when DEV_EMAIL_TRAP_MAX_EMAILS is not positive', () => {
+        const createStoreSpy = vi.spyOn(emailTrapModule, 'createKvEmailTrapStore');
+        const env = {
+            OBCF_D1: createMockD1() as any,
+            OBCF_KV: {} as any,
+            AUTH_SECRET: 'test-secret',
+            ENVIRONMENT: 'test',
+            DEV_EMAIL_TRAP_ENABLED: 'true',
+            DEV_EMAIL_TRAP_MAX_EMAILS: '-5',
+        };
+
+        createAuthConfig(env as any);
+
+        expect(createStoreSpy).toHaveBeenCalledWith(env.OBCF_KV, expect.objectContaining({ maxEntries: 50 }));
     });
 });

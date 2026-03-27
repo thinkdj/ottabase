@@ -495,7 +495,8 @@ const emailProvider = createDevEmailTrapProvider(env, {
 ```
 
 This is intended for local development. It captures rendered emails in KV so your app can expose a local inbox instead
-of sending through SMTP or an external API.
+of sending through SMTP or an external API. When you set `DEV_EMAIL_TRAP_MAX_EMAILS`, non-positive or invalid values now
+fall back to the default inbox size instead of shrinking the trap to a single message.
 
 ## Session Utilities
 

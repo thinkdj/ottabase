@@ -27,6 +27,7 @@ import {
     createDevEmailTrapProvider,
     createNodemailerProvider,
     createResendProvider,
+    parseDevEmailTrapMaxEmails,
     isDevEmailTrapConfigured,
 } from './providers';
 
@@ -227,7 +228,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
         providers.push(
             createDevEmailTrapProvider(env, {
                 store: createKvEmailTrapStore(env.OBCF_KV as any, {
-                    maxEntries: Math.max(1, Number(env.DEV_EMAIL_TRAP_MAX_EMAILS) || 50),
+                    maxEntries: parseDevEmailTrapMaxEmails(env.DEV_EMAIL_TRAP_MAX_EMAILS, 50),
                 }),
             }),
         );
