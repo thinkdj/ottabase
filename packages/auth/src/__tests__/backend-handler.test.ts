@@ -182,4 +182,20 @@ describe('Auth Backend Handler', () => {
 
         expect(createStoreSpy).toHaveBeenCalledWith(env.OBCF_KV, expect.objectContaining({ maxEntries: 50 }));
     });
+
+    it('uses the fallback dev trap inbox size when DEV_EMAIL_TRAP_MAX_EMAILS is a fraction below 1', () => {
+        const createStoreSpy = vi.spyOn(emailTrapModule, 'createKvEmailTrapStore');
+        const env = {
+            OBCF_D1: createMockD1() as any,
+            OBCF_KV: {} as any,
+            AUTH_SECRET: 'test-secret',
+            ENVIRONMENT: 'test',
+            DEV_EMAIL_TRAP_ENABLED: 'true',
+            DEV_EMAIL_TRAP_MAX_EMAILS: '0.5',
+        };
+
+        createAuthConfig(env as any);
+
+        expect(createStoreSpy).toHaveBeenCalledWith(env.OBCF_KV, expect.objectContaining({ maxEntries: 50 }));
+    });
 });

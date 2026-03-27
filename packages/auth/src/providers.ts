@@ -108,12 +108,12 @@ export function isDevEmailTrapConfigured(env: ProviderEnv): boolean {
 }
 
 export function parseDevEmailTrapMaxEmails(value: string | undefined, fallback = 50): number {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
+    const maxEmails = Math.floor(Number(value));
+    if (!Number.isFinite(maxEmails) || maxEmails < 1) {
         return fallback;
     }
 
-    return Math.floor(parsed);
+    return maxEmails;
 }
 
 /**
