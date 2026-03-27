@@ -5,6 +5,7 @@ cloudflare-env.d.ts
 /wrangler.toml.backup
 /wrangler.jsonc.backup
 wrangler.production.jsonc
+wrangler.preview.jsonc
 .open-next
 .dev.vars
 .wrangler/
@@ -22,7 +23,7 @@ tmp/
 temp/
 .temp/
 
-# ============================================================================= 
+# =============================================================================
 # Dependencies
 node_modules/
 .pnp
@@ -171,3 +172,6 @@ typings/
 # OS
 .DS_Store
 Thumbs.db
+
+# devdb
+.devdbrc

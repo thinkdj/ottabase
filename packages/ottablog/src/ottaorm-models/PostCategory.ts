@@ -5,13 +5,7 @@
  */
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
 import { generateSlug } from '../types';
-import {
-    categoriesTable,
-    type Category,
-    type NewCategory,
-    type NewPostCategoryType,
-    type PostCategoryType,
-} from './PostCategory.schema';
+import { categoriesTable } from './PostCategory.schema';
 
 export {
     categoriesTable,
@@ -27,6 +21,11 @@ export class PostCategory extends BaseModel {
     static primaryKey = 'id';
     static packageName = '@ottabase/ottablog';
     static packageType: PackageType = 'package';
+
+    static writable = {
+        create: ['name', 'slug', 'description', 'parentId', 'sortOrder', 'type', 'appId'],
+        update: ['name', 'slug', 'description', 'parentId', 'sortOrder', 'type'],
+    };
 
     static casts = {
         sortOrder: 'number' as const,

@@ -34,6 +34,8 @@ export const minimalTheme: Theme = {
             series: 'bg-transparent border-b border-dashed pb-6 mb-10',
             footer: 'mt-16 pt-10 border-t border-dashed',
             card: 'blog-card-minimal',
+            archiveContainer: 'max-w-3xl mx-auto px-6 py-12 space-y-10',
+            archiveTitle: 'text-3xl font-light tracking-tight',
         },
     },
     renderers: {
@@ -133,6 +135,51 @@ export const minimalTheme: Theme = {
                         />
                     </div>
                 </aside>
+            );
+        },
+        renderCard: (post, props) => {
+            const formatDate = props.formatDate || defaultFormatDate;
+            return (
+                <article
+                    className={`group border-b border-dashed pb-6 mb-2 last:border-b-0 ${minimalTheme.config?.classes?.card || ''}`}
+                >
+                    <div className="flex gap-6">
+                        {post.seriesOrder != null && (
+                            <div className="text-2xl font-light text-muted-foreground/50 shrink-0 w-8 text-right tabular-nums">
+                                {String(post.seriesOrder).padStart(2, '0')}
+                            </div>
+                        )}
+                        {props.showHeroImage && post.heroImage?.url && (
+                            <img
+                                src={post.heroImage.url}
+                                alt={post.heroImage.alt || post.title}
+                                className="w-20 h-20 object-cover grayscale-[0.3] shrink-0 hidden sm:block"
+                            />
+                        )}
+                        <div className="min-w-0 flex-1">
+                            <h2 className="text-lg font-light tracking-tight group-hover:text-primary transition-colors line-clamp-1">
+                                {post.title}
+                                {post.isProtected && (
+                                    <span className="ml-2 text-muted-foreground text-xs" title="Protected">
+                                        {'\u{1F512}'}
+                                    </span>
+                                )}
+                            </h2>
+                            {props.showExcerpt && post.excerpt && (
+                                <p className="text-sm text-muted-foreground mt-1 line-clamp-2 font-light">
+                                    {post.excerpt}
+                                </p>
+                            )}
+                            {props.showMetadata && (
+                                <div className="flex items-center gap-4 text-xs uppercase tracking-wider text-muted-foreground mt-2">
+                                    {post.authorName && <span>{post.authorName}</span>}
+                                    {post.publishedAt && <time>{formatDate(post.publishedAt)}</time>}
+                                    {post.readingTimeMinutes && <span>{post.readingTimeMinutes} min</span>}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </article>
             );
         },
         renderSeries: (post, props) => {

@@ -13,7 +13,12 @@ export { default as mantineArtisan } from '../themes/mantine-artisan';
 
 // Export theme configuration utilities
 export type { MantineThemeConfig } from './themeConfig';
-export { createMantineTheme, validateMantineThemeConfig } from './themeConfig';
+export {
+    createMantineTheme,
+    validateMantineThemeConfig,
+    MANTINE_DEMO_COLOR_DEFAULT,
+    MANTINE_DEMO_THEME_COLORS,
+} from './themeConfig';
 
 // Re-export commonly used Mantine components
 export {

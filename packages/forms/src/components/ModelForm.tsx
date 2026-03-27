@@ -6,12 +6,12 @@
 // Supports standalone use via action prop (POST/PATCH to endpoint)
 // ============================================================
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { clsx } from 'clsx';
-import { Loader2, Save, X, AlertCircle } from 'lucide-react';
 import { validateField } from '@ottabase/ottaorm';
+import { clsx } from 'clsx';
+import { AlertCircle, Loader2, Save, X } from 'lucide-react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import type { ModelFieldDescriptor, ModelFormProps } from '../types';
 import { FormField } from './FormField';
-import type { ModelFormProps, ModelFieldDescriptor } from '../types';
 
 // Re-export for backwards compatibility
 export type { ModelFormProps } from '../types';
@@ -317,13 +317,13 @@ export function ModelForm<T extends Record<string, unknown>>({
         <form onSubmit={handleSubmit} className={clsx('space-y-6', className)} noValidate>
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+                <h2 className="text-xl font-semibold text-foreground">{title}</h2>
                 {onCancel && (
                     <button
                         type="button"
                         onClick={onCancel}
                         disabled={loading}
-                        className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                        className="p-2 text-muted-foreground hover:text-foreground"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -332,7 +332,7 @@ export function ModelForm<T extends Record<string, unknown>>({
 
             {/* Submit Error Banner */}
             {submitError && (
-                <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+                <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
                     <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <span>{submitError}</span>
                 </div>
@@ -357,7 +357,7 @@ export function ModelForm<T extends Record<string, unknown>>({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
                 {onCancel && (
                     <button
                         type="button"
@@ -365,9 +365,9 @@ export function ModelForm<T extends Record<string, unknown>>({
                         disabled={loading}
                         className={clsx(
                             'px-4 py-2 rounded-lg font-medium transition-colors',
-                            'text-gray-700 dark:text-gray-300',
-                            'bg-gray-100 dark:bg-gray-800',
-                            'hover:bg-gray-200 dark:hover:bg-gray-700',
+                            'text-foreground',
+                            'border border-input bg-background',
+                            'hover:bg-accent hover:text-accent-foreground',
                             'disabled:opacity-50 disabled:cursor-not-allowed',
                         )}
                     >
@@ -379,8 +379,8 @@ export function ModelForm<T extends Record<string, unknown>>({
                     disabled={loading}
                     className={clsx(
                         'px-4 py-2 rounded-lg font-medium transition-colors',
-                        'text-white',
-                        'bg-blue-600 hover:bg-blue-700',
+                        'bg-primary text-primary-foreground',
+                        'hover:bg-primary/90',
                         'disabled:opacity-50 disabled:cursor-not-allowed',
                         'flex items-center gap-2',
                     )}

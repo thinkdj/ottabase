@@ -51,19 +51,15 @@ Create `src/worker.ts`:
 
 ```typescript
 import { RealtimeActor, RealtimeBroadcaster } from '@ottabase/cf-realtime/server';
-import { handler } from '@cloudflare/actors';
 
-// Export Actor
+// Re-export the Durable Object class (required by Cloudflare)
 export { RealtimeActor };
 
-// Export default handler
-export default handler(RealtimeActor);
-
 export interface Env {
-    REALTIME: DurableObjectNamespace;
+    OBCF_REALTIME: DurableObjectNamespace;
+    BROADCAST_SECRET: string;
 }
 
-// Main worker
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
         const url = new URL(request.url);
@@ -75,8 +71,13 @@ export default {
             return stub.fetch(request);
         }
 
-        // Broadcast API
+        // Broadcast API — server-to-server only, requires a shared secret
         if (url.pathname === '/api/broadcast' && request.method === 'POST') {
+            const token = request.headers.get('Authorization');
+            if (!token || token !== `Bearer ${env.BROADCAST_SECRET}`) {
+                return new Response('Unauthorized', { status: 401 });
+            }
+
             const broadcaster = new RealtimeBroadcaster(env.OBCF_REALTIME);
             const body = await request.json();
 
@@ -113,6 +114,12 @@ class_name = "RealtimeActor"
 [[migrations]]
 tag = "v1"
 new_classes = ["RealtimeActor"]
+```
+
+Set the broadcast secret:
+
+```bash
+wrangler secret put BROADCAST_SECRET
 ```
 
 ## Step 5: Login and Deploy
@@ -159,9 +166,13 @@ In your backend API (Node.js, Next.js API routes, etc.):
 
 ```typescript
 // Send a broadcast to all subscribers
+// Use a shared BROADCAST_SECRET (set via `wrangler secret put BROADCAST_SECRET`)
 await fetch('https://my-realtime-worker.your-subdomain.workers.dev/api/broadcast', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.BROADCAST_SECRET}`,
+    },
     body: JSON.stringify({
         channels: ['org-1201'],
         event: 'notification',

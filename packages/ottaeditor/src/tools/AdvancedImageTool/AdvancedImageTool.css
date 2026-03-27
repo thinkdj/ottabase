@@ -1,19 +1,14 @@
-/* Advanced Image Tool Styles */
+/* Advanced Image Tool Styles - custom/overrides only */
 
 .advanced-image-tool {
     position: relative;
     border-radius: 8px;
     padding: 0;
     display: block;
-    margin: 8px 0;
 }
 
 .advanced-image-tool * {
     box-sizing: border-box;
-}
-
-.advanced-image-tool--empty {
-    margin: 8px 0;
 }
 
 .advanced-image-upload-area {
@@ -46,7 +41,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 32px 20px;
+    padding: 32px 24px;
     height: 100%;
     text-align: center;
 }
@@ -164,19 +159,6 @@
 
 .advanced-image-url-input {
     flex: 1;
-    padding: 8px 12px;
-    border: 1px solid hsl(var(--input));
-    border-radius: 6px;
-    font-size: 13px;
-    outline: none;
-    transition: all 0.2s ease;
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
-}
-
-.advanced-image-url-input:focus {
-    border-color: hsl(var(--ring));
-    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
 }
 
 .advanced-image-url-input::placeholder {
@@ -383,39 +365,22 @@
     padding: 16px 16px 8px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .advanced-image-input-wrapper {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .advanced-image-input-wrapper label {
-    flex-basis: 70px;
+    flex-basis: 80px;
     flex-shrink: 0;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
-    color: hsl(var(--muted-foreground));
-    text-align: right;
-}
-
-.advanced-image-input-wrapper .cdx-input {
-    flex-grow: 1;
-    width: auto;
-    padding: 6px 8px;
-    font-size: 14px;
-    border: 1px solid hsl(var(--input));
-    border-radius: 4px;
-    background: hsl(var(--background));
     color: hsl(var(--foreground));
-}
-
-.advanced-image-input-wrapper .cdx-input:focus {
-    outline: none;
-    border-color: hsl(var(--ring));
-    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+    text-align: right;
 }
 
 /* Responsive Design */

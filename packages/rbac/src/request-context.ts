@@ -48,7 +48,7 @@ function resolveOrganizationId(request: Request, session: any, allowNullTenant: 
     const fromSession = cleanValue(session?.user?.organizationId ?? null);
     if (fromSession) return fromSession;
 
-    const headerOrg = cleanValue(request.headers.get('x-organization-id'));
+    const headerOrg = cleanValue(request.headers.get('x-org-id'));
     if (headerOrg) return headerOrg;
 
     const queryOrg = cleanValue(url.searchParams.get('organizationId'));

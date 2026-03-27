@@ -21,6 +21,8 @@ module.exports = {
         '../../packages/ui-shadcn/components/**/*.{js,ts,jsx,tsx}',
         '../../packages/ottaselect/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/spotlight/src/**/*.{js,ts,jsx,tsx}',
+        '../../packages/ottarenderer/src/**/*.{js,ts,jsx,tsx}',
+        '../../packages/ottablog/src/**/*.{js,ts,jsx,tsx}',
     ],
     theme: {
         extend: {

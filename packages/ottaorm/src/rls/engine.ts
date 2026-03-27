@@ -4,8 +4,8 @@
  * Automatically enforces security policies at the database level
  */
 
-import type { SecurityContext, RLSPolicy, ModelRLSConfig, RLSViolation } from './types';
 import { logSecurityViolation } from './logger';
+import type { ModelRLSConfig, RLSPolicy, RLSViolation, SecurityContext } from './types';
 
 /**
  * RLS Engine - Core security enforcement
@@ -160,6 +160,37 @@ export class RLSEngine {
     }
 
     /**
+     * Check if context has permission. Supports wildcards:
+     * - *:* grants all (bare * does NOT grant—use *:* for super-admin)
+     * - brand:* matches brand:edit, brand:read
+     * - *:edit matches posts:edit, brand:edit
+     *
+     * Only 2-segment (resource:action) permissions are supported.
+     * 3+ segment permissions (e.g. brand:edit:admin) are rejected—no wildcard matching.
+     */
+    private hasPermission(context: SecurityContext, required: string): boolean {
+        const perms = context.permissions ?? [];
+        if (perms.includes(required)) return true;
+
+        const reqParts = required.split(':');
+        if (reqParts.length !== 2) {
+            return false; // 3+ segments: no wildcard matching, only exact match (checked above)
+        }
+        const [reqResource, reqAction] = reqParts;
+
+        for (const perm of perms) {
+            const permParts = perm.split(':');
+            if (permParts.length !== 2) continue; // Skip malformed/multi-segment; no wildcard from these
+            const [permResource, permAction] = permParts;
+            if (permResource === '*' && permAction === '*') return true;
+            const resourceMatches = permResource === '*' || permResource === reqResource;
+            const actionMatches = permAction === '*' || permAction === reqAction;
+            if (resourceMatches && actionMatches) return true;
+        }
+        return false;
+    }
+
+    /**
      * Check role/permission requirements
      */
     private checkAccess(model: string, context: SecurityContext, policy: RLSPolicy): void {
@@ -178,9 +209,9 @@ export class RLSEngine {
             }
         }
 
-        // Check required permissions
+        // Check required permissions (with wildcard: *:* grants all, brand:* matches brand:edit)
         if (policy.requiredPermissions && policy.requiredPermissions.length > 0) {
-            const hasPermission = policy.requiredPermissions.every((perm) => context.permissions?.includes(perm));
+            const hasPermission = policy.requiredPermissions.every((perm) => this.hasPermission(context, perm));
             if (!hasPermission) {
                 throw new RLSError(
                     `Access denied: ${model} requires permissions: ${policy.requiredPermissions.join(', ')}`,
@@ -195,7 +226,9 @@ export class RLSEngine {
     }
 
     /**
-     * Validate data integrity (prevent cross-tenant writes)
+     * Validate data integrity (prevent cross-tenant writes).
+     * Note: For UPDATE/DELETE, secure-crud pre-verifies access via applyReadFilter before
+     * calling this—so records you cannot read cannot be updated or deleted.
      */
     private validateDataIntegrity(
         model: string,

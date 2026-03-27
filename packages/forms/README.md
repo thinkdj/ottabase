@@ -6,7 +6,7 @@ ModelCrud.
 ## Features
 
 - **Auto-generated Forms**: Create/edit forms instantly from OttaORM model field metadata.
-- **Auto-generated Tables**: Display model data in sortable, paginated tables.
+- **Auto-generated Tables**: Display model data in sortable, paginated tables (powered by `@ottabase/ui-datatable`).
 - **CRUD Views**: Full `ModelCrud` component for List, Create, Update, and Detail views.
 - **Zod Validation**: Real-time client-side validation (on blur + on submit) built from field metadata.
 - **OttaORM Validation**: Server-side validation via `Model.validate()` before create/update.

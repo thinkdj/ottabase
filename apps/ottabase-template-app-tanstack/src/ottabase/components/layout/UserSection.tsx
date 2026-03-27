@@ -1,14 +1,29 @@
 import { useSession } from '@/lib/auth';
-import { Avatar, AvatarFallback, AvatarImage, Button } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Avatar,
+    AvatarFallback,
+    AvatarImage,
+    Button,
+} from '@ottabase/ui-shadcn';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { LogIn, LogOut } from 'lucide-react';
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useState } from 'react';
 
 export const UserSection = memo(function UserSection({ compact }: { compact?: boolean }) {
     const { isAuthenticated, user, logout } = useSession();
     const navigate = useNavigate();
+    const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
-    const handleLogout = useCallback(() => {
+    const handleConfirmLogout = useCallback(() => {
+        setLogoutConfirmOpen(false);
         logout();
         navigate({ to: '/' });
     }, [logout, navigate]);
@@ -42,19 +57,36 @@ export const UserSection = memo(function UserSection({ compact }: { compact?: bo
     }
 
     return (
-        <div className={`flex items-center gap-2 ${compact ? '' : 'ml-2 pl-2 border-l'}`}>
-            <Button asChild variant="ghost" size="sm">
-                <Link to="/profile" className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                        {user?.image && <AvatarImage src={user.image} />}
-                        <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
-                    </Avatar>
-                    {!compact && (user?.name || user?.email)}
-                </Link>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleLogout} title="Logout">
-                <LogOut className="h-4 w-4" />
-            </Button>
-        </div>
+        <>
+            <div className={`flex items-center gap-2 ${compact ? '' : 'ml-2 pl-2 border-l'}`}>
+                <Button asChild variant="ghost" size="sm">
+                    <Link to="/profile" className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                            {user?.image && <AvatarImage src={user.image} />}
+                            <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
+                        </Avatar>
+                        {!compact && (user?.name || user?.email)}
+                    </Link>
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setLogoutConfirmOpen(true)} title="Logout">
+                    <LogOut className="h-4 w-4" />
+                </Button>
+            </div>
+
+            <AlertDialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Log out?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            You will be signed out of your current session and returned to the home page.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmLogout}>Log out</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 });

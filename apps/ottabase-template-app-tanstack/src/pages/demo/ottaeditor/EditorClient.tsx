@@ -42,6 +42,25 @@ const sampleDataFull: OutputData = {
                 text: 'This editor uses the <b>AdvancedImageTool</b> for image handling. Try dragging and dropping an image or pasting a URL!',
             },
         },
+        {
+            type: 'steps',
+            data: {
+                items: [
+                    {
+                        title: 'Plan the sequence',
+                        content: 'Use a short title and one or two lines of supporting context for each step.',
+                    },
+                    {
+                        title: 'Refine the details',
+                        content: 'Reorder or delete steps from the actions menu to keep the flow concise.',
+                    },
+                    {
+                        title: 'Save and render',
+                        content: 'The same block data renders as a vertical timeline in ottarenderer.',
+                    },
+                ],
+            },
+        },
         // We'll let the user add an image manually to test upload
     ],
     version: '2.30.7',

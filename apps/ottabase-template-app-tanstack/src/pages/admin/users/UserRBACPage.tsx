@@ -8,6 +8,14 @@
 import { useState } from 'react';
 import { useParams, Link } from '@tanstack/react-router';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Avatar,
     AvatarFallback,
     AvatarImage,
@@ -40,8 +48,7 @@ import {
 import { Shield, Building2, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useRBACToast } from '@/hooks/useToast';
 import { useOrganizations } from '@/hooks/useRBAC';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { useApiQuery, createModelHooks } from '@ottabase/ottaorm/client';
 import { TableSkeleton } from '@/components/LoadingSkeletons';
 import type { MemberRole, BadgeVariant, OrganizationMemberRecord } from '@/types/rbac';
 
@@ -60,45 +67,40 @@ interface UserOrganization {
     joinedAt: string;
 }
 
+const orgMemberHooks = createModelHooks<OrganizationMemberRecord>({ entityName: 'organization_members' });
+
 export function UserRBACPage() {
     const { userId } = useParams({ from: '/admin/users/$userId/rbac' });
     const toast = useRBACToast();
-    const queryClient = useQueryClient();
     const { data: orgs = [] } = useOrganizations();
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedOrg, setSelectedOrg] = useState('');
     const [selectedRole, setSelectedRole] = useState<MemberRole>('member');
+    const [removeMembership, setRemoveMembership] = useState<{ id: string; orgName: string } | null>(null);
 
-    // Fetch user details
-    const { data: user, isLoading: isUserLoading } = useQuery({
-        queryKey: ['admin', 'users', userId],
-        queryFn: async () => {
-            const response = await api<{ data: UserRecord }>(`/api/admin/users/${userId}`);
-            return response.data;
-        },
-        enabled: !!userId,
+    const { data: user, isLoading: isUserLoading } = useApiQuery<{ data: UserRecord }, UserRecord>({
+        entity: 'users',
+        queryKey: ['admin', userId],
+        endpoint: `/api/admin/users/${userId}`,
+        transform: (r) => r.data,
+        queryOptions: { enabled: !!userId },
     });
 
-    // Fetch user's organization memberships
-    const { data: userOrgs = [], isLoading: isOrgsLoading } = useQuery({
-        queryKey: ['admin', 'users', userId, 'memberships'],
-        queryFn: async () => {
-            const response = await api<{ data: OrganizationMemberRecord[] }>(
-                `/api/ottaorm/organization_members?where=${encodeURIComponent(JSON.stringify({ userId }))}`,
-            );
-            return response.data.map((m) => {
-                const org = orgs.find((o) => o.id === m.organizationId);
-                return {
-                    id: m.id || `${m.userId}-${m.organizationId}`,
-                    organizationId: m.organizationId,
-                    organizationName: org?.name || m.organizationId,
-                    role: m.role,
-                    joinedAt: m.joinedAt || '',
-                } satisfies UserOrganization;
-            });
-        },
-        enabled: !!userId && orgs.length > 0,
+    const { data: rawMemberships = [], isLoading: isOrgsLoading } = orgMemberHooks.useList(
+        { where: { userId } },
+        { enabled: !!userId },
+    );
+
+    const userOrgs: UserOrganization[] = rawMemberships.map((m) => {
+        const org = orgs.find((o) => o.id === m.organizationId);
+        return {
+            id: m.id || `${m.userId}-${m.organizationId}`,
+            organizationId: m.organizationId,
+            organizationName: org?.name || m.organizationId,
+            role: m.role,
+            joinedAt: m.joinedAt || '',
+        };
     });
 
     const isLoading = isUserLoading || isOrgsLoading;
@@ -116,68 +118,24 @@ export function UserRBACPage() {
         }
     };
 
-    // Mutation: add user to organization
-    const addToOrg = useMutation({
-        mutationFn: async ({ orgId, role }: { orgId: string; role: MemberRole }) => {
-            const response = await api<{ data: OrganizationMemberRecord }>('/api/ottaorm/organization_members', {
-                method: 'POST',
-                body: JSON.stringify({
-                    userId,
-                    organizationId: orgId,
-                    role,
-                    status: 'active',
-                    joinedAt: Date.now(),
-                }),
-            });
-            return response.data;
-        },
+    const addToOrg = orgMemberHooks.useCreate({
         onSuccess: () => {
             toast.rbac.memberInvited();
             setIsDialogOpen(false);
             setSelectedOrg('');
             setSelectedRole('member');
-            queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId, 'memberships'] });
         },
-        onError: () => {
-            toast.error('Failed to add', 'Could not add user to organization');
-        },
+        onError: () => toast.error('Failed to add', 'Could not add user to organization'),
     });
 
-    // Mutation: remove user from organization
-    const removeMember = useMutation({
-        mutationFn: async (membershipId: string) => {
-            await api(`/api/ottaorm/organization_members/${membershipId}`, {
-                method: 'DELETE',
-            });
-        },
-        onSuccess: () => {
-            toast.rbac.memberRemoved();
-            queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId, 'memberships'] });
-        },
-        onError: () => {
-            toast.error('Failed to remove', 'Could not remove user from organization');
-        },
+    const removeMember = orgMemberHooks.useDelete({
+        onSuccess: () => toast.rbac.memberRemoved(),
+        onError: () => toast.error('Failed to remove', 'Could not remove user from organization'),
     });
 
-    // Mutation: update member role
-    const updateRole = useMutation({
-        mutationFn: async ({ membershipId, role }: { membershipId: string; role: MemberRole }) => {
-            const response = await api<{ data: OrganizationMemberRecord }>(
-                `/api/ottaorm/organization_members/${membershipId}`,
-                {
-                    method: 'PATCH',
-                    body: JSON.stringify({ role }),
-                },
-            );
-            return response.data;
-        },
-        onSuccess: () => {
-            toast.rbac.memberUpdated();
-            queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId, 'memberships'] });
-        },
-        onError: () => {
-            toast.error('Failed to update', 'Could not update role');
-        },
+    const updateRole = orgMemberHooks.useUpdate({
+        onSuccess: () => toast.rbac.memberUpdated(),
+        onError: () => toast.error('Failed to update', 'Could not update role'),
     });
 
     const handleAddToOrg = () => {
@@ -185,16 +143,28 @@ export function UserRBACPage() {
             toast.error('Validation error', 'Please select an organization');
             return;
         }
-        addToOrg.mutate({ orgId: selectedOrg, role: selectedRole });
+        addToOrg.mutate({
+            userId,
+            organizationId: selectedOrg,
+            role: selectedRole,
+            status: 'active',
+            joinedAt: Date.now(),
+        });
     };
 
     const handleRemove = (membershipId: string, orgName: string) => {
-        if (!confirm(`Remove user from ${orgName}?`)) return;
-        removeMember.mutate(membershipId);
+        setRemoveMembership({ id: membershipId, orgName });
+    };
+
+    const handleConfirmRemove = () => {
+        if (removeMembership) {
+            removeMember.mutate(removeMembership.id);
+        }
+        setRemoveMembership(null);
     };
 
     const handleRoleChange = (membershipId: string, newRole: MemberRole) => {
-        updateRole.mutate({ membershipId, role: newRole });
+        updateRole.mutate({ id: membershipId, data: { role: newRole } });
     };
 
     const displayUser = user || { id: userId, name: null, email: '', image: null };
@@ -407,6 +377,24 @@ export function UserRBACPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <AlertDialog open={removeMembership !== null} onOpenChange={(open) => !open && setRemoveMembership(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove from Organization?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Remove this user from {removeMembership?.orgName ?? 'the organization'}? They will lose
+                            access to all resources in this organization.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={removeMember.isPending}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmRemove} disabled={removeMember.isPending}>
+                            {removeMember.isPending ? 'Removing…' : 'Remove'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

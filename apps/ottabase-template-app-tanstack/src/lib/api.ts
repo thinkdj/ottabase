@@ -3,17 +3,13 @@
  * - Automatic error toast notifications
  * - Auth token injection (when implemented)
  * - Type-safe error handling
+ * - x-app-id and x-org-id headers from global state
  */
 
-import { AUTH_STORAGE_KEY, clearAuthSessionStorage } from '@ottabase/auth/react';
+import { appIdAtom, globalStore, organizationIdAtom } from '@/ottabase/state/appState';
 import { createApiClient, type ApiError } from '@ottabase/api';
+import { AUTH_STORAGE_KEY, clearAuthSessionStorage } from '@ottabase/auth/react';
 import { toast } from 'sonner';
-import { APP_ID } from '@/ottabase/config/app.config';
-
-/**
- * localStorage key for current org (used when session not yet loaded).
- */
-const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 
 /**
  * Get auth token from storage/context.
@@ -23,12 +19,28 @@ function getAuthToken(): string | null {
     return null;
 }
 
+/**
+ * Get current app ID from global state.
+ * Falls back to reading from atom if available.
+ */
+function getAppId(): string | null {
+    try {
+        return globalStore.get(appIdAtom) ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Get current organization ID from global state.
+ * Falls back to localStorage if state not yet initialized.
+ */
 function getOrganizationId(): string | null {
     try {
-        const stored = localStorage.getItem(CURRENT_ORG_KEY);
-        if (stored) return stored;
+        const orgId = globalStore.get(organizationIdAtom);
+        if (orgId) return orgId;
     } catch {
-        // ignore
+        // State not yet initialized, try localStorage fallback
     }
 
     try {
@@ -151,12 +163,20 @@ export const api = createApiClient({
     defaultHeaders: () => {
         const headers: Record<string, string> = {
             Accept: 'application/json',
-            'X-App-Id': APP_ID,
         };
+
+        // Read appId from global state
+        const appId = getAppId();
+        if (appId) {
+            headers['X-App-Id'] = appId;
+        }
+
+        // Read organizationId from global state
         const organizationId = getOrganizationId();
         if (organizationId) {
-            headers['X-Organization-Id'] = organizationId;
+            headers['X-Org-Id'] = organizationId;
         }
+
         return headers;
     },
     timeout: 30000,

@@ -9,7 +9,7 @@ describe('extractSecurityContext', () => {
         const request = new Request('https://api.example.com', {
             headers: {
                 'x-user-id': 'user-123',
-                'x-organization-id': 'org-456',
+                'x-org-id': 'org-456',
                 'x-app-id': 'app-789',
             },
         });
@@ -34,7 +34,7 @@ describe('extractSecurityContext', () => {
 
     it('treats "null" organizationId as null', () => {
         const request = new Request('https://api.example.com', {
-            headers: { 'x-organization-id': 'null' },
+            headers: { 'x-org-id': 'null' },
         });
         const ctx = extractSecurityContext(request);
         expect(ctx.organizationId).toBeNull();

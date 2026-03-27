@@ -1,4 +1,4 @@
-import { APP_META } from '@/ottabase/config/app.config';
+import { APP_META } from '@/ottabase/config';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { DEMO_ITEMS } from './demoItems';

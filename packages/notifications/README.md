@@ -4,14 +4,14 @@ Minimalistic notifications engine for Ottabase - multi-channel user notification
 
 ## Features
 
-- 📧 **Email Notifications** - Via `@ottabase/email` with multiple provider support
-- 🔔 **Real-time WebSocket** - Via `@ottabase/cf-realtime` for instant updates
-- 🚨 **System Alerts** - Admin notifications for critical events
-- ⚡ **Async Processing** - Queue-based delivery via `@ottabase/queue`
-- 👤 **User Preferences** - Customizable notification settings per user
-- 💾 **Persistence** - OttaORM models for notification storage
-- 🎯 **Priority Levels** - Low, normal, high, urgent
-- 📊 **Tracking** - Status tracking (pending, sent, failed, read)
+- **Email Notifications** - Via `@ottabase/email` with multiple provider support
+- **Real-time WebSocket** - Via `@ottabase/cf-realtime` for instant updates
+- **System Alerts** - Admin notifications for critical events
+- **Async Processing** - Queue-based delivery via `@ottabase/queue`
+- **User Preferences** - Customizable notification settings per user
+- **Persistence** - OttaORM models for notification storage
+- **Priority Levels** - Low, normal, high, urgent
+- **Tracking** - Status tracking (pending, sent, failed, read)
 
 ## Installation
 

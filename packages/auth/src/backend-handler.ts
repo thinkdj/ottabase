@@ -17,14 +17,17 @@
 import { Auth, type AuthConfig } from '@auth/core';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { userKey } from '@ottabase/cf/cache-keys';
+import { createKvEmailTrapStore } from '@ottabase/email/providers/dev-trap';
 import { bootstrapFirstUser, parseBooleanFlag, SYSTEM_ORGANIZATION_ID } from './bootstrap';
 import { createOttabaseAuthConfig } from './config';
 import type { ProviderEnv } from './providers';
 import {
     autoConfigureProviders,
     createCredentialsProvider,
+    createDevEmailTrapProvider,
     createNodemailerProvider,
     createResendProvider,
+    isDevEmailTrapConfigured,
 } from './providers';
 
 /**
@@ -220,12 +223,23 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
     }
 
     // Configure email provider (magic link)
-    if (env.EMAIL_SERVER && env.EMAIL_FROM) {
+    if (isDevEmailTrapConfigured(env) && env.OBCF_KV) {
+        providers.push(
+            createDevEmailTrapProvider(env, {
+                store: createKvEmailTrapStore(env.OBCF_KV as any, {
+                    maxEntries: Math.max(1, Number(env.DEV_EMAIL_TRAP_MAX_EMAILS) || 50),
+                }),
+            }),
+        );
+        if (verbose) console.log('✅ Magic Link via Dev Email Trap enabled');
+    } else if (env.EMAIL_SERVER && env.EMAIL_FROM) {
         providers.push(createNodemailerProvider(env));
         if (verbose) console.log('✅ Magic Link via SMTP enabled');
     } else if (env.EMAIL_RESEND_API_KEY) {
         providers.push(createResendProvider(env));
         if (verbose) console.log('✅ Magic Link via Resend enabled');
+    } else if (parseBooleanFlag(env.DEV_EMAIL_TRAP_ENABLED) && !env.OBCF_KV && verbose) {
+        console.warn('⚠️  DEV_EMAIL_TRAP_ENABLED is set but OBCF_KV is not configured');
     } else if (verbose) {
         console.warn('⚠️  Magic Link not configured');
     }
@@ -424,6 +438,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                                         // ignore bad permissions
                                     }
                                 }
+
                                 permissions = Array.from(permissionsSet);
                             } catch (error) {
                                 console.warn('Failed to load user roles for auth:', error);
@@ -570,9 +585,8 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                         session.user.id = token.id as string;
                         session.user.email = token.email as string;
                         session.user.name = token.name as string;
-                        if (token.image) {
-                            session.user.image = token.image as string;
-                        }
+                        // Always sync image — use null when cleared (e.g. profile pic removal)
+                        session.user.image = (token.image as string) || null;
                         if (token.emailVerified) {
                             const emailVerified =
                                 typeof token.emailVerified === 'number'
@@ -710,7 +724,8 @@ export async function getSession(request: Request, env: AuthEnv, options?: Creat
 }
 
 const PBKDF2_PREFIX = 'pbkdf2';
-const PBKDF2_ITERATIONS = 120000;
+// Cloudflare Workers limits PBKDF2 to 100k iterations; OWASP recommends >= 100k for PBKDF2-SHA256
+const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_SALT_BYTES = 16;
 const PBKDF2_HASH_BYTES = 32;
 

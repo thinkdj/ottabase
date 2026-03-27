@@ -22,7 +22,7 @@ export default class MediaLibraryTool {
         };
     }
 
-    constructor({ api, config, block }) {
+    constructor({ api, config, block }: { api: any; config: any; block: any }) {
         this.api = api;
         this.editor = config.editor;
         this.block = block;
@@ -104,7 +104,7 @@ export default class MediaLibraryTool {
     }
 
     render() {
-        this.wrapper.classList.add('cdx-media-library');
+        this.wrapper.classList.add('cdx-media-library', 'ob-plugin');
 
         // Attach listener only once
         if (!this.isListenerAttached) {

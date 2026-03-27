@@ -4,7 +4,7 @@
  * Handles referral code storage, expiry, and tracking.
  */
 
-import { REFERRALS_CONFIG } from '@/ottabase/config/app.config';
+import { REFERRALS_CONFIG } from '@/ottabase/config';
 import { api } from './api';
 
 // Local storage keys

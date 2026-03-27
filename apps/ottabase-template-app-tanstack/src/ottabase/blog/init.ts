@@ -5,20 +5,21 @@
  * and applies active theme and enabled plugins (with config).
  */
 
+import { api } from '@/lib/api';
 import {
     activatePlugin,
     contentInjectorPlugin,
     createContentInjectorPlugin,
     deactivatePlugin,
+    getTheme,
     hasPlugin,
     initOttablog,
     registerPlugin,
+    registerTheme,
     setActiveTheme,
     type StudioPluginState,
     type StudioState,
-    type StudioThemeState,
 } from '@ottabase/ottablog';
-import { api } from '@/lib/api';
 
 /**
  * Register default themes and the content injector plugin (in-memory).
@@ -76,6 +77,24 @@ async function applyState(state: StudioState) {
     // Apply active theme (use activeThemeId as source of truth)
     if (state.activeThemeId) {
         setActiveTheme(state.activeThemeId);
+    }
+
+    // Merge DB-stored config (classes overrides) into the active in-memory theme
+    for (const t of state.themes || []) {
+        const dbClasses = (t.config as Record<string, unknown> | null)?.classes as Record<string, string> | undefined;
+        if (!dbClasses) continue;
+
+        const theme = getTheme(t.themeId);
+        if (!theme) continue;
+
+        // Re-register with merged config — DB classes override built-in defaults
+        registerTheme({
+            ...theme,
+            config: {
+                ...theme.config,
+                classes: { ...theme.config?.classes, ...dbClasses },
+            },
+        });
     }
 
     // Deactivate content-injector when it's disabled in studio state (so default static plugin doesn't run)

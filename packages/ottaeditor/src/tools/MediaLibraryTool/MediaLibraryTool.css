@@ -1,5 +1,7 @@
+/* MediaLibrary Tool - custom/overrides only */
+
 .cdx-media-library {
-    padding: 20px 0;
+    padding: 16px 0;
 }
 
 .cdx-media-library-placeholder {
@@ -10,7 +12,7 @@
     background: hsl(var(--muted) / 0.3);
     border: 1px dotted hsl(var(--border));
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 8px;
 }
 
 .cdx-media-library-placeholder:hover {
@@ -23,12 +25,10 @@
 }
 
 .cdx-media-library-caption {
-    margin-top: 10px;
-    border: 1px solid transparent;
-    padding: 5px;
+    margin-top: 8px;
 }
 
 .cdx-media-library-caption:focus {
-    border-color: hsl(var(--border));
-    outline: none;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
 }

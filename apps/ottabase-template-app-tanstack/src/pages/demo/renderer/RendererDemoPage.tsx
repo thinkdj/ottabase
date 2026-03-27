@@ -106,6 +106,26 @@ const sampleEditorJSData = {
             },
         },
         {
+            id: 'steps1',
+            type: 'steps',
+            data: {
+                items: [
+                    {
+                        title: 'Choose the right block mix',
+                        content: 'Start with headers, paragraphs, and supporting media so the content structure is clear.',
+                    },
+                    {
+                        title: 'Layer in guided actions',
+                        content: 'Use steps when readers need a clear sequence instead of a dense paragraph wall.',
+                    },
+                    {
+                        title: 'Ship a polished walkthrough',
+                        content: 'Render the same saved block as a clean timeline in your frontend with minimal styling work.',
+                    },
+                ],
+            },
+        },
+        {
             id: 'quote1',
             type: 'quote',
             data: {
@@ -360,6 +380,7 @@ export function RendererDemoPage() {
                             <ul className="text-sm text-muted-foreground space-y-1">
                                 <li>• Advanced Image Block (with borders, backgrounds, aspect ratios)</li>
                                 <li>• Interactive Checklist</li>
+                                <li>• Steps timeline / walkthrough block</li>
                                 <li>• Code Block (with language labels)</li>
                                 <li>• List (ordered/unordered with nesting)</li>
                                 <li>• Quote (with alignment options)</li>

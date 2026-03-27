@@ -16,6 +16,18 @@
 // ============================================================
 // CORE TABLES (from @ottabase/ottaorm)
 // ============================================================
+import { commentsTable } from '@ottabase/comments/schema';
+import {
+    categoriesTable,
+    ottablogPluginsTable,
+    ottablogThemesTable,
+    postCategoryLinksTable,
+    postTagLinksTable,
+    postTagsTable,
+    postVersionsTable,
+    postsTable,
+    seriesTable,
+} from '@ottabase/ottablog';
 import {
     accountsTable,
     authenticatorsTable,
@@ -23,16 +35,6 @@ import {
     usersTable,
     verificationTokensTable,
 } from '@ottabase/ottaorm';
-import {
-    categoriesTable,
-    ottablogPluginsTable,
-    ottablogThemesTable,
-    postTagLinksTable,
-    postTagsTable,
-    postVersionsTable,
-    postsTable,
-    seriesTable,
-} from '@ottabase/ottablog';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 
@@ -48,14 +50,16 @@ export { todosTable } from '../models/Todo';
 // ============================================================
 export {
     categoriesTable,
+    commentsTable,
     ottablogPluginsTable,
     ottablogThemesTable,
+    postCategoryLinksTable,
     postTagLinksTable,
     postTagsTable,
     postVersionsTable,
     postsTable,
-    seriesTable,
     referralTrackingTable,
+    seriesTable,
     shortlinksTable,
 };
 

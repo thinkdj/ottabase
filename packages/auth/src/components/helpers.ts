@@ -1,6 +1,17 @@
 import type { ProviderEnv } from '../providers';
 import type { SocialProvider } from './SocialLoginButtons';
 
+function isDevEmailTrapConfiguredForClient(env: ProviderEnv): boolean {
+    const raw = env.DEV_EMAIL_TRAP_ENABLED;
+
+    if (typeof raw !== 'string') {
+        return false;
+    }
+
+    const value = raw.trim().toLowerCase();
+    return ['1', 'true', 'yes', 'on'].includes(value) && !!env.OBCF_KV;
+}
+
 /**
  * Provider display configuration
  */
@@ -112,6 +123,10 @@ export function isCredentialsConfigured(env?: ProviderEnv): boolean {
  * ```
  */
 export function isEmailProviderConfigured(env: ProviderEnv): boolean {
+    if (isDevEmailTrapConfiguredForClient(env)) {
+        return true;
+    }
+
     // Check for Resend
     if (env.EMAIL_RESEND_API_KEY) {
         return true;

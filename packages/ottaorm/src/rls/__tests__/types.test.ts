@@ -39,7 +39,7 @@ describe('RLSPolicies', () => {
         expect(policy.requiredRoles).toEqual(['admin', 'owner']);
     });
 
-    it('PermissionBased returns custom policy with requiredPermissions', () => {
+    it('PermissionBased returns custom policy with requiredPermissions (RLS engine supports wildcards: *:*, brand:*)', () => {
         const policy = RLSPolicies.PermissionBased(['posts:write', 'posts:read']);
         expect(policy.level).toBe('custom');
         expect(policy.requiredPermissions).toEqual(['posts:write', 'posts:read']);

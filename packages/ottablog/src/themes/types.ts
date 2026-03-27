@@ -70,9 +70,11 @@ export interface ThemeConfig {
         series?: string;
         footer?: string;
         card?: string;
+        /** Container class for archive/listing pages */
+        archiveContainer?: string;
+        /** Title class for archive page headers */
+        archiveTitle?: string;
     };
-    /** Custom styles */
-    styles?: Record<string, string>;
 }
 
 /**

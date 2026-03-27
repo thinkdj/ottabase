@@ -1,3 +1,23 @@
+// Ottabase config (dynamic packages, features, routes)
+export { defineOttabaseConfig, isPackageEnabled, isCustomPackageEnabled } from './defineOttabaseConfig';
+export type {
+    OttabaseConfig,
+    OttabaseConfigInput,
+    OttabaseMeta,
+    ReferralsFeatureConfig,
+    SpotlightFeatureConfig,
+    PaginationFeatureConfig,
+    CrudHubFeatureConfig,
+    AuthBehaviorConfig,
+    CustomPackageConfig,
+    BuiltInPackageName,
+    OttabaseFeaturesConfig,
+    OttabaseEmailConfig,
+    OttabaseUIConfig,
+} from './ottabase-types';
+export { BUILT_IN_PACKAGES } from './ottabase-types';
+export { resolveConfigWithEnv, type EnvLike } from './resolveConfigWithEnv';
+
 // Export types
 export type {
     AppConfig,
@@ -100,59 +120,4 @@ export const STORAGE_KEYS = {
     PAGINATION_SIZE: 'pagination-size',
 } as const;
 
-export const ENV_KEYS = {
-    // App Identity
-    APP_ID: 'APP_ID',
-
-    // App Meta
-    APP_NAME: 'APP_NAME',
-    APP_TITLE: 'APP_TITLE',
-    APP_DESCRIPTION: 'APP_DESCRIPTION',
-    APP_LOGO_URL: 'APP_LOGO_URL',
-    APP_AUTHOR: 'APP_AUTHOR',
-    APP_KEYWORDS: 'APP_KEYWORDS',
-    APP_COMPANY_NAME: 'APP_COMPANY_NAME',
-
-    // UI Framework
-    UI_FRAMEWORK: 'UI_FRAMEWORK',
-
-    // UI Configuration
-    PREVENT_FOUC: 'PREVENT_FOUC',
-    PREVENT_FOUC_INSIDE_IFRAME: 'PREVENT_FOUC_INSIDE_IFRAME',
-    UI_DEBOUNCE_MS: 'UI_DEBOUNCE_MS',
-    ENFORCE_GOOGLE_FONTS: 'ENFORCE_GOOGLE_FONTS',
-
-    // Theme
-    THEME_COLOR_DEFAULT: 'THEME_COLOR_DEFAULT',
-
-    // Features
-    SPOTLIGHT_ENABLED: 'SPOTLIGHT_ENABLED',
-    PRE_LAUNCH_OPT_IN: 'PRE_LAUNCH_OPT_IN',
-
-    // API
-    SERVER_ERROR_HTTP_CODE: 'SERVER_ERROR_HTTP_CODE',
-
-    // CrudHub
-    CRUDHUB_API_BASE_URL: 'CRUDHUB_API_BASE_URL',
-    CRUDHUB_URL_BASE: 'CRUDHUB_URL_BASE',
-    CRUDHUB_URL_BASE_LISTING: 'CRUDHUB_URL_BASE_LISTING',
-
-    // Auth
-    AUTH_SIGN_IN_URL: 'AUTH_SIGN_IN_URL',
-    AUTH_SIGN_OUT_URL: 'AUTH_SIGN_OUT_URL',
-
-    // Pagination
-    PAGE_SIZE_DEFAULT: 'PAGE_SIZE_DEFAULT',
-    PAGE_SIZE_MAX: 'PAGE_SIZE_MAX',
-
-    // Referrals
-    REFERRALS_ENABLED: 'REFERRALS_ENABLED',
-    REFERRALS_TRACK_CLICKS: 'REFERRALS_TRACK_CLICKS',
-    REFERRALS_EXPIRY_DAYS: 'REFERRALS_EXPIRY_DAYS',
-
-    // Model
-    MODEL_DEFAULT_REL_KEY: 'MODEL_DEFAULT_REL_KEY',
-
-    // Storage
-    STORAGE_PREFIX: 'STORAGE_PREFIX',
-} as const;
+export { ENV_KEYS } from './env-keys';

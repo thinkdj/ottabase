@@ -5,8 +5,8 @@
 // ============================================================
 
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
-import { JsonEditor } from 'json-edit-react';
 import { clsx } from 'clsx';
+import { JsonEditor } from 'json-edit-react';
 import { AlertCircle, Calendar, Check, Eye, EyeOff, Upload, X } from 'lucide-react';
 import React, { useCallback } from 'react';
 import type { FormFieldProps, ModelFieldDescriptor } from '../types';
@@ -37,14 +37,12 @@ export function FormField({
 
     const baseInputClasses = clsx(
         'w-full px-3 py-2 rounded-lg border transition-colors duration-150',
-        'bg-white dark:bg-gray-800',
-        'text-gray-900 dark:text-gray-100',
-        'placeholder:text-gray-400 dark:placeholder:text-gray-500',
-        'focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent',
-        error
-            ? 'border-red-500 dark:border-red-400'
-            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500',
-        disabled && 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-900',
+        'bg-background',
+        'text-foreground',
+        'placeholder:text-muted-foreground',
+        'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
+        error ? 'border-destructive' : 'border-input hover:border-input/80',
+        disabled && 'opacity-50 cursor-not-allowed bg-muted',
     );
 
     // Check if value is an object (not null, not array, not Date, not primitive)
@@ -193,7 +191,7 @@ export function FormField({
                             disabled={disabled}
                             className={baseInputClasses}
                         />
-                        <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                     </div>
                 );
 
@@ -233,9 +231,9 @@ export function FormField({
                             checked={Boolean(value)}
                             onChange={(e) => onChange(e.target.checked)}
                             disabled={disabled}
-                            className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-400"
+                            className="w-5 h-5 rounded border-input text-primary focus:ring-ring"
                         />
-                        <span className="text-gray-700 dark:text-gray-300">{uiConfig.description || label}</span>
+                        <span className="text-foreground">{uiConfig.description || label}</span>
                     </label>
                 );
 
@@ -285,7 +283,7 @@ export function FormField({
 
             case 'readonly':
                 return (
-                    <div className={clsx(baseInputClasses, 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed')}>
+                    <div className={clsx(baseInputClasses, 'bg-muted cursor-not-allowed')}>
                         {formatDisplayValue(value, field)}
                     </div>
                 );
@@ -316,9 +314,9 @@ export function FormField({
         <div className={clsx('space-y-1.5', className)} onBlur={onBlur}>
             {/* Label */}
             {fieldType !== 'boolean' && (
-                <label htmlFor={name} className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label htmlFor={name} className="block text-sm font-medium text-foreground">
                     {label}
-                    {field.validation?.rules?.includes('required') && <span className="text-red-500 ml-1">*</span>}
+                    {field.validation?.rules?.includes('required') && <span className="text-destructive ml-1">*</span>}
                 </label>
             )}
 
@@ -326,10 +324,10 @@ export function FormField({
             {renderField()}
 
             {/* Help text */}
-            {helpText && !error && <p className="text-sm text-gray-500 dark:text-gray-400">{helpText}</p>}
+            {helpText && !error && <p className="text-sm text-muted-foreground">{helpText}</p>}
 
             {/* Error */}
-            {error && <p className="text-sm text-red-500 dark:text-red-400">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
     );
 }

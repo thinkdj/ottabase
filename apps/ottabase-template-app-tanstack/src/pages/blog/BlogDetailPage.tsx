@@ -7,14 +7,14 @@
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_DETAIL_QUERY_CONFIG, BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { api, isApiError } from '@/lib/api';
+import { useSession } from '@/lib/auth';
 import { useBlogStudio } from '@/ottabase/blog/BlogStudioContext';
 import { BlogRenderer, formatDate, type BlogPostData } from '@ottabase/ottablog';
 import type { OutputData } from '@ottabase/ottaeditor';
-import { createModelHooks } from '@ottabase/ottaorm/client';
-import { Button, Input } from '@ottabase/ui-shadcn';
-import { useQuery } from '@tanstack/react-query';
+import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
+import { Badge, Button, Input } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
-import { ArrowLeft, ArrowRight, ChevronLeft, Loader2, Lock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, FolderTree, Loader2, Lock, Pencil, Tag } from 'lucide-react';
 import { useState } from 'react';
 
 interface BlogPost {
@@ -30,6 +30,10 @@ interface BlogPost {
         title?: string;
         description?: string;
         keywords?: string[];
+        canonicalUrl?: string;
+        ogImage?: string;
+        noIndex?: boolean;
+        noFollow?: boolean;
     } | null;
     footnotes: OutputData | null;
     authorId: string | null;
@@ -43,6 +47,10 @@ interface BlogPost {
     publishedAt: string | null;
     seriesId: string | null;
     seriesOrder: number | null;
+    tags?: { id: string; name: string; slug: string }[];
+    categories?: { id: string; name: string; slug: string }[];
+    categoryName?: string | null;
+    viewCount?: number;
 }
 
 interface BlogSeries {
@@ -61,25 +69,23 @@ const blogSeriesHooks = createModelHooks<BlogSeries>({
 export function BlogDetailPage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug;
+    const { user } = useSession({ skipAutoSync: true });
     const { isReady: studioReady } = useBlogStudio();
     const [unlockedPost, setUnlockedPost] = useState<BlogPost | null>(null);
     const [password, setPassword] = useState('');
     const [unlockError, setUnlockError] = useState<string | null>(null);
     const [isUnlocking, setIsUnlocking] = useState(false);
 
-    // Fetch post by slug from public API (stripped for protected posts)
-    const { data: post, isLoading: isLoadingPost } = useQuery({
-        queryKey: ['blog', 'post', 'by-slug', slug],
-        queryFn: async () => {
-            const res = await fetch(`/api/blog/posts/by-slug/${encodeURIComponent(slug!)}`);
-            if (!res.ok) {
-                if (res.status === 404) return null;
-                throw new Error(await res.text());
-            }
-            return res.json() as Promise<BlogPost>;
+    // useApiQuery with entity:'posts' namespaces the key as ['posts', 'by-slug', slug].
+    // Any mutation on the posts entity auto-busts this cache via the global observer.
+    const { data: post, isLoading: isLoadingPost } = useApiQuery<BlogPost>({
+        entity: 'posts',
+        queryKey: ['by-slug', slug],
+        endpoint: `/api/blog/posts/by-slug/${encodeURIComponent(slug ?? '')}`,
+        queryOptions: {
+            enabled: !!slug,
+            ...BLOG_DETAIL_QUERY_CONFIG,
         },
-        enabled: !!slug,
-        ...BLOG_DETAIL_QUERY_CONFIG,
     });
 
     // Fetch series info if post is part of a series (using useDetail for primary key lookup)
@@ -215,14 +221,22 @@ export function BlogDetailPage() {
                 author={displayPost.authorName || undefined}
             />
 
-            {/* Back link */}
-            <div className="mb-6">
+            {/* Back link + Edit (author only) */}
+            <div className="mb-6 flex items-center justify-between gap-4">
                 <Button variant="ghost" size="sm" asChild>
                     <Link to="/blog">
                         <ChevronLeft className="mr-1 h-4 w-4" />
                         Back to Blog
                     </Link>
                 </Button>
+                {user?.id && displayPost.authorId && user.id === displayPost.authorId && (
+                    <Button variant="outline" size="sm" asChild>
+                        <Link to="/admin/blog/$postId/edit" params={{ postId: displayPost.id }}>
+                            <Pencil className="mr-1.5 h-4 w-4" />
+                            Edit
+                        </Link>
+                    </Button>
+                )}
             </div>
 
             {/* Lock screen for password-protected posts */}
@@ -261,50 +275,80 @@ export function BlogDetailPage() {
 
             {/* Blog Renderer (full content when not locked) */}
             {!isLocked && (
-                <BlogRenderer
-                    key={studioReady ? 'studio-ready' : 'studio-loading'}
-                    post={blogPostData}
-                    showHeroImage
-                    showTitle
-                    showMetadata
-                    showExcerpt
-                    showFootnotes
-                    showSeries
-                    formatDate={formatDate}
-                    renderSeriesNav={(post) => {
-                        if (!series || seriesPosts.length <= 1) return null;
-                        return (
-                            <div className="mt-4 pt-4 border-t">
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    {prevPost && (
-                                        <Link
-                                            to={`/blog/${prevPost.slug}`}
-                                            className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
-                                        >
-                                            <ArrowLeft className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                            <div className="min-w-0">
-                                                <div className="text-xs text-muted-foreground mb-1">Previous</div>
-                                                <div className="font-medium truncate">{prevPost.title}</div>
-                                            </div>
-                                        </Link>
-                                    )}
-                                    {nextPost && (
-                                        <Link
-                                            to={`/blog/${nextPost.slug}`}
-                                            className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors sm:text-right sm:flex-row-reverse"
-                                        >
-                                            <ArrowRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                            <div className="min-w-0">
-                                                <div className="text-xs text-muted-foreground mb-1">Next</div>
-                                                <div className="font-medium truncate">{nextPost.title}</div>
-                                            </div>
-                                        </Link>
-                                    )}
+                <>
+                    <BlogRenderer
+                        key={studioReady ? 'studio-ready' : 'studio-loading'}
+                        post={blogPostData}
+                        showHeroImage
+                        showTitle
+                        showMetadata
+                        showExcerpt
+                        showFootnotes
+                        showSeries
+                        formatDate={formatDate}
+                        renderSeriesNav={(post) => {
+                            if (!series || seriesPosts.length <= 1) return null;
+                            return (
+                                <div className="mt-4 pt-4 border-t">
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        {prevPost && (
+                                            <Link
+                                                to={`/blog/${prevPost.slug}`}
+                                                className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                                            >
+                                                <ArrowLeft className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <div className="text-xs text-muted-foreground mb-1">Previous</div>
+                                                    <div className="font-medium truncate">{prevPost.title}</div>
+                                                </div>
+                                            </Link>
+                                        )}
+                                        {nextPost && (
+                                            <Link
+                                                to={`/blog/${nextPost.slug}`}
+                                                className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors sm:text-right sm:flex-row-reverse"
+                                            >
+                                                <ArrowRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <div className="text-xs text-muted-foreground mb-1">Next</div>
+                                                    <div className="font-medium truncate">{nextPost.title}</div>
+                                                </div>
+                                            </Link>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    }}
-                />
+                            );
+                        }}
+                    />
+
+                    {/* Tags */}
+                    {displayPost.tags && displayPost.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-8">
+                            <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+                            {displayPost.tags.map((tag) => (
+                                <Link key={tag.id} to="/blog/tag/$slug" params={{ slug: tag.slug }}>
+                                    <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80">
+                                        {tag.name}
+                                    </Badge>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Categories */}
+                    {displayPost.categories && displayPost.categories.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-4">
+                            <FolderTree className="h-4 w-4 text-muted-foreground mt-0.5" />
+                            {displayPost.categories.map((cat) => (
+                                <Link key={cat.id} to="/blog/category/$slug" params={{ slug: cat.slug }}>
+                                    <Badge variant="outline" className="cursor-pointer hover:bg-accent">
+                                        {cat.name}
+                                    </Badge>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Series Navigation - All posts */}

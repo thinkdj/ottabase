@@ -4,11 +4,11 @@ Minimal, clean split-pane component for React applications with no frills.
 
 ## Features
 
-- 🎯 **Basic Split-Pane**: Horizontal and vertical split layouts
-- 🔄 **Nested Support**: Create complex layouts with nested split panes
-- 🎨 **Styled**: Customizable appearance with clean, minimal UI
-- 📍 **Snap Points**: Configure snap positions for panes
-- 📊 **Percentage Config**: Support for percentage-based sizing
+- **Basic Split-Pane**: Horizontal and vertical split layouts
+- **Nested Support**: Create complex layouts with nested split panes
+- **Styled**: Customizable appearance with clean, minimal UI
+- **Snap Points**: Configure snap positions for panes
+- **Percentage Config**: Support for percentage-based sizing
 
 ## Installation
 

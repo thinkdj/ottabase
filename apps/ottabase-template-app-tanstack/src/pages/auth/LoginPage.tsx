@@ -104,7 +104,7 @@ export function LoginPage() {
 
         if (!hasMagicLink) {
             newWarnings.push(
-                'Magic Link not configured. Set EMAIL_SERVER + EMAIL_FROM or EMAIL_RESEND_API_KEY in the worker environment.',
+                'Magic Link not configured. Set DEV_EMAIL_TRAP_ENABLED for local capture, or configure EMAIL_SERVER + EMAIL_FROM / EMAIL_RESEND_API_KEY in the worker environment.',
             );
         }
 

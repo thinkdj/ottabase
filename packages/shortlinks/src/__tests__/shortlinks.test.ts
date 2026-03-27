@@ -13,7 +13,6 @@ describe('Shortlink model helpers', () => {
     it('casts interstitial metadata as expected', () => {
         expect(Shortlink.casts.interstitialEnabled).toBe('boolean');
         expect(Shortlink.casts.interstitialSeconds).toBe('number');
-        expect(Shortlink.casts.clicks).toBe('number');
     });
 
     it('returns the expired page when the shortlink is expired', () => {

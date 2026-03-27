@@ -140,6 +140,14 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
+    // Tags - app-scoped (core tags model)
+    {
+        model: 'tags',
+        policy: RLSPolicies.AppScoped(), // Filter by appId
+        contextFields: ['appId'],
+        auditEnabled: true,
+    },
+
     // Blog tags - app-scoped
     {
         model: 'post_tags',
@@ -148,12 +156,18 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
-    // Blog tag links (junction table) - app-scoped
+    // Blog tag links (junction table) — no appId column; security inherits from parent entities
     {
         model: 'post_tag_links',
-        policy: RLSPolicies.AppScoped(), // Filter by appId
-        contextFields: ['appId'],
-        auditEnabled: true,
+        policy: { level: 'public' },
+        auditEnabled: false,
+    },
+
+    // Blog category links (junction table) — no appId column; security inherits from parent entities
+    {
+        model: 'post_category_links',
+        policy: { level: 'public' },
+        auditEnabled: false,
     },
 
     // Blog post versions - app-scoped
@@ -194,6 +208,28 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
+    // Menus – app-scoped (Ottamenu), requires brand:edit (same as Brand Kits). *:* satisfies this.
+    {
+        model: 'menus',
+        policy: {
+            ...RLSPolicies.AppScoped(),
+            requiredPermissions: ['brand:edit'],
+        },
+        contextFields: ['appId'],
+        auditEnabled: true,
+    },
+
+    // Menu items – app-scoped, requires brand:edit. *:* or brand:* satisfies.
+    {
+        model: 'menu_items',
+        policy: {
+            ...RLSPolicies.AppScoped(),
+            requiredPermissions: ['brand:edit'],
+        },
+        contextFields: ['appId'],
+        auditEnabled: true,
+    },
+
     // Todos - user-scoped (todos belong to users)
     {
         model: 'todos',
@@ -201,16 +237,59 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
-    // Example: Comments that anyone in org can read, but only owner can edit
+    // Authenticators - user-scoped (WebAuthn credentials belong to users)
+    {
+        model: 'authenticators',
+        policy: RLSPolicies.UserScoped(), // Filter by userId
+        auditEnabled: true,
+    },
+
+    // Scheduled tasks - admin-only (system-level task management)
+    {
+        model: 'scheduled_tasks',
+        policy: RLSPolicies.AdminOnly(),
+        auditEnabled: true,
+    },
+
+    // Brand kits - app-scoped (brand config per app)
+    {
+        model: 'brand_kits',
+        policy: RLSPolicies.AppScoped(),
+        contextFields: ['appId'],
+        auditEnabled: true,
+    },
+
+    // Layout templates - app-scoped
+    {
+        model: 'layout_templates',
+        policy: RLSPolicies.AppScoped(),
+        contextFields: ['appId'],
+        auditEnabled: true,
+    },
+
+    // Layout route mappings - app-scoped
+    {
+        model: 'layout_route_mappings',
+        policy: RLSPolicies.AppScoped(),
+        contextFields: ['appId'],
+        auditEnabled: true,
+    },
+
+    // Menu slot assignments - app-scoped, requires brand:edit
+    {
+        model: 'menu_slot_assignments',
+        policy: {
+            ...RLSPolicies.AppScoped(),
+            requiredPermissions: ['brand:edit'],
+        },
+        contextFields: ['appId'],
+        auditEnabled: true,
+    },
+
+    // Comments: scoped to org on reads; organizationId auto-injected on writes
     {
         model: 'comments',
-        policy: {
-            level: 'custom',
-            filter: (context) => ({
-                organizationId: context.organizationId,
-            }),
-            // Additional owner check happens in validateWrite
-        },
+        policy: RLSPolicies.TenantScoped(false),
         auditEnabled: true,
     },
 ];

@@ -19,10 +19,28 @@ import GitHub from '@auth/core/providers/github';
 import Google from '@auth/core/providers/google';
 import Nodemailer from '@auth/core/providers/nodemailer';
 import Resend from '@auth/core/providers/resend';
-import type { TemplateContent, TemplateVariables } from '@ottabase/email';
 import { sendTemplatedEmail } from '@ottabase/email/mailer';
+import { createDevEmailTrapMailer } from '@ottabase/email/providers/dev-trap';
 import { createResendMailer } from '@ottabase/email/providers/resend';
 
+// Re-export dev-trap types so existing consumers keep working
+export type { DevEmailTrapAddress, DevEmailTrapMessage, DevEmailTrapStore } from '@ottabase/email/providers/dev-trap';
+
+import type { DevEmailTrapStore } from '@ottabase/email/providers/dev-trap';
+
+type TemplateVariables = Record<string, unknown>;
+
+interface TemplateContent {
+    header?: string;
+    body: string;
+    footer?: string;
+}
+
+interface SendVerificationRequestParams {
+    identifier: string;
+    url: string;
+    expires?: Date;
+}
 /**
  * Environment variables for provider credentials
  * These should be set in your .env file or Cloudflare Workers environment
@@ -56,6 +74,37 @@ export interface ProviderEnv {
     // Email (Magic Link) - Nodemailer/SMTP
     EMAIL_SERVER?: string; // smtp://user:pass@smtp.example.com:587
     EMAIL_FROM?: string;
+
+    // Dev email trap
+    DEV_EMAIL_TRAP_ENABLED?: string;
+    DEV_EMAIL_TRAP_MAX_EMAILS?: string;
+    ENVIRONMENT?: string;
+    OBCF_KV?: unknown;
+}
+
+function parseBoolean(value: string | boolean | undefined): boolean | null {
+    if (typeof value === 'boolean') {
+        return value;
+    }
+
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+        return true;
+    }
+    if (['0', 'false', 'no', 'off'].includes(normalized)) {
+        return false;
+    }
+
+    return null;
+}
+
+export function isDevEmailTrapConfigured(env: ProviderEnv): boolean {
+    const explicit = parseBoolean(env.DEV_EMAIL_TRAP_ENABLED);
+    return explicit === true && !!env.OBCF_KV;
 }
 
 /**
@@ -410,7 +459,7 @@ export function createResendProvider(
     return Resend({
         apiKey: env.EMAIL_RESEND_API_KEY,
         from,
-        async sendVerificationRequest({ identifier, url, expires }) {
+        async sendVerificationRequest({ identifier, url, expires }: SendVerificationRequestParams) {
             const appName = options?.appName || 'Ottabase';
             const expiresAtMs = expires ? expires.getTime() : null;
             const expiresAt = expiresAtMs ? String(expiresAtMs) : '';
@@ -445,6 +494,63 @@ export function createResendProvider(
             }
         },
     });
+}
+
+export function createDevEmailTrapProvider(
+    env: ProviderEnv,
+    options: {
+        store: Pick<DevEmailTrapStore, 'storeMessage'>;
+        from?: string;
+        template?: string;
+        subject?: string;
+        appName?: string;
+        content?: TemplateContent;
+        variables?: TemplateVariables;
+    },
+) {
+    const from = options.from || env.EMAIL_FROM || 'noreply@example.com';
+    const mailer = createDevEmailTrapMailer({ store: options.store });
+
+    return {
+        id: 'email',
+        name: 'Email',
+        type: 'email' as const,
+        from,
+        async sendVerificationRequest({ identifier, url, expires }: SendVerificationRequestParams) {
+            const appName = options.appName || 'Ottabase';
+            const expiresAtMs = expires ? expires.getTime() : null;
+            const expiresAt = expiresAtMs ? String(expiresAtMs) : '';
+            const subject = options.subject || `Sign in to ${appName}`;
+
+            const content: TemplateContent = options.content || {
+                header: `Sign in to ${appName}`,
+                body:
+                    '<p>Hello,</p>' +
+                    '<p>Click the link below to sign in:</p>' +
+                    '<p><a href="{{url}}">Sign in</a></p>',
+                footer: '<p>This link expires at {{expiresAt}}.</p>',
+            };
+
+            const result = await sendTemplatedEmail(mailer, {
+                from,
+                to: identifier,
+                template: options.template || 'default',
+                subject,
+                variables: {
+                    url,
+                    email: identifier,
+                    appName,
+                    expiresAt,
+                    ...options.variables,
+                },
+                content,
+            });
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to capture login email');
+            }
+        },
+    };
 }
 
 /**

@@ -430,10 +430,10 @@ const orgId = await extractOrganizationId({
 });
 
 // Strategy 2: Header
-// X-Organization-Id: org-acme
+// X-Org-Id: org-acme
 const orgId = await extractOrganizationId({
     request,
-    headerName: 'X-Organization-Id',
+    headerName: 'X-Org-Id',
 });
 
 // Strategy 3: Query parameter

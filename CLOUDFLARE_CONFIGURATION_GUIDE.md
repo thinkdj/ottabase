@@ -29,14 +29,18 @@ This guide covers Cloudflare resource configuration, bindings, environment varia
 
 The following Cloudflare resources must be created and configured:
 
-| Resource Type      | Binding Name        | Purpose                        | Created By                |
-| ------------------ | ------------------- | ------------------------------ | ------------------------- |
-| **D1 Database**    | `OBCF_D1`           | Primary SQLite database        | `cloudflare:setup` script |
-| **KV Namespace**   | `OBCF_KV`           | Key-value storage              | `cloudflare:setup` script |
-| **R2 Bucket**      | `OBCF_R2`           | Object storage                 | `cloudflare:setup` script |
-| **Queue**          | `OBCF_QUEUE`        | Async message processing       | `cloudflare:setup` script |
-| **Durable Object** | `OBCF_REALTIME`     | WebSocket realtime connections | Auto-configured           |
-| **Rate Limiter**   | `OBCF_RATE_LIMITER` | Request throttling             | Auto-configured           |
+| Resource Type        | Binding Name        | Purpose                        | Created By                  |
+| -------------------- | ------------------- | ------------------------------ | --------------------------- |
+| **D1 Database**      | `OBCF_D1`           | Primary SQLite database        | `cf:setup` script           |
+| **KV Namespace**     | `OBCF_KV`           | Key-value storage              | `cf:setup` script           |
+| **R2 Bucket**        | `OBCF_R2`           | Object storage                 | `cf:setup` script           |
+| **Queue**            | `OBCF_QUEUE`        | Async message processing       | `cf:setup` script           |
+| **Durable Object**   | `OBCF_REALTIME`     | WebSocket realtime connections | Auto-configured             |
+| **Rate Limiter**     | `OBCF_RATE_LIMITER` | Request throttling             | Auto-configured             |
+| **Analytics Engine** | `OBCF_ANALYTICS_*`  | Event tracking                 | Auto-created on first write |
+
+**Note:** Run `pnpm cf:login` before `pnpm cf:setup` if not authenticated. cf:setup outputs resource IDs for GitHub
+Secrets; it does not modify wrangler.jsonc.
 
 ### Optional Resources
 
@@ -44,13 +48,16 @@ The following Cloudflare resources must be created and configured:
 | -------------- | ----------------- | ------------------------- | ------------------------------------------------------------- |
 | **Hyperdrive** | `OBCF_HYPERDRIVE` | External database pooling | `wrangler hyperdrive create <name> --connection-string="..."` |
 
+**For /analytics page:** Set `CLOUDFLARE_ACCOUNT_ID` (vars) and `CLOUDFLARE_ANALYTICS_API_TOKEN` (secret) with
+`Account Analytics` Read permission. Analytics datasets are auto-created on first write.
+
 ---
 
 ## 🔐 Environment Variables
 
 ### Local Development (`.env.local`)
 
-Create `apps/ottabase-template-app/.env.local` with the following:
+Create `apps/ottabase-template-app-tanstack/.env.local` with the following (if using .env for local auth/R2):
 
 ```bash
 
@@ -61,7 +68,7 @@ Create `apps/ottabase-template-app/.env.local` with the following:
 # Generate with: openssl rand -base64 32
 AUTH_SECRET=your-32-character-secret-here
 NEXTAUTH_SECRET=your-32-character-secret-here
-NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_URL=http://localhost:3003
 
 # Enable auth providers (true/false)
 AUTH_LOGIN_CREDENTIALS=true
@@ -125,9 +132,15 @@ wrangler secret put CF_R2_SECRET_ACCESS_KEY
 
 ## 📁 Configuration Files
 
-### 1. `apps/ottabase-template-app/wrangler.jsonc`
+### 1. `apps/ottabase-template-app-tanstack/wrangler.jsonc`
 
-**Status:** ✅ Already configured
+**Status:** ✅ Template (do not modify programmatically)
+
+`wrangler.jsonc` is a shared template. cf:setup does **not** modify it. `ALL_CAPS_SNAKE_CASE` placeholder values in
+`env.production` and `env.preview` are **auto-detected** by `.github/scripts/substitute-wrangler-secrets.py` at deploy
+time and substituted from GitHub Secrets, generating `wrangler.production.jsonc` or `wrangler.preview.jsonc`. The source
+file is never modified. For local dev, `YOUR_*` top-level values are ignored (miniflare uses local simulators). For
+multi-app: same placeholder name = shared resource; different names = isolated (prefixing is a convention).
 
 **Key Bindings:**
 
@@ -137,26 +150,26 @@ wrangler secret put CF_R2_SECRET_ACCESS_KEY
         {
             "binding": "OBCF_D1",
             "database_name": "ottabase-db",
-            "database_id": "YOUR_D1_DATABASE_ID", // Set by cloudflare:setup
+            "database_id": "YOUR_D1_DATABASE_ID", // Top-level: local dev only (simulators ignore this)
         },
     ],
     "kv_namespaces": [
         {
             "binding": "OBCF_KV",
-            "id": "YOUR_KV_NAMESPACE_ID", // Set by cloudflare:setup
+            "id": "YOUR_KV_NAMESPACE_ID", // Top-level: local dev only (simulators ignore this)
         },
     ],
     "r2_buckets": [
         {
             "binding": "OBCF_R2",
-            "bucket_name": "ottabase-bucket", // Set by cloudflare:setup
+            "bucket_name": "ottabase-bucket",
         },
     ],
     "queues": {
         "producers": [
             {
                 "binding": "OBCF_QUEUE",
-                "queue": "ottabase-queue", // Set by cloudflare:setup
+                "queue": "ottabase-queue",
             },
         ],
     },
@@ -179,7 +192,7 @@ wrangler secret put CF_R2_SECRET_ACCESS_KEY
 }
 ```
 
-### 3. `apps/ottabase-template-app/types/cloudflare.d.ts`
+### 2. `apps/ottabase-template-app-tanstack/cloudflare-env.d.ts`
 
 **Status:** ✅ Already configured
 
@@ -212,7 +225,7 @@ export interface CloudflareEnv {
 }
 ```
 
-### 4. `apps/ottabase-template-app/cloudflare-worker.ts`
+### 3. `apps/ottabase-template-app-tanstack/cloudflare-worker.ts`
 
 **Status:** ✅ Already configured
 
@@ -229,22 +242,24 @@ export { RealtimeActor } from '@ottabase/cf-realtime/server';
 
 ### Using Drizzle with D1
 
-The app uses `@ottabase/db` package with Drizzle adapter for D1.
+The app uses `@ottabase/db` package with Drizzle adapter for D1. Access `env` directly from your Worker fetch handler:
 
 ```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { setDriver } from '@ottabase/ottaorm';
 
-export async function GET() {
-    const { env } = await getCloudflareContext();
+// cloudflare-worker.ts
+export default {
+    async fetch(request: Request, env: CloudflareEnv) {
+        const driver = createD1Driver(env.OBCF_D1);
+        setDriver(driver);
 
-    const driver = createD1Driver(env.OBCF_D1);
-    const db = driver.getDb();
+        const db = driver.getDb();
+        const users = await db.select().from(usersTable);
 
-    const users = await db.select().from(usersTable);
-
-    return Response.json(users);
-}
+        return Response.json(users);
+    },
+};
 ```
 
 ---
@@ -272,22 +287,7 @@ export const authConfig = createOttabaseAuthConfig({
 });
 ```
 
-### 4. Configure Auth
-
-```typescript
-// app/auth.ts
-import { createOttabaseAuthConfig, createGoogleProvider } from '@ottabase/auth';
-
-export const authConfig = createOttabaseAuthConfig({
-    d1: env.OBCF_D1,
-    providers: [
-        createGoogleProvider(env),
-        // Add more providers
-    ],
-});
-```
-
-### 5. Set Environment Variables
+### 3. Set Environment Variables
 
 Add to `.env.local`:
 
@@ -305,24 +305,25 @@ AUTH_GOOGLE_SECRET=your-google-client-secret
 
 - [ ] **Cloudflare Resources Created**
     - [ ] D1 Database exists: `wrangler d1 list`
-    - [ ] KV Namespace exists: `wrangler kv:namespace list`
+    - [ ] KV Namespace exists: `wrangler kv namespace list`
     - [ ] R2 Bucket exists: `wrangler r2 bucket list`
     - [ ] Queue exists: `wrangler queues list`
 
 - [ ] **Configuration Files Updated**
-    - [ ] `wrangler.jsonc` has resource IDs (not placeholders)
-    - [ ] `types/cloudflare.d.ts` includes all OBCF\_\* bindings
+    - [ ] GitHub Secrets set for production: `D1_DATABASE_ID`, `KV_NAMESPACE_ID`
+    - [ ] GitHub Secrets set for PR preview: `D1_PREVIEW_DATABASE_ID`, `KV_PREVIEW_NAMESPACE_ID`
+    - [ ] `cloudflare-env.d.ts` includes all OBCF\_\* bindings
 
 - [ ] **Environment Variables Set**
     - [ ] `.env.local` created for local development
     - [ ] Production secrets set via `wrangler secret put`
 
 - [ ] **Database Schema Generated**
-    - [ ] Migrations applied to D1: `wrangler d1 migrations apply`
+    - [ ] Migrations applied via OttaORM: `curl -X POST http://localhost:3004/api/ottaorm/init`
 
 - [ ] **Build & Deploy**
     - [ ] Local build works: `pnpm build`
-    - [ ] Worker build works: `pnpm build:worker`
+    - [ ] Worker build works: `pnpm build` (TanStack) or `pnpm build:worker` (Next.js)
     - [ ] Preview works: `pnpm preview`
     - [ ] Deploy successful: `pnpm deploy`
 
@@ -345,26 +346,26 @@ curl https://your-app.workers.dev/api/cloudflare/r2/list
 
 ## 🔍 Accessing Cloudflare Bindings in Code
 
-### App Router (Server Components & Route Handlers)
+### Cloudflare Worker (Fetch Handler)
 
 ```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
+// cloudflare-worker.ts
+export default {
+    async fetch(request: Request, env: CloudflareEnv) {
+        // Access bindings with OBCF_* names
+        const db = env.OBCF_D1; // D1 Database
+        const kv = env.OBCF_KV; // KV Namespace
+        const r2 = env.OBCF_R2; // R2 Bucket
+        const queue = env.OBCF_QUEUE; // Queue
+        const realtime = env.OBCF_REALTIME; // Durable Object
 
-export async function GET() {
-    const { env } = await getCloudflareContext();
-
-    // Access bindings with OBCF_* names
-    const db = env.OBCF_D1; // D1 Database
-    const kv = env.OBCF_KV; // KV Namespace
-    const r2 = env.OBCF_R2; // R2 Bucket
-    const queue = env.OBCF_QUEUE; // Queue
-    const realtime = env.OBCF_REALTIME; // Durable Object
-
-    // Use with @ottabase/cf package
-    const prisma = createPrismaD1Client(db);
-    const kvClient = createKVClient({ namespace: kv });
-    const r2Client = createR2Client({ bucket: r2 });
-}
+        // D1 via OttaORM (preferred):
+        // import { createD1Driver } from '@ottabase/db/drizzle-d1';
+        // const driver = createD1Driver(db); setDriver(driver);
+        const kvClient = createKVClient({ namespace: kv });
+        const r2Client = createR2Client({ bucket: r2 });
+    },
+};
 ```
 
 ### Package Usage
@@ -372,7 +373,7 @@ export async function GET() {
 All bindings are accessed via `@ottabase/cf` package:
 
 ```typescript
-import { createPrismaD1Client } from '@ottabase/cf/d1-prisma';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { createKVClient } from '@ottabase/cf/kv';
 import { createR2Client } from '@ottabase/cf/r2';
 import { createQueuesClient } from '@ottabase/cf/queues';
@@ -383,39 +384,62 @@ import { createRateLimitingClient } from '@ottabase/cf/rate-limiting';
 
 ## 🛠 Manual Configuration (Advanced)
 
-If you prefer manual setup instead of `cloudflare:setup`:
+If you prefer manual setup instead of `cf:setup`:
 
-### 1. Create D1 Database
+### 1. Login First
+
+```bash
+pnpm cf:login   # or wrangler login
+```
+
+### 2. Create D1 Database
 
 ```bash
 wrangler d1 create ottabase-db
-# Copy database_id and update wrangler.jsonc
+# Copy database_id → GitHub Secret D1_DATABASE_ID (for CI) or replace YOUR_D1_DATABASE_ID in wrangler.jsonc (local)
 ```
 
-### 2. Create KV Namespace
+### 3. Create KV Namespace
 
 ```bash
-wrangler kv:namespace create OBCF_KV
-wrangler kv:namespace create OBCF_KV --preview
-# Copy IDs and update wrangler.jsonc
+wrangler kv namespace create OBCF_KV
+wrangler kv namespace create OBCF_KV --preview
+# Copy IDs → GitHub Secret KV_NAMESPACE_ID (for CI) or replace in wrangler.jsonc (local)
 ```
 
-### 3. Create R2 Bucket
+### 4. Create R2 Bucket
 
 ```bash
 wrangler r2 bucket create ottabase-bucket
 wrangler r2 bucket create ottabase-bucket-preview
 ```
 
-### 4. Create Queue
+### 5. Create Queue
 
 ```bash
 wrangler queues create ottabase-queue
+wrangler queues create ottabase-queue-preview
 ```
 
-### 5. Update `wrangler.jsonc`
+### 6. Create Preview Resources (for PR deploys)
 
-Replace all `YOUR_*_ID` placeholders with actual resource IDs and ensure binding names use `OBCF_*` convention.
+```bash
+wrangler d1 create ottabase-db-preview
+wrangler r2 bucket create ottabase-bucket-preview
+```
+
+### 7. Configure GitHub Secrets
+
+**Production** (main deploy — placeholder values in env.production are auto-detected):
+
+- `D1_DATABASE_ID`, `KV_NAMESPACE_ID`
+
+**Preview** (PR deploy — placeholder values in env.preview are auto-detected):
+
+- `D1_PREVIEW_DATABASE_ID`, `KV_PREVIEW_NAMESPACE_ID`
+
+Local dev does not need these — `wrangler dev` uses local simulators regardless of placeholder values. To add a new
+secret: set the placeholder in `wrangler.jsonc`, add the secret to GitHub. CI auto-detects the rest.
 
 ---
 
@@ -455,14 +479,15 @@ Replace all `YOUR_*_ID` placeholders with actual resource IDs and ensure binding
 
 **Cause:** D1 database doesn't have schema.
 
-**Solution:**
+**Solution:** Ottabase uses OttaORM auto-init, not wrangler migrations:
 
 ```bash
-# Local
-wrangler d1 migrations apply ottabase-db --local
+# Local (with dev server running on port 3004)
+curl -X POST http://localhost:3004/api/ottaorm/init
 
-# Production
-wrangler d1 migrations apply ottabase-db --remote
+# Production (requires MIGRATION_SECRET)
+curl -X POST https://your-app.workers.dev/api/ottaorm/init \
+  -H "Authorization: Bearer ${MIGRATION_SECRET}"
 ```
 
 ### "Type errors with CloudflareEnv"
@@ -493,12 +518,11 @@ pnpm cf-typegen
 
 ### Required Configuration Files
 
-- ✅ `wrangler.jsonc` - Cloudflare bindings configuration (OBCF\_\* names)
-- ✅ `db.config.ts` - Database configuration (d1Database: "OBCF_D1")
+- ✅ `wrangler.jsonc` - Cloudflare bindings (OBCF\_\* names); `ALL_CAPS` placeholder values are auto-detected and
+  substituted from GitHub Secrets via `substitute-wrangler-secrets.py`
 - ✅ `types/cloudflare.d.ts` - TypeScript definitions (OBCF\_\* interfaces)
 - ✅ `cloudflare-worker.ts` - Durable Object exports
-- ✅ `.env.local` - Local environment variables
-- ✅ `prisma/schema.prisma` - Generated database schema
+- ✅ `.env.local` - Local environment variables (optional)
 
 ### Key Binding Names (OBCF\_\*)
 
@@ -514,12 +538,12 @@ pnpm cf-typegen
 
 ### Key Environment Variables
 
-| Variable        | Required      | Purpose                   |
-| --------------- | ------------- | ------------------------- |
-| `DATABASE_URL`  | Yes (local)   | Prisma CLI (local SQLite) |
-| `AUTH_SECRET`   | If using auth | Auth.js secret            |
-| `CF_ACCOUNT_ID` | Optional      | Cloudflare API access     |
-| `CF_API_TOKEN`  | Optional      | Cloudflare API access     |
+| Variable         | Required      | Purpose                                 |
+| ---------------- | ------------- | --------------------------------------- |
+| `D1_DATABASE_ID` | Yes (deploy)  | D1 database UUID (wrangler placeholder) |
+| `AUTH_SECRET`    | If using auth | Auth.js secret                          |
+| `CF_ACCOUNT_ID`  | Optional      | Cloudflare API access                   |
+| `CF_API_TOKEN`   | Optional      | Cloudflare API access                   |
 
 ---
 

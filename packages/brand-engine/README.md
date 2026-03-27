@@ -1,19 +1,22 @@
 # @ottabase/brand-engine
 
-Unified theme engine for Ottabase — design tokens, theme resolution, CSS variable injection, BrandBoxes, email branding,
+Unified theme engine for Ottabase — design tokens, preset template expansion, CSS variable injection, email branding,
 and brand persistence via D1.
 
 ## Features
 
 - **Design Tokens** — Typed schema for colors, typography, spacing, shadows, motion, cursors
-- **Theme Resolution** — Merge user overrides with defaults; named theme registry
+- **Preset Templates** — Theme presets expanded and saved to database (no runtime resolution needed)
 - **CSS Runtime** — Inject design tokens as CSS custom properties; auto-load Google Fonts
 - **Critical CSS** — Server-rendered dual-mode (light + dark) style tags for zero-FOUC
-- **BrandBoxes** — One-click theme + logo presets
 - **Email Branding** — Replace `{{brandName}}`, `{{logoUrl}}`, etc. in email HTML
 - **Favicon** — Resolve best favicon URL from brand config
-- **Built-in Themes** — Ship with default themes, register custom ones
+- **Built-in Presets** — Default, Neo, Crisp, Funky, Artisan, Midnight, Rose, Verdant
 - **Fonts & Cursors** — Google Fonts catalog, custom cursor SVG registry
+
+> **Architecture Note**: Presets are **templates**, not runtime themes. When a preset is selected, it's expanded to a
+> complete theme and saved to the database. This eliminates runtime resolution complexity and Cloudflare Workers isolate
+> state issues. The database becomes the single source of truth.
 
 > **Layout types & presets** live in [`@ottabase/ottalayout`](../ottalayout/README.md). **React bindings**
 > (`BrandProvider`, `LayoutResolver`) live in [`@ottabase/brand-engine-react`](../brand-engine-react/README.md).
@@ -28,14 +31,32 @@ import { getToken, DEFAULT_COLORS_LIGHT } from '@ottabase/brand-engine';
 const primary = getToken(DEFAULT_COLORS_LIGHT, 'colors.primary.500');
 ```
 
-### Theme Registry
+### Preset Expansion (Server-Side)
 
 ```typescript
-import { registerTheme, resolveTheme, injectCSSVars } from '@ottabase/brand-engine';
+import { expandPresetToTokens } from '@ottabase/brand-engine/handlers';
 
-registerTheme(myTheme);
-const theme = resolveTheme('my-theme');
-injectCSSVars(theme); // sets CSS vars on :root
+// When user selects a preset, expand it to full tokens and save to DB
+const tokensJson = expandPresetToTokens('verdant', null);
+await brandKit.set('tokensJson', tokensJson).save();
+
+// Custom color overrides are merged; cursors (not in presets) are preserved
+const customTokensJson = expandPresetToTokens('verdant', existingTokensJson);
+```
+
+### Load and Apply Theme (Client & Server)
+
+```typescript
+import { brandKitToTheme, applyBrandTheme } from '@ottabase/brand-engine';
+
+// Load brand kit from DB
+const kit = await BrandKit.findByAppId(appId);
+
+// Convert to resolved theme
+const theme = await brandKitToTheme(kit, 'light'); // or 'dark'
+
+// Apply to document (client-side)
+applyBrandTheme(theme);
 ```
 
 ### Generate Palette from Brand Color
@@ -88,31 +109,128 @@ const url = buildGoogleFontUrl('Inter', [400, 600]);
 
 Wire in your Cloudflare Worker via handlers from `@ottabase/brand-engine/handlers`.
 
-| Method | Path                          | Description                                   |
-| ------ | ----------------------------- | --------------------------------------------- |
-| GET    | `/api/brand`                  | Resolved brand config (light + dark tokens)   |
-| GET    | `/api/brand/settings`         | Raw settings for admin editing                |
-| PUT    | `/api/brand`                  | Update brand settings                         |
-| POST   | `/api/brand/apply`            | Activate a BrandBox                           |
-| POST   | `/api/brand/logo/:type`       | Upload logo (logo, logo-dark, icon, og-image) |
-| GET    | `/api/brand/layouts`          | List layout templates                         |
-| PUT    | `/api/brand/layouts`          | Create/update layout template                 |
-| GET    | `/api/brand/mappings`         | List route mappings                           |
-| PUT    | `/api/brand/mappings`         | Replace route mappings                        |
-| GET    | `/api/brandbox`               | List BrandBoxes                               |
-| POST   | `/api/brandbox`               | Create BrandBox                               |
-| PUT    | `/api/brandbox/:id`           | Update BrandBox                               |
-| DELETE | `/api/brandbox/:id`           | Delete BrandBox                               |
-| POST   | `/api/brandbox/:id/duplicate` | Duplicate BrandBox                            |
+| Method | Path                        | Description                                   |
+| ------ | --------------------------- | --------------------------------------------- |
+| GET    | `/api/brand`                | Resolved brand config (per-app)               |
+| GET    | `/api/brand/presets`        | List available theme presets (JSON)           |
+| GET    | `/api/brand/kits`           | List brand kits for app                       |
+| POST   | `/api/brand/kits`           | Create brand kit (expands preset if selected) |
+| PUT    | `/api/brand/kits/:id`       | Update brand kit (re-expands preset)          |
+| DELETE | `/api/brand/kits/:id`       | Delete brand kit                              |
+| POST   | `/api/brand/kits/:id/clone` | Clone brand kit                               |
+| POST   | `/api/brand/kits/:id/logo`  | Upload logo (logo, logo-dark, icon, og-image) |
+| GET    | `/api/brand/layouts`        | List layout templates                         |
+| PUT    | `/api/brand/layouts`        | Create/update layout template                 |
+| GET    | `/api/brand/mappings`       | List route mappings                           |
+| PUT    | `/api/brand/mappings`       | Replace route mappings                        |
+| GET    | `/api/brand/menu-slots`     | Resolved menu slot assignments (with menus)   |
+| GET    | `/api/brand/menu-slots/raw` | Raw slot assignments (admin editing)          |
+| PUT    | `/api/brand/menu-slots`     | Replace all slot assignments                  |
+
+### Menu Slot Endpoints
+
+Menu slots map named layout positions (e.g. `header-nav`, `sidebar-nav`) to specific menus with a render type. The
+resolved data is also included in the `GET /api/brand` response so clients get everything in one fetch.
+
+**GET /api/brand/menu-slots** — Returns resolved slot assignments grouped by slot name, including full menu + items:
+
+```json
+{
+    "header-nav": [
+        {
+            "slotName": "header-nav",
+            "menuId": "menu-abc",
+            "renderType": "mega",
+            "sortOrder": 0,
+            "menu": { "id": "menu-abc", "name": "Main Nav", "slug": "main-nav", "type": "mega", "items": [...] }
+        }
+    ],
+    "footer-nav": [...]
+}
+```
+
+**PUT /api/brand/menu-slots** — Replace all assignments for the app:
+
+```json
+{
+    "slots": [
+        { "slotName": "header-nav", "menuId": "menu-abc", "renderType": "mega", "sortOrder": 0 },
+        { "slotName": "sidebar-nav", "menuId": "menu-def", "renderType": "sidebar", "sortOrder": 0 },
+        { "slotName": "footer-nav", "menuId": "menu-ghi", "renderType": "footer", "sortOrder": 0 }
+    ]
+}
+```
+
+Valid `renderType` values: `sidebar`, `flyout`, `mega`, `navbar`, `dropdown`, `footer`.
 
 ## Architecture
 
+### Package Structure
+
 ```
-@ottabase/brand-engine        ← tokens, themes, CSS, persistence, handlers (no React)
+@ottabase/brand-engine        ← tokens, themes, CSS, persistence (menus + brand kits), handlers (no React)
 @ottabase/brand-engine-react  ← BrandProvider, LayoutResolver, useBrand()
-@ottabase/ottalayout          ← LayoutConfig types, presets, resolver, validators, React slots
+@ottabase/ottalayout          ← LayoutConfig types, presets, resolver, validators, React slots (pure)
+@ottabase/ottamenu            ← Menu types (MenuItemDto), renderers, MenuSlotRenderer (pure)
 ```
 
-- **brand-engine** owns theme tokens, brand persistence (D1), and API handlers
-- **ottalayout** owns layout types and route resolution (pure logic)
+- **brand-engine** owns theme tokens, brand persistence (D1), Menu/MenuItem models, menu slot assignments, and all API
+  handlers
+- **ottalayout** owns layout types and route resolution (pure — no persistence)
+- **ottamenu** owns menu type definitions and React renderers (pure — no persistence)
 - **brand-engine-react** wires them together at runtime with `<BrandProvider>` and `<LayoutResolver>`
+
+**Dependency flow**: brand-engine → ottalayout (types), ottamenu (types). No circular dependencies.
+
+### Preset-as-Template Architecture (v3)
+
+**Flow**: Preset Selection → Expansion → Database → Runtime → Render
+
+```typescript
+// 1. USER ACTION: Select preset "verdant"
+// Frontend sends: { themePresetId: "verdant" }
+
+// 2. BACKEND: Expand preset to full tokens
+const preset = PRESET_MAP["verdant"];
+const expanded = {
+  color: {
+    light: preset.colors.light,  // Full color palette for light mode
+    dark: preset.colors.dark      // Full color palette for dark mode
+  },
+  typography: preset.typography,
+  spacing: preset.spacing,
+  radius: preset.radius,
+  shadow: preset.shadows,
+  motion: preset.motion
+};
+// User-configured cursors (not in presets) are preserved during expansion
+
+// 3. MERGE: Custom overrides on top of preset
+if (existingCustomColors) {
+  expanded.color.light = { ...expanded.color.light, ...customColors.light };
+  expanded.color.dark = { ...expanded.color.dark, ...customColors.dark };
+}
+
+// 4. SAVE: Store complete theme to DB
+brandKit.tokensJson = JSON.stringify(expanded);
+await brandKit.save();
+
+// 5. CACHE: Invalidate KV cache, re-warm with fresh DB data
+await warmBrandCache(env, { kitId });
+
+// 6. RUNTIME: Read directly from DB (no resolution needed)
+const tokens = JSON.parse(brandKit.tokensJson);
+const colors = tokens.color[mode]; // 'light' or 'dark'
+
+// 7. RENDER: Apply to document
+applyBrandTheme({ colors, typography, ... });
+```
+
+**Key Benefits**:
+
+- **Single Source of Truth**: Database contains complete theme
+- **No Runtime Resolution**: No registry lookups, no theme merging
+- **Cursors Preserved**: User-configured cursors persist when switching presets (not in preset templates)
+- **Atomic Updates**: What you save = what renders
+- **Works in Cloudflare Workers**: No module-level state dependencies
+- **Self-Contained Kits**: Each kit independent, no preset dependencies

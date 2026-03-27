@@ -64,6 +64,11 @@ describe('Auth Backend Handler', () => {
             user: { id: 'user-1', email: 'user@example.com', name: 'User One' },
         } as any);
 
+        expect(token).not.toBeNull();
+        if (!token) {
+            throw new Error('Expected jwt callback to return a token');
+        }
+
         expect(token.id).toBe('user-1');
         expect(token.organizationId).toBe('org-1');
         expect(Array.isArray(token.roles)).toBe(true);
@@ -96,6 +101,11 @@ describe('Auth Backend Handler', () => {
             },
         } as any);
 
+        expect(session.user).toBeDefined();
+        if (!session.user) {
+            throw new Error('Expected session callback to populate session.user');
+        }
+
         expect(session.user.id).toBe('user-1');
         expect((session.user as any).organizationId).toBe('org-1');
         expect((session.user as any).roles).toEqual(['member']);
@@ -103,7 +113,7 @@ describe('Auth Backend Handler', () => {
     });
 
     it('revokes session on signOut via KV', async () => {
-        const kvPut = vi.fn(async () => undefined);
+        const kvPut = vi.fn(async (_key: string, _value: string, _options?: { expirationTtl?: number }) => undefined);
         const env = {
             OBCF_D1: createMockD1() as any,
             OBCF_KV: { get: vi.fn(), put: kvPut } as any,
@@ -117,9 +127,22 @@ describe('Auth Backend Handler', () => {
         await signOut({ token: { id: 'user-1' } } as any);
 
         expect(kvPut).toHaveBeenCalled();
-        const [key, value, options] = kvPut.mock.calls[0];
+        const firstCall = kvPut.mock.calls[0];
+        expect(firstCall).toBeDefined();
+        if (!firstCall) {
+            throw new Error('Expected KV put to be called during signOut');
+        }
+
+        const key = firstCall[0];
+        const value = firstCall[1];
+        const options = firstCall[2];
         expect(key).toBe('auth:usr:user-1:revoked');
         expect(typeof value).toBe('string');
+        expect(options).toBeDefined();
+        if (!options) {
+            throw new Error('Expected KV put options to be provided');
+        }
+
         expect(options.expirationTtl).toBe(3600);
     });
 

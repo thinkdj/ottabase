@@ -4,14 +4,14 @@ Internationalization (i18n) package for the Ottabase monorepo, built with i18nex
 
 ## Features
 
-- 🌍 Multi-language support (English, Spanish, French, German)
-- 🔥 Type-safe translations with TypeScript
-- ⚛️ React integration with hooks
-- 🚀 Automatic language detection
-- 💾 LocalStorage persistence
-- 🎯 Namespace-based organization
-- 📦 Tree-shakeable
-- 🔄 Hot module replacement support
+- Multi-language support (English, Spanish, French, German)
+- Type-safe translations with TypeScript
+- React integration with hooks
+- Automatic language detection
+- LocalStorage persistence
+- Namespace-based organization
+- Tree-shakeable
+- Hot module replacement support
 
 ## Installation
 

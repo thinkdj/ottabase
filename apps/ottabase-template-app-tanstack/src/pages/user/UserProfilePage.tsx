@@ -9,7 +9,16 @@ import { useRBACToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/auth';
 import { requestEmailVerification } from '@/lib/auth-api';
+import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Avatar,
     AvatarFallback,
     AvatarImage,
@@ -20,12 +29,18 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    Dialog,
+    DialogContent,
+    DialogTitle,
     Input,
     Label,
     Separator,
 } from '@ottabase/ui-shadcn';
+import { getTimezonesForSelect, setTimezoneConfig } from '@ottabase/utils/timezone';
+import { IconExternalLink, IconPencil, IconTrash } from '@tabler/icons-react';
 import { Calendar, Check, Loader2, Mail, User } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AvatarEditModal } from './AvatarEditModal';
 
 interface LinkedAccountRecord {
     provider: string;
@@ -40,10 +55,16 @@ export function UserProfilePage() {
     const [formData, setFormData] = useState({
         name: user?.name || '',
         email: user?.email || '',
+        timezone:
+            (user as { timezone?: string })?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     });
 
     const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccountRecord[]>([]);
     const [isAccountsLoading, setIsAccountsLoading] = useState(true);
+    const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+    const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
+    const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+    const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
 
     const [isSaving, setIsSaving] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
@@ -52,35 +73,84 @@ export function UserProfilePage() {
 
     const normalize = useCallback((value: string) => value.trim(), []);
 
+    // OttaSelect items: id = IANA name, name = display label (searchable). Browser timezone always first.
+    const browserTz = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
+    const timezoneItems = useMemo(
+        () =>
+            getTimezonesForSelect({ preferredTimezone: browserTz || undefined }).map((tz) => ({
+                id: tz.name,
+                name: tz.label,
+                offset: tz.offset,
+            })),
+        [browserTz],
+    );
+
+    // Current value for OttaSelect (find in list or create synthetic for saved tz not in list)
+    const timezoneValue = useMemo((): OttaSelectItem | null => {
+        const tz = formData.timezone?.trim();
+        if (!tz) return null;
+        const found = timezoneItems.find((i) => i.id === tz);
+        return found ?? { id: tz, name: tz.replace(/_/g, ' ') };
+    }, [formData.timezone, timezoneItems]);
+
     const computeHasChanges = useCallback(
-        (next: { name: string; email: string }) => {
+        (next: { name: string; email: string; timezone: string }) => {
             const currentName = normalize(user?.name ?? '');
             const currentEmail = normalize(user?.email ?? '');
-            return normalize(next.name) !== currentName || normalize(next.email) !== currentEmail;
+            const currentTz = (user as { timezone?: string })?.timezone ?? '';
+            return (
+                normalize(next.name) !== currentName ||
+                normalize(next.email) !== currentEmail ||
+                normalize(next.timezone) !== currentTz
+            );
         },
-        [normalize, user?.email, user?.name],
+        [normalize, user?.email, user?.name, user],
     );
 
     useEffect(() => {
-        setFormData({
-            name: user?.name || '',
-            email: user?.email || '',
-        });
-        setHasChanges(false);
-    }, [user?.name, user?.email]);
+        if (user) {
+            setFormData({
+                name: user.name || '',
+                email: user.email || '',
+                timezone:
+                    (user as { timezone?: string }).timezone ||
+                    Intl.DateTimeFormat().resolvedOptions().timeZone ||
+                    'UTC',
+            });
+            setHasChanges(false);
+        }
+    }, [user?.name, user?.email, (user as { timezone?: string })?.timezone]);
 
+    // Fetch full profile (including timezone) - Auth.js session may not include DB-only fields
     useEffect(() => {
+        if (!user?.id) return;
         let cancelled = false;
 
-        async function loadLinkedAccounts() {
+        async function loadProfile() {
             setIsAccountsLoading(true);
             try {
-                const data = await api<{ linkedAccounts?: LinkedAccountRecord[] }>('/api/users/me');
-                if (!cancelled) {
+                const data = await api<
+                    {
+                        linkedAccounts?: LinkedAccountRecord[];
+                        name?: string;
+                        email?: string;
+                        timezone?: string;
+                    } & Record<string, unknown>
+                >('/api/users/me');
+                if (!cancelled && data) {
                     setLinkedAccounts(data?.linkedAccounts || []);
+                    const tz = data.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+                    setFormData((prev) => ({
+                        ...prev,
+                        name: data.name ?? prev.name,
+                        email: data.email ?? prev.email,
+                        timezone: tz,
+                    }));
+                    // Sync session so computeHasChanges and future visits have timezone
+                    updateUser({ timezone: tz } as Partial<typeof user>);
                 }
             } catch (error) {
-                console.error('Failed to load linked accounts', error);
+                console.error('Failed to load profile', error);
             } finally {
                 if (!cancelled) {
                     setIsAccountsLoading(false);
@@ -88,12 +158,13 @@ export function UserProfilePage() {
             }
         }
 
-        loadLinkedAccounts();
+        loadProfile();
 
         return () => {
             cancelled = true;
         };
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- updateUser changes when session updates; including it causes infinite loop
+    }, [user?.id]);
 
     const userInitials = user?.name
         ? user.name
@@ -104,7 +175,7 @@ export function UserProfilePage() {
               .toUpperCase()
         : user?.email?.[0]?.toUpperCase() || '?';
 
-    const handleChange = (field: 'name' | 'email', value: string) => {
+    const handleChange = (field: 'name' | 'email' | 'timezone', value: string) => {
         setFormData((prev) => {
             const next = { ...prev, [field]: value };
             setHasChanges(computeHasChanges(next));
@@ -122,13 +193,14 @@ export function UserProfilePage() {
 
             const trimmedName = normalize(formData.name);
             const trimmedEmail = normalize(formData.email);
+            const trimmedTimezone = normalize(formData.timezone);
 
             if (!trimmedName) {
                 toast.error('Name is required', 'Please enter your full name.');
                 return;
             }
 
-            const updates: Record<string, string> = {};
+            const updates: Record<string, string | null> = {};
 
             if (trimmedName !== normalize(user.name ?? '')) {
                 updates.name = trimmedName;
@@ -137,8 +209,15 @@ export function UserProfilePage() {
             if (trimmedEmail !== normalize(user.email ?? '')) {
                 toast.warning('Email changes are disabled', 'Contact support to update your login email.');
                 setFormData((prev) => ({ ...prev, email: user.email ?? '' }));
-                setHasChanges(computeHasChanges({ name: trimmedName, email: user.email ?? '' }));
+                setHasChanges(
+                    computeHasChanges({ name: trimmedName, email: user.email ?? '', timezone: formData.timezone }),
+                );
                 return;
+            }
+
+            const currentTz = (user as { timezone?: string }).timezone ?? '';
+            if (trimmedTimezone !== currentTz) {
+                updates.timezone = trimmedTimezone || null;
             }
 
             if (Object.keys(updates).length === 0) {
@@ -162,17 +241,22 @@ export function UserProfilePage() {
             if (updatedUser?.name !== undefined) safeUpdates.name = updatedUser.name;
             if (updatedUser?.email !== undefined) safeUpdates.email = updatedUser.email;
             if (updatedUser?.image !== undefined) safeUpdates.image = updatedUser.image;
+            if (updatedUser?.timezone !== undefined) safeUpdates.timezone = updatedUser.timezone;
             if (updatedUser?.emailVerified !== undefined) safeUpdates.emailVerified = updatedUser.emailVerified;
             if (updatedUser?.createdAt !== undefined) safeUpdates.createdAt = updatedUser.createdAt;
             if (updatedUser?.updatedAt !== undefined) safeUpdates.updatedAt = updatedUser.updatedAt;
 
             if (Object.keys(safeUpdates).length > 0) {
                 updateUser(safeUpdates);
+                if (safeUpdates.timezone) {
+                    setTimezoneConfig({ userTimezone: safeUpdates.timezone });
+                }
             }
 
             setFormData({
                 name: updatedUser?.name ?? user.name ?? '',
                 email: updatedUser?.email ?? user.email ?? '',
+                timezone: updatedUser?.timezone ?? formData.timezone,
             });
             if (updatedUser?.linkedAccounts) {
                 setLinkedAccounts(updatedUser.linkedAccounts);
@@ -235,12 +319,39 @@ export function UserProfilePage() {
                     <CardDescription>Your profile information visible to others</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {/* Avatar */}
+                    {/* Avatar with edit pencil */}
                     <div className="flex items-center gap-4">
-                        <Avatar className="h-20 w-20">
-                            <AvatarImage src={user.image || undefined} />
-                            <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
-                        </Avatar>
+                        <div className="relative group">
+                            {user.image ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setAvatarPreviewOpen(true)}
+                                    className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                    aria-label="View profile picture"
+                                >
+                                    <Avatar className="h-20 w-20 cursor-pointer ring-offset-background transition-opacity hover:opacity-90">
+                                        <AvatarImage src={user.image} />
+                                        <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
+                                    </Avatar>
+                                </button>
+                            ) : (
+                                <Avatar className="h-20 w-20">
+                                    <AvatarImage src={undefined} />
+                                    <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
+                                </Avatar>
+                            )}
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAvatarModalOpen(true);
+                                }}
+                                className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted-foreground/20 hover:text-foreground dark:border-background dark:bg-muted"
+                                aria-label="Edit profile picture"
+                            >
+                                <IconPencil className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
                         <div className="space-y-2">
                             <h3 className="font-semibold">{formData.name || 'No name set'}</h3>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -249,6 +360,110 @@ export function UserProfilePage() {
                             </div>
                         </div>
                     </div>
+
+                    <AvatarEditModal
+                        open={avatarModalOpen}
+                        onOpenChange={setAvatarModalOpen}
+                        hasImage={!!user.image}
+                        currentImageUrl={user.image ?? undefined}
+                        onSuccess={(imageUrl) => {
+                            updateUser({ image: imageUrl });
+                            if (refreshSession) refreshSession();
+                            toast.success('Profile picture updated', 'Your avatar has been updated.');
+                        }}
+                        onRemove={() => {
+                            updateUser({ image: null });
+                            if (refreshSession) refreshSession();
+                            toast.success('Profile picture removed', 'Your avatar has been removed.');
+                        }}
+                        onError={(msg) => toast.error('Avatar update failed', msg)}
+                    />
+
+                    {/* Avatar preview modal - shows image large when clicking existing avatar */}
+                    <Dialog open={avatarPreviewOpen} onOpenChange={setAvatarPreviewOpen}>
+                        <DialogContent className="max-w-2xl p-4 sm:p-6">
+                            <DialogTitle className="sr-only">Profile picture</DialogTitle>
+                            <div className="flex flex-col items-center gap-4">
+                                <img
+                                    src={user.image || ''}
+                                    alt="Profile picture"
+                                    className="max-h-[70vh] w-auto max-w-full rounded-full object-contain"
+                                />
+                                <div className="flex flex-wrap items-center justify-center gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-blue-600 hover:bg-blue-600/10 hover:text-blue-600 dark:text-blue-400 dark:hover:bg-blue-400/10"
+                                        onClick={() => window.open(user.image || '', '_blank', 'noopener,noreferrer')}
+                                    >
+                                        <IconExternalLink className="mr-2 h-4 w-4" />
+                                        Open in new tab
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        onClick={() => setRemoveConfirmOpen(true)}
+                                    >
+                                        <IconTrash className="mr-2 h-4 w-4" />
+                                        Remove profile picture
+                                    </Button>
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* Remove profile picture confirmation */}
+                    <AlertDialog open={removeConfirmOpen} onOpenChange={setRemoveConfirmOpen}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Remove profile picture?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Are you sure you want to remove your profile picture? You can add a new one anytime.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isRemovingAvatar}>Cancel</AlertDialogCancel>
+                                {/* Prevent Radix auto-close so the loading state is visible
+                                    while the async PATCH completes. Close manually on success. */}
+                                <AlertDialogAction
+                                    onClick={async (e) => {
+                                        e.preventDefault();
+                                        setIsRemovingAvatar(true);
+                                        try {
+                                            await api('/api/users/me', {
+                                                method: 'PATCH',
+                                                body: { image: null },
+                                            });
+                                            updateUser({ image: null });
+                                            if (refreshSession) refreshSession();
+                                            setAvatarPreviewOpen(false);
+                                            setRemoveConfirmOpen(false);
+                                            toast.success('Profile picture removed', 'Your avatar has been removed.');
+                                        } catch (err) {
+                                            setRemoveConfirmOpen(false);
+                                            toast.error('Remove failed', 'Failed to remove profile picture');
+                                        } finally {
+                                            setIsRemovingAvatar(false);
+                                        }
+                                    }}
+                                    disabled={isRemovingAvatar}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                    {isRemovingAvatar ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Removing...
+                                        </>
+                                    ) : (
+                                        'Remove'
+                                    )}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
 
                     <Separator />
 
@@ -278,6 +493,26 @@ export function UserProfilePage() {
                         <p className="text-sm text-muted-foreground">
                             Your email is used for login and notifications. Email changes require verification and are
                             disabled for now.
+                        </p>
+                    </div>
+
+                    {/* Timezone */}
+                    <div className="space-y-2">
+                        <Label htmlFor="timezone">Timezone</Label>
+                        <OttaSelect
+                            mode="single"
+                            items={timezoneItems}
+                            value={timezoneValue}
+                            onChange={(v) => handleChange('timezone', (v as OttaSelectItem)?.id ?? '')}
+                            placeholder="Select timezone"
+                            searchable
+                            searchPlaceholder="Search timezones..."
+                            disabled={isSaving}
+                            clearable={false}
+                            className="w-full"
+                        />
+                        <p className="text-sm text-muted-foreground">
+                            Used for displaying dates and times in your local timezone.
                         </p>
                     </div>
 

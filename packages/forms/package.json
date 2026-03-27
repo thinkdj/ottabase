@@ -27,6 +27,7 @@
     },
     "dependencies": {
         "@ottabase/ottaselect": "workspace:*",
+        "@ottabase/ui-datatable": "workspace:*",
         "clsx": "catalog:",
         "json-edit-react": "^1.29.0",
         "lucide-react": "catalog:"

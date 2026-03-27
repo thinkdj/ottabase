@@ -50,11 +50,11 @@ export default class CustomAlertPlugin implements BlockTool {
 
     render(): HTMLElement {
         const wrapper = document.createElement('div');
-        wrapper.classList.add(CustomAlertPlugin.CSS.baseClass, CustomAlertPlugin.CSS.wrapper);
+        wrapper.classList.add(CustomAlertPlugin.CSS.baseClass, CustomAlertPlugin.CSS.wrapper, 'ob-plugin');
         wrapper.classList.add(CustomAlertPlugin.CSS[this.data.type]);
 
         const select = document.createElement('select');
-        select.classList.add(CustomAlertPlugin.CSS.select);
+        select.classList.add(CustomAlertPlugin.CSS.select, 'ob-select');
 
         const types: Array<AlertData['type']> = ['info', 'warning', 'success', 'error'];
         types.forEach((type) => {
@@ -79,7 +79,7 @@ export default class CustomAlertPlugin implements BlockTool {
         });
 
         const textarea = document.createElement('textarea');
-        textarea.classList.add(CustomAlertPlugin.CSS.textarea);
+        textarea.classList.add(CustomAlertPlugin.CSS.textarea, 'ob-textarea');
         textarea.placeholder = 'Enter alert message...';
         textarea.value = this.data.message;
         textarea.rows = 3;
@@ -114,27 +114,12 @@ export default class CustomAlertPlugin implements BlockTool {
         style.id = styleId;
         style.textContent = `
       .cdx-alert__wrapper {
-        padding: 12px;
-        border-radius: 8px;
         border-left: 4px solid hsl(var(--border));
         background: hsl(var(--muted));
         color: hsl(var(--foreground));
       }
 
-      .cdx-alert__select,
-      .cdx-alert__message {
-        display: block;
-        width: 100%;
-        padding: 8px;
-        border: 1px solid hsl(var(--border));
-        border-radius: 6px;
-        font-size: 14px;
-        font-family: inherit;
-        background: hsl(var(--background));
-        color: hsl(var(--foreground));
-      }
-
-      .cdx-alert__select { margin-bottom: 10px; }
+      .cdx-alert__select { margin-bottom: 8px; }
       .cdx-alert__message { resize: vertical; min-height: 60px; }
 
       .cdx-alert--info { border-left-color: hsl(var(--primary)); }

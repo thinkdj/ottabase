@@ -12,7 +12,10 @@ export function BrandThemeApplicator() {
     const { resolved } = useTheme();
 
     useEffect(() => {
-        if (!resolved) return;
+        if (!resolved) {
+            console.warn('[BrandThemeApplicator] No resolved theme available');
+            return;
+        }
 
         applyBrandTheme(resolved);
 

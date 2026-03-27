@@ -9,6 +9,7 @@ Edge-friendly email templating + mailer helpers for Ottabase.
 - Mailer abstraction for providers
 - Resend provider (fetch-based, edge-safe)
 - AWS SES provider (HTTP API, edge-safe)
+- Dev email trap provider for local workflows
 - Cloudflare provider stub (pluggable transport)
 
 ## Install
@@ -185,3 +186,29 @@ await sendTemplatedEmail(mailer, {
     },
 });
 ```
+
+## Dev Email Trap
+
+Use the built-in dev trap to capture emails in KV during local development without forwarding them to a real SMTP or API
+provider.
+
+```ts
+import { createDevEmailTrapMailer, createKvEmailTrapStore } from '@ottabase/email/providers/dev-trap';
+
+const store = createKvEmailTrapStore(env.OBCF_KV, {
+    prefix: 'dev-email-trap:',
+    maxEntries: 50,
+});
+
+const mailer = createDevEmailTrapMailer({ store });
+
+await mailer.send({
+    from: 'noreply@example.com',
+    to: 'user@example.com',
+    subject: 'Local sign-in link',
+    html: '<p>Use this magic link in local development.</p>',
+});
+```
+
+The captured messages include subject, recipients, rendered HTML/text, and a short preview so an admin UI can list and
+inspect them.

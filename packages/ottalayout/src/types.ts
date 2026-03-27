@@ -115,3 +115,40 @@ export interface RouteMapping {
 export function createDefaultRouteMappings(): RouteMapping[] {
     return [{ pathPattern: '/**', layoutTemplateId: 'app-shell', priority: 0 }];
 }
+
+// ── Menu Slots ─────────────────────────────────────────────────────────────
+
+/**
+ * Well-known menu slot names used by the layout system.
+ * Layout components reference these slots to render menus dynamically.
+ * Apps can use any string as a slot name for custom zones.
+ */
+export type BuiltInMenuSlotName =
+    | 'header-nav'
+    | 'sidebar-nav'
+    | 'footer-nav'
+    | 'mobile-nav'
+    | 'user-menu'
+    | 'admin-nav';
+
+/** All built-in menu slot names */
+export const BUILT_IN_MENU_SLOTS: BuiltInMenuSlotName[] = [
+    'header-nav',
+    'sidebar-nav',
+    'footer-nav',
+    'mobile-nav',
+    'user-menu',
+    'admin-nav',
+];
+
+/** Menu slot assignment — maps a named slot to a menu with render type */
+export interface MenuSlotConfig {
+    /** Named slot in the layout (e.g. 'header-nav', 'sidebar-nav') */
+    slotName: string;
+    /** ID of the menu to render in this slot */
+    menuId: string;
+    /** How to render: sidebar, mega, navbar, dropdown, flyout, footer */
+    renderType: string;
+    /** Sort order when multiple menus in the same slot */
+    sortOrder: number;
+}

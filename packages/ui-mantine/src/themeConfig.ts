@@ -1,5 +1,39 @@
 import type { MantineThemeOverride } from '@mantine/core';
 
+// ── Mantine demo theme (showcase only — not in core config; core uses BrandEngine) ──
+// Used by the /demo/mantine route. Mantine has its own provider, added only in demo.
+export const MANTINE_DEMO_COLOR_DEFAULT = 'tremorBlue' as const;
+
+export const MANTINE_DEMO_THEME_COLORS: Record<
+    string,
+    [string, string, string, string, string, string, string, string, string, string]
+> = {
+    primary: [
+        '#f7eefb',
+        '#ebdaf2',
+        '#d6b0e6',
+        '#c085dc',
+        '#ae60d2',
+        '#a349cc',
+        '#9e3dca',
+        '#8a30b3',
+        '#7b29a0',
+        '#6b218d',
+    ],
+    tremorBlue: [
+        '#e5f3ff',
+        '#cee2ff',
+        '#9ec2fd',
+        '#6aa1fa',
+        '#3e84f6',
+        '#2272f5',
+        '#0d69f5',
+        '#0058db',
+        '#004ec5',
+        '#0043af',
+    ],
+};
+
 // Mantine Theme Configuration Types
 export interface MantineThemeConfig {
     // Core theme selection - uses theme from packages/ui-core/themes/

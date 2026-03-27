@@ -148,6 +148,7 @@ GOOGLE_CLIENT_SECRET=...
 GITHUB_CLIENT_ID=...
 GITHUB_CLIENT_SECRET=...
 EMAIL_RESEND_API_KEY=...  # For magic link
+DEV_EMAIL_TRAP_ENABLED=true  # Local dev catchall inbox
 ```
 
 The package will:
@@ -220,6 +221,7 @@ handleAuthRequest(request, env, {
     - ✅ Auth0
     - ✅ Magic Link (Resend)
     - ✅ Magic Link (SMTP/Nodemailer)
+    - ✅ Magic Link (Catch-all mail trap using local KV)
 
 ## 🏗️ Benefits of This Architecture
 

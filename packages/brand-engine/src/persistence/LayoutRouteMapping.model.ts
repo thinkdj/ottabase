@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – LayoutRouteMapping OttaORM Model
+// Brand Engine – LayoutRouteMapping OttaORM Model (v2: per-app scoping)
 // ---------------------------------------------------------------------------
 
 import { BaseModel, type ModelFields, type PackageType } from '@ottabase/ottaorm';
@@ -23,27 +23,12 @@ export class LayoutRouteMapping extends BaseModel {
     };
 
     static writable = {
-        create: [
-            'organizationId',
-            'appId',
-            'pathPattern',
-            'priority',
-            'layoutTemplateId',
-            'brandKitId',
-            'tokenOverridesJson',
-        ],
+        create: ['appId', 'pathPattern', 'priority', 'layoutTemplateId', 'brandKitId', 'tokenOverridesJson'],
         update: ['pathPattern', 'priority', 'layoutTemplateId', 'brandKitId', 'tokenOverridesJson'],
     };
 
     protected static fields: ModelFields = {
         id: { type: 'id', primaryKey: true, editable: false, uiConfig: { label: 'ID' } },
-        organizationId: {
-            type: 'string',
-            editable: false,
-            uiConfig: { label: 'Organization' },
-            formConfig: { visible: false },
-            tableConfig: { visible: false },
-        },
         appId: {
             type: 'string',
             editable: false,

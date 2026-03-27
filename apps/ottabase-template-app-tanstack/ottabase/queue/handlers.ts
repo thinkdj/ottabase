@@ -18,27 +18,13 @@
 import { globalKey } from '@ottabase/cf/cache-keys';
 import type { Mailer } from '@ottabase/email';
 import { sendTemplatedEmail } from '@ottabase/email/mailer';
-import { createResendMailer } from '@ottabase/email/providers/resend';
-import { createSESMailer } from '@ottabase/email/providers/ses';
 import type { JobHandler } from '@ottabase/queue';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { resolveAppMailer } from '../../worker/lib/email-provider';
 
-function getMailer(env: CloudflareEnv): { mailer: Mailer | null; from: string } {
-    const from = (env as any).EMAIL_FROM || 'noreply@example.com';
-    if ((env as any).EMAIL_RESEND_API_KEY) {
-        return { mailer: createResendMailer({ apiKey: (env as any).EMAIL_RESEND_API_KEY }), from };
-    }
-    if ((env as any).AWS_ACCESS_KEY_ID && (env as any).AWS_SECRET_ACCESS_KEY) {
-        return {
-            mailer: createSESMailer({
-                accessKeyId: (env as any).AWS_ACCESS_KEY_ID,
-                secretAccessKey: (env as any).AWS_SECRET_ACCESS_KEY,
-                region: (env as any).AWS_REGION || 'us-east-1',
-            }),
-            from,
-        };
-    }
-    return { mailer: null, from };
+async function getMailer(env: CloudflareEnv): Promise<{ mailer: Mailer | null; from: string }> {
+    const { mailer, from } = await resolveAppMailer(env, 'auto');
+    return { mailer, from };
 }
 
 /**
@@ -58,7 +44,7 @@ export interface SendEmailPayload {
  */
 export const sendEmailHandler: JobHandler<SendEmailPayload, CloudflareEnv> = async (job, ctx) => {
     const { to, subject, body, template, data } = job.payload;
-    const { mailer, from } = getMailer(ctx.env);
+    const { mailer, from } = await getMailer(ctx.env);
 
     if (!mailer) {
         console.warn(`[Queue:send-email] No email provider configured, skipping email to ${to}`);

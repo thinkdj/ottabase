@@ -150,9 +150,46 @@ const { meta } = useLayoutMeta();
 // → { title: 'Settings', breadcrumbs: ['Home', 'Settings'] }
 ```
 
+### Menu Slots
+
+Named positions in the layout where menus can be dynamically bound. Slot assignments are stored in the database via
+`@ottabase/brand-engine` and returned in the `GET /api/brand` response.
+
+6 built-in slot names:
+
+| Slot          | Description                    |
+| ------------- | ------------------------------ |
+| `header-nav`  | Main navigation in the header  |
+| `sidebar-nav` | Sidebar navigation             |
+| `footer-nav`  | Footer links                   |
+| `mobile-nav`  | Mobile drawer / hamburger menu |
+| `user-menu`   | User account dropdown          |
+| `admin-nav`   | Admin-only navigation          |
+
+Custom slot names (any string) are also supported for app-specific zones.
+
+```typescript
+import { BUILT_IN_MENU_SLOTS, type BuiltInMenuSlotName, type MenuSlotConfig } from '@ottabase/ottalayout';
+
+// Enumerate all built-in slots
+BUILT_IN_MENU_SLOTS.forEach((slot) => console.log(slot));
+
+// Describe a slot assignment
+const config: MenuSlotConfig = {
+    slotName: 'header-nav',
+    menuId: 'menu-abc-123',
+    renderType: 'mega',
+    sortOrder: 0,
+};
+```
+
+To render menus in slots, use `<MenuSlotRenderer>` from `@ottabase/ottamenu` (see
+[ottamenu README](../ottamenu/README.md#menu-slot-renderer)).
+
 ## Integration
 
 `@ottabase/ottalayout` provides the **pure logic**. For runtime layout rendering, use with:
 
-- **`@ottabase/brand-engine`** — stores route mappings and layout templates per app/tenant
+- **`@ottabase/brand-engine`** — stores route mappings, layout templates, and **menu slot assignments** per app/tenant
 - **`@ottabase/brand-engine-react`** — `<LayoutResolver>` component that reads mappings and renders the active layout
+- **`@ottabase/ottamenu`** — `<MenuSlotRenderer>` component that renders menus assigned to layout slots

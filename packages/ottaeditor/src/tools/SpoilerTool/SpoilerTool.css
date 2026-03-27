@@ -1,37 +1,9 @@
-/* Spoiler Tool Styles */
+/* Spoiler Tool - custom/overrides only */
 
 .cdx-spoiler__wrapper {
-    padding: 12px;
-    border-radius: 8px;
     background: hsl(var(--muted));
-    border: 1px solid hsl(var(--border));
-}
-
-.cdx-spoiler__title {
-    font-size: 11px;
-    font-weight: 600;
-    color: hsl(var(--muted-foreground));
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
 }
 
 .cdx-spoiler__textarea {
-    display: block;
-    width: 100%;
-    padding: 8px;
-    border: 1px solid hsl(var(--input));
-    border-radius: 6px;
-    font-size: 14px;
-    font-family: inherit;
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
-    resize: vertical;
     min-height: 60px;
-}
-
-.cdx-spoiler__textarea:focus {
-    outline: none;
-    border-color: hsl(var(--ring));
-    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
 }

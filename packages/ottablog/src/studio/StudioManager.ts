@@ -14,6 +14,8 @@ export interface StudioThemeState {
     themeId: string;
     name: string;
     description: string | null;
+    version: string | null;
+    author: string | null;
     isActive: boolean;
     config: Record<string, unknown> | null;
 }
@@ -72,6 +74,8 @@ export class StudioManager {
             themeId: t.get('themeId') as string,
             name: t.get('name') as string,
             description: (t.get('description') as string) ?? null,
+            version: (t.get('version') as string) ?? null,
+            author: (t.get('author') as string) ?? null,
             isActive: (t.get('isActive') as boolean) ?? false,
             config: (t.get('config') as Record<string, unknown>) ?? null,
         }));

@@ -1,0 +1,126 @@
+/**
+ * Common styles for all OttaEditor custom plugins.
+ * Uses ob-plugin (ottabase) classes. All spacing = multiples of 4px.
+ * Individual plugin CSS files contain only custom/override styles.
+ */
+
+/* ---------------------------------------------------------------------------
+   Root wrapper - all custom plugins
+   --------------------------------------------------------------------------- */
+.ob-plugin {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid hsl(var(--border));
+    margin-bottom: 16px;
+}
+
+/* Layout uses toolbar padding, override root padding */
+.ob-plugin.cdx-layout__wrapper {
+    padding: 0;
+}
+
+/* AdvancedImage has its own structure */
+.ob-plugin.advanced-image-tool {
+    padding: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Form layout
+   --------------------------------------------------------------------------- */
+.ob-plugin .ob-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ob-plugin .ob-form > * {
+    margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Input group (label + input wrapper)
+   --------------------------------------------------------------------------- */
+.ob-plugin .ob-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+   Labels
+   --------------------------------------------------------------------------- */
+.ob-plugin .ob-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    display: block;
+    margin-bottom: 4px;
+}
+
+.ob-plugin .ob-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.ob-plugin .ob-hint {
+    font-size: 12px;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    margin-top: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+   Inputs, selects, textareas
+   --------------------------------------------------------------------------- */
+.ob-plugin .ob-input,
+.ob-plugin .ob-select,
+.ob-plugin .ob-textarea,
+.ob-plugin .advanced-image-url-input,
+.ob-plugin .advanced-image-input-wrapper .cdx-input {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid hsl(var(--input));
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    box-sizing: border-box;
+}
+
+.ob-plugin .ob-textarea {
+    resize: vertical;
+}
+
+.ob-plugin .ob-input:focus,
+.ob-plugin .ob-select:focus,
+.ob-plugin .ob-textarea:focus,
+.ob-plugin .advanced-image-url-input:focus,
+.ob-plugin .advanced-image-input-wrapper .cdx-input:focus {
+    outline: none;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+}
+
+/* ---------------------------------------------------------------------------
+   Checkbox
+   --------------------------------------------------------------------------- */
+.ob-plugin .ob-checkbox {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: hsl(var(--primary));
+}
+
+.ob-plugin .ob-checkbox-label {
+    font-size: 12px;
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    margin: 0;
+}

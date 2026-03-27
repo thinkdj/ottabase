@@ -48,6 +48,11 @@ export function CloudflareDemoIndexPage() {
             description: 'WebSocket-based real-time messaging with offline support',
             href: '/demo/cloudflare/realtime',
         },
+        {
+            name: 'AI (Workers AI + Gateway)',
+            description: 'Multi-provider AI chat via Workers AI, AI Gateway, and Universal client',
+            href: '/demo/cloudflare/ai',
+        },
     ];
 
     return (

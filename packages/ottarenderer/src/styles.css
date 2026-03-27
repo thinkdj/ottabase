@@ -631,13 +631,13 @@
 }
 
 /* ======================================= */
-/* Review Block Styles */
+/* Review Block */
 /* ======================================= */
 
 .cdc-content-review {
     display: block;
     clear: both;
-    margin: 1.5rem auto;
+    margin: 1.5rem 0;
     width: 100%;
 }
 
@@ -656,22 +656,89 @@
     padding: 0;
 }
 
-/* Fallback for when Tailwind isn't loaded */
-.cdc-content-review:not([class*='rounded-lg']) {
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+/* ======================================= */
+/* Steps Block */
+/* ======================================= */
+
+.cdc-content-steps {
+    display: block;
+    clear: both;
+    margin: 1.5rem 0;
+    width: 100%;
 }
 
-@media (prefers-color-scheme: dark) {
-    .cdc-content-review:not([class*='rounded-lg']) {
-        border-color: #374151;
-        background: #111827;
-    }
+.cdc-content-steps [role='list'] {
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
-.dark .cdc-content-review:not([class*='rounded-lg']) {
-    border-color: #374151;
-    background: #111827;
+/* Step item — two-column grid: rail | content */
+.cdc-steps-item {
+    display: grid;
+    grid-template-columns: 2rem 1fr;
+    gap: 1rem;
+    padding-bottom: 1.5rem;
+}
+
+.cdc-steps-item:last-child {
+    padding-bottom: 0;
+}
+
+/* Rail: badge + connecting line */
+.cdc-steps-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 0.125rem;
+}
+
+.cdc-steps-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    border: none;
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.cdc-steps-line {
+    width: 1px;
+    flex: 1;
+    margin-top: 0.5rem;
+    background: hsl(var(--border));
+}
+
+/* Content: title + description */
+.cdc-steps-content {
+    min-width: 0;
+    padding-top: 0.125rem;
+}
+
+.cdc-steps-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 2;
+    color: hsl(var(--foreground));
+}
+
+.cdc-steps-text {
+    margin: 0.125rem 0 0;
+    white-space: pre-line;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: hsl(var(--muted-foreground));
+}
+
+.cdc-steps-text--no-title {
+    margin-top: 0.25rem;
 }

@@ -76,7 +76,6 @@ export interface BlogPostListItem {
     authorName: string | null;
     authorAvatar: string | null;
     isFeatured: boolean;
-    viewCount: number;
     readingTimeMinutes: number | null;
     publishedAt: string | null;
     createdAt: string;

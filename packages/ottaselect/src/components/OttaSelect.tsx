@@ -135,7 +135,7 @@ const Chip = ({
                             onRemove(e as any, item);
                         }
                     }}
-                    className="ml-0.5 hover:bg-primary/20 rounded-full p-0.5 transition-colors cursor-pointer"
+                    className="ml-0.5 hover:bg-primary/20 rounded-full p-0.5 transition-colors duration-fast ease-theme cursor-pointer"
                 >
                     <X className="w-3 h-3" />
                 </span>
@@ -567,7 +567,7 @@ export function OttaSelect({
                     'rounded-lg',
                     'hover:border-ring/50',
                     'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
-                    'transition-colors duration-150',
+                    'transition-colors duration-fast ease-theme',
                     'flex items-center justify-between gap-2',
                     disabled && 'cursor-not-allowed',
                 )}
@@ -578,7 +578,7 @@ export function OttaSelect({
                     {clearable && hasValue && !disabled && (
                         <span
                             onClick={handleClear}
-                            className="p-1 hover:bg-accent rounded transition-colors cursor-pointer"
+                            className="p-1 hover:bg-accent rounded transition-colors duration-fast ease-theme cursor-pointer"
                             role="button"
                             aria-label="Clear selection"
                             tabIndex={0}
@@ -595,7 +595,7 @@ export function OttaSelect({
 
                     <ChevronDown
                         className={clsx(
-                            'w-4 h-4 text-muted-foreground transition-transform duration-200',
+                            'w-4 h-4 text-muted-foreground transition-transform duration-normal ease-theme',
                             isOpen && 'transform rotate-180',
                         )}
                     />
@@ -668,7 +668,7 @@ export function OttaSelect({
                                             className={clsx(
                                                 'w-full px-3 py-2 text-left text-sm',
                                                 'text-popover-foreground',
-                                                'hover:bg-accent hover:text-accent-foreground transition-colors',
+                                                'hover:bg-accent hover:text-accent-foreground transition-colors duration-fast ease-theme',
                                                 'flex items-center justify-between gap-2',
                                                 focused && 'bg-accent text-accent-foreground',
                                                 selected && 'bg-accent/50 hover:bg-accent',

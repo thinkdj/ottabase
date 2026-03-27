@@ -4,16 +4,16 @@ Framework-agnostic Auth.js integration for Ottabase with Cloudflare D1 and Drizz
 
 ## Features
 
-- ✅ **Auth.js v5** - Full Auth.js support with Cloudflare D1
-- ✅ **Drizzle ORM** - Edge-optimized database adapter
-- ✅ **Framework Agnostic** - Works with Next.js, Remix, SvelteKit, Workers
-- ✅ **Multiple Auth Methods** - OAuth, Credentials, Magic Link (Email)
-- ✅ **Provider Presets** - Google, GitHub, Discord, Azure AD, Auth0, Resend, SMTP
-- ✅ **UI Components** - Ready-to-use login forms with shadcn/ui
-- ✅ **Custom Fields** - Extend user model per-app
-- ✅ **Error Handling** - Production-ready with custom handlers
-- ✅ **Smart Session Refresh** - Profile updates bump a KV version so `/api/auth/session` refreshes a JWT only when
-  needed, keeping local storage/current tab in sync without constant D1 reads
+- **Auth.js v5** - Full Auth.js support with Cloudflare D1
+- **Drizzle ORM** - Edge-optimized database adapter
+- **Framework Agnostic** - Works with Next.js, Remix, SvelteKit, Workers
+- **Multiple Auth Methods** - OAuth, Credentials, Magic Link (Email)
+- **Provider Presets** - Google, GitHub, Discord, Azure AD, Auth0, Resend, SMTP
+- **UI Components** - Ready-to-use login forms with shadcn/ui
+- **Custom Fields** - Extend user model per-app
+- **Error Handling** - Production-ready with custom handlers
+- **Smart Session Refresh** - Profile updates bump a KV version so `/api/auth/session` refreshes a JWT only when needed,
+  keeping local storage/current tab in sync without constant D1 reads
 
 ## Installation
 
@@ -481,6 +481,21 @@ const emailProvider = createNodemailerProvider(env, {
     from: 'noreply@yourdomain.com',
 });
 ```
+
+#### Using the Dev Email Trap
+
+```typescript
+import { createDevEmailTrapProvider } from '@ottabase/auth';
+import { createKvEmailTrapStore } from '@ottabase/email/providers/dev-trap';
+
+const emailProvider = createDevEmailTrapProvider(env, {
+    store: createKvEmailTrapStore(env.OBCF_KV, { maxEntries: 50 }),
+    from: 'noreply@example.com',
+});
+```
+
+This is intended for local development. It captures rendered emails in KV so your app can expose a local inbox instead
+of sending through SMTP or an external API.
 
 ## Session Utilities
 

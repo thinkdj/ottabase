@@ -7,10 +7,14 @@ export { default as AdvancedImageBlock } from './components/AdvancedImage/Advanc
 export { default as Checklist } from './components/Checklist';
 export { default as Code } from './components/Code';
 export { default as CTA } from './components/CTA';
+export { default as Disclosure } from './components/Disclosure';
+export { default as Layout } from './components/Layout';
 export { default as List } from './components/List';
+export { default as Map } from './components/Map';
 export { default as Quote } from './components/Quote';
 export { default as Review } from './components/Review';
 export { default as Spoiler } from './components/Spoiler';
+export { default as Steps } from './components/Steps';
 export { default as Table } from './components/Table';
 export { default as Warning } from './components/Warning';
 
@@ -18,8 +22,12 @@ export { default as Warning } from './components/Warning';
 export type { AdvancedImageData, UploadResponse } from './components/AdvancedImage/advancedimage.types';
 export type { ChecklistItem } from './components/Checklist';
 export type { CTAData } from './components/CTA';
+export type { AIDisclosureLevel, DisclosureData } from './components/Disclosure';
+export type { LayoutData, LayoutPreset } from './components/Layout';
+export type { MapData, MapProvider, MapTheme } from './components/Map';
 export type { QuoteData } from './components/Quote';
 export type { ReviewData } from './components/Review';
+export type { StepItem, StepsData } from './components/Steps';
 
 // Export configuration and utilities
 export { blockClass, customRenderers, defaultEJSRConfigs, shouldRenderContentBlocks } from './EditorJsRenderer';

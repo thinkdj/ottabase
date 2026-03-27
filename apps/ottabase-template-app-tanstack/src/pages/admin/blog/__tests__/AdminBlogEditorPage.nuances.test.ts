@@ -4,7 +4,7 @@
  * Tests for slug check only when changed, version delete warning, save disabled when not dirty.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 // Slug availability: run check only when slug has changed from initial
 function shouldRunSlugCheck(currentSlug: string, initialSlug: string): boolean {
@@ -88,6 +88,69 @@ describe('AdminBlogEditorPage nuances', () => {
 
         it('should be enabled for new post when dirty (create mode)', () => {
             expect(isSaveDisabled(false, false, true)).toBe(false);
+        });
+    });
+
+    describe('junction-filter pagination (in-memory when tag/category filter active)', () => {
+        // Simulates the pagination logic from handleBlogPostsList
+        function paginateFiltered(
+            allPostIds: string[],
+            junctionPostIds: string[] | null,
+            page: number,
+            perPage: number,
+        ) {
+            if (junctionPostIds === null) {
+                // No junction filter — standard paginate
+                const total = allPostIds.length;
+                const totalPages = Math.ceil(total / perPage);
+                const paged = allPostIds.slice((page - 1) * perPage, page * perPage);
+                return { data: paged, page, perPage, total, totalPages };
+            }
+            const junctionSet = new Set(junctionPostIds);
+            const filtered = allPostIds.filter((id) => junctionSet.has(id));
+            const total = filtered.length;
+            const totalPages = Math.ceil(total / perPage);
+            const paged = filtered.slice((page - 1) * perPage, page * perPage);
+            return { data: paged, page, perPage, total, totalPages };
+        }
+
+        it('should return correct total when filtering by junction IDs', () => {
+            const allPosts = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            const tagPosts = ['b', 'd', 'f'];
+            const result = paginateFiltered(allPosts, tagPosts, 1, 10);
+            expect(result.total).toBe(3);
+            expect(result.totalPages).toBe(1);
+            expect(result.data).toEqual(['b', 'd', 'f']);
+        });
+
+        it('should paginate junction-filtered results correctly across pages', () => {
+            const allPosts = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            const tagPosts = ['a', 'b', 'c', 'd', 'e'];
+            const p1 = paginateFiltered(allPosts, tagPosts, 1, 2);
+            expect(p1.data).toEqual(['a', 'b']);
+            expect(p1.total).toBe(5);
+            expect(p1.totalPages).toBe(3);
+
+            const p2 = paginateFiltered(allPosts, tagPosts, 2, 2);
+            expect(p2.data).toEqual(['c', 'd']);
+
+            const p3 = paginateFiltered(allPosts, tagPosts, 3, 2);
+            expect(p3.data).toEqual(['e']);
+        });
+
+        it('should pass through without filtering when junction IDs are null', () => {
+            const allPosts = ['a', 'b', 'c'];
+            const result = paginateFiltered(allPosts, null, 1, 10);
+            expect(result.total).toBe(3);
+            expect(result.data).toEqual(['a', 'b', 'c']);
+        });
+
+        it('should return empty when junction filter matches nothing', () => {
+            const allPosts = ['a', 'b', 'c'];
+            const tagPosts = ['x', 'y'];
+            const result = paginateFiltered(allPosts, tagPosts, 1, 10);
+            expect(result.total).toBe(0);
+            expect(result.data).toEqual([]);
         });
     });
 });

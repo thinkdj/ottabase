@@ -28,9 +28,9 @@
             "require": "./dist/persistence/index.js"
         },
         "./handlers": {
-            "types": "./dist/handlers/brand-api.d.ts",
-            "import": "./dist/handlers/brand-api.mjs",
-            "require": "./dist/handlers/brand-api.js"
+            "types": "./dist/handlers/index.d.ts",
+            "import": "./dist/handlers/index.mjs",
+            "require": "./dist/handlers/index.js"
         },
         "./layouts": {
             "types": "./dist/layouts/index.d.ts",
@@ -43,8 +43,8 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup src/index.ts src/themes/index.ts src/fonts/index.ts src/persistence/index.ts src/layouts/index.ts src/handlers/brand-api.ts src/handlers/layout-api.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/themes/index.ts src/fonts/index.ts src/persistence/index.ts src/layouts/index.ts src/handlers/brand-api.ts src/handlers/layout-api.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/themes/index.ts src/fonts/index.ts src/persistence/index.ts src/layouts/index.ts src/handlers/index.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/themes/index.ts src/fonts/index.ts src/persistence/index.ts src/layouts/index.ts src/handlers/index.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "lint": "eslint src --ext .ts,.tsx",
         "type-check": "tsc --noEmit",
@@ -65,6 +65,7 @@
         "@ottabase/audit": "workspace:*",
         "@ottabase/cf": "workspace:*",
         "@ottabase/ottalayout": "workspace:*",
+        "@ottabase/ottamenu": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/utils": "workspace:*"
     },

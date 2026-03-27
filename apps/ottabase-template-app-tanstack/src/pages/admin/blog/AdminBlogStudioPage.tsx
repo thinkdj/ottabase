@@ -4,6 +4,7 @@
  * Manage blog themes and plugins
  */
 import type { StudioPluginState, StudioThemeState } from '@ottabase/ottablog';
+import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -34,13 +35,12 @@ import {
     SelectValue,
     Textarea,
 } from '@ottabase/ui-shadcn';
-import { api } from '@/lib/api';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { ArrowLeft, Loader2, Palette, Puzzle, Settings } from 'lucide-react';
+import { Loader2, Palette, Puzzle, Settings } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { BlogAdminNav } from './BlogAdminNav';
 
-const STUDIO_STATE_QUERY_KEY = ['blog', 'studio', 'state'] as const;
+const STUDIO_ENTITY = 'blog_studio' as const;
 
 interface StudioStateResponse {
     activeThemeId: string | null;
@@ -89,16 +89,16 @@ function formToPluginConfig(form: ContentInjectorConfigForm): Record<string, unk
 }
 
 export function AdminBlogStudioPage() {
-    const queryClient = useQueryClient();
     const {
         data: state,
         isLoading,
         isError,
         error,
         refetch,
-    } = useQuery({
-        queryKey: STUDIO_STATE_QUERY_KEY,
-        queryFn: () => api<StudioStateResponse>('/api/blog/studio/state'),
+    } = useApiQuery<StudioStateResponse>({
+        entity: STUDIO_ENTITY,
+        queryKey: ['state'],
+        endpoint: '/api/blog/studio/state',
     });
     const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
         open: false,
@@ -112,30 +112,49 @@ export function AdminBlogStudioPage() {
     const [configForm, setConfigForm] = useState<ContentInjectorConfigForm>(defaultContentInjectorForm);
     const [savingConfig, setSavingConfig] = useState(false);
 
-    const activateTheme = useCallback(
-        async (themeId: string) => {
-            try {
-                await api('/api/blog/studio/theme/activate', { method: 'POST', body: { themeId } });
-                await queryClient.invalidateQueries({ queryKey: STUDIO_STATE_QUERY_KEY });
-            } catch (err) {
-                console.error('Failed to activate theme', err);
-                setAlertDialog({ open: true, title: 'Error', message: 'Failed to activate theme. Please try again.' });
-            }
+    const activateThemeMutation = useApiMutation<unknown, { themeId: string }>({
+        endpoint: '/api/blog/studio/theme/activate',
+        method: 'POST',
+        invalidateEntities: [STUDIO_ENTITY],
+        mutationOptions: {
+            onError: () =>
+                setAlertDialog({ open: true, title: 'Error', message: 'Failed to activate theme. Please try again.' }),
         },
-        [queryClient],
+    });
+
+    const setPluginEnabledMutation = useApiMutation<unknown, { pluginId: string; enabled: boolean }>({
+        endpoint: '/api/blog/studio/plugin/enable',
+        method: 'POST',
+        invalidateEntities: [STUDIO_ENTITY],
+        mutationOptions: {
+            onError: () =>
+                setAlertDialog({ open: true, title: 'Error', message: 'Failed to update plugin. Please try again.' }),
+        },
+    });
+
+    const savePluginConfigMutation = useApiMutation<unknown, { pluginId: string; config: Record<string, unknown> }>({
+        endpoint: '/api/blog/studio/plugin/config',
+        method: 'POST',
+        invalidateEntities: [STUDIO_ENTITY],
+        mutationOptions: {
+            onSuccess: () => closeConfigModal(),
+            onError: () =>
+                setAlertDialog({
+                    open: true,
+                    title: 'Error',
+                    message: 'Failed to save plugin config. Please try again.',
+                }),
+        },
+    });
+
+    const activateTheme = useCallback(
+        (themeId: string) => activateThemeMutation.mutate({ themeId }),
+        [activateThemeMutation],
     );
 
     const setPluginEnabled = useCallback(
-        async (pluginId: string, enabled: boolean) => {
-            try {
-                await api('/api/blog/studio/plugin/enable', { method: 'POST', body: { pluginId, enabled } });
-                await queryClient.invalidateQueries({ queryKey: STUDIO_STATE_QUERY_KEY });
-            } catch (err) {
-                console.error('Failed to update plugin', err);
-                setAlertDialog({ open: true, title: 'Error', message: 'Failed to update plugin. Please try again.' });
-            }
-        },
-        [queryClient],
+        (pluginId: string, enabled: boolean) => setPluginEnabledMutation.mutate({ pluginId, enabled }),
+        [setPluginEnabledMutation],
     );
 
     const openConfigModal = useCallback((plugin: StudioPluginState) => {
@@ -152,32 +171,23 @@ export function AdminBlogStudioPage() {
         setSavingConfig(false);
     }, []);
 
-    const savePluginConfig = useCallback(async () => {
+    const savePluginConfig = useCallback(() => {
         const plugin = configModal.plugin;
         if (!plugin) return;
         setSavingConfig(true);
-        try {
-            const config =
-                plugin.pluginId === 'content-injector-plugin'
-                    ? formToPluginConfig(configForm)
-                    : ((configModal.plugin?.config as Record<string, unknown>) ?? {});
-            await api('/api/blog/studio/plugin/config', {
-                method: 'POST',
-                body: { pluginId: plugin.pluginId, config },
-            });
-            await queryClient.invalidateQueries({ queryKey: STUDIO_STATE_QUERY_KEY });
-            closeConfigModal();
-        } catch (err) {
-            console.error('Failed to save plugin config', err);
-            setAlertDialog({ open: true, title: 'Error', message: 'Failed to save plugin config. Please try again.' });
-        } finally {
-            setSavingConfig(false);
-        }
-    }, [configModal.plugin, configForm, queryClient, closeConfigModal]);
+        const config =
+            plugin.pluginId === 'content-injector-plugin'
+                ? formToPluginConfig(configForm)
+                : ((configModal.plugin?.config as Record<string, unknown>) ?? {});
+        savePluginConfigMutation.mutate(
+            { pluginId: plugin.pluginId, config },
+            { onSettled: () => setSavingConfig(false) },
+        );
+    }, [configModal.plugin, configForm, savePluginConfigMutation]);
 
     if (isError && error) {
         return (
-            <div className="space-y-6 p-6">
+            <div className="space-y-6">
                 <p className="text-destructive">Failed to load studio state.</p>
                 <Button asChild variant="outline">
                     <Link to="/admin/blog">Back to Blog</Link>
@@ -188,24 +198,19 @@ export function AdminBlogStudioPage() {
 
     if (!state) {
         return (
-            <div className="flex items-center justify-center p-12">
+            <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
 
     return (
-        <div className="space-y-6 p-6">
-            <div className="flex items-center gap-4">
-                <Button asChild variant="ghost" size="icon">
-                    <Link to="/admin/blog">
-                        <ArrowLeft className="h-4 w-4" />
-                    </Link>
-                </Button>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Blog Studio</h1>
-                    <p className="text-muted-foreground mt-1">Manage themes and plugins for your blog.</p>
-                </div>
+        <div className="space-y-6">
+            <BlogAdminNav />
+
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">Blog Studio</h1>
+                <p className="text-muted-foreground mt-1">Manage themes and plugins for your blog.</p>
             </div>
 
             {isLoading ? (
@@ -229,10 +234,20 @@ export function AdminBlogStudioPage() {
                                         key={theme.id}
                                         className="flex items-center justify-between rounded-lg border p-3 dark:border-border"
                                     >
-                                        <div>
+                                        <div className="min-w-0 flex-1">
                                             <p className="font-medium">{theme.name}</p>
                                             {theme.description && (
                                                 <p className="text-muted-foreground text-sm">{theme.description}</p>
+                                            )}
+                                            {(theme.version || theme.author) && (
+                                                <p className="text-muted-foreground text-xs mt-0.5">
+                                                    {[
+                                                        theme.version && `v${theme.version}`,
+                                                        theme.author && `by ${theme.author}`,
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ')}
+                                                </p>
                                             )}
                                         </div>
                                         <Button

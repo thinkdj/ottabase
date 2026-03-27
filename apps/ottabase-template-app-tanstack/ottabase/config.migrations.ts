@@ -4,17 +4,35 @@
 // Register external packages (like @ottabase/shortlinks) here to
 // automatically include their database tables and migrations.
 //
-// HOW TO ADD A PACKAGE:
+// Package enable/disable is driven by ottabase.config.ts `packages` key.
+// HOW TO ADD A BUILT-IN PACKAGE:
 // 1. Import the package's table schema and migrations
 // 2. Add it to `PACKAGE_REGISTRY` below
-// 3. Enable it in `migrationConfig`
+// 3. Add the key to `BUILT_IN_PACKAGES` in @ottabase/config and ottabase.config.ts
+// NOTE: brandEngine is core (always enabled) — in PACKAGE_REGISTRY but not in BUILT_IN_PACKAGES
+//
+// HOW TO ADD A CUSTOM PACKAGE:
+// 1. Import tables, add to `PACKAGE_REGISTRY` with key matching ottabase.config `customPackages`
+// 2. Register routes in config.routes.ts
+// 3. Add to ottabase.config.ts `customPackages`
 // ============================================================
 
-import { brandKitsTable, layoutRouteMappingsTable, layoutTemplatesTable } from '@ottabase/brand-engine/persistence';
+import {
+    brandEngineMigrations,
+    brandKitsTable,
+    layoutRouteMappingsTable,
+    layoutTemplatesTable,
+    menuItemsTable,
+    menuSlotAssignmentsTable,
+    menusTable,
+} from '@ottabase/brand-engine/persistence';
+import { commentsTable } from '@ottabase/comments';
+import type { BuiltInPackageName } from '@ottabase/config';
 import {
     categoriesTable,
     ottablogPluginsTable,
     ottablogThemesTable,
+    postCategoryLinksTable,
     postTagLinksTable,
     postTagsTable,
     postVersionsTable,
@@ -24,6 +42,7 @@ import {
 import type { Migration } from '@ottabase/ottaorm';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
+import { getOttabaseConfig } from './config.loader';
 
 /**
  * 1. REGISTRY
@@ -37,15 +56,20 @@ const PACKAGE_REGISTRY = {
             postsTable,
             postTagsTable,
             postTagLinksTable,
+            postCategoryLinksTable,
             postVersionsTable,
             ottablogPluginsTable,
             ottablogThemesTable,
         },
         migrations: [] as Migration[],
     },
+    comments: {
+        tables: { commentsTable },
+        migrations: [] as Migration[],
+    },
     shortlinks: {
         tables: { shortlinksTable },
-        migrations: [] as Migration[], // Add package-specific migrations here if any
+        migrations: [] as Migration[],
     },
     referrals: {
         tables: { referralTrackingTable },
@@ -56,39 +80,53 @@ const PACKAGE_REGISTRY = {
             brandKitsTable,
             layoutTemplatesTable,
             layoutRouteMappingsTable,
+            menuSlotAssignmentsTable,
+            menusTable,
+            menuItemsTable,
         },
-        migrations: [] as Migration[],
+        migrations: brandEngineMigrations,
     },
 } as const;
 
 /**
  * 2. CONFIGURATION
- * Toggle packages ON (true) or OFF (false).
- * Only enabled packages will have their tables created/migrated.
+ * Package toggles are driven by ottabase.config.ts `packages` key.
+ * Prefer getOttabaseConfig().packages for package config
  */
 export type MigrationPackageName = keyof typeof PACKAGE_REGISTRY;
 
-export const migrationConfig: Record<MigrationPackageName, boolean> = {
-    ottablog: true,
-    shortlinks: true,
-    referrals: true,
-    brandEngine: true,
-};
+export function getMigrationConfig(env?: Record<string, unknown>): Record<MigrationPackageName, boolean> {
+    const config = getOttabaseConfig(env);
+    const result: Record<string, boolean> = {};
+    for (const pkg of Object.keys(PACKAGE_REGISTRY) as MigrationPackageName[]) {
+        result[pkg] = pkg === 'brandEngine' ? true : (config.packages[pkg as BuiltInPackageName] ?? false);
+    }
+    return result as Record<MigrationPackageName, boolean>;
+}
 
 // ============================================================
 // PRIVATE UTILITY (Do not edit below this line)
 // ============================================================
 
 /**
- * Merges tables from all enabled packages into a single object.
- * Used by `schema.ts` (Drizzle Kit) and `config.migrations.ts` (Runtime).
+ * Merges tables from all enabled packages (built-in + custom) into a single object.
+ * Driven by ottabase.config.ts. Used by schema.ts and runtime migrations.
  */
-export function getEnabledPackageTables() {
-    const tables: Record<string, any> = {};
+export function getEnabledPackageTables(env?: Record<string, unknown>) {
+    const config = getOttabaseConfig(env);
+    const tables: Record<string, unknown> = {};
 
-    for (const [pkgName, config] of Object.entries(PACKAGE_REGISTRY)) {
-        if (migrationConfig[pkgName as MigrationPackageName]) {
-            Object.assign(tables, config.tables);
+    // Built-in packages (brandEngine is core — always included)
+    for (const [pkgName, pkgConfig] of Object.entries(PACKAGE_REGISTRY)) {
+        if (pkgName === 'brandEngine' || config.packages[pkgName as BuiltInPackageName]) {
+            Object.assign(tables, pkgConfig.tables);
+        }
+    }
+
+    // Custom packages (from ottabase.config customPackages)
+    for (const [pkgName, pkgConfig] of Object.entries(config.customPackages)) {
+        if (pkgConfig?.tables) {
+            Object.assign(tables, pkgConfig.tables);
         }
     }
 
@@ -97,14 +135,23 @@ export function getEnabledPackageTables() {
 
 /**
  * Merges migrations from all enabled packages into a single array.
- * Used by migration runner to execute package-specific migrations.
+ * Built-in migrations from PACKAGE_REGISTRY; custom packages can include migrations in their config.
  */
-export function getEnabledPackageMigrations(): Migration[] {
+export function getEnabledPackageMigrations(env?: Record<string, unknown>): Migration[] {
+    const config = getOttabaseConfig(env);
     const migrations: Migration[] = [];
 
-    for (const [pkgName, config] of Object.entries(PACKAGE_REGISTRY)) {
-        if (migrationConfig[pkgName as MigrationPackageName]) {
-            migrations.push(...config.migrations);
+    // Built-in packages (brandEngine is core — always included)
+    for (const [pkgName, pkgConfig] of Object.entries(PACKAGE_REGISTRY)) {
+        if ((pkgName === 'brandEngine' || config.packages[pkgName as BuiltInPackageName]) && pkgConfig.migrations) {
+            migrations.push(...pkgConfig.migrations);
+        }
+    }
+
+    // Custom packages
+    for (const pkgConfig of Object.values(config.customPackages)) {
+        if (pkgConfig?.migrations && Array.isArray(pkgConfig.migrations)) {
+            migrations.push(...(pkgConfig.migrations as Migration[]));
         }
     }
 

@@ -24,8 +24,6 @@ export class Shortlink extends BaseModel {
         expiryDate: 'date' as const,
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
-        lastClickedAt: 'date' as const,
-        clicks: 'number' as const,
         interstitialEnabled: 'boolean' as const,
         interstitialSeconds: 'number' as const,
     };
@@ -46,7 +44,6 @@ export class Shortlink extends BaseModel {
 
     protected static defaults = {
         type: ShortlinkTypes.REDIRECT,
-        clicks: 0,
         interstitialEnabled: false,
         interstitialSeconds: 10,
     };
@@ -208,31 +205,6 @@ export class Shortlink extends BaseModel {
                 colWidth: 160,
             },
         },
-        clicks: {
-            type: 'number',
-            editable: false,
-            sortable: true,
-            uiConfig: {
-                label: 'Clicks',
-                description: 'Number of times this link has been clicked',
-            },
-            tableConfig: {
-                visible: true,
-                colWidth: 100,
-            },
-        },
-        lastClickedAt: {
-            type: 'date',
-            editable: false,
-            sortable: true,
-            uiConfig: {
-                label: 'Last Clicked',
-            },
-            tableConfig: {
-                visible: true,
-                colWidth: 150,
-            },
-        },
         createdAt: {
             type: 'date',
             editable: false,
@@ -296,16 +268,6 @@ export class Shortlink extends BaseModel {
     // ============================================================
     // INSTANCE METHODS
     // ============================================================
-
-    /**
-     * Track a click (increment count + update lastClickedAt)
-     */
-    async trackClick() {
-        const currentClicks = this.get('clicks') || 0;
-        this.set('clicks', currentClicks + 1);
-        this.set('lastClickedAt', Date.now());
-        return this.save();
-    }
 
     /**
      * Check if shortlink is expired

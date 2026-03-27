@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createOttabaseAuthConfig } from '../config';
+import { isDevEmailTrapConfigured } from '../providers';
 import * as providers from '../providers';
 
 describe('Auth Configuration', () => {
@@ -100,6 +101,21 @@ describe('Auth Configuration', () => {
             expect(typeof providers.createGitHubProvider).toBe('function');
             expect(typeof providers.createGoogleProvider).toBe('function');
             expect(typeof providers.createDiscordProvider).toBe('function');
+        });
+
+        it('should detect dev email trap only when KV is available', () => {
+            expect(
+                isDevEmailTrapConfigured({
+                    DEV_EMAIL_TRAP_ENABLED: 'true',
+                    OBCF_KV: {},
+                }),
+            ).toBe(true);
+
+            expect(
+                isDevEmailTrapConfigured({
+                    DEV_EMAIL_TRAP_ENABLED: 'true',
+                }),
+            ).toBe(false);
         });
     });
 });

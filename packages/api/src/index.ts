@@ -182,7 +182,7 @@ function buildDedupeKey(params: {
     url: string;
     method: string;
     headers: Record<string, string>;
-    body: string | undefined;
+    body: string | FormData | undefined;
     timeout: number;
     fetchOptions: Pick<RequestInit, 'cache' | 'credentials' | 'mode' | 'redirect'>;
 }): string {
@@ -190,7 +190,9 @@ function buildDedupeKey(params: {
         url: params.url,
         method: params.method,
         headers: normalizeHeaders(params.headers),
-        body: params.body ?? null,
+        // FormData can't be meaningfully serialized; use a placeholder so
+        // multipart uploads are never deduped against each other.
+        body: params.body instanceof FormData ? '__formdata__' : (params.body ?? null),
         timeout: params.timeout,
         cache: params.fetchOptions.cache ?? null,
         credentials: params.fetchOptions.credentials ?? null,
@@ -288,12 +290,16 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
             }
         }
 
-        // Add Content-Type for JSON body
-        if (body !== undefined && !headers['Content-Type']) {
+        // Detect FormData – skip Content-Type (browser sets multipart boundary)
+        // and skip JSON.stringify so the raw FormData is sent as-is.
+        const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+
+        // Add Content-Type for JSON body (skip for FormData)
+        if (body !== undefined && !isFormData && !headers['Content-Type']) {
             headers['Content-Type'] = 'application/json';
         }
 
-        const requestBody = body !== undefined ? JSON.stringify(body) : undefined;
+        const requestBody = body !== undefined ? (isFormData ? body : JSON.stringify(body)) : undefined;
 
         const shouldDedupe = dedupe ?? dedupeDefault;
         const inFlightKey = shouldDedupe

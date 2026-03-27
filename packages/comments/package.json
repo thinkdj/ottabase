@@ -1,0 +1,32 @@
+{
+    "name": "@ottabase/comments",
+    "version": "0.0.1",
+    "description": "Threaded comment system for Ottabase apps — polymorphic, nestable, with reactions and moderation",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./schema": {
+            "types": "./src/schema.ts",
+            "default": "./src/schema.ts"
+        }
+    },
+    "scripts": {
+        "clean": "rm -rf .turbo node_modules",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "peerDependencies": {
+        "drizzle-orm": "catalog:"
+    },
+    "dependencies": {
+        "@ottabase/ottaorm": "workspace:*"
+    },
+    "devDependencies": {
+        "drizzle-orm": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    }
+}

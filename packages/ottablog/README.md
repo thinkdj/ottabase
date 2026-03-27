@@ -13,8 +13,12 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
 - **Versioning** - Full version history tracking with retention policies
 - **Series Support** - Group related posts into ordered series
 - **Multi-App Ready** - Built-in appId support for multi-tenant databases
-- **Analytics Ready** - Reading time, word count, view tracking
+- **Analytics Ready** - Reading time, word count, view counting
 - **Type-Safe** - Full TypeScript support with Drizzle ORM
+- **RSS & Sitemap** - Built-in XML feed and sitemap generation
+- **Scheduled Publishing** - Automatic post publishing via cron
+- **Related Posts** - Related content discovery by category and content type
+- **Server-Side Search** - Full-text search across titles, slugs, and excerpts
 - **Blog Studio** - Themes and plugins managed from DB; active theme and Content Injector (and config) applied at init
   (see [STUDIO.md](./STUDIO.md))
 
@@ -71,6 +75,7 @@ export {
     categoriesTable,
     postTagsTable,
     postTagLinksTable,
+    postCategoryLinksTable,
     postVersionsTable,
     seriesTable,
 } from '@ottabase/ottablog';
@@ -124,13 +129,16 @@ await Post.published({ limit: 10 });
 await Post.featured({ contentType: 'blog' });
 await Post.byCategory('category-123');
 await Post.bySeries('series-123');
+await Post.popular({ limit: 5 }); // Most viewed posts
+await Post.related('post-123', { categoryIds: ['cat-1', 'cat-2'], limit: 4 }); // Related by junction categories, then content type
+await Post.publishScheduled(); // Publish all due scheduled posts
 
 // Instance methods
 await post.publish();
 await post.unpublish();
 await post.archive();
 await post.toggleFeatured();
-await post.incrementViews();
+await post.trackView(); // Increment view count
 post.updateReadingStats(); // Calc reading time from content
 post.generateSlug(); // Auto-generate from title
 post.generateExcerpt(); // Auto-generate from content
@@ -145,7 +153,7 @@ post.generateExcerpt(); // Auto-generate from content
 - `content` - EditorJS JSON content
 - `contentType` - Type of content (blog, changelog, docs, news, announcement)
 - `status` - Publication status (draft, published, archived, scheduled)
-- `categoryId` - Category reference
+- `categoryId` - Legacy single-category reference (prefer junction via PostCategoryLink)
 - `seriesId` - Series reference
 - `seriesOrder` - Position in series
 - `heroImage` - Featured image JSON
@@ -154,9 +162,9 @@ post.generateExcerpt(); // Auto-generate from content
 - `footnotes` - Public footnotes (EditorJS)
 - `authorId`, `authorName`, `authorEmail`, `authorAvatar` - Author info
 - `readingTimeMinutes`, `wordCount` - Auto-calculated stats
+- `viewCount` - View/hit counter (incremented via `trackView()`)
 - `isFeatured` - Pin to top
 - `allowComments` - Enable comments
-- `viewCount` - View counter
 - `publishAt`, `publishedAt`, `postedAt` - Dates
 - `appId` - Multi-app identifier
 - `maxVersionsToKeep` - Version retention setting
@@ -224,6 +232,52 @@ const style = tag.getStyle(); // { backgroundColor, color } for contrast
 - `color` - Hex color code
 - `type` - Content type (post, news, docs, etc.) - **NEW: Enables reuse for multiple content types**
 - `appId` - Multi-app identifier
+
+### PostTagLink
+
+Junction model for the Post ↔ PostTag many-to-many relationship.
+
+```typescript
+// Link/unlink tags
+await PostTagLink.linkTag('post-123', 'tag-456');
+await PostTagLink.unlinkTag('post-123', 'tag-456');
+
+// Query links
+const tagsForPost = await PostTagLink.forPost('post-123');
+const postsForTag = await PostTagLink.forTag('tag-456');
+```
+
+**Fields:**
+
+- `id` - Auto-generated UUID primary key (OttaORM-compatible single-column PK)
+- `postId` - Post reference (FK, cascade delete)
+- `tagId` - Tag reference (FK, cascade delete)
+- `createdAt` - Timestamp when the link was created
+
+A unique index on `(postId, tagId)` prevents duplicate assignments.
+
+### PostCategoryLink
+
+Junction model for the Post ↔ PostCategory many-to-many relationship.
+
+```typescript
+// Link/unlink categories
+await PostCategoryLink.linkCategory('post-123', 'cat-789');
+await PostCategoryLink.unlinkCategory('post-123', 'cat-789');
+
+// Query links
+const catsForPost = await PostCategoryLink.forPost('post-123');
+const postsForCat = await PostCategoryLink.forCategory('cat-789');
+```
+
+**Fields:**
+
+- `id` - Auto-generated UUID primary key (OttaORM-compatible single-column PK)
+- `postId` - Post reference (FK, cascade delete)
+- `categoryId` - Category reference (FK, cascade delete)
+- `createdAt` - Timestamp when the link was created
+
+A unique index on `(postId, categoryId)` prevents duplicate assignments.
 
 ### PostVersion
 
@@ -329,11 +383,14 @@ const customCats = await PostCategory.where({
 // Post to Author
 const author = await post.author(['id', 'name', 'email']);
 
-// Post to Tags (many-to-many)
+// Post to Tags (many-to-many via PostTagLink)
 const tags = await post.tags({
     select: ['id', 'name', 'slug'],
     orderBy: 'name',
 });
+
+// Post to Categories (many-to-many via PostCategoryLink)
+const categories = await post.categories();
 ```
 
 ## Multi-App Support
@@ -363,9 +420,17 @@ Register models for dynamic CRUD:
 
 ```typescript
 import { registerModels } from '@ottabase/ottaorm';
-import { Post, PostCategory, PostTag, PostTagLink, PostVersion, PostSeries } from '@ottabase/ottablog';
+import {
+    Post,
+    PostCategory,
+    PostCategoryLink,
+    PostTag,
+    PostTagLink,
+    PostVersion,
+    PostSeries,
+} from '@ottabase/ottablog';
 
-registerModels([Post, PostCategory, PostTag, PostTagLink, PostVersion, PostSeries]);
+registerModels([Post, PostCategory, PostCategoryLink, PostTag, PostTagLink, PostVersion, PostSeries]);
 ```
 
 ## EditorJS Integration
@@ -418,7 +483,89 @@ const post = await Post.create({
 - `post_tags` - Blog-specific tags with color and type support
 - `post_versions` - Version history tracking
 - `series` - Content series grouping
-- `post_tag_links` - Many-to-many junction table between posts and post_tags
+- `post_tag_links` - Many-to-many junction (auto-generated `id` PK, unique index on `postId`+`tagId`)
+- `post_category_links` - Many-to-many junction (auto-generated `id` PK, unique index on `postId`+`categoryId`)
+
+## Public API Endpoints
+
+When integrated with the app's worker routes, the blog system provides these public endpoints:
+
+### List Posts
+
+```
+GET /api/blog/posts?page=1&perPage=10&contentType=blog&categoryId=xyz&tagId=abc&search=keyword&orderBy=publishedAt&orderDirection=desc
+```
+
+Supports filtering by content type, category, tag, series, and full-text search. Responses include enriched tag,
+category, and series data.
+
+### Post by Slug
+
+```
+GET /api/blog/posts/by-slug/{slug}
+```
+
+Returns a single post with tags, categories (via junction), and series title. View tracking is opt-in (call
+`trackView()` explicitly to avoid D1 write costs per page view).
+
+### Related Posts
+
+```
+GET /api/blog/posts/{id}/related?limit=4
+```
+
+Returns posts related to the given post. Matches by junction-based categories (via PostCategoryLink) first, falls back
+to legacy `categoryId`, then to content type.
+
+### Tag by Slug
+
+```
+GET /api/blog/tags/by-slug/{slug}
+```
+
+Returns tag metadata (id, name, slug, color, type).
+
+### Category by Slug
+
+```
+GET /api/blog/categories/by-slug/{slug}
+```
+
+Returns category metadata (id, name, slug, description).
+
+### Series by Slug
+
+```
+GET /api/blog/series/by-slug/{slug}
+```
+
+Returns series metadata (id, title, slug, description, status).
+
+### RSS Feed
+
+```
+GET /api/blog/rss?title=My+Blog&description=Latest+posts&contentType=blog&limit=25
+```
+
+Returns an RSS 2.0 XML feed of published posts. Supports `title`, `description`, `contentType`, `appId`, and `limit`
+query parameters.
+
+### Sitemap
+
+```
+GET /api/blog/sitemap.xml?appId=xyz
+```
+
+Returns an XML sitemap of all published posts for SEO.
+
+### Scheduled Publishing
+
+```
+POST /api/blog/publish-scheduled?appId=xyz
+```
+
+Publishes all posts with `status: 'scheduled'` whose `publishAt` date has passed. Designed to be called from a
+cron/scheduled worker.
 
 ## Benefits
 
@@ -431,6 +578,50 @@ const post = await Post.create({
 - **Analytics Ready** - Reading time and view tracking
 - **Version Control** - Full post history with optional retention (`maxVersionsToKeep`); older versions pruned on save
 - **Content Organization** - Categories, tags, and series support
+
+## CRUD Writable Fields
+
+All models declare `static writable` to control which fields can be set via OttaORM CRUD endpoints:
+
+| Model                | Create                                                             | Update                                                      |
+| -------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------- |
+| **Post**             | title, slug, excerpt, content, ... (full list in model)            | Same                                                        |
+| **PostTag**          | name, slug, color, type, appId                                     | name, slug, color, type                                     |
+| **PostTagLink**      | postId, tagId                                                      | (none)                                                      |
+| **PostCategoryLink** | postId, categoryId                                                 | (none)                                                      |
+| **PostCategory**     | name, slug, description, parentId, sortOrder, type, appId          | name, slug, description, parentId, sortOrder, type          |
+| **PostSeries**       | title, slug, description, coverImage, isComplete, sortOrder, appId | title, slug, description, coverImage, isComplete, sortOrder |
+
+## Admin Pages
+
+The app includes admin pages for managing blog content:
+
+| Page       | Route                                         | Description                                                                    |
+| ---------- | --------------------------------------------- | ------------------------------------------------------------------------------ |
+| Posts      | `/admin/blog`                                 | List, filter, and manage posts                                                 |
+| Editor     | `/admin/blog/new`, `/admin/blog/$postId/edit` | Create/edit posts with OttaEditor, tags + categories (OttaSelect multi-select) |
+| Tags       | `/admin/blog/tags`                            | Table view with right-panel Sheet for create/edit                              |
+| Categories | `/admin/blog/categories`                      | Tree view with hierarchy, right-panel Sheet for create/edit                    |
+| Series     | `/admin/blog/series`                          | Table view with right-panel Sheet for create/edit                              |
+| Studio     | `/admin/blog/studio`                          | Theme and plugin management                                                    |
+
+All admin blog pages share a persistent navigation bar (`BlogAdminNav`) for quick switching between sections.
+
+## Public Archive Pages
+
+| Page             | Route                  | Description                                           |
+| ---------------- | ---------------------- | ----------------------------------------------------- |
+| Tag Archive      | `/blog/tag/$slug`      | Shows tag info and all posts tagged with it           |
+| Category Archive | `/blog/category/$slug` | Shows category info and all posts in that category    |
+| Series Archive   | `/blog/series/$slug`   | Shows series info and ordered list of posts in series |
+
+Archive pages are **theme-aware**: they use the active theme's `renderCard` for post cards and
+`archiveContainer`/`archiveTitle` classes for layout. Both built-in themes (Default and Minimal) provide distinct card
+renderers:
+
+- **Default** — Bordered cards with shadow hover, rounded hero thumbnails, and numbered circle badges for series order
+- **Minimal** — Border-bottom dashed, grayscale hero images, uppercase tracking-wider metadata, zero-padded series
+  numbers (01, 02…)
 
 ## Blog Studio (themes & plugins)
 
@@ -496,11 +687,20 @@ const myTheme: Theme = {
   renderers: {
     renderTitle: (post) => <h1 className="custom-title">{post.title}</h1>,
     renderContent: (post) => <div className="custom-content">{/* render content */}</div>,
+    // renderCard controls post cards on archive/listing pages
+    renderCard: (post, props) => (
+      <article className="my-card">
+        <h2>{post.title}</h2>
+        {props.showExcerpt && post.excerpt && <p>{post.excerpt}</p>}
+      </article>
+    ),
     // ... other renderers
   },
   config: {
     classes: {
       container: 'max-w-4xl mx-auto px-4',
+      archiveContainer: 'max-w-4xl mx-auto px-4 py-8 space-y-8',
+      archiveTitle: 'text-3xl font-bold',
     },
   },
 };

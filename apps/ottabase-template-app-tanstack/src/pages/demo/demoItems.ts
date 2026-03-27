@@ -2,9 +2,11 @@
  * Single source of truth for demo gallery items.
  * Used by both DemoLayout (sidemenu) and DemoIndexPage (cards).
  */
-import type { ElementType } from 'react';
+import { IconMessageCircle } from '@tabler/icons-react';
 import {
     Bell,
+    Bot,
+    Calendar,
     Clock,
     Cloud,
     Code,
@@ -26,6 +28,7 @@ import {
     Upload,
     Zap,
 } from 'lucide-react';
+import type { ElementType } from 'react';
 
 export interface DemoItem {
     to: string;
@@ -108,9 +111,9 @@ export const DEMO_ITEMS: DemoItem[] = [
         buttonVariant: 'outline',
     },
     {
-        to: '/demo/cropper',
+        to: '/demo/ui-cropper',
         icon: Crop,
-        label: 'Cropper',
+        label: 'UI Cropper',
         title: 'Image Cropper',
         description:
             'Vanilla image cropper: crop, flip, rotate. Square/rect/circle viewfinder. PNG/JPEG. Zero React. ~2–3 KB gzipped.',
@@ -143,6 +146,14 @@ export const DEMO_ITEMS: DemoItem[] = [
         buttonVariant: 'outline',
     },
     {
+        to: '/demo/comments',
+        icon: IconMessageCircle,
+        label: 'Comments',
+        title: 'Comments',
+        description: 'Threaded comments with reactions, moderation, and polymorphic targeting',
+        buttonVariant: 'outline',
+    },
+    {
         to: '/demo/ottaforms',
         icon: FileText,
         label: 'OttaForms',
@@ -160,12 +171,29 @@ export const DEMO_ITEMS: DemoItem[] = [
         buttonVariant: 'outline',
     },
     {
+        to: '/demo/ui-datatable',
+        icon: Layout,
+        label: 'DataTable',
+        title: 'DataTable',
+        description:
+            'Advanced data table on TanStack Table v8: server-side sort/filter/pagination, column visibility, row selection, bulk actions.',
+        buttonVariant: 'default',
+    },
+    {
         to: '/demo/cloudflare',
         icon: Cloud,
         label: 'Cloudflare Services',
         title: 'Cloudflare Services',
         description:
             'Type-safe wrappers for Cloudflare infrastructure: KV, D1, R2, Queues, Images, PubSub, and Rate Limiting',
+        buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/cloudflare/ai',
+        icon: Bot,
+        label: 'Cloudflare AI',
+        title: 'Cloudflare AI',
+        description: 'Multi-provider AI via Workers AI, AI Gateway, and Universal chat with fallback support',
         buttonVariant: 'outline',
     },
     {
@@ -218,5 +246,14 @@ export const DEMO_ITEMS: DemoItem[] = [
         description:
             'Multi-channel notification system with email, WebSocket, and system alerts via @ottabase/notifications',
         buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/ottadate',
+        icon: Calendar,
+        label: 'OttaDate',
+        title: 'OttaDate',
+        description:
+            'Framework-agnostic date picker with range, datetime, and fuzzy date support. UTC unix timestamps by default.',
+        buttonVariant: 'default',
     },
 ];

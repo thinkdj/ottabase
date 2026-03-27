@@ -45,7 +45,7 @@ const ROUTE_LABELS: Record<string, string> = {
     '/demo/ottaorm': 'OttaORM',
     '/demo/ottaforms': 'OttaForms',
     '/demo/ottaselect': 'OttaSelect',
-    '/demo/cropper': 'Image Cropper',
+    '/demo/ui-cropper': 'Image Cropper',
     '/demo/timezone': 'Timezone Utils',
     '/demo/api': 'API Client',
     '/demo/renderer': 'Content Renderer',

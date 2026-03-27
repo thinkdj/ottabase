@@ -287,6 +287,12 @@ const COMMANDS: Command[] = [
         action: () => runPnpm('dev:pkg'),
     },
     {
+        name: 'dev:kill:ports',
+        description: 'Kill dev ports used by local services',
+        group: 'Dev',
+        action: () => runPnpm('dev:kill:ports'),
+    },
+    {
         name: 'dev:full',
         description: 'Install, build, test, then start dev',
         group: 'Dev',
@@ -345,6 +351,12 @@ const COMMANDS: Command[] = [
         description: 'Run tests with coverage',
         group: 'Test',
         action: () => runPnpm('test:coverage'),
+    },
+    {
+        name: 'test:analytics',
+        description: 'Run analytics package tests',
+        group: 'Test',
+        action: () => runPnpm('test:analytics'),
     },
     {
         name: 'test:watch',
@@ -419,14 +431,32 @@ const COMMANDS: Command[] = [
         action: () => runPnpm('storybook:build'),
     },
     {
+        name: 'cf:login',
+        description: 'Login to Cloudflare from the CLI',
+        group: 'Cloudflare',
+        action: () => runPnpm('cf:login'),
+    },
+    {
+        name: 'cf:setup',
+        description: 'Setup Cloudflare resources (canonical alias)',
+        group: 'Cloudflare',
+        action: () => runPnpm('cf:setup'),
+    },
+    {
+        name: 'cf:validate',
+        description: 'Validate Cloudflare configuration (canonical alias)',
+        group: 'Cloudflare',
+        action: () => runPnpm('cf:validate'),
+    },
+    {
         name: 'cloudflare:setup',
-        description: 'Setup Cloudflare resources (D1, KV, R2, Queues)',
+        description: 'Setup Cloudflare resources (legacy alias)',
         group: 'Cloudflare',
         action: () => runPnpm('cloudflare:setup'),
     },
     {
         name: 'cloudflare:validate',
-        description: 'Validate Cloudflare configuration',
+        description: 'Validate Cloudflare configuration (legacy alias)',
         group: 'Cloudflare',
         action: () => runPnpm('cloudflare:validate'),
     },

@@ -1,0 +1,66 @@
+{
+    "name": "@ottabase/cf-ai",
+    "version": "0.1.0",
+    "description": "Cloudflare AI Gateway & Workers AI wrapper — multi-provider AI with fallback, streaming, and caching",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./gateway": {
+            "types": "./dist/gateway.d.ts",
+            "import": "./dist/gateway.mjs",
+            "require": "./dist/gateway.js"
+        },
+        "./workers-ai": {
+            "types": "./dist/workers-ai.d.ts",
+            "import": "./dist/workers-ai.mjs",
+            "require": "./dist/workers-ai.js"
+        },
+        "./universal": {
+            "types": "./dist/universal.d.ts",
+            "import": "./dist/universal.mjs",
+            "require": "./dist/universal.js"
+        },
+        "./providers": {
+            "types": "./dist/providers.d.ts",
+            "import": "./dist/providers.mjs",
+            "require": "./dist/providers.js"
+        }
+    },
+    "sideEffects": false,
+    "scripts": {
+        "build": "tsup src/index.ts src/gateway.ts src/workers-ai.ts src/universal.ts src/providers.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/gateway.ts src/workers-ai.ts src/universal.ts src/providers.ts --format cjs,esm --dts --watch",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "cloudflare",
+        "ai-gateway",
+        "workers-ai",
+        "openai",
+        "anthropic",
+        "google-ai",
+        "multi-provider",
+        "streaming",
+        "typescript"
+    ],
+    "author": "",
+    "license": "MIT",
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "tsup": "catalog:"
+    }
+}

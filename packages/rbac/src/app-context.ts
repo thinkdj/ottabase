@@ -155,14 +155,14 @@ export async function buildAppContext(options: BuildAppContextOptions): Promise<
  * Extract organization ID from request
  * Supports multiple strategies:
  * 1. Subdomain: acme.yourapp.com -> org-acme
- * 2. Header: X-Organization-Id
+ * 2. Header: X-Org-Id
  * 3. Query param: ?organizationId=org-acme
  * 4. JWT claim: token.organizationId
  */
 export interface ExtractOrgOptions {
     request: Request;
     subdomainPrefix?: string; // Default: 'org-'
-    headerName?: string; // Default: 'X-Organization-Id'
+    headerName?: string; // Default: 'X-Org-Id'
     queryParam?: string; // Default: 'organizationId'
     jwtClaim?: string; // Default: 'organizationId'
     getJWT?: (request: Request) => Promise<any>; // Custom JWT decoder
@@ -172,7 +172,7 @@ export async function extractOrganizationId(options: ExtractOrgOptions): Promise
     const {
         request,
         subdomainPrefix = 'org-',
-        headerName = 'X-Organization-Id',
+        headerName = 'X-Org-Id',
         queryParam = 'organizationId',
         jwtClaim = 'organizationId',
         getJWT,

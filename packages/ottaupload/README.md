@@ -5,15 +5,15 @@ Cloudflare Images.
 
 ## Features
 
-- 🎨 **Clean UI** - Minimal shadcn/Notion-like design with dropzone and button variants
-- 📤 **Drag & Drop** - Native drag-and-drop with visual feedback
-- 📊 **Progress Tracking** - Real-time upload progress
-- 🔄 **Multiple Files** - Batch upload with configurable limits
-- ✅ **Validation** - File type and size validation with Zod schemas
-- 🌐 **Multi-Provider** - Cloudflare R2 (all files) and Cloudflare Images (optimized images)
-- 🪝 **React Hooks** - `useFileUpload` and `useDragAndDrop`
-- 🎯 **Vanilla JS** - Non-React support for EditorJS and plain HTML
-- 📦 **TypeScript** - Full type safety
+- **Clean UI** - Minimal shadcn/Notion-like design with dropzone and button variants
+- **Drag & Drop** - Native drag-and-drop with visual feedback
+- **Progress Tracking** - Real-time upload progress
+- **Multiple Files** - Batch upload with configurable limits
+- **Validation** - File type and size validation with Zod schemas
+- **Multi-Provider** - Cloudflare R2 (all files) and Cloudflare Images (optimized images)
+- **React Hooks** - `useFileUpload` and `useDragAndDrop`
+- **Vanilla JS** - Non-React support for EditorJS and plain HTML
+- **TypeScript** - Full type safety
 
 ## Installation
 

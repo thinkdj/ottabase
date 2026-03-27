@@ -208,3 +208,49 @@ export function generateUUID(length: number, alphanumeric: boolean = true): stri
     }
     return uuidArr.join('');
 }
+
+/**
+ * Convert HTML to readable plain text:
+ * - Guard against empty, malformed, or oversized input
+ * - Remove non-content / unsafe blocks completely
+ * - Block-level elements (p, div, br, li, h1-h6, tr) become newlines
+ * - Strip all remaining tags
+ * - Decode common HTML entities
+ * - Collapse excessive blank lines
+ */
+export function stripHtml(html: string): string {
+    if (typeof html !== 'string' || html.trim() === '') {
+        return '';
+    }
+
+    const MAX_HTML_TO_TEXT_LENGTH = 200_000;
+    const normalizedHtml = html
+        .slice(0, MAX_HTML_TO_TEXT_LENGTH)
+        .replace(/\r\n?/g, '\n')
+        .replace(/\u0000/g, '')
+        .replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+
+    return (
+        normalizedHtml
+            // Remove script-like and non-content blocks including their entire content.
+            .replace(/<(script|style|noscript|iframe|object|embed|svg|canvas|template)(\s[^>]*)?>[\s\S]*?<\/\1>/gi, '')
+            .replace(/<!--([\s\S]*?)-->/g, '')
+            // Convert line breaks and paragraphs to newlines
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/p>/gi, '\n')
+            // Remove all remaining tags
+            .replace(/<[^>]+>/g, '')
+            // Decode common HTML entities
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&nbsp;/g, ' ')
+            // Clean up whitespace
+            .replace(/[ \t]+\n/g, '\n')
+            .replace(/\n[ \t]+/g, '\n')
+            .replace(/\n{2,}/g, '\n')
+            .trim()
+    );
+}

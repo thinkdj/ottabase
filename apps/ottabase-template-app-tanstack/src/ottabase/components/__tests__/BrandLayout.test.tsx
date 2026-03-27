@@ -66,13 +66,32 @@ vi.mock('@/components/ReferralTracker', () => ({
 vi.mock('@/hooks/useLocalStorage', () => ({
     useLocalStorage: () => [null, vi.fn()],
 }));
-vi.mock('@/ottabase/config/app.config', () => ({
+vi.mock('@/ottabase/config', () => ({
     APP_META: { appName: 'Test App' },
+    APP_ID: 'test-app',
+    APP_NAME: 'Test App',
+    PACKAGES_ENABLED: { ottablog: true, shortlinks: true, referrals: true },
 }));
 vi.mock('@/ottabase/config/i18n.config', () => ({
     i18nConfig: { enabledLanguages: ['en'] },
 }));
 vi.mock('@ottabase/ui-shadcn', () => ({
+    AlertDialog: ({ children }: any) => <div data-testid="alert-dialog">{children}</div>,
+    AlertDialogAction: ({ children, onClick, ...props }: any) => (
+        <button data-testid="alert-dialog-action" onClick={onClick} {...props}>
+            {children}
+        </button>
+    ),
+    AlertDialogCancel: ({ children, ...props }: any) => (
+        <button data-testid="alert-dialog-cancel" {...props}>
+            {children}
+        </button>
+    ),
+    AlertDialogContent: ({ children }: any) => <div data-testid="alert-dialog-content">{children}</div>,
+    AlertDialogDescription: ({ children }: any) => <div>{children}</div>,
+    AlertDialogFooter: ({ children }: any) => <div>{children}</div>,
+    AlertDialogHeader: ({ children }: any) => <div>{children}</div>,
+    AlertDialogTitle: ({ children }: any) => <div>{children}</div>,
     Avatar: ({ children, className }: any) => <div className={className}>{children}</div>,
     AvatarFallback: ({ children }: any) => <span>{children}</span>,
     AvatarImage: ({ src }: any) => <img src={src} alt="" />,
@@ -87,6 +106,16 @@ vi.mock('lucide-react', () => ({
     LogOut: () => <span data-testid="icon-logout" />,
     Menu: () => <span data-testid="icon-menu" />,
     X: () => <span data-testid="icon-close" />,
+}));
+
+// SidebarNav uses useApiQuery; mock to avoid QueryClientProvider in tests
+vi.mock('@ottabase/ottaorm/client', () => ({
+    useApiQuery: () => ({ data: null, isLoading: false }),
+}));
+
+// TopbarHeader, SidebarNav, BrandFooter use useBrand; mock so they use legacy/fallback content
+vi.mock('@ottabase/brand-engine-react', () => ({
+    useBrand: () => ({ config: null, isLoading: false, error: null, refresh: vi.fn() }),
 }));
 
 import { BrandLayout } from '../BrandLayout';

@@ -3,7 +3,7 @@
 // ============================================================
 //
 // All auth API functionality is provided by @ottabase/auth/client
-// This file exists for backward compatibility and convenience.
+// This file exists for convenience (re-exports from @ottabase/auth/client).
 //
 // ============================================================
 

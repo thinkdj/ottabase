@@ -215,8 +215,7 @@ jobs:
                         "verifyPaths": ["dist", "cloudflare-worker.ts"],
                         "wranglerConfig": "wrangler.jsonc",
                         "wranglerEnv": "production",
-                        "healthCheckPath": "/",
-                        "requiresSecrets": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "D1_DATABASE_ID", "KV_NAMESPACE_ID"]
+                        "healthCheckPath": "/"
                       }'
                     fi
 
@@ -307,76 +306,53 @@ jobs:
                   echo "${VERIFY_PATHS}" >> $GITHUB_OUTPUT
                   echo "EOF" >> $GITHUB_OUTPUT
 
-                  # Store required secrets as space-separated list
-                  REQUIRED_SECRETS=$(echo "${CONFIG}" | jq -r '.requiresSecrets[]?' | tr '\n' ' ')
-                  echo "required-secrets=${REQUIRED_SECRETS}" >> $GITHUB_OUTPUT
+                  # Optional: extra secrets from config (merged with derived placeholders in Verify step)
+                  EXTRA_SECRETS=$(echo "${CONFIG}" | jq -r '.requiresSecrets[]?' | tr '\n' ' ')
+                  echo "extra-secrets=${EXTRA_SECRETS}" >> $GITHUB_OUTPUT
 
                   echo "📋 Configuration loaded for ${{ matrix.name }} (${{ matrix.config.appType }})"
 
             - name: Verify required secrets
               if: github.ref == 'refs/heads/main'
+              working-directory: apps/${{ matrix.folder }}
+              env:
+                  SECRETS_JSON: ${{ toJson(secrets) }}
+                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
+                  TARGET_ENV: production
               run: |
                   echo "🔍 Verifying required secrets for ${{ matrix.name }}..."
-                  MISSING_SECRETS=()
-                  REQUIRED="${{ steps.config.outputs.required-secrets }}"
 
-                  # Check each required secret
+                  # Base secrets (wrangler-action needs these; not in wrangler.jsonc)
+                  BASE="CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID"
+
+                  # Derive placeholders from wrangler.jsonc env.production (single source of truth; no drift)
+                  PLACEHOLDERS=$(python ../../.github/scripts/substitute-wrangler-secrets.py --list-only)
+
+                  # Optional extra from cloudflare-config.json requiresSecrets
+                  EXTRA="${{ steps.config.outputs.extra-secrets }}"
+
+                  # Merge: base + placeholders + extra, deduplicate, drop empty
+                  REQUIRED=$(echo "$BASE $PLACEHOLDERS $EXTRA" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')
+
+                  MISSING_SECRETS=()
                   for SECRET_NAME in $REQUIRED; do
-                    # Dynamically check if secret exists using indirect reference
-                    case "$SECRET_NAME" in
-                      "CLOUDFLARE_API_TOKEN")
-                        if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ CLOUDFLARE_API_TOKEN is not set"
-                        else
-                          echo "  ✅ CLOUDFLARE_API_TOKEN is configured"
-                        fi
-                        ;;
-                      "CLOUDFLARE_ACCOUNT_ID")
-                        if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ CLOUDFLARE_ACCOUNT_ID is not set"
-                        else
-                          echo "  ✅ CLOUDFLARE_ACCOUNT_ID is configured"
-                        fi
-                        ;;
-                      "D1_DATABASE_ID")
-                        if [ -z "${{ secrets.D1_DATABASE_ID }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ D1_DATABASE_ID is not set"
-                        else
-                          echo "  ✅ D1_DATABASE_ID is configured"
-                        fi
-                        ;;
-                      "KV_NAMESPACE_ID")
-                        if [ -z "${{ secrets.KV_NAMESPACE_ID }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ KV_NAMESPACE_ID is not set"
-                        else
-                          echo "  ✅ KV_NAMESPACE_ID is configured"
-                        fi
-                        ;;
-                      *)
-                        echo "  ⚠️  Warning: Unknown secret $SECRET_NAME - cannot verify"
-                        ;;
-                    esac
+                    VAL=$(echo "$SECRETS_JSON" | jq -r --arg k "$SECRET_NAME" '.[$k] // empty')
+                    if [ -z "$VAL" ]; then
+                      MISSING_SECRETS+=("$SECRET_NAME")
+                      echo "  ❌ $SECRET_NAME is not set"
+                    else
+                      echo "  ✅ $SECRET_NAME is configured"
+                    fi
                   done
 
                   if [ ${#MISSING_SECRETS[@]} -ne 0 ]; then
                     echo ""
                     echo "❌ ERROR: Missing required GitHub secrets for deployment"
                     echo ""
-                    echo "The following secrets are required but not configured:"
                     printf '  • %s\n' "${MISSING_SECRETS[@]}"
                     echo ""
-                    echo "To fix this, add the missing secrets in GitHub repository settings:"
+                    echo "Add the missing secrets in GitHub repository settings:"
                     echo "  Settings → Secrets and variables → Actions → New repository secret"
-                    echo ""
-                    echo "Required secret locations:"
-                    echo "  • CLOUDFLARE_API_TOKEN: Get from Cloudflare dashboard → My Profile → API Tokens"
-                    echo "  • CLOUDFLARE_ACCOUNT_ID: Get from Cloudflare dashboard → Workers & Pages → Account ID"
-                    echo "  • D1_DATABASE_ID: Run 'wrangler d1 create <name>' to create database"
-                    echo "  • KV_NAMESPACE_ID: Run 'wrangler kv:namespace create <name>' to create namespace"
                     echo ""
                     exit 1
                   fi
@@ -681,70 +657,32 @@ jobs:
                   echo "✅ Worker bundle structure verified - all required paths exist"
 
             # Generate production wrangler config from template
-            # Creates a temporary config with secrets injected, without modifying source files
+            # Auto-detects placeholders in env.production and substitutes from GitHub Secrets
             - name: Generate production wrangler config
               if: github.ref == 'refs/heads/main'
               working-directory: apps/${{ matrix.folder }}
               run: |
-                  WRANGLER_CONFIG="${{ steps.config.outputs.wrangler-config }}"
-                  echo "🔧 Generating production wrangler configuration from ${WRANGLER_CONFIG}..."
+                  echo "🔧 Generating production wrangler configuration..."
+                  python ../../.github/scripts/substitute-wrangler-secrets.py
+              env:
+                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
+                  OUTPUT_FILE: wrangler.production.jsonc
+                  TARGET_ENV: production
+                  SECRETS_JSON: ${{ toJson(secrets) }}
 
-                  # Verify wrangler config exists
-                  if [ ! -f "${WRANGLER_CONFIG}" ]; then
-                    echo ""
-                    echo "❌ ERROR: Wrangler configuration file not found"
-                    echo ""
-                    echo "Expected file: ${WRANGLER_CONFIG}"
-                    echo "Current directory: $(pwd)"
-                    echo ""
-                    echo "Wrangler config is required for Cloudflare Workers deployment."
-                    echo "Make sure your app has a wrangler.jsonc file in its root directory."
-                    echo ""
+            # Verify generated config exists (substitution runs before deploy)
+            - name: Verify production wrangler config
+              if: github.ref == 'refs/heads/main'
+              working-directory: apps/${{ matrix.folder }}
+              run: |
+                  if [ ! -f "wrangler.production.jsonc" ]; then
+                    echo "❌ ERROR: wrangler.production.jsonc not found - Generate step must run first"
                     exit 1
                   fi
-
-                  # Create a temporary production config by substituting placeholders
-                  # The output goes to a temporary file that won't be committed
-                  cat ${WRANGLER_CONFIG} | \
-                    sed -e "s/PRODUCTION_D1_DATABASE_ID/${{ secrets.D1_DATABASE_ID }}/g" \
-                        -e "s/PRODUCTION_KV_NAMESPACE_ID/${{ secrets.KV_NAMESPACE_ID }}/g" \
-                        -e "s/YOUR_CLOUDFLARE_ACCOUNT_ID/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/g" \
-                    > wrangler.production.jsonc
-
-                  # Verify no placeholders remain in the generated file
-                  if grep -q "PRODUCTION_" wrangler.production.jsonc; then
-                    echo ""
-                    echo "❌ ERROR: Secret substitution incomplete"
-                    echo ""
-                    echo "The following placeholders were not replaced:"
-                    grep "PRODUCTION_" wrangler.production.jsonc
-                    echo ""
-                    echo "This usually means the corresponding GitHub secrets are not set."
-                    echo "Check that all required secrets are configured in repository settings."
-                    echo ""
-                    rm -f wrangler.production.jsonc
-                    exit 1
-                  fi
-
-                  # Validate JSON structure
-                  if ! grep -q "{" wrangler.production.jsonc; then
-                    echo ""
-                    echo "❌ ERROR: Generated wrangler config appears invalid"
-                    echo ""
-                    echo "The generated config file doesn't contain valid JSON."
-                    echo "Check the source file: ${WRANGLER_CONFIG}"
-                    echo ""
-                    rm -f wrangler.production.jsonc
-                    exit 1
-                  fi
-
-                  echo "✅ Production configuration generated successfully"
-                  echo "📝 Using temporary config file: wrangler.production.jsonc"
+                  echo "✅ wrangler.production.jsonc ready for deploy"
 
             # Deploy to Cloudflare Workers (NOT Cloudflare Pages)
-            # This uses wrangler to deploy directly to Workers
-            # Uses the generated production config file (wrangler.production.jsonc)
-            # The source wrangler.jsonc remains unmodified
+            # Uses wrangler.production.jsonc - secrets substituted by Generate step above
             - name: Deploy to Cloudflare Workers
               if: github.ref == 'refs/heads/main'
               uses: cloudflare/wrangler-action@v3

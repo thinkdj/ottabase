@@ -1,6 +1,7 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Layout API handlers
+// Brand Engine – Layout API handlers (v2: per-app scoping)
 // GET/PUT /api/brand/layouts, GET/PUT /api/brand/mappings
+// All scoped by appId only.
 // ---------------------------------------------------------------------------
 
 import { errorResponse } from '@ottabase/utils/http-errors';
@@ -12,18 +13,10 @@ import type { BrandApiEnv } from './brand-api';
 import { warmBrandCache } from './warm-cache';
 
 /**
- * GET /api/brand/layouts - List layout templates for org/app
+ * GET /api/brand/layouts - List layout templates for app
  */
-export async function handleGetLayouts(
-    _request: Request,
-    _env: BrandApiEnv,
-    organizationId: string | null,
-    appId?: string | null,
-): Promise<Response> {
-    const templates = await LayoutTemplate.where(
-        { organizationId: organizationId ?? null, appId: appId ?? null },
-        { orderBy: 'name' },
-    );
+export async function handleGetLayouts(_request: Request, _env: BrandApiEnv, appId?: string | null): Promise<Response> {
+    const templates = await LayoutTemplate.where({ appId: appId ?? null }, { orderBy: 'name' });
     const data = (templates as LayoutTemplate[]).map((t) => ({
         id: t.get('id'),
         name: t.get('name'),
@@ -36,12 +29,7 @@ export async function handleGetLayouts(
 /**
  * PUT /api/brand/layouts - Create or update layout template
  */
-export async function handlePutLayout(
-    request: Request,
-    env: BrandApiEnv,
-    organizationId: string | null,
-    appId?: string | null,
-): Promise<Response> {
+export async function handlePutLayout(request: Request, env: BrandApiEnv, appId?: string | null): Promise<Response> {
     const body = (await request.json()) as { id?: string; name: string; componentKey: string; config: object };
     try {
         JSON.stringify(body.config);
@@ -59,7 +47,6 @@ export async function handlePutLayout(
         await template.save();
     } else {
         template = (await LayoutTemplate.create({
-            organizationId,
             appId: appId || null,
             name: body.name,
             componentKey: body.componentKey,
@@ -67,22 +54,21 @@ export async function handlePutLayout(
         })) as LayoutTemplate;
     }
 
-    await warmBrandCache(env, organizationId, appId);
+    await warmBrandCache(env, { appId: appId ?? null });
     return jsonResponse({ id: template.get('id'), ...body }, 200);
 }
 
 /**
- * GET /api/brand/mappings - List route mappings for org/app.
+ * GET /api/brand/mappings - List route mappings for app.
  * When no DB mappings exist, returns effective defaults from getLayoutData so users can view and edit them.
  */
 export async function handleGetMappings(
     _request: Request,
     _env: BrandApiEnv,
-    organizationId: string | null,
     appId?: string | null,
 ): Promise<Response> {
     const mappings = await LayoutRouteMapping.where(
-        { organizationId: organizationId ?? null, appId: appId ?? null },
+        { appId: appId ?? null },
         { orderBy: 'priority', orderDirection: 'desc' },
     );
     const data =
@@ -95,7 +81,7 @@ export async function handleGetMappings(
                   priority: m.get('priority') ?? 0,
                   tokenOverridesJson: (m.get('tokenOverridesJson') as string | null) ?? null,
               }))
-            : (await getLayoutData(organizationId, appId)).routeMappings.map((m) => ({
+            : (await getLayoutData(appId)).routeMappings.map((m) => ({
                   pathPattern: m.pathPattern,
                   layoutTemplateId: m.layoutTemplateId,
                   brandKitId: m.brandKitId,
@@ -106,15 +92,10 @@ export async function handleGetMappings(
 }
 
 /**
- * PUT /api/brand/mappings - Replace route mappings for org/app.
+ * PUT /api/brand/mappings - Replace route mappings for app.
  * Each mapping must include brandKitId.
  */
-export async function handlePutMappings(
-    request: Request,
-    env: BrandApiEnv,
-    organizationId: string | null,
-    appId?: string | null,
-): Promise<Response> {
+export async function handlePutMappings(request: Request, env: BrandApiEnv, appId?: string | null): Promise<Response> {
     const body = (await request.json()) as {
         mappings: Array<{
             pathPattern: string;
@@ -126,7 +107,6 @@ export async function handlePutMappings(
     };
 
     const existing = await LayoutRouteMapping.where({
-        organizationId: organizationId ?? null,
         appId: appId ?? null,
     });
     for (const m of existing as LayoutRouteMapping[]) {
@@ -144,7 +124,6 @@ export async function handlePutMappings(
             }
         }
         await LayoutRouteMapping.create({
-            organizationId,
             appId: appId || null,
             pathPattern: m.pathPattern,
             layoutTemplateId: m.layoutTemplateId,
@@ -154,6 +133,6 @@ export async function handlePutMappings(
         });
     }
 
-    await warmBrandCache(env, organizationId, appId);
+    await warmBrandCache(env, { appId: appId ?? null });
     return jsonResponse({ success: true }, 200);
 }

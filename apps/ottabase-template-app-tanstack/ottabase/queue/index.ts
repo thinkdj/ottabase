@@ -98,7 +98,7 @@ export async function getQueueStats(env: CloudflareEnv): Promise<QueueStats> {
     if (result.success && result.data) {
         try {
             const stats = JSON.parse(result.data);
-            // Ensure totalDLQ exists for backwards compatibility
+            // Ensure totalDLQ exists when migrating from older stats format
             return { ...defaultStats, ...stats };
         } catch {
             // ignore parse errors

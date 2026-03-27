@@ -1,4 +1,4 @@
-import type { API, BlockTool, BlockToolConstructorOptions } from '@editorjs/editorjs';
+import type { API, BlockTool } from '@editorjs/editorjs';
 import './ReviewTool.css';
 
 export interface ReviewToolConfig {
@@ -45,7 +45,7 @@ export default class ReviewTool implements BlockTool {
     static get toolbox() {
         return {
             title: 'Review',
-            icon: '<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.75l-5.2 2.73 1-5.79-4.2-4.09 5.81-.84L12 4.5l2.59 5.26 5.81.84-4.2 4.09 1 5.79z"/></svg>',
         };
     }
 
@@ -53,7 +53,7 @@ export default class ReviewTool implements BlockTool {
         return true;
     }
 
-    constructor({ data, config, api }: BlockToolConstructorOptions<ReviewData, ReviewToolConfig>) {
+    constructor({ data, config, api }: { data?: Partial<ReviewData>; config?: ReviewToolConfig; api: API }) {
         this.api = api;
         this.config = config || {};
         this.data = {
@@ -74,10 +74,10 @@ export default class ReviewTool implements BlockTool {
 
     render(): HTMLElement {
         const wrapper = document.createElement('div');
-        wrapper.classList.add(ReviewTool.CSS.baseClass, ReviewTool.CSS.wrapper);
+        wrapper.classList.add(ReviewTool.CSS.baseClass, ReviewTool.CSS.wrapper, 'ob-plugin');
 
         const form = document.createElement('div');
-        form.classList.add(ReviewTool.CSS.form);
+        form.classList.add(ReviewTool.CSS.form, 'ob-form');
 
         // Image upload
         form.appendChild(this.createImageSection());
@@ -111,15 +111,15 @@ export default class ReviewTool implements BlockTool {
 
     private createInput(key: keyof ReviewData, type: string, labelText: string, placeholder: string): HTMLElement {
         const group = document.createElement('div');
-        group.classList.add(ReviewTool.CSS.inputGroup);
+        group.classList.add(ReviewTool.CSS.inputGroup, 'ob-input-group');
 
         const label = document.createElement('label');
-        label.classList.add(ReviewTool.CSS.label);
+        label.classList.add(ReviewTool.CSS.label, 'ob-label');
         label.textContent = labelText;
 
         const input = document.createElement('input');
         input.type = type;
-        input.classList.add(ReviewTool.CSS.input);
+        input.classList.add(ReviewTool.CSS.input, 'ob-input');
         input.placeholder = placeholder;
         input.value = (this.data[key] as string) || '';
 
@@ -134,14 +134,14 @@ export default class ReviewTool implements BlockTool {
 
     private createTextarea(key: keyof ReviewData, labelText: string, placeholder: string): HTMLElement {
         const group = document.createElement('div');
-        group.classList.add(ReviewTool.CSS.inputGroup);
+        group.classList.add(ReviewTool.CSS.inputGroup, 'ob-input-group');
 
         const label = document.createElement('label');
-        label.classList.add(ReviewTool.CSS.label);
+        label.classList.add(ReviewTool.CSS.label, 'ob-label');
         label.textContent = labelText;
 
         const textarea = document.createElement('textarea');
-        textarea.classList.add(ReviewTool.CSS.textarea);
+        textarea.classList.add(ReviewTool.CSS.textarea, 'ob-textarea');
         textarea.placeholder = placeholder;
         textarea.value = (this.data[key] as string) || '';
         textarea.rows = 3;
@@ -157,10 +157,10 @@ export default class ReviewTool implements BlockTool {
 
     private createImageSection(): HTMLElement {
         const group = document.createElement('div');
-        group.classList.add(ReviewTool.CSS.inputGroup);
+        group.classList.add(ReviewTool.CSS.inputGroup, 'ob-input-group');
 
         const label = document.createElement('label');
-        label.classList.add(ReviewTool.CSS.label);
+        label.classList.add(ReviewTool.CSS.label, 'ob-label');
         label.textContent = 'Image (optional)';
         group.appendChild(label);
 
@@ -199,7 +199,7 @@ export default class ReviewTool implements BlockTool {
 
         const urlInput = document.createElement('input');
         urlInput.type = 'url';
-        urlInput.classList.add(ReviewTool.CSS.input);
+        urlInput.classList.add(ReviewTool.CSS.input, 'ob-input');
         urlInput.placeholder = 'Or paste image URL...';
         urlInput.value = this.data.image || '';
         urlInput.style.flex = '1';
@@ -263,13 +263,13 @@ export default class ReviewTool implements BlockTool {
         row.classList.add('cdx-review__link-row');
 
         const urlGroup = document.createElement('div');
-        urlGroup.classList.add(ReviewTool.CSS.inputGroup);
+        urlGroup.classList.add(ReviewTool.CSS.inputGroup, 'ob-input-group');
         const urlLabel = document.createElement('label');
-        urlLabel.classList.add(ReviewTool.CSS.label);
+        urlLabel.classList.add(ReviewTool.CSS.label, 'ob-label');
         urlLabel.textContent = 'Link URL (optional)';
         const urlInput = document.createElement('input');
         urlInput.type = 'url';
-        urlInput.classList.add(ReviewTool.CSS.input);
+        urlInput.classList.add(ReviewTool.CSS.input, 'ob-input');
         urlInput.placeholder = 'https://...';
         urlInput.value = this.data.linkUrl;
         urlInput.addEventListener('input', () => {
@@ -279,13 +279,13 @@ export default class ReviewTool implements BlockTool {
         urlGroup.appendChild(urlInput);
 
         const labelGroup = document.createElement('div');
-        labelGroup.classList.add(ReviewTool.CSS.inputGroup);
+        labelGroup.classList.add(ReviewTool.CSS.inputGroup, 'ob-input-group');
         const labelLabel = document.createElement('label');
-        labelLabel.classList.add(ReviewTool.CSS.label);
+        labelLabel.classList.add(ReviewTool.CSS.label, 'ob-label');
         labelLabel.textContent = 'Link Label';
         const labelInput = document.createElement('input');
         labelInput.type = 'text';
-        labelInput.classList.add(ReviewTool.CSS.input);
+        labelInput.classList.add(ReviewTool.CSS.input, 'ob-input');
         labelInput.placeholder = 'Visit website';
         labelInput.value = this.data.linkLabel;
         labelInput.addEventListener('input', () => {
@@ -301,10 +301,10 @@ export default class ReviewTool implements BlockTool {
 
     private createRatingSection(): HTMLElement {
         const container = document.createElement('div');
-        container.classList.add(ReviewTool.CSS.inputGroup);
+        container.classList.add(ReviewTool.CSS.inputGroup, 'ob-input-group');
 
         const label = document.createElement('label');
-        label.classList.add(ReviewTool.CSS.label);
+        label.classList.add(ReviewTool.CSS.label, 'ob-label');
         label.textContent = 'Rating';
         container.appendChild(label);
 
@@ -322,7 +322,7 @@ export default class ReviewTool implements BlockTool {
         ratingGroup.classList.add(ReviewTool.CSS.inputGroup);
         const ratingInput = document.createElement('input');
         ratingInput.type = 'number';
-        ratingInput.classList.add(ReviewTool.CSS.input, 'cdx-review__rating-value');
+        ratingInput.classList.add(ReviewTool.CSS.input, 'ob-input', 'cdx-review__rating-value');
         ratingInput.min = '0';
         ratingInput.max = String(this.data.maxStars);
         ratingInput.step = this.data.allowHalfStars ? '0.5' : '1';
@@ -342,7 +342,7 @@ export default class ReviewTool implements BlockTool {
         configGroup.classList.add('cdx-review__rating-config');
 
         const maxSelect = document.createElement('select');
-        maxSelect.classList.add(ReviewTool.CSS.select);
+        maxSelect.classList.add(ReviewTool.CSS.select, 'ob-select');
         maxSelect.title = 'Max stars';
         [5, 10].forEach((n) => {
             const opt = document.createElement('option');
@@ -363,12 +363,12 @@ export default class ReviewTool implements BlockTool {
 
         const halfCheck = document.createElement('input');
         halfCheck.type = 'checkbox';
-        halfCheck.classList.add('cdx-review__checkbox');
+        halfCheck.classList.add('cdx-review__checkbox', 'ob-checkbox');
         halfCheck.checked = this.data.allowHalfStars;
         halfCheck.title = 'Allow half stars';
 
         const halfLabel = document.createElement('label');
-        halfLabel.classList.add('cdx-review__checkbox-label');
+        halfLabel.classList.add('cdx-review__checkbox-label', 'ob-checkbox-label');
         halfLabel.textContent = '½';
         halfLabel.title = 'Allow half stars';
         halfLabel.style.cursor = 'pointer';
@@ -427,7 +427,7 @@ export default class ReviewTool implements BlockTool {
         const container = document.createElement('div');
 
         const label = document.createElement('div');
-        label.classList.add(ReviewTool.CSS.sectionLabel);
+        label.classList.add(ReviewTool.CSS.sectionLabel, 'ob-section-label');
         label.textContent = 'Pros & Cons';
         container.appendChild(label);
 
@@ -461,6 +461,7 @@ export default class ReviewTool implements BlockTool {
 
                 const input = document.createElement('input');
                 input.type = 'text';
+                input.classList.add('ob-input');
                 input.value = item;
                 input.placeholder = key === 'pros' ? 'Add a pro...' : 'Add a con...';
                 input.addEventListener('input', () => {
@@ -508,7 +509,7 @@ export default class ReviewTool implements BlockTool {
 
     private createCompactToggle(): HTMLElement {
         const group = document.createElement('div');
-        group.classList.add(ReviewTool.CSS.inputGroup);
+        group.classList.add(ReviewTool.CSS.inputGroup, 'ob-input-group');
         group.style.flexDirection = 'row';
         group.style.alignItems = 'center';
         group.style.gap = '8px';
@@ -524,7 +525,7 @@ export default class ReviewTool implements BlockTool {
 
         const label = document.createElement('label');
         label.htmlFor = 'cdx-review-compact';
-        label.classList.add(ReviewTool.CSS.label);
+        label.classList.add(ReviewTool.CSS.label, 'ob-checkbox-label');
         label.textContent = 'Compact mode';
         label.title = 'Render as a smaller horizontal card';
         label.style.margin = '0';
@@ -544,6 +545,6 @@ export default class ReviewTool implements BlockTool {
     }
 
     validate(savedData: ReviewData): boolean {
-        return savedData.title.trim() !== '';
+        return typeof savedData.title === 'string' && savedData.title.trim() !== '';
     }
 }

@@ -1,6 +1,15 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" suppressHydrationWarning>
     <head>
+        <!-- Apply theme from localStorage before React mounts (prevents light flash when dark is saved) -->
+        <script>
+            (function () {
+                var theme = localStorage.getItem('ottabase.theme');
+                if (theme === 'dark' || theme === 'light') {
+                    document.documentElement.classList.add(theme);
+                }
+            })();
+        </script>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 

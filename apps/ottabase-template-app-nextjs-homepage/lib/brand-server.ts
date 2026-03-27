@@ -31,12 +31,10 @@ export function generateBrandConfig(mode: 'light' | 'dark' = 'light'): FullBrand
         mode: 'dark',
     });
 
-    // Use requested mode for initial SSR
-    const resolvedTheme = mode === 'dark' ? darkTheme : lightTheme;
+    // Remove requested mode for initial SSR, BrandProvider handles this
 
     // Build the full config structure expected by BrandProvider
     const config: FullBrandConfig = {
-        mode,
         kit: 'default',
         routes: [
             ['/', 'homepage', 100],
@@ -54,16 +52,14 @@ export function generateBrandConfig(mode: 'light' | 'dark' = 'light'): FullBrand
                 brandName: brandConfig.name || 'Ottabase',
                 tagline: undefined,
                 logos: {},
-                theme: resolvedTheme,
+                theme: lightTheme,
+                darkTheme: darkTheme,
                 themeBase: themePreset,
                 tenantTheme: brandConfig,
                 defaultColorScheme: 'system',
                 allowDarkModeToggle: true,
                 customCss: undefined,
                 hideOttabaseBranding: false,
-                // Store both themes for client-side switching
-                _lightTheme: lightTheme,
-                _darkTheme: darkTheme,
             } as any,
         },
     };

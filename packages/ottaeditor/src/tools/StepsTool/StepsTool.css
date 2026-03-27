@@ -1,0 +1,209 @@
+/* Minimal chrome for Steps */
+.ob-plugin.cdx-steps__wrapper,
+.cdx-steps__wrapper {
+    background: transparent;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+}
+
+.cdx-steps__toolbar,
+.cdx-steps__footer {
+    display: flex;
+    align-items: center;
+}
+
+.cdx-steps__footer {
+    padding-left: 48px;
+}
+
+.cdx-steps__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 12px 0 4px;
+}
+
+.cdx-steps__item {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 16px;
+    align-items: stretch;
+}
+
+.cdx-steps__rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.cdx-steps__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    border: none;
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    box-shadow: 0 6px 14px rgb(15 23 42 / 0.28);
+}
+
+.cdx-steps__line {
+    width: 1px;
+    flex: 1;
+    margin: 8px 0;
+    background: hsl(var(--border));
+    min-height: 48px;
+}
+
+.cdx-steps__card {
+    position: relative;
+    padding: 2px 0 20px;
+}
+
+.cdx-steps__item-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.cdx-steps__title-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: hsl(var(--foreground));
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.4;
+    padding: 2px 0;
+    min-width: 0;
+}
+
+.cdx-steps__title-input::placeholder,
+.cdx-steps__content-input::placeholder {
+    color: hsl(var(--muted-foreground));
+}
+
+.cdx-steps__content-input {
+    width: 100%;
+    margin-top: 6px;
+    padding: 0;
+    border: none;
+    outline: none;
+    resize: vertical;
+    min-height: 60px;
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    font-size: 15px;
+    line-height: 1.65;
+    box-shadow: none;
+}
+
+.cdx-steps__menu-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.cdx-steps__icon-button,
+.cdx-steps__add-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    border-radius: 10px;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        box-shadow 0.15s ease;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
+.cdx-steps__icon-button {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+}
+
+.cdx-steps__add-button {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.cdx-steps__add-button--secondary {
+    width: 32px;
+    padding: 0;
+}
+
+.cdx-steps__add-button--secondary span {
+    display: none;
+}
+
+.cdx-steps__icon-button:hover,
+.cdx-steps__add-button:hover,
+.cdx-steps__menu-item:hover:not(:disabled) {
+    background: hsl(var(--muted));
+}
+
+.cdx-steps__icon-button:focus-visible,
+.cdx-steps__add-button:focus-visible,
+.cdx-steps__menu-item:focus-visible,
+.cdx-steps__title-input:focus-visible,
+.cdx-steps__content-input:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+}
+
+.cdx-steps__menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 136px;
+    padding: 6px;
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    background: hsl(var(--background));
+    box-shadow:
+        0 10px 15px -3px rgb(0 0 0 / 0.08),
+        0 4px 6px -4px rgb(0 0 0 / 0.08);
+}
+
+.cdx-steps__menu-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    text-align: left;
+    font-size: 13px;
+}
+
+.cdx-steps__menu-item--danger {
+    color: hsl(var(--destructive));
+}
+
+.cdx-steps__menu-item:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}

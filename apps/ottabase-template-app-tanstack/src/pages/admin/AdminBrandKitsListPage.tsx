@@ -3,6 +3,14 @@
 // ---------------------------------------------------------------------------
 
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
     Badge,
     Button,
     Card,
@@ -16,8 +24,10 @@ import {
     DropdownMenuTrigger,
 } from '@ottabase/ui-shadcn';
 import { IconCopy, IconDotsVertical, IconGitBranch, IconPalette, IconPlus, IconSettings2 } from '@tabler/icons-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Link, useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { brandKitApi, type BrandKitItem } from './brand/brandApi';
 
@@ -25,28 +35,27 @@ export function AdminBrandKitsListPage() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
 
-    const { data: kits = [], isLoading } = useQuery<BrandKitItem[]>({
-        queryKey: ['brand', 'kits'],
-        queryFn: () => brandKitApi.list(),
+    const { data: kits = [], isLoading } = useApiQuery<BrandKitItem[]>({
+        entity: 'brand_kits',
+        queryKey: ['list'],
+        endpoint: '/api/brand/kits',
     });
 
     const cloneMutation = useMutation({
+        meta: { entity: 'brand_kits' },
         mutationFn: ({ id, name }: { id: string; name?: string }) => brandKitApi.clone(id, name),
         onSuccess: (kit) => {
             toast.success('Brand Kit cloned');
-            queryClient.invalidateQueries({ queryKey: ['brand', 'kits'] });
-            queryClient.setQueryData(['brand', 'kit', kit.id], kit);
+            queryClient.invalidateQueries({ queryKey: ['brand_kits'] });
             navigate({ to: '/admin/brand-engine/kits/$kitId', params: { kitId: kit.id } });
         },
         onError: () => toast.error('Failed to clone'),
     });
 
     const deleteMutation = useMutation({
+        meta: { entity: 'brand_kits' },
         mutationFn: (id: string) => brandKitApi.delete(id),
-        onSuccess: () => {
-            toast.success('Brand Kit deleted');
-            queryClient.invalidateQueries({ queryKey: ['brand', 'kits'] });
-        },
+        onSuccess: () => toast.success('Brand Kit deleted'),
         onError: () => toast.error('Failed to delete'),
     });
 
@@ -146,6 +155,7 @@ function KitCard({
     isDefault?: boolean;
 }) {
     const isDefaultKit = Boolean(isDefault ?? kit.isDefault);
+    const [deleteOpen, setDeleteOpen] = useState(false);
 
     return (
         <Link
@@ -197,7 +207,7 @@ function KitCard({
                             <DropdownMenuItem
                                 onClick={(e) => {
                                     e.preventDefault();
-                                    if (window.confirm('Delete this Brand Kit? This cannot be undone.')) onDelete();
+                                    setDeleteOpen(true);
                                 }}
                                 disabled={deleting}
                                 className="text-destructive focus:text-destructive"
@@ -208,6 +218,29 @@ function KitCard({
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+
+            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Brand Kit?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This cannot be undone. The Brand Kit &quot;{kit.name}&quot; will be permanently deleted.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                onDelete();
+                                setDeleteOpen(false);
+                            }}
+                            disabled={deleting}
+                        >
+                            {deleting ? 'Deleting…' : 'Delete'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Link>
     );
 }
