@@ -4,6 +4,7 @@
  * Manage blog themes and plugins
  */
 import type { StudioPluginState, StudioThemeState } from '@ottabase/ottablog';
+import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -34,10 +35,10 @@ import {
     SelectValue,
     Textarea,
 } from '@ottabase/ui-shadcn';
-import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import { Link } from '@tanstack/react-router';
-import { ArrowLeft, Loader2, Palette, Puzzle, Settings } from 'lucide-react';
+import { Loader2, Palette, Puzzle, Settings } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { BlogAdminNav } from './BlogAdminNav';
 
 const STUDIO_ENTITY = 'blog_studio' as const;
 
@@ -186,7 +187,7 @@ export function AdminBlogStudioPage() {
 
     if (isError && error) {
         return (
-            <div className="space-y-6 p-6">
+            <div className="space-y-6">
                 <p className="text-destructive">Failed to load studio state.</p>
                 <Button asChild variant="outline">
                     <Link to="/admin/blog">Back to Blog</Link>
@@ -197,24 +198,19 @@ export function AdminBlogStudioPage() {
 
     if (!state) {
         return (
-            <div className="flex items-center justify-center p-12">
+            <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
 
     return (
-        <div className="space-y-6 p-6">
-            <div className="flex items-center gap-4">
-                <Button asChild variant="ghost" size="icon">
-                    <Link to="/admin/blog">
-                        <ArrowLeft className="h-4 w-4" />
-                    </Link>
-                </Button>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Blog Studio</h1>
-                    <p className="text-muted-foreground mt-1">Manage themes and plugins for your blog.</p>
-                </div>
+        <div className="space-y-6">
+            <BlogAdminNav />
+
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">Blog Studio</h1>
+                <p className="text-muted-foreground mt-1">Manage themes and plugins for your blog.</p>
             </div>
 
             {isLoading ? (
@@ -238,10 +234,20 @@ export function AdminBlogStudioPage() {
                                         key={theme.id}
                                         className="flex items-center justify-between rounded-lg border p-3 dark:border-border"
                                     >
-                                        <div>
+                                        <div className="min-w-0 flex-1">
                                             <p className="font-medium">{theme.name}</p>
                                             {theme.description && (
                                                 <p className="text-muted-foreground text-sm">{theme.description}</p>
+                                            )}
+                                            {(theme.version || theme.author) && (
+                                                <p className="text-muted-foreground text-xs mt-0.5">
+                                                    {[
+                                                        theme.version && `v${theme.version}`,
+                                                        theme.author && `by ${theme.author}`,
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ')}
+                                                </p>
                                             )}
                                         </div>
                                         <Button

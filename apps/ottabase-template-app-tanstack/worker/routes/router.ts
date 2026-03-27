@@ -2,6 +2,8 @@ import { handleAnalyticsTrack } from '@ottabase/analytics/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { handleCustomRoutes } from '../../ottabase/config.routes';
 import { getKillSwitchStatus } from '../lib/killswitch';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import {
@@ -60,15 +62,29 @@ import {
     handleTotpSetup,
 } from './account-security';
 import {
+    handleBlogCategoryBySlug,
     handleBlogPostBySlug,
     handleBlogPostUnlock,
     handleBlogPostsList,
+    handleBlogPublishScheduled,
+    handleBlogRelatedPosts,
+    handleBlogRssFeed,
+    handleBlogSeriesBySlug,
+    handleBlogSitemap,
     handleBlogStudioActivateTheme,
     handleBlogStudioPluginConfig,
     handleBlogStudioPluginEnable,
     handleBlogStudioState,
+    handleBlogTagBySlug,
 } from './blog';
 import { handleBrandApi } from './brand';
+import {
+    handleAIChat,
+    handleAIGatewayChat,
+    handleAIProviders,
+    handleAIStatus,
+    handleAIUniversalChat,
+} from './cloudflare-ai';
 import { handleD1Init, handleD1TodoById, handleD1Todos } from './cloudflare-d1';
 import { handleCloudflareQueue } from './cloudflare-queue';
 import { handleRateLimiting } from './cloudflare-rate';
@@ -80,13 +96,6 @@ import {
     handleUpload,
     handleUploadFile,
 } from './cloudflare-storage';
-import {
-    handleAIChat,
-    handleAIGatewayChat,
-    handleAIProviders,
-    handleAIStatus,
-    handleAIUniversalChat,
-} from './cloudflare-ai';
 import { handleCoreAnalytics } from './core-analytics';
 import { handleAuditLogs, handleDemo, handleDemoError } from './demo';
 import { handleEmailProviders, handleEmailTest } from './email';
@@ -107,8 +116,6 @@ import {
     handleShortlinksCreate,
     handleShortlinksList,
 } from './shortlinks';
-import { handleCustomRoutes } from '../../ottabase/config.routes';
-import { getOttabaseConfig } from '../../ottabase/config.loader';
 
 export interface ApiRouteContext {
     request: Request;
@@ -210,13 +217,40 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         if (route.startsWith('/api/blog/studio/') && route === '/api/blog/studio/state') {
             return handleBlogStudioState(context);
         }
+        if (route === '/api/blog/rss') {
+            return handleBlogRssFeed(context);
+        }
+        if (route === '/api/blog/sitemap.xml') {
+            return handleBlogSitemap(context);
+        }
         if (route === '/api/blog/posts') {
             return handleBlogPostsList(context);
+        }
+        const blogRelatedMatch = route.match(/^\/api\/blog\/posts\/([^/]+)\/related$/);
+        if (blogRelatedMatch) {
+            const postId = decodeURIComponent(blogRelatedMatch[1]);
+            return handleBlogRelatedPosts(context, postId);
         }
         const blogBySlugMatch = route.match(/^\/api\/blog\/posts\/by-slug\/([^/]+)$/);
         if (blogBySlugMatch) {
             const slug = decodeURIComponent(blogBySlugMatch[1]);
             return handleBlogPostBySlug(context, slug);
+        }
+        // Archive endpoints: tag/category/series by slug
+        const tagBySlugMatch = route.match(/^\/api\/blog\/tags\/by-slug\/([^/]+)$/);
+        if (tagBySlugMatch) {
+            const slug = decodeURIComponent(tagBySlugMatch[1]);
+            return handleBlogTagBySlug(context, slug);
+        }
+        const categoryBySlugMatch = route.match(/^\/api\/blog\/categories\/by-slug\/([^/]+)$/);
+        if (categoryBySlugMatch) {
+            const slug = decodeURIComponent(categoryBySlugMatch[1]);
+            return handleBlogCategoryBySlug(context, slug);
+        }
+        const seriesBySlugMatch = route.match(/^\/api\/blog\/series\/by-slug\/([^/]+)$/);
+        if (seriesBySlugMatch) {
+            const slug = decodeURIComponent(seriesBySlugMatch[1]);
+            return handleBlogSeriesBySlug(context, slug);
         }
     }
 
@@ -426,6 +460,9 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         }
         if (route === '/api/blog/posts/unlock') {
             return handleBlogPostUnlock(context);
+        }
+        if (route === '/api/blog/publish-scheduled') {
+            return handleBlogPublishScheduled(context);
         }
     }
 

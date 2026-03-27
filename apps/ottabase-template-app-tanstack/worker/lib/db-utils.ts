@@ -6,6 +6,7 @@ import {
     OttablogTheme,
     Post,
     PostCategory,
+    PostCategoryLink,
     PostSeries,
     PostTag,
     PostTagLink,
@@ -91,7 +92,17 @@ export function initDbConnection(env: CloudflareEnv): void {
         Permission,
     ];
     const ottablogModels = packages.ottablog
-        ? [Post, PostTag, PostTagLink, PostCategory, PostSeries, PostVersion, OttablogPlugin, OttablogTheme]
+        ? [
+              Post,
+              PostTag,
+              PostTagLink,
+              PostCategoryLink,
+              PostCategory,
+              PostSeries,
+              PostVersion,
+              OttablogPlugin,
+              OttablogTheme,
+          ]
         : [];
     const packageModels = [
         ...(packages.comments ? [Comment] : []),

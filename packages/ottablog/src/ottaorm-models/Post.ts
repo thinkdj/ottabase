@@ -17,6 +17,7 @@ import {
     type PostStatus,
 } from '../types';
 import { postsTable } from './Post.schema';
+import { postCategoryLinksTable } from './PostCategoryLink';
 import { PostTag } from './PostTag';
 import { postTagLinksTable } from './PostTagLink';
 
@@ -43,6 +44,7 @@ export class Post extends BaseModel {
         isProtected: 'boolean' as const,
         readingTimeMinutes: 'number' as const,
         wordCount: 'number' as const,
+        viewCount: 'number' as const,
         seriesOrder: 'number' as const,
         maxVersionsToKeep: 'number' as const,
         createdAt: 'date' as const,
@@ -58,6 +60,7 @@ export class Post extends BaseModel {
         isFeatured: false,
         allowComments: true,
         isProtected: false,
+        viewCount: 0,
     };
 
     // Allow server-side writes for system-managed fields (RLS still enforces scope)
@@ -630,6 +633,19 @@ export class Post extends BaseModel {
                 visible: false,
             },
         },
+        viewCount: {
+            type: 'number',
+            editable: false,
+            sortable: true,
+            uiConfig: {
+                label: 'Views',
+                description: 'Total page views (auto-tracked)',
+            },
+            tableConfig: {
+                visible: true,
+                colWidth: 80,
+            },
+        },
         createdAt: {
             type: 'date',
             editable: false,
@@ -815,6 +831,23 @@ export class Post extends BaseModel {
         });
     }
 
+    /**
+     * Get categories for this post (BelongsToMany PostCategory via postCategoryLinksTable)
+     */
+    async categories(options?: {
+        select?: string[];
+        orderBy?: string;
+        orderDirection?: 'asc' | 'desc';
+        withPivot?: string[];
+    }) {
+        const { PostCategory } = await import('./PostCategory');
+        return this.belongsToMany(PostCategory, postCategoryLinksTable, {
+            foreignKey: 'postId',
+            otherKey: 'categoryId',
+            ...options,
+        });
+    }
+
     // ============================================================
     // STATIC HELPERS
     // ============================================================
@@ -895,5 +928,153 @@ export class Post extends BaseModel {
 
         const excerpt = extractExcerpt(content);
         this.set('excerpt', excerpt);
+    }
+
+    /**
+     * Increment view count (call from API when a post is viewed)
+     */
+    async trackView() {
+        const current = (this.get('viewCount') as number) || 0;
+        this.set('viewCount', current + 1);
+        return this.save();
+    }
+
+    // ============================================================
+    // SCHEDULED PUBLISHING
+    // ============================================================
+
+    /**
+     * Publish all posts whose publishAt timestamp has passed.
+     * Call this from a cron handler to auto-publish scheduled posts.
+     */
+    static async publishScheduled(options?: { appId?: string }): Promise<Post[]> {
+        const now = Date.now();
+        const query: Record<string, unknown> = { status: 'scheduled' };
+        if (options?.appId) query.appId = options.appId;
+
+        const scheduled = await this.where(query);
+        const published: Post[] = [];
+
+        for (const post of scheduled) {
+            const publishAt = post.get('publishAt') as number | null;
+            if (publishAt && publishAt <= now) {
+                post.set('status', 'published');
+                post.set('publishedAt', publishAt);
+                post.set('postedAt', now);
+                await post.save();
+                published.push(post as Post);
+            }
+        }
+
+        return published;
+    }
+
+    // ============================================================
+    // RELATED POSTS
+    // ============================================================
+
+    /**
+     * Get posts related to this one (same categories via junction, then same content type).
+     * Excludes the current post. Returns up to `limit` results.
+     */
+    static async related(
+        postId: string,
+        options?: {
+            categoryId?: string | null;
+            categoryIds?: string[];
+            contentType?: string;
+            appId?: string;
+            limit?: number;
+        },
+    ): Promise<Post[]> {
+        const limit = options?.limit ?? 4;
+        const results: Post[] = [];
+        const seenIds = new Set<string>([postId]);
+
+        // 1. Same categories via junction table (best signal)
+        const catIds = options?.categoryIds?.length ? options.categoryIds : [];
+        if (catIds.length > 0) {
+            // Find other posts sharing any of the same categories
+            const { PostCategoryLink } = await import('./PostCategoryLink');
+            const allCatLinks: InstanceType<typeof PostCategoryLink>[] = [];
+            for (const cid of catIds) {
+                const links = await PostCategoryLink.where({ categoryId: cid });
+                allCatLinks.push(...links);
+            }
+            const candidateIds = [
+                ...new Set(allCatLinks.map((l) => l.get('postId') as string).filter((id) => !seenIds.has(id))),
+            ];
+
+            if (candidateIds.length > 0) {
+                const candidates = await this.whereIn('id', candidateIds, {
+                    orderBy: 'publishedAt',
+                    orderDirection: 'desc',
+                    limit: limit + 1,
+                });
+                for (const p of candidates) {
+                    if (
+                        !seenIds.has(p.get('id') as string) &&
+                        p.get('status') === 'published' &&
+                        results.length < limit
+                    ) {
+                        results.push(p as Post);
+                        seenIds.add(p.get('id') as string);
+                    }
+                }
+            }
+        }
+
+        // 1b. Legacy fallback: same category via direct categoryId field
+        if (results.length < limit && options?.categoryId) {
+            const byCat = await this.where(
+                {
+                    categoryId: options.categoryId,
+                    status: 'published',
+                    ...(options?.appId ? { appId: options.appId } : {}),
+                },
+                { orderBy: 'publishedAt', orderDirection: 'desc', limit: limit + 1 },
+            );
+            for (const p of byCat) {
+                if (!seenIds.has(p.get('id') as string) && results.length < limit) {
+                    results.push(p as Post);
+                    seenIds.add(p.get('id') as string);
+                }
+            }
+        }
+
+        // 2. Same content type (fallback)
+        if (results.length < limit && options?.contentType) {
+            const byType = await this.where(
+                {
+                    contentType: options.contentType,
+                    status: 'published',
+                    ...(options?.appId ? { appId: options.appId } : {}),
+                },
+                { orderBy: 'publishedAt', orderDirection: 'desc', limit: limit + 1 },
+            );
+            for (const p of byType) {
+                if (!seenIds.has(p.get('id') as string) && results.length < limit) {
+                    results.push(p as Post);
+                    seenIds.add(p.get('id') as string);
+                }
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Get most viewed posts (popular posts)
+     */
+    static async popular(options?: { status?: PostStatus; contentType?: ContentType; appId?: string; limit?: number }) {
+        const query: Record<string, unknown> = { status: options?.status || 'published' };
+        if (options?.contentType) query.contentType = options.contentType;
+        if (options?.appId) query.appId = options.appId;
+
+        return this.where(query, {
+            orderBy: 'viewCount',
+            orderDirection: 'desc',
+            limit: options?.limit ?? 10,
+        });
     }
 }

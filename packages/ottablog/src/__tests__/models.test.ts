@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { Post, PostCategory, PostVersion, PostSeries, PostTag, PostTagLink } from '../ottaorm-models';
+import { describe, expect, it } from 'vitest';
+import { Post, PostCategory, PostCategoryLink, PostSeries, PostTag, PostTagLink, PostVersion } from '../ottaorm-models';
 
 describe('ottablog models', () => {
     describe('Post model', () => {
@@ -24,6 +24,7 @@ describe('ottablog models', () => {
             expect(defaults.isFeatured).toBe(false);
             expect(defaults.allowComments).toBe(true);
             expect(defaults.isProtected).toBe(false);
+            expect(defaults.viewCount).toBe(0);
         });
 
         it('should have field metadata defined', () => {
@@ -50,6 +51,19 @@ describe('ottablog models', () => {
             const rules = (Post as any).validationRules;
             expect(rules).toHaveProperty('title');
             expect(rules.title.rules).toContain('required');
+        });
+
+        it('should have viewCount in casts', () => {
+            expect(Post.casts).toHaveProperty('viewCount');
+            expect(Post.casts.viewCount).toBe('number');
+        });
+
+        it('should have viewCount field metadata', () => {
+            const fields = Post.getFields();
+            expect(fields).toHaveProperty('viewCount');
+            expect(fields.viewCount.type).toBe('number');
+            expect(fields.viewCount.editable).toBe(false);
+            expect(fields.viewCount.sortable).toBe(true);
         });
     });
 
@@ -142,12 +156,13 @@ describe('ottablog models', () => {
     describe('PostTagLink model (junction table)', () => {
         it('should have correct entity configuration', () => {
             expect(PostTagLink.entity).toBe('post_tag_links');
-            expect(PostTagLink.primaryKey).toBe('postId');
+            expect(PostTagLink.primaryKey).toBe('id');
             expect(PostTagLink.table).toBeDefined();
         });
 
         it('should have field metadata defined', () => {
             const fields = PostTagLink.getFields();
+            expect(fields).toHaveProperty('id');
             expect(fields).toHaveProperty('postId');
             expect(fields).toHaveProperty('tagId');
             expect(fields).toHaveProperty('createdAt');
@@ -171,6 +186,42 @@ describe('ottablog models', () => {
         it('should have static forTag method', () => {
             expect(PostTagLink.forTag).toBeDefined();
             expect(typeof PostTagLink.forTag).toBe('function');
+        });
+    });
+
+    describe('PostCategoryLink model (junction table)', () => {
+        it('should have correct entity configuration', () => {
+            expect(PostCategoryLink.entity).toBe('post_category_links');
+            expect(PostCategoryLink.primaryKey).toBe('id');
+            expect(PostCategoryLink.table).toBeDefined();
+        });
+
+        it('should have field metadata defined', () => {
+            const fields = PostCategoryLink.getFields();
+            expect(fields).toHaveProperty('id');
+            expect(fields).toHaveProperty('postId');
+            expect(fields).toHaveProperty('categoryId');
+            expect(fields).toHaveProperty('createdAt');
+        });
+
+        it('should have static linkCategory method', () => {
+            expect(PostCategoryLink.linkCategory).toBeDefined();
+            expect(typeof PostCategoryLink.linkCategory).toBe('function');
+        });
+
+        it('should have static unlinkCategory method', () => {
+            expect(PostCategoryLink.unlinkCategory).toBeDefined();
+            expect(typeof PostCategoryLink.unlinkCategory).toBe('function');
+        });
+
+        it('should have static forPost method', () => {
+            expect(PostCategoryLink.forPost).toBeDefined();
+            expect(typeof PostCategoryLink.forPost).toBe('function');
+        });
+
+        it('should have static forCategory method', () => {
+            expect(PostCategoryLink.forCategory).toBeDefined();
+            expect(typeof PostCategoryLink.forCategory).toBe('function');
         });
     });
 
@@ -248,6 +299,11 @@ describe('ottablog models', () => {
             expect(Post.prototype.tags).toBeDefined();
             expect(typeof Post.prototype.tags).toBe('function');
         });
+
+        it('Post model should have categories relationship method', () => {
+            expect(Post.prototype.categories).toBeDefined();
+            expect(typeof Post.prototype.categories).toBe('function');
+        });
     });
 
     describe('Model instance methods', () => {
@@ -269,6 +325,11 @@ describe('ottablog models', () => {
         it('Post should have toggleFeatured method', () => {
             expect(Post.prototype.toggleFeatured).toBeDefined();
             expect(typeof Post.prototype.toggleFeatured).toBe('function');
+        });
+
+        it('Post should have trackView method', () => {
+            expect(Post.prototype.trackView).toBeDefined();
+            expect(typeof Post.prototype.trackView).toBe('function');
         });
 
         it('PostCategory should have generateSlug method', () => {
@@ -303,6 +364,21 @@ describe('ottablog models', () => {
             expect(typeof Post.bySeries).toBe('function');
         });
 
+        it('Post should have static publishScheduled method', () => {
+            expect(Post.publishScheduled).toBeDefined();
+            expect(typeof Post.publishScheduled).toBe('function');
+        });
+
+        it('Post should have static related method', () => {
+            expect(Post.related).toBeDefined();
+            expect(typeof Post.related).toBe('function');
+        });
+
+        it('Post should have static popular method', () => {
+            expect(Post.popular).toBeDefined();
+            expect(typeof Post.popular).toBe('function');
+        });
+
         it('PostCategory should have static roots method', () => {
             expect(PostCategory.roots).toBeDefined();
             expect(typeof PostCategory.roots).toBe('function');
@@ -331,6 +407,54 @@ describe('ottablog models', () => {
         it('PostVersion should have static latestForPost method', () => {
             expect(PostVersion.latestForPost).toBeDefined();
             expect(typeof PostVersion.latestForPost).toBe('function');
+        });
+    });
+
+    describe('Model writable fields', () => {
+        it('PostTag should have writable fields for create and update', () => {
+            const writable = (PostTag as any).writable;
+            expect(writable).toBeDefined();
+            expect(writable.create).toContain('name');
+            expect(writable.create).toContain('slug');
+            expect(writable.create).toContain('color');
+            expect(writable.update).toContain('name');
+            expect(writable.update).toContain('slug');
+        });
+
+        it('PostTagLink should have writable fields for create (postId, tagId)', () => {
+            const writable = (PostTagLink as any).writable;
+            expect(writable).toBeDefined();
+            expect(writable.create).toContain('postId');
+            expect(writable.create).toContain('tagId');
+            expect(writable.update).toEqual([]);
+        });
+
+        it('PostCategoryLink should have writable fields for create (postId, categoryId)', () => {
+            const writable = (PostCategoryLink as any).writable;
+            expect(writable).toBeDefined();
+            expect(writable.create).toContain('postId');
+            expect(writable.create).toContain('categoryId');
+            expect(writable.update).toEqual([]);
+        });
+
+        it('PostCategory should have writable fields for create and update', () => {
+            const writable = (PostCategory as any).writable;
+            expect(writable).toBeDefined();
+            expect(writable.create).toContain('name');
+            expect(writable.create).toContain('slug');
+            expect(writable.create).toContain('parentId');
+            expect(writable.update).toContain('name');
+            expect(writable.update).toContain('parentId');
+        });
+
+        it('PostSeries should have writable fields for create and update', () => {
+            const writable = (PostSeries as any).writable;
+            expect(writable).toBeDefined();
+            expect(writable.create).toContain('title');
+            expect(writable.create).toContain('slug');
+            expect(writable.create).toContain('isComplete');
+            expect(writable.update).toContain('title');
+            expect(writable.update).toContain('isComplete');
         });
     });
 });

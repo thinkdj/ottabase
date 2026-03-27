@@ -8,10 +8,16 @@ import { SEOHead } from '@/components/SEOHead';
 import { BLOG_LIST_QUERY_CONFIG, SERIES_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { CONTENT_TYPES, formatDate, type ContentType } from '@ottabase/ottablog';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
-import { Button, Card, CardContent, Input } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, Input } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
-import { Calendar, ChevronLeft, ChevronRight, Clock, Lock, Search, User } from 'lucide-react';
-import { useState } from 'react';
+import { Calendar, ChevronLeft, ChevronRight, Clock, Lock, Search, Tag, User } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+
+interface BlogPostTag {
+    id: string;
+    name: string;
+    slug: string;
+}
 
 interface BlogPost {
     id: string;
@@ -28,6 +34,10 @@ interface BlogPost {
     publishedAt: string | null;
     seriesId: string | null;
     seriesTitle?: string | null;
+    categoryName?: string | null;
+    categories?: { id: string; name: string; slug: string }[];
+    tags?: BlogPostTag[];
+    viewCount?: number;
 }
 
 interface BlogSeries {
@@ -50,9 +60,20 @@ const POSTS_PER_PAGE = 12;
 
 export function BlogListPage() {
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [contentType, setContentType] = useState<ContentType | ''>('');
     const [seriesFilter, setSeriesFilter] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+    // Debounce search input (300ms)
+    useEffect(() => {
+        debounceRef.current = setTimeout(() => {
+            setDebouncedSearch(search);
+            setCurrentPage(1);
+        }, 300);
+        return () => clearTimeout(debounceRef.current);
+    }, [search]);
 
     // Build query params for the public blog API
     const blogListParams = new URLSearchParams();
@@ -60,13 +81,14 @@ export function BlogListPage() {
     blogListParams.set('perPage', String(POSTS_PER_PAGE));
     if (contentType) blogListParams.set('contentType', contentType);
     if (seriesFilter) blogListParams.set('seriesId', seriesFilter);
+    if (debouncedSearch) blogListParams.set('search', debouncedSearch);
 
     // useApiQuery with entity:'posts' namespaces the key as ['posts', 'list', { ... }].
     // Any mutation on the posts entity (admin create/update/delete) auto-busts this cache
     // via the global mutation observer in OttaQueryProvider — no manual coordination needed.
     const { data: listResponse, isLoading } = useApiQuery<BlogListResponse>({
         entity: 'posts',
-        queryKey: ['list', { page: currentPage, contentType, seriesFilter }],
+        queryKey: ['list', { page: currentPage, contentType, seriesFilter, search: debouncedSearch }],
         endpoint: `/api/blog/posts?${blogListParams.toString()}`,
         queryOptions: BLOG_LIST_QUERY_CONFIG,
     });
@@ -78,15 +100,6 @@ export function BlogListPage() {
     const pagination = listResponse?.pagination ?? { page: 1, perPage: POSTS_PER_PAGE, total: 0, totalPages: 1 };
     const series = seriesData || [];
 
-    // Client-side search filter
-    const filteredPosts = search
-        ? posts.filter(
-              (post) =>
-                  post.title.toLowerCase().includes(search.toLowerCase()) ||
-                  post.excerpt?.toLowerCase().includes(search.toLowerCase()),
-          )
-        : posts;
-
     // Reset to page 1 when filters change
     const handleFilterChange = (callback: () => void) => {
         callback();
@@ -94,8 +107,8 @@ export function BlogListPage() {
     };
 
     // Separate featured posts
-    const featuredPosts = filteredPosts.filter((p) => p.isFeatured);
-    const regularPosts = filteredPosts.filter((p) => !p.isFeatured);
+    const featuredPosts = posts.filter((p) => p.isFeatured);
+    const regularPosts = posts.filter((p) => !p.isFeatured);
 
     return (
         <div className="space-y-8">
@@ -169,7 +182,7 @@ export function BlogListPage() {
             )}
 
             {/* No posts */}
-            {!isLoading && filteredPosts.length === 0 && (
+            {!isLoading && posts.length === 0 && (
                 <div className="text-center py-12">
                     <p className="text-muted-foreground">No posts found.</p>
                 </div>
@@ -200,7 +213,7 @@ export function BlogListPage() {
             )}
 
             {/* Pagination Controls */}
-            {!isLoading && filteredPosts.length > 0 && (
+            {!isLoading && posts.length > 0 && (
                 <div className="flex items-center justify-center gap-4 pt-8">
                     <Button
                         variant="outline"
@@ -254,6 +267,25 @@ function FeaturedPostCard({ post }: { post: BlogPost }) {
                         )}
                     </h3>
                     {post.excerpt && <p className="text-muted-foreground mb-4 line-clamp-3">{post.excerpt}</p>}
+                    {post.tags && post.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-3">
+                            {post.tags.map((tag) => (
+                                <Badge key={tag.id} variant="outline" className="text-xs">
+                                    <Tag className="h-2.5 w-2.5 mr-1" />
+                                    {tag.name}
+                                </Badge>
+                            ))}
+                        </div>
+                    )}
+                    {post.categories && post.categories.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-3">
+                            {post.categories.map((cat) => (
+                                <Badge key={cat.id} variant="secondary" className="text-xs">
+                                    {cat.name}
+                                </Badge>
+                            ))}
+                        </div>
+                    )}
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         {post.authorName && (
                             <span className="flex items-center gap-1">
@@ -306,6 +338,30 @@ function PostCard({ post }: { post: BlogPost }) {
                         )}
                     </h3>
                     {post.excerpt && <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{post.excerpt}</p>}
+                    {post.tags && post.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                            {post.tags.slice(0, 3).map((tag) => (
+                                <Badge key={tag.id} variant="outline" className="text-[10px] px-1.5 py-0">
+                                    {tag.name}
+                                </Badge>
+                            ))}
+                            {post.tags.length > 3 && (
+                                <span className="text-[10px] text-muted-foreground">+{post.tags.length - 3}</span>
+                            )}
+                        </div>
+                    )}
+                    {post.categories && post.categories.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                            {post.categories.slice(0, 2).map((cat) => (
+                                <Badge key={cat.id} variant="secondary" className="text-[10px] px-1.5 py-0">
+                                    {cat.name}
+                                </Badge>
+                            ))}
+                            {post.categories.length > 2 && (
+                                <span className="text-[10px] text-muted-foreground">+{post.categories.length - 2}</span>
+                            )}
+                        </div>
+                    )}
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         {post.publishedAt && (
                             <span className="flex items-center gap-1">

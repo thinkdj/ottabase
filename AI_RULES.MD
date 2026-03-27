@@ -75,7 +75,7 @@ OttaORM).
 | ------ | ------------------------------------------------------------------- |
 | UI     | `@ottabase/ui-shadcn`, `@ottabase/ui-mantine`; Tailwind + dark mode |
 | Charts | Tremor where applicable                                             |
-| Icons  | `@tabler/icons-react`; Lucide/Radix fallback                        |
+| Icons  | Lucide Icons. Tabler, Radix as fallback                             |
 | State  | `@ottabase/state` (Jotai)                                           |
 | Auth   | `@ottabase/auth` (Auth.js)                                          |
 | Async  | `@ottabase/queue`                                                   |

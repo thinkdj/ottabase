@@ -3,8 +3,8 @@
  *
  * Lists all blog posts with filtering, status management, and CRUD operations.
  */
-import { CONTENT_TYPES, formatShortDate, POST_STATUSES, type ContentType, type PostStatus } from '@ottabase/ottablog';
 import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
+import { CONTENT_TYPES, formatShortDate, POST_STATUSES, type ContentType, type PostStatus } from '@ottabase/ottablog';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 import {
     AlertDialog,
@@ -39,6 +39,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
+import { BlogAdminNav } from './BlogAdminNav';
 
 interface BlogPost {
     id: string;
@@ -157,23 +158,20 @@ export function AdminBlogListPage() {
 
     return (
         <div className="space-y-6">
+            <BlogAdminNav />
+
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Blog Posts</h1>
                     <p className="text-muted-foreground mt-1">Manage your blog posts, changelogs, and documentation.</p>
                 </div>
-                <div className="flex gap-2">
-                    <Button asChild variant="outline">
-                        <Link to="/admin/blog/studio">Studio</Link>
-                    </Button>
-                    <Button asChild>
-                        <Link to="/admin/blog/new">
-                            <Plus className="mr-2 h-4 w-4" />
-                            New Post
-                        </Link>
-                    </Button>
-                </div>
+                <Button asChild>
+                    <Link to="/admin/blog/new">
+                        <Plus className="mr-2 h-4 w-4" />
+                        New Post
+                    </Link>
+                </Button>
             </div>
 
             {/* Filters */}

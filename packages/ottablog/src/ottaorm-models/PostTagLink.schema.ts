@@ -1,13 +1,18 @@
 /**
  * PostTagLink table schema - junction table for Post <-> PostTag many-to-many
  */
-import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { postsTable } from './Post.schema';
 import { postTagsTable } from './PostTag.schema';
 
 export const postTagLinksTable = sqliteTable(
     'post_tag_links',
     {
+        // Single-column PK for OttaORM compatibility (find/delete by id)
+        id: text('id')
+            .primaryKey()
+            .$defaultFn(() => crypto.randomUUID()),
+
         postId: text('post_id')
             .notNull()
             .references(() => postsTable.id, { onDelete: 'cascade' }),
@@ -22,8 +27,8 @@ export const postTagLinksTable = sqliteTable(
             .$defaultFn(() => Date.now()),
     },
     (table) => [
-        // Composite primary key prevents duplicate tag assignments
-        primaryKey({ columns: [table.postId, table.tagId] }),
+        // Unique constraint prevents duplicate tag assignments
+        uniqueIndex('post_tag_links_unique_idx').on(table.postId, table.tagId),
 
         // Get all tags for a post
         index('post_tag_links_post_id_idx').on(table.postId),

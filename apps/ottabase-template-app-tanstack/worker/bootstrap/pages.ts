@@ -485,6 +485,12 @@ wrangler secret put MIGRATION_SECRET</pre>
         .then(function(data) {
           if (!data.success) throw new Error(data.error || 'Init failed');
 
+          var kv = data.kvCleared;
+          if (kv) {
+            if (kv.skipped) log('log-init', 'KV not bound (OBCF_KV) — skipped namespace wipe.', '');
+            else log('log-init', 'KV namespace wiped (' + kv.deleted + ' keys removed).', 'success');
+          }
+
           var ai = data.autoInit;
           if (ai) {
             if (ai.tablesCreated && ai.tablesCreated.length > 0) log('log-init', 'Tables created: ' + ai.tablesCreated.join(', '), 'success');

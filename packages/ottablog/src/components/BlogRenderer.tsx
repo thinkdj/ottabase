@@ -208,7 +208,24 @@ export function BlogRenderer({
             };
         };
 
+        // Safe wrapper for optional renderers (no fallback — returns null if not defined)
+        const safeOptionalRenderer = <T extends unknown[]>(
+            renderer: ((...args: T) => React.ReactNode) | undefined,
+            name: string,
+        ) => {
+            return (...args: T): React.ReactNode => {
+                if (!renderer) return null;
+                try {
+                    return renderer(...args);
+                } catch (error) {
+                    console.error(`Error in theme renderer "${name}":`, error);
+                    return null;
+                }
+            };
+        };
+
         return {
+            renderHeader: safeOptionalRenderer(theme.renderers.renderHeader, 'renderHeader'),
             renderHero: safeRenderer(theme.renderers.renderHero, defaultTheme.renderers.renderHero, 'renderHero'),
             renderTitle: safeRenderer(theme.renderers.renderTitle, defaultTheme.renderers.renderTitle, 'renderTitle'),
             renderMetadata: safeRenderer(
@@ -236,6 +253,7 @@ export function BlogRenderer({
                 defaultTheme.renderers.renderSeries,
                 'renderSeries',
             ),
+            renderFooter: safeOptionalRenderer(theme.renderers.renderFooter, 'renderFooter'),
         };
     }, [theme]);
 
@@ -264,7 +282,7 @@ export function BlogRenderer({
             {renderHeader?.()}
 
             {/* Theme renderer: Header */}
-            {theme.renderers.renderHeader?.(filteredPost, props)}
+            {renderers.renderHeader(filteredPost, props)}
 
             {/* Theme renderer: Hero Image */}
             {renderers.renderHero(filteredPost, props)}
@@ -288,7 +306,7 @@ export function BlogRenderer({
             {renderers.renderFootnotes(filteredPost, props)}
 
             {/* Theme renderer: Footer */}
-            {theme.renderers.renderFooter?.(filteredPost, props)}
+            {renderers.renderFooter(filteredPost, props)}
 
             {/* Custom footer */}
             {renderFooter?.()}
@@ -313,6 +331,8 @@ export interface BlogExcerptCardProps {
         className?: string;
         children: React.ReactNode;
     }>;
+    /** Theme ID override (defaults to active theme) */
+    themeId?: string;
 }
 
 export function BlogExcerptCard({
@@ -325,7 +345,29 @@ export function BlogExcerptCard({
     onClick,
     href,
     LinkComponent,
+    themeId,
 }: BlogExcerptCardProps) {
+    // Check for a theme-provided card renderer
+    const theme = useMemo(() => (themeId ? getTheme(themeId) : null) ?? getActiveTheme() ?? defaultTheme, [themeId]);
+
+    if (theme.renderers.renderCard) {
+        try {
+            const cardProps: BlogRendererProps = {
+                post,
+                showHeroImage,
+                showExcerpt,
+                showMetadata,
+                className,
+                formatDate,
+            };
+            const rendered = theme.renderers.renderCard(post, cardProps);
+            if (rendered !== null && rendered !== undefined) return <>{rendered}</>;
+        } catch (error) {
+            console.error('Error in theme renderCard:', error);
+            // Fall through to default card rendering
+        }
+    }
+
     const Wrapper = LinkComponent
         ? ({ children }: { children: React.ReactNode }) => (
               <LinkComponent href={href || `/blog/${post.slug}`} className={`blog-card ${className}`}>

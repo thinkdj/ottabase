@@ -7,7 +7,7 @@
  * For universal/core tags (non-blog), use Tag from @ottabase/ottaorm.
  */
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
-import { postTagsTable, type NewPostTagType, type PostTagType } from './PostTag.schema';
+import { postTagsTable } from './PostTag.schema';
 
 export { postTagsTable, type NewPostTagType, type PostTagType } from './PostTag.schema';
 
@@ -38,6 +38,11 @@ export class PostTag extends BaseModel {
     static primaryKey = 'id';
     static packageName = '@ottabase/ottablog';
     static packageType: PackageType = 'package';
+
+    static writable = {
+        create: ['name', 'slug', 'color', 'type', 'appId'],
+        update: ['name', 'slug', 'color', 'type'],
+    };
 
     static casts = {
         createdAt: 'date' as const,

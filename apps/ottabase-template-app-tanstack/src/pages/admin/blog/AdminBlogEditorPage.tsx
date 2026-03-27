@@ -25,6 +25,7 @@ import {
 } from '@ottabase/ottaeditor';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
+import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -61,17 +62,20 @@ import {
     ArrowLeft,
     Calendar,
     FileText,
+    FolderTree,
     History,
     Image as ImageIcon,
     KeyRound,
     Layers,
     Loader2,
+    Plus,
     Save,
     Search,
     Send,
     Settings,
     SplitSquareHorizontal,
     StickyNote,
+    Tag,
     Trash2,
     User,
     X,
@@ -116,6 +120,32 @@ interface BlogSeries {
     isComplete: boolean;
 }
 
+interface BlogTag {
+    id: string;
+    name: string;
+    slug: string;
+    color?: string;
+}
+
+interface BlogTagLink {
+    id: string;
+    postId: string;
+    tagId: string;
+}
+
+interface BlogCategoryLink {
+    id: string;
+    postId: string;
+    categoryId: string;
+}
+
+interface BlogCategory {
+    id: string;
+    name: string;
+    slug: string;
+    parentId: string | null;
+}
+
 interface BlogPostVersion {
     id: string;
     postId: string;
@@ -136,6 +166,10 @@ interface BlogPostVersion {
 const blogPostHooks = createModelHooks<BlogPost>({ entityName: 'posts' });
 const blogSeriesHooks = createModelHooks<BlogSeries>({ entityName: 'series' });
 const blogPostVersionHooks = createModelHooks<BlogPostVersion>({ entityName: 'post_versions' });
+const blogTagHooks = createModelHooks<BlogTag>({ entityName: 'post_tags' });
+const blogTagLinkHooks = createModelHooks<BlogTagLink>({ entityName: 'post_tag_links' });
+const blogCategoryHooks = createModelHooks<BlogCategory>({ entityName: 'categories' });
+const blogCategoryLinkHooks = createModelHooks<BlogCategoryLink>({ entityName: 'post_category_links' });
 
 // Editor configuration with image upload
 const getEditorConfig = (placeholder: string) => ({
@@ -220,9 +254,118 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     // Version history settings
     const [maxVersionsToKeep, setMaxVersionsToKeep] = useState<number | null>(initialData?.maxVersionsToKeep || null);
 
+    // Tag state
+    const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+    const [newTagName, setNewTagName] = useState('');
+    const [isCreatingTag, setIsCreatingTag] = useState(false);
+
+    // Category state (many-to-many via PostCategoryLink)
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+
+    // Fetch all available tags
+    const { data: allTagsData } = blogTagHooks.useList(undefined, { staleTime: 30_000 });
+    const allTags: BlogTag[] = useMemo(() => {
+        if (Array.isArray(allTagsData)) return allTagsData;
+        return (allTagsData as { data?: BlogTag[] } | undefined)?.data ?? [];
+    }, [allTagsData]);
+
+    // OttaSelect tag value: derive from selectedTagIds + allTags
+    const selectedTagItems = useMemo<OttaSelectItem[]>(() => {
+        return selectedTagIds
+            .map((id) => allTags.find((t) => t.id === id))
+            .filter(Boolean)
+            .map((t) => ({ id: t!.id, name: t!.name }));
+    }, [selectedTagIds, allTags]);
+
+    // Fetch categories
+    const { data: allCategoriesData } = blogCategoryHooks.useList(undefined, { staleTime: 30_000 });
+    const allCategories: BlogCategory[] = useMemo(() => {
+        if (Array.isArray(allCategoriesData)) return allCategoriesData;
+        return (allCategoriesData as { data?: BlogCategory[] } | undefined)?.data ?? [];
+    }, [allCategoriesData]);
+
+    // Build category tree label (e.g. "Parent > Child")
+    const categoryLabel = useCallback(
+        (cat: BlogCategory): string => {
+            if (!cat.parentId) return cat.name;
+            const parent = allCategories.find((c) => c.id === cat.parentId);
+            return parent ? `${categoryLabel(parent)} > ${cat.name}` : cat.name;
+        },
+        [allCategories],
+    );
+
+    // Category items for OttaSelect
+    const categoryItems = useMemo<OttaSelectItem[]>(() => {
+        return allCategories.map((c) => ({ id: c.id, name: categoryLabel(c) }));
+    }, [allCategories, categoryLabel]);
+
+    // OttaSelect category value: derive from selectedCategoryIds + allCategories
+    const selectedCategoryItems = useMemo<OttaSelectItem[]>(() => {
+        return selectedCategoryIds
+            .map((id) => allCategories.find((c) => c.id === id))
+            .filter(Boolean)
+            .map((c) => ({ id: c!.id, name: categoryLabel(c!) }));
+    }, [selectedCategoryIds, allCategories, categoryLabel]);
+
+    // Fetch tag links for this post (edit mode)
+    const { data: tagLinksData, refetch: refetchTagLinks } = blogTagLinkHooks.useList(
+        { where: postId ? { postId } : undefined },
+        { enabled: isEditMode && !!postId, staleTime: 30_000 },
+    );
+    const tagLinks: BlogTagLink[] = useMemo(() => {
+        if (!isEditMode) return [];
+        if (Array.isArray(tagLinksData)) return tagLinksData;
+        return (tagLinksData as { data?: BlogTagLink[] } | undefined)?.data ?? [];
+    }, [isEditMode, tagLinksData]);
+
+    // Sync selectedTagIds from server on load (clears local state when server returns empty)
+    useEffect(() => {
+        if (isEditMode && tagLinksData !== undefined) {
+            setSelectedTagIds(tagLinks.map((tl) => tl.tagId));
+        }
+    }, [tagLinks]);
+
+    const createTag = blogTagHooks.useCreate();
+    const createTagLink = blogTagLinkHooks.useCreate();
+    const deleteTagLink = blogTagLinkHooks.useDelete();
+
+    // Fetch category links for this post (edit mode)
+    const { data: categoryLinksData, refetch: refetchCategoryLinks } = blogCategoryLinkHooks.useList(
+        { where: postId ? { postId } : undefined },
+        { enabled: isEditMode && !!postId, staleTime: 30_000 },
+    );
+    const categoryLinks: BlogCategoryLink[] = useMemo(() => {
+        if (!isEditMode) return [];
+        if (Array.isArray(categoryLinksData)) return categoryLinksData;
+        return (categoryLinksData as { data?: BlogCategoryLink[] } | undefined)?.data ?? [];
+    }, [isEditMode, categoryLinksData]);
+
+    // Sync selectedCategoryIds from server on load (clears local state when server returns empty)
+    useEffect(() => {
+        if (isEditMode && categoryLinksData !== undefined) {
+            setSelectedCategoryIds(categoryLinks.map((cl) => cl.categoryId));
+        }
+    }, [categoryLinks]);
+
+    const createCategoryLink = blogCategoryLinkHooks.useCreate();
+    const deleteCategoryLink = blogCategoryLinkHooks.useDelete();
+
     // Fetch series list for dropdown
     const { data: seriesListData } = blogSeriesHooks.useList(undefined, SERIES_LIST_QUERY_CONFIG);
-    const seriesList = seriesListData?.data || [];
+    const seriesList: BlogSeries[] = useMemo(() => {
+        if (Array.isArray(seriesListData)) return seriesListData;
+        return (seriesListData as { data?: BlogSeries[] } | undefined)?.data ?? [];
+    }, [seriesListData]);
+
+    // Build series items for OttaSelect
+    const seriesItems = useMemo<OttaSelectItem[]>(() => {
+        return seriesList.map((s) => ({ id: s.id, name: `${s.title}${s.isComplete ? ' ✓' : ''}` }));
+    }, [seriesList]);
+
+    const selectedSeriesItem = useMemo<OttaSelectItem | null>(() => {
+        if (!seriesId) return null;
+        return seriesItems.find((s) => s.id === seriesId) ?? null;
+    }, [seriesId, seriesItems]);
 
     const {
         data: versionsData,
@@ -772,6 +915,26 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                 // Invalidate post detail; when initialData refreshes we sync form state so isDirty stays false
                 queryClient.invalidateQueries({ queryKey: ['posts'] });
 
+                // Sync tag links: remove deleted, add new
+                const existingTagIds = tagLinks.map((tl) => tl.tagId);
+                const toAdd = selectedTagIds.filter((id) => !existingTagIds.includes(id));
+                const toRemove = tagLinks.filter((tl) => !selectedTagIds.includes(tl.tagId));
+                await Promise.all([
+                    ...toAdd.map((tagId) => createTagLink.mutateAsync({ postId, tagId })),
+                    ...toRemove.map((tl) => deleteTagLink.mutateAsync(tl.id)),
+                ]);
+                if (toAdd.length > 0 || toRemove.length > 0) refetchTagLinks();
+
+                // Sync category links: remove deleted, add new
+                const existingCatIds = categoryLinks.map((cl) => cl.categoryId);
+                const catsToAdd = selectedCategoryIds.filter((id) => !existingCatIds.includes(id));
+                const catsToRemove = categoryLinks.filter((cl) => !selectedCategoryIds.includes(cl.categoryId));
+                await Promise.all([
+                    ...catsToAdd.map((categoryId) => createCategoryLink.mutateAsync({ postId, categoryId })),
+                    ...catsToRemove.map((cl) => deleteCategoryLink.mutateAsync(cl.id)),
+                ]);
+                if (catsToAdd.length > 0 || catsToRemove.length > 0) refetchCategoryLinks();
+
                 // Prune old versions if setting is enabled
                 if (maxVersionsToKeep && maxVersionsToKeep > 0) {
                     const refreshed = await refetchVersions();
@@ -782,9 +945,27 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
             } else {
                 const created = await createPost.mutateAsync(postData);
                 justSavedRef.current = true;
+
+                // Create tag links for the new post
+                const newPostId = (created as { id?: string })?.id;
+                if (newPostId && selectedTagIds.length > 0) {
+                    await Promise.all(
+                        selectedTagIds.map((tagId) => createTagLink.mutateAsync({ postId: newPostId, tagId })),
+                    );
+                }
+
+                // Create category links for the new post
+                if (newPostId && selectedCategoryIds.length > 0) {
+                    await Promise.all(
+                        selectedCategoryIds.map((categoryId) =>
+                            createCategoryLink.mutateAsync({ postId: newPostId, categoryId }),
+                        ),
+                    );
+                }
+
                 // Go to the new post's editor so user stays on "blog details" for that post
-                if (created?.id) {
-                    navigate({ to: '/admin/blog/$postId/edit', params: { postId: created.id } });
+                if (newPostId) {
+                    navigate({ to: '/admin/blog/$postId/edit', params: { postId: newPostId } });
                 } else {
                     navigate({ to: '/admin/blog' });
                 }
@@ -1313,21 +1494,18 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="seriesSelect">Series</Label>
-                                <select
-                                    id="seriesSelect"
-                                    aria-label="Series"
-                                    value={seriesId || ''}
-                                    onChange={(e) => setSeriesId(e.target.value || null)}
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">No series</option>
-                                    {seriesList.map((series) => (
-                                        <option key={series.id} value={series.id}>
-                                            {series.title}
-                                            {series.isComplete ? ' ✓' : ''}
-                                        </option>
-                                    ))}
-                                </select>
+                                <OttaSelect
+                                    mode="single"
+                                    items={seriesItems}
+                                    value={selectedSeriesItem}
+                                    onChange={(value) => {
+                                        setSeriesId((value as OttaSelectItem | null)?.id ?? null);
+                                    }}
+                                    searchable
+                                    clearable
+                                    placeholder="Select series..."
+                                    emptyMessage="No series found"
+                                />
                             </div>
 
                             {seriesId && (
@@ -1347,6 +1525,118 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                     </p>
                                 </div>
                             )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Tags */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Tag className="h-4 w-4" />
+                                Tags
+                            </CardTitle>
+                            <CardDescription>Categorize your post with tags</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            {/* OttaSelect search-ahead multi-select */}
+                            <OttaSelect
+                                mode="multiple"
+                                items={allTags}
+                                value={selectedTagItems}
+                                onChange={(value) => {
+                                    const items = (value as OttaSelectItem[]) ?? [];
+                                    setSelectedTagIds(items.map((i) => i.id));
+                                }}
+                                searchable
+                                placeholder="Search tags..."
+                                emptyMessage="No tags found"
+                                clearable
+                            />
+
+                            {/* Create new tag inline */}
+                            <div className="flex gap-2">
+                                <Input
+                                    value={newTagName}
+                                    onChange={(e) => setNewTagName(e.target.value)}
+                                    placeholder="New tag name..."
+                                    className="text-sm"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            if (newTagName.trim() && !isCreatingTag) {
+                                                setIsCreatingTag(true);
+                                                createTag
+                                                    .mutateAsync({
+                                                        name: newTagName.trim(),
+                                                        slug: generateSlug(newTagName.trim()),
+                                                    })
+                                                    .then((created) => {
+                                                        const newId = (created as { id?: string })?.id;
+                                                        if (newId) setSelectedTagIds((prev) => [...prev, newId]);
+                                                        setNewTagName('');
+                                                    })
+                                                    .catch(() => {})
+                                                    .finally(() => setIsCreatingTag(false));
+                                            }
+                                        }
+                                    }}
+                                />
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    disabled={!newTagName.trim() || isCreatingTag}
+                                    onClick={() => {
+                                        if (newTagName.trim() && !isCreatingTag) {
+                                            setIsCreatingTag(true);
+                                            createTag
+                                                .mutateAsync({
+                                                    name: newTagName.trim(),
+                                                    slug: generateSlug(newTagName.trim()),
+                                                })
+                                                .then((created) => {
+                                                    const newId = (created as { id?: string })?.id;
+                                                    if (newId) setSelectedTagIds((prev) => [...prev, newId]);
+                                                    setNewTagName('');
+                                                })
+                                                .catch(() => {})
+                                                .finally(() => setIsCreatingTag(false));
+                                        }
+                                    }}
+                                >
+                                    {isCreatingTag ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Plus className="h-4 w-4" />
+                                    )}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Category */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <FolderTree className="h-4 w-4" />
+                                Categories
+                            </CardTitle>
+                            <CardDescription>Assign categories to this post</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <OttaSelect
+                                mode="multiple"
+                                items={categoryItems}
+                                value={selectedCategoryItems}
+                                onChange={(value) => {
+                                    const items = value as OttaSelectItem[];
+                                    setSelectedCategoryIds(items.map((i) => i.id));
+                                }}
+                                searchable
+                                clearable
+                                placeholder="Select categories..."
+                                emptyMessage="No categories found"
+                                showChips
+                            />
                         </CardContent>
                     </Card>
 

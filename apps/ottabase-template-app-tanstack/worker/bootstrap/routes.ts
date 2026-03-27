@@ -5,7 +5,7 @@
 // Handles all /__bootstrap__/* requests:
 //   GET  /__bootstrap__                  → Wizard UI (HTML)
 //   GET  /__bootstrap__/api/status       → Current platform state + binding probe
-//   POST /__bootstrap__/api/init         → Run schema creation + migrations
+//   POST /__bootstrap__/api/init         → Clear KV, then run schema creation + migrations
 //   POST /__bootstrap__/api/seed         → Seed RBAC roles + permissions
 //   POST /__bootstrap__/api/create-owner → Create first admin/owner account
 //   POST /__bootstrap__/api/finalize     → Mark platform READY
@@ -28,7 +28,7 @@ import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { appMigrations } from '../../ottabase/migrations';
 import { ensureAppBrandDefaults, provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
 import { renderBindingsErrorPage, renderLockedPage, renderMaintenancePage, renderWizardPage } from './pages';
-import { ensureMetaTable, probeBindings, writeDBState, writeKVState } from './state-resolver';
+import { clearKvNamespace, ensureMetaTable, probeBindings, writeDBState, writeKVState } from './state-resolver';
 import type { PlatformStateResult } from './types';
 
 interface BootstrapContext {
@@ -308,7 +308,7 @@ async function handleStatus(context: BootstrapContext): Promise<Response> {
 
 /**
  * POST /__bootstrap__/api/init
- * Step 1: Create schema tables + run all migrations.
+ * Step 1: Clears OBCF_KV, then creates schema tables + runs all migrations.
  */
 async function handleInit(context: BootstrapContext): Promise<Response> {
     const { env, request } = context;
@@ -329,12 +329,15 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
     }
 
     try {
-        // 1. Create the meta table and mark BOOTSTRAPPING
+        // 1. Wipe KV so no stale cache survives a fresh bootstrap (platform_state, rbac, queue, ratelimit, etc.)
+        const kvCleared = await clearKvNamespace(env);
+
+        // 2. Create the meta table and mark BOOTSTRAPPING
         await ensureMetaTable(env);
         await writeDBState(env, 'BOOTSTRAPPING');
         await writeKVState(env, 'BOOTSTRAPPING');
 
-        // 2. Run ottaorm autoInit (creates all tables from Drizzle schemas)
+        // 3. Run ottaorm autoInit (creates all tables from Drizzle schemas)
         const driver = createD1Driver(env.OBCF_D1);
         const allSchemas = getAllSchemas();
         const initResult = await autoInit({
@@ -348,7 +351,7 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
                 env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === 'true',
         });
 
-        // 3. Run core SQL migrations (users, sessions, accounts, RBAC, multi-tenant)
+        // 4. Run core SQL migrations (users, sessions, accounts, RBAC, multi-tenant)
         const sqlResult = await runCoreSQLMigrations(env);
 
         return jsonResp({
@@ -356,6 +359,7 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
             message: initResult.message,
             autoInit: initResult.details,
             sqlMigrations: sqlResult,
+            kvCleared,
             timestamp: Date.now(),
         });
     } catch (error: any) {

@@ -32,6 +32,8 @@ export const defaultTheme: Theme = {
             series: 'bg-muted/50 border border-border rounded-lg p-4 mb-8',
             footer: 'mt-12 pt-8 border-t',
             card: 'blog-card',
+            archiveContainer: 'max-w-4xl mx-auto px-4 py-8 space-y-8',
+            archiveTitle: 'text-3xl font-bold',
         },
     },
     renderers: {
@@ -132,6 +134,49 @@ export const defaultTheme: Theme = {
                         />
                     </div>
                 </aside>
+            );
+        },
+        renderCard: (post, props) => {
+            const formatDate = props.formatDate || defaultFormatDate;
+            return (
+                <article
+                    className={`group bg-card border rounded-lg hover:shadow-md transition-shadow ${defaultTheme.config?.classes?.card || ''}`}
+                >
+                    <div className="p-5 flex gap-4">
+                        {post.seriesOrder != null && (
+                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted text-muted-foreground font-semibold text-sm shrink-0">
+                                {post.seriesOrder}
+                            </div>
+                        )}
+                        {props.showHeroImage && post.heroImage?.url && (
+                            <img
+                                src={post.heroImage.url}
+                                alt={post.heroImage.alt || post.title}
+                                className="w-24 h-24 object-cover rounded shrink-0 hidden sm:block"
+                            />
+                        )}
+                        <div className="min-w-0 flex-1">
+                            <h2 className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-1 flex items-center gap-2">
+                                {post.title}
+                                {post.isProtected && (
+                                    <span className="text-muted-foreground text-xs shrink-0" title="Protected">
+                                        {'\u{1F512}'}
+                                    </span>
+                                )}
+                            </h2>
+                            {props.showExcerpt && post.excerpt && (
+                                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{post.excerpt}</p>
+                            )}
+                            {props.showMetadata && (
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                                    {post.authorName && <span>{post.authorName}</span>}
+                                    {post.publishedAt && <time>{formatDate(post.publishedAt)}</time>}
+                                    {post.readingTimeMinutes && <span>{post.readingTimeMinutes} min read</span>}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </article>
             );
         },
         renderSeries: (post, props) => {

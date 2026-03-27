@@ -6,15 +6,15 @@
  */
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_DETAIL_QUERY_CONFIG, BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
-import { useSession } from '@/lib/auth';
 import { api, isApiError } from '@/lib/api';
+import { useSession } from '@/lib/auth';
 import { useBlogStudio } from '@/ottabase/blog/BlogStudioContext';
 import { BlogRenderer, formatDate, type BlogPostData } from '@ottabase/ottablog';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
-import { Button, Input } from '@ottabase/ui-shadcn';
+import { Badge, Button, Input } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
-import { ArrowLeft, ArrowRight, ChevronLeft, Loader2, Lock, Pencil } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, FolderTree, Loader2, Lock, Pencil, Tag } from 'lucide-react';
 import { useState } from 'react';
 
 interface BlogPost {
@@ -30,6 +30,10 @@ interface BlogPost {
         title?: string;
         description?: string;
         keywords?: string[];
+        canonicalUrl?: string;
+        ogImage?: string;
+        noIndex?: boolean;
+        noFollow?: boolean;
     } | null;
     footnotes: OutputData | null;
     authorId: string | null;
@@ -43,6 +47,10 @@ interface BlogPost {
     publishedAt: string | null;
     seriesId: string | null;
     seriesOrder: number | null;
+    tags?: { id: string; name: string; slug: string }[];
+    categories?: { id: string; name: string; slug: string }[];
+    categoryName?: string | null;
+    viewCount?: number;
 }
 
 interface BlogSeries {
@@ -267,50 +275,80 @@ export function BlogDetailPage() {
 
             {/* Blog Renderer (full content when not locked) */}
             {!isLocked && (
-                <BlogRenderer
-                    key={studioReady ? 'studio-ready' : 'studio-loading'}
-                    post={blogPostData}
-                    showHeroImage
-                    showTitle
-                    showMetadata
-                    showExcerpt
-                    showFootnotes
-                    showSeries
-                    formatDate={formatDate}
-                    renderSeriesNav={(post) => {
-                        if (!series || seriesPosts.length <= 1) return null;
-                        return (
-                            <div className="mt-4 pt-4 border-t">
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    {prevPost && (
-                                        <Link
-                                            to={`/blog/${prevPost.slug}`}
-                                            className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
-                                        >
-                                            <ArrowLeft className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                            <div className="min-w-0">
-                                                <div className="text-xs text-muted-foreground mb-1">Previous</div>
-                                                <div className="font-medium truncate">{prevPost.title}</div>
-                                            </div>
-                                        </Link>
-                                    )}
-                                    {nextPost && (
-                                        <Link
-                                            to={`/blog/${nextPost.slug}`}
-                                            className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors sm:text-right sm:flex-row-reverse"
-                                        >
-                                            <ArrowRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                            <div className="min-w-0">
-                                                <div className="text-xs text-muted-foreground mb-1">Next</div>
-                                                <div className="font-medium truncate">{nextPost.title}</div>
-                                            </div>
-                                        </Link>
-                                    )}
+                <>
+                    <BlogRenderer
+                        key={studioReady ? 'studio-ready' : 'studio-loading'}
+                        post={blogPostData}
+                        showHeroImage
+                        showTitle
+                        showMetadata
+                        showExcerpt
+                        showFootnotes
+                        showSeries
+                        formatDate={formatDate}
+                        renderSeriesNav={(post) => {
+                            if (!series || seriesPosts.length <= 1) return null;
+                            return (
+                                <div className="mt-4 pt-4 border-t">
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        {prevPost && (
+                                            <Link
+                                                to={`/blog/${prevPost.slug}`}
+                                                className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                                            >
+                                                <ArrowLeft className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <div className="text-xs text-muted-foreground mb-1">Previous</div>
+                                                    <div className="font-medium truncate">{prevPost.title}</div>
+                                                </div>
+                                            </Link>
+                                        )}
+                                        {nextPost && (
+                                            <Link
+                                                to={`/blog/${nextPost.slug}`}
+                                                className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors sm:text-right sm:flex-row-reverse"
+                                            >
+                                                <ArrowRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <div className="text-xs text-muted-foreground mb-1">Next</div>
+                                                    <div className="font-medium truncate">{nextPost.title}</div>
+                                                </div>
+                                            </Link>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    }}
-                />
+                            );
+                        }}
+                    />
+
+                    {/* Tags */}
+                    {displayPost.tags && displayPost.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-8">
+                            <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+                            {displayPost.tags.map((tag) => (
+                                <Link key={tag.id} to="/blog/tag/$slug" params={{ slug: tag.slug }}>
+                                    <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80">
+                                        {tag.name}
+                                    </Badge>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Categories */}
+                    {displayPost.categories && displayPost.categories.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-4">
+                            <FolderTree className="h-4 w-4 text-muted-foreground mt-0.5" />
+                            {displayPost.categories.map((cat) => (
+                                <Link key={cat.id} to="/blog/category/$slug" params={{ slug: cat.slug }}>
+                                    <Badge variant="outline" className="cursor-pointer hover:bg-accent">
+                                        {cat.name}
+                                    </Badge>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Series Navigation - All posts */}

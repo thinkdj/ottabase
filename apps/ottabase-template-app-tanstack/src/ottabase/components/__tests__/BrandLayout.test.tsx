@@ -100,14 +100,6 @@ vi.mock('@ottabase/ui-shadcn', () => ({
             {children}
         </button>
     )),
-    AlertDialog: ({ children }: any) => <div data-testid="alert-dialog">{children}</div>,
-    AlertDialogAction: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-    AlertDialogCancel: ({ children }: any) => <button>{children}</button>,
-    AlertDialogContent: ({ children }: any) => <div>{children}</div>,
-    AlertDialogDescription: ({ children }: any) => <p>{children}</p>,
-    AlertDialogFooter: ({ children }: any) => <div>{children}</div>,
-    AlertDialogHeader: ({ children }: any) => <div>{children}</div>,
-    AlertDialogTitle: ({ children }: any) => <h2>{children}</h2>,
 }));
 vi.mock('lucide-react', () => ({
     LogIn: () => <span data-testid="icon-login" />,

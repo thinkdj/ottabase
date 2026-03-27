@@ -33,7 +33,7 @@ Use this as the default decision tree when shipping new work.
 3. **Theme-safe UI**
     - Prefer design tokens/CSS variables and existing UI packages (`@ottabase/ui-shadcn`, `@ottabase/ui-mantine`).
     - Avoid hardcoded one-off colors/sizes that bypass theme runtime.
-    - Icons: `@tabler/icons-react` primary; Lucide/Radix fallback. Charts: Tremor where applicable.
+    - Icons: Lucide Icons, and Tabler, Radix as fallback. Charts: Tremor where applicable.
     - Always add dark mode classes for new UI.
 4. **Cloudflare edge-safe code**
     - Avoid Node-only APIs in app/worker code.
@@ -604,18 +604,29 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 
 ### Starting the dev servers
 
-The `pnpm dev` command (or `node dev.js --noopen`) starts both Vite (port 3003) and Wrangler (port 3004) in parallel. Key caveats for Cloud agents:
+The `pnpm dev` command (or `node dev.js --noopen`) starts both Vite (port 3003) and Wrangler (port 3004) in parallel.
+Key caveats for Cloud agents:
 
-1. **Wrangler needs a `dist/` directory** in `apps/ottabase-template-app-tanstack/`. If it doesn't exist (first run, or after `pnpm clean`), create it: `mkdir -p apps/ottabase-template-app-tanstack/dist && echo '<html></html>' > apps/ottabase-template-app-tanstack/dist/index.html`.
-2. **Wrangler needs `CLOUDFLARE_API_TOKEN`** in non-interactive (headless) environments. Set a dummy value for local dev: `export CLOUDFLARE_API_TOKEN=dummy-local-dev`. Use `--local` flag if needed.
+1. **Wrangler needs a `dist/` directory** in `apps/ottabase-template-app-tanstack/`. If it doesn't exist (first run, or
+   after `pnpm clean`), create it:
+   `mkdir -p apps/ottabase-template-app-tanstack/dist && echo '<html></html>' > apps/ottabase-template-app-tanstack/dist/index.html`.
+2. **Wrangler needs `CLOUDFLARE_API_TOKEN`** in non-interactive (headless) environments. Set a dummy value for local
+   dev: `export CLOUDFLARE_API_TOKEN=dummy-local-dev`. Use `--local` flag if needed.
 3. Start the servers separately for better control:
-   - Backend: `cd apps/ottabase-template-app-tanstack && CLOUDFLARE_API_TOKEN=dummy-local-dev npx wrangler dev --port 3004 --local`
-   - Frontend: `cd apps/ottabase-template-app-tanstack && npx vite --port 3003`
-4. **Build scripts for native packages** (esbuild, workerd) may be ignored by pnpm. After `pnpm install`, run: `for dir in node_modules/.pnpm/esbuild@*/node_modules/esbuild; do (cd "$dir" && node install.js); done` and `for dir in node_modules/.pnpm/workerd@*/node_modules/workerd; do (cd "$dir" && node install.js); done`.
+    - Backend:
+      `cd apps/ottabase-template-app-tanstack && CLOUDFLARE_API_TOKEN=dummy-local-dev npx wrangler dev --port 3004 --local`
+    - Frontend: `cd apps/ottabase-template-app-tanstack && npx vite --port 3003`
+4. **Build scripts for native packages** (esbuild, workerd) may be ignored by pnpm. After `pnpm install`, run:
+   `for dir in node_modules/.pnpm/esbuild@*/node_modules/esbuild; do (cd "$dir" && node install.js); done` and
+   `for dir in node_modules/.pnpm/workerd@*/node_modules/workerd; do (cd "$dir" && node install.js); done`.
 
 ### First-run bootstrap
 
-After both servers are running, the platform requires bootstrap (creates DB tables + seeds roles + creates owner account). Use the `/__bootstrap__` API:
+After both servers are running, the platform requires bootstrap (creates DB tables + seeds roles + creates owner
+account). Use the `/__bootstrap__` API:
+
+`POST /__bootstrap__/api/init` clears the entire **OBCF_KV** namespace first (platform state cache, RBAC, queue, rate
+limits), then runs migrations — use this for a clean fresh install when KV may contain stale keys.
 
 ```bash
 BOOTSTRAP_SECRET=$(grep BOOTSTRAP_OWNER_SECRET apps/ottabase-template-app-tanstack/.env.local | cut -d= -f2)
@@ -628,6 +639,7 @@ curl -s -X POST http://localhost:3004/__bootstrap__/api/finalize -H "X-Bootstrap
 ### Commands reference
 
 See `README.md` and `AGENTS.MD` above for full command reference. Key commands:
+
 - `pnpm build:pkg` — build shared packages (required before first dev run)
 - `pnpm lint` — lint all packages (note: `@ottabase/ottalayout` has a pre-existing lint failure)
 - `pnpm test` — run all tests via Vitest + Turborepo

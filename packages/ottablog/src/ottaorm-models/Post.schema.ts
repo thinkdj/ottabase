@@ -129,6 +129,9 @@ export const postsTable = sqliteTable(
         // App identifier for multi-app database sharing
         appId: text('app_id'),
 
+        // View count (incremented server-side, never writable by client)
+        viewCount: integer('view_count').notNull().default(0),
+
         // Version retention setting (null = keep all, 1-10 = keep last N versions)
         maxVersionsToKeep: integer('max_versions_to_keep'),
 
@@ -180,6 +183,9 @@ export const postsTable = sqliteTable(
 
         // Multi-tenant sorting by publish date
         index('posts_org_app_published_at_idx').on(table.organizationId, table.appId, table.publishedAt),
+
+        // Popular posts: viewCount for most-read queries
+        index('posts_view_count_idx').on(table.viewCount),
 
         // App ID single index for other multi-tenant filtering
         index('posts_app_id_idx').on(table.appId),

@@ -6,13 +6,7 @@
  */
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
 import { generateSlug } from '../types';
-import {
-    seriesTable,
-    type NewPostSeriesType,
-    type NewSeries,
-    type PostSeriesType,
-    type Series,
-} from './PostSeries.schema';
+import { seriesTable } from './PostSeries.schema';
 
 export {
     seriesTable,
@@ -28,6 +22,11 @@ export class PostSeries extends BaseModel {
     static primaryKey = 'id';
     static packageName = '@ottabase/ottablog';
     static packageType: PackageType = 'package';
+
+    static writable = {
+        create: ['title', 'slug', 'description', 'coverImage', 'isComplete', 'sortOrder', 'appId'],
+        update: ['title', 'slug', 'description', 'coverImage', 'isComplete', 'sortOrder'],
+    };
 
     static casts = {
         coverImage: 'json' as const,

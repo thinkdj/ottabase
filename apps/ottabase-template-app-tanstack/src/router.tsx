@@ -773,6 +773,36 @@ const adminBlogStudioRoute = new Route({
     ),
 });
 
+const adminBlogTagsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/blog/tags',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/blog/AdminBlogTagsPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminBlogTagsPage />),
+        })),
+    ),
+});
+
+const adminBlogCategoriesRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/blog/categories',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/blog/AdminBlogCategoriesPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminBlogCategoriesPage />),
+        })),
+    ),
+});
+
+const adminBlogSeriesRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/blog/series',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/blog/AdminBlogSeriesPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminBlogSeriesPage />),
+        })),
+    ),
+});
+
 // Public Blog routes
 const blogListRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -807,6 +837,36 @@ const blogDetailRoute = new Route({
     component: lazyRouteComponent(() =>
         import('@/pages/blog/BlogDetailPage').then((m) => ({
             default: m.BlogDetailPage,
+        })),
+    ),
+});
+
+const blogTagArchiveRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/blog/tag/$slug',
+    component: lazyRouteComponent(() =>
+        import('@/pages/blog/BlogTagArchivePage').then((m) => ({
+            default: m.BlogTagArchivePage,
+        })),
+    ),
+});
+
+const blogCategoryArchiveRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/blog/category/$slug',
+    component: lazyRouteComponent(() =>
+        import('@/pages/blog/BlogCategoryArchivePage').then((m) => ({
+            default: m.BlogCategoryArchivePage,
+        })),
+    ),
+});
+
+const blogSeriesArchiveRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/blog/series/$slug',
+    component: lazyRouteComponent(() =>
+        import('@/pages/blog/BlogSeriesArchivePage').then((m) => ({
+            default: m.BlogSeriesArchivePage,
         })),
     ),
 });
@@ -992,6 +1052,9 @@ const packageRoutes = [
     { route: referralsRoute, pkg: 'referrals' as const },
     { route: blogListRoute, pkg: 'ottablog' as const },
     { route: blogDetailRoute, pkg: 'ottablog' as const },
+    { route: blogTagArchiveRoute, pkg: 'ottablog' as const },
+    { route: blogCategoryArchiveRoute, pkg: 'ottablog' as const },
+    { route: blogSeriesArchiveRoute, pkg: 'ottablog' as const },
     { route: adminBrandEngineRoute, pkg: 'brandEngine' as const },
     { route: adminBrandKitCreateRoute, pkg: 'brandEngine' as const },
     { route: adminBrandKitDetailRoute, pkg: 'brandEngine' as const },
@@ -1004,6 +1067,9 @@ const packageRoutes = [
     { route: adminBlogNewRoute, pkg: 'ottablog' as const },
     { route: adminBlogEditRoute, pkg: 'ottablog' as const },
     { route: adminBlogStudioRoute, pkg: 'ottablog' as const },
+    { route: adminBlogTagsRoute, pkg: 'ottablog' as const },
+    { route: adminBlogCategoriesRoute, pkg: 'ottablog' as const },
+    { route: adminBlogSeriesRoute, pkg: 'ottablog' as const },
 ];
 const coreRoutes = [
     indexRoute,
