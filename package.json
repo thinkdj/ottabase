@@ -70,7 +70,7 @@
         "jsdom": "^27.4.0",
         "lint-staged": "catalog:",
         "next-themes": "catalog:",
-        "pnpm": "10.27.0",
+        "pnpm": "10.32.1",
         "postcss-loader": "catalog:",
         "prettier": "catalog:",
         "rimraf": "catalog:",
@@ -83,7 +83,7 @@
         "vitest": "catalog:",
         "webpack": "^5.104.1"
     },
-    "packageManager": "pnpm@10.27.0",
+    "packageManager": "pnpm@10.32.1",
     "engines": {
         "node": ">=24.0.0",
         "pnpm": ">=10.0.0"

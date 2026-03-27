@@ -8,6 +8,7 @@ import Link from 'next/link';
 
 export default function ThemeDemo() {
     const { config } = useBrand();
+    const themeName = config?.brandName || 'Current theme';
 
     if (!config) {
         return <div>Loading theme...</div>;
@@ -31,7 +32,7 @@ export default function ThemeDemo() {
                     </Button>
                 </div>
 
-                <h1 className="font-heading text-4xl font-bold text-foreground">Theme Demo: {config.themeBase}</h1>
+                <h1 className="font-heading text-4xl font-bold text-foreground">Theme Demo: {themeName}</h1>
 
                 {/* Typography Demo */}
                 <section className="space-y-4 rounded-lg border border-border bg-card p-6">

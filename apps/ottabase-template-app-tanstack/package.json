@@ -83,7 +83,6 @@
         "@cloudflare/workers-types": "catalog:",
         "@ottabase/ui-tailwind": "workspace:*",
         "@tanstack/react-query-devtools": "catalog:",
-        "@types/diff": "^8.0.0",
         "@types/node": "catalog:",
         "@types/nodemailer": "catalog:",
         "@types/react": "catalog:",
