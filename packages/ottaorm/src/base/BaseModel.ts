@@ -346,6 +346,11 @@ export class BaseModel extends AbstractBaseModel {
                 continue;
             }
 
+            if (value && typeof value === 'object' && '$ne' in value) {
+                conditions.push(ne(column, (value as { $ne: unknown }).$ne));
+                continue;
+            }
+
             conditions.push(eq(column, value));
         }
 
