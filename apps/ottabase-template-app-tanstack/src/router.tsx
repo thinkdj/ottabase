@@ -881,6 +881,56 @@ const blogSeriesArchiveRoute = new Route({
     ),
 });
 
+const changelogListRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/changelog',
+    component: lazyRouteComponent(() =>
+        import('@/pages/changelog/ChangelogListPage').then((m) => ({
+            default: m.ChangelogListPage,
+        })),
+    ),
+});
+
+const changelogDetailRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/changelog/$slug',
+    component: lazyRouteComponent(() =>
+        import('@/pages/changelog/ChangelogDetailPage').then((m) => ({
+            default: m.ChangelogDetailPage,
+        })),
+    ),
+});
+
+const adminChangelogRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/changelog',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/changelog/AdminChangelogListPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminChangelogListPage />),
+        })),
+    ),
+});
+
+const adminChangelogNewRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/changelog/new',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/changelog/AdminChangelogEditorPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminChangelogEditorPage />),
+        })),
+    ),
+});
+
+const adminChangelogEditRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/changelog/$entryId/edit',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/changelog/AdminChangelogEditorPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminChangelogEditorPage />),
+        })),
+    ),
+});
+
 // Organizations routes
 const organizationsRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -1099,6 +1149,8 @@ const coreRoutes = [
     indexRoute,
     docsRoute,
     demoLayoutRoute,
+    changelogListRoute,
+    changelogDetailRoute,
     loginRoute,
     registerRoute,
     verifyEmailRoute,
@@ -1107,6 +1159,9 @@ const coreRoutes = [
     analyticsRoute,
     migrationStatusRoute,
     adminRoute,
+    adminChangelogRoute,
+    adminChangelogNewRoute,
+    adminChangelogEditRoute,
     adminDevMailRoute,
     adminQueueRoute,
     adminCronRoute,

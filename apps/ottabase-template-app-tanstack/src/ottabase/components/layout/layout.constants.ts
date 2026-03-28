@@ -9,6 +9,7 @@ export interface NavLink {
 /** All nav links [filtered by package in getNavLinks() below]. */
 const NAV_LINKS_ALL: NavLink[] = [
     { to: '/', label: 'Home' },
+    { to: '/changelog', label: "What's New" },
     { to: '/blog', label: 'Blog' },
     { to: '/demo', label: 'Demo' },
     { to: '/shortlinks', label: 'Links' },

@@ -81,6 +81,12 @@ const ADMIN_CATEGORIES: AdminCategory[] = [
                 href: '/admin/blog/studio',
                 icon: Palette,
             },
+            {
+                title: 'Changelog',
+                description: 'Product updates for the public /changelog page (OttaEditor + hero media).',
+                href: '/admin/changelog',
+                icon: FileText,
+            },
             ...(MEDIA_LIBRARY_ENABLED
                 ? [
                       {
