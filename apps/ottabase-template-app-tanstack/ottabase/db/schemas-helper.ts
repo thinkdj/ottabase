@@ -33,6 +33,7 @@ import {
     verificationTokensTable,
 } from '@ottabase/ottaorm';
 import { getEnabledPackageTables } from '../config.migrations';
+import { changelogEntriesTable } from '../models/ChangelogEntry';
 import { todosTable } from '../models/Todo';
 
 /**
@@ -60,6 +61,7 @@ export function getAllSchemas() {
 
     // 2. App-specific schemas
     const appTables = {
+        changelogEntriesTable,
         todosTable,
     };
 
@@ -101,6 +103,7 @@ export function getSchemaSummary() {
     };
 
     const appTables = {
+        changelogEntriesTable,
         todosTable,
     };
 

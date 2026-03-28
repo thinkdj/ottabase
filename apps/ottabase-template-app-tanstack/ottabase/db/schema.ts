@@ -44,6 +44,7 @@ export { accountsTable, authenticatorsTable, mediaTable, sessionsTable, usersTab
 // ============================================================
 // APP-SPECIFIC TABLES
 // ============================================================
+export { changelogEntriesTable } from '../models/ChangelogEntry';
 export { todosTable } from '../models/Todo';
 
 // ============================================================

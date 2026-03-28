@@ -37,6 +37,8 @@ import { ReferralTracking } from '@ottabase/referrals';
 import { Shortlink } from '@ottabase/shortlinks';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { ChangelogEntry } from '../../ottabase/models/ChangelogEntry';
+import { changelogPolicy } from '../../ottabase/models/changelogPolicy';
 import { Todo } from '../../ottabase/models/Todo';
 import { mediaLibraryPolicy } from '../../ottabase/models/mediaLibraryPolicy';
 import type { CloudflareEnv } from '../cloudflare-env';
@@ -123,8 +125,9 @@ export function initDbConnection(env: CloudflareEnv): void {
     // Menu, MenuItem: use /api/brand/menus (cache-invalidating CRUD), not OttaORM
     const brandModels = [BrandKit, LayoutTemplate, LayoutRouteMapping, MenuSlotAssignment];
     registerPolicy(mediaLibraryPolicy);
+    registerPolicy(changelogPolicy);
 
-    const appModels = [Todo];
+    const appModels = [Todo, ChangelogEntry];
 
     registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
 
