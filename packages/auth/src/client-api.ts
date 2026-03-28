@@ -16,6 +16,7 @@
 export interface SignInCredentials {
     email: string;
     password: string;
+    totp?: string;
 }
 
 /**
@@ -160,6 +161,9 @@ export async function signInWithCredentials(
         const form = new URLSearchParams();
         form.set('email', credentials.email);
         form.set('password', credentials.password);
+        if (credentials.totp) {
+            form.set('totp', credentials.totp);
+        }
         if (csrfToken) {
             form.set('csrfToken', csrfToken);
         }
@@ -637,5 +641,357 @@ export async function resetPassword(
             success: false,
             error: error instanceof Error ? error.message : 'Password reset failed',
         };
+    }
+}
+
+// ── Password Change (while logged in) ────────────────────────
+
+/**
+ * Change password response
+ */
+export interface ChangePasswordResponse {
+    success: boolean;
+    error?: string;
+}
+
+/**
+ * Change password while logged in
+ */
+export async function changePassword(
+    data: { currentPassword: string; newPassword: string },
+    options?: { clientOptions?: AuthClientOptions },
+): Promise<ChangePasswordResponse> {
+    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
+
+    try {
+        const response = await fetch(`${baseUrl}/password/change`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(data),
+        });
+
+        const payload = await response.json().catch(() => ({ error: 'Request failed' }));
+
+        if (!response.ok) {
+            return { success: false, error: payload.error || 'Password change failed' };
+        }
+
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Password change failed' };
+    }
+}
+
+// ── TOTP 2FA ─────────────────────────────────────────────────
+
+/**
+ * TOTP setup response
+ */
+export interface TotpSetupResponse {
+    success: boolean;
+    secret?: string;
+    uri?: string;
+    error?: string;
+}
+
+/**
+ * Request TOTP setup (generate secret + URI)
+ */
+export async function setupTotp(
+    options?: { clientOptions?: AuthClientOptions },
+): Promise<TotpSetupResponse> {
+    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
+
+    try {
+        const response = await fetch(`${baseUrl}/totp/setup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+        });
+
+        const payload = await response.json().catch(() => ({ error: 'Request failed' }));
+
+        if (!response.ok) {
+            return { success: false, error: payload.error || 'TOTP setup failed' };
+        }
+
+        return { success: true, secret: payload.secret, uri: payload.uri };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'TOTP setup failed' };
+    }
+}
+
+/**
+ * Enable TOTP with verification code
+ */
+export async function enableTotp(
+    data: { secret: string; code: string },
+    options?: { clientOptions?: AuthClientOptions },
+): Promise<PasswordResetResponse> {
+    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
+
+    try {
+        const response = await fetch(`${baseUrl}/totp/enable`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(data),
+        });
+
+        const payload = await response.json().catch(() => ({ error: 'Request failed' }));
+
+        if (!response.ok) {
+            return { success: false, error: payload.error || 'Failed to enable 2FA' };
+        }
+
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to enable 2FA' };
+    }
+}
+
+/**
+ * Disable TOTP with verification code
+ */
+export async function disableTotp(
+    code: string,
+    options?: { clientOptions?: AuthClientOptions },
+): Promise<PasswordResetResponse> {
+    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
+
+    try {
+        const response = await fetch(`${baseUrl}/totp/disable`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ code }),
+        });
+
+        const payload = await response.json().catch(() => ({ error: 'Request failed' }));
+
+        if (!response.ok) {
+            return { success: false, error: payload.error || 'Failed to disable 2FA' };
+        }
+
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to disable 2FA' };
+    }
+}
+
+// ── Credentials Preflight (TOTP-aware login) ─────────────────
+
+/**
+ * Preflight credentials check response
+ */
+export interface PreflightResponse {
+    valid: boolean;
+    totpRequired?: boolean;
+}
+
+/**
+ * Preflight check for credentials login.
+ * Validates email+password and indicates if TOTP is required.
+ */
+export async function preflightCredentials(
+    data: { email: string; password: string },
+    options?: { clientOptions?: AuthClientOptions },
+): Promise<PreflightResponse> {
+    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
+
+    try {
+        const response = await fetch(`${baseUrl}/credentials/preflight`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(data),
+        });
+
+        const payload = await response.json().catch(() => ({ valid: false }));
+        return { valid: !!payload.valid, totpRequired: !!payload.totpRequired };
+    } catch {
+        return { valid: false };
+    }
+}
+
+// ── Passkeys ─────────────────────────────────────────────────
+
+/**
+ * Passkey info returned from the API
+ */
+export interface PasskeyInfo {
+    id: string;
+    credentialId: string;
+    credentialDeviceType: string;
+    credentialBackedUp: boolean;
+    transports: string;
+    createdAt: number;
+}
+
+/**
+ * List registered passkeys for the current user
+ */
+export async function listPasskeys(
+    options?: { clientOptions?: AuthClientOptions },
+): Promise<{ passkeys: PasskeyInfo[]; error?: string }> {
+    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
+
+    try {
+        const response = await fetch(`${baseUrl}/passkeys`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+        });
+
+        const payload = await response.json().catch(() => ({ passkeys: [] }));
+
+        if (!response.ok) {
+            return { passkeys: [], error: payload.error || 'Failed to load passkeys' };
+        }
+
+        return { passkeys: payload.passkeys || [] };
+    } catch (error) {
+        return { passkeys: [], error: error instanceof Error ? error.message : 'Failed to load passkeys' };
+    }
+}
+
+/**
+ * Get WebAuthn registration options for adding a new passkey
+ */
+export async function getPasskeyRegisterOptions(
+    options?: { clientOptions?: AuthClientOptions },
+): Promise<{ options?: any; error?: string }> {
+    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
+
+    try {
+        const response = await fetch(`${baseUrl}/passkeys/register-options`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+        });
+
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            return { error: payload.error || 'Failed to get registration options' };
+        }
+
+        return { options: payload.options };
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : 'Failed to get registration options' };
+    }
+}
+
+/**
+ * Verify and store a WebAuthn registration response
+ */
+export async function verifyPasskeyRegistration(
+    credential: any,
+    options?: { clientOptions?: AuthClientOptions },
+): Promise<{ success: boolean; error?: string }> {
+    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
+
+    try {
+        const response = await fetch(`${baseUrl}/passkeys/register-verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(credential),
+        });
+
+        const payload = await response.json().catch(() => ({ error: 'Request failed' }));
+
+        if (!response.ok) {
+            return { success: false, error: payload.error || 'Registration failed' };
+        }
+
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Registration failed' };
+    }
+}
+
+/**
+ * Delete a passkey
+ */
+export async function deletePasskey(
+    passkeyId: string,
+    options?: { clientOptions?: AuthClientOptions },
+): Promise<{ success: boolean; error?: string }> {
+    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
+
+    try {
+        const response = await fetch(`${baseUrl}/passkeys/${encodeURIComponent(passkeyId)}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+        });
+
+        const payload = await response.json().catch(() => ({ error: 'Request failed' }));
+
+        if (!response.ok) {
+            return { success: false, error: payload.error || 'Failed to delete passkey' };
+        }
+
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to delete passkey' };
+    }
+}
+
+/**
+ * Get WebAuthn authentication options (for passkey login)
+ */
+export async function getPasskeyAuthOptions(
+    options?: { clientOptions?: AuthClientOptions },
+): Promise<{ options?: any; error?: string }> {
+    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
+
+    try {
+        const response = await fetch(`${baseUrl}/passkeys/auth-options`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+        });
+
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            return { error: payload.error || 'Failed to get authentication options' };
+        }
+
+        return { options: payload.options };
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : 'Failed to get authentication options' };
+    }
+}
+
+/**
+ * Verify a WebAuthn authentication response (passkey login)
+ */
+export async function verifyPasskeyAuth(
+    credential: any,
+    options?: { clientOptions?: AuthClientOptions },
+): Promise<{ success: boolean; user?: any; error?: string }> {
+    const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
+
+    try {
+        const response = await fetch(`${baseUrl}/passkeys/auth-verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(credential),
+        });
+
+        const payload = await response.json().catch(() => ({ error: 'Request failed' }));
+
+        if (!response.ok) {
+            return { success: false, error: payload.error || 'Authentication failed' };
+        }
+
+        return { success: true, user: payload.user };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Authentication failed' };
     }
 }

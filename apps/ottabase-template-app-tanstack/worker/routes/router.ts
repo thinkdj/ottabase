@@ -49,6 +49,19 @@ import {
     handleVerifyEmailResend,
 } from './auth';
 import {
+    handleCredentialsPreflight,
+    handlePasskeyDelete,
+    handlePasskeysAuthOptions,
+    handlePasskeysAuthVerify,
+    handlePasskeysList,
+    handlePasskeysRegisterOptions,
+    handlePasskeysRegisterVerify,
+    handlePasswordChange,
+    handleTotpDisable,
+    handleTotpEnable,
+    handleTotpSetup,
+} from './account-security';
+import {
     handleBlogCategoryBySlug,
     handleBlogPostBySlug,
     handleBlogPostUnlock,
@@ -185,6 +198,10 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
 
     if (route === '/api/users/me') {
         return handleUserProfile(context);
+    }
+
+    if (route === '/api/auth/passkeys') {
+        return handlePasskeysList(context);
     }
 
     if (route === '/api/email/providers') {
@@ -383,6 +400,42 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handlePasswordResetConfirm(context);
     }
 
+    if (route === '/api/auth/password/change') {
+        return handlePasswordChange(context);
+    }
+
+    if (route === '/api/auth/totp/setup') {
+        return handleTotpSetup(context);
+    }
+
+    if (route === '/api/auth/totp/enable') {
+        return handleTotpEnable(context);
+    }
+
+    if (route === '/api/auth/totp/disable') {
+        return handleTotpDisable(context);
+    }
+
+    if (route === '/api/auth/credentials/preflight') {
+        return handleCredentialsPreflight(context);
+    }
+
+    if (route === '/api/auth/passkeys/register-options') {
+        return handlePasskeysRegisterOptions(context);
+    }
+
+    if (route === '/api/auth/passkeys/register-verify') {
+        return handlePasskeysRegisterVerify(context);
+    }
+
+    if (route === '/api/auth/passkeys/auth-options') {
+        return handlePasskeysAuthOptions(context);
+    }
+
+    if (route === '/api/auth/passkeys/auth-verify') {
+        return handlePasskeysAuthVerify(context);
+    }
+
     if (route === '/api/email/test') {
         return handleEmailTest(context);
     }
@@ -524,6 +577,11 @@ async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | 
     if (route.startsWith('/api/brand')) {
         const res = await handleBrandApi(context);
         if (res) return res;
+    }
+
+    const passkeyDeleteMatch = route.match(/^\/api\/auth\/passkeys\/([^/]+)$/);
+    if (passkeyDeleteMatch) {
+        return handlePasskeyDelete(context, passkeyDeleteMatch[1]);
     }
 
     if (packages.shortlinks) {

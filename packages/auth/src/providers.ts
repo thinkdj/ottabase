@@ -389,6 +389,7 @@ export function createCredentialsProvider(authorize: (credentials: Record<string
         credentials: {
             email: { label: 'Email', type: 'email' },
             password: { label: 'Password', type: 'password' },
+            totp: { label: 'TOTP Code', type: 'text' },
         },
         authorize,
     });
