@@ -243,7 +243,12 @@ export async function handleBlogPostsList(context: BlogRouteContext): Promise<Re
 
     const where: Record<string, unknown> = { status: 'published' };
     if (appId) where.appId = appId;
-    if (contentType) where.contentType = contentType;
+    if (contentType) {
+        where.contentType = contentType;
+    } else {
+        // Dedicated changelog lives at /changelog (changelog_entries); keep blog list blog-only
+        where.contentType = { $ne: 'changelog' };
+    }
     if (seriesId) where.seriesId = seriesId;
 
     // Tag-based filtering: find post IDs that have this tag, then filter
@@ -348,6 +353,10 @@ export async function handleBlogPostBySlug(context: BlogRouteContext, slug: stri
         return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
     }
 
+    if (record.get('contentType') === 'changelog') {
+        return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
+    }
+
     // View tracking disabled by default (D1 write cost per view).
     // Call POST /api/blog/posts/:slug/track-view explicitly when needed.
 
@@ -378,6 +387,10 @@ export async function handleBlogPostUnlock(context: BlogRouteContext): Promise<R
     if (appId) where.appId = appId;
     const record = await Post.first(where);
     if (!record) {
+        return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
+    }
+
+    if (record.get('contentType') === 'changelog') {
         return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
     }
 
@@ -520,7 +533,11 @@ export async function handleBlogRssFeed(context: BlogRouteContext): Promise<Resp
 
     const where: Record<string, unknown> = { status: 'published' };
     if (appId) where.appId = appId;
-    if (contentType) where.contentType = contentType;
+    if (contentType) {
+        where.contentType = contentType;
+    } else {
+        where.contentType = { $ne: 'changelog' };
+    }
 
     const posts = await Post.where(where, {
         orderBy: 'publishedAt',
@@ -604,7 +621,7 @@ export async function handleBlogSitemap(context: BlogRouteContext): Promise<Resp
     registerConnection('default', createD1Driver(env.OBCF_D1));
 
     const appId = url.searchParams.get('appId') || null;
-    const where: Record<string, unknown> = { status: 'published' };
+    const where: Record<string, unknown> = { status: 'published', contentType: { $ne: 'changelog' } };
     if (appId) where.appId = appId;
 
     const posts = await Post.where(where, {

@@ -88,6 +88,19 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         (crudRequest.body as any).appId = securityContext.appId ?? (crudRequest.body as any).appId ?? 'web';
     }
 
+    if (
+        crudRequest.model === 'changelog_entries' &&
+        crudRequest.body &&
+        (crudRequest.method === 'POST' || crudRequest.method === 'PATCH')
+    ) {
+        const user = session?.user;
+        (crudRequest.body as any).authorId = user?.id ?? (crudRequest.body as any).authorId ?? null;
+        (crudRequest.body as any).authorName = user?.name ?? (crudRequest.body as any).authorName ?? null;
+        (crudRequest.body as any).userId = user?.id ?? (crudRequest.body as any).userId ?? null;
+        (crudRequest.body as any).organizationId = securityContext.organizationId ?? null;
+        (crudRequest.body as any).appId = securityContext.appId ?? (crudRequest.body as any).appId ?? 'web';
+    }
+
     // Inject server-side context for comments (userId + organizationId)
     if (
         crudRequest.model === 'comments' &&
