@@ -3,6 +3,7 @@
  */
 import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { useSession } from '@/lib/auth';
+import { generateSlug } from '@ottabase/ottablog';
 import {
     AdvancedImageTool,
     MediaLibraryTool,
@@ -19,6 +20,7 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    Checkbox,
     Input,
     Label,
     Select,
@@ -28,10 +30,9 @@ import {
     SelectValue,
     Textarea,
 } from '@ottabase/ui-shadcn';
-import { generateSlug } from '@ottabase/ottablog';
+import { IconArrowLeft, IconLoader2, IconRocket, IconUpload } from '@tabler/icons-react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { IconArrowLeft, IconLoader2 } from '@tabler/icons-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 type ChangelogStatus = 'draft' | 'published' | 'archived';
 
@@ -47,9 +48,14 @@ interface ChangelogEntry {
     content: OutputData | null;
     heroMedia: Record<string, unknown> | null;
     status: ChangelogStatus;
+    highlight: boolean | null;
+    autoplayMedia: boolean | null;
+    showAuthor: boolean | null;
     publishedAt: string | null;
     appId: string | null;
+    authorId: string | null;
     authorName: string | null;
+    authorAvatar: string | null;
 }
 
 const changelogHooks = createModelHooks<ChangelogEntry>({ entityName: 'changelog_entries' });
@@ -132,6 +138,9 @@ function ChangelogEditorForm({
     const [slug, setSlug] = useState(initialData?.slug ?? '');
     const [summary, setSummary] = useState(initialData?.summary ?? '');
     const [status, setStatus] = useState<ChangelogStatus>(initialData?.status ?? 'draft');
+    const [highlight, setHighlight] = useState(initialData?.highlight ?? false);
+    const [autoplayMedia, setAutoplayMedia] = useState(initialData?.autoplayMedia ?? true);
+    const [showAuthor, setShowAuthor] = useState(initialData?.showAuthor ?? true);
     const [publishedAt, setPublishedAt] = useState(
         initialData?.publishedAt ? new Date(initialData.publishedAt).toISOString().slice(0, 16) : '',
     );
@@ -156,6 +165,8 @@ function ChangelogEditorForm({
         const h = parseHeroMedia(initialData?.heroMedia ?? null);
         return h?.caption ?? '';
     });
+    const [heroUploading, setHeroUploading] = useState(false);
+    const heroFileRef = useRef<HTMLInputElement>(null);
     const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
     const [slugError, setSlugError] = useState<string | null>(null);
     const [alertMsg, setAlertMsg] = useState<string | null>(null);
@@ -240,37 +251,77 @@ function ChangelogEditorForm({
         return null;
     };
 
-    const handleSave = async () => {
+    // Upload a file for hero media
+    const handleHeroUpload = async (file: File) => {
+        setHeroUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('provider', 'r2');
+            formData.append('key', `changelog/hero-${Date.now()}`);
+            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            const result = (await res.json()) as { success?: boolean; url?: string };
+            if (!result?.success || !result.url) throw new Error('Upload failed');
+            const url = result.url.startsWith('http') ? result.url : `${window.location.origin}${result.url}`;
+            // Detect if video
+            const isVideo = file.type.startsWith('video/');
+            if (isVideo) {
+                setHeroKind('video');
+                setHeroVideoUrl(url);
+            } else {
+                setHeroKind('image');
+                setHeroImageUrl(url);
+            }
+        } catch (e) {
+            setAlertMsg(e instanceof Error ? e.message : 'Hero upload failed');
+        } finally {
+            setHeroUploading(false);
+        }
+    };
+
+    const buildPayload = async (): Promise<Record<string, unknown> | null> => {
         if (!title.trim()) {
             setAlertMsg('Title is required');
-            return;
+            return null;
         }
         const baseSlug = (slug || generateSlug(title)).trim();
         if (!/^[A-Za-z0-9_-]+$/.test(baseSlug)) {
             setAlertMsg('Invalid slug');
-            return;
+            return null;
         }
         if (slugStatus === 'taken') {
             setAlertMsg('Slug is already in use');
-            return;
+            return null;
         }
         setAlertMsg(null);
+        const content = await editor.save();
+        const body: Record<string, unknown> = {
+            title: title.trim(),
+            slug: baseSlug,
+            summary: summary.trim() || null,
+            content,
+            heroMedia: buildHeroMedia(),
+            highlight,
+            autoplayMedia,
+            showAuthor,
+            status,
+            // Map author from the logged-in user on create
+            authorId: initialData?.authorId ?? (user as any)?.id ?? null,
+            authorName: user?.name ?? initialData?.authorName ?? null,
+            authorAvatar: (user as any)?.image ?? initialData?.authorAvatar ?? null,
+        };
+        if (publishedAt) {
+            body.publishedAt = new Date(publishedAt).toISOString();
+        } else if (status === 'published' && !isEditMode) {
+            body.publishedAt = new Date().toISOString();
+        }
+        return body;
+    };
+
+    const handleSave = async () => {
         try {
-            const content = await editor.save();
-            const body: Record<string, unknown> = {
-                title: title.trim(),
-                slug: baseSlug,
-                summary: summary.trim() || null,
-                content,
-                heroMedia: buildHeroMedia(),
-                status,
-                authorName: user?.name ?? initialData?.authorName ?? null,
-            };
-            if (publishedAt) {
-                body.publishedAt = new Date(publishedAt).toISOString();
-            } else if (status === 'published' && !isEditMode) {
-                body.publishedAt = new Date().toISOString();
-            }
+            const body = await buildPayload();
+            if (!body) return;
             if (isEditMode && entryId) {
                 await updateEntry.mutateAsync({ id: entryId, data: body });
             } else {
@@ -279,6 +330,24 @@ function ChangelogEditorForm({
             navigate({ to: '/admin/changelog' });
         } catch (e) {
             setAlertMsg(e instanceof Error ? e.message : 'Save failed');
+        }
+    };
+
+    /** Save + publish with publishedAt = now */
+    const handlePublish = async () => {
+        try {
+            const body = await buildPayload();
+            if (!body) return;
+            body.status = 'published';
+            body.publishedAt = new Date().toISOString();
+            if (isEditMode && entryId) {
+                await updateEntry.mutateAsync({ id: entryId, data: body });
+            } else {
+                await createEntry.mutateAsync(body);
+            }
+            navigate({ to: '/admin/changelog' });
+        } catch (e) {
+            setAlertMsg(e instanceof Error ? e.message : 'Publish failed');
         }
     };
 
@@ -332,12 +401,13 @@ function ChangelogEditorForm({
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="cl-summary">Summary (listing teaser)</Label>
+                        <Label htmlFor="cl-summary">Excerpt</Label>
                         <Textarea
                             id="cl-summary"
                             value={summary}
                             onChange={(e) => setSummary(e.target.value)}
                             rows={3}
+                            placeholder="Short teaser shown in the listing"
                             className="bg-background dark:bg-background"
                         />
                     </div>
@@ -370,19 +440,47 @@ function ChangelogEditorForm({
 
                     <div className="rounded-lg border border-border p-4 dark:border-border">
                         <Label className="mb-3 block">Hero media (listing)</Label>
-                        <Select
-                            value={heroKind}
-                            onValueChange={(v) => setHeroKind(v as 'none' | 'image' | 'video')}
-                        >
-                            <SelectTrigger className="mb-3 bg-background dark:bg-background">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">None</SelectItem>
-                                <SelectItem value="image">Image</SelectItem>
-                                <SelectItem value="video">Video</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div className="mb-3 flex items-center gap-2">
+                            <Select
+                                value={heroKind}
+                                onValueChange={(v) => setHeroKind(v as 'none' | 'image' | 'video')}
+                            >
+                                <SelectTrigger className="bg-background dark:bg-background">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">None</SelectItem>
+                                    <SelectItem value="image">Image</SelectItem>
+                                    <SelectItem value="video">Video</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <input
+                                ref={heroFileRef}
+                                type="file"
+                                accept="image/*,video/*"
+                                className="hidden"
+                                aria-label="Upload hero media file"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) void handleHeroUpload(file);
+                                    e.target.value = '';
+                                }}
+                            />
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={heroUploading}
+                                onClick={() => heroFileRef.current?.click()}
+                            >
+                                {heroUploading ? (
+                                    <IconLoader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
+                                ) : (
+                                    <IconUpload className="mr-1.5 size-4" aria-hidden />
+                                )}
+                                Upload
+                            </Button>
+                        </div>
                         {heroKind === 'image' && (
                             <div className="space-y-2">
                                 <Input
@@ -415,6 +513,30 @@ function ChangelogEditorForm({
                                 className="mt-2 bg-background dark:bg-background"
                             />
                         )}
+                        {/* Preview */}
+                        {heroKind === 'image' && heroImageUrl && (
+                            <img
+                                src={heroImageUrl}
+                                alt={heroImageAlt || 'Hero preview'}
+                                className="mt-3 max-h-48 rounded-lg object-cover"
+                            />
+                        )}
+                    </div>
+
+                    {/* Checkboxes: Highlight, Autoplay media, Show author */}
+                    <div className="flex flex-wrap gap-6">
+                        <label className="flex items-center gap-2 text-sm">
+                            <Checkbox checked={highlight} onCheckedChange={(v) => setHighlight(v === true)} />
+                            Highlight (featured)
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                            <Checkbox checked={autoplayMedia} onCheckedChange={(v) => setAutoplayMedia(v === true)} />
+                            Autoplay media
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                            <Checkbox checked={showAuthor} onCheckedChange={(v) => setShowAuthor(v === true)} />
+                            Show author
+                        </label>
                     </div>
 
                     <div className="grid gap-2">
@@ -427,10 +549,22 @@ function ChangelogEditorForm({
 
                     <div className="flex gap-2">
                         <Button type="button" onClick={() => void handleSave()} disabled={isSaving}>
+                            {isSaving ? <IconLoader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
+                            Save
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="default"
+                            onClick={() => void handlePublish()}
+                            disabled={isSaving}
+                            className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+                        >
                             {isSaving ? (
                                 <IconLoader2 className="mr-2 size-4 animate-spin" aria-hidden />
-                            ) : null}
-                            Save
+                            ) : (
+                                <IconRocket className="mr-2 size-4" aria-hidden />
+                            )}
+                            Publish
                         </Button>
                         <Button type="button" variant="outline" asChild>
                             <Link to="/admin/changelog">Cancel</Link>

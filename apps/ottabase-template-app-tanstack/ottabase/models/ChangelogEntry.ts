@@ -5,19 +5,13 @@
 import type { DbDriver } from '@ottabase/db/drizzle';
 import { calculateReadingTime, generateSlug, type EditorJSData } from '@ottabase/ottablog';
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
-import {
-    changelogEntriesTable,
-    type ChangelogEditorContent,
-    type ChangelogHeroMedia,
-    type ChangelogEntryRow,
-    type NewChangelogEntryRow,
-} from './ChangelogEntry.schema';
+import { changelogEntriesTable, type ChangelogEditorContent } from './ChangelogEntry.schema';
 
 export {
     changelogEntriesTable,
     type ChangelogEditorContent,
-    type ChangelogHeroMedia,
     type ChangelogEntryRow,
+    type ChangelogHeroMedia,
     type NewChangelogEntryRow,
 } from './ChangelogEntry.schema';
 
@@ -36,6 +30,9 @@ export class ChangelogEntry extends BaseModel {
     static casts = {
         content: 'json' as const,
         heroMedia: 'json' as const,
+        highlight: 'boolean' as const,
+        autoplayMedia: 'boolean' as const,
+        showAuthor: 'boolean' as const,
         readingTimeMinutes: 'number' as const,
         wordCount: 'number' as const,
         publishedAt: 'date' as const,
@@ -54,6 +51,9 @@ export class ChangelogEntry extends BaseModel {
             'summary',
             'content',
             'heroMedia',
+            'highlight',
+            'autoplayMedia',
+            'showAuthor',
             'status',
             'authorId',
             'authorName',
@@ -71,6 +71,9 @@ export class ChangelogEntry extends BaseModel {
             'summary',
             'content',
             'heroMedia',
+            'highlight',
+            'autoplayMedia',
+            'showAuthor',
             'status',
             'authorId',
             'authorName',
@@ -120,7 +123,7 @@ export class ChangelogEntry extends BaseModel {
             type: 'string',
             editable: true,
             searchable: true,
-            uiConfig: { label: 'Summary', description: 'Short teaser for the listing' },
+            uiConfig: { label: 'Excerpt', description: 'Short teaser for the listing' },
             formConfig: { visible: true, fieldType: 'textarea' },
             tableConfig: { visible: true, colWidth: 'auto' },
         },
@@ -210,6 +213,28 @@ export class ChangelogEntry extends BaseModel {
             editable: false,
             sortable: true,
             uiConfig: { label: 'Created' },
+            tableConfig: { visible: false },
+        },
+        highlight: {
+            type: 'boolean',
+            editable: true,
+            filterable: true,
+            uiConfig: { label: 'Highlight', description: 'Feature this entry' },
+            formConfig: { visible: true, fieldType: 'checkbox' },
+            tableConfig: { visible: true, colWidth: 100 },
+        },
+        autoplayMedia: {
+            type: 'boolean',
+            editable: true,
+            uiConfig: { label: 'Autoplay media', description: 'Autoplay animated images and videos' },
+            formConfig: { visible: true, fieldType: 'checkbox' },
+            tableConfig: { visible: false },
+        },
+        showAuthor: {
+            type: 'boolean',
+            editable: true,
+            uiConfig: { label: 'Show author', description: 'Display author information publicly' },
+            formConfig: { visible: true, fieldType: 'checkbox' },
             tableConfig: { visible: false },
         },
         updatedAt: {

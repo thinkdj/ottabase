@@ -3,23 +3,16 @@
  */
 import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { createModelHooks } from '@ottabase/ottaorm/client';
-import {
-    Badge,
-    Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { IconEdit, IconPlus, IconStar, IconStarFilled } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import { IconEdit, IconPlus } from '@tabler/icons-react';
 
 interface ChangelogRow {
     id: string;
     title: string;
     slug: string;
     status: string;
+    highlight: boolean | null;
     publishedAt: string | null;
     updatedAt: string;
 }
@@ -31,6 +24,7 @@ export function AdminChangelogListPage() {
         { orderBy: 'updatedAt', orderDirection: 'desc' },
         ADMIN_LIST_QUERY_CONFIG,
     );
+    const updateEntry = changelogHooks.useUpdate();
 
     let rows: ChangelogRow[] = [];
     if (Array.isArray(data)) {
@@ -62,9 +56,7 @@ export function AdminChangelogListPage() {
                     <CardDescription>Draft and published changelog posts</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {isLoading && (
-                        <p className="text-sm text-muted-foreground dark:text-muted-foreground">Loading…</p>
-                    )}
+                    {isLoading && <p className="text-sm text-muted-foreground dark:text-muted-foreground">Loading…</p>}
                     {!isLoading && rows.length === 0 && (
                         <p className="text-sm text-muted-foreground dark:text-muted-foreground">
                             No entries yet. Create one to show on the public changelog.
@@ -76,11 +68,30 @@ export function AdminChangelogListPage() {
                                 key={row.id}
                                 className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0"
                             >
-                                <div className="min-w-0">
-                                    <p className="font-medium text-foreground dark:text-foreground">{row.title}</p>
-                                    <p className="truncate text-xs text-muted-foreground dark:text-muted-foreground">
-                                        /changelog/{row.slug}
-                                    </p>
+                                <div className="min-w-0 flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        title={row.highlight ? 'Remove highlight' : 'Highlight this entry'}
+                                        className="shrink-0 text-muted-foreground hover:text-yellow-500 transition-colors"
+                                        onClick={() =>
+                                            updateEntry.mutate({
+                                                id: row.id,
+                                                data: { highlight: !row.highlight },
+                                            })
+                                        }
+                                    >
+                                        {row.highlight ? (
+                                            <IconStarFilled className="size-4 text-yellow-500" />
+                                        ) : (
+                                            <IconStar className="size-4" />
+                                        )}
+                                    </button>
+                                    <div className="min-w-0">
+                                        <p className="font-medium text-foreground dark:text-foreground">{row.title}</p>
+                                        <p className="truncate text-xs text-muted-foreground dark:text-muted-foreground">
+                                            /changelog/{row.slug}
+                                        </p>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Badge variant={row.status === 'published' ? 'default' : 'secondary'}>

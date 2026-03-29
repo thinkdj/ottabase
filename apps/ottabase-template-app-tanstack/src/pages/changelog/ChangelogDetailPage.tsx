@@ -3,14 +3,15 @@
  */
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_DETAIL_QUERY_CONFIG } from '@/config/queryConfig';
-import { useApiQuery } from '@ottabase/ottaorm/client';
+import { useSession } from '@/lib/auth';
 import { MediaLightboxProvider } from '@ottabase/medialibrary';
 import type { OutputData } from '@ottabase/ottaeditor';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
 import { Badge, Button } from '@ottabase/ui-shadcn';
+import { IconArrowLeft, IconEdit } from '@tabler/icons-react';
 import { Link, useParams } from '@tanstack/react-router';
-import { IconArrowLeft } from '@tabler/icons-react';
 
 type ChangelogHeroMedia =
     | { kind: 'image'; url: string; alt?: string; caption?: string }
@@ -24,6 +25,10 @@ interface ChangelogEntryDetail {
     content: OutputData | null;
     heroMedia: ChangelogHeroMedia | null;
     status: string;
+    highlight: boolean | null;
+    autoplayMedia: boolean | null;
+    showAuthor: boolean | null;
+    authorId: string | null;
     authorName: string | null;
     authorAvatar: string | null;
     readingTimeMinutes: number | null;
@@ -46,8 +51,13 @@ function formatLongDate(iso: string | null): string {
 export function ChangelogDetailPage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug ?? '';
+    const { user } = useSession({ skipAutoSync: true });
 
-    const { data: entry, isLoading, isError } = useApiQuery<ChangelogEntryDetail>({
+    const {
+        data: entry,
+        isLoading,
+        isError,
+    } = useApiQuery<ChangelogEntryDetail>({
         entity: 'changelog_entries',
         queryKey: ['by-slug', slug],
         endpoint: `/api/changelog/entries/by-slug/${encodeURIComponent(slug)}`,
@@ -85,6 +95,10 @@ export function ChangelogDetailPage() {
 
     const description = entry.summary ?? undefined;
     const heroUrl = entry.heroMedia?.kind === 'image' ? entry.heroMedia.url : undefined;
+    const shouldAutoplay = entry.autoplayMedia !== false;
+    const shouldShowAuthor = entry.showAuthor !== false;
+    const currentUserId = (user as any)?.id;
+    const isAuthor = currentUserId && entry.authorId && currentUserId === entry.authorId;
 
     return (
         <div className="min-h-screen bg-background dark:bg-background">
@@ -99,12 +113,22 @@ export function ChangelogDetailPage() {
             />
 
             <article className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
-                <Button variant="ghost" size="sm" asChild className="mb-8 -ml-2">
-                    <Link to="/changelog">
-                        <IconArrowLeft className="mr-1.5 size-4" aria-hidden />
-                        What&apos;s New
-                    </Link>
-                </Button>
+                <div className="mb-8 flex items-center justify-between">
+                    <Button variant="ghost" size="sm" asChild className="-ml-2">
+                        <Link to="/changelog">
+                            <IconArrowLeft className="mr-1.5 size-4" aria-hidden />
+                            What&apos;s New
+                        </Link>
+                    </Button>
+                    {isAuthor && (
+                        <Button variant="outline" size="sm" asChild>
+                            <Link to="/admin/changelog/$entryId/edit" params={{ entryId: entry.id }}>
+                                <IconEdit className="mr-1.5 size-4" aria-hidden />
+                                Edit
+                            </Link>
+                        </Button>
+                    )}
+                </div>
 
                 <header className="mb-8">
                     <p className="text-sm text-muted-foreground dark:text-muted-foreground">
@@ -118,7 +142,7 @@ export function ChangelogDetailPage() {
                     <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground dark:text-foreground sm:text-4xl">
                         {entry.title}
                     </h1>
-                    {(entry.authorName || entry.authorAvatar) && (
+                    {shouldShowAuthor && (entry.authorName || entry.authorAvatar) && (
                         <div className="mt-6 flex items-center gap-3">
                             {entry.authorAvatar ? (
                                 <img
@@ -158,6 +182,9 @@ export function ChangelogDetailPage() {
                             className="w-full rounded-xl"
                             controls
                             playsInline
+                            autoPlay={shouldAutoplay}
+                            muted={shouldAutoplay}
+                            loop={shouldAutoplay}
                         />
                         {entry.heroMedia.caption && (
                             <p className="mt-2 text-center text-sm text-muted-foreground dark:text-muted-foreground">

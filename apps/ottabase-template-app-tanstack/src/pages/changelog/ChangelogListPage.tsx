@@ -5,8 +5,8 @@ import { SEOHead } from '@/components/SEOHead';
 import { BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { useApiQuery } from '@ottabase/ottaorm/client';
+import { IconArrowRight, IconPlayerPlay, IconStarFilled } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import { IconArrowRight, IconPlayerPlay } from '@tabler/icons-react';
 
 type ChangelogHeroMedia =
     | { kind: 'image'; url: string; alt?: string; caption?: string }
@@ -20,6 +20,10 @@ interface ChangelogEntryPublic {
     content: OutputData | null;
     heroMedia: ChangelogHeroMedia | null;
     status: string;
+    highlight: boolean | null;
+    autoplayMedia: boolean | null;
+    showAuthor: boolean | null;
+    authorId: string | null;
     authorName: string | null;
     authorAvatar: string | null;
     readingTimeMinutes: number | null;
@@ -37,9 +41,7 @@ function formatChangelogDate(iso: string | null): string {
     if (!iso) return '';
     try {
         const d = new Date(iso);
-        return d
-            .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-            .toUpperCase();
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
     } catch {
         return '';
     }
@@ -92,89 +94,128 @@ export function ChangelogListPage() {
                 )}
 
                 <ol className="relative space-y-14 border-l border-border pl-8 dark:border-border">
-                    {entries.map((entry) => (
-                        <li key={entry.id} className="relative">
-                            <span
-                                className="absolute -left-[9px] top-1.5 h-3 w-3 rounded-full bg-primary ring-4 ring-background dark:bg-primary dark:ring-background"
-                                aria-hidden
-                            />
-                            <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-                                <time
-                                    className="font-mono text-xs uppercase tracking-wide text-muted-foreground dark:text-muted-foreground"
-                                    dateTime={entry.publishedAt ?? undefined}
-                                >
-                                    {formatChangelogDate(entry.publishedAt)}
-                                </time>
+                    {entries.map((entry) => {
+                        const isHighlighted = entry.highlight === true;
+                        const shouldAutoplay = entry.autoplayMedia !== false;
+                        const shouldShowAuthor = entry.showAuthor !== false;
+                        return (
+                            <li key={entry.id} className="relative">
+                                {/* Timeline dot — golden star for highlighted, green dot otherwise */}
+                                {isHighlighted ? (
+                                    <span
+                                        className="absolute -left-[11px] top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-yellow-400 bg-yellow-50 ring-4 ring-background dark:border-yellow-500 dark:bg-yellow-900/40 dark:ring-background"
+                                        aria-hidden
+                                    >
+                                        <IconStarFilled className="size-2.5 text-yellow-500 dark:text-yellow-400" />
+                                    </span>
+                                ) : (
+                                    <span
+                                        className="absolute -left-[9px] top-1 h-3 w-3 rounded-full bg-primary ring-4 ring-background dark:bg-primary dark:ring-background"
+                                        aria-hidden
+                                    />
+                                )}
+
+                                {/* Date + Read more — vertically centered with the dot */}
+                                <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                    <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground dark:text-muted-foreground">
+                                        /
+                                    </span>
+                                    <time
+                                        className="font-mono text-xs uppercase tracking-wide text-muted-foreground dark:text-muted-foreground"
+                                        dateTime={entry.publishedAt ?? undefined}
+                                    >
+                                        {formatChangelogDate(entry.publishedAt)}
+                                    </time>
+                                    <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground dark:text-muted-foreground">
+                                        /
+                                    </span>
+                                    <Link
+                                        to="/changelog/$slug"
+                                        params={{ slug: entry.slug }}
+                                        className="font-mono text-xs uppercase tracking-wide text-primary hover:underline dark:text-primary"
+                                    >
+                                        Read more
+                                        <IconArrowRight
+                                            className="ml-0.5 inline size-3 align-text-bottom"
+                                            aria-hidden
+                                        />
+                                    </Link>
+                                </div>
+
+                                {/* Title */}
                                 <Link
                                     to="/changelog/$slug"
                                     params={{ slug: entry.slug }}
-                                    className="font-mono text-xs uppercase tracking-wide text-primary hover:underline dark:text-primary"
+                                    className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 >
-                                    / Read more
-                                    <IconArrowRight className="ml-0.5 inline size-3 align-text-bottom" aria-hidden />
+                                    <h2 className="text-xl font-semibold text-foreground transition-colors group-hover:text-primary dark:text-foreground dark:group-hover:text-primary sm:text-2xl">
+                                        {entry.title}
+                                    </h2>
                                 </Link>
-                            </div>
 
-                            <Link
-                                to="/changelog/$slug"
-                                params={{ slug: entry.slug }}
-                                className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            >
-                                {entry.heroMedia?.kind === 'image' && entry.heroMedia.url && (
-                                    <div className="mb-4 overflow-hidden rounded-2xl bg-muted/40 ring-1 ring-border dark:bg-muted/30 dark:ring-border">
-                                        <img
-                                            src={entry.heroMedia.url}
-                                            alt={entry.heroMedia.alt ?? ''}
-                                            className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                                            loading="lazy"
-                                        />
-                                    </div>
+                                {/* Excerpt */}
+                                {entry.summary && (
+                                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground sm:text-base">
+                                        {entry.summary}
+                                    </p>
                                 )}
-                                {entry.heroMedia?.kind === 'video' && entry.heroMedia.url && (
-                                    <div className="relative mb-4 overflow-hidden rounded-2xl bg-muted/40 ring-1 ring-border dark:bg-muted/30 dark:ring-border">
-                                        <video
-                                            src={entry.heroMedia.url}
-                                            className="aspect-video w-full object-cover"
-                                            controls
-                                            playsInline
-                                            preload="metadata"
-                                        />
-                                        <span className="pointer-events-none absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-0.5 text-xs text-foreground backdrop-blur dark:bg-background/80">
-                                            <IconPlayerPlay className="size-3" aria-hidden />
-                                            Video
+
+                                {/* Hero media — placed after title and excerpt for easier click-through */}
+                                <Link
+                                    to="/changelog/$slug"
+                                    params={{ slug: entry.slug }}
+                                    className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                    {entry.heroMedia?.kind === 'image' && entry.heroMedia.url && (
+                                        <div className="mt-4 overflow-hidden rounded-2xl bg-muted/40 ring-1 ring-border dark:bg-muted/30 dark:ring-border">
+                                            <img
+                                                src={entry.heroMedia.url}
+                                                alt={entry.heroMedia.alt ?? ''}
+                                                className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                                                loading="lazy"
+                                            />
+                                        </div>
+                                    )}
+                                    {entry.heroMedia?.kind === 'video' && entry.heroMedia.url && (
+                                        <div className="relative mt-4 overflow-hidden rounded-2xl bg-muted/40 ring-1 ring-border dark:bg-muted/30 dark:ring-border">
+                                            <video
+                                                src={entry.heroMedia.url}
+                                                className="aspect-video w-full object-cover"
+                                                controls
+                                                playsInline
+                                                autoPlay={shouldAutoplay}
+                                                muted={shouldAutoplay}
+                                                loop={shouldAutoplay}
+                                                preload={shouldAutoplay ? 'auto' : 'metadata'}
+                                            />
+                                            <span className="pointer-events-none absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-0.5 text-xs text-foreground backdrop-blur dark:bg-background/80">
+                                                <IconPlayerPlay className="size-3" aria-hidden />
+                                                Video
+                                            </span>
+                                        </div>
+                                    )}
+                                </Link>
+
+                                {/* Author (shown only if showAuthor is true) */}
+                                {shouldShowAuthor && (entry.authorName || entry.authorAvatar) && (
+                                    <div className="mt-4 flex items-center gap-2">
+                                        {entry.authorAvatar ? (
+                                            <img
+                                                src={entry.authorAvatar}
+                                                alt=""
+                                                className="h-8 w-8 rounded-full object-cover ring-1 ring-border dark:ring-border"
+                                            />
+                                        ) : (
+                                            <div className="h-8 w-8 rounded-full bg-muted dark:bg-muted" />
+                                        )}
+                                        <span className="text-sm font-medium text-foreground dark:text-foreground">
+                                            {entry.authorName ?? 'Team'}
                                         </span>
                                     </div>
                                 )}
-
-                                <h2 className="text-xl font-semibold text-foreground transition-colors group-hover:text-primary dark:text-foreground dark:group-hover:text-primary sm:text-2xl">
-                                    {entry.title}
-                                </h2>
-                            </Link>
-
-                            {entry.summary && (
-                                <p className="mt-2 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground sm:text-base">
-                                    {entry.summary}
-                                </p>
-                            )}
-
-                            {(entry.authorName || entry.authorAvatar) && (
-                                <div className="mt-4 flex items-center gap-2">
-                                    {entry.authorAvatar ? (
-                                        <img
-                                            src={entry.authorAvatar}
-                                            alt=""
-                                            className="h-8 w-8 rounded-full object-cover ring-1 ring-border dark:ring-border"
-                                        />
-                                    ) : (
-                                        <div className="h-8 w-8 rounded-full bg-muted dark:bg-muted" />
-                                    )}
-                                    <span className="text-sm font-medium text-foreground dark:text-foreground">
-                                        {entry.authorName ?? 'Team'}
-                                    </span>
-                                </div>
-                            )}
-                        </li>
-                    ))}
+                            </li>
+                        );
+                    })}
                 </ol>
             </div>
         </div>

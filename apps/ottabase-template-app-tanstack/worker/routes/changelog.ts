@@ -2,8 +2,8 @@ import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { ChangelogEntry } from '../../ottabase/models/ChangelogEntry';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { ChangelogEntry } from '../../ottabase/models/ChangelogEntry';
 
 export interface ChangelogRouteContext {
     request: Request;
@@ -23,10 +23,7 @@ function ensureD1(env: CloudflareEnv): Response | null {
 /**
  * Public-safe JSON. Listing omits full body unless ?includeContent=1 (for previews).
  */
-function publicChangelogJson(
-    record: ChangelogEntry,
-    options?: { includeContent?: boolean },
-): Record<string, unknown> {
+function publicChangelogJson(record: ChangelogEntry, options?: { includeContent?: boolean }): Record<string, unknown> {
     const j = record.toJson() as Record<string, unknown>;
     if (!options?.includeContent && j.content) {
         const { content, ...rest } = j;
@@ -52,6 +49,11 @@ export async function handleChangelogEntriesList(context: ChangelogRouteContext)
     const where: Record<string, unknown> = { status: 'published' };
     if (appId !== null && appId !== '') {
         where.appId = appId;
+    }
+    // Filter by highlighted entries only
+    const highlightOnly = url.searchParams.get('highlight') === '1';
+    if (highlightOnly) {
+        where.highlight = true;
     }
 
     const result = await ChangelogEntry.paginate(page, perPage, where, {
