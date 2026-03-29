@@ -257,7 +257,12 @@ export class ChangelogEntry extends BaseModel {
     /** Recompute reading stats from EditorJS content */
     updateReadingStats() {
         const content = this.get('content') as ChangelogEditorContent | null;
-        if (!content?.blocks?.length) return;
+        if (!content?.blocks?.length) {
+            // No readable content — clear any previously stored stats
+            this.set('readingTimeMinutes', null);
+            this.set('wordCount', null);
+            return;
+        }
         const readingTime = calculateReadingTime(content as EditorJSData);
         this.set('readingTimeMinutes', readingTime.minutes);
         this.set('wordCount', readingTime.words);

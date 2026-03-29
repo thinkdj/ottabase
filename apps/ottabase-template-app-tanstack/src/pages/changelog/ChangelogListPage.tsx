@@ -51,7 +51,6 @@ export function ChangelogListPage() {
     const listParams = new URLSearchParams();
     listParams.set('page', '1');
     listParams.set('perPage', String(PER_PAGE));
-    listParams.set('includeContent', '1');
 
     const { data: listResponse, isLoading } = useApiQuery<ChangelogListResponse>({
         entity: 'changelog_entries',

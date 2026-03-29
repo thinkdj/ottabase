@@ -21,15 +21,34 @@ function ensureD1(env: CloudflareEnv): Response | null {
 }
 
 /**
- * Public-safe JSON. Listing omits full body unless ?includeContent=1 (for previews).
+ * Public-safe JSON — whitelist only fields needed by the public UI.
+ * Listing omits full body unless ?includeContent=1.
  */
 function publicChangelogJson(record: ChangelogEntry, options?: { includeContent?: boolean }): Record<string, unknown> {
     const j = record.toJson() as Record<string, unknown>;
-    if (!options?.includeContent && j.content) {
-        const { content, ...rest } = j;
-        return { ...rest, content: null };
-    }
-    return j;
+
+    const safe: Record<string, unknown> = {
+        id: j.id,
+        slug: j.slug,
+        title: j.title,
+        summary: j.summary,
+        heroMedia: j.heroMedia,
+        status: j.status,
+        highlight: j.highlight,
+        autoplayMedia: j.autoplayMedia,
+        showAuthor: j.showAuthor,
+        authorId: j.authorId,
+        authorName: j.authorName,
+        authorAvatar: j.authorAvatar,
+        readingTimeMinutes: j.readingTimeMinutes,
+        wordCount: j.wordCount,
+        publishedAt: j.publishedAt,
+        createdAt: j.createdAt,
+        updatedAt: j.updatedAt,
+        content: options?.includeContent ? (j.content ?? null) : null,
+    };
+
+    return safe;
 }
 
 /**
