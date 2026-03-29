@@ -105,6 +105,32 @@ describe('AI Chat Schema Tests', () => {
             });
         });
     });
+
+    describe('AiConversation.truncateToTitle', () => {
+        it('should return short messages unchanged', async () => {
+            const { AiConversation } = await import('../../ottabase/models/AiConversation');
+            expect(AiConversation.truncateToTitle('Hello world')).toBe('Hello world');
+        });
+
+        it('should return 80-char messages unchanged', async () => {
+            const { AiConversation } = await import('../../ottabase/models/AiConversation');
+            const msg = 'A'.repeat(80);
+            expect(AiConversation.truncateToTitle(msg)).toBe(msg);
+        });
+
+        it('should truncate messages longer than 80 chars with ellipsis', async () => {
+            const { AiConversation } = await import('../../ottabase/models/AiConversation');
+            const msg = 'A'.repeat(100);
+            const result = AiConversation.truncateToTitle(msg);
+            expect(result.length).toBe(80);
+            expect(result.endsWith('...')).toBe(true);
+        });
+
+        it('should handle empty strings', async () => {
+            const { AiConversation } = await import('../../ottabase/models/AiConversation');
+            expect(AiConversation.truncateToTitle('')).toBe('');
+        });
+    });
 });
 
 describe('AI Chat Route Handler Tests', () => {

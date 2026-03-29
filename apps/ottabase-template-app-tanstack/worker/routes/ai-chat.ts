@@ -16,6 +16,9 @@ import { AiMessage } from '../../ottabase/models/AiMessage';
 import { getAuthOptions } from '../lib/auth-utils';
 import type { ApiRouteContext } from './router';
 
+/** Maximum number of recent messages to include in the AI context window */
+const MAX_CONTEXT_MESSAGES = 20;
+
 /** Build an error response from an Error or AIError */
 function aiErrorResponse(error: Error, fallbackStatus = 500): Response {
     if (error instanceof AIError) {
@@ -196,7 +199,7 @@ export async function handleAiChatMessage(context: ApiRouteContext): Promise<Res
         }
     } else {
         // Auto-create conversation with title from first message
-        const title = body.message.length > 80 ? body.message.substring(0, 77) + '...' : body.message;
+        const title = AiConversation.truncateToTitle(body.message);
         conversation = await AiConversation.create({
             title,
             model: body.model || '@cf/meta/llama-3.1-8b-instruct',
@@ -227,8 +230,8 @@ export async function handleAiChatMessage(context: ApiRouteContext): Promise<Res
         chatMessages.push({ role: 'system', content: systemPrompt });
     }
 
-    // Add conversation history (limit to last 20 messages for context window)
-    const recentHistory = historyMessages.slice(-20);
+    // Add conversation history (limit to recent messages for context window)
+    const recentHistory = historyMessages.slice(-MAX_CONTEXT_MESSAGES);
     for (const msg of recentHistory) {
         const role = msg.get('role') as 'user' | 'assistant' | 'system';
         if (role === 'user' || role === 'assistant') {

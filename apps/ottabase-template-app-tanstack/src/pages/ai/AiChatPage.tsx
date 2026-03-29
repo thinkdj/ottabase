@@ -531,7 +531,7 @@ export function AiChatPage() {
         setInputValue('');
 
         sendMessageMutation.mutate(text);
-    }, [inputValue, activeConversationId, sendMessageMutation, model, provider, systemPrompt]);
+    }, [inputValue, activeConversationId, sendMessageMutation.isPending, model, provider, systemPrompt]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {

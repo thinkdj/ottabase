@@ -138,11 +138,14 @@ export class AiConversation extends BaseModel {
     // HELPER METHODS
     // ============================================================
 
+    /** Truncate a message to use as a conversation title (max 80 chars) */
+    static truncateToTitle(message: string): string {
+        return message.length > 80 ? message.substring(0, 77) + '...' : message;
+    }
+
     /** Update the conversation title from the first user message */
     async updateTitleFromMessage(message: string) {
-        // Truncate to first 80 chars as title
-        const title = message.length > 80 ? message.substring(0, 77) + '...' : message;
-        this.set('title', title);
+        this.set('title', AiConversation.truncateToTitle(message));
         return this.save();
     }
 

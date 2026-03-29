@@ -90,6 +90,15 @@ export function AdminAiPage() {
     const models = modelsQuery.data;
     const configuredCount = status ? Object.values(status).filter(Boolean).length : 0;
 
+    /** Map provider key (e.g. "workers-ai") to AIStatus key (e.g. "workersAI") */
+    const mapProviderKeyToStatusKey = (providerKey: string): keyof AIStatus => {
+        const mapping: Record<string, keyof AIStatus> = {
+            'workers-ai': 'workersAI',
+            'google-ai-studio': 'googleAI',
+        };
+        return mapping[providerKey] ?? (providerKey as keyof AIStatus);
+    };
+
     return (
         <div className="space-y-8">
             {/* Header */}
@@ -199,14 +208,7 @@ export function AdminAiPage() {
                             {Object.entries(models.models).map(([providerKey, providerModels]) => {
                                 const providerName =
                                     models.providers.find((p) => p.key === providerKey)?.name || providerKey;
-                                const isConfigured =
-                                    status?.[
-                                        providerKey === 'workers-ai'
-                                            ? 'workersAI'
-                                            : providerKey === 'google-ai-studio'
-                                              ? 'googleAI'
-                                              : (providerKey as keyof AIStatus)
-                                    ] ?? false;
+                                const isConfigured = status?.[mapProviderKeyToStatusKey(providerKey)] ?? false;
 
                                 return (
                                     <div key={providerKey}>
