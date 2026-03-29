@@ -44,6 +44,8 @@ export { accountsTable, authenticatorsTable, mediaTable, sessionsTable, usersTab
 // ============================================================
 // APP-SPECIFIC TABLES
 // ============================================================
+export { aiConversationsTable } from '../models/AiConversation';
+export { aiMessagesTable } from '../models/AiMessage';
 export { changelogEntriesTable } from '../models/ChangelogEntry';
 export { todosTable } from '../models/Todo';
 

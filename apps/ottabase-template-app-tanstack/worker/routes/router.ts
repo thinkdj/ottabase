@@ -73,6 +73,15 @@ import {
     handleAIStatus,
     handleAIUniversalChat,
 } from './cloudflare-ai';
+import {
+    handleAiChatMessage,
+    handleAiConversationCreate,
+    handleAiConversationDelete,
+    handleAiConversationDetail,
+    handleAiConversationUpdate,
+    handleAiConversationsList,
+    handleAiModelsList,
+} from './ai-chat';
 import { handleD1Init, handleD1TodoById, handleD1Todos } from './cloudflare-d1';
 import { handleCloudflareQueue } from './cloudflare-queue';
 import { handleRateLimiting } from './cloudflare-rate';
@@ -332,6 +341,20 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleAIStatus(context);
     }
 
+    // AI Chat feature routes
+    if (route === '/api/ai/conversations') {
+        return handleAiConversationsList(context);
+    }
+
+    if (route === '/api/ai/models') {
+        return handleAiModelsList(context);
+    }
+
+    const aiConvDetailMatch = route.match(/^\/api\/ai\/conversations\/([^/]+)$/);
+    if (aiConvDetailMatch) {
+        return handleAiConversationDetail(context, aiConvDetailMatch[1]);
+    }
+
     if (route === '/api/admin/users') {
         return handleAdminUsers(context);
     }
@@ -479,6 +502,15 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleAIUniversalChat(context);
     }
 
+    // AI Chat feature routes
+    if (route === '/api/ai/chat') {
+        return handleAiChatMessage(context);
+    }
+
+    if (route === '/api/ai/conversations') {
+        return handleAiConversationCreate(context);
+    }
+
     if (route === '/api/upload') {
         return handleUpload(context);
     }
@@ -522,6 +554,12 @@ async function handlePatchRoutes(context: ApiRouteContext): Promise<Response | n
     const adminRolePatchMatch = route.match(/^\/api\/admin\/roles\/([^/]+)$/);
     if (adminRolePatchMatch) {
         return handleAdminRoleUpdate(context, adminRolePatchMatch[1]);
+    }
+
+    // AI Chat conversation update
+    const aiConvPatchMatch = route.match(/^\/api\/ai\/conversations\/([^/]+)$/);
+    if (aiConvPatchMatch) {
+        return handleAiConversationUpdate(context, aiConvPatchMatch[1]);
     }
 
     return null;
@@ -584,6 +622,12 @@ async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | 
     const adminRoleDeleteMatch = route.match(/^\/api\/admin\/roles\/([^/]+)$/);
     if (adminRoleDeleteMatch) {
         return handleAdminRoleDelete(context, adminRoleDeleteMatch[1]);
+    }
+
+    // AI Chat conversation delete
+    const aiConvDeleteMatch = route.match(/^\/api\/ai\/conversations\/([^/]+)$/);
+    if (aiConvDeleteMatch) {
+        return handleAiConversationDelete(context, aiConvDeleteMatch[1]);
     }
 
     return null;
