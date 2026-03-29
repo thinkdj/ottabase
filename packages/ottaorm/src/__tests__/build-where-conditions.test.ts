@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, ne } from 'drizzle-orm';
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { describe, expect, it } from 'vitest';
 import { BaseModel } from '../base/BaseModel';
@@ -66,9 +66,9 @@ describe('buildWhereConditions', () => {
         expect(conditionSql(actual)).toBe(conditionSql(expected));
     });
 
-    it('should generate ne() with $ne: null', () => {
+    it('should generate isNotNull() with $ne: null', () => {
         const actual = TestableModel.testBuildWhere({ status: { $ne: null } });
-        const expected = [ne(testTable.status, null)];
+        const expected = [isNotNull(testTable.status)];
         expect(actual).toHaveLength(1);
         expect(conditionSql(actual)).toBe(conditionSql(expected));
     });

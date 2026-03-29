@@ -66,11 +66,13 @@ export const changelogEntriesTable = sqliteTable(
             .notNull(),
     },
     (table) => [
-        uniqueIndex('changelog_entries_app_slug_idx').on(table.appId, table.slug),
+        uniqueIndex('changelog_entries_app_slug_idx')
+            .on(table.appId, table.slug)
+            .where(sql`${table.organizationId} IS NULL`),
         uniqueIndex('changelog_entries_org_app_slug_idx').on(table.organizationId, table.appId, table.slug),
         uniqueIndex('changelog_entries_slug_no_app_idx')
             .on(table.slug)
-            .where(sql`${table.appId} IS NULL`),
+            .where(sql`${table.appId} IS NULL AND ${table.organizationId} IS NULL`),
         index('changelog_entries_status_published_at_idx').on(table.status, table.publishedAt),
         index('changelog_entries_app_status_published_at_idx').on(table.appId, table.status, table.publishedAt),
     ],

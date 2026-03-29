@@ -42,9 +42,10 @@ function publicChangelogJson(record: ChangelogEntry, options?: { includeContent?
         authorAvatar: j.authorAvatar,
         readingTimeMinutes: j.readingTimeMinutes,
         wordCount: j.wordCount,
-        publishedAt: j.publishedAt,
-        createdAt: j.createdAt,
-        updatedAt: j.updatedAt,
+        // Convert epoch-ms timestamps to ISO 8601 strings for SEO / HTML <time> compatibility
+        publishedAt: typeof j.publishedAt === 'number' ? new Date(j.publishedAt).toISOString() : j.publishedAt,
+        createdAt: typeof j.createdAt === 'number' ? new Date(j.createdAt).toISOString() : j.createdAt,
+        updatedAt: typeof j.updatedAt === 'number' ? new Date(j.updatedAt).toISOString() : j.updatedAt,
         content: options?.includeContent ? (j.content ?? null) : null,
     };
 

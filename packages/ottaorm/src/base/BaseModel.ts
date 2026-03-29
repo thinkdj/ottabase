@@ -5,7 +5,7 @@
 // ============================================================
 
 import type { DbDriver } from '@ottabase/db/drizzle';
-import { and, asc, desc, eq, inArray, isNull, like, ne, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, like, ne, or, sql } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { getConnection } from '../context';
 import { ValidationError } from '../validation';
@@ -347,7 +347,9 @@ export class BaseModel extends AbstractBaseModel {
             }
 
             if (value && typeof value === 'object' && '$ne' in value) {
-                conditions.push(ne(column, (value as { $ne: unknown }).$ne));
+                const neValue = (value as { $ne: unknown }).$ne;
+                // $ne: null → IS NOT NULL (SQL: col != NULL always yields NULL)
+                conditions.push(neValue === null ? isNotNull(column) : ne(column, neValue));
                 continue;
             }
 
