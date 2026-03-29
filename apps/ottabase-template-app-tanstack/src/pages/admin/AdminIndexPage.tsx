@@ -6,6 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
     Activity,
     Bell,
+    Bot,
     Building2,
     Clock,
     Database,
@@ -147,6 +148,17 @@ const ADMIN_CATEGORIES: AdminCategory[] = [
         ],
     },
     {
+        label: 'AI & Intelligence',
+        links: [
+            {
+                title: 'AI Configuration',
+                description: 'View AI provider status, available models, and manage AI settings.',
+                href: '/admin/ai',
+                icon: Bot,
+            },
+        ],
+    },
+    {
         label: 'Infrastructure',
         links: [
             {
@@ -257,6 +269,9 @@ export function AdminIndexPage() {
             <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
                 <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
                 <div className="flex gap-4 flex-wrap">
+                    <Link to="/ai/chat" className="text-sm text-primary hover:underline">
+                        AI Chat
+                    </Link>
                     <Link to="/demo" className="text-sm text-primary hover:underline">
                         Component Demos
                     </Link>
