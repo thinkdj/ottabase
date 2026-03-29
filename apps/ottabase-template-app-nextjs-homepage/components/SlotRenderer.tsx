@@ -14,6 +14,7 @@
 import type { ComponentType } from 'react';
 import { useHomepageConfig } from '../lib/homepage-config-context';
 import type { SlotName } from '../lib/homepage-config';
+import { SLOT_REGISTRY } from '../lib/homepage-config';
 
 // ── Variant component maps ─────────────────────────────────────────────────
 
@@ -71,7 +72,9 @@ export function SlotRenderer({ slot, data }: SlotRendererProps) {
     const { config } = useHomepageConfig();
     const variantId = config[slot];
     const variants = VARIANT_COMPONENTS[slot];
-    const Component = variants[variantId] ?? Object.values(variants)[0];
+    // Fall back to the registry's default variant if the stored id is invalid
+    const fallbackId = SLOT_REGISTRY[slot].defaultVariant;
+    const Component = variants[variantId] ?? variants[fallbackId];
 
     if (!Component) return null;
 

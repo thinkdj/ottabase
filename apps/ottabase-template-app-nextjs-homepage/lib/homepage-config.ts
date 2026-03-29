@@ -104,10 +104,19 @@ export function loadConfig(): HomepageConfig {
     try {
         const raw = localStorage.getItem(HOMEPAGE_CONFIG_KEY);
         if (!raw) return getDefaultConfig();
-        const parsed = JSON.parse(raw) as Partial<HomepageConfig>;
+        const parsed = JSON.parse(raw);
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+            return getDefaultConfig();
+        }
         const defaults = getDefaultConfig();
-        // Merge with defaults so new slots always have a value
-        return { ...defaults, ...parsed };
+        const result = { ...defaults };
+        // Only accept keys that are valid slot names with string values
+        for (const slot of SLOT_NAMES) {
+            if (typeof parsed[slot] === 'string') {
+                result[slot] = parsed[slot];
+            }
+        }
+        return result;
     } catch {
         return getDefaultConfig();
     }
