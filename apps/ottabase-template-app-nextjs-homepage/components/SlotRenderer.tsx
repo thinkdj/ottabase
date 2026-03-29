@@ -12,16 +12,16 @@
  */
 
 import type { ComponentType } from 'react';
-import { useHomepageConfig } from '../../lib/homepage-config-context';
-import type { SlotName } from '../../lib/homepage-config';
+import { useHomepageConfig } from '../lib/homepage-config-context';
+import type { SlotName } from '../lib/homepage-config';
 
 // ── Variant component maps ─────────────────────────────────────────────────
 
-import { CTABanner, CTADefault, CTAMinimal } from '../variants/cta';
-import { FeaturesCards, FeaturesGrid, FeaturesList } from '../variants/features';
-import { FooterColumns, FooterDefault, FooterMinimal } from '../variants/footer';
-import { HeroCentered, HeroMinimal, HeroSplit } from '../variants/hero';
-import { NavbarCentered, NavbarDefault, NavbarMinimal } from '../variants/navbar';
+import { CTABanner, CTADefault, CTAMinimal } from './variants/cta';
+import { FeaturesCards, FeaturesGrid, FeaturesList } from './variants/features';
+import { FooterColumns, FooterDefault, FooterMinimal } from './variants/footer';
+import { HeroCentered, HeroMinimal, HeroSplit } from './variants/hero';
+import { NavbarCentered, NavbarDefault, NavbarMinimal } from './variants/navbar';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyComponent = ComponentType<any>;

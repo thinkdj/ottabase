@@ -79,9 +79,7 @@ function SlotConfigSection({
                             }`}
                         >
                             <span className="font-heading text-sm font-semibold text-foreground">{variant.label}</span>
-                            <span className="text-xs leading-relaxed text-muted-foreground">
-                                {variant.description}
-                            </span>
+                            <span className="text-xs leading-relaxed text-muted-foreground">{variant.description}</span>
                             {isActive && (
                                 <span className="mt-1 rounded bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                                     Active

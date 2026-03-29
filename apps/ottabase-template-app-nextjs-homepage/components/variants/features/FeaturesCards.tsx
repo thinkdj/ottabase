@@ -6,9 +6,7 @@ import type { FeaturesData } from './types';
 export function FeaturesCards({ title, features }: FeaturesData) {
     return (
         <section className="mx-auto w-full max-w-4xl px-4 py-14">
-            {title && (
-                <h2 className="mb-8 text-center font-heading text-lg font-semibold text-foreground">{title}</h2>
-            )}
+            {title && <h2 className="mb-8 text-center font-heading text-lg font-semibold text-foreground">{title}</h2>}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {features.map((f) => (
                     <div
