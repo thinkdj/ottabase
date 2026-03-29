@@ -3,17 +3,9 @@
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
-import {
-    aiConversationsTable,
-    type AiConversationType,
-    type NewAiConversationType,
-} from './AiConversation.schema';
+import { aiConversationsTable, type AiConversationType, type NewAiConversationType } from './AiConversation.schema';
 
-export {
-    aiConversationsTable,
-    type AiConversationType,
-    type NewAiConversationType,
-} from './AiConversation.schema';
+export { aiConversationsTable, type AiConversationType, type NewAiConversationType } from './AiConversation.schema';
 
 /**
  * AiConversation model - stores AI chat conversation metadata.
@@ -49,8 +41,8 @@ export class AiConversation extends BaseModel {
     };
 
     static writable = {
-        create: ['title', 'model', 'provider', 'systemPrompt', 'userId'] as const,
-        update: ['title', 'model', 'provider', 'systemPrompt'] as const,
+        create: ['title', 'model', 'provider', 'systemPrompt', 'userId'],
+        update: ['title', 'model', 'provider', 'systemPrompt'],
     };
 
     protected static fields: ModelFields = {

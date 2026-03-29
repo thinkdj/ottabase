@@ -18,16 +18,7 @@ import {
 } from '@ottabase/ui-shadcn';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import {
-    ArrowLeft,
-    Bot,
-    CheckCircle,
-    ExternalLink,
-    MessageSquare,
-    Server,
-    ShieldCheck,
-    XCircle,
-} from 'lucide-react';
+import { ArrowLeft, Bot, CheckCircle, ExternalLink, MessageSquare, Server, ShieldCheck, XCircle } from 'lucide-react';
 
 interface AIStatus {
     workersAI: boolean;
@@ -97,9 +88,7 @@ export function AdminAiPage() {
 
     const status = statusQuery.data;
     const models = modelsQuery.data;
-    const configuredCount = status
-        ? Object.values(status).filter(Boolean).length
-        : 0;
+    const configuredCount = status ? Object.values(status).filter(Boolean).length : 0;
 
     return (
         <div className="space-y-8">
@@ -160,11 +149,16 @@ export function AdminAiPage() {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <span className="font-medium text-sm">{details.name}</span>
-                                                <Badge variant={isConfigured ? 'default' : 'secondary'} className="text-[10px]">
+                                                <Badge
+                                                    variant={isConfigured ? 'default' : 'secondary'}
+                                                    className="text-[10px]"
+                                                >
                                                     {isConfigured ? 'Configured' : 'Not configured'}
                                                 </Badge>
                                             </div>
-                                            <p className="text-xs text-muted-foreground mt-0.5">{details.description}</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                {details.description}
+                                            </p>
                                         </div>
                                         <a
                                             href={details.docsUrl}
@@ -191,9 +185,7 @@ export function AdminAiPage() {
                         <ShieldCheck className="w-5 h-5" />
                         Available Models
                     </CardTitle>
-                    <CardDescription>
-                        Models available for each configured provider.
-                    </CardDescription>
+                    <CardDescription>Models available for each configured provider.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {modelsQuery.isLoading ? (
@@ -207,13 +199,14 @@ export function AdminAiPage() {
                             {Object.entries(models.models).map(([providerKey, providerModels]) => {
                                 const providerName =
                                     models.providers.find((p) => p.key === providerKey)?.name || providerKey;
-                                const isConfigured = status?.[
-                                    providerKey === 'workers-ai'
-                                        ? 'workersAI'
-                                        : providerKey === 'google-ai-studio'
-                                          ? 'googleAI'
-                                          : (providerKey as keyof AIStatus)
-                                ] ?? false;
+                                const isConfigured =
+                                    status?.[
+                                        providerKey === 'workers-ai'
+                                            ? 'workersAI'
+                                            : providerKey === 'google-ai-studio'
+                                              ? 'googleAI'
+                                              : (providerKey as keyof AIStatus)
+                                    ] ?? false;
 
                                 return (
                                     <div key={providerKey}>
@@ -233,7 +226,10 @@ export function AdminAiPage() {
                                                     className="flex items-center justify-between p-2 rounded border border-border text-sm"
                                                 >
                                                     <span className="font-mono text-xs truncate">{m.name}</span>
-                                                    <Badge variant="secondary" className="text-[10px] ml-2 flex-shrink-0">
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="text-[10px] ml-2 flex-shrink-0"
+                                                    >
                                                         {m.context}
                                                     </Badge>
                                                 </div>
@@ -263,7 +259,7 @@ export function AdminAiPage() {
                                 AI Chat
                             </Button>
                         </Link>
-                        <Link to="/demo/cloudflare/ai">
+                        <Link to="/demo" className="gap-2">
                             <Button variant="outline" size="sm" className="gap-2">
                                 <Bot className="w-4 h-4" />
                                 AI Demo

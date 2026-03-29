@@ -31,8 +31,8 @@ export class AiMessage extends BaseModel {
     };
 
     static writable = {
-        create: ['conversationId', 'role', 'content', 'model', 'provider', 'usage'] as const,
-        update: [] as const,
+        create: ['conversationId', 'role', 'content', 'model', 'provider', 'usage'],
+        update: [],
     };
 
     protected static fields: ModelFields = {

@@ -108,16 +108,16 @@ const DEFAULT_MODEL = '@cf/meta/llama-3.1-8b-instruct';
 // ============================================================
 
 async function fetchConversations(): Promise<Conversation[]> {
-    const data = await api('/api/ai/conversations');
+    const data = (await api('/api/ai/conversations')) as { conversations: Conversation[] };
     return data.conversations;
 }
 
 async function fetchConversation(id: string): Promise<{ conversation: Conversation; messages: Message[] }> {
-    return api(`/api/ai/conversations/${id}`);
+    return api(`/api/ai/conversations/${id}`) as Promise<{ conversation: Conversation; messages: Message[] }>;
 }
 
 async function fetchModels(): Promise<ModelsResponse> {
-    return api('/api/ai/models');
+    return api('/api/ai/models') as Promise<ModelsResponse>;
 }
 
 // ============================================================
@@ -470,7 +470,7 @@ export function AiChatPage() {
     // Send message mutation
     const sendMessageMutation = useMutation({
         mutationFn: async (messageText: string) => {
-            return api('/api/ai/chat', {
+            const result = await api('/api/ai/chat', {
                 method: 'POST',
                 body: JSON.stringify({
                     conversationId: activeConversationId,
@@ -480,6 +480,7 @@ export function AiChatPage() {
                     systemPrompt: systemPrompt || undefined,
                 }),
             });
+            return result as { conversationId: string; message: Message; provider: string; model: string };
         },
         onSuccess: (data) => {
             // Add assistant message to local state
@@ -671,11 +672,7 @@ export function AiChatPage() {
                     ) : (
                         <div className="max-w-3xl mx-auto py-4">
                             {messages.map((msg, idx) => (
-                                <MessageBubble
-                                    key={msg.id}
-                                    message={msg}
-                                    isLast={idx === messages.length - 1}
-                                />
+                                <MessageBubble key={msg.id} message={msg} isLast={idx === messages.length - 1} />
                             ))}
                             {sendMessageMutation.isPending && <TypingIndicator />}
                             <div ref={messagesEndRef} />

@@ -58,7 +58,7 @@ export async function handleAiConversationsList(context: ApiRouteContext): Promi
     if (!userId) return errorResponse('Authentication required', 401, { code: 'AUTH_REQUIRED' });
 
     const conversations = await AiConversation.forUser(userId);
-    return jsonResponse({ conversations: conversations.map((c) => c.toJSON()) });
+    return jsonResponse({ conversations: conversations.map((c) => c.toJson()) });
 }
 
 /**
@@ -83,16 +83,13 @@ export async function handleAiConversationCreate(context: ApiRouteContext): Prom
         userId,
     });
 
-    return jsonResponse({ conversation: conversation.toJSON() }, 201);
+    return jsonResponse({ conversation: conversation.toJson() }, 201);
 }
 
 /**
  * GET /api/ai/conversations/:id — Get conversation with messages
  */
-export async function handleAiConversationDetail(
-    context: ApiRouteContext,
-    conversationId: string,
-): Promise<Response> {
+export async function handleAiConversationDetail(context: ApiRouteContext, conversationId: string): Promise<Response> {
     const userId = await getAuthUserId(context);
     if (!userId) return errorResponse('Authentication required', 401, { code: 'AUTH_REQUIRED' });
 
@@ -104,18 +101,15 @@ export async function handleAiConversationDetail(
     const messages = await AiMessage.forConversation(conversationId);
 
     return jsonResponse({
-        conversation: conversation.toJSON(),
-        messages: messages.map((m) => m.toJSON()),
+        conversation: conversation.toJson(),
+        messages: messages.map((m) => m.toJson()),
     });
 }
 
 /**
  * PATCH /api/ai/conversations/:id — Update conversation metadata
  */
-export async function handleAiConversationUpdate(
-    context: ApiRouteContext,
-    conversationId: string,
-): Promise<Response> {
+export async function handleAiConversationUpdate(context: ApiRouteContext, conversationId: string): Promise<Response> {
     const userId = await getAuthUserId(context);
     if (!userId) return errorResponse('Authentication required', 401, { code: 'AUTH_REQUIRED' });
 
@@ -137,16 +131,13 @@ export async function handleAiConversationUpdate(
     if (body.systemPrompt !== undefined) conversation.set('systemPrompt', body.systemPrompt);
 
     await conversation.save();
-    return jsonResponse({ conversation: conversation.toJSON() });
+    return jsonResponse({ conversation: conversation.toJson() });
 }
 
 /**
  * DELETE /api/ai/conversations/:id — Delete conversation and its messages
  */
-export async function handleAiConversationDelete(
-    context: ApiRouteContext,
-    conversationId: string,
-): Promise<Response> {
+export async function handleAiConversationDelete(context: ApiRouteContext, conversationId: string): Promise<Response> {
     const userId = await getAuthUserId(context);
     if (!userId) return errorResponse('Authentication required', 401, { code: 'AUTH_REQUIRED' });
 
@@ -158,10 +149,10 @@ export async function handleAiConversationDelete(
     // Delete all messages in the conversation first
     const messages = await AiMessage.forConversation(conversationId);
     for (const message of messages) {
-        await message.delete();
+        await message.destroy();
     }
 
-    await conversation.delete();
+    await conversation.destroy();
     return jsonResponse({ success: true });
 }
 
@@ -247,7 +238,7 @@ export async function handleAiChatMessage(context: ApiRouteContext): Promise<Res
 
     // Call AI based on provider
     let responseText = '';
-    let responseUsage: Record<string, number> | undefined;
+    let responseUsage: unknown;
     const actualProvider = provider;
     const actualModel = model;
 
@@ -301,7 +292,7 @@ export async function handleAiChatMessage(context: ApiRouteContext): Promise<Res
 
     return jsonResponse({
         conversationId,
-        message: assistantMessage.toJSON(),
+        message: assistantMessage.toJson(),
         provider: actualProvider,
         model: actualModel,
         usage: responseUsage,
