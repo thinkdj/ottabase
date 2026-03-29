@@ -7,6 +7,7 @@ import { ShadcnProviders } from '@ottabase/ui-shadcn';
 import { ThemeProvider } from 'next-themes';
 import { useEffect } from 'react';
 import { THEME_STORAGE_KEY } from '../components/ThemePresetSwitcher';
+import { HomepageConfigProvider } from '../lib/homepage-config-context';
 
 export function Providers({
     children,
@@ -69,7 +70,7 @@ export function Providers({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <BrandProvider initialConfig={initialBrandConfig}>
                 <ShadcnProviders enableThemeProvider={false} enableToaster>
-                    {children}
+                    <HomepageConfigProvider>{children}</HomepageConfigProvider>
                 </ShadcnProviders>
             </BrandProvider>
         </ThemeProvider>
