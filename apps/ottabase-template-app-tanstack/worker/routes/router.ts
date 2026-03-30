@@ -50,6 +50,7 @@ import {
 } from './auth';
 import {
     handleBlogCategoryBySlug,
+    handleBlogPageBySlug,
     handleBlogPostBySlug,
     handleBlogPostUnlock,
     handleBlogPostsList,
@@ -63,6 +64,7 @@ import {
     handleBlogStudioPluginEnable,
     handleBlogStudioState,
     handleBlogTagBySlug,
+    handleExposedPages,
 } from './blog';
 import { handleChangelogEntriesList, handleChangelogEntryBySlug } from './changelog';
 import { handleBrandApi } from './brand';
@@ -218,6 +220,15 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         }
         if (route === '/api/blog/posts') {
             return handleBlogPostsList(context);
+        }
+        // Pages endpoints (before posts by-slug to avoid path collision)
+        if (route === '/api/blog/pages/exposed') {
+            return handleExposedPages(context);
+        }
+        const pageBySlugMatch = route.match(/^\/api\/blog\/pages\/by-slug\/([^/]+)$/);
+        if (pageBySlugMatch) {
+            const slug = decodeURIComponent(pageBySlugMatch[1]);
+            return handleBlogPageBySlug(context, slug);
         }
         const blogRelatedMatch = route.match(/^\/api\/blog\/posts\/([^/]+)\/related$/);
         if (blogRelatedMatch) {

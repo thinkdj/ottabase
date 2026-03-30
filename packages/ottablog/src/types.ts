@@ -6,7 +6,7 @@
 /**
  * Content type determines the purpose and display style of the content
  */
-export type ContentType = 'blog' | 'changelog' | 'docs' | 'news' | 'announcement';
+export type ContentType = 'blog' | 'changelog' | 'docs' | 'news' | 'announcement' | 'page';
 
 /**
  * Publication status of the content
@@ -121,7 +121,17 @@ export const CONTENT_TYPES: Record<ContentType, { label: string; description: st
         label: 'Announcement',
         description: 'Important announcements and notices',
     },
+    page: {
+        label: 'Page',
+        description: 'Static/marketing page managed via CMS',
+    },
 };
+
+/**
+ * Content types included in public blog feeds (list, RSS, sitemap).
+ * Excludes 'changelog' (separate product surface) and 'page' (marketing-only, not "blog articles").
+ */
+export const BLOG_FEED_CONTENT_TYPES: ContentType[] = ['blog', 'docs', 'news', 'announcement'];
 
 /**
  * All post statuses with their labels

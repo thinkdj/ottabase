@@ -107,6 +107,7 @@ interface BlogPost {
     allowComments: boolean;
     isProtected?: boolean;
     passwordHint?: string | null;
+    exposeToHomepage?: boolean;
     publishedAt: string | null;
     maxVersionsToKeep: number | null;
     wordCount: number | null;
@@ -239,6 +240,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     const [isFeatured, setIsFeatured] = useState(initialData?.isFeatured || false);
     const [allowComments, setAllowComments] = useState(initialData?.allowComments ?? true);
     const [isProtected, setIsProtected] = useState(initialData?.isProtected ?? false);
+    const [exposeToHomepage, setExposeToHomepage] = useState(initialData?.exposeToHomepage ?? false);
     const [passwordHint, setPasswordHint] = useState(initialData?.passwordHint ?? '');
     const [password, setPassword] = useState(''); // transient: only sent when setting/changing
     const [publishedAt, setPublishedAt] = useState(
@@ -483,6 +485,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
             isFeatured === initialData.isFeatured &&
             allowComments === initialData.allowComments &&
             isProtected === (initialData.isProtected ?? false) &&
+            exposeToHomepage === (initialData.exposeToHomepage ?? false) &&
             (passwordHint ?? '') === (initialData.passwordHint ?? '') &&
             !password &&
             (publishedAt || '') ===
@@ -519,6 +522,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
         authorName,
         isFeatured,
         allowComments,
+        exposeToHomepage,
         publishedAt,
         seriesId,
         seriesOrder,
@@ -881,6 +885,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                 isFeatured,
                 allowComments,
                 isProtected,
+                exposeToHomepage: contentType === 'page' ? exposeToHomepage : false,
                 passwordHint: passwordHint || undefined,
                 ...(isProtected && password.trim() ? { password: password.trim() } : {}),
                 publishedAt: publishNow && !publishedAt ? Date.now() : publishedAt || undefined,
@@ -1350,7 +1355,12 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                     id="contentType"
                                     aria-label="Content type"
                                     value={contentType}
-                                    onChange={(e) => setContentType(e.target.value as ContentType)}
+                                    onChange={(e) => {
+                                        const next = e.target.value as ContentType;
+                                        setContentType(next);
+                                        // Clear exposeToHomepage when switching away from 'page'
+                                        if (next !== 'page') setExposeToHomepage(false);
+                                    }}
                                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 >
                                     {Object.entries(CONTENT_TYPES).map(([value, { label }]) => (
@@ -1408,6 +1418,20 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                     />
                                     <Label htmlFor="isFeatured">Featured Post</Label>
                                 </div>
+
+                                {contentType === 'page' && (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="exposeToHomepage"
+                                            aria-label="Expose to homepage navbar"
+                                            checked={exposeToHomepage}
+                                            onChange={(e) => setExposeToHomepage(e.target.checked)}
+                                            className="rounded"
+                                        />
+                                        <Label htmlFor="exposeToHomepage">Expose to Homepage Navbar</Label>
+                                    </div>
+                                )}
 
                                 <div className="flex items-center gap-2">
                                     <input
