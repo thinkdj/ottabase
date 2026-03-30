@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * Floating config panel — FAB button at bottom-right that opens a slide-out
- * panel with theme presets and slot variant selectors.
+ * Floating config panel — sleek pull-out tab on right edge that opens a
+ * non-blocking slide-out panel with theme presets and slot variant selectors.
  *
  * Visibility is controlled by:
  *   - `NEXT_PUBLIC_SHOW_CONFIG_PANEL=true` env var (for prod demos), OR
  *   - Defaults to visible when `NODE_ENV !== 'production'`
  */
 
-import { RotateCcw, Settings, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useHomepageConfig } from '../lib/homepage-config-context';
 import { SLOT_NAMES, SLOT_REGISTRY } from '../lib/homepage-config';
@@ -35,27 +35,25 @@ export function ConfigPanel() {
         setVisible(shouldShowPanel());
     }, []);
 
+    // Close on Escape key
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setOpen(false);
+        };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, [open]);
+
     const toggle = useCallback(() => setOpen((prev) => !prev), []);
 
     if (!visible) return null;
 
     return (
         <>
-            {/* Backdrop — non-blocking: click to close */}
-            {open && (
-                <div
-                    className="fixed inset-0 z-[90] bg-black/20 backdrop-blur-[2px] transition-opacity"
-                    onClick={() => setOpen(false)}
-                    onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
-                    role="button"
-                    tabIndex={-1}
-                    aria-label="Close config panel"
-                />
-            )}
-
-            {/* Slide-out panel */}
+            {/* Slide-out panel — no backdrop, non-blocking */}
             <div
-                className={`fixed right-0 top-0 z-[100] flex h-full w-80 max-w-[85vw] flex-col border-l border-border bg-background shadow-xl transition-transform duration-300 ease-in-out ${
+                className={`fixed right-0 top-0 z-[100] flex h-full w-80 max-w-[85vw] flex-col border-l border-border bg-background/95 backdrop-blur-sm shadow-xl transition-transform duration-300 ease-in-out ${
                     open ? 'translate-x-0' : 'translate-x-full'
                 }`}
             >
@@ -105,17 +103,18 @@ export function ConfigPanel() {
                 </div>
             </div>
 
-            {/* FAB */}
+            {/* Sleek pull-out tab — right edge, vertically centered */}
             <button
                 type="button"
                 onClick={toggle}
-                className={`fixed bottom-5 right-5 z-[110] inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-105 hover:shadow-xl active:scale-95 ${
-                    open ? 'rotate-90' : ''
+                className={`fixed right-0 top-1/2 z-[110] -translate-y-1/2 inline-flex h-12 w-6 items-center justify-center rounded-l-md border border-r-0 border-border bg-background/90 text-muted-foreground shadow-md backdrop-blur-sm transition-all hover:w-8 hover:bg-accent hover:text-foreground hover:shadow-lg ${
+                    open ? 'right-80 max-[85vw]:right-[85vw]' : ''
                 }`}
                 aria-label="Toggle config panel"
-                title="Open configurator"
+                title={open ? 'Close configurator' : 'Open configurator'}
+                style={open ? { right: 'min(20rem, 85vw)' } : undefined}
             >
-                <Settings className="h-5 w-5" />
+                {open ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
         </>
     );

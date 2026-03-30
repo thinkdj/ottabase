@@ -52,10 +52,16 @@ export function AboutDefault({ title, description, githubUrl = DEFAULT_GITHUB_UR
                     <ol className="list-decimal list-inside space-y-2 text-muted-foreground mt-4">
                         <li>Clone the repository</li>
                         <li>
-                            Install dependencies with <code className="bg-muted px-2 py-1 rounded">pnpm install</code>
+                            Install dependencies with{' '}
+                            <code className="bg-muted text-foreground px-2 py-0.5 rounded text-sm font-mono">
+                                pnpm install
+                            </code>
                         </li>
                         <li>
-                            Run the dev server with <code className="bg-muted px-2 py-1 rounded">pnpm dev</code>
+                            Run the dev server with{' '}
+                            <code className="bg-muted text-foreground px-2 py-0.5 rounded text-sm font-mono">
+                                pnpm dev
+                            </code>
                         </li>
                         <li>Customize the homepage and brand configuration</li>
                         <li>Build and deploy to Cloudflare Workers</li>
@@ -65,16 +71,19 @@ export function AboutDefault({ title, description, githubUrl = DEFAULT_GITHUB_UR
                     <p className="text-muted-foreground leading-relaxed">
                         The template includes Brand Engine integration, allowing you to easily customize colors,
                         typography, and theming. Edit{' '}
-                        <code className="bg-muted px-2 py-1 rounded">config/brand.config.ts</code> to configure your
-                        brand settings. Choose from 8 built-in theme presets or create your own custom theme.
+                        <code className="bg-muted text-foreground px-2 py-0.5 rounded text-sm font-mono">
+                            config/brand.config.ts
+                        </code>{' '}
+                        to configure your brand settings. Choose from 8 built-in theme presets or create your own custom
+                        theme.
                     </p>
 
                     <h2 className="text-2xl font-semibold mb-4 mt-8">Deployment</h2>
                     <p className="text-muted-foreground leading-relaxed">
                         Deploy to Cloudflare Workers with a single command:
                     </p>
-                    <pre className="bg-muted p-4 rounded mt-4 overflow-x-auto">
-                        <code>pnpm deploy</code>
+                    <pre className="bg-muted text-foreground p-4 rounded-lg mt-4 overflow-x-auto border border-border">
+                        <code className="text-sm font-mono">pnpm deploy</code>
                     </pre>
                     <p className="text-muted-foreground leading-relaxed mt-4">
                         Make sure you have configured your Cloudflare credentials before deploying.
