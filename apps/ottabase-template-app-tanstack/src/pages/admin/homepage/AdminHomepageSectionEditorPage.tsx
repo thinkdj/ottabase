@@ -440,7 +440,8 @@ export function AdminHomepageSectionEditorPage() {
             githubUrl !== ((section?.githubUrl as string) ?? '') ||
             icon !== ((section?.icon as string) ?? '') ||
             cssClasses !== ((section?.cssClasses as string) ?? '') ||
-            metadataStr !== (section?.metadata ? JSON.stringify(section.metadata as Record<string, unknown>, null, 2) : ''));
+            metadataStr !==
+                (section?.metadata ? JSON.stringify(section.metadata as Record<string, unknown>, null, 2) : ''));
 
     const handleSaveSection = useCallback(async () => {
         if (!sectionId || !dirty) return;
@@ -694,9 +695,7 @@ export function AdminHomepageSectionEditorPage() {
                     <div className="flex items-center justify-between">
                         <div>
                             <CardTitle className="text-base">Features ({features.length})</CardTitle>
-                            <CardDescription>
-                                Feature items with icon, image, and link support.
-                            </CardDescription>
+                            <CardDescription>Feature items with icon, image, and link support.</CardDescription>
                         </div>
                         <Button
                             variant="outline"

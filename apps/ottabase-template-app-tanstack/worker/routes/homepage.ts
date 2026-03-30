@@ -123,7 +123,16 @@ export async function handleHomepageData(context: HomepageRouteContext): Promise
         }
 
         // Group by sectionId
-        const featuresBySectionId = new Map<string, Array<{ title: string; description: string; icon: string | null; imageUrl: string | null; href: string | null }>>();
+        const featuresBySectionId = new Map<
+            string,
+            Array<{
+                title: string;
+                description: string;
+                icon: string | null;
+                imageUrl: string | null;
+                href: string | null;
+            }>
+        >();
         for (const f of allFeatures) {
             const sid = f.get('sectionId') as string;
             if (!featuresBySectionId.has(sid)) featuresBySectionId.set(sid, []);
@@ -177,7 +186,14 @@ export async function handleHomepageData(context: HomepageRouteContext): Promise
     }
 
     // ── 2. Display settings ────────────────────────────────────────────
-    let display: PublicDisplay = { variantBySlot: null, themePreset: null, fallbackThemePresetId: null, customCss: null, seoTitle: null, seoDescription: null };
+    let display: PublicDisplay = {
+        variantBySlot: null,
+        themePreset: null,
+        fallbackThemePresetId: null,
+        customCss: null,
+        seoTitle: null,
+        seoDescription: null,
+    };
     try {
         const settings = await HomepageDisplaySettings.getOrCreateDefault(appId);
         display = {

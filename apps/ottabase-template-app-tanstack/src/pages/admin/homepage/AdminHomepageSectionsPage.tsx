@@ -387,8 +387,8 @@ export function AdminHomepageSectionsPage() {
                     <CardHeader className="pb-3">
                         <CardTitle className="text-base">Add Section</CardTitle>
                         <CardDescription>
-                            Create a section for a slot that doesn&apos;t have one yet. Each slot maps to a section on the
-                            homepage.
+                            Create a section for a slot that doesn&apos;t have one yet. Each slot maps to a section on
+                            the homepage.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -440,10 +440,7 @@ export function AdminHomepageSectionsPage() {
             {/* Section cards */}
             <TooltipProvider>
                 {sections.map((section, idx) => (
-                    <Card
-                        key={section.id}
-                        className={`transition-opacity ${!section.enabled ? 'opacity-60' : ''}`}
-                    >
+                    <Card key={section.id} className={`transition-opacity ${!section.enabled ? 'opacity-60' : ''}`}>
                         <CardHeader className="pb-3">
                             <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-start gap-3 min-w-0">
@@ -464,7 +461,9 @@ export function AdminHomepageSectionsPage() {
                                             </button>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            {section.enabled ? 'Click to hide this section' : 'Click to show this section'}
+                                            {section.enabled
+                                                ? 'Click to hide this section'
+                                                : 'Click to show this section'}
                                         </TooltipContent>
                                     </Tooltip>
                                     <div className="min-w-0">
@@ -477,9 +476,7 @@ export function AdminHomepageSectionsPage() {
                                                     {section.icon}
                                                 </Badge>
                                             )}
-                                            <CardTitle className="text-lg">
-                                                {section.title ?? '(untitled)'}
-                                            </CardTitle>
+                                            <CardTitle className="text-lg">{section.title ?? '(untitled)'}</CardTitle>
                                         </div>
                                         {section.subtitle && (
                                             <CardDescription className="mt-1">{section.subtitle}</CardDescription>
@@ -533,17 +530,21 @@ export function AdminHomepageSectionsPage() {
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {section.body && <p className="text-sm text-muted-foreground line-clamp-2">{section.body}</p>}
+                            {section.body && (
+                                <p className="text-sm text-muted-foreground line-clamp-2">{section.body}</p>
+                            )}
                             {section.cssClasses && (
-                                <p className="text-xs font-mono text-muted-foreground">
-                                    CSS: {section.cssClasses}
-                                </p>
+                                <p className="text-xs font-mono text-muted-foreground">CSS: {section.cssClasses}</p>
                             )}
 
                             {/* Collapsible children */}
                             <Collapsible>
                                 <CollapsibleTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs w-full justify-start">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 gap-1.5 text-xs w-full justify-start"
+                                    >
                                         <ChevronDown className="h-3 w-3" />
                                         Features &amp; Actions
                                     </Button>
@@ -566,8 +567,8 @@ export function AdminHomepageSectionsPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Section?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently remove the &quot;{deleteDialog?.slot}&quot; section and all its features and
-                            actions. This cannot be undone.
+                            This will permanently remove the &quot;{deleteDialog?.slot}&quot; section and all its
+                            features and actions. This cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

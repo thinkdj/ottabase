@@ -30,8 +30,25 @@ export class HomepageDisplaySettings extends BaseModel {
     };
 
     static writable = {
-        create: ['id', 'variantBySlotJson', 'themePreset', 'fallbackThemePresetId', 'customCss', 'seoTitle', 'seoDescription', 'appId'],
-        update: ['variantBySlotJson', 'themePreset', 'fallbackThemePresetId', 'customCss', 'seoTitle', 'seoDescription', 'appId'],
+        create: [
+            'id',
+            'variantBySlotJson',
+            'themePreset',
+            'fallbackThemePresetId',
+            'customCss',
+            'seoTitle',
+            'seoDescription',
+            'appId',
+        ],
+        update: [
+            'variantBySlotJson',
+            'themePreset',
+            'fallbackThemePresetId',
+            'customCss',
+            'seoTitle',
+            'seoDescription',
+            'appId',
+        ],
     };
 
     protected static defaults = {

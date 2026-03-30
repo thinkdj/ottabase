@@ -6,16 +6,7 @@
  */
 import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { createModelHooks } from '@ottabase/ottaorm/client';
-import {
-    Badge,
-    Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-    Switch,
-} from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Switch } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { Edit, ExternalLink, Eye, EyeOff, FileText, Globe, Plus } from 'lucide-react';
 import { HomepageAdminNav } from './HomepageAdminNav';
@@ -111,7 +102,8 @@ export function AdminHomepagePagesPage() {
                     <CardHeader className="pb-3">
                         <CardTitle className="text-base">All Pages</CardTitle>
                         <CardDescription>
-                            Toggle &quot;Expose to Homepage&quot; to add pages to the navbar. Pages must be published to appear.
+                            Toggle &quot;Expose to Homepage&quot; to add pages to the navbar. Pages must be published to
+                            appear.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -181,10 +173,10 @@ export function AdminHomepagePagesPage() {
                         <div className="text-sm text-muted-foreground">
                             <p className="font-medium text-foreground">How pages work</p>
                             <p className="mt-1">
-                                Pages are CMS content with type &quot;Page&quot; created in the Blog Editor.
-                                When exposed to the homepage, they appear as links in the navigation bar.
-                                Each page renders at <code className="text-xs bg-muted px-1 py-0.5 rounded">/page/slug</code> on
-                                the Next.js homepage.
+                                Pages are CMS content with type &quot;Page&quot; created in the Blog Editor. When
+                                exposed to the homepage, they appear as links in the navigation bar. Each page renders
+                                at <code className="text-xs bg-muted px-1 py-0.5 rounded">/page/slug</code> on the
+                                Next.js homepage.
                             </p>
                         </div>
                     </div>

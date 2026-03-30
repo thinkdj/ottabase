@@ -401,16 +401,63 @@ describe('Homepage API types', () => {
                     subtitle: 'Sub',
                     body: null,
                     githubUrl: null,
+                    icon: null,
+                    enabled: true,
+                    cssClasses: null,
+                    metadata: null,
                     sortOrder: 0,
-                    features: [],
-                    actions: [{ label: 'Go', href: '/go', variant: 'default', external: false }],
+                    features: [{ title: 'Fast', description: 'Very fast', icon: 'Zap', imageUrl: null, href: null }],
+                    actions: [{ label: 'Go', href: '/go', variant: 'default', icon: null, external: false }],
                 },
             ],
-            display: { variantBySlot: { hero: 'centered' }, themePreset: 'neo', fallbackThemePresetId: null },
+            display: {
+                variantBySlot: { hero: 'centered' },
+                themePreset: 'neo',
+                fallbackThemePresetId: null,
+                customCss: null,
+                seoTitle: null,
+                seoDescription: null,
+            },
             exposedPages: [{ slug: 'about', title: 'About' }],
         };
         expect(payload.sections).toHaveLength(1);
+        expect(payload.sections[0].enabled).toBe(true);
+        expect(payload.sections[0].features[0].icon).toBe('Zap');
         expect(payload.display.themePreset).toBe('neo');
         expect(payload.exposedPages[0].slug).toBe('about');
+    });
+
+    it('HomepageSectionPayload supports all configurable fields', async () => {
+        const api = await import('../lib/api');
+        const section: api.HomepageSectionPayload = {
+            id: '2',
+            slot: 'features',
+            title: 'Features',
+            subtitle: 'What we offer',
+            body: 'Detailed description',
+            githubUrl: 'https://github.com/test',
+            icon: 'Sparkles',
+            enabled: false,
+            cssClasses: 'bg-gradient-to-r from-blue-500',
+            metadata: { custom: 'value', count: 42 },
+            sortOrder: 1,
+            features: [
+                {
+                    title: 'Feature 1',
+                    description: 'Desc 1',
+                    icon: 'Shield',
+                    imageUrl: 'https://img.test/1.png',
+                    href: '/features/1',
+                },
+            ],
+            actions: [{ label: 'Learn More', href: '/learn', variant: 'outline', icon: 'ArrowRight', external: false }],
+        };
+        expect(section.icon).toBe('Sparkles');
+        expect(section.enabled).toBe(false);
+        expect(section.cssClasses).toContain('bg-gradient');
+        expect(section.metadata).toHaveProperty('custom', 'value');
+        expect(section.features[0].icon).toBe('Shield');
+        expect(section.features[0].imageUrl).toBeTruthy();
+        expect(section.actions[0].icon).toBe('ArrowRight');
     });
 });

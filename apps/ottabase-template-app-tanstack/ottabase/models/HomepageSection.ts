@@ -28,8 +28,32 @@ export class HomepageSection extends BaseModel {
     };
 
     static writable = {
-        create: ['slot', 'title', 'subtitle', 'body', 'githubUrl', 'icon', 'enabled', 'cssClasses', 'metadata', 'sortOrder', 'appId'],
-        update: ['slot', 'title', 'subtitle', 'body', 'githubUrl', 'icon', 'enabled', 'cssClasses', 'metadata', 'sortOrder', 'appId'],
+        create: [
+            'slot',
+            'title',
+            'subtitle',
+            'body',
+            'githubUrl',
+            'icon',
+            'enabled',
+            'cssClasses',
+            'metadata',
+            'sortOrder',
+            'appId',
+        ],
+        update: [
+            'slot',
+            'title',
+            'subtitle',
+            'body',
+            'githubUrl',
+            'icon',
+            'enabled',
+            'cssClasses',
+            'metadata',
+            'sortOrder',
+            'appId',
+        ],
     };
 
     protected static defaults = {
