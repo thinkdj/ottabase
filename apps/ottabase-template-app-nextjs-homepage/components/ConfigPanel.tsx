@@ -9,12 +9,35 @@
  *   - Defaults to visible when `NODE_ENV !== 'production'`
  */
 
-import { ChevronLeft, ChevronRight, RotateCcw, X } from 'lucide-react';
+import {
+    ChevronLeft,
+    ChevronRight,
+    FileText,
+    Grid3X3,
+    Layout,
+    Megaphone,
+    Navigation,
+    Palette,
+    Rows3,
+    RotateCcw,
+    Sparkles,
+    X,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useHomepageConfig } from '../lib/homepage-config-context';
 import { SLOT_NAMES, SLOT_REGISTRY } from '../lib/homepage-config';
 import type { SlotName } from '../lib/homepage-config';
 import { ThemePresetSwitcher } from './ThemePresetSwitcher';
+
+/** Icons mapped to each slot for visual scannability in the config panel. */
+const SLOT_ICONS: Record<SlotName, React.ComponentType<{ className?: string }>> = {
+    navbar: Navigation,
+    hero: Sparkles,
+    features: Grid3X3,
+    cta: Megaphone,
+    footer: Rows3,
+    about: FileText,
+};
 
 /** Check if the config panel should be shown based on env vars. */
 function shouldShowPanel(): boolean {
@@ -59,7 +82,10 @@ export function ConfigPanel() {
             >
                 {/* Panel header */}
                 <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                    <h2 className="font-heading text-sm font-semibold text-foreground">Configurator</h2>
+                    <div className="flex items-center gap-2">
+                        <Layout className="h-4 w-4 text-primary" />
+                        <h2 className="font-heading text-sm font-semibold text-foreground">Configurator</h2>
+                    </div>
                     <div className="flex items-center gap-1">
                         <button
                             type="button"
@@ -85,9 +111,12 @@ export function ConfigPanel() {
                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
                     {/* Theme presets */}
                     <section>
-                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            Theme Preset
-                        </h3>
+                        <div className="mb-3 flex items-center gap-1.5">
+                            <Palette className="h-3.5 w-3.5 text-primary" />
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                Theme Preset
+                            </h3>
+                        </div>
                         <ThemePresetSwitcher />
                     </section>
 
@@ -103,11 +132,11 @@ export function ConfigPanel() {
                 </div>
             </div>
 
-            {/* Sleek pull-out tab — right edge, vertically centered */}
+            {/* Sleek pull-out tab — right edge, vertically centered, primary colour */}
             <button
                 type="button"
                 onClick={toggle}
-                className="fixed top-1/2 z-[110] -translate-y-1/2 inline-flex h-12 w-6 items-center justify-center rounded-l-md border border-r-0 border-border bg-background/90 text-muted-foreground shadow-md backdrop-blur-sm transition-all hover:w-8 hover:bg-accent hover:text-foreground hover:shadow-lg"
+                className="fixed top-1/2 z-[110] -translate-y-1/2 inline-flex h-14 w-6 items-center justify-center rounded-l-lg bg-primary text-primary-foreground shadow-lg transition-all hover:w-8 hover:shadow-xl"
                 style={{ right: open ? 'min(20rem, 85vw)' : 0 }}
                 aria-label="Toggle config panel"
                 title={open ? 'Close configurator' : 'Open configurator'}
@@ -130,10 +159,14 @@ function SlotSelector({
     onSelect: (variantId: string) => void;
 }) {
     const slot = SLOT_REGISTRY[slotName];
+    const Icon = SLOT_ICONS[slotName];
 
     return (
         <section>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{slot.label}</h3>
+            <div className="mb-2 flex items-center gap-1.5">
+                <Icon className="h-3.5 w-3.5 text-primary" />
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{slot.label}</h3>
+            </div>
             <div className="flex flex-wrap gap-1.5">
                 {slot.variants.map((variant) => {
                     const isActive = activeVariant === variant.id;
@@ -143,10 +176,10 @@ function SlotSelector({
                             type="button"
                             onClick={() => onSelect(variant.id)}
                             title={variant.description}
-                            className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-all ${
+                            className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${
                                 isActive
-                                    ? 'border-primary bg-primary/10 text-primary'
-                                    : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                                    ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                                    : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:bg-accent hover:text-foreground'
                             }`}
                         >
                             {variant.label}

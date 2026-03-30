@@ -117,20 +117,20 @@ export function ThemePresetSwitcher({ onSwitch }: ThemePresetSwitcherProps = {})
                         key={name}
                         type="button"
                         onClick={() => handleSelect(name)}
-                        className={`group relative flex items-center gap-2 rounded-lg border-2 px-2.5 py-2 text-xs transition-all ${
+                        className={`group relative flex flex-col items-center gap-1.5 rounded-lg border-2 px-2 py-2.5 text-xs transition-all ${
                             isActive
-                                ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                                : 'border-border bg-card hover:border-primary/40'
+                                ? 'border-primary bg-primary/5 shadow-sm'
+                                : 'border-border bg-card hover:border-primary/40 hover:shadow-sm'
                         }`}
                     >
-                        {/* Color swatches — compact row */}
-                        <div className="flex gap-0.5">
+                        {/* Color swatches — stacked circles */}
+                        <div className="flex gap-1">
                             {['primary', 'secondary', 'accent'].map((token) => {
                                 const hsl = presetColors?.[token];
                                 return (
                                     <span
                                         key={token}
-                                        className="h-4 w-4 rounded-full border border-border/60 shadow-sm"
+                                        className={`h-5 w-5 rounded-full shadow-sm ${isActive ? 'ring-1 ring-primary/30' : 'ring-1 ring-border/40'}`}
                                         style={{
                                             backgroundColor: hsl ? `hsl(${hsl})` : 'transparent',
                                         }}
@@ -139,7 +139,11 @@ export function ThemePresetSwitcher({ onSwitch }: ThemePresetSwitcherProps = {})
                             })}
                         </div>
                         {/* Preset name */}
-                        <span className="font-medium capitalize truncate">{name}</span>
+                        <span
+                            className={`font-medium capitalize truncate ${isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}
+                        >
+                            {name}
+                        </span>
                     </button>
                 );
             })}
