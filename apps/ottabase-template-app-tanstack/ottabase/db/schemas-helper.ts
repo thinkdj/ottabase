@@ -34,6 +34,10 @@ import {
 } from '@ottabase/ottaorm';
 import { getEnabledPackageTables } from '../config.migrations';
 import { changelogEntriesTable } from '../models/ChangelogEntry';
+import { homepageActionsTable } from '../models/HomepageAction';
+import { homepageDisplaySettingsTable } from '../models/HomepageDisplaySettings';
+import { homepageFeaturesTable } from '../models/HomepageFeature';
+import { homepageSectionsTable } from '../models/HomepageSection';
 import { todosTable } from '../models/Todo';
 
 /**
@@ -63,6 +67,10 @@ export function getAllSchemas() {
     const appTables = {
         changelogEntriesTable,
         todosTable,
+        homepageSectionsTable,
+        homepageFeaturesTable,
+        homepageActionsTable,
+        homepageDisplaySettingsTable,
     };
 
     // 3. Package schemas from enabled packages (ottablog, shortlinks, referrals, etc.)
@@ -105,6 +113,10 @@ export function getSchemaSummary() {
     const appTables = {
         changelogEntriesTable,
         todosTable,
+        homepageSectionsTable,
+        homepageFeaturesTable,
+        homepageActionsTable,
+        homepageDisplaySettingsTable,
     };
 
     const packageTables = getEnabledPackageTables();

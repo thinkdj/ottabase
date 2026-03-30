@@ -68,6 +68,7 @@ import {
 } from './blog';
 import { handleChangelogEntriesList, handleChangelogEntryBySlug } from './changelog';
 import { handleBrandApi } from './brand';
+import { handleHomepageData } from './homepage';
 import {
     handleAIChat,
     handleAIGatewayChat,
@@ -179,6 +180,11 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
     if (changelogBySlugMatch) {
         const slug = decodeURIComponent(changelogBySlugMatch[1]);
         return handleChangelogEntryBySlug(context, slug);
+    }
+
+    // Homepage public data (sections + display settings + exposed pages)
+    if (route === '/api/homepage/data') {
+        return handleHomepageData(context);
     }
 
     if (route === '/api/system/kill-switches') {

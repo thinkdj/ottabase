@@ -48,6 +48,38 @@ export interface ExposedPage {
     title: string;
 }
 
+/** Homepage section from the public API */
+export interface HomepageSectionPayload {
+    id: string;
+    slot: string;
+    title: string | null;
+    subtitle: string | null;
+    body: string | null;
+    githubUrl: string | null;
+    sortOrder: number;
+    features: Array<{ title: string; description: string }>;
+    actions: Array<{
+        label: string;
+        href: string;
+        variant: string | null;
+        external: boolean;
+    }>;
+}
+
+/** Homepage display settings from the public API */
+export interface HomepageDisplayPayload {
+    variantBySlot: Record<string, string> | null;
+    themePreset: string | null;
+    fallbackThemePresetId: string | null;
+}
+
+/** Full homepage data payload from GET /api/homepage/data */
+export interface HomepageDataPayload {
+    sections: HomepageSectionPayload[];
+    display: HomepageDisplayPayload;
+    exposedPages: ExposedPage[];
+}
+
 /**
  * Fetch a published page by slug from the worker API.
  * Returns null if not found or on error.
@@ -64,6 +96,34 @@ export async function fetchPageBySlug(slug: string): Promise<PageData | null> {
         return data as PageData;
     } catch {
         return null;
+    }
+}
+
+/**
+ * Fetch the full homepage data payload from the worker API.
+ * Includes sections (with features + actions), display settings, and exposed pages.
+ * Returns safe defaults on error so the homepage never hard-fails.
+ */
+export async function fetchHomepageData(): Promise<HomepageDataPayload> {
+    const fallback: HomepageDataPayload = {
+        sections: [],
+        display: { variantBySlot: null, themePreset: null, fallbackThemePresetId: null },
+        exposedPages: [],
+    };
+    if (!API_URL) return fallback;
+    try {
+        const res = await fetch(`${API_URL}/api/homepage/data`, {
+            next: { revalidate: 60 },
+        });
+        if (!res.ok) return fallback;
+        const data = await res.json();
+        return {
+            sections: Array.isArray(data.sections) ? data.sections : [],
+            display: data.display ?? fallback.display,
+            exposedPages: Array.isArray(data.exposedPages) ? data.exposedPages : [],
+        };
+    } catch {
+        return fallback;
     }
 }
 

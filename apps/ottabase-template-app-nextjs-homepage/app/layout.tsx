@@ -1,6 +1,6 @@
 import { buildCriticalCSS } from '@ottabase/brand-engine';
 import type { Metadata } from 'next';
-import { fetchExposedPages } from '../lib/api';
+import { fetchHomepageData } from '../lib/api';
 import { generateBrandConfig } from '../lib/brand-server';
 import './globals.css';
 import { LayoutShell } from './layout-shell';
@@ -23,8 +23,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     // Generate critical CSS for SSR (prevents FOUC)
     const criticalCSS = buildCriticalCSS(theme);
 
-    // Fetch exposed CMS pages for navbar
-    const exposedPages = await fetchExposedPages();
+    // Fetch full homepage data (sections, display settings, exposed pages) from the worker API
+    const homepageData = await fetchHomepageData();
 
     return (
         <html lang="en" suppressHydrationWarning>
@@ -38,7 +38,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </head>
             <body className="flex min-h-screen flex-col bg-background text-foreground">
                 <Providers initialBrandConfig={brandConfig}>
-                    <LayoutShell exposedPages={exposedPages}>{children}</LayoutShell>
+                    <LayoutShell exposedPages={homepageData.exposedPages} homepageData={homepageData}>
+                        {children}
+                    </LayoutShell>
                 </Providers>
             </body>
         </html>
