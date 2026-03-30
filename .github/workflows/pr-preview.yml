@@ -613,7 +613,7 @@ jobs:
                     echo "🧹 Deleting preview worker: ${PREVIEW_NAME}"
                     # Use --name because previews are deployed with an explicit name override,
                     # not via a named wrangler environment. --env would target a different worker.
-                    pnpm exec wrangler delete --name "${PREVIEW_NAME}" || echo "⚠️ Delete failed or worker already absent: ${PREVIEW_NAME}"
+                    npx --yes wrangler@4 delete --name "${PREVIEW_NAME}" || echo "⚠️ Delete failed or worker already absent: ${PREVIEW_NAME}"
                     echo "   ${PREVIEW_URL}"
                   done
               env:
@@ -623,8 +623,10 @@ jobs:
 
             - name: Cleanup summary
               if: success()
-              run: echo "🧹 Preview worker cleanup complete for PR #${{ github.event.pull_request.number }}"
+              run: |
+                  echo "🧹 Preview worker cleanup complete for PR #${{ github.event.pull_request.number }}"
 
             - name: Cleanup failure summary
               if: failure()
-              run: echo "⚠️ One or more preview worker cleanups may have failed for PR #${{ github.event.pull_request.number }}"
+              run: |
+                  echo "⚠️ One or more preview worker cleanups may have failed for PR #${{ github.event.pull_request.number }}"
