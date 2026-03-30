@@ -31,25 +31,13 @@ import {
     CardTitle,
     Input,
     Label,
-    Separator,
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { Edit, ExternalLink, GripVertical, Layout, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { HomepageAdminNav } from './HomepageAdminNav';
-
-/** All homepage slot names — matches SLOT_NAMES on the Next.js side. */
-const SLOT_NAMES = ['navbar', 'hero', 'features', 'cta', 'footer', 'about'] as const;
-
-const SLOT_LABELS: Record<string, string> = {
-    navbar: 'Navigation Bar',
-    hero: 'Hero Section',
-    features: 'Features Section',
-    cta: 'Call-to-Action',
-    footer: 'Footer',
-    about: 'About Page',
-};
+import { ACTION_VARIANTS, SLOT_LABELS, SLOT_NAMES } from './homepage-constants';
 
 // ── Inline mini-editors ─────────────────────────────────────────────────────
 
@@ -235,10 +223,11 @@ function SectionActions({ sectionId }: { sectionId: string }) {
                             className="h-8 rounded-md border border-input bg-background px-2 text-xs"
                             aria-label="Button variant"
                         >
-                            <option value="default">Default</option>
-                            <option value="secondary">Secondary</option>
-                            <option value="outline">Outline</option>
-                            <option value="ghost">Ghost</option>
+                            {ACTION_VARIANTS.map((v) => (
+                                <option key={v.value} value={v.value}>
+                                    {v.label}
+                                </option>
+                            ))}
                         </select>
                     </div>
                     <div className="flex gap-2">

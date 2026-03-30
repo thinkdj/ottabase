@@ -32,30 +32,14 @@ import {
     CardTitle,
     Input,
     Label,
-    Separator,
     Switch,
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { ArrowLeft, ExternalLink, GripVertical, Plus, Save, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { HomepageAdminNav } from './HomepageAdminNav';
-
-const SLOT_LABELS: Record<string, string> = {
-    navbar: 'Navigation Bar',
-    hero: 'Hero Section',
-    features: 'Features Section',
-    cta: 'Call-to-Action',
-    footer: 'Footer',
-    about: 'About Page',
-};
-
-const ACTION_VARIANTS = [
-    { value: 'default', label: 'Default' },
-    { value: 'secondary', label: 'Secondary' },
-    { value: 'outline', label: 'Outline' },
-    { value: 'ghost', label: 'Ghost' },
-] as const;
+import { ACTION_VARIANTS, SLOT_LABELS } from './homepage-constants';
 
 // ── Feature row editor ──────────────────────────────────────────────────────
 
@@ -112,6 +96,11 @@ function ActionEditor({ action, onDelete }: { action: HomepageActionRow; onDelet
     const [href, setHref] = useState(action.href);
     const [variant, setVariant] = useState(action.variant ?? 'default');
     const [external, setExternal] = useState(action.external);
+
+    // Track previous values for useEffect-based auto-save
+    const prevVariantRef = useRef(variant);
+    const prevExternalRef = useRef(external);
+
     const dirty =
         label !== action.label ||
         href !== action.href ||
@@ -125,6 +114,26 @@ function ActionEditor({ action, onDelete }: { action: HomepageActionRow; onDelet
             data: { label, href, variant, external },
         });
     }, [dirty, action.id, label, href, variant, external, updateAction]);
+
+    // Auto-save when variant or external toggle changes (replaces setTimeout)
+    useEffect(() => {
+        if (variant !== prevVariantRef.current || external !== prevExternalRef.current) {
+            prevVariantRef.current = variant;
+            prevExternalRef.current = external;
+            // Compute dirty inline since the callback may have stale closure
+            const isDirty =
+                label !== action.label ||
+                href !== action.href ||
+                variant !== (action.variant ?? 'default') ||
+                external !== action.external;
+            if (isDirty) {
+                updateAction.mutate({
+                    id: action.id,
+                    data: { label, href, variant, external },
+                });
+            }
+        }
+    }, [variant, external]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <div className="flex items-start gap-2 rounded-lg border p-3">
@@ -151,11 +160,7 @@ function ActionEditor({ action, onDelete }: { action: HomepageActionRow; onDelet
                         <Label className="text-xs">Style:</Label>
                         <select
                             value={variant}
-                            onChange={(e) => {
-                                setVariant(e.target.value);
-                                // Trigger save after state update
-                                setTimeout(() => handleSave(), 0);
-                            }}
+                            onChange={(e) => setVariant(e.target.value)}
                             className="h-7 rounded-md border border-input bg-background px-2 text-xs"
                             aria-label="Button style variant"
                         >
@@ -167,14 +172,7 @@ function ActionEditor({ action, onDelete }: { action: HomepageActionRow; onDelet
                         </select>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Switch
-                            id={`external-${action.id}`}
-                            checked={external}
-                            onCheckedChange={(checked) => {
-                                setExternal(checked);
-                                setTimeout(() => handleSave(), 0);
-                            }}
-                        />
+                        <Switch id={`external-${action.id}`} checked={external} onCheckedChange={setExternal} />
                         <Label htmlFor={`external-${action.id}`} className="text-xs">
                             External
                         </Label>

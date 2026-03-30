@@ -24,75 +24,7 @@ import {
 import { Check, Monitor, Save } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { HomepageAdminNav } from './HomepageAdminNav';
-
-/** Matches SLOT_NAMES + SLOT_REGISTRY from the Next.js homepage-config. */
-const SLOT_CONFIG = {
-    navbar: {
-        label: 'Navigation Bar',
-        variants: [
-            { id: 'default', label: 'Default', desc: 'Logo left, links right, mobile hamburger.' },
-            { id: 'centered', label: 'Centered', desc: 'Logo and links centered.' },
-            { id: 'minimal', label: 'Minimal', desc: 'Logo and dark-mode toggle only.' },
-        ],
-        default: 'default',
-    },
-    hero: {
-        label: 'Hero Section',
-        variants: [
-            { id: 'centered', label: 'Centered', desc: 'Large centered headline with buttons.' },
-            { id: 'split', label: 'Split', desc: 'Text left, visual right.' },
-            { id: 'minimal', label: 'Minimal', desc: 'Compact headline.' },
-        ],
-        default: 'centered',
-    },
-    features: {
-        label: 'Features Section',
-        variants: [
-            { id: 'grid', label: 'Grid', desc: 'Two-column bordered list.' },
-            { id: 'cards', label: 'Cards', desc: 'Card layout with hover effects.' },
-            { id: 'list', label: 'List', desc: 'Vertical stacked list.' },
-        ],
-        default: 'grid',
-    },
-    cta: {
-        label: 'Call-to-Action',
-        variants: [
-            { id: 'default', label: 'Default', desc: 'Centered text with buttons.' },
-            { id: 'banner', label: 'Banner', desc: 'Full-width colored banner.' },
-            { id: 'minimal', label: 'Minimal', desc: 'Compact inline CTA.' },
-        ],
-        default: 'default',
-    },
-    footer: {
-        label: 'Footer',
-        variants: [
-            { id: 'default', label: 'Default', desc: 'Copyright and links row.' },
-            { id: 'minimal', label: 'Minimal', desc: 'Single-line copyright.' },
-            { id: 'columns', label: 'Columns', desc: 'Multi-column grouped links.' },
-        ],
-        default: 'default',
-    },
-    about: {
-        label: 'About Page',
-        variants: [
-            { id: 'default', label: 'Default', desc: 'Full content with features, steps, CTA.' },
-            { id: 'minimal', label: 'Minimal', desc: 'Concise single-section.' },
-            { id: 'detailed', label: 'Detailed', desc: 'Card-based with tech-stack badges.' },
-        ],
-        default: 'default',
-    },
-} as const;
-
-type SlotName = keyof typeof SLOT_CONFIG;
-const SLOT_NAMES = Object.keys(SLOT_CONFIG) as SlotName[];
-
-function getDefaults(): Record<string, string> {
-    const d: Record<string, string> = {};
-    for (const [k, v] of Object.entries(SLOT_CONFIG)) {
-        d[k] = v.default;
-    }
-    return d;
-}
+import { getDefaultVariantBySlot, SLOT_CONFIG, SLOT_NAMES, type SlotName } from './homepage-constants';
 
 export function AdminHomepageDisplayPage() {
     const { data, isLoading } = homepageDisplaySettingsHooks.useList({}, ADMIN_LIST_QUERY_CONFIG);
@@ -103,14 +35,14 @@ export function AdminHomepageDisplayPage() {
     const rows = (Array.isArray(data) ? data : []) as HomepageDisplaySettingsRow[];
     const existing = rows.find((r) => r.id === 'default') ?? null;
 
-    const [variantBySlot, setVariantBySlot] = useState<Record<string, string>>(getDefaults());
+    const [variantBySlot, setVariantBySlot] = useState<Record<string, string>>(getDefaultVariantBySlot());
     const [themePreset, setThemePreset] = useState('default');
     const [initialized, setInitialized] = useState(false);
 
     // Populate from DB when data loads
     useEffect(() => {
         if (existing && !initialized) {
-            setVariantBySlot({ ...getDefaults(), ...(existing.variantBySlotJson ?? {}) });
+            setVariantBySlot({ ...getDefaultVariantBySlot(), ...(existing.variantBySlotJson ?? {}) });
             setThemePreset(existing.themePreset ?? 'default');
             setInitialized(true);
         } else if (!isLoading && !existing && !initialized) {
@@ -122,7 +54,7 @@ export function AdminHomepageDisplayPage() {
     const isDirty =
         initialized &&
         (JSON.stringify(variantBySlot) !==
-            JSON.stringify({ ...getDefaults(), ...(existing?.variantBySlotJson ?? {}) }) ||
+            JSON.stringify({ ...getDefaultVariantBySlot(), ...(existing?.variantBySlotJson ?? {}) }) ||
             themePreset !== (existing?.themePreset ?? 'default'));
 
     const handleSave = useCallback(async () => {
@@ -142,7 +74,7 @@ export function AdminHomepageDisplayPage() {
     };
 
     const handleResetDefaults = () => {
-        setVariantBySlot(getDefaults());
+        setVariantBySlot(getDefaultVariantBySlot());
         setThemePreset('default');
     };
 
