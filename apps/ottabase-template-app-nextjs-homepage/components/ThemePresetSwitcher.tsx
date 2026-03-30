@@ -124,13 +124,13 @@ export function ThemePresetSwitcher({ onSwitch }: ThemePresetSwitcherProps = {})
                         }`}
                     >
                         {/* Color swatches — compact row */}
-                        <div className="flex -space-x-1">
+                        <div className="flex gap-0.5">
                             {['primary', 'secondary', 'accent'].map((token) => {
                                 const hsl = presetColors?.[token];
                                 return (
                                     <span
                                         key={token}
-                                        className="h-4 w-4 rounded-full border border-background shadow-sm"
+                                        className="h-4 w-4 rounded-full border border-border/60 shadow-sm"
                                         style={{
                                             backgroundColor: hsl ? `hsl(${hsl})` : 'transparent',
                                         }}

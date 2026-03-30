@@ -107,12 +107,10 @@ export function ConfigPanel() {
             <button
                 type="button"
                 onClick={toggle}
-                className={`fixed right-0 top-1/2 z-[110] -translate-y-1/2 inline-flex h-12 w-6 items-center justify-center rounded-l-md border border-r-0 border-border bg-background/90 text-muted-foreground shadow-md backdrop-blur-sm transition-all hover:w-8 hover:bg-accent hover:text-foreground hover:shadow-lg ${
-                    open ? 'right-80 max-[85vw]:right-[85vw]' : ''
-                }`}
+                className="fixed top-1/2 z-[110] -translate-y-1/2 inline-flex h-12 w-6 items-center justify-center rounded-l-md border border-r-0 border-border bg-background/90 text-muted-foreground shadow-md backdrop-blur-sm transition-all hover:w-8 hover:bg-accent hover:text-foreground hover:shadow-lg"
+                style={{ right: open ? 'min(20rem, 85vw)' : 0 }}
                 aria-label="Toggle config panel"
                 title={open ? 'Close configurator' : 'Open configurator'}
-                style={open ? { right: 'min(20rem, 85vw)' } : undefined}
             >
                 {open ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
