@@ -9,6 +9,8 @@ import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
  * - Variant selections per slot (JSON matching HomepageConfig)
  * - Active theme preset name
  * - Fallback theme preset ID
+ * - Custom CSS
+ * - SEO metadata
  */
 export const homepageDisplaySettingsTable = sqliteTable('homepage_display_settings', {
     id: text('id')
@@ -23,6 +25,12 @@ export const homepageDisplaySettingsTable = sqliteTable('homepage_display_settin
     themePreset: text('theme_preset').default('default'),
     /** Fallback theme preset ID for SSR */
     fallbackThemePresetId: text('fallback_theme_preset_id'),
+    /** Custom CSS injected into the homepage */
+    customCss: text('custom_css'),
+    /** SEO page title for the homepage */
+    seoTitle: text('seo_title'),
+    /** SEO meta description for the homepage */
+    seoDescription: text('seo_description'),
     /** Multi-app identifier */
     appId: text('app_id'),
     createdAt: integer('created_at')

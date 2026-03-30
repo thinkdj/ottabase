@@ -13,7 +13,8 @@ export {
 
 /**
  * Single-row settings model for the homepage display state.
- * Stores variant selections per slot and the active theme preset.
+ * Stores variant selections per slot, the active theme preset,
+ * custom CSS, and SEO metadata.
  */
 export class HomepageDisplaySettings extends BaseModel {
     static entity = 'homepage_display_settings';
@@ -29,8 +30,8 @@ export class HomepageDisplaySettings extends BaseModel {
     };
 
     static writable = {
-        create: ['id', 'variantBySlotJson', 'themePreset', 'fallbackThemePresetId', 'appId'],
-        update: ['variantBySlotJson', 'themePreset', 'fallbackThemePresetId', 'appId'],
+        create: ['id', 'variantBySlotJson', 'themePreset', 'fallbackThemePresetId', 'customCss', 'seoTitle', 'seoDescription', 'appId'],
+        update: ['variantBySlotJson', 'themePreset', 'fallbackThemePresetId', 'customCss', 'seoTitle', 'seoDescription', 'appId'],
     };
 
     protected static defaults = {
@@ -61,6 +62,27 @@ export class HomepageDisplaySettings extends BaseModel {
             editable: true,
             uiConfig: { label: 'Fallback theme', description: 'Theme preset for SSR fallback' },
             formConfig: { visible: true, fieldType: 'input' },
+            tableConfig: { visible: false },
+        },
+        customCss: {
+            type: 'string',
+            editable: true,
+            uiConfig: { label: 'Custom CSS', description: 'Injected into the homepage <style> tag' },
+            formConfig: { visible: true, fieldType: 'textarea' },
+            tableConfig: { visible: false },
+        },
+        seoTitle: {
+            type: 'string',
+            editable: true,
+            uiConfig: { label: 'SEO Title', description: 'Page title for search engines' },
+            formConfig: { visible: true, fieldType: 'input' },
+            tableConfig: { visible: false },
+        },
+        seoDescription: {
+            type: 'string',
+            editable: true,
+            uiConfig: { label: 'SEO Description', description: 'Meta description for search engines' },
+            formConfig: { visible: true, fieldType: 'textarea' },
             tableConfig: { visible: false },
         },
         appId: {

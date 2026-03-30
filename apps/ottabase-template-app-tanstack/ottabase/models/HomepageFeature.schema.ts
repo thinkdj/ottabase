@@ -15,6 +15,12 @@ export const homepageFeaturesTable = sqliteTable('homepage_features', {
         .references(() => homepageSectionsTable.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     description: text('description').notNull(),
+    /** Lucide icon name (e.g. 'Zap', 'Shield', 'Globe') */
+    icon: text('icon'),
+    /** Optional image URL for visual features */
+    imageUrl: text('image_url'),
+    /** Optional link destination */
+    href: text('href'),
     /** Display order */
     sortOrder: integer('sort_order').notNull().default(0),
     createdAt: integer('created_at')

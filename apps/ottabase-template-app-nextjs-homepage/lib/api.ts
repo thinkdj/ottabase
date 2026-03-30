@@ -56,12 +56,23 @@ export interface HomepageSectionPayload {
     subtitle: string | null;
     body: string | null;
     githubUrl: string | null;
+    icon: string | null;
+    enabled: boolean;
+    cssClasses: string | null;
+    metadata: Record<string, unknown> | null;
     sortOrder: number;
-    features: Array<{ title: string; description: string }>;
+    features: Array<{
+        title: string;
+        description: string;
+        icon: string | null;
+        imageUrl: string | null;
+        href: string | null;
+    }>;
     actions: Array<{
         label: string;
         href: string;
         variant: string | null;
+        icon: string | null;
         external: boolean;
     }>;
 }
@@ -71,6 +82,9 @@ export interface HomepageDisplayPayload {
     variantBySlot: Record<string, string> | null;
     themePreset: string | null;
     fallbackThemePresetId: string | null;
+    customCss: string | null;
+    seoTitle: string | null;
+    seoDescription: string | null;
 }
 
 /** Full homepage data payload from GET /api/homepage/data */

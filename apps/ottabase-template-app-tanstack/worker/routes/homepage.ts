@@ -41,12 +41,23 @@ interface PublicSection {
     subtitle: string | null;
     body: string | null;
     githubUrl: string | null;
+    icon: string | null;
+    enabled: boolean;
+    cssClasses: string | null;
+    metadata: Record<string, unknown> | null;
     sortOrder: number;
-    features: Array<{ title: string; description: string }>;
+    features: Array<{
+        title: string;
+        description: string;
+        icon: string | null;
+        imageUrl: string | null;
+        href: string | null;
+    }>;
     actions: Array<{
         label: string;
         href: string;
         variant: string | null;
+        icon: string | null;
         external: boolean;
     }>;
 }
@@ -56,6 +67,9 @@ interface PublicDisplay {
     variantBySlot: Record<string, string> | null;
     themePreset: string | null;
     fallbackThemePresetId: string | null;
+    customCss: string | null;
+    seoTitle: string | null;
+    seoDescription: string | null;
 }
 
 /** Shape of the full public payload */
@@ -109,19 +123,22 @@ export async function handleHomepageData(context: HomepageRouteContext): Promise
         }
 
         // Group by sectionId
-        const featuresBySectionId = new Map<string, Array<{ title: string; description: string }>>();
+        const featuresBySectionId = new Map<string, Array<{ title: string; description: string; icon: string | null; imageUrl: string | null; href: string | null }>>();
         for (const f of allFeatures) {
             const sid = f.get('sectionId') as string;
             if (!featuresBySectionId.has(sid)) featuresBySectionId.set(sid, []);
             featuresBySectionId.get(sid)!.push({
                 title: f.get('title') as string,
                 description: f.get('description') as string,
+                icon: (f.get('icon') as string) ?? null,
+                imageUrl: (f.get('imageUrl') as string) ?? null,
+                href: (f.get('href') as string) ?? null,
             });
         }
 
         const actionsBySectionId = new Map<
             string,
-            Array<{ label: string; href: string; variant: string | null; external: boolean }>
+            Array<{ label: string; href: string; variant: string | null; icon: string | null; external: boolean }>
         >();
         for (const a of allActions) {
             const sid = a.get('sectionId') as string;
@@ -130,6 +147,7 @@ export async function handleHomepageData(context: HomepageRouteContext): Promise
                 label: a.get('label') as string,
                 href: a.get('href') as string,
                 variant: (a.get('variant') as string) ?? null,
+                icon: (a.get('icon') as string) ?? null,
                 external: (a.get('external') as boolean) ?? false,
             });
         }
@@ -143,6 +161,10 @@ export async function handleHomepageData(context: HomepageRouteContext): Promise
                 subtitle: (s.get('subtitle') as string) ?? null,
                 body: (s.get('body') as string) ?? null,
                 githubUrl: (s.get('githubUrl') as string) ?? null,
+                icon: (s.get('icon') as string) ?? null,
+                enabled: (s.get('enabled') as boolean) ?? true,
+                cssClasses: (s.get('cssClasses') as string) ?? null,
+                metadata: (s.get('metadata') as Record<string, unknown>) ?? null,
                 sortOrder: (s.get('sortOrder') as number) ?? 0,
                 features: featuresBySectionId.get(id) ?? [],
                 actions: actionsBySectionId.get(id) ?? [],
@@ -155,13 +177,16 @@ export async function handleHomepageData(context: HomepageRouteContext): Promise
     }
 
     // ── 2. Display settings ────────────────────────────────────────────
-    let display: PublicDisplay = { variantBySlot: null, themePreset: null, fallbackThemePresetId: null };
+    let display: PublicDisplay = { variantBySlot: null, themePreset: null, fallbackThemePresetId: null, customCss: null, seoTitle: null, seoDescription: null };
     try {
         const settings = await HomepageDisplaySettings.getOrCreateDefault(appId);
         display = {
             variantBySlot: (settings.get('variantBySlotJson') as Record<string, string>) ?? null,
             themePreset: (settings.get('themePreset') as string) ?? null,
             fallbackThemePresetId: (settings.get('fallbackThemePresetId') as string) ?? null,
+            customCss: (settings.get('customCss') as string) ?? null,
+            seoTitle: (settings.get('seoTitle') as string) ?? null,
+            seoDescription: (settings.get('seoDescription') as string) ?? null,
         };
     } catch (err) {
         // Non-fatal: keep defaults

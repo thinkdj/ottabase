@@ -15,6 +15,10 @@ export interface HomepageSectionRow {
     subtitle: string | null;
     body: string | null;
     githubUrl: string | null;
+    icon: string | null;
+    enabled: boolean;
+    cssClasses: string | null;
+    metadata: Record<string, unknown> | null;
     sortOrder: number;
     appId: string | null;
     createdAt: string;
@@ -26,6 +30,9 @@ export interface HomepageFeatureRow {
     sectionId: string;
     title: string;
     description: string;
+    icon: string | null;
+    imageUrl: string | null;
+    href: string | null;
     sortOrder: number;
     createdAt: string;
     updatedAt: string;
@@ -37,6 +44,7 @@ export interface HomepageActionRow {
     label: string;
     href: string;
     variant: string | null;
+    icon: string | null;
     external: boolean;
     sortOrder: number;
     createdAt: string;
@@ -48,6 +56,9 @@ export interface HomepageDisplaySettingsRow {
     variantBySlotJson: Record<string, string> | null;
     themePreset: string | null;
     fallbackThemePresetId: string | null;
+    customCss: string | null;
+    seoTitle: string | null;
+    seoDescription: string | null;
     appId: string | null;
     createdAt: string;
     updatedAt: string;

@@ -17,6 +17,14 @@ export const homepageSectionsTable = sqliteTable(
         body: text('body'),
         /** Optional GitHub URL (used by navbar/about slots) */
         githubUrl: text('github_url'),
+        /** Lucide icon name for this section (e.g. 'Sparkles', 'Shield') */
+        icon: text('icon'),
+        /** Whether this section is visible on the homepage */
+        enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+        /** Custom Tailwind CSS classes applied to the section wrapper */
+        cssClasses: text('css_classes'),
+        /** Arbitrary JSON metadata for extensibility */
+        metadata: text('metadata', { mode: 'json' }).$type<Record<string, unknown>>(),
         /** Display order for listing */
         sortOrder: integer('sort_order').notNull().default(0),
         /** Multi-app identifier */

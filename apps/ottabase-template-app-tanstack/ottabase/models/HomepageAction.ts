@@ -9,6 +9,7 @@ export { homepageActionsTable, type HomepageActionRow, type NewHomepageActionRow
 
 /**
  * A call-to-action button belonging to a homepage section (hero, cta, about, etc.).
+ * Supports icon, variant styling, and external link configuration.
  */
 export class HomepageAction extends BaseModel {
     static entity = 'homepage_actions';
@@ -25,8 +26,8 @@ export class HomepageAction extends BaseModel {
     };
 
     static writable = {
-        create: ['sectionId', 'label', 'href', 'variant', 'external', 'sortOrder'],
-        update: ['sectionId', 'label', 'href', 'variant', 'external', 'sortOrder'],
+        create: ['sectionId', 'label', 'href', 'variant', 'icon', 'external', 'sortOrder'],
+        update: ['sectionId', 'label', 'href', 'variant', 'icon', 'external', 'sortOrder'],
     };
 
     protected static fields: ModelFields = {
@@ -64,6 +65,13 @@ export class HomepageAction extends BaseModel {
             uiConfig: { label: 'Style variant', description: 'default, secondary, outline, ghost' },
             formConfig: { visible: true, fieldType: 'select' },
             tableConfig: { visible: true, colWidth: 120 },
+        },
+        icon: {
+            type: 'string',
+            editable: true,
+            uiConfig: { label: 'Icon', description: 'Lucide icon name (e.g. ArrowRight, Github)' },
+            formConfig: { visible: true, fieldType: 'input' },
+            tableConfig: { visible: false },
         },
         external: {
             type: 'boolean',

@@ -9,6 +9,7 @@ export { homepageFeaturesTable, type HomepageFeatureRow, type NewHomepageFeature
 
 /**
  * A feature item belonging to a homepage section (typically the "features" slot).
+ * Supports icon, image, and optional link for rich feature displays.
  */
 export class HomepageFeature extends BaseModel {
     static entity = 'homepage_features';
@@ -24,8 +25,8 @@ export class HomepageFeature extends BaseModel {
     };
 
     static writable = {
-        create: ['sectionId', 'title', 'description', 'sortOrder'],
-        update: ['sectionId', 'title', 'description', 'sortOrder'],
+        create: ['sectionId', 'title', 'description', 'icon', 'imageUrl', 'href', 'sortOrder'],
+        update: ['sectionId', 'title', 'description', 'icon', 'imageUrl', 'href', 'sortOrder'],
     };
 
     protected static fields: ModelFields = {
@@ -55,6 +56,27 @@ export class HomepageFeature extends BaseModel {
             formConfig: { visible: true, fieldType: 'textarea' },
             tableConfig: { visible: true, colWidth: 'auto' },
             validation: { rules: 'required', messages: { required: 'Description is required' } },
+        },
+        icon: {
+            type: 'string',
+            editable: true,
+            uiConfig: { label: 'Icon', description: 'Lucide icon name (e.g. Zap, Shield, Globe)' },
+            formConfig: { visible: true, fieldType: 'input' },
+            tableConfig: { visible: false },
+        },
+        imageUrl: {
+            type: 'string',
+            editable: true,
+            uiConfig: { label: 'Image URL', description: 'Optional image for this feature' },
+            formConfig: { visible: true, fieldType: 'input' },
+            tableConfig: { visible: false },
+        },
+        href: {
+            type: 'string',
+            editable: true,
+            uiConfig: { label: 'Link', description: 'Optional destination URL' },
+            formConfig: { visible: true, fieldType: 'input' },
+            tableConfig: { visible: false },
         },
         sortOrder: {
             type: 'number',

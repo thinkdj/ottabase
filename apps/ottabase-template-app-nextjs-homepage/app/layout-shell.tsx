@@ -44,10 +44,14 @@ export function mergeNavLinks(baseLinks: NavLink[], exposedPages: { slug: string
 /**
  * Build slot data overrides from the homepage API sections.
  * Maps section data to the SlotRenderer data contracts.
+ * Only includes enabled sections.
  */
 function buildSlotDataFromSections(sections: HomepageDataPayload['sections']) {
     const dataBySlot: Record<string, Record<string, unknown>> = {};
     for (const section of sections) {
+        // Skip disabled sections
+        if (section.enabled === false) continue;
+
         const slot = section.slot;
         if (slot === 'hero') {
             dataBySlot[slot] = {
@@ -58,13 +62,20 @@ function buildSlotDataFromSections(sections: HomepageDataPayload['sections']) {
                     label: a.label,
                     href: a.href,
                     variant: a.variant ?? 'default',
+                    icon: a.icon ?? undefined,
                     external: a.external,
                 })),
             };
         } else if (slot === 'features') {
             dataBySlot[slot] = {
                 title: section.title ?? undefined,
-                features: section.features,
+                features: section.features.map((f) => ({
+                    title: f.title,
+                    description: f.description,
+                    icon: f.icon ?? undefined,
+                    imageUrl: f.imageUrl ?? undefined,
+                    href: f.href ?? undefined,
+                })),
             };
         } else if (slot === 'cta') {
             dataBySlot[slot] = {
@@ -74,6 +85,7 @@ function buildSlotDataFromSections(sections: HomepageDataPayload['sections']) {
                     label: a.label,
                     href: a.href,
                     variant: a.variant ?? 'default',
+                    icon: a.icon ?? undefined,
                     external: a.external,
                 })),
             };

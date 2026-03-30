@@ -9,7 +9,7 @@ export { homepageSectionsTable, type HomepageSectionRow, type NewHomepageSection
 
 /**
  * A homepage section maps to a SlotRenderer slot (navbar, hero, features, cta, footer, about).
- * Contains the title/subtitle/body for that slot.
+ * Contains the title/subtitle/body for that slot plus display options (icon, enabled, cssClasses, metadata).
  * Features and actions are stored in child tables (HomepageFeature, HomepageAction).
  */
 export class HomepageSection extends BaseModel {
@@ -20,14 +20,20 @@ export class HomepageSection extends BaseModel {
     static packageType: PackageType = 'app';
 
     static casts = {
+        enabled: 'boolean' as const,
+        metadata: 'json' as const,
         sortOrder: 'number' as const,
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
     };
 
     static writable = {
-        create: ['slot', 'title', 'subtitle', 'body', 'githubUrl', 'sortOrder', 'appId'],
-        update: ['slot', 'title', 'subtitle', 'body', 'githubUrl', 'sortOrder', 'appId'],
+        create: ['slot', 'title', 'subtitle', 'body', 'githubUrl', 'icon', 'enabled', 'cssClasses', 'metadata', 'sortOrder', 'appId'],
+        update: ['slot', 'title', 'subtitle', 'body', 'githubUrl', 'icon', 'enabled', 'cssClasses', 'metadata', 'sortOrder', 'appId'],
+    };
+
+    protected static defaults = {
+        enabled: true,
     };
 
     protected static fields: ModelFields = {
@@ -69,6 +75,35 @@ export class HomepageSection extends BaseModel {
             editable: true,
             uiConfig: { label: 'GitHub URL' },
             formConfig: { visible: true, fieldType: 'input' },
+            tableConfig: { visible: false },
+        },
+        icon: {
+            type: 'string',
+            editable: true,
+            uiConfig: { label: 'Icon', description: 'Lucide icon name (e.g. Sparkles, Shield, Zap)' },
+            formConfig: { visible: true, fieldType: 'input' },
+            tableConfig: { visible: false },
+        },
+        enabled: {
+            type: 'boolean',
+            editable: true,
+            filterable: true,
+            uiConfig: { label: 'Enabled', description: 'Show this section on the homepage' },
+            formConfig: { visible: true, fieldType: 'checkbox' },
+            tableConfig: { visible: true, colWidth: 80 },
+        },
+        cssClasses: {
+            type: 'string',
+            editable: true,
+            uiConfig: { label: 'CSS Classes', description: 'Custom Tailwind CSS classes' },
+            formConfig: { visible: true, fieldType: 'input' },
+            tableConfig: { visible: false },
+        },
+        metadata: {
+            type: 'json',
+            editable: true,
+            uiConfig: { label: 'Metadata', description: 'Arbitrary JSON key-value data' },
+            formConfig: { visible: true, fieldType: 'textarea' },
             tableConfig: { visible: false },
         },
         sortOrder: {

@@ -17,6 +17,8 @@ export const homepageActionsTable = sqliteTable('homepage_actions', {
     href: text('href').notNull(),
     /** Button style variant: default, secondary, outline, ghost */
     variant: text('variant').default('default'),
+    /** Lucide icon name for the button (e.g. 'ArrowRight', 'Github') */
+    icon: text('icon'),
     /** Whether the link opens in a new tab */
     external: integer('external', { mode: 'boolean' }).default(false),
     /** Display order */
