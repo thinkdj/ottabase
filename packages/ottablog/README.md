@@ -102,7 +102,7 @@ const post = await Post.create({
     content: {
         /* EditorJS JSON */
     },
-    contentType: 'blog', // blog, changelog, docs, news, announcement
+    contentType: 'blog', // blog, changelog, docs, news, announcement, page
     status: 'published', // draft, published, archived, scheduled
     categoryId: 'cat-123',
     seriesId: 'series-123',
@@ -164,6 +164,7 @@ post.generateExcerpt(); // Auto-generate from content
 - `readingTimeMinutes`, `wordCount` - Auto-calculated stats
 - `viewCount` - View/hit counter (incremented via `trackView()`)
 - `isFeatured` - Pin to top
+- `exposeToHomepage` - Show page link in marketing homepage navbar (only for `page` content type)
 - `allowComments` - Enable comments
 - `publishAt`, `publishedAt`, `postedAt` - Dates
 - `appId` - Multi-app identifier
@@ -375,6 +376,7 @@ const customCats = await PostCategory.where({
 - `docs` - Documentation
 - `changelog` - Change logs
 - `announcement` - Announcements
+- `page` - Static/marketing pages managed via CMS
 - Custom types supported
 
 ## Relationships
@@ -507,6 +509,25 @@ GET /api/blog/posts/by-slug/{slug}
 
 Returns a single post with tags, categories (via junction), and series title. View tracking is opt-in (call
 `trackView()` explicitly to avoid D1 write costs per page view).
+
+> **Note:** Returns 404 for `changelog` and `page` content types — they have dedicated endpoints.
+
+### Page by Slug
+
+```
+GET /api/blog/pages/by-slug/{slug}
+```
+
+Returns a published page (`contentType: 'page'`). Used by the marketing homepage to render CMS-managed static pages.
+
+### Exposed Pages
+
+```
+GET /api/blog/pages/exposed
+```
+
+Returns `{ exposedPages: [{ slug, title }] }` — all published pages with `exposeToHomepage: true`, sorted by title. Used
+by the marketing homepage to build navbar links. Returns `{ exposedPages: [] }` on failure.
 
 ### Related Posts
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { Github, Palette, Rocket } from 'lucide-react';
-import { SlotRenderer } from '../components/SlotRenderer';
+import { SlotRenderer } from '../../components/SlotRenderer';
 
 /**
  * Homepage content data — single source of truth.

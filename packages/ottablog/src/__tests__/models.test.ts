@@ -65,6 +65,29 @@ describe('ottablog models', () => {
             expect(fields.viewCount.editable).toBe(false);
             expect(fields.viewCount.sortable).toBe(true);
         });
+
+        it('should have exposeToHomepage in casts', () => {
+            expect(Post.casts).toHaveProperty('exposeToHomepage');
+            expect(Post.casts.exposeToHomepage).toBe('boolean');
+        });
+
+        it('should have exposeToHomepage in writable fields', () => {
+            expect(Post.writable.create).toContain('exposeToHomepage');
+            expect(Post.writable.update).toContain('exposeToHomepage');
+        });
+
+        it('should have exposeToHomepage field metadata', () => {
+            const fields = Post.getFields();
+            expect(fields).toHaveProperty('exposeToHomepage');
+            expect(fields.exposeToHomepage.type).toBe('boolean');
+            expect(fields.exposeToHomepage.editable).toBe(true);
+            expect(fields.exposeToHomepage.filterable).toBe(true);
+        });
+
+        it('should have exposeToHomepage default to false', () => {
+            const defaults = (Post as any).defaults;
+            expect(defaults.exposeToHomepage).toBe(false);
+        });
     });
 
     describe('PostCategory model', () => {
