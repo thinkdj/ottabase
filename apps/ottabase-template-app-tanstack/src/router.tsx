@@ -931,6 +931,37 @@ const adminChangelogEditRoute = new Route({
     ),
 });
 
+// Homepage admin routes
+const adminHomepageRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/homepage',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/homepage/AdminHomepageSectionsPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminHomepageSectionsPage />),
+        })),
+    ),
+});
+
+const adminHomepageSectionEditRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/homepage/$sectionId/edit',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/homepage/AdminHomepageSectionEditorPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminHomepageSectionEditorPage />),
+        })),
+    ),
+});
+
+const adminHomepageDisplayRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/homepage/display',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/homepage/AdminHomepageDisplayPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminHomepageDisplayPage />),
+        })),
+    ),
+});
+
 // Organizations routes
 const organizationsRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -1162,6 +1193,9 @@ const coreRoutes = [
     adminChangelogRoute,
     adminChangelogNewRoute,
     adminChangelogEditRoute,
+    adminHomepageRoute,
+    adminHomepageSectionEditRoute,
+    adminHomepageDisplayRoute,
     adminDevMailRoute,
     adminQueueRoute,
     adminCronRoute,

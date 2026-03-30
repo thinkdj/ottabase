@@ -10,6 +10,7 @@ import {
     Clock,
     Database,
     FileText,
+    Home,
     Layers,
     Layout,
     Mail,
@@ -86,6 +87,12 @@ const ADMIN_CATEGORIES: AdminCategory[] = [
                 description: 'Product updates for the public /changelog page (OttaEditor + hero media).',
                 href: '/admin/changelog',
                 icon: FileText,
+            },
+            {
+                title: 'Homepage',
+                description: 'Manage homepage sections, features, actions, and display settings.',
+                href: '/admin/homepage',
+                icon: Home,
             },
             ...(MEDIA_LIBRARY_ENABLED
                 ? [
