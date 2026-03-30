@@ -364,3 +364,53 @@ describe('LayoutShell navbar merge', () => {
         expect(result).toEqual([{ href: '/page/faq', label: 'FAQ' }]);
     });
 });
+
+describe('Homepage API types', () => {
+    it('fetchHomepageData returns safe fallback when API_URL is empty', async () => {
+        const { fetchHomepageData } = await import('../lib/api');
+        // NEXT_PUBLIC_API_URL is not set in test env, so should return fallback
+        const result = await fetchHomepageData();
+        expect(result).toEqual({
+            sections: [],
+            display: { variantBySlot: null, themePreset: null, fallbackThemePresetId: null },
+            exposedPages: [],
+        });
+    });
+
+    it('fetchExposedPages returns empty array when API_URL is empty', async () => {
+        const { fetchExposedPages } = await import('../lib/api');
+        const result = await fetchExposedPages();
+        expect(result).toEqual([]);
+    });
+
+    it('fetchPageBySlug returns null when API_URL is empty', async () => {
+        const { fetchPageBySlug } = await import('../lib/api');
+        const result = await fetchPageBySlug('test');
+        expect(result).toBeNull();
+    });
+
+    it('HomepageDataPayload types are correctly shaped', async () => {
+        const api = await import('../lib/api');
+        // Verify the type shape exists by constructing a valid object
+        const payload: api.HomepageDataPayload = {
+            sections: [
+                {
+                    id: '1',
+                    slot: 'hero',
+                    title: 'Title',
+                    subtitle: 'Sub',
+                    body: null,
+                    githubUrl: null,
+                    sortOrder: 0,
+                    features: [],
+                    actions: [{ label: 'Go', href: '/go', variant: 'default', external: false }],
+                },
+            ],
+            display: { variantBySlot: { hero: 'centered' }, themePreset: 'neo', fallbackThemePresetId: null },
+            exposedPages: [{ slug: 'about', title: 'About' }],
+        };
+        expect(payload.sections).toHaveLength(1);
+        expect(payload.display.themePreset).toBe('neo');
+        expect(payload.exposedPages[0].slug).toBe('about');
+    });
+});

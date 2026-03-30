@@ -110,7 +110,7 @@ export function LayoutShell({ children, exposedPages = [], homepageData }: Layou
     const navbarLinks = mergeNavLinks(BASE_NAVBAR_LINKS, exposedPages);
 
     // Build slot data overrides from DB sections (if available)
-    const dbSlotData = homepageData?.sections?.length ? buildSlotDataFromSections(homepageData.sections) : {};
+    const dbSlotData = homepageData?.sections ? buildSlotDataFromSections(homepageData.sections) : {};
 
     const navbarData = {
         title: 'Ottabase',

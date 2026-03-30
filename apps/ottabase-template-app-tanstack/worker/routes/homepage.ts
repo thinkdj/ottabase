@@ -7,7 +7,7 @@
 // Pattern follows worker/routes/changelog.ts (public, read-only, no auth).
 // ============================================================
 
-import { BLOG_FEED_CONTENT_TYPES, Post } from '@ottabase/ottablog';
+import { Post } from '@ottabase/ottablog';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
@@ -148,8 +148,9 @@ export async function handleHomepageData(context: HomepageRouteContext): Promise
                 actions: actionsBySectionId.get(id) ?? [],
             };
         });
-    } catch {
+    } catch (err) {
         // Non-fatal: return empty sections
+        console.error('[homepage/data] Failed to load sections:', err);
         sections = [];
     }
 
@@ -162,8 +163,9 @@ export async function handleHomepageData(context: HomepageRouteContext): Promise
             themePreset: (settings.get('themePreset') as string) ?? null,
             fallbackThemePresetId: (settings.get('fallbackThemePresetId') as string) ?? null,
         };
-    } catch {
+    } catch (err) {
         // Non-fatal: keep defaults
+        console.error('[homepage/data] Failed to load display settings:', err);
     }
 
     // ── 3. Exposed CMS pages (for navbar links) ───────────────────────
@@ -181,8 +183,9 @@ export async function handleHomepageData(context: HomepageRouteContext): Promise
             slug: p.get('slug') as string,
             title: p.get('title') as string,
         }));
-    } catch {
+    } catch (err) {
         // Non-fatal: return empty
+        console.error('[homepage/data] Failed to load exposed pages:', err);
     }
 
     const payload: HomepagePublicPayload = { sections, display, exposedPages };
