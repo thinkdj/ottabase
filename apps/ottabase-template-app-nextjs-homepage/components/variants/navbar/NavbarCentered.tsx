@@ -6,12 +6,7 @@ import { ExternalLink, Github, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-
-export type NavLink = {
-    href: string;
-    label: string;
-    external?: boolean;
-};
+import type { NavbarData, NavLink } from './types';
 
 const DEFAULT_NAV_LINKS: NavLink[] = [
     { href: '/', label: 'Home' },
@@ -19,29 +14,35 @@ const DEFAULT_NAV_LINKS: NavLink[] = [
     { href: '/theme-demo', label: 'Themes' },
 ];
 
-type NavbarProps = {
-    /** Site title shown in the navbar */
-    title?: string;
-    /** Navigation links (defaults to Home, About, Themes) */
-    links?: NavLink[];
-    /** GitHub repo URL — shows a GitHub button when set */
-    githubUrl?: string;
-};
-
-export function Navbar({ title = 'Ottabase', links = DEFAULT_NAV_LINKS, githubUrl }: NavbarProps) {
+/**
+ * Centered navbar — logo + links centered horizontally, balanced layout.
+ */
+export function NavbarCentered({ title = 'Ottabase', links = DEFAULT_NAV_LINKS, githubUrl }: NavbarData) {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
-            <nav className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-                {/* Logo / Title */}
-                <Link href="/" className="font-heading text-lg font-bold text-foreground">
-                    {title}
-                </Link>
+            <nav className="mx-auto flex h-14 max-w-5xl flex-col items-center justify-center px-4 sm:flex-row sm:justify-between">
+                <div className="flex w-full items-center justify-between sm:w-auto">
+                    <Link href="/" className="font-heading text-lg font-bold text-foreground">
+                        {title}
+                    </Link>
+                    <div className="flex items-center gap-2 sm:hidden">
+                        <DarkModeToggle type="button" title="Toggle dark/light mode" />
+                        <button
+                            type="button"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
+                            onClick={() => setMobileOpen(!mobileOpen)}
+                            aria-label="Toggle menu"
+                        >
+                            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+                        </button>
+                    </div>
+                </div>
 
-                {/* Desktop links */}
-                <div className="hidden items-center gap-1 md:flex">
+                {/* Desktop: centered links */}
+                <div className="hidden flex-1 items-center justify-center gap-1 sm:flex">
                     {links.map((link) =>
                         link.external ? (
                             <Button key={link.href} asChild variant="ghost" size="sm">
@@ -62,10 +63,10 @@ export function Navbar({ title = 'Ottabase', links = DEFAULT_NAV_LINKS, githubUr
                     )}
                 </div>
 
-                {/* Right side actions */}
-                <div className="flex items-center gap-2">
+                {/* Right-side actions (desktop only) */}
+                <div className="hidden items-center gap-2 sm:flex">
                     {githubUrl && (
-                        <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
+                        <Button asChild variant="ghost" size="sm">
                             <a
                                 href={githubUrl}
                                 target="_blank"
@@ -79,22 +80,12 @@ export function Navbar({ title = 'Ottabase', links = DEFAULT_NAV_LINKS, githubUr
                         </Button>
                     )}
                     <DarkModeToggle type="button" title="Toggle dark/light mode" />
-
-                    {/* Mobile menu toggle */}
-                    <button
-                        type="button"
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent md:hidden"
-                        onClick={() => setMobileOpen(!mobileOpen)}
-                        aria-label="Toggle menu"
-                    >
-                        {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-                    </button>
                 </div>
             </nav>
 
             {/* Mobile menu */}
             {mobileOpen && (
-                <div className="border-t border-border bg-background px-4 py-3 md:hidden">
+                <div className="border-t border-border bg-background px-4 py-3 sm:hidden">
                     <div className="flex flex-col gap-1">
                         {links.map((link) =>
                             link.external ? (

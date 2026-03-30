@@ -106,7 +106,7 @@ export function ThemePresetSwitcher({ onSwitch }: ThemePresetSwitcherProps = {})
     );
 
     return (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2">
             {BUILTIN_THEME_NAMES.map((name) => {
                 // Use PRESET_MAP (static JSON) for swatch colors — always available without registry
                 const presetColors = PRESET_MAP[name]?.colors?.light as Record<string, string> | undefined;
@@ -117,20 +117,21 @@ export function ThemePresetSwitcher({ onSwitch }: ThemePresetSwitcherProps = {})
                         key={name}
                         type="button"
                         onClick={() => handleSelect(name)}
-                        className={`group relative flex flex-col items-center gap-2 rounded-lg border-2 p-3 text-sm transition-all ${
+                        aria-label={`Select ${name} theme preset`}
+                        className={`group relative flex flex-col items-center gap-1.5 rounded-lg border-2 px-2 py-2.5 text-xs transition-all ${
                             isActive
-                                ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                                : 'border-border bg-card hover:border-primary/40'
+                                ? 'border-primary bg-primary/5 shadow-sm'
+                                : 'border-border bg-card hover:border-primary/40 hover:shadow-sm'
                         }`}
                     >
-                        {/* Color swatches */}
-                        <div className="flex gap-1.5">
-                            {['primary', 'secondary', 'accent', 'muted'].map((token) => {
+                        {/* Color swatches — stacked circles */}
+                        <div className="flex gap-1">
+                            {['primary', 'secondary', 'accent'].map((token) => {
                                 const hsl = presetColors?.[token];
                                 return (
                                     <span
                                         key={token}
-                                        className="h-6 w-6 rounded-full border border-border/60 shadow-sm"
+                                        className={`h-5 w-5 rounded-full shadow-sm ${isActive ? 'ring-1 ring-primary/30' : 'ring-1 ring-border/40'}`}
                                         style={{
                                             backgroundColor: hsl ? `hsl(${hsl})` : 'transparent',
                                         }}
@@ -139,7 +140,11 @@ export function ThemePresetSwitcher({ onSwitch }: ThemePresetSwitcherProps = {})
                             })}
                         </div>
                         {/* Preset name */}
-                        <span className="font-medium capitalize">{name}</span>
+                        <span
+                            className={`font-medium capitalize truncate ${isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}
+                        >
+                            {name}
+                        </span>
                     </button>
                 );
             })}

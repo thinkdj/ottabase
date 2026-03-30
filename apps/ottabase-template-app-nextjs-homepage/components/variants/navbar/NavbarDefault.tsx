@@ -6,12 +6,7 @@ import { ExternalLink, Github, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-
-export type NavLink = {
-    href: string;
-    label: string;
-    external?: boolean;
-};
+import type { NavbarData, NavLink } from './types';
 
 const DEFAULT_NAV_LINKS: NavLink[] = [
     { href: '/', label: 'Home' },
@@ -19,28 +14,20 @@ const DEFAULT_NAV_LINKS: NavLink[] = [
     { href: '/theme-demo', label: 'Themes' },
 ];
 
-type NavbarProps = {
-    /** Site title shown in the navbar */
-    title?: string;
-    /** Navigation links (defaults to Home, About, Themes) */
-    links?: NavLink[];
-    /** GitHub repo URL — shows a GitHub button when set */
-    githubUrl?: string;
-};
-
-export function Navbar({ title = 'Ottabase', links = DEFAULT_NAV_LINKS, githubUrl }: NavbarProps) {
+/**
+ * Default navbar — logo left, nav links + dark-mode toggle right, mobile hamburger.
+ */
+export function NavbarDefault({ title = 'Ottabase', links = DEFAULT_NAV_LINKS, githubUrl }: NavbarData) {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
             <nav className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-                {/* Logo / Title */}
                 <Link href="/" className="font-heading text-lg font-bold text-foreground">
                     {title}
                 </Link>
 
-                {/* Desktop links */}
                 <div className="hidden items-center gap-1 md:flex">
                     {links.map((link) =>
                         link.external ? (
@@ -62,7 +49,6 @@ export function Navbar({ title = 'Ottabase', links = DEFAULT_NAV_LINKS, githubUr
                     )}
                 </div>
 
-                {/* Right side actions */}
                 <div className="flex items-center gap-2">
                     {githubUrl && (
                         <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
@@ -79,8 +65,6 @@ export function Navbar({ title = 'Ottabase', links = DEFAULT_NAV_LINKS, githubUr
                         </Button>
                     )}
                     <DarkModeToggle type="button" title="Toggle dark/light mode" />
-
-                    {/* Mobile menu toggle */}
                     <button
                         type="button"
                         className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent md:hidden"
@@ -92,7 +76,6 @@ export function Navbar({ title = 'Ottabase', links = DEFAULT_NAV_LINKS, githubUr
                 </div>
             </nav>
 
-            {/* Mobile menu */}
             {mobileOpen && (
                 <div className="border-t border-border bg-background px-4 py-3 md:hidden">
                     <div className="flex flex-col gap-1">

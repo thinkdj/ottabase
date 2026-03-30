@@ -1,7 +1,7 @@
 # Ottabase Next.js Homepage Template
 
 Next.js 16 homepage template deployed to Cloudflare Workers via OpenNext. Uses Brand Engine for theming with 8 presets
-and live switching.
+and live switching, plus an **extensible slot framework** for hot-swappable homepage sections.
 
 > **Monorepo note:** The main TanStack app (`ottabase-template-app-tanstack`) drives its brand config from a D1
 > database, editable via the admin UI at `/admin/brand-engine`. This homepage is intentionally **config-first** — no DB,
@@ -21,30 +21,145 @@ pnpm dev
 
 ```
 app/
-├── page.tsx              # Homepage
-├── about/page.tsx        # About
-├── theme-demo/page.tsx   # Live theme switcher
-├── layout.tsx            # Root layout (SSR critical CSS)
-├── layout-shell.tsx      # Navbar + Footer wrapper
-├── providers.tsx         # Theme providers + saved preset restore
-├── globals.css           # Global styles
-├── not-found.tsx         # 404
-├── error.tsx             # Error boundary
-└── loading.tsx           # Route spinner
+├── page.tsx                    # Homepage (uses SlotRenderer for each section)
+├── about/page.tsx              # About
+├── theme-demo/page.tsx         # Live theme switcher
+├── homepage-config/page.tsx    # Slot variant config page
+├── layout.tsx                  # Root layout (SSR critical CSS)
+├── layout-shell.tsx            # Navbar + Footer wrapper (slot-driven)
+├── providers.tsx               # Theme providers + HomepageConfigProvider
+├── globals.css                 # Global styles
+├── not-found.tsx               # 404
+├── error.tsx                   # Error boundary
+└── loading.tsx                 # Route spinner
 components/
-├── Navbar.tsx            # Sticky navbar, mobile menu, dark mode toggle
-├── Footer.tsx            # Footer with links
-├── Hero.tsx              # Hero section
-├── FeatureCard.tsx       # Feature list items
-├── CTASection.tsx        # Call-to-action block
-├── ThemePresetSwitcher.tsx  # Preset picker (persists to localStorage)
-└── index.ts              # Barrel exports
-config/
-└── brand.config.ts       # Theme preset + brand overrides
+├── SlotRenderer.tsx            # Resolves slot → variant component at runtime
+├── Navbar.tsx                  # Legacy navbar (still exported for direct use)
+├── Footer.tsx                  # Legacy footer
+├── Hero.tsx                    # Legacy hero
+├── FeatureCard.tsx             # Legacy feature grid
+├── CTASection.tsx              # Legacy CTA
+├── ThemePresetSwitcher.tsx     # Theme preset picker
+├── index.ts                    # Barrel exports
+└── variants/                   # ← Slot variant components
+    ├── hero/
+    │   ├── types.ts            # HeroData contract
+    │   ├── HeroCentered.tsx    # Large centred headline (default)
+    │   ├── HeroSplit.tsx       # Text left + visual right
+    │   └── HeroMinimal.tsx     # Compact headline
+    ├── features/
+    │   ├── types.ts            # FeaturesData contract
+    │   ├── FeaturesGrid.tsx    # Two-column bordered list (default)
+    │   ├── FeaturesCards.tsx    # Card layout with hover
+    │   └── FeaturesList.tsx    # Vertical stacked list
+    ├── cta/
+    │   ├── types.ts            # CTAData contract
+    │   ├── CTADefault.tsx      # Centred text + buttons (default)
+    │   ├── CTABanner.tsx       # Full-width coloured banner
+    │   └── CTAMinimal.tsx      # Compact inline
+    ├── navbar/
+    │   ├── types.ts            # NavbarData contract
+    │   ├── NavbarDefault.tsx   # Logo left, links right (default)
+    │   ├── NavbarCentered.tsx  # Centred links
+    │   └── NavbarMinimal.tsx   # Logo + dark-mode only
+    └── footer/
+        ├── types.ts            # FooterData contract
+        ├── FooterDefault.tsx   # Copyright + links row (default)
+        ├── FooterMinimal.tsx   # Single-line copyright
+        └── FooterColumns.tsx   # Multi-column with grouped links
 lib/
-└── brand-server.ts       # Server-side brand/theme utilities
-__tests__/                # Vitest test suite
+├── brand-server.ts             # Server-side brand/theme utilities
+├── homepage-config.ts          # Slot registry, types, localStorage persistence
+└── homepage-config-context.tsx # React context + useHomepageConfig() hook
+config/
+└── brand.config.ts             # Theme preset + brand overrides
+__tests__/                      # Vitest test suite (68 tests)
 ```
+
+## Slot Framework
+
+The homepage is built around an extensible **slot framework** that separates data from rendering. Each section of the
+page (hero, features, CTA, navbar, footer) is a **slot** with multiple **variant** components. All variants for a slot
+accept the same data props — you write your content data once and switch the visual presentation via config.
+
+### Architecture
+
+```
+                                ┌──────────────────────┐
+   lib/homepage-config.ts ─────▶│    SLOT_REGISTRY     │
+   (slot definitions,           │  navbar: 3 variants  │
+    variant metadata,           │  hero:   3 variants  │
+    localStorage persist)       │  features: 3 variants│
+                                │  cta:    3 variants  │
+                                │  footer: 3 variants  │
+                                └──────────┬───────────┘
+                                           │
+   lib/homepage-config-context.tsx ────────▶│ React Context
+   (useHomepageConfig hook)                │ (config state + setVariant)
+                                           │
+                                ┌──────────▼───────────┐
+   components/SlotRenderer.tsx ▶│   VARIANT_COMPONENTS │
+   (<SlotRenderer slot="hero"   │  Maps slot+variantId │
+    data={heroData} />)         │  → React component   │
+                                └──────────────────────┘
+```
+
+### How to use
+
+```tsx
+// In page.tsx — data is defined once, rendering driven by config
+const HERO_DATA = {
+    title: 'Welcome',
+    subtitle: 'Build fast.',
+    actions: [{ href: '/docs', label: 'Get Started' }],
+};
+
+export default function HomePage() {
+    return <SlotRenderer slot="hero" data={HERO_DATA} />;
+}
+```
+
+### Config page
+
+Visit `/homepage-config` to switch variant for each slot. Changes are saved to `localStorage` and applied instantly — no
+page reload needed. A "Reset to defaults" button restores the original configuration.
+
+### Adding a new variant
+
+1. Create a component in `components/variants/<slot>/` that accepts the slot's data type:
+
+```tsx
+// components/variants/hero/HeroGradient.tsx
+import type { HeroData } from './types';
+
+export function HeroGradient({ title, subtitle, actions }: HeroData) {
+    return <section>/* your markup */</section>;
+}
+```
+
+2. Register it in `components/SlotRenderer.tsx` (`VARIANT_COMPONENTS`):
+
+```tsx
+hero: {
+    centered: HeroCentered,
+    split: HeroSplit,
+    minimal: HeroMinimal,
+    gradient: HeroGradient,  // ← add here
+},
+```
+
+3. Add metadata to `lib/homepage-config.ts` (`SLOT_REGISTRY`):
+
+```tsx
+hero: {
+    variants: [
+        // ...existing...
+        { id: 'gradient', label: 'Gradient', description: 'Bold gradient background hero.' },
+    ],
+},
+```
+
+The new variant immediately appears in the config page and can be selected.
 
 ## Brand Engine Integration
 
