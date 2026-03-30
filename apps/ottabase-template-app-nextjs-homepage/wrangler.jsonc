@@ -16,8 +16,8 @@
         "global_fetch_strictly_public",
     ],
 
-    // OpenNext already creates the worker & assets structure
-    "no_bundle": true,
+    // Keep Wrangler bundling enabled so OpenNext's relative worker modules
+    // (e.g. ./cloudflare/images.js) are uploaded during deploy validation.
 
     // Observability - logging configuration
     "observability": {
