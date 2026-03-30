@@ -136,7 +136,7 @@ export function ConfigPanel() {
             <button
                 type="button"
                 onClick={toggle}
-                className="fixed top-1/2 z-[110] -translate-y-1/2 inline-flex h-14 w-6 items-center justify-center rounded-l-lg bg-primary text-primary-foreground shadow-lg transition-all hover:w-8 hover:shadow-xl"
+                className="fixed top-1/2 z-[110] -translate-y-1/2 inline-flex h-14 w-6 items-center justify-center rounded-l-lg bg-primary text-primary-foreground shadow-lg transition-all hover:w-8 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 style={{ right: open ? 'min(20rem, 85vw)' : 0 }}
                 aria-label="Toggle config panel"
                 title={open ? 'Close configurator' : 'Open configurator'}

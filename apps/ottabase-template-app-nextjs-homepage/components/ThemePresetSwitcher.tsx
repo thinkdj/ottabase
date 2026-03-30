@@ -117,6 +117,7 @@ export function ThemePresetSwitcher({ onSwitch }: ThemePresetSwitcherProps = {})
                         key={name}
                         type="button"
                         onClick={() => handleSelect(name)}
+                        aria-label={`Select ${name} theme preset`}
                         className={`group relative flex flex-col items-center gap-1.5 rounded-lg border-2 px-2 py-2.5 text-xs transition-all ${
                             isActive
                                 ? 'border-primary bg-primary/5 shadow-sm'

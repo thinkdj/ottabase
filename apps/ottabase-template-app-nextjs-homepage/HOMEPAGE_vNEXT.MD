@@ -17,6 +17,7 @@
   export class HomepageSection extends BaseModel {
     static entity = 'homepage_sections';
     static table = homepageSectionsTable;
+    static primaryKey = 'id';
   }
   ```
 - [ ] Create `HomepageFeature` model for the features list (title, description, icon, sortOrder)
