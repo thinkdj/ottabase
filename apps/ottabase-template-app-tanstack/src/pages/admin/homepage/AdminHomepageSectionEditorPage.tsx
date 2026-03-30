@@ -749,7 +749,7 @@ export function AdminHomepageSectionEditorPage() {
                 <CardContent>
                     {actions.length === 0 ? (
                         <p className="text-sm text-muted-foreground py-4 text-center">
-                            No actions yet. Add buttons like &quot;Get Started&quot; or &quot;Learn More&quot;.
+                            No actions yet. Add buttons like {'"'}Get Started{'"'} or {'"'}Learn More{'"'}.
                         </p>
                     ) : (
                         <div className="space-y-2">

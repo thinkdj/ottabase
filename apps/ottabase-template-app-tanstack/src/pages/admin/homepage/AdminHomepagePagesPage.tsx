@@ -84,7 +84,7 @@ export function AdminHomepagePagesPage() {
                         <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
                         <h3 className="mt-4 text-lg font-semibold">No pages yet</h3>
                         <p className="mt-2 text-muted-foreground">
-                            Create a page in the Blog Editor with content type &quot;Page&quot; to manage it here.
+                            Create a page in the Blog Editor with content type {'"'}Page{'"'} to manage it here.
                         </p>
                         <Button variant="outline" className="mt-4" asChild>
                             <Link to="/admin/blog/new">
@@ -102,7 +102,7 @@ export function AdminHomepagePagesPage() {
                     <CardHeader className="pb-3">
                         <CardTitle className="text-base">All Pages</CardTitle>
                         <CardDescription>
-                            Toggle &quot;Expose to Homepage&quot; to add pages to the navbar. Pages must be published to
+                            Toggle {'"'}Expose to Homepage{'"'} to add pages to the navbar. Pages must be published to
                             appear.
                         </CardDescription>
                     </CardHeader>
@@ -173,10 +173,10 @@ export function AdminHomepagePagesPage() {
                         <div className="text-sm text-muted-foreground">
                             <p className="font-medium text-foreground">How pages work</p>
                             <p className="mt-1">
-                                Pages are CMS content with type &quot;Page&quot; created in the Blog Editor. When
-                                exposed to the homepage, they appear as links in the navigation bar. Each page renders
-                                at <code className="text-xs bg-muted px-1 py-0.5 rounded">/page/slug</code> on the
-                                Next.js homepage.
+                                Pages are CMS content with type {'"'}Page{'"'} created in the Blog Editor. When exposed
+                                to the homepage, they appear as links in the navigation bar. Each page renders at{' '}
+                                <code className="text-xs bg-muted px-1 py-0.5 rounded">/page/slug</code> on the Next.js
+                                homepage.
                             </p>
                         </div>
                     </div>

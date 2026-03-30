@@ -387,7 +387,7 @@ export function AdminHomepageSectionsPage() {
                     <CardHeader className="pb-3">
                         <CardTitle className="text-base">Add Section</CardTitle>
                         <CardDescription>
-                            Create a section for a slot that doesn&apos;t have one yet. Each slot maps to a section on
+                            Create a section for a slot that doesn{"'"}t have one yet. Each slot maps to a section on
                             the homepage.
                         </CardDescription>
                     </CardHeader>
@@ -546,7 +546,7 @@ export function AdminHomepageSectionsPage() {
                                         className="h-7 gap-1.5 text-xs w-full justify-start"
                                     >
                                         <ChevronDown className="h-3 w-3" />
-                                        Features &amp; Actions
+                                        Features & Actions
                                     </Button>
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
@@ -567,8 +567,9 @@ export function AdminHomepageSectionsPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Section?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently remove the &quot;{deleteDialog?.slot}&quot; section and all its
-                            features and actions. This cannot be undone.
+                            This will permanently remove the {'"'}
+                            {deleteDialog?.slot}
+                            {'"'} section and all its features and actions. This cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
