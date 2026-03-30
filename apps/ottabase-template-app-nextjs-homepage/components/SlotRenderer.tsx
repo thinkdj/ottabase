@@ -18,6 +18,7 @@ import { SLOT_REGISTRY } from '../lib/homepage-config';
 
 // ── Variant component maps ─────────────────────────────────────────────────
 
+import { AboutDefault, AboutDetailed, AboutMinimal } from './variants/about';
 import { CTABanner, CTADefault, CTAMinimal } from './variants/cta';
 import { FeaturesCards, FeaturesGrid, FeaturesList } from './variants/features';
 import { FooterColumns, FooterDefault, FooterMinimal } from './variants/footer';
@@ -57,6 +58,11 @@ const VARIANT_COMPONENTS: Record<SlotName, Record<string, AnyComponent>> = {
         default: FooterDefault,
         minimal: FooterMinimal,
         columns: FooterColumns,
+    },
+    about: {
+        default: AboutDefault,
+        minimal: AboutMinimal,
+        detailed: AboutDetailed,
     },
 };
 

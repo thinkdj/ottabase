@@ -60,8 +60,8 @@ describe('Homepage Config', () => {
             await import('../lib/homepage-config'));
     });
 
-    it('defines all 5 slot names', () => {
-        expect(SLOT_NAMES).toEqual(['navbar', 'hero', 'features', 'cta', 'footer']);
+    it('defines all 6 slot names', () => {
+        expect(SLOT_NAMES).toEqual(['navbar', 'hero', 'features', 'cta', 'footer', 'about']);
     });
 
     it('each slot has at least 2 variants', () => {
@@ -370,9 +370,68 @@ describe('Navbar Variants', () => {
         const homeLinks = screen.getAllByText('Home');
         expect(homeLinks.length).toBeGreaterThanOrEqual(2);
     });
+    it('NavbarDefault shows GitHub icon and external-link icon', () => {
+        render(<NavbarDefault title="Test" githubUrl="https://github.com/test" />);
+        // The GitHub button should be present (hidden on mobile, but in DOM)
+        const githubLink = screen.getAllByTitle('Open on GitHub (new tab)');
+        expect(githubLink.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('NavbarCentered shows GitHub icon and external-link icon', () => {
+        render(<NavbarCentered title="Test" githubUrl="https://github.com/test" />);
+        const githubLink = screen.getAllByTitle('Open on GitHub (new tab)');
+        expect(githubLink.length).toBeGreaterThanOrEqual(1);
+    });
 });
 
-// ── Config page rendering tests ────────────────────────────────────────────
+// ── About variant rendering tests ──────────────────────────────────────────
+
+describe('About Variants', () => {
+    let AboutDefault: any;
+    let AboutMinimal: any;
+    let AboutDetailed: any;
+
+    beforeEach(async () => {
+        ({ AboutDefault } = await import('../components/variants/about/AboutDefault'));
+        ({ AboutMinimal } = await import('../components/variants/about/AboutMinimal'));
+        ({ AboutDetailed } = await import('../components/variants/about/AboutDetailed'));
+    });
+
+    it('AboutDefault renders title and content', () => {
+        render(<AboutDefault />);
+        expect(screen.getByText(/About/)).toBeDefined();
+        expect(screen.getByText(/What is this/)).toBeDefined();
+    });
+
+    it('AboutMinimal renders title', () => {
+        render(<AboutMinimal />);
+        expect(screen.getByText(/About/)).toBeDefined();
+    });
+
+    it('AboutDetailed renders feature cards and tech stack', () => {
+        render(<AboutDetailed />);
+        expect(screen.getByText(/About/)).toBeDefined();
+        expect(screen.getByText('Tech Stack')).toBeDefined();
+        expect(screen.getByText('Edge-First')).toBeDefined();
+    });
+
+    it('AboutDefault accepts custom githubUrl', () => {
+        render(<AboutDefault githubUrl="https://github.com/custom/repo" />);
+        const githubLinks = screen.getAllByText(/View on GitHub/);
+        expect(githubLinks.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('SlotRenderer renders the default about variant', async () => {
+        const { HomepageConfigProvider } = await import('../lib/homepage-config-context');
+        const { SlotRenderer } = await import('../components/SlotRenderer');
+        render(
+            <HomepageConfigProvider>
+                <SlotRenderer slot="about" data={{}} />
+            </HomepageConfigProvider>,
+        );
+        expect(screen.getByText(/About/)).toBeDefined();
+    });
+});
 
 describe('HomepageConfigPage', () => {
     let HomepageConfigPage: any;

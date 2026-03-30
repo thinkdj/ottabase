@@ -9,7 +9,7 @@
 // ── Slot / variant type definitions ─────────────────────────────────────────
 
 /** Every switchable section of the homepage. */
-export const SLOT_NAMES = ['navbar', 'hero', 'features', 'cta', 'footer'] as const;
+export const SLOT_NAMES = ['navbar', 'hero', 'features', 'cta', 'footer', 'about'] as const;
 export type SlotName = (typeof SLOT_NAMES)[number];
 
 /** Describes a single selectable variant inside a slot. */
@@ -78,6 +78,15 @@ export const SLOT_REGISTRY: SlotRegistry = {
             { id: 'default', label: 'Default', description: 'Copyright and links row.' },
             { id: 'minimal', label: 'Minimal', description: 'Single-line copyright only.' },
             { id: 'columns', label: 'Columns', description: 'Multi-column footer with grouped links.' },
+        ],
+    },
+    about: {
+        label: 'About Page',
+        defaultVariant: 'default',
+        variants: [
+            { id: 'default', label: 'Default', description: 'Full-length content with features, steps, and CTA.' },
+            { id: 'minimal', label: 'Minimal', description: 'Concise single-section overview.' },
+            { id: 'detailed', label: 'Detailed', description: 'Card-based layout with tech-stack badges.' },
         ],
     },
 };

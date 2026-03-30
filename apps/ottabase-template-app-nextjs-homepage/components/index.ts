@@ -1,3 +1,4 @@
+export { ConfigPanel } from './ConfigPanel';
 export { CTASection } from './CTASection';
 export { FeatureItem, FeaturesGrid } from './FeatureCard';
 export { Footer } from './Footer';

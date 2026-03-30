@@ -1,5 +1,6 @@
 'use client';
 
+import { ConfigPanel } from '../components/ConfigPanel';
 import { SlotRenderer } from '../components/SlotRenderer';
 
 const GITHUB_URL = 'https://github.com/thinkdj/ottabase';
@@ -26,6 +27,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
             <SlotRenderer slot="navbar" data={NAVBAR_DATA} />
             <main className="flex-1">{children}</main>
             <SlotRenderer slot="footer" data={FOOTER_DATA} />
+            <ConfigPanel />
         </>
     );
 }

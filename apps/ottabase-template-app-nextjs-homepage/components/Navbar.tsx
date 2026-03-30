@@ -2,7 +2,7 @@
 
 import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
 import { Button } from '@ottabase/ui-shadcn';
-import { Menu, X } from 'lucide-react';
+import { ExternalLink, Github, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -17,7 +17,6 @@ const DEFAULT_NAV_LINKS: NavLink[] = [
     { href: '/', label: 'Home' },
     { href: '/about', label: 'About' },
     { href: '/theme-demo', label: 'Themes' },
-    { href: '/homepage-config', label: 'Config' },
 ];
 
 type NavbarProps = {
@@ -67,8 +66,15 @@ export function Navbar({ title = 'Ottabase', links = DEFAULT_NAV_LINKS, githubUr
                 <div className="flex items-center gap-2">
                     {githubUrl && (
                         <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
-                            <a href={githubUrl} target="_blank" rel="noopener noreferrer">
+                            <a
+                                href={githubUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open on GitHub (new tab)"
+                            >
+                                <Github className="mr-1.5 h-4 w-4" />
                                 GitHub
+                                <ExternalLink className="ml-1 h-3 w-3 opacity-60" />
                             </a>
                         </Button>
                     )}
@@ -122,10 +128,12 @@ export function Navbar({ title = 'Ottabase', links = DEFAULT_NAV_LINKS, githubUr
                                 href={githubUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+                                className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
                                 onClick={() => setMobileOpen(false)}
                             >
+                                <Github className="h-4 w-4" />
                                 GitHub
+                                <ExternalLink className="h-3 w-3 opacity-60" />
                             </a>
                         )}
                     </div>
