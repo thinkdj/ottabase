@@ -3,11 +3,12 @@
 import { Button } from '@ottabase/ui-shadcn';
 import { ExternalLink, Github } from 'lucide-react';
 import type { AboutData } from './types';
+import { DEFAULT_GITHUB_URL } from './types';
 
 /**
  * Minimal about page — concise single-section overview with a GitHub CTA.
  */
-export function AboutMinimal({ title, description, githubUrl = 'https://github.com/thinkdj/ottabase' }: AboutData) {
+export function AboutMinimal({ title, description, githubUrl = DEFAULT_GITHUB_URL }: AboutData) {
     return (
         <div className="mx-auto max-w-2xl px-4 py-20 text-center">
             <h1 className="font-heading text-3xl font-bold text-foreground">

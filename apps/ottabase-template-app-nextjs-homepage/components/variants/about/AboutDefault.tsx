@@ -4,12 +4,13 @@ import { Button } from '@ottabase/ui-shadcn';
 import { ExternalLink, Github, Rocket } from 'lucide-react';
 import Link from 'next/link';
 import type { AboutData } from './types';
+import { DEFAULT_GITHUB_URL } from './types';
 
 /**
  * Default about page — full-length content with features list, getting-started steps,
  * brand customisation section, deployment info, and CTA buttons.
  */
-export function AboutDefault({ title, description, githubUrl = 'https://github.com/thinkdj/ottabase' }: AboutData) {
+export function AboutDefault({ title, description, githubUrl = DEFAULT_GITHUB_URL }: AboutData) {
     return (
         <div className="mx-auto max-w-4xl px-4 py-16">
             <div className="space-y-8">

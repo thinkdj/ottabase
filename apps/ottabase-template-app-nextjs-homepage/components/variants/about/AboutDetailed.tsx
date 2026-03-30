@@ -4,12 +4,13 @@ import { Button } from '@ottabase/ui-shadcn';
 import { ExternalLink, Github, Rocket } from 'lucide-react';
 import Link from 'next/link';
 import type { AboutData } from './types';
+import { DEFAULT_GITHUB_URL } from './types';
 
 /**
  * Detailed about page — card-based layout with feature highlights,
  * tech-stack badges, and a prominent CTA section.
  */
-export function AboutDetailed({ title, description, githubUrl = 'https://github.com/thinkdj/ottabase' }: AboutData) {
+export function AboutDetailed({ title, description, githubUrl = DEFAULT_GITHUB_URL }: AboutData) {
     const features = [
         {
             heading: 'Edge-First',

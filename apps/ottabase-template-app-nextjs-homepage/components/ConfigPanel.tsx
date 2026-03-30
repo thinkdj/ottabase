@@ -46,7 +46,10 @@ export function ConfigPanel() {
                 <div
                     className="fixed inset-0 z-[90] bg-black/20 backdrop-blur-[2px] transition-opacity"
                     onClick={() => setOpen(false)}
-                    aria-hidden
+                    onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
+                    role="button"
+                    tabIndex={-1}
+                    aria-label="Close config panel"
                 />
             )}
 
