@@ -24,6 +24,8 @@ export const aiMessagesTable = sqliteTable('ai_messages', {
     provider: text('provider'),
     /** Token usage as JSON string (for assistant messages) */
     usage: text('usage'),
+    /** File attachments as JSON string (array of { url, name, type, size }) for multimodal messages */
+    attachments: text('attachments'),
     createdAt: integer('created_at')
         .$defaultFn(() => Date.now())
         .notNull(),

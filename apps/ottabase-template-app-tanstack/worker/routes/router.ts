@@ -75,6 +75,7 @@ import {
 } from './cloudflare-ai';
 import {
     handleAiChatMessage,
+    handleAiChatStream,
     handleAiConversationCreate,
     handleAiConversationDelete,
     handleAiConversationDetail,
@@ -505,6 +506,10 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
     // AI Chat feature routes
     if (route === '/api/ai/chat') {
         return handleAiChatMessage(context);
+    }
+
+    if (route === '/api/ai/chat/stream') {
+        return handleAiChatStream(context);
     }
 
     if (route === '/api/ai/conversations') {

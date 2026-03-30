@@ -43,6 +43,7 @@ describe('AI Chat Schema Tests', () => {
             expect(columns).toContain('model');
             expect(columns).toContain('provider');
             expect(columns).toContain('usage');
+            expect(columns).toContain('attachments');
             expect(columns).toContain('createdAt');
         });
     });
@@ -94,6 +95,7 @@ describe('AI Chat Schema Tests', () => {
             expect(AiMessage.writable.create).toContain('model');
             expect(AiMessage.writable.create).toContain('provider');
             expect(AiMessage.writable.create).toContain('usage');
+            expect(AiMessage.writable.create).toContain('attachments');
             // Update should be empty (messages are immutable)
             expect(AiMessage.writable.update).toHaveLength(0);
         });
@@ -176,5 +178,29 @@ describe('AI Chat Route Handler Tests', () => {
         expect(firstModel).toHaveProperty('id');
         expect(firstModel).toHaveProperty('name');
         expect(firstModel).toHaveProperty('context');
+    });
+
+    it('should export handleAiChatStream for streaming responses', async () => {
+        const { handleAiChatStream } = await import('../../worker/routes/ai-chat');
+        expect(handleAiChatStream).toBeDefined();
+        expect(typeof handleAiChatStream).toBe('function');
+    });
+});
+
+describe('AI Tables Migration Registration', () => {
+    it('getAllSchemas should include AI tables', async () => {
+        const { getAllSchemas } = await import('../../ottabase/db/schemas-helper');
+        const schemas = getAllSchemas();
+
+        expect(schemas).toHaveProperty('aiConversationsTable');
+        expect(schemas).toHaveProperty('aiMessagesTable');
+    });
+
+    it('getSchemaSummary should list AI tables in app tables', async () => {
+        const { getSchemaSummary } = await import('../../ottabase/db/schemas-helper');
+        const summary = getSchemaSummary();
+
+        expect(summary.app).toContain('aiConversationsTable');
+        expect(summary.app).toContain('aiMessagesTable');
     });
 });

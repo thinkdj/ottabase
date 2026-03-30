@@ -4,7 +4,9 @@
  * Features:
  * - Conversation sidebar with create/delete/rename
  * - Multi-turn chat with message history
- * - Model & provider selection
+ * - Streaming AI responses via SSE
+ * - File attachments for multimodal chats (text/image)
+ * - Model & provider selection (switchable in header and settings)
  * - System prompt configuration
  * - Auto-scroll, loading states, markdown support
  * - Dark mode support
@@ -46,15 +48,18 @@ import {
     Bot,
     ChevronDown,
     Copy,
+    ImagePlus,
     Loader2,
     MessageSquarePlus,
     MoreVertical,
+    Paperclip,
     PanelLeftClose,
     PanelLeftOpen,
     Send,
     Settings,
     Trash2,
     User,
+    X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -82,7 +87,15 @@ interface Message {
     model: string | null;
     provider: string | null;
     usage: string | null;
+    attachments: string | null;
     createdAt: number;
+}
+
+interface Attachment {
+    url: string;
+    name: string;
+    type: string;
+    size?: number;
 }
 
 interface ModelInfo {
@@ -127,6 +140,7 @@ async function fetchModels(): Promise<ModelsResponse> {
 function MessageBubble({ message, isLast }: { message: Message; isLast: boolean }) {
     const isUser = message.role === 'user';
     const usage = message.usage ? JSON.parse(message.usage) : null;
+    const attachments: Attachment[] = message.attachments ? JSON.parse(message.attachments) : [];
 
     const handleCopy = () => {
         navigator.clipboard.writeText(message.content);
@@ -143,6 +157,33 @@ function MessageBubble({ message, isLast }: { message: Message; isLast: boolean 
             )}
 
             <div className={cn('flex flex-col max-w-[80%] md:max-w-[70%]', isUser && 'items-end')}>
+                {/* Attachments */}
+                {attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                        {attachments.map((att, idx) =>
+                            att.type.startsWith('image/') ? (
+                                <img
+                                    key={idx}
+                                    src={att.url}
+                                    alt={att.name}
+                                    className="max-w-[200px] max-h-[150px] rounded-lg border border-border object-cover"
+                                />
+                            ) : (
+                                <a
+                                    key={idx}
+                                    href={att.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-muted/50 text-xs hover:bg-muted transition-colors"
+                                >
+                                    <Paperclip className="w-3 h-3" />
+                                    <span className="truncate max-w-[120px]">{att.name}</span>
+                                </a>
+                            ),
+                        )}
+                    </div>
+                )}
+
                 {/* Message content */}
                 <div
                     className={cn(
@@ -403,6 +444,60 @@ function SettingsPanel({
 }
 
 // ============================================================
+// Streaming SSE helper
+// ============================================================
+
+/** Parse an SSE stream and call handlers for each event type */
+async function readAiStream(
+    response: Response,
+    onMeta: (data: { conversationId: string; model: string; provider: string }) => void,
+    onToken: (token: string) => void,
+    onDone: (data: { message: Message; usage?: unknown }) => void,
+    onError: (error: string) => void,
+) {
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('No response body');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        // Keep the last incomplete line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const raw = line.slice(6).trim();
+            if (!raw || raw === '[DONE]') continue;
+            try {
+                const data = JSON.parse(raw);
+                switch (data.type) {
+                    case 'meta':
+                        onMeta(data);
+                        break;
+                    case 'token':
+                        onToken(data.token);
+                        break;
+                    case 'done':
+                        onDone(data);
+                        break;
+                    case 'error':
+                        onError(data.error);
+                        break;
+                }
+            } catch {
+                // skip non-JSON lines
+            }
+        }
+    }
+}
+
+// ============================================================
 // Main AI Chat Page
 // ============================================================
 
@@ -416,8 +511,12 @@ export function AiChatPage() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
+    const [isStreaming, setIsStreaming] = useState(false);
+    const [streamingContent, setStreamingContent] = useState('');
+    const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Fetch conversations list
     const conversationsQuery = useQuery({
@@ -455,7 +554,7 @@ export function AiChatPage() {
     // Auto-scroll to bottom
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    }, [messages, streamingContent]);
 
     // Update model when provider changes
     useEffect(() => {
@@ -467,32 +566,63 @@ export function AiChatPage() {
         }
     }, [provider, modelsQuery.data]);
 
-    // Send message mutation
+    // Send message with streaming
     const sendMessageMutation = useMutation({
         mutationFn: async (messageText: string) => {
-            const result = await api('/api/ai/chat', {
+            setIsStreaming(true);
+            setStreamingContent('');
+
+            const response = await fetch('/api/ai/chat/stream', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     conversationId: activeConversationId,
                     message: messageText,
                     model,
                     provider,
                     systemPrompt: systemPrompt || undefined,
+                    attachments: pendingAttachments.length > 0 ? pendingAttachments : undefined,
                 }),
             });
-            return result as { conversationId: string; message: Message; provider: string; model: string };
-        },
-        onSuccess: (data) => {
-            // Add assistant message to local state
-            setMessages((prev) => [...prev, data.message]);
-            // Set conversation ID if new
-            if (!activeConversationId && data.conversationId) {
-                setActiveConversationId(data.conversationId);
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({ error: 'Stream request failed' }));
+                throw new Error((err as { error?: string }).error || 'Stream request failed');
             }
-            // Refresh conversations list (for title updates)
-            queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
+
+            let resultConversationId = activeConversationId || '';
+
+            await readAiStream(
+                response,
+                (meta) => {
+                    resultConversationId = meta.conversationId;
+                },
+                (token) => {
+                    setStreamingContent((prev) => prev + token);
+                },
+                (data) => {
+                    // Streaming done — add the saved assistant message
+                    setMessages((prev) => [...prev, data.message]);
+                    setStreamingContent('');
+                    setIsStreaming(false);
+
+                    if (!activeConversationId && resultConversationId) {
+                        setActiveConversationId(resultConversationId);
+                    }
+                    queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
+                },
+                (error) => {
+                    setIsStreaming(false);
+                    setStreamingContent('');
+                    toast.error(error);
+                },
+            );
+
+            return { conversationId: resultConversationId };
         },
         onError: (error) => {
+            setIsStreaming(false);
+            setStreamingContent('');
             toast.error(isApiError(error) ? error.message : 'Failed to send message');
         },
     });
@@ -514,7 +644,7 @@ export function AiChatPage() {
 
     const handleSend = useCallback(() => {
         const text = inputValue.trim();
-        if (!text || sendMessageMutation.isPending) return;
+        if (!text || sendMessageMutation.isPending || isStreaming) return;
 
         // Add user message to local state immediately for responsiveness
         const tempMessage: Message = {
@@ -525,13 +655,24 @@ export function AiChatPage() {
             model: null,
             provider: null,
             usage: null,
+            attachments: pendingAttachments.length > 0 ? JSON.stringify(pendingAttachments) : null,
             createdAt: Date.now(),
         };
         setMessages((prev) => [...prev, tempMessage]);
         setInputValue('');
+        setPendingAttachments([]);
 
         sendMessageMutation.mutate(text);
-    }, [inputValue, activeConversationId, sendMessageMutation.isPending, model, provider, systemPrompt]);
+    }, [
+        inputValue,
+        activeConversationId,
+        sendMessageMutation.isPending,
+        isStreaming,
+        model,
+        provider,
+        systemPrompt,
+        pendingAttachments,
+    ]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -544,6 +685,9 @@ export function AiChatPage() {
         setActiveConversationId(null);
         setMessages([]);
         setInputValue('');
+        setPendingAttachments([]);
+        setStreamingContent('');
+        setIsStreaming(false);
         inputRef.current?.focus();
     };
 
@@ -554,6 +698,40 @@ export function AiChatPage() {
     const handleExampleClick = (text: string) => {
         setInputValue(text);
         inputRef.current?.focus();
+    };
+
+    /** Handle file selection for attachments */
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        for (const file of Array.from(files)) {
+            // Upload file via the existing /api/upload endpoint
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const result = await fetch('/api/upload', { method: 'POST', body: formData });
+                const data = (await result.json()) as { success: boolean; url?: string; key?: string };
+                if (data.success && data.url) {
+                    setPendingAttachments((prev) => [
+                        ...prev,
+                        { url: data.url!, name: file.name, type: file.type, size: file.size },
+                    ]);
+                } else {
+                    toast.error(`Failed to upload ${file.name}`);
+                }
+            } catch {
+                toast.error(`Failed to upload ${file.name}`);
+            }
+        }
+
+        // Reset file input
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const removeAttachment = (index: number) => {
+        setPendingAttachments((prev) => prev.filter((_, i) => i !== index));
     };
 
     const conversations = conversationsQuery.data || [];
@@ -630,6 +808,23 @@ export function AiChatPage() {
                     </div>
 
                     <div className="flex items-center gap-1">
+                        {/* Model quick-switcher */}
+                        {modelsQuery.data?.models[provider] && (
+                            <Select value={model} onValueChange={setModel}>
+                                <SelectTrigger className="h-7 w-auto gap-1 border-none bg-transparent text-[11px] text-muted-foreground hover:text-foreground px-2 [&>svg]:w-3 [&>svg]:h-3">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {modelsQuery.data.models[provider]?.map((m) => (
+                                        <SelectItem key={m.id} value={m.id} className="text-xs">
+                                            {m.name}
+                                            <span className="text-muted-foreground ml-1">({m.context})</span>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+
                         {/* Provider/model badge */}
                         <Badge variant="secondary" className="text-[10px] hidden sm:flex">
                             {provider === 'workers-ai' ? 'Workers AI' : provider}
@@ -674,7 +869,22 @@ export function AiChatPage() {
                             {messages.map((msg, idx) => (
                                 <MessageBubble key={msg.id} message={msg} isLast={idx === messages.length - 1} />
                             ))}
-                            {sendMessageMutation.isPending && <TypingIndicator />}
+                            {/* Streaming response in progress */}
+                            {isStreaming && streamingContent && (
+                                <div className="flex gap-3 py-4">
+                                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <Bot className="w-4 h-4 text-primary" />
+                                    </div>
+                                    <div className="flex flex-col max-w-[80%] md:max-w-[70%]">
+                                        <div className="bg-muted text-foreground rounded-2xl rounded-bl-md px-4 py-3 text-sm leading-relaxed">
+                                            <div className="whitespace-pre-wrap break-words">{streamingContent}</div>
+                                            <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5" />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {/* Typing indicator before first token arrives */}
+                            {(sendMessageMutation.isPending || isStreaming) && !streamingContent && <TypingIndicator />}
                             <div ref={messagesEndRef} />
                         </div>
                     )}
@@ -683,7 +893,60 @@ export function AiChatPage() {
                 {/* Input Area */}
                 <div className="border-t border-border bg-card p-4">
                     <div className="max-w-3xl mx-auto">
+                        {/* Pending attachment previews */}
+                        {pendingAttachments.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                                {pendingAttachments.map((att, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="relative group/att flex items-center gap-1.5 px-2 py-1 rounded-lg border border-border bg-muted/50 text-xs"
+                                    >
+                                        {att.type.startsWith('image/') ? (
+                                            <ImagePlus className="w-3 h-3 text-muted-foreground" />
+                                        ) : (
+                                            <Paperclip className="w-3 h-3 text-muted-foreground" />
+                                        )}
+                                        <span className="truncate max-w-[100px]">{att.name}</span>
+                                        <button
+                                            onClick={() => removeAttachment(idx)}
+                                            className="p-0.5 rounded-full hover:bg-destructive/10"
+                                        >
+                                            <X className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         <div className="relative flex items-end gap-2">
+                            {/* Hidden file input */}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                className="hidden"
+                                multiple
+                                accept="image/*,text/*,.pdf,.doc,.docx,.csv,.json,.md"
+                                onChange={handleFileSelect}
+                            />
+
+                            {/* Attachment button */}
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 flex-shrink-0"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={sendMessageMutation.isPending || isStreaming}
+                                        >
+                                            <Paperclip className="w-4 h-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Attach file</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+
                             <Textarea
                                 ref={inputRef}
                                 value={inputValue}
@@ -692,15 +955,15 @@ export function AiChatPage() {
                                 placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
                                 rows={1}
                                 className="min-h-[44px] max-h-[200px] resize-none pr-12 text-sm"
-                                disabled={sendMessageMutation.isPending}
+                                disabled={sendMessageMutation.isPending || isStreaming}
                             />
                             <Button
                                 onClick={handleSend}
-                                disabled={!inputValue.trim() || sendMessageMutation.isPending}
+                                disabled={!inputValue.trim() || sendMessageMutation.isPending || isStreaming}
                                 size="icon"
                                 className="absolute right-2 bottom-2 h-8 w-8 rounded-full"
                             >
-                                {sendMessageMutation.isPending ? (
+                                {sendMessageMutation.isPending || isStreaming ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
                                     <Send className="w-4 h-4" />

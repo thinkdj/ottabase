@@ -167,7 +167,7 @@ export async function handleAiConversationDelete(context: ApiRouteContext, conve
  * POST /api/ai/chat — Send a message and get AI response
  * Stores both user message and assistant response in the conversation.
  *
- * Body: { conversationId?: string, message: string, model?: string, provider?: string, systemPrompt?: string }
+ * Body: { conversationId?: string, message: string, model?: string, provider?: string, systemPrompt?: string, attachments?: Array<{ url: string, name: string, type: string, size?: number }> }
  */
 export async function handleAiChatMessage(context: ApiRouteContext): Promise<Response> {
     const userId = await getAuthUserId(context);
@@ -179,6 +179,7 @@ export async function handleAiChatMessage(context: ApiRouteContext): Promise<Res
         model?: string;
         provider?: string;
         systemPrompt?: string;
+        attachments?: Array<{ url: string; name: string; type: string; size?: number }>;
     };
     try {
         body = await context.request.json();
@@ -213,11 +214,12 @@ export async function handleAiChatMessage(context: ApiRouteContext): Promise<Res
     const provider = (body.provider || (conversation.get('provider') as string) || 'workers-ai') as AIProviderKey;
     const model = body.model || (conversation.get('model') as string) || '@cf/meta/llama-3.1-8b-instruct';
 
-    // Save user message
+    // Save user message (with optional attachments)
     await AiMessage.create({
         conversationId,
         role: 'user',
         content: body.message,
+        attachments: body.attachments ? JSON.stringify(body.attachments) : null,
     });
 
     // Build message history for context
@@ -299,6 +301,264 @@ export async function handleAiChatMessage(context: ApiRouteContext): Promise<Res
         provider: actualProvider,
         model: actualModel,
         usage: responseUsage,
+    });
+}
+
+/**
+ * POST /api/ai/chat/stream — Send a message and stream AI response via SSE
+ * Stores user message immediately, streams the response, and saves the complete
+ * assistant message once streaming finishes.
+ *
+ * Body: { conversationId?: string, message: string, model?: string, provider?: string, systemPrompt?: string, attachments?: Array<{ url: string, name: string, type: string, size?: number }> }
+ */
+export async function handleAiChatStream(context: ApiRouteContext): Promise<Response> {
+    const userId = await getAuthUserId(context);
+    if (!userId) return errorResponse('Authentication required', 401, { code: 'AUTH_REQUIRED' });
+
+    let body: {
+        conversationId?: string;
+        message?: string;
+        model?: string;
+        provider?: string;
+        systemPrompt?: string;
+        attachments?: Array<{ url: string; name: string; type: string; size?: number }>;
+    };
+    try {
+        body = await context.request.json();
+    } catch {
+        return errorResponse('Invalid JSON body', 400, { code: 'INVALID_JSON' });
+    }
+
+    if (!body.message || typeof body.message !== 'string') {
+        return errorResponse('message is required', 400, { code: 'VALIDATION_ERROR' });
+    }
+
+    // Get or create conversation
+    let conversation;
+    if (body.conversationId) {
+        conversation = await AiConversation.find(body.conversationId);
+        if (!conversation || conversation.get('userId') !== userId) {
+            return errorResponse('Conversation not found', 404, { code: 'NOT_FOUND' });
+        }
+    } else {
+        const title = AiConversation.truncateToTitle(body.message);
+        conversation = await AiConversation.create({
+            title,
+            model: body.model || '@cf/meta/llama-3.1-8b-instruct',
+            provider: body.provider || 'workers-ai',
+            systemPrompt: body.systemPrompt || null,
+            userId,
+        });
+    }
+
+    const conversationId = conversation.get('id') as string;
+    const provider = (body.provider || (conversation.get('provider') as string) || 'workers-ai') as AIProviderKey;
+    const model = body.model || (conversation.get('model') as string) || '@cf/meta/llama-3.1-8b-instruct';
+
+    // Save user message (with optional attachments)
+    await AiMessage.create({
+        conversationId,
+        role: 'user',
+        content: body.message,
+        attachments: body.attachments ? JSON.stringify(body.attachments) : null,
+    });
+
+    // Build message history for context
+    const historyMessages = await AiMessage.forConversation(conversationId);
+    const chatMessages: ChatMessage[] = [];
+
+    const systemPrompt = body.systemPrompt || (conversation.get('systemPrompt') as string);
+    if (systemPrompt) {
+        chatMessages.push({ role: 'system', content: systemPrompt });
+    }
+
+    const recentHistory = historyMessages.slice(-MAX_CONTEXT_MESSAGES);
+    for (const msg of recentHistory) {
+        const role = msg.get('role') as 'user' | 'assistant' | 'system';
+        if (role === 'user' || role === 'assistant') {
+            chatMessages.push({ role, content: msg.get('content') as string });
+        }
+    }
+
+    // Only Workers AI supports streaming via binding; others use non-streaming + SSE wrapper
+    if (provider === 'workers-ai') {
+        if (!context.env.OBCF_AI) {
+            return errorResponse('Workers AI binding (OBCF_AI) not configured', 500, { code: 'CONFIG_ERROR' });
+        }
+
+        const client = createWorkersAIClient({ binding: context.env.OBCF_AI });
+        const streamResult = await client.textGenerationStream({ model, messages: chatMessages });
+
+        if (!streamResult.success) {
+            return aiErrorResponse(streamResult.error);
+        }
+
+        // Wrap Workers AI SSE stream: parse text chunks, collect full response, save when done
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+        let fullResponse = '';
+
+        const transformStream = new TransformStream<Uint8Array, Uint8Array>({
+            start(controller) {
+                // Send initial metadata event
+                controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ type: 'meta', conversationId, model, provider })}\n\n`),
+                );
+            },
+            transform(chunk, controller) {
+                // Workers AI SSE format: "data: {json}\n\n" lines
+                const text = decoder.decode(chunk, { stream: true });
+
+                // Extract response text from SSE data lines
+                const lines = text.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6).trim();
+                        if (data === '[DONE]') continue;
+                        try {
+                            const parsed = JSON.parse(data);
+                            const token = parsed.response ?? '';
+                            if (token) {
+                                fullResponse += token;
+                                controller.enqueue(
+                                    encoder.encode(`data: ${JSON.stringify({ type: 'token', token })}\n\n`),
+                                );
+                            }
+                        } catch {
+                            // Non-JSON SSE line, forward raw token if present
+                            if (data && data !== '[DONE]') {
+                                fullResponse += data;
+                                controller.enqueue(
+                                    encoder.encode(`data: ${JSON.stringify({ type: 'token', token: data })}\n\n`),
+                                );
+                            }
+                        }
+                    }
+                }
+            },
+            async flush(controller) {
+                // Save the complete assistant message
+                const assistantMessage = await AiMessage.create({
+                    conversationId,
+                    role: 'assistant',
+                    content: fullResponse,
+                    model,
+                    provider,
+                });
+
+                // Update conversation timestamp
+                conversation.set('updatedAt', Date.now());
+                await conversation.save();
+
+                // Send done event with message metadata
+                controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ type: 'done', message: assistantMessage.toJson() })}\n\n`),
+                );
+            },
+        });
+
+        const responseStream = streamResult.data.pipeThrough(transformStream);
+
+        return new Response(responseStream, {
+            headers: {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                Connection: 'keep-alive',
+            },
+        });
+    }
+
+    // For non-Workers AI providers: fall back to non-streaming, wrap in SSE
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+            controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ type: 'meta', conversationId, model, provider })}\n\n`),
+            );
+
+            try {
+                let responseText = '';
+                let responseUsage: unknown;
+
+                if (context.env.CFAI_GATEWAY_NAME && context.env.CLOUDFLARE_ACCOUNT_ID) {
+                    const apiKey = resolveApiKey(context.env, provider);
+                    if (!apiKey) {
+                        controller.enqueue(
+                            encoder.encode(
+                                `data: ${JSON.stringify({ type: 'error', error: `No API key for provider "${provider}"` })}\n\n`,
+                            ),
+                        );
+                        controller.close();
+                        return;
+                    }
+                    const gateway = createAIGatewayClient({
+                        accountId: context.env.CLOUDFLARE_ACCOUNT_ID,
+                        gateway: context.env.CFAI_GATEWAY_NAME,
+                        apiKey,
+                    });
+                    const result = await gateway.chatCompletion(provider, { model, messages: chatMessages });
+                    if (!result.success) {
+                        controller.enqueue(
+                            encoder.encode(
+                                `data: ${JSON.stringify({ type: 'error', error: result.error.message })}\n\n`,
+                            ),
+                        );
+                        controller.close();
+                        return;
+                    }
+                    const choice = result.data.choices?.[0];
+                    responseText = choice?.message?.content || '';
+                    responseUsage = result.data.usage;
+                } else {
+                    controller.enqueue(
+                        encoder.encode(
+                            `data: ${JSON.stringify({ type: 'error', error: 'AI Gateway not configured for this provider' })}\n\n`,
+                        ),
+                    );
+                    controller.close();
+                    return;
+                }
+
+                // Send the full response as a single token event
+                controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ type: 'token', token: responseText })}\n\n`),
+                );
+
+                // Save assistant message
+                const assistantMessage = await AiMessage.create({
+                    conversationId,
+                    role: 'assistant',
+                    content: responseText,
+                    model,
+                    provider,
+                    usage: responseUsage ? JSON.stringify(responseUsage) : null,
+                });
+
+                conversation.set('updatedAt', Date.now());
+                await conversation.save();
+
+                controller.enqueue(
+                    encoder.encode(
+                        `data: ${JSON.stringify({ type: 'done', message: assistantMessage.toJson(), usage: responseUsage })}\n\n`,
+                    ),
+                );
+            } catch (err) {
+                controller.enqueue(
+                    encoder.encode(
+                        `data: ${JSON.stringify({ type: 'error', error: err instanceof Error ? err.message : String(err) })}\n\n`,
+                    ),
+                );
+            }
+            controller.close();
+        },
+    });
+
+    return new Response(stream, {
+        headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            Connection: 'keep-alive',
+        },
     });
 }
 

@@ -31,7 +31,7 @@ export class AiMessage extends BaseModel {
     };
 
     static writable = {
-        create: ['conversationId', 'role', 'content', 'model', 'provider', 'usage'],
+        create: ['conversationId', 'role', 'content', 'model', 'provider', 'usage', 'attachments'],
         update: [],
     };
 
@@ -79,6 +79,12 @@ export class AiMessage extends BaseModel {
             type: 'string',
             editable: false,
             uiConfig: { label: 'Token Usage' },
+            tableConfig: { visible: false },
+        },
+        attachments: {
+            type: 'string',
+            editable: false,
+            uiConfig: { label: 'Attachments', description: 'File attachments as JSON array' },
             tableConfig: { visible: false },
         },
         createdAt: {
