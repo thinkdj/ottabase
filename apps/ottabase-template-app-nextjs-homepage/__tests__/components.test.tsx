@@ -314,3 +314,53 @@ describe('ThemePresetSwitcher', () => {
         });
     });
 });
+
+describe('LayoutShell navbar merge', () => {
+    let mergeNavLinks: any;
+
+    beforeEach(async () => {
+        ({ mergeNavLinks } = await import('../app/layout-shell'));
+    });
+
+    it('returns base links when no exposed pages', () => {
+        const base = [
+            { href: '/', label: 'Home' },
+            { href: '/about', label: 'About' },
+        ];
+        const result = mergeNavLinks(base, []);
+        expect(result).toEqual(base);
+    });
+
+    it('appends exposed pages as /page/slug links', () => {
+        const base = [{ href: '/', label: 'Home' }];
+        const exposedPages = [
+            { slug: 'about-us', title: 'About Us' },
+            { slug: 'pricing', title: 'Pricing' },
+        ];
+        const result = mergeNavLinks(base, exposedPages);
+        expect(result).toEqual([
+            { href: '/', label: 'Home' },
+            { href: '/page/about-us', label: 'About Us' },
+            { href: '/page/pricing', label: 'Pricing' },
+        ]);
+    });
+
+    it('deduplicates exposed pages by href', () => {
+        const base = [{ href: '/page/about-us', label: 'Existing About' }];
+        const exposedPages = [
+            { slug: 'about-us', title: 'About Us' },
+            { slug: 'pricing', title: 'Pricing' },
+        ];
+        const result = mergeNavLinks(base, exposedPages);
+        // /page/about-us already exists in base, so only pricing is appended
+        expect(result).toEqual([
+            { href: '/page/about-us', label: 'Existing About' },
+            { href: '/page/pricing', label: 'Pricing' },
+        ]);
+    });
+
+    it('handles empty base links with exposed pages', () => {
+        const result = mergeNavLinks([], [{ slug: 'faq', title: 'FAQ' }]);
+        expect(result).toEqual([{ href: '/page/faq', label: 'FAQ' }]);
+    });
+});

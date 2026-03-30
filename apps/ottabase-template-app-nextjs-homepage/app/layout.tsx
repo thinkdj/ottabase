@@ -1,5 +1,6 @@
 import { buildCriticalCSS } from '@ottabase/brand-engine';
 import type { Metadata } from 'next';
+import { fetchExposedPages } from '../lib/api';
 import { generateBrandConfig } from '../lib/brand-server';
 import './globals.css';
 import { LayoutShell } from './layout-shell';
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
     authors: [{ name: 'Ottabase' }],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
     // Generate brand config server-side (SSR)
     // Note: Using 'light' for initial SSR. BrandProvider will handle dynamic theme switching on client.
     const brandConfig = generateBrandConfig('light');
@@ -21,6 +22,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
     // Generate critical CSS for SSR (prevents FOUC)
     const criticalCSS = buildCriticalCSS(theme);
+
+    // Fetch exposed CMS pages for navbar
+    const exposedPages = await fetchExposedPages();
 
     return (
         <html lang="en" suppressHydrationWarning>
@@ -34,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </head>
             <body className="flex min-h-screen flex-col bg-background text-foreground">
                 <Providers initialBrandConfig={brandConfig}>
-                    <LayoutShell>{children}</LayoutShell>
+                    <LayoutShell exposedPages={exposedPages}>{children}</LayoutShell>
                 </Providers>
             </body>
         </html>

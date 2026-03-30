@@ -362,6 +362,9 @@ importers:
       '@ottabase/ottalayout':
         specifier: workspace:*
         version: link:../../packages/ottalayout
+      '@ottabase/ottarenderer':
+        specifier: workspace:*
+        version: link:../../packages/ottarenderer
       '@ottabase/ui-components':
         specifier: workspace:*
         version: link:../../packages/ui-components

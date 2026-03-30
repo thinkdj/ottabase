@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { calculateReadingTime, extractExcerpt, generateSlug, formatDate, formatShortDate } from '../types';
+import {
+    BLOG_FEED_CONTENT_TYPES,
+    CONTENT_TYPES,
+    calculateReadingTime,
+    extractExcerpt,
+    formatDate,
+    formatShortDate,
+    generateSlug,
+} from '../types';
+import type { ContentType } from '../types';
 
 describe('ottablog helpers', () => {
     describe('generateSlug', () => {
@@ -106,6 +115,47 @@ describe('ottablog helpers', () => {
             const dateString = '2024-12-25T00:00:00Z';
             const formatted = formatShortDate(dateString);
             expect(formatted).toMatch(/Dec 25, 2024/);
+        });
+    });
+
+    describe('CONTENT_TYPES', () => {
+        it('includes all 6 content types', () => {
+            const keys = Object.keys(CONTENT_TYPES);
+            expect(keys).toEqual(['blog', 'changelog', 'docs', 'news', 'announcement', 'page']);
+        });
+
+        it('page content type has correct metadata', () => {
+            expect(CONTENT_TYPES.page).toEqual({
+                label: 'Page',
+                description: 'Static/marketing page managed via CMS',
+            });
+        });
+
+        it('every ContentType key has label and description', () => {
+            for (const [, meta] of Object.entries(CONTENT_TYPES)) {
+                expect(meta).toHaveProperty('label');
+                expect(meta).toHaveProperty('description');
+                expect(typeof meta.label).toBe('string');
+                expect(typeof meta.description).toBe('string');
+            }
+        });
+    });
+
+    describe('BLOG_FEED_CONTENT_TYPES', () => {
+        it('includes blog, docs, news, announcement', () => {
+            expect(BLOG_FEED_CONTENT_TYPES).toEqual(['blog', 'docs', 'news', 'announcement']);
+        });
+
+        it('excludes changelog and page', () => {
+            expect(BLOG_FEED_CONTENT_TYPES).not.toContain('changelog');
+            expect(BLOG_FEED_CONTENT_TYPES).not.toContain('page');
+        });
+
+        it('is a subset of CONTENT_TYPES keys', () => {
+            const allTypes = Object.keys(CONTENT_TYPES);
+            for (const type of BLOG_FEED_CONTENT_TYPES) {
+                expect(allTypes).toContain(type);
+            }
         });
     });
 });
