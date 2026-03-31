@@ -419,9 +419,24 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
         const allRolesResult = await env.OBCF_D1.prepare('SELECT name FROM roles').all();
         const existingRoles = (allRolesResult.results || []).map((r: any) => r.name as string);
 
+        // Seed homepage demo content (idempotent — skips if sections exist)
+        let homepageSeeded = false;
+        try {
+            const { handleHomepageSeed } = await import('../routes/homepage');
+            const seedUrl = new URL(request.url);
+            seedUrl.pathname = '/api/homepage/seed';
+            const seedReq = new Request(seedUrl.toString(), { method: 'POST' });
+            const seedRes = await handleHomepageSeed({ request: seedReq, env, url: seedUrl });
+            const seedData = (await seedRes.json()) as { seeded?: boolean };
+            homepageSeeded = seedData.seeded === true;
+        } catch (err: any) {
+            console.error('[bootstrap/seed] Homepage seed failed (non-fatal):', err.message);
+        }
+
         return jsonResp({
             success: true,
             roles: { created: roleNames, existing: existingRoles, normalized: normalizedRoles },
+            homepage: { seeded: homepageSeeded },
             timestamp: Date.now(),
         });
     } catch (error: any) {

@@ -68,7 +68,7 @@ import {
 } from './blog';
 import { handleChangelogEntriesList, handleChangelogEntryBySlug } from './changelog';
 import { handleBrandApi } from './brand';
-import { handleHomepageData } from './homepage';
+import { handleHomepageData, handleHomepageSeed } from './homepage';
 import {
     handleAIChat,
     handleAIGatewayChat,
@@ -185,6 +185,11 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
     // Homepage public data (sections + display settings + exposed pages)
     if (route === '/api/homepage/data') {
         return handleHomepageData(context);
+    }
+
+    // Homepage seed (creates demo content)
+    if (route === '/api/homepage/seed') {
+        return handleHomepageSeed(context);
     }
 
     if (route === '/api/system/kill-switches') {

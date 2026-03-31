@@ -2,13 +2,15 @@
 
 import { Github, Palette, Rocket } from 'lucide-react';
 import { SlotRenderer } from '../../components/SlotRenderer';
+import type { HomepageDataPayload } from '../../lib/api';
+import { useHomepageData } from '../../lib/homepage-data-context';
 
 /**
- * Homepage content data — single source of truth.
- * Each section defines its data once; the active variant determines how it renders.
+ * Fallback homepage data — used when the API is unavailable or returns no sections.
+ * These are the built-in template defaults that ensure the homepage always renders.
  */
 
-const HERO_DATA = {
+const FALLBACK_HERO = {
     title: (
         <>
             <span className="text-primary">Ottabase</span>{' '}
@@ -45,7 +47,7 @@ const HERO_DATA = {
     ],
 };
 
-const FEATURES_DATA = {
+const FALLBACK_FEATURES = {
     features: [
         { title: 'Cloudflare Workers', description: 'Edge-deployed via OpenNext. No origin server needed.' },
         { title: 'Brand Engine', description: '8 theme presets with live switching and dark mode.' },
@@ -54,7 +56,7 @@ const FEATURES_DATA = {
     ],
 };
 
-const CTA_DATA = {
+const FALLBACK_CTA = {
     title: 'Ready to Ship?',
     description: 'Clone the template, customize the brand, and deploy to Cloudflare Workers in minutes.',
     actions: [
@@ -71,12 +73,92 @@ const CTA_DATA = {
     ],
 };
 
+/**
+ * Map DB sections to slot-specific data contracts.
+ * Filters to enabled sections only and transforms to the shapes expected by SlotRenderer.
+ */
+function buildPageSlotData(sections: HomepageDataPayload['sections']) {
+    const result: {
+        hero?: Record<string, unknown>;
+        features?: Record<string, unknown>;
+        cta?: Record<string, unknown>;
+        about?: Record<string, unknown>;
+    } = {};
+
+    for (const section of sections) {
+        if (section.enabled === false) continue;
+
+        const slot = section.slot;
+        if (slot === 'hero') {
+            result.hero = {
+                title: section.title ?? '',
+                subtitle: section.subtitle ?? undefined,
+                body: section.body ?? undefined,
+                actions:
+                    section.actions.length > 0
+                        ? section.actions.map((a) => ({
+                              label: a.label,
+                              href: a.href,
+                              variant: (a.variant as 'default' | 'secondary' | 'outline' | 'ghost') ?? 'default',
+                              icon: a.icon ?? undefined,
+                              external: a.external,
+                          }))
+                        : undefined,
+            };
+        } else if (slot === 'features') {
+            result.features = {
+                title: section.title ?? undefined,
+                features: section.features.map((f) => ({
+                    title: f.title,
+                    description: f.description,
+                    icon: f.icon ?? undefined,
+                    imageUrl: f.imageUrl ?? undefined,
+                    href: f.href ?? undefined,
+                })),
+            };
+        } else if (slot === 'cta') {
+            result.cta = {
+                title: section.title ?? '',
+                description: section.subtitle ?? undefined,
+                actions:
+                    section.actions.length > 0
+                        ? section.actions.map((a) => ({
+                              label: a.label,
+                              href: a.href,
+                              variant: (a.variant as 'default' | 'secondary' | 'outline' | 'ghost') ?? 'default',
+                              icon: a.icon ?? undefined,
+                              external: a.external,
+                          }))
+                        : [],
+            };
+        } else if (slot === 'about') {
+            result.about = {
+                title: section.title ?? undefined,
+                description: section.subtitle ?? undefined,
+                githubUrl: section.githubUrl ?? undefined,
+            };
+        }
+    }
+
+    return result;
+}
+
 export default function HomePage() {
+    const homepageData = useHomepageData();
+    const sections = homepageData?.sections ?? [];
+
+    // Build slot data from DB sections, with fallbacks for missing slots
+    const dbSlots = buildPageSlotData(sections);
+    const heroData = dbSlots.hero ?? FALLBACK_HERO;
+    const featuresData = dbSlots.features ?? FALLBACK_FEATURES;
+    const ctaData = dbSlots.cta ?? FALLBACK_CTA;
+
     return (
         <div className="flex flex-col items-center">
-            <SlotRenderer slot="hero" data={HERO_DATA} />
-            <SlotRenderer slot="features" data={FEATURES_DATA} />
-            <SlotRenderer slot="cta" data={CTA_DATA} />
+            <SlotRenderer slot="hero" data={heroData as any} />
+            <SlotRenderer slot="features" data={featuresData as any} />
+            {dbSlots.about && <SlotRenderer slot="about" data={dbSlots.about as any} />}
+            <SlotRenderer slot="cta" data={ctaData as any} />
         </div>
     );
 }

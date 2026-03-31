@@ -232,3 +232,235 @@ export async function handleHomepageData(context: HomepageRouteContext): Promise
     const payload: HomepagePublicPayload = { sections, display, exposedPages };
     return jsonResponse(payload);
 }
+
+// ── Default demo content for seeding ────────────────────────────────────────
+
+const SEED_SECTIONS = [
+    {
+        slot: 'navbar',
+        title: 'Ottabase',
+        subtitle: null,
+        body: null,
+        githubUrl: 'https://github.com/thinkdj/ottabase',
+        icon: 'Navigation',
+        enabled: true,
+        sortOrder: 0,
+    },
+    {
+        slot: 'hero',
+        title: 'Ottabase Homepage',
+        subtitle: 'Ship a themed, edge-deployed homepage on Cloudflare Workers in minutes.',
+        body: null,
+        githubUrl: null,
+        icon: 'Sparkles',
+        enabled: true,
+        sortOrder: 1,
+    },
+    {
+        slot: 'features',
+        title: 'Why Ottabase?',
+        subtitle: null,
+        body: null,
+        githubUrl: null,
+        icon: 'Grid3X3',
+        enabled: true,
+        sortOrder: 2,
+    },
+    {
+        slot: 'cta',
+        title: 'Ready to Ship?',
+        subtitle: 'Clone the template, customize the brand, and deploy to Cloudflare Workers in minutes.',
+        body: null,
+        githubUrl: null,
+        icon: 'Megaphone',
+        enabled: true,
+        sortOrder: 3,
+    },
+    {
+        slot: 'about',
+        title: 'About Ottabase',
+        subtitle: 'A modern full-stack framework for edge-first applications.',
+        body: null,
+        githubUrl: 'https://github.com/thinkdj/ottabase',
+        icon: 'FileText',
+        enabled: true,
+        sortOrder: 4,
+    },
+    {
+        slot: 'footer',
+        title: 'Ottabase',
+        subtitle: 'Built with Next.js & Cloudflare Workers',
+        body: null,
+        githubUrl: null,
+        icon: 'Rows3',
+        enabled: true,
+        sortOrder: 5,
+    },
+];
+
+const SEED_FEATURES = [
+    { title: 'Cloudflare Workers', description: 'Edge-deployed via OpenNext. No origin server needed.', icon: 'Globe' },
+    { title: 'Brand Engine', description: '8 theme presets with live switching and dark mode.', icon: 'Palette' },
+    { title: 'Next.js 16', description: 'App Router, RSC, and streaming out of the box.', icon: 'Zap' },
+    {
+        title: 'TypeScript',
+        description: 'End-to-end type safety across client and server.',
+        icon: 'Shield',
+    },
+    {
+        title: 'OttaORM',
+        description: 'Fat model system with auto-migrations, relationships, and CRUD.',
+        icon: 'Database',
+    },
+    {
+        title: 'Admin Dashboard',
+        description: 'Full admin UI for content, users, and settings management.',
+        icon: 'LayoutDashboard',
+    },
+];
+
+const SEED_HERO_ACTIONS = [
+    { label: 'About', href: '/about', variant: 'default', icon: null, external: false, sortOrder: 0 },
+    { label: 'Theme Demo', href: '/theme-demo', variant: 'secondary', icon: 'Palette', external: false, sortOrder: 1 },
+    {
+        label: 'GitHub',
+        href: 'https://github.com/thinkdj/ottabase',
+        variant: 'outline',
+        icon: 'Github',
+        external: true,
+        sortOrder: 2,
+    },
+];
+
+const SEED_CTA_ACTIONS = [
+    {
+        label: 'Get Started',
+        href: 'https://github.com/thinkdj/ottabase',
+        variant: 'default',
+        icon: 'Rocket',
+        external: true,
+        sortOrder: 0,
+    },
+    { label: 'Explore Themes', href: '/theme-demo', variant: 'outline', icon: null, external: false, sortOrder: 1 },
+];
+
+const SEED_DISPLAY = {
+    variantBySlotJson: {
+        navbar: 'default',
+        hero: 'centered',
+        features: 'grid',
+        cta: 'default',
+        footer: 'default',
+        about: 'default',
+    },
+    themePreset: 'neo',
+};
+
+/**
+ * POST /api/homepage/seed
+ *
+ * Seeds default homepage content (sections, features, actions, display settings).
+ * Skips seeding if any sections already exist. Idempotent.
+ */
+export async function handleHomepageSeed(context: HomepageRouteContext): Promise<Response> {
+    const { env, url, request } = context;
+
+    if (request.method !== 'POST') {
+        return errorResponse('Method not allowed', 405);
+    }
+
+    const d1Error = ensureD1(env);
+    if (d1Error) return d1Error;
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+
+    const appId = url.searchParams.get('appId') || null;
+
+    try {
+        // Check if sections already exist — skip if so
+        const sectionWhere: Record<string, unknown> = {};
+        if (appId) sectionWhere.appId = appId;
+        const existing = await HomepageSection.where(sectionWhere);
+        if (existing.length > 0) {
+            return jsonResponse({
+                success: true,
+                seeded: false,
+                message: `Homepage already has ${existing.length} section(s). Skipping seed.`,
+            });
+        }
+
+        // Create sections
+        const sectionMap: Record<string, string> = {}; // slot → id
+        for (const s of SEED_SECTIONS) {
+            const record = await HomepageSection.create({
+                ...s,
+                cssClasses: null,
+                metadata: null,
+                ...(appId ? { appId } : {}),
+            });
+            sectionMap[s.slot] = record.get('id') as string;
+        }
+
+        // Create features for the "features" section
+        const featuresSectionId = sectionMap.features;
+        if (featuresSectionId) {
+            for (let i = 0; i < SEED_FEATURES.length; i++) {
+                await HomepageFeature.create({
+                    sectionId: featuresSectionId,
+                    title: SEED_FEATURES[i].title,
+                    description: SEED_FEATURES[i].description,
+                    icon: SEED_FEATURES[i].icon,
+                    imageUrl: null,
+                    href: null,
+                    sortOrder: i,
+                    ...(appId ? { appId } : {}),
+                });
+            }
+        }
+
+        // Create hero actions
+        const heroSectionId = sectionMap.hero;
+        if (heroSectionId) {
+            for (const a of SEED_HERO_ACTIONS) {
+                await HomepageAction.create({
+                    sectionId: heroSectionId,
+                    ...a,
+                    ...(appId ? { appId } : {}),
+                });
+            }
+        }
+
+        // Create CTA actions
+        const ctaSectionId = sectionMap.cta;
+        if (ctaSectionId) {
+            for (const a of SEED_CTA_ACTIONS) {
+                await HomepageAction.create({
+                    sectionId: ctaSectionId,
+                    ...a,
+                    ...(appId ? { appId } : {}),
+                });
+            }
+        }
+
+        // Create display settings
+        await HomepageDisplaySettings.create({
+            id: 'default',
+            ...SEED_DISPLAY,
+            fallbackThemePresetId: null,
+            customCss: null,
+            seoTitle: null,
+            seoDescription: null,
+            ...(appId ? { appId } : {}),
+        });
+
+        return jsonResponse({
+            success: true,
+            seeded: true,
+            sections: Object.keys(sectionMap).length,
+            features: SEED_FEATURES.length,
+            actions: SEED_HERO_ACTIONS.length + SEED_CTA_ACTIONS.length,
+        });
+    } catch (err: any) {
+        console.error('[homepage/seed] Failed:', err);
+        return errorResponse(err.message ?? 'Seed failed', 500);
+    }
+}

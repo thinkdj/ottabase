@@ -121,7 +121,14 @@ export async function fetchPageBySlug(slug: string): Promise<PageData | null> {
 export async function fetchHomepageData(): Promise<HomepageDataPayload> {
     const fallback: HomepageDataPayload = {
         sections: [],
-        display: { variantBySlot: null, themePreset: null, fallbackThemePresetId: null },
+        display: {
+            variantBySlot: null,
+            themePreset: null,
+            fallbackThemePresetId: null,
+            customCss: null,
+            seoTitle: null,
+            seoDescription: null,
+        },
         exposedPages: [],
     };
     if (!API_URL) return fallback;

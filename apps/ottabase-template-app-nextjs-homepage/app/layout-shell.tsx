@@ -3,6 +3,7 @@
 import { ConfigPanel } from '../components/ConfigPanel';
 import { SlotRenderer } from '../components/SlotRenderer';
 import type { HomepageDataPayload } from '../lib/api';
+import { HomepageDataProvider } from '../lib/homepage-data-context';
 import type { NavLink } from '../components/variants/navbar/types';
 
 const GITHUB_URL = 'https://github.com/thinkdj/ottabase';
@@ -136,11 +137,11 @@ export function LayoutShell({ children, exposedPages = [], homepageData }: Layou
     const footerData = dbSlotData.footer ? { ...FOOTER_DATA, ...dbSlotData.footer } : FOOTER_DATA;
 
     return (
-        <>
+        <HomepageDataProvider data={homepageData ?? null}>
             <SlotRenderer slot="navbar" data={navbarData} />
             <main className="flex-1">{children}</main>
             <SlotRenderer slot="footer" data={footerData} />
             <ConfigPanel />
-        </>
+        </HomepageDataProvider>
     );
 }

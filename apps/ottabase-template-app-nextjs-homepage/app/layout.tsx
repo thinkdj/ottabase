@@ -1,6 +1,6 @@
 import { buildCriticalCSS } from '@ottabase/brand-engine';
 import type { Metadata } from 'next';
-import { fetchHomepageData } from '../lib/api';
+import { getHomepageData } from '../lib/get-homepage-data';
 import { generateBrandConfig } from '../lib/brand-server';
 import './globals.css';
 import { LayoutShell } from './layout-shell';
@@ -23,21 +23,40 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     // Generate critical CSS for SSR (prevents FOUC)
     const criticalCSS = buildCriticalCSS(theme);
 
-    // Fetch full homepage data (sections, display settings, exposed pages) from the worker API
-    const homepageData = await fetchHomepageData();
+    // Fetch and validate full homepage data from the worker API (Zod-validated)
+    const homepageData = await getHomepageData();
+
+    // Extract display settings for Providers
+    const initialHomepageConfig = homepageData.display.variantBySlot ?? null;
+    const themePresetId = homepageData.display.themePreset ?? null;
+
+    // Apply SEO overrides from DB if available
+    const seoTitle = homepageData.display.seoTitle;
+    const seoDescription = homepageData.display.seoDescription;
 
     return (
         <html lang="en" suppressHydrationWarning>
             <head>
+                {/* SEO overrides from admin display settings */}
+                {seoTitle && <title>{seoTitle}</title>}
+                {seoDescription && <meta name="description" content={seoDescription} />}
                 {/* Inject critical CSS for theme variables */}
                 <style id="brand-critical" dangerouslySetInnerHTML={{ __html: criticalCSS }} />
+                {/* Inject custom CSS from display settings */}
+                {homepageData.display.customCss && (
+                    <style id="homepage-custom" dangerouslySetInnerHTML={{ __html: homepageData.display.customCss }} />
+                )}
                 {/* Load fonts - only if URLs are defined */}
                 {theme.typography.heading.url && <link rel="stylesheet" href={theme.typography.heading.url} />}
                 {theme.typography.body.url && <link rel="stylesheet" href={theme.typography.body.url} />}
                 {theme.typography.handwriting.url && <link rel="stylesheet" href={theme.typography.handwriting.url} />}
             </head>
             <body className="flex min-h-screen flex-col bg-background text-foreground">
-                <Providers initialBrandConfig={brandConfig}>
+                <Providers
+                    initialBrandConfig={brandConfig}
+                    initialHomepageConfig={initialHomepageConfig}
+                    themePresetId={themePresetId}
+                >
                     <LayoutShell exposedPages={homepageData.exposedPages} homepageData={homepageData}>
                         {children}
                     </LayoutShell>

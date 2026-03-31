@@ -9,28 +9,42 @@ import { useEffect } from 'react';
 import { THEME_STORAGE_KEY } from '../components/ThemePresetSwitcher';
 import { HomepageConfigProvider } from '../lib/homepage-config-context';
 
-export function Providers({
-    children,
-    initialBrandConfig,
-}: {
+export interface ProvidersProps {
     children: React.ReactNode;
     initialBrandConfig: FullBrandConfig;
-}) {
+    /** DB-driven variant-by-slot from GET /api/homepage/data display settings */
+    initialHomepageConfig?: Record<string, string> | null;
+    /** DB-driven theme preset ID (e.g. 'neo', 'warm') */
+    themePresetId?: string | null;
+}
+
+export function Providers({ children, initialBrandConfig, initialHomepageConfig, themePresetId }: ProvidersProps) {
     // Handle theme switching for dark/light mode + restore saved preset
     useEffect(() => {
         if (typeof document === 'undefined') return;
 
-        // Check for a saved preset in localStorage
+        // Priority: localStorage saved preset > DB themePresetId > SSR brand config
         const savedPreset = localStorage.getItem(THEME_STORAGE_KEY);
 
         const applyCorrectTheme = () => {
             const isDark = document.documentElement.classList.contains('dark');
             const mode = isDark ? 'dark' : 'light';
 
+            // Try localStorage preset first (user's explicit choice)
             if (savedPreset) {
-                // Apply the saved preset instead of the SSR default
                 registerBuiltInThemes();
                 const base = getThemeByName(savedPreset);
+                if (base) {
+                    const resolved = resolveTheme({ base, tenantOverrides: {}, mode });
+                    applyBrandTheme(resolved);
+                    return;
+                }
+            }
+
+            // Try DB-driven theme preset (admin-configured)
+            if (themePresetId) {
+                registerBuiltInThemes();
+                const base = getThemeByName(themePresetId);
                 if (base) {
                     const resolved = resolveTheme({ base, tenantOverrides: {}, mode });
                     applyBrandTheme(resolved);
@@ -46,10 +60,8 @@ export function Providers({
             }
         };
 
-        // Apply correct theme on mount
         applyCorrectTheme();
 
-        // Watch for dark mode class changes
         const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
@@ -64,13 +76,15 @@ export function Providers({
         });
 
         return () => observer.disconnect();
-    }, [initialBrandConfig]);
+    }, [initialBrandConfig, themePresetId]);
 
     return (
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <BrandProvider initialConfig={initialBrandConfig}>
                 <ShadcnProviders enableThemeProvider={false} enableToaster>
-                    <HomepageConfigProvider>{children}</HomepageConfigProvider>
+                    <HomepageConfigProvider initialVariantBySlot={initialHomepageConfig}>
+                        {children}
+                    </HomepageConfigProvider>
                 </ShadcnProviders>
             </BrandProvider>
         </ThemeProvider>

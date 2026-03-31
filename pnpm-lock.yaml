@@ -404,6 +404,9 @@ importers:
       tailwind-merge:
         specifier: 'catalog:'
         version: 2.6.0
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'

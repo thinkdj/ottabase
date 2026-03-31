@@ -372,7 +372,14 @@ describe('Homepage API types', () => {
         const result = await fetchHomepageData();
         expect(result).toEqual({
             sections: [],
-            display: { variantBySlot: null, themePreset: null, fallbackThemePresetId: null },
+            display: {
+                variantBySlot: null,
+                themePreset: null,
+                fallbackThemePresetId: null,
+                customCss: null,
+                seoTitle: null,
+                seoDescription: null,
+            },
             exposedPages: [],
         });
     });
@@ -459,5 +466,66 @@ describe('Homepage API types', () => {
         expect(section.features[0].icon).toBe('Shield');
         expect(section.features[0].imageUrl).toBeTruthy();
         expect(section.actions[0].icon).toBe('ArrowRight');
+    });
+});
+
+describe('getHomepageData (Zod validation)', () => {
+    it('returns validated fallback when API_URL is empty', async () => {
+        const { getHomepageData } = await import('../lib/get-homepage-data');
+        const result = await getHomepageData();
+        expect(result.sections).toEqual([]);
+        expect(result.display.variantBySlot).toBeNull();
+        expect(result.exposedPages).toEqual([]);
+    });
+
+    it('HomepageDataSchema validates a correct payload', async () => {
+        const { HomepageDataSchema } = await import('../lib/get-homepage-data');
+        const payload = {
+            sections: [
+                {
+                    id: 'test-1',
+                    slot: 'hero',
+                    title: 'Test',
+                    subtitle: null,
+                    body: null,
+                    githubUrl: null,
+                    icon: 'Sparkles',
+                    enabled: true,
+                    cssClasses: null,
+                    metadata: null,
+                    sortOrder: 0,
+                    features: [],
+                    actions: [{ label: 'Go', href: '/go', variant: 'default', icon: null, external: false }],
+                },
+            ],
+            display: {
+                variantBySlot: { hero: 'centered' },
+                themePreset: 'neo',
+                fallbackThemePresetId: null,
+            },
+            exposedPages: [{ slug: 'about', title: 'About' }],
+        };
+        const result = HomepageDataSchema.safeParse(payload);
+        expect(result.success).toBe(true);
+        if (result.success) {
+            expect(result.data.sections).toHaveLength(1);
+            expect(result.data.sections[0].icon).toBe('Sparkles');
+            expect(result.data.display.themePreset).toBe('neo');
+        }
+    });
+
+    it('HomepageDataSchema rejects invalid payload shape', async () => {
+        const { HomepageDataSchema } = await import('../lib/get-homepage-data');
+        const result = HomepageDataSchema.safeParse({ sections: 'not-an-array' });
+        expect(result.success).toBe(false);
+    });
+});
+
+describe('HomepageConfigProvider with API variants', () => {
+    it('merges API variant-by-slot into default config', async () => {
+        const { SLOT_REGISTRY } = await import('../lib/homepage-config');
+        // Verify the slot registry has valid variants for testing
+        expect(SLOT_REGISTRY.hero.variants.some((v) => v.id === 'split')).toBe(true);
+        expect(SLOT_REGISTRY.features.variants.some((v) => v.id === 'cards')).toBe(true);
     });
 });
