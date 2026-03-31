@@ -304,3 +304,14 @@ CI/CD is handled by the shared `.github/workflows/deploy.yml` — deploys on pus
 
 The workflow reads `cloudflare-config.json` from each app folder to determine app type (`nextjs`), build commands,
 output paths and wrangler config — no hardcoded names in yml.
+
+## Dynamic Marketing Pages (Worker-driven)
+
+In addition to static homepage slots, the app now supports dynamic route rendering from the TanStack Worker API:
+
+- Route: `app/[slug]/page.tsx`
+- Data source: `GET {NEXT_PUBLIC_TANSTACK_API_URL}/api/pages/:slug`
+- Nav prebuild: `GET .../api/pages/nav` in `generateStaticParams()`
+- Draft preview: append `?preview=true`
+
+Set `NEXT_PUBLIC_TANSTACK_API_URL` in `.env.local` when homepage and worker run on different hosts.

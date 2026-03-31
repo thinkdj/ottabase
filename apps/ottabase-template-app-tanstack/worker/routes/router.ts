@@ -89,6 +89,7 @@ import { handleAuditLogs, handleDemo, handleDemoError } from './demo';
 import { handleEmailProviders, handleEmailTest } from './email';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
+import { handleMarketingPageBySlug, handleMarketingPageNav, handleBlocksRegistry } from './marketing-pages';
 import {
     handleReferralStats,
     handleReferralTrack,
@@ -160,6 +161,20 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
     if (route.startsWith('/api/brand')) {
         const res = await handleBrandApi(context);
         if (res) return res;
+    }
+
+    if (route === '/api/blocks') {
+        return handleBlocksRegistry(context);
+    }
+
+    if (route === '/api/pages/nav') {
+        return handleMarketingPageNav(context);
+    }
+
+    const marketingPageBySlugMatch = route.match(/^\/api\/pages\/([^/]+)$/);
+    if (marketingPageBySlugMatch) {
+        const slug = decodeURIComponent(marketingPageBySlugMatch[1]);
+        return handleMarketingPageBySlug(context, slug);
     }
 
     if (route === '/api/health') {
