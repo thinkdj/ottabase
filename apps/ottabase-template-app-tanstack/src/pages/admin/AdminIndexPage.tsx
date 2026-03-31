@@ -12,6 +12,7 @@ import {
     FileText,
     Layers,
     Layout,
+    LayoutTemplate,
     Mail,
     Palette,
     Power,
@@ -86,6 +87,12 @@ const ADMIN_CATEGORIES: AdminCategory[] = [
                 description: 'Product updates for the public /changelog page (OttaEditor + hero media).',
                 href: '/admin/changelog',
                 icon: FileText,
+            },
+            {
+                title: 'Marketing Pages',
+                description: 'Drag-and-drop builder for homepage and landing pages with reusable blocks.',
+                href: '/admin/pages',
+                icon: LayoutTemplate,
             },
             ...(MEDIA_LIBRARY_ENABLED
                 ? [

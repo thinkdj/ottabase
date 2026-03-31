@@ -1,6 +1,6 @@
 'use client';
 
-import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
+import { DarkModeToggle } from '@ottabase/ui-components';
 import Link from 'next/link';
 import type { NavbarData } from './types';
 

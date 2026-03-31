@@ -3,7 +3,7 @@
     "version": "0.1.0",
     "private": true,
     "scripts": {
-        "dev": "next dev",
+        "dev": "next dev --webpack",
         "build": "next build --webpack",
         "build:worker": "node ./scripts/ensure-opennext-dirs.mjs && opennextjs-cloudflare build --skipBuild",
         "start": "next start",
