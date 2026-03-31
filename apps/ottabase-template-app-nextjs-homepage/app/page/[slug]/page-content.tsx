@@ -29,7 +29,12 @@ export function PageContent({ page }: { page: PageData }) {
 
             {hasContent && (
                 <div className="prose prose-slate dark:prose-invert max-w-none">
-                    <Blocks data={page.content!} renderers={customRenderers} config={defaultEJSRConfigs} />
+                    {/* Provide defaults for optional EditorJS fields (time, version) required by DataProp */}
+                    <Blocks
+                        data={{ ...page.content!, time: page.content!.time ?? 0, version: page.content!.version ?? '' }}
+                        renderers={customRenderers}
+                        config={defaultEJSRConfigs}
+                    />
                 </div>
             )}
         </article>

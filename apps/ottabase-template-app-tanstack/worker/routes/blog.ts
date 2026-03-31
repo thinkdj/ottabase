@@ -248,7 +248,7 @@ export async function handleBlogPostsList(context: BlogRouteContext): Promise<Re
         where.contentType = contentType;
     } else {
         // Public blog feed: only show blog articles (exclude changelog + page)
-        where.contentType = { $in: BLOG_FEED_CONTENT_TYPES };
+        where.contentType = BLOG_FEED_CONTENT_TYPES;
     }
     if (seriesId) where.seriesId = seriesId;
 
@@ -594,7 +594,7 @@ export async function handleBlogRssFeed(context: BlogRouteContext): Promise<Resp
         where.contentType = contentType;
     } else {
         // Public RSS feed: only blog articles (exclude changelog + page)
-        where.contentType = { $in: BLOG_FEED_CONTENT_TYPES };
+        where.contentType = BLOG_FEED_CONTENT_TYPES;
     }
 
     const posts = await Post.where(where, {
@@ -680,7 +680,7 @@ export async function handleBlogSitemap(context: BlogRouteContext): Promise<Resp
 
     const appId = url.searchParams.get('appId') || null;
     // Sitemap: only blog articles (exclude changelog + page)
-    const where: Record<string, unknown> = { status: 'published', contentType: { $in: BLOG_FEED_CONTENT_TYPES } };
+    const where: Record<string, unknown> = { status: 'published', contentType: BLOG_FEED_CONTENT_TYPES };
     if (appId) where.appId = appId;
 
     const posts = await Post.where(where, {

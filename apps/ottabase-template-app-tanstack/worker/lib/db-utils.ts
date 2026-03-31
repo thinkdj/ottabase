@@ -39,6 +39,12 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { ChangelogEntry } from '../../ottabase/models/ChangelogEntry';
 import { changelogPolicy } from '../../ottabase/models/changelogPolicy';
+import {
+    homepageSectionPolicy,
+    homepageFeaturePolicy,
+    homepageActionPolicy,
+    homepageDisplaySettingsPolicy,
+} from '../../ottabase/models/homepagePolicy';
 import { HomepageAction } from '../../ottabase/models/HomepageAction';
 import { HomepageDisplaySettings } from '../../ottabase/models/HomepageDisplaySettings';
 import { HomepageFeature } from '../../ottabase/models/HomepageFeature';
@@ -130,6 +136,10 @@ export function initDbConnection(env: CloudflareEnv): void {
     const brandModels = [BrandKit, LayoutTemplate, LayoutRouteMapping, MenuSlotAssignment];
     registerPolicy(mediaLibraryPolicy);
     registerPolicy(changelogPolicy);
+    registerPolicy(homepageSectionPolicy);
+    registerPolicy(homepageFeaturePolicy);
+    registerPolicy(homepageActionPolicy);
+    registerPolicy(homepageDisplaySettingsPolicy);
 
     const appModels = [Todo, ChangelogEntry, HomepageSection, HomepageFeature, HomepageAction, HomepageDisplaySettings];
 

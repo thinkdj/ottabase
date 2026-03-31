@@ -8,7 +8,7 @@
  * always agree on the payload shape.
  */
 
-import type { HomepageDataPayload } from '@ottabase/homepage-contract';
+import type { HomepageDataPayload, ExposedPage } from '@ottabase/homepage-contract';
 
 // Re-export shared contract types so existing imports continue to work
 export type {
