@@ -942,6 +942,27 @@ const adminHomepageRoute = new Route({
     ),
 });
 
+// Marketing Pages admin routes (drag-and-drop page builder)
+const adminPagesRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/pages',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/pages').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminPagesListPage />),
+        })),
+    ),
+});
+
+const adminPageBuilderRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/pages/$pageId',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/pages').then((m) => ({
+            default: () => renderAdminRoute(<m.MarketingPageBuilder />),
+        })),
+    ),
+});
+
 // Organizations routes
 const organizationsRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -1174,6 +1195,8 @@ const coreRoutes = [
     adminChangelogNewRoute,
     adminChangelogEditRoute,
     adminHomepageRoute,
+    adminPagesRoute,
+    adminPageBuilderRoute,
     adminDevMailRoute,
     adminQueueRoute,
     adminCronRoute,

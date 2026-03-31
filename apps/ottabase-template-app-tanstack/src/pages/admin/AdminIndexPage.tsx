@@ -13,6 +13,7 @@ import {
     Home,
     Layers,
     Layout,
+    LayoutDashboard,
     Mail,
     Palette,
     Power,
@@ -93,6 +94,12 @@ const ADMIN_CATEGORIES: AdminCategory[] = [
                 description: 'Manage homepage sections, features, actions, and display settings.',
                 href: '/admin/homepage',
                 icon: Home,
+            },
+            {
+                title: 'Marketing Pages',
+                description: 'Drag & drop page builder for landing pages, about pages, and more.',
+                href: '/admin/pages',
+                icon: LayoutDashboard,
             },
             ...(MEDIA_LIBRARY_ENABLED
                 ? [

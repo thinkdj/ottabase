@@ -8,16 +8,23 @@
  * always agree on the payload shape.
  */
 
-import type { HomepageDataPayload, ExposedPage } from '@ottabase/homepage-contract';
+import type { ExposedPage, HomepageDataPayload, NavPagesPayload, PageDataPayload } from '@ottabase/homepage-contract';
 
 // Re-export shared contract types so existing imports continue to work
 export type {
     ExposedPage,
-    HomepageSectionPayload,
-    HomepageDisplayPayload,
-    HomepageDataPayload,
-    HomepageFeaturePayload,
     HomepageActionPayload,
+    HomepageDataPayload,
+    HomepageDisplayPayload,
+    HomepageFeaturePayload,
+    HomepageSectionPayload,
+    NavPagePayload,
+    NavPagesPayload,
+    // New flexible page system types
+    PageDataPayload,
+    PageDisplayPayload,
+    PageMetaPayload,
+    PageSectionPayload,
 } from '@ottabase/homepage-contract';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
@@ -125,6 +132,48 @@ export async function fetchExposedPages(): Promise<ExposedPage[]> {
         if (!res.ok) return [];
         const data = await res.json();
         return Array.isArray(data.exposedPages) ? data.exposedPages : [];
+    } catch {
+        return [];
+    }
+}
+
+// ============================================================================
+// NEW FLEXIBLE PAGE SYSTEM API
+// ============================================================================
+
+/**
+ * Fetch page data by slug from the new flexible page system.
+ * Use this for pages created via /admin/pages.
+ * Returns null on error.
+ */
+export async function fetchPageByPageSlug(slug: string, preview = false): Promise<PageDataPayload | null> {
+    if (!API_URL) return null;
+    try {
+        const url = new URL(`${API_URL}/api/pages/${encodeURIComponent(slug)}`);
+        if (preview) url.searchParams.set('preview', 'true');
+        const res = await fetch(url.toString(), {
+            next: { revalidate: preview ? 0 : 60 }, // No cache in preview mode
+        });
+        if (!res.ok) return null;
+        return await res.json();
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Fetch nav-enabled pages from the new flexible page system.
+ * Returns pages marked with showInNav=true, sorted by navOrder.
+ */
+export async function fetchNavPages(): Promise<NavPagesPayload['pages']> {
+    if (!API_URL) return [];
+    try {
+        const res = await fetch(`${API_URL}/api/pages/nav`, {
+            next: { revalidate: 60 },
+        });
+        if (!res.ok) return [];
+        const data: NavPagesPayload = await res.json();
+        return Array.isArray(data.pages) ? data.pages : [];
     } catch {
         return [];
     }

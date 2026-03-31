@@ -13,10 +13,13 @@ registerBuiltInThemes();
  * Generate brand configuration for SSR
  * This replaces the need for a /api/brand endpoint
  * Generates both light and dark themes for client-side switching
+ * @param mode - Initial color mode (light/dark)
+ * @param themePresetId - Theme preset from API (overrides hardcoded config)
  */
-export function generateBrandConfig(mode: 'light' | 'dark' = 'light'): FullBrandConfig {
-    // Get the theme preset
-    const baseTheme = getThemeByName(themePreset) || getThemeByName('default')!;
+export function generateBrandConfig(mode: 'light' | 'dark' = 'light', themePresetId?: string | null): FullBrandConfig {
+    // Get the theme preset - API value takes precedence over config
+    const presetName = themePresetId || themePreset;
+    const baseTheme = getThemeByName(presetName) || getThemeByName('default')!;
 
     // Resolve both light and dark themes
     const lightTheme = resolveTheme({
@@ -54,7 +57,7 @@ export function generateBrandConfig(mode: 'light' | 'dark' = 'light'): FullBrand
                 logos: {},
                 theme: lightTheme,
                 darkTheme: darkTheme,
-                themeBase: themePreset,
+                themeBase: presetName,
                 tenantTheme: brandConfig,
                 defaultColorScheme: 'system',
                 allowDarkModeToggle: true,

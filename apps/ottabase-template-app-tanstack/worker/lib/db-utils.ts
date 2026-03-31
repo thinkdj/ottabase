@@ -42,6 +42,10 @@ import { HomepageAction } from '../../ottabase/models/HomepageAction';
 import { HomepageDisplaySettings } from '../../ottabase/models/HomepageDisplaySettings';
 import { HomepageFeature } from '../../ottabase/models/HomepageFeature';
 import { HomepageSection } from '../../ottabase/models/HomepageSection';
+import { Page } from '../../ottabase/models/Page';
+import { PageAction } from '../../ottabase/models/PageAction';
+import { PageFeature } from '../../ottabase/models/PageFeature';
+import { PageSection } from '../../ottabase/models/PageSection';
 import { Todo } from '../../ottabase/models/Todo';
 import { changelogPolicy } from '../../ottabase/models/changelogPolicy';
 import {
@@ -51,6 +55,7 @@ import {
     homepageSectionPolicy,
 } from '../../ottabase/models/homepagePolicy';
 import { mediaLibraryPolicy } from '../../ottabase/models/mediaLibraryPolicy';
+import { pageActionPolicy, pageFeaturePolicy, pagePolicy, pageSectionPolicy } from '../../ottabase/models/pagePolicy';
 import type { CloudflareEnv } from '../cloudflare-env';
 import { readJson } from './utils';
 
@@ -136,12 +141,22 @@ export function initDbConnection(env: CloudflareEnv): void {
     const brandModels = [BrandKit, LayoutTemplate, LayoutRouteMapping, MenuSlotAssignment];
     registerPolicy(mediaLibraryPolicy);
     registerPolicy(changelogPolicy);
+    // Legacy homepage policies
     registerPolicy(homepageSectionPolicy);
     registerPolicy(homepageFeaturePolicy);
     registerPolicy(homepageActionPolicy);
     registerPolicy(homepageDisplaySettingsPolicy);
+    // New flexible page system policies
+    registerPolicy(pagePolicy);
+    registerPolicy(pageSectionPolicy);
+    registerPolicy(pageFeaturePolicy);
+    registerPolicy(pageActionPolicy);
 
-    const appModels = [Todo, ChangelogEntry, HomepageSection, HomepageFeature, HomepageAction, HomepageDisplaySettings];
+    // Legacy homepage models (kept for migration)
+    const legacyModels = [HomepageSection, HomepageFeature, HomepageAction, HomepageDisplaySettings];
+    // New flexible page system models
+    const pageModels = [Page, PageSection, PageFeature, PageAction];
+    const appModels = [Todo, ChangelogEntry, ...legacyModels, ...pageModels];
 
     registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
 

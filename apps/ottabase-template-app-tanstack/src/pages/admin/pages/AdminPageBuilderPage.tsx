@@ -1,20 +1,20 @@
 /**
- * Admin Homepage Builder - Tab-based UX
+ * Admin Page Builder
  *
- * Design: Full-width tabs for each section type.
- * Each tab has dedicated editing space - no cramped modals.
+ * Full-featured page editor with tab-based section management.
+ * Similar to homepage builder but works for any page by ID.
  */
 import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import {
-    homepageActionHooks,
-    homepageDisplaySettingsHooks,
-    homepageFeatureHooks,
-    homepageSectionHooks,
-    type HomepageActionRow,
-    type HomepageDisplaySettingsRow,
-    type HomepageFeatureRow,
-    type HomepageSectionRow,
-} from '@/hooks/homepageHooks';
+    pageActionHooks,
+    pageFeatureHooks,
+    pageHooks,
+    pageSectionHooks,
+    type PageActionRow,
+    type PageFeatureRow,
+    type PageRow,
+    type PageSectionRow,
+} from '@/hooks/pageHooks';
 import {
     Badge,
     Button,
@@ -38,80 +38,112 @@ import {
     TabsTrigger,
     Textarea,
 } from '@ottabase/ui-shadcn';
-import { IconDatabaseImport } from '@tabler/icons-react';
-import {
-    Check,
-    ExternalLink,
-    FileText,
-    Grid3X3,
-    Home,
-    Megaphone,
-    Navigation,
-    Palette,
-    Plus,
-    Rows3,
-    Save,
-    Settings,
-    Sparkles,
-    Trash2,
-} from 'lucide-react';
+import { Link, useParams } from '@tanstack/react-router';
+import { ArrowLeft, Check, ExternalLink, Palette, Plus, Save, Settings, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ACTION_VARIANTS, THEME_PRESETS } from './homepage-constants';
-
-// ── Section type config ─────────────────────────────────────────────────────
-
-const SECTION_TYPES = [
-    { id: 'navbar', label: 'Navbar', icon: Navigation, description: 'Top navigation bar' },
-    { id: 'hero', label: 'Hero', icon: Sparkles, description: 'Main headline section' },
-    { id: 'features', label: 'Features', icon: Grid3X3, description: 'Feature grid' },
-    { id: 'cta', label: 'CTA', icon: Megaphone, description: 'Call to action' },
-    { id: 'about', label: 'About', icon: FileText, description: 'About section' },
-    { id: 'footer', label: 'Footer', icon: Rows3, description: 'Page footer' },
-] as const;
-
-type SectionType = (typeof SECTION_TYPES)[number]['id'];
+import {
+    ACTION_VARIANTS,
+    getSlotConfig,
+    PAGE_STATUS_OPTIONS,
+    SLOT_TYPES,
+    THEME_PRESETS,
+    type SlotConfig,
+} from './pages-constants';
 
 // ── Settings Tab ────────────────────────────────────────────────────────────
 
-function SettingsTab({
-    display,
-    onSave,
-    onSeed,
-    seeding,
-}: {
-    display: HomepageDisplaySettingsRow | null;
-    onSave: (data: { themePreset: string; seoTitle?: string; seoDescription?: string; customCss?: string }) => void;
-    onSeed: () => void;
-    seeding: boolean;
-}) {
-    const [themePreset, setThemePreset] = useState(display?.themePreset ?? 'default');
-    const [seoTitle, setSeoTitle] = useState(display?.seoTitle ?? '');
-    const [seoDescription, setSeoDescription] = useState(display?.seoDescription ?? '');
-    const [customCss, setCustomCss] = useState(display?.customCss ?? '');
+function SettingsTab({ page, onSave }: { page: PageRow; onSave: (data: Partial<PageRow>) => void }) {
+    const [form, setForm] = useState({
+        title: page.title,
+        slug: page.slug,
+        status: page.status,
+        themePreset: page.themePreset ?? 'default',
+        seoTitle: page.seoTitle ?? '',
+        seoDescription: page.seoDescription ?? '',
+        seoImage: page.seoImage ?? '',
+        customCss: page.customCss ?? '',
+        showInNav: page.showInNav ?? false,
+        navOrder: page.navOrder ?? 0,
+        navLabel: page.navLabel ?? '',
+        icon: page.icon ?? '',
+    });
     const [saved, setSaved] = useState(false);
 
     useEffect(() => {
-        if (display) {
-            setThemePreset(display.themePreset ?? 'default');
-            setSeoTitle(display.seoTitle ?? '');
-            setSeoDescription(display.seoDescription ?? '');
-            setCustomCss(display.customCss ?? '');
-        }
-    }, [display]);
+        setForm({
+            title: page.title,
+            slug: page.slug,
+            status: page.status,
+            themePreset: page.themePreset ?? 'default',
+            seoTitle: page.seoTitle ?? '',
+            seoDescription: page.seoDescription ?? '',
+            seoImage: page.seoImage ?? '',
+            customCss: page.customCss ?? '',
+            showInNav: page.showInNav ?? false,
+            navOrder: page.navOrder ?? 0,
+            navLabel: page.navLabel ?? '',
+            icon: page.icon ?? '',
+        });
+    }, [page]);
 
     const handleSave = () => {
-        onSave({
-            themePreset,
-            seoTitle: seoTitle || undefined,
-            seoDescription: seoDescription || undefined,
-            customCss: customCss || undefined,
-        });
+        onSave(form);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
     };
 
     return (
         <div className="space-y-8">
+            {/* Page Info */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Page Info</CardTitle>
+                    <CardDescription>Basic page settings</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                            <Label>Title</Label>
+                            <Input
+                                value={form.title}
+                                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                                placeholder="Page Title"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Slug</Label>
+                            <Input
+                                value={form.slug}
+                                onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                                placeholder="page-slug"
+                                disabled={page.slug === 'homepage'}
+                            />
+                            {page.slug === 'homepage' && (
+                                <p className="text-xs text-muted-foreground">Homepage slug cannot be changed</p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Status</Label>
+                        <Select
+                            value={form.status}
+                            onValueChange={(v: PageRow['status']) => setForm({ ...form, status: v })}
+                        >
+                            <SelectTrigger className="w-48">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {PAGE_STATUS_OPTIONS.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Theme Selection */}
             <Card>
                 <CardHeader>
@@ -119,16 +151,17 @@ function SettingsTab({
                         <Palette className="h-5 w-5" />
                         Theme
                     </CardTitle>
-                    <CardDescription>Choose a visual theme for your homepage</CardDescription>
+                    <CardDescription>Choose a visual theme for this page</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {THEME_PRESETS.map((preset) => (
                             <button
                                 key={preset.id}
-                                onClick={() => setThemePreset(preset.id)}
+                                type="button"
+                                onClick={() => setForm({ ...form, themePreset: preset.id })}
                                 className={`p-4 rounded-lg border text-left transition-all ${
-                                    themePreset === preset.id
+                                    form.themePreset === preset.id
                                         ? 'border-primary bg-primary/5 ring-2 ring-primary shadow-sm'
                                         : 'hover:bg-muted/50 hover:border-muted-foreground/30'
                                 }`}
@@ -138,6 +171,51 @@ function SettingsTab({
                             </button>
                         ))}
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* Navigation */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Navigation</CardTitle>
+                    <CardDescription>Control how this page appears in navigation</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <Label>Show in navigation</Label>
+                            <p className="text-sm text-muted-foreground">Display link in site navigation</p>
+                        </div>
+                        <Switch checked={form.showInNav} onCheckedChange={(v) => setForm({ ...form, showInNav: v })} />
+                    </div>
+                    {form.showInNav && (
+                        <div className="grid gap-4 md:grid-cols-3 pt-2">
+                            <div className="space-y-2">
+                                <Label>Nav Label (optional)</Label>
+                                <Input
+                                    value={form.navLabel}
+                                    onChange={(e) => setForm({ ...form, navLabel: e.target.value })}
+                                    placeholder={form.title || 'Page title'}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Nav Order</Label>
+                                <Input
+                                    type="number"
+                                    value={form.navOrder}
+                                    onChange={(e) => setForm({ ...form, navOrder: parseInt(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Icon (Lucide name)</Label>
+                                <Input
+                                    value={form.icon}
+                                    onChange={(e) => setForm({ ...form, icon: e.target.value })}
+                                    placeholder="e.g. FileText"
+                                />
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -151,18 +229,26 @@ function SettingsTab({
                     <div className="space-y-2">
                         <Label>Page Title</Label>
                         <Input
-                            value={seoTitle}
-                            onChange={(e) => setSeoTitle(e.target.value)}
-                            placeholder="My Amazing Product - Build Better Software"
+                            value={form.seoTitle}
+                            onChange={(e) => setForm({ ...form, seoTitle: e.target.value })}
+                            placeholder={form.title || 'Page Title - Site Name'}
                         />
                     </div>
                     <div className="space-y-2">
                         <Label>Meta Description</Label>
                         <Textarea
-                            value={seoDescription}
-                            onChange={(e) => setSeoDescription(e.target.value)}
+                            value={form.seoDescription}
+                            onChange={(e) => setForm({ ...form, seoDescription: e.target.value })}
                             placeholder="A compelling description for search engines..."
                             rows={3}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Social Image URL</Label>
+                        <Input
+                            value={form.seoImage}
+                            onChange={(e) => setForm({ ...form, seoImage: e.target.value })}
+                            placeholder="https://example.com/og-image.png"
                         />
                     </div>
                 </CardContent>
@@ -176,8 +262,8 @@ function SettingsTab({
                 </CardHeader>
                 <CardContent>
                     <Textarea
-                        value={customCss}
-                        onChange={(e) => setCustomCss(e.target.value)}
+                        value={form.customCss}
+                        onChange={(e) => setForm({ ...form, customCss: e.target.value })}
                         placeholder=".hero { background: linear-gradient(...); }"
                         rows={5}
                         className="font-mono text-sm"
@@ -185,13 +271,9 @@ function SettingsTab({
                 </CardContent>
             </Card>
 
-            {/* Actions */}
-            <div className="flex items-center justify-between pt-4">
-                <Button variant="outline" onClick={onSeed} disabled={seeding}>
-                    <IconDatabaseImport className="mr-2 h-4 w-4" />
-                    {seeding ? 'Seeding...' : 'Seed Demo Data'}
-                </Button>
-                <Button onClick={handleSave}>
+            {/* Save */}
+            <div className="flex justify-end pt-4">
+                <Button onClick={handleSave} size="lg">
                     {saved ? <Check className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
                     {saved ? 'Saved!' : 'Save Settings'}
                 </Button>
@@ -200,10 +282,11 @@ function SettingsTab({
     );
 }
 
-// ── Section Tab (reusable for each section type) ────────────────────────────
+// ── Section Tab ─────────────────────────────────────────────────────────────
 
 function SectionTab({
-    sectionType,
+    slotConfig,
+    pageId,
     section,
     features,
     actions,
@@ -213,20 +296,21 @@ function SectionTab({
     onDeleteSection,
     onRefresh,
 }: {
-    sectionType: (typeof SECTION_TYPES)[number];
-    section: HomepageSectionRow | null;
-    features: HomepageFeatureRow[];
-    actions: HomepageActionRow[];
+    slotConfig: SlotConfig;
+    pageId: string;
+    section: PageSectionRow | null;
+    features: PageFeatureRow[];
+    actions: PageActionRow[];
     onCreateSection: () => void;
-    onUpdateSection: (data: Partial<HomepageSectionRow>) => void;
+    onUpdateSection: (data: Partial<PageSectionRow>) => void;
     onToggleSection: () => void;
     onDeleteSection: () => void;
     onRefresh: () => void;
 }) {
-    const createFeature = homepageFeatureHooks.useCreate();
-    const deleteFeature = homepageFeatureHooks.useDelete();
-    const createAction = homepageActionHooks.useCreate();
-    const deleteAction = homepageActionHooks.useDelete();
+    const createFeature = pageFeatureHooks.useCreate();
+    const deleteFeature = pageFeatureHooks.useDelete();
+    const createAction = pageActionHooks.useCreate();
+    const deleteAction = pageActionHooks.useDelete();
 
     const [form, setForm] = useState({
         title: section?.title || '',
@@ -234,13 +318,13 @@ function SectionTab({
         body: section?.body || '',
         icon: section?.icon || '',
         githubUrl: section?.githubUrl || '',
+        variant: section?.variant || slotConfig.defaultVariant,
     });
 
     const [newFeature, setNewFeature] = useState({ title: '', description: '', icon: '' });
     const [newAction, setNewAction] = useState({ label: '', href: '', variant: 'default', icon: '' });
     const [saved, setSaved] = useState(false);
 
-    // Sync form with section data
     useEffect(() => {
         if (section) {
             setForm({
@@ -249,13 +333,10 @@ function SectionTab({
                 body: section.body || '',
                 icon: section.icon || '',
                 githubUrl: section.githubUrl || '',
+                variant: section.variant || slotConfig.defaultVariant,
             });
         }
-    }, [section]);
-
-    const showFeatures = sectionType.id === 'features' || sectionType.id === 'about';
-    const showActions = sectionType.id === 'hero' || sectionType.id === 'cta' || sectionType.id === 'about';
-    const showGithub = sectionType.id === 'navbar';
+    }, [section, slotConfig.defaultVariant]);
 
     const handleSave = () => {
         onUpdateSection(form);
@@ -290,18 +371,20 @@ function SectionTab({
         onRefresh();
     };
 
+    const SlotIcon = slotConfig.icon;
+
     // Section not created yet
     if (!section) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <sectionType.icon className="h-8 w-8 text-muted-foreground" />
+                    <SlotIcon className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="text-lg font-medium mb-2">{sectionType.label} Section</h3>
-                <p className="text-muted-foreground mb-6 max-w-md">{sectionType.description}</p>
+                <h3 className="text-lg font-medium mb-2">{slotConfig.label} Section</h3>
+                <p className="text-muted-foreground mb-6 max-w-md">{slotConfig.description}</p>
                 <Button onClick={onCreateSection}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Create {sectionType.label} Section
+                    Create {slotConfig.label} Section
                 </Button>
             </div>
         );
@@ -315,14 +398,12 @@ function SectionTab({
                     <div
                         className={`w-10 h-10 rounded-lg flex items-center justify-center ${section.enabled ? 'bg-primary/10' : 'bg-muted'}`}
                     >
-                        <sectionType.icon
-                            className={`h-5 w-5 ${section.enabled ? 'text-primary' : 'text-muted-foreground'}`}
-                        />
+                        <SlotIcon className={`h-5 w-5 ${section.enabled ? 'text-primary' : 'text-muted-foreground'}`} />
                     </div>
                     <div>
-                        <h3 className="font-medium">{sectionType.label} Section</h3>
+                        <h3 className="font-medium">{slotConfig.label} Section</h3>
                         <p className="text-sm text-muted-foreground">
-                            {section.enabled ? 'Visible on homepage' : 'Hidden from homepage'}
+                            {section.enabled ? 'Visible on page' : 'Hidden from page'}
                         </p>
                     </div>
                 </div>
@@ -385,7 +466,7 @@ function SectionTab({
                 />
             </div>
 
-            {showGithub && (
+            {slotConfig.id === 'navbar' && (
                 <div className="space-y-2">
                     <Label>GitHub URL</Label>
                     <Input
@@ -397,7 +478,7 @@ function SectionTab({
             )}
 
             {/* Features */}
-            {showFeatures && (
+            {slotConfig.supportsFeatures && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-base">Features</CardTitle>
@@ -467,7 +548,7 @@ function SectionTab({
             )}
 
             {/* Actions */}
-            {showActions && (
+            {slotConfig.supportsActions && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-base">Buttons / Actions</CardTitle>
@@ -553,63 +634,52 @@ function SectionTab({
     );
 }
 
-// ── Main Builder Page ───────────────────────────────────────────────────────
+// ── Main Page Builder ───────────────────────────────────────────────────────
 
-export function AdminHomepageBuilderPage() {
+export function AdminPageBuilderPage() {
+    const { pageId } = useParams({ from: '/admin/pages/$pageId' });
+
     // Data hooks
-    const {
-        data: sectionsData,
-        isLoading: sectionsLoading,
-        refetch: refetchSections,
-    } = homepageSectionHooks.useList({ orderBy: 'sortOrder', orderDirection: 'asc' }, ADMIN_LIST_QUERY_CONFIG);
-    const { data: featuresData, refetch: refetchFeatures } = homepageFeatureHooks.useList(
+    const { data: pageData, isLoading: pageLoading, refetch: refetchPage } = pageHooks.useDetail(pageId);
+    const { data: sectionsData, refetch: refetchSections } = pageSectionHooks.useList(
+        { where: { pageId }, orderBy: 'sortOrder', orderDirection: 'asc' },
+        ADMIN_LIST_QUERY_CONFIG,
+    );
+    const { data: featuresData, refetch: refetchFeatures } = pageFeatureHooks.useList(
         { orderBy: 'sortOrder', orderDirection: 'asc' },
         ADMIN_LIST_QUERY_CONFIG,
     );
-    const { data: actionsData, refetch: refetchActions } = homepageActionHooks.useList(
+    const { data: actionsData, refetch: refetchActions } = pageActionHooks.useList(
         { orderBy: 'sortOrder', orderDirection: 'asc' },
         ADMIN_LIST_QUERY_CONFIG,
     );
-    const {
-        data: displayData,
-        isLoading: displayLoading,
-        refetch: refetchDisplay,
-    } = homepageDisplaySettingsHooks.useList({}, ADMIN_LIST_QUERY_CONFIG);
 
-    const createSection = homepageSectionHooks.useCreate();
-    const updateSection = homepageSectionHooks.useUpdate();
-    const deleteSection = homepageSectionHooks.useDelete();
-    const createDisplay = homepageDisplaySettingsHooks.useCreate();
-    const updateDisplay = homepageDisplaySettingsHooks.useUpdate();
+    const updatePage = pageHooks.useUpdate();
+    const createSection = pageSectionHooks.useCreate();
+    const updateSection = pageSectionHooks.useUpdate();
+    const deleteSection = pageSectionHooks.useDelete();
 
-    // Normalize data
-    const sections = useMemo(
-        () => (Array.isArray(sectionsData) ? sectionsData : []) as HomepageSectionRow[],
-        [sectionsData],
-    );
+    // Type-safe data
+    const page = pageData as PageRow | undefined;
+    const sections = useMemo(() => {
+        const data = (Array.isArray(sectionsData) ? sectionsData : []) as PageSectionRow[];
+        return data.filter((s) => s.pageId === pageId);
+    }, [sectionsData, pageId]);
     const features = useMemo(
-        () => (Array.isArray(featuresData) ? featuresData : []) as HomepageFeatureRow[],
+        () => (Array.isArray(featuresData) ? featuresData : []) as PageFeatureRow[],
         [featuresData],
     );
-    const actions = useMemo(
-        () => (Array.isArray(actionsData) ? actionsData : []) as HomepageActionRow[],
-        [actionsData],
-    );
-    const displayRows = useMemo(
-        () => (Array.isArray(displayData) ? displayData : []) as HomepageDisplaySettingsRow[],
-        [displayData],
-    );
-    const display = displayRows.find((r) => r.id === 'default') ?? null;
+    const actions = useMemo(() => (Array.isArray(actionsData) ? actionsData : []) as PageActionRow[], [actionsData]);
 
     // Lookup maps
     const sectionBySlot = useMemo(() => {
-        const map: Record<string, HomepageSectionRow> = {};
+        const map: Record<string, PageSectionRow> = {};
         for (const s of sections) map[s.slot] = s;
         return map;
     }, [sections]);
 
     const featuresBySectionId = useMemo(() => {
-        const map: Record<string, HomepageFeatureRow[]> = {};
+        const map: Record<string, PageFeatureRow[]> = {};
         for (const f of features) {
             if (!map[f.sectionId]) map[f.sectionId] = [];
             map[f.sectionId].push(f);
@@ -618,7 +688,7 @@ export function AdminHomepageBuilderPage() {
     }, [features]);
 
     const actionsBySectionId = useMemo(() => {
-        const map: Record<string, HomepageActionRow[]> = {};
+        const map: Record<string, PageActionRow[]> = {};
         for (const a of actions) {
             if (!map[a.sectionId]) map[a.sectionId] = [];
             map[a.sectionId].push(a);
@@ -633,65 +703,43 @@ export function AdminHomepageBuilderPage() {
         refetchActions();
     }, [refetchSections, refetchFeatures, refetchActions]);
 
+    // Page update
+    const handleUpdatePage = async (data: Partial<PageRow>) => {
+        await updatePage.mutateAsync({ id: pageId, data });
+        refetchPage();
+    };
+
     // Section CRUD
-    const handleCreateSection = async (type: SectionType) => {
-        const typeInfo = SECTION_TYPES.find((t) => t.id === type);
+    const handleCreateSection = async (slotId: string) => {
+        const slotConfig = getSlotConfig(slotId);
         await createSection.mutateAsync({
-            slot: type,
-            title: typeInfo?.label ?? type,
+            pageId,
+            slot: slotId,
+            title: slotConfig?.label ?? slotId,
+            variant: slotConfig?.defaultVariant ?? 'default',
             enabled: true,
             sortOrder: sections.length,
         });
         handleRefresh();
     };
 
-    const handleUpdateSection = async (id: string, data: Partial<HomepageSectionRow>) => {
+    const handleUpdateSection = async (id: string, data: Partial<PageSectionRow>) => {
         await updateSection.mutateAsync({ id, data });
         handleRefresh();
     };
 
-    const handleToggleSection = async (section: HomepageSectionRow) => {
+    const handleToggleSection = async (section: PageSectionRow) => {
         await updateSection.mutateAsync({ id: section.id, data: { enabled: !section.enabled } });
         handleRefresh();
     };
 
-    const handleDeleteSection = async (section: HomepageSectionRow) => {
+    const handleDeleteSection = async (section: PageSectionRow) => {
         if (!confirm(`Delete "${section.title || section.slot}" section?`)) return;
         await deleteSection.mutateAsync(section.id);
         handleRefresh();
     };
 
-    // Display settings
-    const handleSaveSettings = async (data: {
-        themePreset: string;
-        seoTitle?: string;
-        seoDescription?: string;
-        customCss?: string;
-    }) => {
-        if (display) {
-            await updateDisplay.mutateAsync({ id: 'default', data });
-        } else {
-            await createDisplay.mutateAsync({ id: 'default', ...data });
-        }
-        refetchDisplay();
-    };
-
-    // Seed
-    const [seeding, setSeeding] = useState(false);
-    const handleSeed = async () => {
-        setSeeding(true);
-        try {
-            const res = await fetch('/api/homepage/seed', { method: 'POST' });
-            if (res.ok) {
-                handleRefresh();
-                refetchDisplay();
-            }
-        } finally {
-            setSeeding(false);
-        }
-    };
-
-    if (sectionsLoading || displayLoading) {
+    if (pageLoading || !page) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-muted-foreground">Loading...</div>
@@ -705,22 +753,23 @@ export function AdminHomepageBuilderPage() {
             <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="flex items-center justify-between px-6 py-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <Home className="h-5 w-5 text-primary" />
-                        </div>
+                        <Link to="/admin/pages" className="p-2 rounded-lg hover:bg-muted">
+                            <ArrowLeft className="h-5 w-5" />
+                        </Link>
                         <div>
-                            <h1 className="text-xl font-semibold">Homepage Builder</h1>
-                            <p className="text-sm text-muted-foreground">{sections.length} sections configured</p>
+                            <h1 className="text-xl font-semibold">{page.title}</h1>
+                            <p className="text-sm text-muted-foreground">/{page.slug}</p>
                         </div>
+                        <Badge variant={page.status === 'published' ? 'default' : 'secondary'}>{page.status}</Badge>
                     </div>
                     <a
-                        href={import.meta.env.VITE_HOMEPAGE_URL || 'http://localhost:3000'}
+                        href={`${import.meta.env.VITE_HOMEPAGE_URL || 'http://localhost:3000'}/${page.slug === 'homepage' ? '' : page.slug}`}
                         target="_blank"
                         rel="noopener noreferrer"
                     >
                         <Button variant="outline">
                             <ExternalLink className="mr-2 h-4 w-4" />
-                            Preview Site
+                            Preview
                         </Button>
                     </a>
                 </div>
@@ -728,19 +777,19 @@ export function AdminHomepageBuilderPage() {
 
             {/* Tabs */}
             <Tabs defaultValue="settings" className="w-full">
-                <div className="border-b px-6">
-                    <TabsList className="h-12 bg-transparent gap-2">
+                <div className="border-b px-6 overflow-x-auto">
+                    <TabsList className="h-12 bg-transparent gap-2 flex-nowrap">
                         <TabsTrigger value="settings" className="data-[state=active]:bg-muted gap-2">
                             <Settings className="h-4 w-4" />
                             Settings
                         </TabsTrigger>
-                        {SECTION_TYPES.map((type) => {
+                        {SLOT_TYPES.map((type) => {
                             const section = sectionBySlot[type.id];
                             return (
                                 <TabsTrigger
                                     key={type.id}
                                     value={type.id}
-                                    className="data-[state=active]:bg-muted gap-2"
+                                    className="data-[state=active]:bg-muted gap-2 whitespace-nowrap"
                                 >
                                     <type.icon className="h-4 w-4" />
                                     {type.label}
@@ -757,15 +806,10 @@ export function AdminHomepageBuilderPage() {
 
                 <div className="p-6 max-w-4xl mx-auto">
                     <TabsContent value="settings" className="mt-0">
-                        <SettingsTab
-                            display={display}
-                            onSave={handleSaveSettings}
-                            onSeed={handleSeed}
-                            seeding={seeding}
-                        />
+                        <SettingsTab page={page} onSave={handleUpdatePage} />
                     </TabsContent>
 
-                    {SECTION_TYPES.map((type) => {
+                    {SLOT_TYPES.map((type) => {
                         const section = sectionBySlot[type.id] ?? null;
                         const sectionFeatures = section ? (featuresBySectionId[section.id] ?? []) : [];
                         const sectionActions = section ? (actionsBySectionId[section.id] ?? []) : [];
@@ -773,7 +817,8 @@ export function AdminHomepageBuilderPage() {
                         return (
                             <TabsContent key={type.id} value={type.id} className="mt-0">
                                 <SectionTab
-                                    sectionType={type}
+                                    slotConfig={type}
+                                    pageId={pageId}
                                     section={section}
                                     features={sectionFeatures}
                                     actions={sectionActions}

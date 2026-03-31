@@ -1,7 +1,7 @@
 import { buildCriticalCSS } from '@ottabase/brand-engine';
 import type { Metadata } from 'next';
-import { getHomepageData } from '../lib/get-homepage-data';
 import { generateBrandConfig } from '../lib/brand-server';
+import { getHomepageData } from '../lib/get-homepage-data';
 import './globals.css';
 import { LayoutShell } from './layout-shell';
 import { Providers } from './providers';
@@ -15,20 +15,20 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-    // Generate brand config server-side (SSR)
+    // Fetch homepage data FIRST to get the theme preset from DB
+    const homepageData = await getHomepageData();
+    const themePresetId = homepageData.display.themePreset ?? null;
+
+    // Generate brand config server-side using the API theme preset
     // Note: Using 'light' for initial SSR. BrandProvider will handle dynamic theme switching on client.
-    const brandConfig = generateBrandConfig('light');
+    const brandConfig = generateBrandConfig('light', themePresetId);
     const theme = brandConfig.brandKitsMap.default.theme;
 
     // Generate critical CSS for SSR (prevents FOUC)
     const criticalCSS = buildCriticalCSS(theme);
 
-    // Fetch and validate full homepage data from the worker API (Zod-validated)
-    const homepageData = await getHomepageData();
-
     // Extract display settings for Providers
     const initialHomepageConfig = homepageData.display.variantBySlot ?? null;
-    const themePresetId = homepageData.display.themePreset ?? null;
 
     // Apply SEO overrides from DB if available
     const seoTitle = homepageData.display.seoTitle;

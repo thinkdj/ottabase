@@ -66,9 +66,8 @@ import {
     handleBlogTagBySlug,
     handleExposedPages,
 } from './blog';
-import { handleChangelogEntriesList, handleChangelogEntryBySlug } from './changelog';
 import { handleBrandApi } from './brand';
-import { handleHomepageData, handleHomepageSeed } from './homepage';
+import { handleChangelogEntriesList, handleChangelogEntryBySlug } from './changelog';
 import {
     handleAIChat,
     handleAIGatewayChat,
@@ -90,8 +89,10 @@ import {
 import { handleCoreAnalytics } from './core-analytics';
 import { handleAuditLogs, handleDemo, handleDemoError } from './demo';
 import { handleEmailProviders, handleEmailTest } from './email';
+import { handleHomepageData, handleHomepageSeed } from './homepage';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
+import { handleNavPages, handlePageBySlug, handlePagesList, handlePagesSeed } from './pages';
 import {
     handleReferralStats,
     handleReferralTrack,
@@ -183,13 +184,41 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
     }
 
     // Homepage public data (sections + display settings + exposed pages)
+    // Legacy: prefer /api/pages/homepage for new integrations
     if (route === '/api/homepage/data') {
         return handleHomepageData(context);
     }
 
     // Homepage seed (creates demo content)
+    // Legacy: prefer /api/pages/seed for new integrations
     if (route === '/api/homepage/seed') {
         return handleHomepageSeed(context);
+    }
+
+    // ── New flexible pages system ──────────────────────────────────────
+    // GET /api/pages — list all pages
+    if (route === '/api/pages' && request.method === 'GET') {
+        return handlePagesList(context);
+    }
+
+    // GET /api/pages/nav — nav-enabled pages for menus
+    if (route === '/api/pages/nav') {
+        return handleNavPages(context);
+    }
+
+    // POST /api/pages/seed — seed default homepage
+    if (route === '/api/pages/seed') {
+        return handlePagesSeed(context);
+    }
+
+    // GET /api/pages/:slug — page by slug (homepage, about, etc.)
+    const pageBySlugMatch = route.match(/^\/api\/pages\/([^/]+)$/);
+    if (pageBySlugMatch && request.method === 'GET') {
+        const slug = decodeURIComponent(pageBySlugMatch[1]);
+        // Skip reserved routes
+        if (slug !== 'nav' && slug !== 'seed') {
+            return handlePageBySlug(context, slug);
+        }
     }
 
     if (route === '/api/system/kill-switches') {
