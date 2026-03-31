@@ -1,13 +1,37 @@
-import { actionHooks, pageHooks, sectionHooks, useBlocksRegistry } from '@/hooks/marketingPageHooks';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Textarea } from '@ottabase/ui-shadcn';
+import { actionHooks, pageHooks, sectionHooks, useBlocksRegistry, featureHooks } from '@/hooks/marketingPageHooks';
+import {
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    Input,
+    Label,
+    Switch,
+    Textarea,
+} from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
-import { GripVertical, Save } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { GripVertical, Plus, Save, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+
+type EditableBlock = {
+    id: string;
+    title?: string;
+    subtitle?: string;
+    body?: string;
+    variant?: string;
+    enabled?: boolean;
+};
 
 export function AdminPageBuilderPage() {
     const { pageId } = useParams({ from: '/admin/pages/$pageId' });
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [draft, setDraft] = useState<EditableBlock | null>(null);
+    const [pageDraft, setPageDraft] = useState<{ id: string; title: string; slug: string; status: string } | null>(
+        null,
+    );
 
     const pageQuery = pageHooks.useDetail(pageId);
     const sectionList = sectionHooks.useList({ filters: { pageId } as any });
@@ -16,7 +40,18 @@ export function AdminPageBuilderPage() {
     const createSection = sectionHooks.useCreate();
     const updateSection = sectionHooks.useUpdate();
     const deleteSection = sectionHooks.useDelete();
+
+    const featureList = featureHooks.useList({ filters: { sectionId: selectedId || '' } as any });
+    const createFeature = featureHooks.useCreate();
+    const updateFeature = featureHooks.useUpdate();
+    const deleteFeature = featureHooks.useDelete();
+
+    const actionList = actionHooks.useList({ filters: { sectionId: selectedId || '' } as any });
     const createAction = actionHooks.useCreate();
+    const updateAction = actionHooks.useUpdate();
+    const deleteAction = actionHooks.useDelete();
+
+    const updatePage = pageHooks.useUpdate();
 
     const sections = useMemo(() => {
         const rows = (sectionList.data?.data ?? []) as any[];
@@ -24,6 +59,40 @@ export function AdminPageBuilderPage() {
     }, [sectionList.data?.data]);
 
     const selected = sections.find((section) => section.id === selectedId) ?? null;
+    const selectedFeatures = useMemo(() => {
+        const rows = (featureList.data?.data ?? []) as any[];
+        return [...rows].sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder));
+    }, [featureList.data?.data]);
+    const selectedActions = useMemo(() => {
+        const rows = (actionList.data?.data ?? []) as any[];
+        return [...rows].sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder));
+    }, [actionList.data?.data]);
+
+    useEffect(() => {
+        if (!selected) {
+            setDraft(null);
+            return;
+        }
+        setDraft({
+            id: selected.id,
+            title: selected.title,
+            subtitle: selected.subtitle,
+            body: selected.body,
+            variant: selected.variant,
+            enabled: selected.enabled,
+        });
+    }, [selected?.id]);
+
+    useEffect(() => {
+        const page = (pageQuery.data as any)?.data;
+        if (!page) return;
+        setPageDraft({
+            id: page.id,
+            title: page.title || '',
+            slug: page.slug || '',
+            status: page.status || 'draft',
+        });
+    }, [(pageQuery.data as any)?.data?.id, (pageQuery.data as any)?.data?.updatedAt]);
 
     const reorder = async (dragId: string, dropId: string) => {
         if (dragId === dropId) return;
@@ -54,17 +123,66 @@ export function AdminPageBuilderPage() {
                     <Link to="/admin/pages" className="text-sm text-muted-foreground hover:underline">
                         ← Back to pages
                     </Link>
-                    <h1 className="text-2xl font-semibold">{(pageQuery.data as any)?.data?.title || 'Page Builder'}</h1>
+                    <h1 className="text-2xl font-semibold">{pageDraft?.title || 'Page Builder'}</h1>
                     <p className="text-sm text-muted-foreground">
-                        Drag and drop blocks, then edit content in the right panel.
+                        End-to-end builder with sortable blocks, features and actions.
                     </p>
                 </div>
-                <Button asChild variant="outline">
-                    <a href={`/pages/${(pageQuery.data as any)?.data?.slug}`} target="_blank" rel="noreferrer">
-                        Preview /pages route
-                    </a>
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={async () => {
+                            const page = pageDraft;
+                            if (!page) return;
+                            const nextStatus = page.status === 'published' ? 'draft' : 'published';
+                            await updatePage.mutateAsync({ id: page.id, status: nextStatus });
+                            toast.success(nextStatus === 'published' ? 'Page published' : 'Page moved to draft');
+                            await pageQuery.refetch();
+                        }}
+                    >
+                        {pageDraft?.status === 'published' ? 'Unpublish' : 'Publish'}
+                    </Button>
+                    <Button asChild variant="outline">
+                        <a href={`/pages/${pageDraft?.slug || ''}?preview=true`} target="_blank" rel="noreferrer">
+                            Preview /pages route
+                        </a>
+                    </Button>
+                </div>
             </div>
+
+            <Card>
+                <CardContent className="flex flex-wrap items-end gap-3 pt-6">
+                    <div className="min-w-[240px]">
+                        <Label>Page Title</Label>
+                        <Input
+                            value={pageDraft?.title || ''}
+                            onChange={(event) =>
+                                setPageDraft((prev) => (prev ? { ...prev, title: event.target.value } : prev))
+                            }
+                        />
+                    </div>
+                    <div className="min-w-[240px]">
+                        <Label>Slug</Label>
+                        <Input
+                            value={pageDraft?.slug || ''}
+                            onChange={(event) =>
+                                setPageDraft((prev) => (prev ? { ...prev, slug: event.target.value } : prev))
+                            }
+                        />
+                    </div>
+                    <Button
+                        onClick={async () => {
+                            const page = pageDraft;
+                            if (!page) return;
+                            await updatePage.mutateAsync({ id: page.id, title: page.title, slug: page.slug });
+                            toast.success('Page settings saved');
+                        }}
+                    >
+                        <Save className="mr-1 h-4 w-4" /> Save Page
+                    </Button>
+                    <Badge variant="secondary">Status: {pageDraft?.status || 'draft'}</Badge>
+                </CardContent>
+            </Card>
 
             <div className="grid gap-4 lg:grid-cols-12">
                 <Card className="lg:col-span-3">
@@ -90,13 +208,13 @@ export function AdminPageBuilderPage() {
                                     await sectionList.refetch();
                                 }}
                             >
-                                + {block.label}
+                                <Plus className="mr-1 h-4 w-4" /> {block.label}
                             </Button>
                         ))}
                     </CardContent>
                 </Card>
 
-                <Card className="lg:col-span-6">
+                <Card className="lg:col-span-5">
                     <CardHeader>
                         <CardTitle>Canvas</CardTitle>
                     </CardHeader>
@@ -122,7 +240,9 @@ export function AdminPageBuilderPage() {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="font-medium">{section.slot}</p>
-                                        <p className="text-xs text-muted-foreground">{section.variant}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {section.variant} • {section.enabled ? 'enabled' : 'disabled'}
+                                        </p>
                                     </div>
                                     <button aria-label="Drag to reorder" aria-roledescription="sortable">
                                         <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -133,56 +253,61 @@ export function AdminPageBuilderPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="lg:col-span-3">
+                <Card className="lg:col-span-4">
                     <CardHeader>
                         <CardTitle>Block Editor</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                        {!selected ? (
+                        {!selected || !draft ? (
                             <p className="text-sm text-muted-foreground">Select a block from the canvas to edit.</p>
                         ) : (
                             <>
                                 <div>
                                     <Label>Title</Label>
                                     <Input
-                                        value={selected.title || ''}
-                                        onChange={(event) => {
-                                            const value = event.target.value;
-                                            setSelectedId(selected.id);
-                                            selected.title = value;
-                                        }}
+                                        value={draft.title || ''}
+                                        onChange={(event) => setDraft({ ...draft, title: event.target.value })}
                                     />
                                 </div>
                                 <div>
                                     <Label>Subtitle</Label>
                                     <Input
-                                        value={selected.subtitle || ''}
-                                        onChange={(event) => (selected.subtitle = event.target.value)}
+                                        value={draft.subtitle || ''}
+                                        onChange={(event) => setDraft({ ...draft, subtitle: event.target.value })}
                                     />
                                 </div>
                                 <div>
                                     <Label>Body</Label>
                                     <Textarea
-                                        value={selected.body || ''}
-                                        onChange={(event) => (selected.body = event.target.value)}
+                                        value={draft.body || ''}
+                                        onChange={(event) => setDraft({ ...draft, body: event.target.value })}
                                     />
                                 </div>
                                 <div>
                                     <Label>Variant</Label>
                                     <Input
-                                        value={selected.variant || ''}
-                                        onChange={(event) => (selected.variant = event.target.value)}
+                                        value={draft.variant || ''}
+                                        onChange={(event) => setDraft({ ...draft, variant: event.target.value })}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between rounded border p-2">
+                                    <Label htmlFor="enabled-toggle">Enabled</Label>
+                                    <Switch
+                                        id="enabled-toggle"
+                                        checked={Boolean(draft.enabled)}
+                                        onCheckedChange={(value) => setDraft({ ...draft, enabled: value })}
                                     />
                                 </div>
                                 <div className="flex gap-2">
                                     <Button
                                         onClick={async () => {
                                             await updateSection.mutateAsync({
-                                                id: selected.id,
-                                                title: selected.title,
-                                                subtitle: selected.subtitle,
-                                                body: selected.body,
-                                                variant: selected.variant,
+                                                id: draft.id,
+                                                title: draft.title,
+                                                subtitle: draft.subtitle,
+                                                body: draft.body,
+                                                variant: draft.variant,
+                                                enabled: draft.enabled,
                                             });
                                             toast.success('Block saved');
                                             await sectionList.refetch();
@@ -199,25 +324,117 @@ export function AdminPageBuilderPage() {
                                             await sectionList.refetch();
                                         }}
                                     >
-                                        Delete
+                                        <Trash2 className="mr-1 h-4 w-4" /> Delete
                                     </Button>
                                 </div>
-                                <Button
-                                    variant="outline"
-                                    onClick={async () => {
-                                        await createAction.mutateAsync({
-                                            sectionId: selected.id,
-                                            label: 'Get Started',
-                                            href: '/signup',
-                                            variant: 'primary',
-                                            external: false,
-                                            sortOrder: 0,
-                                        });
-                                        toast.success('Default action added');
-                                    }}
-                                >
-                                    + Add action
-                                </Button>
+
+                                <div className="space-y-2 pt-4">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm font-medium">Features</p>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={async () => {
+                                                await createFeature.mutateAsync({
+                                                    sectionId: selected.id,
+                                                    title: `Feature ${selectedFeatures.length + 1}`,
+                                                    description: '',
+                                                    sortOrder: selectedFeatures.length,
+                                                });
+                                                await featureList.refetch();
+                                            }}
+                                        >
+                                            + Add
+                                        </Button>
+                                    </div>
+                                    {selectedFeatures.map((feature) => (
+                                        <div key={feature.id} className="space-y-1 rounded border p-2">
+                                            <Input
+                                                value={feature.title || ''}
+                                                onChange={(event) => {
+                                                    feature.title = event.target.value;
+                                                }}
+                                                onBlur={async () => {
+                                                    await updateFeature.mutateAsync({
+                                                        id: feature.id,
+                                                        title: feature.title,
+                                                    });
+                                                }}
+                                            />
+                                            <div className="flex justify-end">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={async () => {
+                                                        await deleteFeature.mutateAsync(feature.id);
+                                                        await featureList.refetch();
+                                                    }}
+                                                >
+                                                    Remove
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="space-y-2 pt-2">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm font-medium">Actions</p>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={async () => {
+                                                await createAction.mutateAsync({
+                                                    sectionId: selected.id,
+                                                    label: `Action ${selectedActions.length + 1}`,
+                                                    href: '/signup',
+                                                    variant: 'primary',
+                                                    external: false,
+                                                    sortOrder: selectedActions.length,
+                                                });
+                                                await actionList.refetch();
+                                            }}
+                                        >
+                                            + Add
+                                        </Button>
+                                    </div>
+                                    {selectedActions.map((action) => (
+                                        <div key={action.id} className="grid grid-cols-12 gap-1 rounded border p-2">
+                                            <Input
+                                                className="col-span-5"
+                                                value={action.label || ''}
+                                                onChange={(event) => {
+                                                    action.label = event.target.value;
+                                                }}
+                                            />
+                                            <Input
+                                                className="col-span-5"
+                                                value={action.href || ''}
+                                                onChange={(event) => {
+                                                    action.href = event.target.value;
+                                                }}
+                                                onBlur={async () => {
+                                                    await updateAction.mutateAsync({
+                                                        id: action.id,
+                                                        label: action.label,
+                                                        href: action.href,
+                                                    });
+                                                }}
+                                            />
+                                            <Button
+                                                className="col-span-2"
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={async () => {
+                                                    await deleteAction.mutateAsync(action.id);
+                                                    await actionList.refetch();
+                                                }}
+                                            >
+                                                Remove
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
                             </>
                         )}
                     </CardContent>

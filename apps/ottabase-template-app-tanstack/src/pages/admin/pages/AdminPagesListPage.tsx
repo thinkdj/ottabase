@@ -1,4 +1,4 @@
-import { pageHooks } from '@/hooks/marketingPageHooks';
+import { actionHooks, featureHooks, pageHooks, sectionHooks } from '@/hooks/marketingPageHooks';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Copy, FileText, Plus, Search, Trash2 } from 'lucide-react';
@@ -12,6 +12,12 @@ export function AdminPagesListPage() {
     const listQuery = pageHooks.useList();
     const createPage = pageHooks.useCreate();
     const deletePage = pageHooks.useDelete();
+    const sectionList = sectionHooks.useList();
+    const createSection = sectionHooks.useCreate();
+    const featureList = featureHooks.useList();
+    const createFeature = featureHooks.useCreate();
+    const actionList = actionHooks.useList();
+    const createAction = actionHooks.useCreate();
 
     const pages = useMemo(() => {
         const rows = (listQuery.data?.data ?? []) as any[];
@@ -38,14 +44,59 @@ export function AdminPagesListPage() {
     };
 
     const onDuplicate = async (page: any) => {
-        await createPage.mutateAsync({
+        const created = await createPage.mutateAsync({
             ...page,
             id: undefined,
             slug: `${page.slug}-${Math.floor(Math.random() * 1000)}`,
             title: `${page.title} Copy`,
             status: 'draft',
         });
-        toast.success('Page duplicated');
+
+        const newPageId = (created as any)?.data?.id;
+        const originalSections = ((sectionList.data?.data ?? []) as any[])
+            .filter((section) => section.pageId === page.id)
+            .sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder));
+        const allFeatures = (featureList.data?.data ?? []) as any[];
+        const allActions = (actionList.data?.data ?? []) as any[];
+
+        for (const section of originalSections) {
+            const createdSection = await createSection.mutateAsync({
+                pageId: newPageId,
+                slot: section.slot,
+                variant: section.variant,
+                title: section.title,
+                subtitle: section.subtitle,
+                body: section.body,
+                enabled: section.enabled,
+                sortOrder: section.sortOrder,
+            });
+            const newSectionId = (createdSection as any)?.data?.id;
+
+            for (const feature of allFeatures.filter((item) => item.sectionId === section.id)) {
+                await createFeature.mutateAsync({
+                    sectionId: newSectionId,
+                    title: feature.title,
+                    description: feature.description,
+                    icon: feature.icon,
+                    link: feature.link,
+                    sortOrder: feature.sortOrder,
+                });
+            }
+
+            for (const action of allActions.filter((item) => item.sectionId === section.id)) {
+                await createAction.mutateAsync({
+                    sectionId: newSectionId,
+                    label: action.label,
+                    href: action.href,
+                    variant: action.variant,
+                    icon: action.icon,
+                    external: action.external,
+                    sortOrder: action.sortOrder,
+                });
+            }
+        }
+
+        toast.success('Page duplicated with blocks');
         await listQuery.refetch();
     };
 
