@@ -218,7 +218,11 @@ export function AdminPageBuilderPage() {
                         {pageDraft?.status === 'published' ? 'Unpublish' : 'Publish'}
                     </Button>
                     <Button asChild variant="outline">
-                        <a href={`/pages/${pageDraft?.slug || ''}?preview=true`} target="_blank" rel="noreferrer">
+                        <a
+                            href={`/pages/${encodeURIComponent(pageDraft?.slug || '')}?preview=true`}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
                             Preview
                         </a>
                     </Button>

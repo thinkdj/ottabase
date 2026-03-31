@@ -1,6 +1,6 @@
 import { Button, Input, Label, Textarea } from '@ottabase/ui-shadcn';
 import { Plus, Trash2 } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useRef, useState } from 'react';
 
 interface FeatureItem {
     id: string;
@@ -31,17 +31,20 @@ function FeatureRow({
 }) {
     const [local, setLocal] = useState(feature);
     const [expanded, setExpanded] = useState(false);
+    const localRef = useRef(local);
+    localRef.current = local;
 
-    const commit = useCallback(() => {
+    const commit = () => {
+        const current = localRef.current;
         const changed: Partial<FeatureItem> = {};
-        if (local.title !== feature.title) changed.title = local.title;
-        if (local.description !== feature.description) changed.description = local.description;
-        if (local.icon !== feature.icon) changed.icon = local.icon;
-        if (local.link !== feature.link) changed.link = local.link;
+        if (current.title !== feature.title) changed.title = current.title;
+        if (current.description !== feature.description) changed.description = current.description;
+        if (current.icon !== feature.icon) changed.icon = current.icon;
+        if (current.link !== feature.link) changed.link = current.link;
         if (Object.keys(changed).length > 0) {
             onUpdate(feature.id, changed);
         }
-    }, [local, feature, onUpdate]);
+    };
 
     return (
         <div className="space-y-2 rounded-md border p-2.5">

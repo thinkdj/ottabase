@@ -1,6 +1,6 @@
 import { Button, Input, Label, Switch } from '@ottabase/ui-shadcn';
 import { Plus, Trash2 } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useRef, useState } from 'react';
 
 interface ActionItem {
     id: string;
@@ -34,18 +34,21 @@ function ActionRow({
 }) {
     const [local, setLocal] = useState(action);
     const [expanded, setExpanded] = useState(false);
+    const localRef = useRef(local);
+    localRef.current = local;
 
-    const commit = useCallback(() => {
+    const commit = () => {
+        const current = localRef.current;
         const changed: Partial<ActionItem> = {};
-        if (local.label !== action.label) changed.label = local.label;
-        if (local.href !== action.href) changed.href = local.href;
-        if (local.variant !== action.variant) changed.variant = local.variant;
-        if (local.icon !== action.icon) changed.icon = local.icon;
-        if (local.external !== action.external) changed.external = local.external;
+        if (current.label !== action.label) changed.label = current.label;
+        if (current.href !== action.href) changed.href = current.href;
+        if (current.variant !== action.variant) changed.variant = current.variant;
+        if (current.icon !== action.icon) changed.icon = current.icon;
+        if (current.external !== action.external) changed.external = current.external;
         if (Object.keys(changed).length > 0) {
             onUpdate(action.id, changed);
         }
-    }, [local, action, onUpdate]);
+    };
 
     return (
         <div className="space-y-2 rounded-md border p-2.5">

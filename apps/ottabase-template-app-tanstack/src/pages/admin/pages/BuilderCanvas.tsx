@@ -60,7 +60,7 @@ function SortableBlock({
             role="listitem"
             tabIndex={0}
             aria-selected={isSelected}
-            aria-label={`${section.slot} block: ${section.title || 'Untitled'}`}
+            aria-label={`${section.slot} block${section.title ? `, titled ${section.title}` : ''}`}
             onClick={onSelect}
             className={`group cursor-pointer rounded-lg border bg-card p-3 transition-all ${
                 isDragging ? 'shadow-lg ring-2 ring-primary/40 opacity-90' : ''
