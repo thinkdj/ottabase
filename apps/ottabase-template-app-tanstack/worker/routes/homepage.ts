@@ -7,14 +7,9 @@
 // Pattern follows worker/routes/changelog.ts (public, read-only, no auth).
 // ============================================================
 
-import { Post } from '@ottabase/ottablog';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import type {
-    HomepageSectionPayload,
-    HomepageDisplayPayload,
-    HomepageDataPayload,
-    ExposedPage,
-} from '@ottabase/homepage-contract';
+import type { HomepageDataPayload, HomepageDisplayPayload, HomepageSectionPayload } from '@ottabase/homepage-contract';
+import { Post } from '@ottabase/ottablog';
 import { registerConnection } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -79,12 +74,12 @@ export async function handleHomepageData(context: HomepageRouteContext): Promise
 
         if (sectionIds.length > 0) {
             allFeatures = (await HomepageFeature.where(
-                { sectionId: { $in: sectionIds } },
+                { sectionId: sectionIds },
                 { orderBy: 'sortOrder', orderDirection: 'asc' },
             )) as InstanceType<typeof HomepageFeature>[];
 
             allActions = (await HomepageAction.where(
-                { sectionId: { $in: sectionIds } },
+                { sectionId: sectionIds },
                 { orderBy: 'sortOrder', orderDirection: 'asc' },
             )) as InstanceType<typeof HomepageAction>[];
         }

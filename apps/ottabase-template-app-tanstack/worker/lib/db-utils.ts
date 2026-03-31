@@ -38,18 +38,18 @@ import { Shortlink } from '@ottabase/shortlinks';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { ChangelogEntry } from '../../ottabase/models/ChangelogEntry';
-import { changelogPolicy } from '../../ottabase/models/changelogPolicy';
-import {
-    homepageSectionPolicy,
-    homepageFeaturePolicy,
-    homepageActionPolicy,
-    homepageDisplaySettingsPolicy,
-} from '../../ottabase/models/homepagePolicy';
 import { HomepageAction } from '../../ottabase/models/HomepageAction';
 import { HomepageDisplaySettings } from '../../ottabase/models/HomepageDisplaySettings';
 import { HomepageFeature } from '../../ottabase/models/HomepageFeature';
 import { HomepageSection } from '../../ottabase/models/HomepageSection';
 import { Todo } from '../../ottabase/models/Todo';
+import { changelogPolicy } from '../../ottabase/models/changelogPolicy';
+import {
+    homepageActionPolicy,
+    homepageDisplaySettingsPolicy,
+    homepageFeaturePolicy,
+    homepageSectionPolicy,
+} from '../../ottabase/models/homepagePolicy';
 import { mediaLibraryPolicy } from '../../ottabase/models/mediaLibraryPolicy';
 import type { CloudflareEnv } from '../cloudflare-env';
 import { readJson } from './utils';

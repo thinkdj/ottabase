@@ -931,43 +931,13 @@ const adminChangelogEditRoute = new Route({
     ),
 });
 
-// Homepage admin routes
+// Homepage admin routes (unified builder page)
 const adminHomepageRoute = new Route({
     getParentRoute: () => rootRoute,
     path: '/admin/homepage',
     component: lazyRouteComponent(() =>
-        import('@/pages/admin/homepage/AdminHomepageSectionsPage').then((m) => ({
-            default: () => renderAdminRoute(<m.AdminHomepageSectionsPage />),
-        })),
-    ),
-});
-
-const adminHomepageSectionEditRoute = new Route({
-    getParentRoute: () => rootRoute,
-    path: '/admin/homepage/$sectionId/edit',
-    component: lazyRouteComponent(() =>
-        import('@/pages/admin/homepage/AdminHomepageSectionEditorPage').then((m) => ({
-            default: () => renderAdminRoute(<m.AdminHomepageSectionEditorPage />),
-        })),
-    ),
-});
-
-const adminHomepageDisplayRoute = new Route({
-    getParentRoute: () => rootRoute,
-    path: '/admin/homepage/display',
-    component: lazyRouteComponent(() =>
-        import('@/pages/admin/homepage/AdminHomepageDisplayPage').then((m) => ({
-            default: () => renderAdminRoute(<m.AdminHomepageDisplayPage />),
-        })),
-    ),
-});
-
-const adminHomepagePagesRoute = new Route({
-    getParentRoute: () => rootRoute,
-    path: '/admin/homepage/pages',
-    component: lazyRouteComponent(() =>
-        import('@/pages/admin/homepage/AdminHomepagePagesPage').then((m) => ({
-            default: () => renderAdminRoute(<m.AdminHomepagePagesPage />),
+        import('@/pages/admin/homepage/AdminHomepageBuilderPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminHomepageBuilderPage />),
         })),
     ),
 });
@@ -1204,9 +1174,6 @@ const coreRoutes = [
     adminChangelogNewRoute,
     adminChangelogEditRoute,
     adminHomepageRoute,
-    adminHomepageSectionEditRoute,
-    adminHomepageDisplayRoute,
-    adminHomepagePagesRoute,
     adminDevMailRoute,
     adminQueueRoute,
     adminCronRoute,

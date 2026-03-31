@@ -1,8 +1,4 @@
-export { AdminHomepageDisplayPage } from './AdminHomepageDisplayPage';
-export { AdminHomepagePagesPage } from './AdminHomepagePagesPage';
-export { AdminHomepageSectionEditorPage } from './AdminHomepageSectionEditorPage';
-export { AdminHomepageSectionsPage } from './AdminHomepageSectionsPage';
-export { HomepageAdminNav } from './HomepageAdminNav';
+export { AdminHomepageBuilderPage } from './AdminHomepageBuilderPage';
 export {
     ACTION_VARIANTS,
     ICON_SUGGESTIONS,
