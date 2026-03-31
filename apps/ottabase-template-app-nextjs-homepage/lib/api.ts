@@ -2,7 +2,23 @@
  * API helpers for fetching data from the Ottabase worker backend.
  *
  * Requires NEXT_PUBLIC_API_URL to be set (e.g. http://localhost:3004).
+ *
+ * Types are re-exported from `@ottabase/homepage-contract` — the shared
+ * Zod-inferred contract package — so Next.js and the TanStack worker
+ * always agree on the payload shape.
  */
+
+import type { HomepageDataPayload } from '@ottabase/homepage-contract';
+
+// Re-export shared contract types so existing imports continue to work
+export type {
+    ExposedPage,
+    HomepageSectionPayload,
+    HomepageDisplayPayload,
+    HomepageDataPayload,
+    HomepageFeaturePayload,
+    HomepageActionPayload,
+} from '@ottabase/homepage-contract';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 
@@ -40,58 +56,6 @@ export interface PageData {
     publishedAt: string | null;
     createdAt: string;
     updatedAt: string;
-}
-
-/** Exposed page link for homepage navbar */
-export interface ExposedPage {
-    slug: string;
-    title: string;
-}
-
-/** Homepage section from the public API */
-export interface HomepageSectionPayload {
-    id: string;
-    slot: string;
-    title: string | null;
-    subtitle: string | null;
-    body: string | null;
-    githubUrl: string | null;
-    icon: string | null;
-    enabled: boolean;
-    cssClasses: string | null;
-    metadata: Record<string, unknown> | null;
-    sortOrder: number;
-    features: Array<{
-        title: string;
-        description: string;
-        icon: string | null;
-        imageUrl: string | null;
-        href: string | null;
-    }>;
-    actions: Array<{
-        label: string;
-        href: string;
-        variant: string | null;
-        icon: string | null;
-        external: boolean;
-    }>;
-}
-
-/** Homepage display settings from the public API */
-export interface HomepageDisplayPayload {
-    variantBySlot: Record<string, string> | null;
-    themePreset: string | null;
-    fallbackThemePresetId: string | null;
-    customCss: string | null;
-    seoTitle: string | null;
-    seoDescription: string | null;
-}
-
-/** Full homepage data payload from GET /api/homepage/data */
-export interface HomepageDataPayload {
-    sections: HomepageSectionPayload[];
-    display: HomepageDisplayPayload;
-    exposedPages: ExposedPage[];
 }
 
 /**

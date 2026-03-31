@@ -41,6 +41,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@ottabase/ui-shadcn';
+import { IconDatabaseImport } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import {
     ArrowDown,
@@ -316,10 +317,32 @@ export function AdminHomepageSectionsPage() {
     const updateSection = homepageSectionHooks.useUpdate();
     const deleteSection = homepageSectionHooks.useDelete();
     const [deleteDialog, setDeleteDialog] = useState<{ id: string; slot: string } | null>(null);
+    const [seeding, setSeeding] = useState(false);
+    const [seedResult, setSeedResult] = useState<'success' | 'exists' | 'error' | null>(null);
 
     const sections = (Array.isArray(data) ? data : []) as HomepageSectionRow[];
     const usedSlots = new Set(sections.map((s) => s.slot));
     const availableSlots = SLOT_NAMES.filter((s) => !usedSlots.has(s));
+
+    const handleSeedDefaults = useCallback(async () => {
+        setSeeding(true);
+        setSeedResult(null);
+        try {
+            const res = await fetch('/api/homepage/seed', { method: 'POST' });
+            const body = await res.json();
+            if (body.skipped) {
+                setSeedResult('exists');
+            } else {
+                setSeedResult('success');
+                // Refetch sections after seed
+                window.location.reload();
+            }
+        } catch {
+            setSeedResult('error');
+        } finally {
+            setSeeding(false);
+        }
+    }, []);
 
     const handleCreateSection = async (slot: string) => {
         await createSection.mutateAsync({
@@ -375,6 +398,42 @@ export function AdminHomepageSectionsPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleSeedDefaults}
+                                    disabled={seeding || sections.length > 0}
+                                    className="gap-1.5"
+                                >
+                                    <IconDatabaseImport className="h-4 w-4" />
+                                    {seeding ? 'Seeding…' : 'Seed Defaults'}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                {sections.length > 0
+                                    ? 'Sections already exist — seed is only for empty databases'
+                                    : 'Populate D1 with sample homepage data (sections, features, actions, display settings)'}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                    {seedResult === 'success' && (
+                        <Badge variant="default" className="text-xs bg-green-600">
+                            Seeded!
+                        </Badge>
+                    )}
+                    {seedResult === 'exists' && (
+                        <Badge variant="secondary" className="text-xs">
+                            Already seeded
+                        </Badge>
+                    )}
+                    {seedResult === 'error' && (
+                        <Badge variant="destructive" className="text-xs">
+                            Seed failed
+                        </Badge>
+                    )}
                     <Badge variant="secondary" className="text-xs">
                         {enabledCount}/{sections.length} active
                     </Badge>

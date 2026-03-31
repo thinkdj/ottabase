@@ -9,6 +9,12 @@
 
 import { Post } from '@ottabase/ottablog';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import type {
+    HomepageSectionPayload,
+    HomepageDisplayPayload,
+    HomepageDataPayload,
+    ExposedPage,
+} from '@ottabase/homepage-contract';
 import { registerConnection } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -33,51 +39,12 @@ function ensureD1(env: CloudflareEnv): Response | null {
     return null;
 }
 
-/** Shape of a section in the public payload */
-interface PublicSection {
-    id: string;
-    slot: string;
-    title: string | null;
-    subtitle: string | null;
-    body: string | null;
-    githubUrl: string | null;
-    icon: string | null;
-    enabled: boolean;
-    cssClasses: string | null;
-    metadata: Record<string, unknown> | null;
-    sortOrder: number;
-    features: Array<{
-        title: string;
-        description: string;
-        icon: string | null;
-        imageUrl: string | null;
-        href: string | null;
-    }>;
-    actions: Array<{
-        label: string;
-        href: string;
-        variant: string | null;
-        icon: string | null;
-        external: boolean;
-    }>;
-}
+// Use shared contract types — no local duplicates
+type PublicSection = HomepageSectionPayload;
+type PublicDisplay = HomepageDisplayPayload;
 
-/** Shape of display settings in the public payload */
-interface PublicDisplay {
-    variantBySlot: Record<string, string> | null;
-    themePreset: string | null;
-    fallbackThemePresetId: string | null;
-    customCss: string | null;
-    seoTitle: string | null;
-    seoDescription: string | null;
-}
-
-/** Shape of the full public payload */
-export interface HomepagePublicPayload {
-    sections: PublicSection[];
-    display: PublicDisplay;
-    exposedPages: Array<{ slug: string; title: string }>;
-}
+/** Re-export for convenience */
+export type HomepagePublicPayload = HomepageDataPayload;
 
 /**
  * GET /api/homepage/data

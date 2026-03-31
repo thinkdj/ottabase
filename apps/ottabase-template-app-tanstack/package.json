@@ -41,6 +41,7 @@
         "@ottabase/docs": "workspace:*",
         "@ottabase/email": "workspace:*",
         "@ottabase/forms": "workspace:*",
+        "@ottabase/homepage-contract": "workspace:*",
         "@ottabase/i18n": "workspace:*",
         "@ottabase/logger": "workspace:*",
         "@ottabase/medialibrary": "workspace:*",
