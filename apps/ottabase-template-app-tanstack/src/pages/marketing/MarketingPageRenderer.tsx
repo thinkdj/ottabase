@@ -101,6 +101,31 @@ function FooterSection({ section }: { section: any }) {
     );
 }
 
+function AboutSection({ section }: { section: any }) {
+    const variant = section.variant || 'default';
+    const isDetailed = variant === 'detailed';
+    return (
+        <section className="bg-muted/30 px-4 py-16">
+            <div className={`mx-auto ${isDetailed ? 'max-w-5xl' : 'max-w-3xl'} text-center`}>
+                {section.title && <h2 className="text-3xl font-bold">{section.title}</h2>}
+                {section.subtitle && <p className="mt-3 text-lg text-muted-foreground">{section.subtitle}</p>}
+                {section.body && <p className="mt-4 text-muted-foreground">{section.body}</p>}
+                {section.features?.length > 0 && (
+                    <div className="mt-8 grid gap-4 text-left sm:grid-cols-2">
+                        {section.features.map((f: any) => (
+                            <div key={f.id} className="rounded-lg border bg-card p-4">
+                                <h3 className="font-semibold">{f.title}</h3>
+                                {f.description && <p className="mt-1 text-sm text-muted-foreground">{f.description}</p>}
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <ActionButtons actions={section.actions} className="mt-8 justify-center" />
+            </div>
+        </section>
+    );
+}
+
 function GenericSection({ section }: { section: any }) {
     return (
         <section className="px-4 py-12">
@@ -157,6 +182,7 @@ const SLOT_RENDERERS: Record<string, React.ComponentType<{ section: any }>> = {
     hero: HeroSection,
     features: FeaturesSection,
     cta: CTASection,
+    about: AboutSection,
     navbar: NavbarSection,
     footer: FooterSection,
 };
