@@ -24,7 +24,11 @@
         "paths": {
             "@/*": ["./*"],
             /* Pattern-based path mapping for all packages */
-            "@ottabase/*": ["../../packages/*/src"]
+            "@ottabase/*/*": ["../../packages/*/src/*"],
+            "@ottabase/*": ["../../packages/*/src"],
+            "@ottabase/ottalayout/react": ["../../packages/ottalayout/src/react/index.tsx"],
+            "@ottabase/ui-shadcn/lib/utils": ["../../packages/ui-shadcn/src/lib/utils.ts"],
+            "@ottabase/cf/cache-keys": ["../../packages/cf/src/cache-keys.ts"]
         }
     },
     "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "types/**/*.d.ts"],

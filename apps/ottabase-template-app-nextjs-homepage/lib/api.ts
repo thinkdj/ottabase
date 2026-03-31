@@ -5,26 +5,34 @@ export function getWorkerApiUrl() {
 }
 
 export async function fetchMarketingPage(slug: string, preview: boolean) {
-    const url = `${getWorkerApiUrl()}/api/pages/${slug}${preview ? '?preview=true' : ''}`;
-    const response = await fetch(url, {
-        next: { revalidate: preview ? 0 : 60 },
-    });
+    try {
+        const url = `${getWorkerApiUrl()}/api/pages/${slug}${preview ? '?preview=true' : ''}`;
+        const response = await fetch(url, {
+            next: { revalidate: preview ? 0 : 60 },
+        });
 
-    if (!response.ok) {
+        if (!response.ok) {
+            return null;
+        }
+
+        return (await response.json()) as { page: any };
+    } catch {
         return null;
     }
-
-    return (await response.json()) as { page: any };
 }
 
 export async function fetchMarketingNav() {
-    const response = await fetch(`${getWorkerApiUrl()}/api/pages/nav`, {
-        next: { revalidate: 60 },
-    });
+    try {
+        const response = await fetch(`${getWorkerApiUrl()}/api/pages/nav`, {
+            next: { revalidate: 60 },
+        });
 
-    if (!response.ok) {
+        if (!response.ok) {
+            return { pages: [] as Array<{ slug: string }> };
+        }
+
+        return (await response.json()) as { pages: Array<{ slug: string }> };
+    } catch {
         return { pages: [] as Array<{ slug: string }> };
     }
-
-    return (await response.json()) as { pages: Array<{ slug: string }> };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
+import { DarkModeToggle } from '@ottabase/ui-components';
 import { Button } from '@ottabase/ui-shadcn';
 import { ExternalLink, Github, Menu, X } from 'lucide-react';
 import Link from 'next/link';
