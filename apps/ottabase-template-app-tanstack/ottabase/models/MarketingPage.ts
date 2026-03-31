@@ -22,6 +22,8 @@ export class MarketingPage extends BaseModel {
     protected static fields: ModelFields = {
         id: { type: 'id', primaryKey: true, editable: false },
         appId: { type: 'string', editable: true, filterable: true },
+        organizationId: { type: 'string', editable: true, filterable: true },
+        userId: { type: 'string', editable: true, filterable: true },
         slug: { type: 'string', editable: true, searchable: true, sortable: true },
         title: { type: 'string', editable: true, searchable: true, sortable: true },
         status: { type: 'string', editable: true, sortable: true, filterable: true },
@@ -54,6 +56,9 @@ export class PageSection extends BaseModel {
     protected static fields: ModelFields = {
         id: { type: 'id', primaryKey: true, editable: false },
         pageId: { type: 'string', editable: true, filterable: true },
+        appId: { type: 'string', editable: true, filterable: true },
+        organizationId: { type: 'string', editable: true, filterable: true },
+        userId: { type: 'string', editable: true, filterable: true },
         slot: { type: 'string', editable: true, searchable: true },
         variant: { type: 'string', editable: true },
         title: { type: 'string', editable: true, searchable: true },
@@ -72,6 +77,20 @@ export class PageFeature extends BaseModel {
     static primaryKey = 'id';
     static packageName = 'app';
     static packageType: PackageType = 'app';
+
+    protected static fields: ModelFields = {
+        id: { type: 'id', primaryKey: true, editable: false },
+        sectionId: { type: 'string', editable: true, filterable: true },
+        appId: { type: 'string', editable: true, filterable: true },
+        organizationId: { type: 'string', editable: true, filterable: true },
+        userId: { type: 'string', editable: true, filterable: true },
+        title: { type: 'string', editable: true, searchable: true },
+        description: { type: 'string', editable: true },
+        icon: { type: 'string', editable: true },
+        link: { type: 'string', editable: true },
+        sortOrder: { type: 'number', editable: true, sortable: true },
+        createdAt: { type: 'date', editable: false, sortable: true },
+    };
 }
 
 export class PageAction extends BaseModel {
@@ -83,5 +102,20 @@ export class PageAction extends BaseModel {
 
     static casts = {
         external: 'boolean' as const,
+    };
+
+    protected static fields: ModelFields = {
+        id: { type: 'id', primaryKey: true, editable: false },
+        sectionId: { type: 'string', editable: true, filterable: true },
+        appId: { type: 'string', editable: true, filterable: true },
+        organizationId: { type: 'string', editable: true, filterable: true },
+        userId: { type: 'string', editable: true, filterable: true },
+        label: { type: 'string', editable: true, searchable: true },
+        href: { type: 'string', editable: true },
+        variant: { type: 'string', editable: true },
+        icon: { type: 'string', editable: true },
+        external: { type: 'boolean', editable: true, filterable: true },
+        sortOrder: { type: 'number', editable: true, sortable: true },
+        createdAt: { type: 'date', editable: false, sortable: true },
     };
 }

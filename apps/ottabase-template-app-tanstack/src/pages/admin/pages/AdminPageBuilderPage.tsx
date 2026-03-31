@@ -1,4 +1,5 @@
 import { actionHooks, pageHooks, sectionHooks, useBlocksRegistry, featureHooks } from '@/hooks/marketingPageHooks';
+import { globalStore, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
 import {
     Badge,
     Button,
@@ -32,6 +33,9 @@ export function AdminPageBuilderPage() {
     const [pageDraft, setPageDraft] = useState<{ id: string; title: string; slug: string; status: string } | null>(
         null,
     );
+
+    const organizationId = globalStore.get(organizationIdAtom) || null;
+    const userId = globalStore.get(userAtom)?.id || null;
 
     const pageQuery = pageHooks.useDetail(pageId);
     const sectionList = sectionHooks.useList({ filters: { pageId } as any });
@@ -198,6 +202,9 @@ export function AdminPageBuilderPage() {
                                 onClick={async () => {
                                     await createSection.mutateAsync({
                                         pageId,
+                                        appId: 'ottabase-template-app',
+                                        organizationId,
+                                        userId,
                                         slot: block.id,
                                         variant: block.variants[0]?.id || 'default',
                                         title: block.label,
@@ -337,6 +344,9 @@ export function AdminPageBuilderPage() {
                                             onClick={async () => {
                                                 await createFeature.mutateAsync({
                                                     sectionId: selected.id,
+                                                    appId: 'ottabase-template-app',
+                                                    organizationId,
+                                                    userId,
                                                     title: `Feature ${selectedFeatures.length + 1}`,
                                                     description: '',
                                                     sortOrder: selectedFeatures.length,
@@ -386,6 +396,9 @@ export function AdminPageBuilderPage() {
                                             onClick={async () => {
                                                 await createAction.mutateAsync({
                                                     sectionId: selected.id,
+                                                    appId: 'ottabase-template-app',
+                                                    organizationId,
+                                                    userId,
                                                     label: `Action ${selectedActions.length + 1}`,
                                                     href: '/signup',
                                                     variant: 'primary',

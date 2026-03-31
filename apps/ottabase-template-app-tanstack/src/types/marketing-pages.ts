@@ -5,6 +5,8 @@ export interface MarketingPage {
     appId: string;
     slug: string;
     title: string;
+    organizationId?: string | null;
+    userId?: string | null;
     status: PageStatus;
     createdAt: number;
     updatedAt: number;
@@ -13,6 +15,9 @@ export interface MarketingPage {
 export interface MarketingSection {
     id: string;
     pageId: string;
+    appId: string;
+    organizationId?: string | null;
+    userId?: string | null;
     slot: string;
     variant: string;
     title?: string;
@@ -25,6 +30,9 @@ export interface MarketingSection {
 export interface MarketingAction {
     id: string;
     sectionId: string;
+    appId: string;
+    organizationId?: string | null;
+    userId?: string | null;
     label: string;
     href: string;
     variant: string;
@@ -35,6 +43,9 @@ export interface MarketingAction {
 export interface MarketingFeature {
     id: string;
     sectionId: string;
+    appId: string;
+    organizationId?: string | null;
+    userId?: string | null;
     title: string;
     description?: string;
     icon?: string;

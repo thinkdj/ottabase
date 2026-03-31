@@ -7,6 +7,8 @@ export const pagesTable = sqliteTable(
             .primaryKey()
             .$defaultFn(() => crypto.randomUUID()),
         appId: text('app_id').notNull(),
+        organizationId: text('organization_id'),
+        userId: text('user_id'),
         slug: text('slug').notNull(),
         title: text('title').notNull(),
         status: text('status').notNull().default('draft'),
@@ -26,6 +28,9 @@ export const pageSectionsTable = sqliteTable('page_sections', {
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
     pageId: text('page_id').notNull(),
+    appId: text('app_id').notNull(),
+    organizationId: text('organization_id'),
+    userId: text('user_id'),
     slot: text('slot').notNull(),
     variant: text('variant').notNull(),
     title: text('title'),
@@ -47,6 +52,9 @@ export const pageFeaturesTable = sqliteTable('page_features', {
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
     sectionId: text('section_id').notNull(),
+    appId: text('app_id').notNull(),
+    organizationId: text('organization_id'),
+    userId: text('user_id'),
     title: text('title').notNull(),
     description: text('description'),
     icon: text('icon'),
@@ -62,6 +70,9 @@ export const pageActionsTable = sqliteTable('page_actions', {
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
     sectionId: text('section_id').notNull(),
+    appId: text('app_id').notNull(),
+    organizationId: text('organization_id'),
+    userId: text('user_id'),
     label: text('label').notNull(),
     href: text('href').notNull(),
     variant: text('variant').notNull().default('primary'),

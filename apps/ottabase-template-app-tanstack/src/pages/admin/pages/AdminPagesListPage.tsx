@@ -1,4 +1,5 @@
 import { actionHooks, featureHooks, pageHooks, sectionHooks } from '@/hooks/marketingPageHooks';
+import { globalStore, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Copy, FileText, Plus, Search, Trash2 } from 'lucide-react';
@@ -8,6 +9,8 @@ import { toast } from 'sonner';
 export function AdminPagesListPage() {
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
+    const organizationId = globalStore.get(organizationIdAtom) || null;
+    const userId = globalStore.get(userAtom)?.id || null;
 
     const listQuery = pageHooks.useList();
     const createPage = pageHooks.useCreate();
@@ -35,6 +38,8 @@ export function AdminPagesListPage() {
             title,
             slug,
             status: 'draft',
+            organizationId,
+            userId,
         });
         toast.success('Page created');
         const pageId = (created as any)?.data?.id;
@@ -50,6 +55,8 @@ export function AdminPagesListPage() {
             slug: `${page.slug}-${Math.floor(Math.random() * 1000)}`,
             title: `${page.title} Copy`,
             status: 'draft',
+            organizationId,
+            userId,
         });
 
         const newPageId = (created as any)?.data?.id;
@@ -62,6 +69,9 @@ export function AdminPagesListPage() {
         for (const section of originalSections) {
             const createdSection = await createSection.mutateAsync({
                 pageId: newPageId,
+                appId: page.appId || 'ottabase-template-app',
+                organizationId: page.organizationId || null,
+                userId: page.userId || null,
                 slot: section.slot,
                 variant: section.variant,
                 title: section.title,
@@ -75,6 +85,9 @@ export function AdminPagesListPage() {
             for (const feature of allFeatures.filter((item) => item.sectionId === section.id)) {
                 await createFeature.mutateAsync({
                     sectionId: newSectionId,
+                    appId: page.appId || 'ottabase-template-app',
+                    organizationId: page.organizationId || null,
+                    userId: page.userId || null,
                     title: feature.title,
                     description: feature.description,
                     icon: feature.icon,
@@ -86,6 +99,9 @@ export function AdminPagesListPage() {
             for (const action of allActions.filter((item) => item.sectionId === section.id)) {
                 await createAction.mutateAsync({
                     sectionId: newSectionId,
+                    appId: page.appId || 'ottabase-template-app',
+                    organizationId: page.organizationId || null,
+                    userId: page.userId || null,
                     label: action.label,
                     href: action.href,
                     variant: action.variant,
