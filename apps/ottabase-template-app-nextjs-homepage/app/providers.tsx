@@ -26,7 +26,7 @@ export function Providers({ children, initialBrandConfig, initialHomepageConfig,
         // Priority: localStorage saved preset > DB themePresetId > SSR brand config
         const savedPreset = localStorage.getItem(THEME_STORAGE_KEY);
 
-        const applyCorrectTheme = () => {
+        const applyThemeWithPrecedence = () => {
             const isDark = document.documentElement.classList.contains('dark');
             const mode = isDark ? 'dark' : 'light';
 
@@ -60,12 +60,12 @@ export function Providers({ children, initialBrandConfig, initialHomepageConfig,
             }
         };
 
-        applyCorrectTheme();
+        applyThemeWithPrecedence();
 
         const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                    applyCorrectTheme();
+                    applyThemeWithPrecedence();
                 }
             }
         });

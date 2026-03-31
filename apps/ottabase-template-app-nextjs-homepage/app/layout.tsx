@@ -37,7 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     return (
         <html lang="en" suppressHydrationWarning>
             <head>
-                {/* SEO overrides from admin display settings */}
+                {/* Runtime SEO injection from DB display settings (bypasses Next.js metadata to support admin-driven content) */}
                 {seoTitle && <title>{seoTitle}</title>}
                 {seoDescription && <meta name="description" content={seoDescription} />}
                 {/* Inject critical CSS for theme variables */}

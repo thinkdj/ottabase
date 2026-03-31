@@ -93,7 +93,7 @@ export async function getHomepageData(): Promise<ValidatedHomepageData> {
             return result.data;
         }
         // Log validation errors but don't hard-fail
-        console.warn('[get-homepage-data] Validation failed:', result.error.issues);
+        console.warn('[get-homepage-data] API validation failed for /api/homepage/data:', result.error.issues);
         return HomepageDataSchema.parse(EMPTY_PAYLOAD);
     } catch {
         return HomepageDataSchema.parse(EMPTY_PAYLOAD);

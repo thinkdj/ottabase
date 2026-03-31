@@ -32,9 +32,8 @@ export interface HomepageConfigProviderProps {
 }
 
 /**
- * Merge priority: localStorage > API variantBySlot > built-in defaults.
- * This ensures users can override via the config panel, DB settings provide
- * a baseline, and defaults are always available.
+ * Merges API variants with defaults. localStorage precedence is applied
+ * separately in the provider's useEffect hook.
  */
 function mergeConfig(apiVariants: Record<string, string> | null | undefined): HomepageConfig {
     const defaults = getDefaultConfig();
@@ -61,6 +60,9 @@ export function HomepageConfigProvider({ children, initialVariantBySlot }: Homep
     const [config, setConfig] = useState<HomepageConfig>(() => mergeConfig(initialVariantBySlot));
 
     // Layer 2: Hydrate from localStorage on mount (takes final precedence)
+    // Note: We detect user-set values by comparing to defaults. This means if a user
+    // explicitly sets a slot back to its default, it won't be treated as "user-configured".
+    // This is an acceptable trade-off vs. the complexity of tracking explicit modifications.
     useEffect(() => {
         const localConfig = loadConfig();
         // Merge: localStorage overrides API values where localStorage has valid entries
