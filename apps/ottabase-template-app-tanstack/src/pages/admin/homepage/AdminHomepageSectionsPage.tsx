@@ -56,6 +56,7 @@ import {
     Plus,
     Trash2,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 import { HomepageAdminNav } from './HomepageAdminNav';
 import { ACTION_VARIANTS, SLOT_DESCRIPTIONS, SLOT_LABELS, SLOT_NAMES, type SlotName } from './homepage-constants';
@@ -309,6 +310,7 @@ function SectionActions({ sectionId }: { sectionId: string }) {
 // ── Main page ───────────────────────────────────────────────────────────────
 
 export function AdminHomepageSectionsPage() {
+    const queryClient = useQueryClient();
     const { data, isLoading } = homepageSectionHooks.useList(
         { orderBy: 'sortOrder', orderDirection: 'asc' },
         ADMIN_LIST_QUERY_CONFIG,
@@ -334,15 +336,19 @@ export function AdminHomepageSectionsPage() {
                 setSeedResult('exists');
             } else {
                 setSeedResult('success');
-                // Refetch sections after seed
-                window.location.reload();
+                // Invalidate all homepage queries to refetch fresh data
+                queryClient.invalidateQueries({ queryKey: ['homepage_sections'] });
+                queryClient.invalidateQueries({ queryKey: ['homepage_features'] });
+                queryClient.invalidateQueries({ queryKey: ['homepage_actions'] });
+                queryClient.invalidateQueries({ queryKey: ['homepage_display_settings'] });
             }
-        } catch {
+        } catch (err) {
+            console.error('[AdminHomepage] Seed failed:', err);
             setSeedResult('error');
         } finally {
             setSeeding(false);
         }
-    }, []);
+    }, [queryClient]);
 
     const handleCreateSection = async (slot: string) => {
         await createSection.mutateAsync({
