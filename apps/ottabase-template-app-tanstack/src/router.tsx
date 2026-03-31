@@ -592,6 +592,39 @@ const referralsRoute = new Route({
     ),
 });
 
+const marketingPagesAdminRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/pages',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/pages/AdminPagesListPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminPagesListPage />),
+        })),
+    ),
+});
+
+const marketingPageBuilderAdminRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/pages/$pageId',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/pages/AdminPageBuilderPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminPageBuilderPage />),
+        })),
+    ),
+});
+
+const marketingPageRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/pages/$slug',
+    validateSearch: (search: Record<string, unknown>) => ({
+        preview: search.preview === 'true',
+    }),
+    component: lazyRouteComponent(() =>
+        import('@/pages/marketing/MarketingPageRenderer').then((m) => ({
+            default: m.MarketingPageRenderer,
+        })),
+    ),
+});
+
 // Admin route
 const adminRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -1159,6 +1192,9 @@ const coreRoutes = [
     analyticsRoute,
     migrationStatusRoute,
     adminRoute,
+    marketingPagesAdminRoute,
+    marketingPageBuilderAdminRoute,
+    marketingPageRoute,
     adminChangelogRoute,
     adminChangelogNewRoute,
     adminChangelogEditRoute,
