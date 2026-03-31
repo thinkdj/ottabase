@@ -3,11 +3,12 @@
 Next.js 16 homepage template deployed to Cloudflare Workers via OpenNext. Uses Brand Engine for theming with 8 presets
 and live switching, plus an **extensible slot framework** for hot-swappable homepage sections.
 
-> **Monorepo note:** The main TanStack app (`ottabase-template-app-tanstack`) drives its brand config from a D1
-> database, editable via the admin UI at `/admin/brand-engine`. This homepage is intentionally **config-first** — no DB,
-> no API call; the preset is set in `config/brand.config.ts` and resolved at request time. Both apps use the same
-> underlying `@ottabase/brand-engine` presets, so to keep them visually in sync just match `themePreset` here to
-> whatever preset is active in the TanStack app.
+> **Monorepo note:** Marketing copy, slot variants, and theme preset for this template are stored in the TanStack app’s
+> D1 database (OttaORM models `homepage_*`). The worker exposes **`GET /api/homepage/data`** (public). This Next.js app
+> loads that payload in `app/layout.tsx` and `app/page.tsx` via `getHomepageData()` (see `lib/get-homepage-data.ts`).
+> Admins edit content at **`/admin/homepage`** in the TanStack app. Set **`NEXT_PUBLIC_API_URL`** to the worker origin
+> (e.g. `http://localhost:3004` in dev). If the API is unreachable, the app falls back to `config/brand.config.ts` and
+> built-in slot defaults.
 
 ## Quick Start
 
@@ -16,6 +17,15 @@ pnpm install
 pnpm dev
 # http://localhost:3000
 ```
+
+Create `.env.local` with the TanStack worker URL so SSR can fetch homepage data:
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:3004
+```
+
+Run **`POST /api/ottaorm/init`** on the worker to create tables, then **`POST /api/homepage/seed`** (allowed in dev
+without secret) to insert default rows, or use **Admin → Marketing homepage → Seed defaults**.
 
 ## Structure
 
@@ -69,11 +79,14 @@ components/
         └── FooterColumns.tsx   # Multi-column with grouped links
 lib/
 ├── brand-server.ts             # Server-side brand/theme utilities
+├── get-homepage-data.ts        # Fetches v1 payload; validates with @ottabase/homepage-contract
+├── homepage-map.ts             # SSR fallbacks only (navbar/footer); live data uses payload.slots
+├── merge-homepage-config.ts    # Merges API display settings with slot defaults
 ├── homepage-config.ts          # Slot registry, types, localStorage persistence
 └── homepage-config-context.tsx # React context + useHomepageConfig() hook
 config/
 └── brand.config.ts             # Theme preset + brand overrides
-__tests__/                      # Vitest test suite (77 tests)
+__tests__/                      # Vitest test suite (79 tests)
 ```
 
 ## Slot Framework

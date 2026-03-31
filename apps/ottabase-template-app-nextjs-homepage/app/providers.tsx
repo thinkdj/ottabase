@@ -7,14 +7,21 @@ import { ShadcnProviders } from '@ottabase/ui-shadcn';
 import { ThemeProvider } from 'next-themes';
 import { useEffect } from 'react';
 import { THEME_STORAGE_KEY } from '../components/ThemePresetSwitcher';
+import type { HomepageConfig } from '../lib/homepage-config';
 import { HomepageConfigProvider } from '../lib/homepage-config-context';
 
 export function Providers({
     children,
     initialBrandConfig,
+    initialHomepageConfig,
+    initialThemePresetId,
 }: {
     children: React.ReactNode;
     initialBrandConfig: FullBrandConfig;
+    /** Slot variants from TanStack /api/homepage/data */
+    initialHomepageConfig?: HomepageConfig;
+    /** When set, prefer this preset over localStorage on first paint (matches SSR) */
+    initialThemePresetId?: string;
 }) {
     // Handle theme switching for dark/light mode + restore saved preset
     useEffect(() => {
@@ -27,9 +34,18 @@ export function Providers({
             const isDark = document.documentElement.classList.contains('dark');
             const mode = isDark ? 'dark' : 'light';
 
+            registerBuiltInThemes();
+
+            if (initialThemePresetId) {
+                const base = getThemeByName(initialThemePresetId);
+                if (base) {
+                    const resolved = resolveTheme({ base, tenantOverrides: {}, mode });
+                    applyBrandTheme(resolved);
+                    return;
+                }
+            }
+
             if (savedPreset) {
-                // Apply the saved preset instead of the SSR default
-                registerBuiltInThemes();
                 const base = getThemeByName(savedPreset);
                 if (base) {
                     const resolved = resolveTheme({ base, tenantOverrides: {}, mode });
@@ -64,13 +80,13 @@ export function Providers({
         });
 
         return () => observer.disconnect();
-    }, [initialBrandConfig]);
+    }, [initialBrandConfig, initialThemePresetId]);
 
     return (
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <BrandProvider initialConfig={initialBrandConfig}>
                 <ShadcnProviders enableThemeProvider={false} enableToaster>
-                    <HomepageConfigProvider>{children}</HomepageConfigProvider>
+                    <HomepageConfigProvider initialConfig={initialHomepageConfig}>{children}</HomepageConfigProvider>
                 </ShadcnProviders>
             </BrandProvider>
         </ThemeProvider>

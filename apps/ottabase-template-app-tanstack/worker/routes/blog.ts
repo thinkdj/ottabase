@@ -23,6 +23,9 @@ export interface BlogRouteContext {
     url: URL;
 }
 
+/** Default list/RSS/sitemap: exclude `changelog` (dedicated route) and `page` (marketing CMS / Next.js). */
+const DEFAULT_PUBLIC_BLOG_CONTENT_TYPES = ['blog', 'docs', 'news', 'announcement'] as const;
+
 function ensureD1(env: CloudflareEnv): Response | null {
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500, {
@@ -246,8 +249,7 @@ export async function handleBlogPostsList(context: BlogRouteContext): Promise<Re
     if (contentType) {
         where.contentType = contentType;
     } else {
-        // Dedicated changelog lives at /changelog (changelog_entries); keep blog list blog-only
-        where.contentType = { $ne: 'changelog' };
+        where.contentType = [...DEFAULT_PUBLIC_BLOG_CONTENT_TYPES];
     }
     if (seriesId) where.seriesId = seriesId;
 
@@ -353,7 +355,8 @@ export async function handleBlogPostBySlug(context: BlogRouteContext, slug: stri
         return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
     }
 
-    if (record.get('contentType') === 'changelog') {
+    const ct = record.get('contentType') as string;
+    if (ct === 'changelog' || ct === 'page') {
         return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
     }
 
@@ -364,6 +367,33 @@ export async function handleBlogPostBySlug(context: BlogRouteContext, slug: stri
         enrichTags: true,
         enrichCategory: true,
         enrichSeries: true,
+    });
+    return jsonResponse(data);
+}
+
+/**
+ * GET /api/blog/pages/by-slug/:slug — published Ottablog `page` posts only (marketing / Next.js).
+ * `/api/blog/posts/by-slug` excludes `page` so the blog UI does not mix marketing pages with articles.
+ */
+export async function handleBlogMarketingPageBySlug(context: BlogRouteContext, slug: string): Promise<Response> {
+    const { env, url } = context;
+    const d1Error = ensureD1(env);
+    if (d1Error) return d1Error;
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+
+    const appId = url.searchParams.get('appId') || null;
+    const where: Record<string, unknown> = { slug, status: 'published', contentType: 'page' };
+    if (appId) where.appId = appId;
+    const record = await Post.first(where);
+    if (!record) {
+        return errorResponse('Page not found', 404, { code: 'NOT_FOUND' });
+    }
+
+    const data = await publicPostJson(record, {
+        includeContent: true,
+        enrichTags: false,
+        enrichCategory: false,
+        enrichSeries: false,
     });
     return jsonResponse(data);
 }
@@ -390,7 +420,8 @@ export async function handleBlogPostUnlock(context: BlogRouteContext): Promise<R
         return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
     }
 
-    if (record.get('contentType') === 'changelog') {
+    const ctUnlock = record.get('contentType') as string;
+    if (ctUnlock === 'changelog' || ctUnlock === 'page') {
         return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
     }
 
@@ -536,7 +567,7 @@ export async function handleBlogRssFeed(context: BlogRouteContext): Promise<Resp
     if (contentType) {
         where.contentType = contentType;
     } else {
-        where.contentType = { $ne: 'changelog' };
+        where.contentType = [...DEFAULT_PUBLIC_BLOG_CONTENT_TYPES];
     }
 
     const posts = await Post.where(where, {
@@ -621,7 +652,10 @@ export async function handleBlogSitemap(context: BlogRouteContext): Promise<Resp
     registerConnection('default', createD1Driver(env.OBCF_D1));
 
     const appId = url.searchParams.get('appId') || null;
-    const where: Record<string, unknown> = { status: 'published', contentType: { $ne: 'changelog' } };
+    const where: Record<string, unknown> = {
+        status: 'published',
+        contentType: [...DEFAULT_PUBLIC_BLOG_CONTENT_TYPES],
+    };
     if (appId) where.appId = appId;
 
     const posts = await Post.where(where, {

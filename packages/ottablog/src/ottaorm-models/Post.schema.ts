@@ -109,6 +109,9 @@ export const postsTable = sqliteTable(
         // Featured/pinned post
         isFeatured: integer('is_featured', { mode: 'boolean' }).notNull().default(false),
 
+        /** When contentType is `page`, show in marketing homepage nav (GET /api/homepage/data exposedPages) */
+        exposeToHomepage: integer('expose_to_homepage', { mode: 'boolean' }).notNull().default(false),
+
         // Allow comments
         allowComments: integer('allow_comments', { mode: 'boolean' }).notNull().default(true),
 
@@ -177,6 +180,9 @@ export const postsTable = sqliteTable(
 
         // Featured posts: isFeatured + publishedAt for featured queries
         index('posts_is_featured_published_at_idx').on(table.isFeatured, table.publishedAt),
+
+        // Marketing pages: homepage nav (published page type + exposed)
+        index('posts_page_expose_homepage_idx').on(table.contentType, table.status, table.exposeToHomepage),
 
         // Scheduled posts: publishAt for auto-publish scheduling
         index('posts_publish_at_idx').on(table.publishAt),

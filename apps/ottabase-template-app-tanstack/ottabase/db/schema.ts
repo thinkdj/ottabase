@@ -45,6 +45,10 @@ export { accountsTable, authenticatorsTable, mediaTable, sessionsTable, usersTab
 // APP-SPECIFIC TABLES
 // ============================================================
 export { changelogEntriesTable } from '../models/ChangelogEntry';
+export { homepageActionsTable } from '../models/HomepageAction.schema';
+export { homepageDisplaySettingsTable } from '../models/HomepageDisplaySettings.schema';
+export { homepageFeaturesTable } from '../models/HomepageFeature.schema';
+export { homepageSectionsTable } from '../models/HomepageSection.schema';
 export { todosTable } from '../models/Todo';
 
 // ============================================================

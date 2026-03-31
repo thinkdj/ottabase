@@ -21,7 +21,9 @@
         "@ottabase/brand-engine": "workspace:*",
         "@ottabase/brand-engine-react": "workspace:*",
         "@ottabase/config": "workspace:*",
+        "@ottabase/homepage-contract": "workspace:*",
         "@ottabase/ottalayout": "workspace:*",
+        "@ottabase/ottarenderer": "workspace:*",
         "@ottabase/ui-components": "workspace:*",
         "@ottabase/ui-shadcn": "workspace:*",
         "@radix-ui/react-slot": "^1.1.1",
@@ -48,12 +50,12 @@
         "autoprefixer": "catalog:",
         "eslint": "catalog:",
         "eslint-config-next": "^16.1.1",
+        "localflare": "catalog:",
         "postcss": "catalog:",
         "postcss-preset-env": "catalog:",
         "tailwindcss": "catalog:",
         "tailwindcss-animate": "catalog:",
         "typescript": "catalog:",
-        "wrangler": "catalog:",
-        "localflare": "catalog:"
+        "wrangler": "catalog:"
     }
 }

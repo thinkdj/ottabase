@@ -931,6 +931,16 @@ const adminChangelogEditRoute = new Route({
     ),
 });
 
+const adminHomepageRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/homepage',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/homepage/AdminHomepagePage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminHomepagePage />),
+        })),
+    ),
+});
+
 // Organizations routes
 const organizationsRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -1162,6 +1172,7 @@ const coreRoutes = [
     adminChangelogRoute,
     adminChangelogNewRoute,
     adminChangelogEditRoute,
+    adminHomepageRoute,
     adminDevMailRoute,
     adminQueueRoute,
     adminCronRoute,

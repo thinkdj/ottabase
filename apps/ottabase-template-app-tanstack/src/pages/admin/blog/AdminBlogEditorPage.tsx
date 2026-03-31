@@ -105,6 +105,8 @@ interface BlogPost {
     authorEmail: string | null;
     isFeatured: boolean;
     allowComments: boolean;
+    /** Ottablog `page` — show link on Next.js marketing homepage nav */
+    exposeToHomepage?: boolean;
     isProtected?: boolean;
     passwordHint?: string | null;
     publishedAt: string | null;
@@ -238,6 +240,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
     const [authorName, setAuthorName] = useState(initialData?.authorName || user?.name || '');
     const [isFeatured, setIsFeatured] = useState(initialData?.isFeatured || false);
     const [allowComments, setAllowComments] = useState(initialData?.allowComments ?? true);
+    const [exposeToHomepage, setExposeToHomepage] = useState(initialData?.exposeToHomepage ?? false);
     const [isProtected, setIsProtected] = useState(initialData?.isProtected ?? false);
     const [passwordHint, setPasswordHint] = useState(initialData?.passwordHint ?? '');
     const [password, setPassword] = useState(''); // transient: only sent when setting/changing
@@ -440,6 +443,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
         setAuthorName(initialData.authorName ?? user?.name ?? '');
         setIsFeatured(initialData.isFeatured ?? false);
         setAllowComments(initialData.allowComments ?? true);
+        setExposeToHomepage(initialData.exposeToHomepage ?? false);
         setIsProtected(initialData.isProtected ?? false);
         setPasswordHint(initialData.passwordHint ?? '');
         setPublishedAt(initialData.publishedAt ? new Date(initialData.publishedAt).toISOString().slice(0, 16) : '');
@@ -482,6 +486,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
             authorName === (initialData.authorName ?? '') &&
             isFeatured === initialData.isFeatured &&
             allowComments === initialData.allowComments &&
+            exposeToHomepage === (initialData.exposeToHomepage ?? false) &&
             isProtected === (initialData.isProtected ?? false) &&
             (passwordHint ?? '') === (initialData.passwordHint ?? '') &&
             !password &&
@@ -519,6 +524,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
         authorName,
         isFeatured,
         allowComments,
+        exposeToHomepage,
         publishedAt,
         seriesId,
         seriesOrder,
@@ -880,6 +886,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                 authorName: authorName || undefined,
                 isFeatured,
                 allowComments,
+                ...(contentType === 'page' ? { exposeToHomepage } : { exposeToHomepage: false }),
                 isProtected,
                 passwordHint: passwordHint || undefined,
                 ...(isProtected && password.trim() ? { password: password.trim() } : {}),
@@ -1350,7 +1357,11 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                     id="contentType"
                                     aria-label="Content type"
                                     value={contentType}
-                                    onChange={(e) => setContentType(e.target.value as ContentType)}
+                                    onChange={(e) => {
+                                        const next = e.target.value as ContentType;
+                                        setContentType(next);
+                                        if (next !== 'page') setExposeToHomepage(false);
+                                    }}
                                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 >
                                     {Object.entries(CONTENT_TYPES).map(([value, { label }]) => (
@@ -1360,6 +1371,26 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                     ))}
                                 </select>
                             </div>
+
+                            {contentType === 'page' && (
+                                <div className="flex items-start gap-2 rounded-md border border-border bg-muted/30 p-3 dark:border-border dark:bg-muted/20">
+                                    <input
+                                        type="checkbox"
+                                        id="exposeToHomepage"
+                                        aria-label="Show in marketing homepage navigation"
+                                        checked={exposeToHomepage}
+                                        onChange={(e) => setExposeToHomepage(e.target.checked)}
+                                        className="mt-0.5 rounded"
+                                    />
+                                    <div className="space-y-0.5">
+                                        <Label htmlFor="exposeToHomepage">Expose to marketing homepage</Label>
+                                        <p className="text-xs text-muted-foreground dark:text-muted-foreground">
+                                            When published, adds a link to this page in the Next.js homepage navbar
+                                            (same worker as <code className="text-xs">/api/homepage/data</code>).
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                 <Label htmlFor="postStatus">Status</Label>

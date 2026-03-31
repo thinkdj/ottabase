@@ -1,6 +1,11 @@
 import { buildCriticalCSS } from '@ottabase/brand-engine';
 import type { Metadata } from 'next';
 import { generateBrandConfig } from '../lib/brand-server';
+import type { FooterData } from '../components/variants/footer/types';
+import type { NavbarData } from '../components/variants/navbar/types';
+import { getHomepageData } from '../lib/get-homepage-data';
+import { mergeExposedPagesIntoNavbar } from '../lib/merge-exposed-pages-nav';
+import { mergeHomepageConfigFromApi } from '../lib/merge-homepage-config';
 import './globals.css';
 import { LayoutShell } from './layout-shell';
 import { Providers } from './providers';
@@ -13,11 +18,16 @@ export const metadata: Metadata = {
     authors: [{ name: 'Ottabase' }],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-    // Generate brand config server-side (SSR)
-    // Note: Using 'light' for initial SSR. BrandProvider will handle dynamic theme switching on client.
-    const brandConfig = generateBrandConfig('light');
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+    const homepagePayload = await getHomepageData();
+    const brandConfig = generateBrandConfig('light', homepagePayload.themePresetId);
     const theme = brandConfig.brandKitsMap.default.theme;
+    const initialHomepageConfig = mergeHomepageConfigFromApi(homepagePayload.variantBySlot);
+    const navbarData = mergeExposedPagesIntoNavbar(
+        homepagePayload.slots.navbar as NavbarData,
+        homepagePayload.exposedPages,
+    );
+    const footerData = homepagePayload.slots.footer as FooterData;
 
     // Generate critical CSS for SSR (prevents FOUC)
     const criticalCSS = buildCriticalCSS(theme);
@@ -33,8 +43,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {theme.typography.handwriting.url && <link rel="stylesheet" href={theme.typography.handwriting.url} />}
             </head>
             <body className="flex min-h-screen flex-col bg-background text-foreground">
-                <Providers initialBrandConfig={brandConfig}>
-                    <LayoutShell>{children}</LayoutShell>
+                <Providers
+                    initialBrandConfig={brandConfig}
+                    initialHomepageConfig={initialHomepageConfig}
+                    initialThemePresetId={homepagePayload.themePresetId}
+                >
+                    <LayoutShell navbarData={navbarData} footerData={footerData}>
+                        {children}
+                    </LayoutShell>
                 </Providers>
             </body>
         </html>

@@ -39,6 +39,16 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { ChangelogEntry } from '../../ottabase/models/ChangelogEntry';
 import { changelogPolicy } from '../../ottabase/models/changelogPolicy';
+import { HomepageAction } from '../../ottabase/models/HomepageAction';
+import { HomepageDisplaySettings } from '../../ottabase/models/HomepageDisplaySettings';
+import { HomepageFeature } from '../../ottabase/models/HomepageFeature';
+import { HomepageSection } from '../../ottabase/models/HomepageSection';
+import {
+    homepageActionPolicy,
+    homepageDisplaySettingsPolicy,
+    homepageFeaturePolicy,
+    homepageSectionPolicy,
+} from '../../ottabase/models/homepagePolicy';
 import { Todo } from '../../ottabase/models/Todo';
 import { mediaLibraryPolicy } from '../../ottabase/models/mediaLibraryPolicy';
 import type { CloudflareEnv } from '../cloudflare-env';
@@ -126,8 +136,12 @@ export function initDbConnection(env: CloudflareEnv): void {
     const brandModels = [BrandKit, LayoutTemplate, LayoutRouteMapping, MenuSlotAssignment];
     registerPolicy(mediaLibraryPolicy);
     registerPolicy(changelogPolicy);
+    registerPolicy(homepageSectionPolicy);
+    registerPolicy(homepageFeaturePolicy);
+    registerPolicy(homepageActionPolicy);
+    registerPolicy(homepageDisplaySettingsPolicy);
 
-    const appModels = [Todo, ChangelogEntry];
+    const appModels = [Todo, ChangelogEntry, HomepageSection, HomepageFeature, HomepageAction, HomepageDisplaySettings];
 
     registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
 

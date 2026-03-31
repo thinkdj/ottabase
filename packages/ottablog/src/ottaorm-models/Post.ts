@@ -40,6 +40,7 @@ export class Post extends BaseModel {
         privateNotes: 'json' as const,
         footnotes: 'json' as const,
         isFeatured: 'boolean' as const,
+        exposeToHomepage: 'boolean' as const,
         allowComments: 'boolean' as const,
         isProtected: 'boolean' as const,
         readingTimeMinutes: 'number' as const,
@@ -58,6 +59,7 @@ export class Post extends BaseModel {
         status: 'draft',
         contentType: 'blog',
         isFeatured: false,
+        exposeToHomepage: false,
         allowComments: true,
         isProtected: false,
         viewCount: 0,
@@ -86,6 +88,7 @@ export class Post extends BaseModel {
             'readingTimeMinutes',
             'wordCount',
             'isFeatured',
+            'exposeToHomepage',
             'allowComments',
             'isProtected',
             'passwordHash',
@@ -119,6 +122,7 @@ export class Post extends BaseModel {
             'readingTimeMinutes',
             'wordCount',
             'isFeatured',
+            'exposeToHomepage',
             'allowComments',
             'isProtected',
             'passwordHash',
@@ -478,6 +482,23 @@ export class Post extends BaseModel {
             tableConfig: {
                 visible: true,
                 colWidth: 120,
+            },
+        },
+        exposeToHomepage: {
+            type: 'boolean',
+            editable: true,
+            filterable: true,
+            uiConfig: {
+                label: 'Expose on marketing homepage',
+                description: 'For content type “Page”: show link in Next.js homepage navigation (when published)',
+                defaultValue: false,
+            },
+            formConfig: {
+                visible: true,
+                fieldType: 'boolean',
+            },
+            tableConfig: {
+                visible: false,
             },
         },
         allowComments: {

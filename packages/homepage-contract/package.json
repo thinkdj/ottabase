@@ -1,0 +1,34 @@
+{
+    "name": "@ottabase/homepage-contract",
+    "version": "1.0.0",
+    "description": "Shared Zod schemas and types for marketing homepage slot content (TanStack D1 + Next.js consumer)",
+    "type": "module",
+    "main": "dist/index.js",
+    "module": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+        "test": "vitest run",
+        "type-check": "tsc --noEmit"
+    },
+    "dependencies": {
+        "zod": "catalog:"
+    },
+    "devDependencies": {
+        "typescript": "catalog:",
+        "tsup": "catalog:",
+        "vitest": "catalog:"
+    },
+    "license": "MIT"
+}

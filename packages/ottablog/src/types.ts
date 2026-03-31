@@ -6,7 +6,7 @@
 /**
  * Content type determines the purpose and display style of the content
  */
-export type ContentType = 'blog' | 'changelog' | 'docs' | 'news' | 'announcement';
+export type ContentType = 'blog' | 'changelog' | 'docs' | 'news' | 'announcement' | 'page';
 
 /**
  * Publication status of the content
@@ -120,6 +120,10 @@ export const CONTENT_TYPES: Record<ContentType, { label: string; description: st
     announcement: {
         label: 'Announcement',
         description: 'Important announcements and notices',
+    },
+    page: {
+        label: 'Page',
+        description: 'Static marketing/CMS page (e.g. legal, landing) — use “expose to homepage” to list in nav',
     },
 };
 

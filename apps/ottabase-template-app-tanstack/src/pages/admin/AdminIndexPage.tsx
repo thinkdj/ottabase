@@ -87,6 +87,12 @@ const ADMIN_CATEGORIES: AdminCategory[] = [
                 href: '/admin/changelog',
                 icon: FileText,
             },
+            {
+                title: 'Marketing homepage',
+                description: 'Next.js landing content and display settings (hero, features, CTA, theme preset).',
+                href: '/admin/homepage',
+                icon: FileText,
+            },
             ...(MEDIA_LIBRARY_ENABLED
                 ? [
                       {

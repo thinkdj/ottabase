@@ -6,6 +6,9 @@
  * Wraps `loadConfig` / `saveConfig` in React state so every consumer
  * re-renders when a slot variant is changed — enabling live preview on the
  * config page and instant updates on the homepage.
+ *
+ * When `initialConfig` is provided (from TanStack API in layout), SSR owns the
+ * first paint; localStorage is only applied when no server config was passed.
  */
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
@@ -20,13 +23,25 @@ type HomepageConfigContextValue = {
 
 const HomepageConfigContext = createContext<HomepageConfigContextValue | null>(null);
 
-export function HomepageConfigProvider({ children }: { children: React.ReactNode }) {
-    const [config, setConfig] = useState<HomepageConfig>(getDefaultConfig);
+export function HomepageConfigProvider({
+    children,
+    initialConfig,
+}: {
+    children: React.ReactNode;
+    /** When set from SSR (API), used as initial state instead of localStorage alone */
+    initialConfig?: HomepageConfig;
+}) {
+    const [config, setConfig] = useState<HomepageConfig>(() => initialConfig ?? getDefaultConfig());
 
-    // Hydrate from localStorage on mount
+    // After SSR: merge localStorage overrides on top of server config (config page / live preview)
     useEffect(() => {
-        setConfig(loadConfig());
-    }, []);
+        const stored = loadConfig();
+        if (initialConfig) {
+            setConfig({ ...initialConfig, ...stored });
+            return;
+        }
+        setConfig(stored);
+    }, [initialConfig]);
 
     const setVariant = useCallback((slot: SlotName, variantId: string) => {
         setConfig((prev) => {

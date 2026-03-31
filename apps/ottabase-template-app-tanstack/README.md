@@ -13,6 +13,16 @@ TanStack Router + Query template with automated OttaORM migrations and Cloudflar
 - **Mantine + shadcn/ui** - Flexible UI component libraries
 - **Jotai** - Global state management
 
+### Next.js marketing homepage
+
+The `ottabase-template-app-nextjs-homepage` app consumes **`GET /api/homepage/data`**, which returns a **versioned,
+Zod-validated** payload from **`@ottabase/homepage-contract`** (`version: 1`, typed `slots` for navbar, hero, features,
+cta, footer, about). Content is stored in D1 via OttaORM models `homepage_sections`, `homepage_features`,
+`homepage_actions`, and `homepage_display_settings`. Edit in the admin UI at **`/admin/homepage`** (Display tab: theme,
+per-slot variant, and on/off toggles; other tabs for navbar/footer, hero/CTA/about copy, and feature rows with explicit
+save). After migrations, run **`POST /api/homepage/seed`** to insert defaults (in production, use the same auth as
+`POST /api/ottaorm/init`).
+
 ## Quick Start
 
 ```bash

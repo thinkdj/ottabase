@@ -50,6 +50,7 @@ import {
 } from './auth';
 import {
     handleBlogCategoryBySlug,
+    handleBlogMarketingPageBySlug,
     handleBlogPostBySlug,
     handleBlogPostUnlock,
     handleBlogPostsList,
@@ -65,6 +66,7 @@ import {
     handleBlogTagBySlug,
 } from './blog';
 import { handleChangelogEntriesList, handleChangelogEntryBySlug } from './changelog';
+import { handleHomepageData, handleHomepageSeed } from './homepage';
 import { handleBrandApi } from './brand';
 import {
     handleAIChat,
@@ -173,6 +175,10 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
     if (route === '/api/changelog/entries') {
         return handleChangelogEntriesList(context);
     }
+
+    if (route === '/api/homepage/data') {
+        return handleHomepageData(context);
+    }
     const changelogBySlugMatch = route.match(/^\/api\/changelog\/entries\/by-slug\/([^/]+)$/);
     if (changelogBySlugMatch) {
         const slug = decodeURIComponent(changelogBySlugMatch[1]);
@@ -223,6 +229,11 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         if (blogRelatedMatch) {
             const postId = decodeURIComponent(blogRelatedMatch[1]);
             return handleBlogRelatedPosts(context, postId);
+        }
+        const blogPageBySlugMatch = route.match(/^\/api\/blog\/pages\/by-slug\/([^/]+)$/);
+        if (blogPageBySlugMatch) {
+            const slug = decodeURIComponent(blogPageBySlugMatch[1]);
+            return handleBlogMarketingPageBySlug(context, slug);
         }
         const blogBySlugMatch = route.match(/^\/api\/blog\/posts\/by-slug\/([^/]+)$/);
         if (blogBySlugMatch) {
@@ -445,6 +456,10 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
 
     if (route === '/api/cloudflare/d1/init') {
         return handleD1Init(context);
+    }
+
+    if (route === '/api/homepage/seed') {
+        return handleHomepageSeed(context);
     }
 
     if (route === '/api/cloudflare/rate-limiting') {

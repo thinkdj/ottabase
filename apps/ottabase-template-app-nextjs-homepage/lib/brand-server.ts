@@ -4,7 +4,7 @@
 import { getThemeByName, registerBuiltInThemes, resolveTheme } from '@ottabase/brand-engine';
 import type { FullBrandConfig } from '@ottabase/brand-engine-react';
 import { DEFAULT_LAYOUT } from '@ottabase/ottalayout';
-import { brandConfig, themePreset } from '../config/brand.config';
+import { brandConfig, themePreset as configThemePreset } from '../config/brand.config';
 
 // Register themes on server startup
 registerBuiltInThemes();
@@ -13,10 +13,13 @@ registerBuiltInThemes();
  * Generate brand configuration for SSR
  * This replaces the need for a /api/brand endpoint
  * Generates both light and dark themes for client-side switching
+ *
+ * @param themePresetOverride — optional preset id from API (e.g. homepage display settings)
  */
-export function generateBrandConfig(mode: 'light' | 'dark' = 'light'): FullBrandConfig {
+export function generateBrandConfig(mode: 'light' | 'dark' = 'light', themePresetOverride?: string): FullBrandConfig {
+    const presetName = (themePresetOverride?.trim() || configThemePreset).toLowerCase();
     // Get the theme preset
-    const baseTheme = getThemeByName(themePreset) || getThemeByName('default')!;
+    const baseTheme = getThemeByName(presetName) || getThemeByName('default')!;
 
     // Resolve both light and dark themes
     const lightTheme = resolveTheme({
@@ -54,7 +57,7 @@ export function generateBrandConfig(mode: 'light' | 'dark' = 'light'): FullBrand
                 logos: {},
                 theme: lightTheme,
                 darkTheme: darkTheme,
-                themeBase: themePreset,
+                themeBase: presetName,
                 tenantTheme: brandConfig,
                 defaultColorScheme: 'system',
                 allowDarkModeToggle: true,

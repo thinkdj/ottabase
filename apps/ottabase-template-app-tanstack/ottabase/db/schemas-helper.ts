@@ -34,6 +34,10 @@ import {
 } from '@ottabase/ottaorm';
 import { getEnabledPackageTables } from '../config.migrations';
 import { changelogEntriesTable } from '../models/ChangelogEntry';
+import { homepageActionsTable } from '../models/HomepageAction.schema';
+import { homepageDisplaySettingsTable } from '../models/HomepageDisplaySettings.schema';
+import { homepageFeaturesTable } from '../models/HomepageFeature.schema';
+import { homepageSectionsTable } from '../models/HomepageSection.schema';
 import { todosTable } from '../models/Todo';
 
 /**
@@ -62,6 +66,10 @@ export function getAllSchemas() {
     // 2. App-specific schemas
     const appTables = {
         changelogEntriesTable,
+        homepageActionsTable,
+        homepageDisplaySettingsTable,
+        homepageFeaturesTable,
+        homepageSectionsTable,
         todosTable,
     };
 
@@ -104,6 +112,10 @@ export function getSchemaSummary() {
 
     const appTables = {
         changelogEntriesTable,
+        homepageActionsTable,
+        homepageDisplaySettingsTable,
+        homepageFeaturesTable,
+        homepageSectionsTable,
         todosTable,
     };
 
