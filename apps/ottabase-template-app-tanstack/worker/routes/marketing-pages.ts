@@ -11,7 +11,8 @@ type BlockDefinition = {
     fields: Array<{ id: string; label: string; type: 'text' | 'textarea' | 'url' | 'boolean' }>;
 };
 
-export const BLOCK_REGISTRY: BlockDefinition[] = [
+/** Built-in block definitions. Apps can register additional blocks via registerCustomBlock(). */
+const BUILT_IN_BLOCKS: BlockDefinition[] = [
     {
         id: 'hero',
         label: 'Hero',
@@ -56,6 +57,21 @@ export const BLOCK_REGISTRY: BlockDefinition[] = [
         ],
     },
     {
+        id: 'about',
+        label: 'About',
+        category: 'layout',
+        variants: [
+            { id: 'default', label: 'Default' },
+            { id: 'minimal', label: 'Minimal' },
+            { id: 'detailed', label: 'Detailed' },
+        ],
+        fields: [
+            { id: 'title', label: 'Title', type: 'text' },
+            { id: 'subtitle', label: 'Subtitle', type: 'text' },
+            { id: 'body', label: 'Body', type: 'textarea' },
+        ],
+    },
+    {
         id: 'navbar',
         label: 'Navbar',
         category: 'navigation',
@@ -77,6 +93,10 @@ export const BLOCK_REGISTRY: BlockDefinition[] = [
         ],
         fields: [{ id: 'title', label: 'Footer Title', type: 'text' }],
     },
+];
+
+/** Runtime-registered custom blocks from the app. */
+const customBlocks: BlockDefinition[] = [
     {
         id: 'app-value-grid',
         label: 'App: Value Grid',
@@ -89,8 +109,26 @@ export const BLOCK_REGISTRY: BlockDefinition[] = [
     },
 ];
 
+/**
+ * Register a custom block from app code. This allows each app
+ * to extend the block registry with its own components.
+ */
+export function registerCustomBlock(block: BlockDefinition): void {
+    if (!customBlocks.some((b) => b.id === block.id)) {
+        customBlocks.push(block);
+    }
+}
+
+/** Combined block registry (built-in + custom). Dynamically includes runtime-registered blocks. */
+export function getBlockRegistry(): BlockDefinition[] {
+    return [...BUILT_IN_BLOCKS, ...customBlocks];
+}
+
+/** @deprecated Use getBlockRegistry() for a live snapshot. Kept for backward compat. */
+export const BLOCK_REGISTRY = BUILT_IN_BLOCKS;
+
 export async function handleBlocksRegistry(context: ApiRouteContext): Promise<Response> {
-    return jsonResponse({ blocks: BLOCK_REGISTRY, updatedAt: Date.now() });
+    return jsonResponse({ blocks: getBlockRegistry(), updatedAt: Date.now() });
 }
 
 export async function handleMarketingPageNav(context: ApiRouteContext): Promise<Response> {

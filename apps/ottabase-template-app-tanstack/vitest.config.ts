@@ -33,6 +33,7 @@ export default defineConfig({
             'src/**/*.{test,spec}.{ts,tsx}',
             '__tests__/**/*.{test,spec}.{ts,tsx}',
             'ottabase/**/*.{test,spec}.{ts,tsx}',
+            'worker/**/*.{test,spec}.{ts,tsx}',
         ],
         testTimeout: 10000,
     },
