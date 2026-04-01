@@ -3,7 +3,7 @@ import './TestimonialTool.css';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
-export type TestimonialVariant = 'card' | 'minimal' | 'featured';
+export type TestimonialVariant = 'card' | 'minimal' | 'featured' | 'quote-bubble' | 'side-by-side';
 
 export interface TestimonialData {
     quote: string;
@@ -16,6 +16,10 @@ export interface TestimonialData {
     /** Rating 0-5 (0 = no rating shown) */
     rating?: number;
     variant: TestimonialVariant;
+    /** Link to the original testimonial source */
+    sourceUrl?: string;
+    /** Whether the testimonial is verified */
+    verified?: boolean;
 }
 
 export interface TestimonialToolConfig {
@@ -69,6 +73,8 @@ export default class TestimonialTool implements BlockTool {
             companyLogo: data?.companyLogo ?? '',
             rating: data?.rating ?? 0,
             variant: data?.variant ?? this.config.defaultVariant ?? 'card',
+            sourceUrl: data?.sourceUrl ?? '',
+            verified: data?.verified ?? false,
         };
     }
 
@@ -102,6 +108,9 @@ export default class TestimonialTool implements BlockTool {
         mediaRow.appendChild(this.createInput('authorAvatar', 'Avatar URL (optional)', 'https://...'));
         mediaRow.appendChild(this.createInput('companyLogo', 'Company Logo URL (optional)', 'https://...'));
         form.appendChild(mediaRow);
+
+        // Source URL
+        form.appendChild(this.createInput('sourceUrl', 'Source URL (optional)', 'https://...'));
 
         // Rating row
         form.appendChild(this.createRatingSection());
@@ -139,6 +148,8 @@ export default class TestimonialTool implements BlockTool {
             { value: 'card', label: 'Card' },
             { value: 'minimal', label: 'Minimal' },
             { value: 'featured', label: 'Featured (large)' },
+            { value: 'quote-bubble', label: 'Quote Bubble' },
+            { value: 'side-by-side', label: 'Side by Side' },
         ];
         variants.forEach(({ value, label }) => {
             const opt = document.createElement('option');
@@ -152,6 +163,26 @@ export default class TestimonialTool implements BlockTool {
         });
         variantGroup.appendChild(variantSelect);
         toolbar.appendChild(variantGroup);
+
+        // Verified checkbox
+        const verifiedGroup = document.createElement('label');
+        verifiedGroup.classList.add('cdx-testimonial__verified-group');
+
+        const verifiedCheckbox = document.createElement('input');
+        verifiedCheckbox.type = 'checkbox';
+        verifiedCheckbox.classList.add('ob-checkbox');
+        verifiedCheckbox.checked = this.data.verified;
+        verifiedCheckbox.addEventListener('change', () => {
+            this.data.verified = verifiedCheckbox.checked;
+        });
+
+        const verifiedLabel = document.createElement('span');
+        verifiedLabel.classList.add('ob-checkbox-label');
+        verifiedLabel.textContent = 'Verified';
+
+        verifiedGroup.appendChild(verifiedCheckbox);
+        verifiedGroup.appendChild(verifiedLabel);
+        toolbar.appendChild(verifiedGroup);
 
         return toolbar;
     }
@@ -271,6 +302,8 @@ export default class TestimonialTool implements BlockTool {
             companyLogo: this.data.companyLogo?.trim() || undefined,
             rating: this.data.rating > 0 ? this.data.rating : undefined,
             variant: this.data.variant,
+            sourceUrl: this.data.sourceUrl?.trim() || undefined,
+            verified: this.data.verified || undefined,
         };
     }
 

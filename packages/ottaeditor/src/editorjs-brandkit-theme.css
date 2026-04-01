@@ -60,24 +60,24 @@
 .ce-popover__item--selected,
 .ce-popover-item--selected {
     background: hsl(var(--primary) / 0.15) !important;
-    color: #000 !important;
+    color: hsl(var(--foreground)) !important;
 }
 
 .ce-popover__item--selected *,
 .ce-popover-item--selected * {
-    color: #000 !important;
+    color: hsl(var(--foreground)) !important;
 }
 
 /* Active Popover Items - Brand color with transparency */
 .ce-popover__item--active,
 .ce-popover-item--active {
     background: hsl(var(--primary) / 0.15) !important;
-    color: #000 !important;
+    color: hsl(var(--foreground)) !important;
 }
 
 .ce-popover-item--active *,
 .ce-popover__item--active * {
-    color: #000 !important;
+    color: hsl(var(--foreground)) !important;
 }
 
 /* Selected Block - Theme-aware background */

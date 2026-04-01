@@ -105,11 +105,11 @@
 }
 
 .cdx-review__star--filled {
-    color: #f59e0b;
+    color: hsl(var(--warning, 43 96% 56%));
 }
 
 .cdx-review__star--half {
-    color: #f59e0b;
+    color: hsl(var(--warning, 43 96% 56%));
     opacity: 0.5;
 }
 
@@ -144,11 +144,11 @@
 }
 
 .cdx-review__proscons-header--pro {
-    color: #16a34a;
+    color: hsl(var(--success, 142 71% 45%));
 }
 
 .cdx-review__proscons-header--con {
-    color: #dc2626;
+    color: hsl(var(--destructive));
 }
 
 .cdx-review__proscons-item {

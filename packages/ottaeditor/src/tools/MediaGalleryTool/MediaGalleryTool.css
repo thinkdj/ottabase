@@ -7,8 +7,8 @@
     --mg-radius-sm: 8px;
     --mg-radius-md: 10px;
     --mg-radius-lg: 999px;
-    --mg-border: 1px solid var(--border-color, #e5e7eb);
-    --mg-border-muted: 1px solid var(--border-color, #d1d5db);
+    --mg-border: 1px solid hsl(var(--border));
+    --mg-border-muted: 1px solid hsl(var(--border));
     --mg-top-height: 220px;
     --mg-color-bg: hsl(var(--background));
     --mg-color-surface: hsl(var(--muted) / 0.35);
