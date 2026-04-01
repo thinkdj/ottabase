@@ -486,3 +486,8 @@ Ottabase now includes a dynamic marketing pages system with OttaORM CRUD + drag-
 - `/admin/pages` — list/create/duplicate/delete marketing pages
 - `/admin/pages/$pageId` — block builder with drag-and-drop reordering and inline editor
 - Public preview route in TanStack app: `/pages/$slug`
+
+Notes:
+
+- The admin pages list and builder consume OttaORM `useList()` hooks as arrays, while still tolerating legacy CRUD
+  payload wrappers (`{ data: [...] }` and `{ data: { data: [...] } }`) for list/detail/mutation payloads.

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { BlockEditor } from './BlockEditor';
 import { BlockPalette } from './BlockPalette';
 import { BuilderCanvas } from './BuilderCanvas';
+import { extractCrudDetailRecord, normalizeCrudListPayload } from './crudPayload';
 import type { BlockDefinition, EditableBlock, PageDraft } from './builder-types';
 
 export function AdminPageBuilderPage() {
@@ -20,19 +21,19 @@ export function AdminPageBuilderPage() {
 
     // --- Data queries ---
     const pageQuery = pageHooks.useDetail(pageId);
-    const sectionList = sectionHooks.useList({ filters: { pageId } as any });
+    const sectionList = sectionHooks.useList({ where: { pageId } as any });
     const registry = useBlocksRegistry();
 
     const createSection = sectionHooks.useCreate();
     const updateSection = sectionHooks.useUpdate();
     const deleteSection = sectionHooks.useDelete();
 
-    const featureList = featureHooks.useList({ filters: { sectionId: selectedId || '' } as any });
+    const featureList = featureHooks.useList({ where: { sectionId: selectedId || '' } as any });
     const createFeature = featureHooks.useCreate();
     const updateFeature = featureHooks.useUpdate();
     const deleteFeature = featureHooks.useDelete();
 
-    const actionList = actionHooks.useList({ filters: { sectionId: selectedId || '' } as any });
+    const actionList = actionHooks.useList({ where: { sectionId: selectedId || '' } as any });
     const createAction = actionHooks.useCreate();
     const updateAction = actionHooks.useUpdate();
     const deleteAction = actionHooks.useDelete();
@@ -41,30 +42,30 @@ export function AdminPageBuilderPage() {
 
     // --- Derived data ---
     const sections = useMemo(() => {
-        const rows = (sectionList.data?.data ?? []) as any[];
+        const rows = normalizeCrudListPayload<any>(sectionList.data);
         return [...rows].sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder));
-    }, [sectionList.data?.data]);
+    }, [sectionList.data]);
 
     const selected = sections.find((s) => s.id === selectedId) ?? null;
 
     const selectedFeatures = useMemo(() => {
-        const rows = (featureList.data?.data ?? []) as any[];
+        const rows = normalizeCrudListPayload<any>(featureList.data);
         return [...rows].sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder));
-    }, [featureList.data?.data]);
+    }, [featureList.data]);
 
     const selectedActions = useMemo(() => {
-        const rows = (actionList.data?.data ?? []) as any[];
+        const rows = normalizeCrudListPayload<any>(actionList.data);
         return [...rows].sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder));
-    }, [actionList.data?.data]);
+    }, [actionList.data]);
 
     const registryBlocks: BlockDefinition[] = registry.data?.blocks ?? [];
 
     // --- Sync page draft ---
     useEffect(() => {
-        const page = (pageQuery.data as any)?.data;
+        const page = extractCrudDetailRecord<any>(pageQuery.data);
         if (!page) return;
         setPageDraft({ id: page.id, title: page.title || '', slug: page.slug || '', status: page.status || 'draft' });
-    }, [(pageQuery.data as any)?.data?.id, (pageQuery.data as any)?.data?.updatedAt]);
+    }, [pageQuery.data]);
 
     // --- Handlers ---
     const handleAddBlock = useCallback(
@@ -95,7 +96,12 @@ export function AdminPageBuilderPage() {
             const [moved] = ordered.splice(from, 1);
             ordered.splice(to, 0, moved);
             await Promise.all(
-                ordered.map((section, index) => updateSection.mutateAsync({ id: section.id, sortOrder: index })),
+                ordered.map((section, index) =>
+                    updateSection.mutateAsync({
+                        id: section.id,
+                        data: { sortOrder: index },
+                    }),
+                ),
             );
             toast.success('Blocks reordered');
             await sectionList.refetch();
@@ -107,11 +113,13 @@ export function AdminPageBuilderPage() {
         async (draft: EditableBlock) => {
             await updateSection.mutateAsync({
                 id: draft.id,
-                title: draft.title,
-                subtitle: draft.subtitle,
-                body: draft.body,
-                variant: draft.variant,
-                enabled: draft.enabled,
+                data: {
+                    title: draft.title,
+                    subtitle: draft.subtitle,
+                    body: draft.body,
+                    variant: draft.variant,
+                    enabled: draft.enabled,
+                },
             });
             toast.success('Block saved');
             await sectionList.refetch();
@@ -145,7 +153,7 @@ export function AdminPageBuilderPage() {
 
     const handleUpdateFeature = useCallback(
         async (id: string, data: Record<string, unknown>) => {
-            await updateFeature.mutateAsync({ id, ...data });
+            await updateFeature.mutateAsync({ id, data });
             await featureList.refetch();
         },
         [updateFeature, featureList],
@@ -177,7 +185,7 @@ export function AdminPageBuilderPage() {
 
     const handleUpdateAction = useCallback(
         async (id: string, data: Record<string, unknown>) => {
-            await updateAction.mutateAsync({ id, ...data });
+            await updateAction.mutateAsync({ id, data });
             await actionList.refetch();
         },
         [updateAction, actionList],
@@ -210,7 +218,10 @@ export function AdminPageBuilderPage() {
                         onClick={async () => {
                             if (!pageDraft) return;
                             const nextStatus = pageDraft.status === 'published' ? 'draft' : 'published';
-                            await updatePage.mutateAsync({ id: pageDraft.id, status: nextStatus });
+                            await updatePage.mutateAsync({
+                                id: pageDraft.id,
+                                data: { status: nextStatus },
+                            });
                             toast.success(nextStatus === 'published' ? 'Page published' : 'Page moved to draft');
                             await pageQuery.refetch();
                         }}
@@ -251,8 +262,10 @@ export function AdminPageBuilderPage() {
                             if (!pageDraft) return;
                             await updatePage.mutateAsync({
                                 id: pageDraft.id,
-                                title: pageDraft.title,
-                                slug: pageDraft.slug,
+                                data: {
+                                    title: pageDraft.title,
+                                    slug: pageDraft.slug,
+                                },
                             });
                             toast.success('Page settings saved');
                         }}

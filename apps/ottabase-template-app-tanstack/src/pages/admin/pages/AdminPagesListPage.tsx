@@ -5,6 +5,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { Copy, FileText, Plus, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { extractCrudMutationRecord, normalizeCrudListPayload } from './crudPayload';
 
 export function AdminPagesListPage() {
     const navigate = useNavigate();
@@ -23,12 +24,12 @@ export function AdminPagesListPage() {
     const createAction = actionHooks.useCreate();
 
     const pages = useMemo(() => {
-        const rows = (listQuery.data?.data ?? []) as any[];
+        const rows = normalizeCrudListPayload<any>(listQuery.data);
         return rows.filter((page) => {
             const term = search.toLowerCase();
             return page.title?.toLowerCase().includes(term) || page.slug?.toLowerCase().includes(term);
         });
-    }, [listQuery.data?.data, search]);
+    }, [listQuery.data, search]);
 
     const onCreate = async () => {
         const title = `New Page ${pages.length + 1}`;
@@ -42,7 +43,8 @@ export function AdminPagesListPage() {
             userId,
         });
         toast.success('Page created');
-        const pageId = (created as any)?.data?.id;
+        const createdPage = extractCrudMutationRecord<any>(created);
+        const pageId = createdPage?.id;
         if (pageId) {
             navigate({ to: '/admin/pages/$pageId', params: { pageId } });
         }
@@ -59,12 +61,18 @@ export function AdminPagesListPage() {
             userId,
         });
 
-        const newPageId = (created as any)?.data?.id;
-        const originalSections = ((sectionList.data?.data ?? []) as any[])
+        const duplicatedPage = extractCrudMutationRecord<any>(created);
+        const newPageId = duplicatedPage?.id;
+        if (!newPageId) {
+            toast.error('Page duplicated but new page id was missing');
+            return;
+        }
+
+        const originalSections = normalizeCrudListPayload<any>(sectionList.data)
             .filter((section) => section.pageId === page.id)
             .sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder));
-        const allFeatures = (featureList.data?.data ?? []) as any[];
-        const allActions = (actionList.data?.data ?? []) as any[];
+        const allFeatures = normalizeCrudListPayload<any>(featureList.data);
+        const allActions = normalizeCrudListPayload<any>(actionList.data);
 
         for (const section of originalSections) {
             const createdSection = await createSection.mutateAsync({
@@ -80,7 +88,11 @@ export function AdminPagesListPage() {
                 enabled: section.enabled,
                 sortOrder: section.sortOrder,
             });
-            const newSectionId = (createdSection as any)?.data?.id;
+            const createdSectionRecord = extractCrudMutationRecord<any>(createdSection);
+            const newSectionId = createdSectionRecord?.id;
+            if (!newSectionId) {
+                continue;
+            }
 
             for (const feature of allFeatures.filter((item) => item.sectionId === section.id)) {
                 await createFeature.mutateAsync({
