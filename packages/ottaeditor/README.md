@@ -44,7 +44,8 @@ Raw HTML blocks are sanitized on save to remove wrapper/executable tags (for exa
 - **FAQ** – Frequently-asked-questions accordion block with add/reorder/delete Q&A pairs and two display styles
   (`accordion` / `flat`); emits `FAQPage` schema.org structured data for Google rich results
 - **Testimonial** – Social-proof quote card with author avatar, role, company, star rating (0–5), optional company logo,
-  and three variants (`card` / `minimal` / `featured`); emits `Review` schema.org structured data when a rating is set
+  source URL, verified badge, and five variants (`card` / `minimal` / `featured` / `quote-bubble` / `side-by-side`);
+  emits `Review` schema.org structured data when a rating is set
 
 CTA, Disclosure, and FAQ generate instance-scoped input IDs/names so multiple blocks can coexist without DOM ID or
 radio-group collisions.
@@ -159,6 +160,28 @@ const { editorRef, undo, redo, canUndo, canRedo } = useOttaEditor();
 <button onClick={redo} disabled={!canRedo}>Redo</button>
 ```
 
+For advanced usage, you can use `UndoRedoManager` directly:
+
+```typescript
+import { UndoRedoManager } from '@ottabase/ottaeditor';
+
+const manager = new UndoRedoManager({
+    maxHistory: 50, // max states to keep (default 50)
+    debounceMs: 500, // debounce delay for pushState (default 500)
+    onChange: ({ canUndo, canRedo }) => {
+        console.log('Undo available:', canUndo, 'Redo available:', canRedo);
+    },
+});
+
+manager.pushState(editorData); // debounced push
+manager.pushStateImmediate(editorData); // immediate push
+const prev = manager.undo(); // returns previous state or null
+const next = manager.redo(); // returns next state or null
+const { canUndo, canRedo } = manager.getState();
+manager.clear(); // reset history
+manager.destroy(); // cleanup timers
+```
+
 ## Export
 
 Export editor content to JSON or Markdown:
@@ -176,11 +199,21 @@ const markdown = await exportMarkdown();
 Standalone export functions are also available:
 
 ```typescript
-import { exportToJSON, exportToMarkdown } from '@ottabase/ottaeditor';
+import { exportToJSON, exportToMarkdown, convertInlineHTML } from '@ottabase/ottaeditor';
 
+// Pretty-print EditorJS OutputData as a JSON string
 const json = exportToJSON(outputData);
+
+// Convert blocks to Markdown
 const md = exportToMarkdown(outputData);
+
+// Convert inline HTML to Markdown (used internally by exportToMarkdown)
+const mdText = convertInlineHTML('<b>bold</b> and <a href="https://x.com">link</a>');
+// → "**bold** and [link](https://x.com)"
 ```
+
+`convertInlineHTML` handles `<b>`/`<strong>` → `**`, `<i>`/`<em>` → `*`, `<a>` → `[text](url)`, `<code>` → `` ` ``, and
+`<mark>` → `==`.
 
 The Markdown exporter supports all built-in and custom block types including headers, lists, checklists, code blocks,
 quotes, tables, images, embeds, CTA, FAQ, testimonial, steps, and more.
@@ -309,7 +342,7 @@ The renderer emits `FAQPage` schema.org structured data (`application/ld+json`) 
 ### Testimonial
 
 ```typescript
-type TestimonialVariant = 'card' | 'minimal' | 'featured';
+type TestimonialVariant = 'card' | 'minimal' | 'featured' | 'quote-bubble' | 'side-by-side';
 
 interface TestimonialData {
     quote: string;
@@ -320,8 +353,13 @@ interface TestimonialData {
     companyLogo?: string; // URL — greyscale thumbnail
     rating?: number; // 0 (hidden) – 5
     variant: TestimonialVariant;
+    sourceUrl?: string; // Link to the original testimonial source
+    verified?: boolean; // Whether the testimonial is verified
 }
 ```
+
+Five display variants are available: `card` (default), `minimal`, `featured` (large), `quote-bubble`, and
+`side-by-side`. The `sourceUrl` field links back to the original testimonial and `verified` adds a verified badge.
 
 The renderer emits `Review` schema.org structured data when `rating` is set.
 

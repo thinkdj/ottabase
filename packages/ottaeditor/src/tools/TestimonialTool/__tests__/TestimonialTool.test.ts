@@ -171,6 +171,182 @@ describe('TestimonialTool', () => {
         });
     });
 
+    // ── New fields (sourceUrl, verified, new variants) ──────────────────────
+
+    describe('New variants', () => {
+        it('should save quote-bubble variant correctly', () => {
+            const tool = new TestimonialTool({
+                api: mockAPI as any,
+                config: {},
+                data: {
+                    quote: 'Amazing service!',
+                    authorName: 'Quinn',
+                    variant: 'quote-bubble',
+                },
+            });
+            expect(tool.save().variant).toBe('quote-bubble');
+        });
+
+        it('should save side-by-side variant correctly', () => {
+            const tool = new TestimonialTool({
+                api: mockAPI as any,
+                config: {},
+                data: {
+                    quote: 'Highly recommend.',
+                    authorName: 'Riley',
+                    variant: 'side-by-side',
+                },
+            });
+            expect(tool.save().variant).toBe('side-by-side');
+        });
+
+        it('should accept quote-bubble as defaultVariant from config', () => {
+            const tool = new TestimonialTool({
+                api: mockAPI as any,
+                config: { defaultVariant: 'quote-bubble' },
+            });
+            expect(tool.save().variant).toBe('quote-bubble');
+        });
+
+        it('should accept side-by-side as defaultVariant from config', () => {
+            const tool = new TestimonialTool({
+                api: mockAPI as any,
+                config: { defaultVariant: 'side-by-side' },
+            });
+            expect(tool.save().variant).toBe('side-by-side');
+        });
+    });
+
+    describe('sourceUrl field', () => {
+        it('should save sourceUrl when provided', () => {
+            const tool = new TestimonialTool({
+                api: mockAPI as any,
+                config: {},
+                data: {
+                    quote: 'Wonderful product.',
+                    authorName: 'Sam',
+                    sourceUrl: 'https://twitter.com/sam/status/123',
+                    variant: 'card',
+                },
+            });
+            expect(tool.save().sourceUrl).toBe('https://twitter.com/sam/status/123');
+        });
+
+        it('should trim whitespace from sourceUrl', () => {
+            const tool = new TestimonialTool({
+                api: mockAPI as any,
+                config: {},
+                data: {
+                    quote: 'Nice!',
+                    authorName: 'Tara',
+                    sourceUrl: '  https://example.com  ',
+                    variant: 'card',
+                },
+            });
+            expect(tool.save().sourceUrl).toBe('https://example.com');
+        });
+
+        it('should set sourceUrl to undefined when empty', () => {
+            const tool = new TestimonialTool({
+                api: mockAPI as any,
+                config: {},
+                data: {
+                    quote: 'Good.',
+                    authorName: 'Uma',
+                    sourceUrl: '',
+                    variant: 'card',
+                },
+            });
+            expect(tool.save().sourceUrl).toBeUndefined();
+        });
+
+        it('should default sourceUrl to undefined when not provided', () => {
+            const tool = new TestimonialTool({
+                api: mockAPI as any,
+                config: {},
+                data: {
+                    quote: 'Fine.',
+                    authorName: 'Val',
+                    variant: 'card',
+                },
+            });
+            expect(tool.save().sourceUrl).toBeUndefined();
+        });
+    });
+
+    describe('verified field', () => {
+        it('should save verified as true when set', () => {
+            const tool = new TestimonialTool({
+                api: mockAPI as any,
+                config: {},
+                data: {
+                    quote: 'Verified review.',
+                    authorName: 'Wendy',
+                    verified: true,
+                    variant: 'card',
+                },
+            });
+            expect(tool.save().verified).toBe(true);
+        });
+
+        it('should set verified to undefined when false', () => {
+            const tool = new TestimonialTool({
+                api: mockAPI as any,
+                config: {},
+                data: {
+                    quote: 'Unverified review.',
+                    authorName: 'Xander',
+                    verified: false,
+                    variant: 'card',
+                },
+            });
+            expect(tool.save().verified).toBeUndefined();
+        });
+
+        it('should default verified to undefined when not provided', () => {
+            const tool = new TestimonialTool({
+                api: mockAPI as any,
+                config: {},
+                data: {
+                    quote: 'No verified field.',
+                    authorName: 'Yara',
+                    variant: 'card',
+                },
+            });
+            expect(tool.save().verified).toBeUndefined();
+        });
+    });
+
+    describe('Default values for new fields', () => {
+        it('should default all new fields correctly', () => {
+            const tool = new TestimonialTool({ api: mockAPI as any, config: {} });
+            const saved = tool.save();
+            expect(saved.sourceUrl).toBeUndefined();
+            expect(saved.verified).toBeUndefined();
+            expect(saved.variant).toBe('card');
+        });
+
+        it('should preserve all new fields when provided together', () => {
+            const tool = new TestimonialTool({
+                api: mockAPI as any,
+                config: {},
+                data: {
+                    quote: 'Full data.',
+                    authorName: 'Zoe',
+                    variant: 'quote-bubble',
+                    sourceUrl: 'https://example.com/review',
+                    verified: true,
+                    rating: 5,
+                },
+            });
+            const saved = tool.save();
+            expect(saved.variant).toBe('quote-bubble');
+            expect(saved.sourceUrl).toBe('https://example.com/review');
+            expect(saved.verified).toBe(true);
+            expect(saved.rating).toBe(5);
+        });
+    });
+
     // ── DOM rendering ──────────────────────────────────────────────────────────
 
     describe('render()', () => {

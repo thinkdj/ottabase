@@ -107,6 +107,38 @@ window.dispatchEvent(
 - The `media` table is a core OttaORM table (defined in `@ottabase/ottaorm`), designed for RLS-aware apps.
 - The package is storage-provider agnostic for callers; the app decides how uploads are persisted.
 - The lightbox is intentionally opt-in. Wrap only the content areas where you want gallery behavior.
+
+## ZoomableImage
+
+Scroll-to-zoom image wrapper used inside both lightbox variants for image media.
+
+```tsx
+import { ZoomableImage } from '@ottabase/medialibrary';
+
+<ZoomableImage src="/photo.jpg" alt="Description" mode="lightbox" />;
+```
+
+- **Scroll wheel** zooms in/out (1×–5×, 0.25× steps)
+- **Double-click** toggles 2× zoom
+- **Drag to pan** when zoomed in
+- Zoom level indicator appears in the bottom-right corner when zoom > 1×
+- Zoom and pan reset automatically when `src` changes
+
+## Fullscreen
+
+Both lightbox variants include a fullscreen toggle button. Clicking it calls the browser Fullscreen API
+(`requestFullscreen` / `exitFullscreen`). The button icon updates to reflect the current state.
+
+## Download
+
+Both lightbox variants include a download button that links directly to the media URL with the original filename. In the
+immersive lightbox, the download button sits in the top-right control bar alongside the fullscreen toggle.
+
+## Touch Gestures
+
+The immersive lightbox supports horizontal swipe gestures for navigation on touch devices. A left swipe advances to the
+next item and a right swipe goes to the previous item. Vertical swipes are ignored to avoid conflicts with scrolling.
+
 - **appId consistency:** The media RLS policy filters by `appId`. All upload paths must store the same `appId` that the
   listing/browser UI sends. Use the app's configured `api` client (which injects `X-App-Id` automatically) for uploads
   rather than raw `fetch`/XHR. The server-side `getResolvedMediaSecurityContext` also resolves `appId` from
