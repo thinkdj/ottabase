@@ -491,3 +491,6 @@ Notes:
 
 - The admin pages list and builder consume OttaORM `useList()` hooks as arrays, while still tolerating legacy CRUD
   payload wrappers (`{ data: [...] }` and `{ data: { data: [...] } }`) for list/detail/mutation payloads.
+- The public marketing renderer (`/pages/$slug`) now mirrors the Next.js homepage variant family for `navbar`, `hero`,
+  `features`, `cta`, `footer`, and `about` slots.
+- Duplicate and delete operations in the admin pages list/builder now use shadcn `AlertDialog` confirmations.

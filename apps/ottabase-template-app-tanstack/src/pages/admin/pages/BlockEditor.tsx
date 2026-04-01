@@ -1,4 +1,22 @@
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Switch, Textarea } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    Input,
+    Label,
+    Switch,
+    Textarea,
+} from '@ottabase/ui-shadcn';
 import { Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ActionListEditor } from './ActionListEditor';
@@ -50,6 +68,7 @@ export function BlockEditor({
         variant: block.variant,
         enabled: block.enabled,
     });
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
     // Sync when a different block is selected
     useEffect(() => {
@@ -143,10 +162,38 @@ export function BlockEditor({
                     <Button size="sm" onClick={() => onSave(draft)} disabled={isPending}>
                         <Save className="mr-1 h-3.5 w-3.5" /> Save
                     </Button>
-                    <Button size="sm" variant="destructive" onClick={() => onDelete(block.id)} disabled={isPending}>
+                    <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => setConfirmDeleteOpen(true)}
+                        disabled={isPending}
+                    >
                         <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
                     </Button>
                 </div>
+
+                <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Block?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will permanently remove this block and its nested items from the page.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                disabled={isPending}
+                                onClick={() => {
+                                    onDelete(block.id);
+                                    setConfirmDeleteOpen(false);
+                                }}
+                            >
+                                {isPending ? 'Deleting...' : 'Delete'}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
 
                 {/* Feature editor */}
                 <div className="border-t pt-3">

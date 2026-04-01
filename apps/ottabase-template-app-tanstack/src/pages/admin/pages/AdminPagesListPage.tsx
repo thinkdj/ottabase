@@ -1,6 +1,21 @@
 import { actionHooks, featureHooks, pageHooks, sectionHooks } from '@/hooks/marketingPageHooks';
 import { globalStore, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    Input,
+} from '@ottabase/ui-shadcn';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Copy, FileText, Plus, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -10,6 +25,10 @@ import { extractCrudMutationRecord, normalizeCrudListPayload } from './crudPaylo
 export function AdminPagesListPage() {
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
+    const [duplicateDialogPage, setDuplicateDialogPage] = useState<any | null>(null);
+    const [deleteDialogPage, setDeleteDialogPage] = useState<any | null>(null);
+    const [duplicatingPageId, setDuplicatingPageId] = useState<string | null>(null);
+    const [deletingPageId, setDeletingPageId] = useState<string | null>(null);
     const organizationId = globalStore.get(organizationIdAtom) || null;
     const userId = globalStore.get(userAtom)?.id || null;
 
@@ -51,6 +70,7 @@ export function AdminPagesListPage() {
     };
 
     const onDuplicate = async (page: any) => {
+        setDuplicatingPageId(String(page.id));
         const created = await createPage.mutateAsync({
             ...page,
             id: undefined,
@@ -126,6 +146,15 @@ export function AdminPagesListPage() {
 
         toast.success('Page duplicated with blocks');
         await listQuery.refetch();
+        setDuplicatingPageId(null);
+    };
+
+    const onDeletePage = async (page: any) => {
+        setDeletingPageId(String(page.id));
+        await deletePage.mutateAsync(page.id);
+        toast.success('Page deleted');
+        await listQuery.refetch();
+        setDeletingPageId(null);
     };
 
     return (
@@ -165,17 +194,19 @@ export function AdminPagesListPage() {
                                         <FileText className="mr-1 h-4 w-4" /> Builder
                                     </Link>
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => onDuplicate(page)}>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setDuplicateDialogPage(page)}
+                                    disabled={duplicatingPageId === String(page.id)}
+                                >
                                     <Copy className="mr-1 h-4 w-4" /> Duplicate
                                 </Button>
                                 <Button
                                     size="sm"
                                     variant="destructive"
-                                    onClick={async () => {
-                                        await deletePage.mutateAsync(page.id);
-                                        toast.success('Page deleted');
-                                        await listQuery.refetch();
-                                    }}
+                                    onClick={() => setDeleteDialogPage(page)}
+                                    disabled={deletingPageId === String(page.id)}
                                 >
                                     <Trash2 className="mr-1 h-4 w-4" /> Delete
                                 </Button>
@@ -184,6 +215,71 @@ export function AdminPagesListPage() {
                     </Card>
                 ))}
             </div>
+
+            <AlertDialog
+                open={duplicateDialogPage !== null}
+                onOpenChange={(open) => {
+                    if (!open) setDuplicateDialogPage(null);
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Duplicate Page?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will create a full copy of <strong>{duplicateDialogPage?.title || 'this page'}</strong>{' '}
+                            including all blocks, features, and actions.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={duplicatingPageId !== null}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={async () => {
+                                if (!duplicateDialogPage) return;
+                                try {
+                                    await onDuplicate(duplicateDialogPage);
+                                } finally {
+                                    setDuplicateDialogPage(null);
+                                }
+                            }}
+                            disabled={duplicatingPageId !== null}
+                        >
+                            {duplicatingPageId !== null ? 'Duplicating...' : 'Duplicate'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog
+                open={deleteDialogPage !== null}
+                onOpenChange={(open) => {
+                    if (!open) setDeleteDialogPage(null);
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Page?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete <strong>{deleteDialogPage?.title || 'this page'}</strong>.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deletingPageId !== null}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={async () => {
+                                if (!deleteDialogPage) return;
+                                try {
+                                    await onDeletePage(deleteDialogPage);
+                                } finally {
+                                    setDeleteDialogPage(null);
+                                }
+                            }}
+                            disabled={deletingPageId !== null}
+                        >
+                            {deletingPageId !== null ? 'Deleting...' : 'Delete'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

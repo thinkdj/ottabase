@@ -1,4 +1,17 @@
-import { Button, Input, Label, Switch } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Button,
+    Input,
+    Label,
+    Switch,
+} from '@ottabase/ui-shadcn';
 import { Plus, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 
@@ -34,6 +47,7 @@ function ActionRow({
 }) {
     const [local, setLocal] = useState(action);
     const [expanded, setExpanded] = useState(false);
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
     const localRef = useRef(local);
     localRef.current = local;
 
@@ -74,7 +88,12 @@ function ActionRow({
                 >
                     {expanded ? 'Less' : 'More'}
                 </button>
-                <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => onDelete(action.id)}>
+                <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => setConfirmDeleteOpen(true)}
+                >
                     <Trash2 className="h-3.5 w-3.5" />
                 </Button>
             </div>
@@ -85,6 +104,8 @@ function ActionRow({
                             <Label className="text-xs">Variant</Label>
                             <select
                                 className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                                title="Action variant"
+                                aria-label="Action variant"
                                 value={local.variant}
                                 onChange={(e) => {
                                     setLocal({ ...local, variant: e.target.value });
@@ -121,6 +142,28 @@ function ActionRow({
                     </div>
                 </div>
             )}
+
+            <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Action?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently remove <strong>{action.label || 'this action'}</strong>.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                onDelete(action.id);
+                                setConfirmDeleteOpen(false);
+                            }}
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
