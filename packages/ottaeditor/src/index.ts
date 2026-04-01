@@ -17,6 +17,7 @@ export {
     Delimiter,
     DisclosureTool,
     Embed,
+    FaqTool,
     Header,
     InlineCode,
     LayoutTool,
@@ -31,6 +32,7 @@ export {
     SpoilerTool,
     StepsTool,
     Table,
+    TestimonialTool,
     Underline,
     Warning,
     defaultPlugins,
@@ -57,6 +59,12 @@ export type {
 export { default as MediaLibraryTool } from './tools/MediaLibraryTool/MediaLibraryTool';
 export { default as RawHtmlTool } from './tools/RawHtmlTool/RawHtmlTool';
 export type { StepsData, StepsItem, StepsToolConfig } from './tools/StepsTool/StepsTool';
+export type { FaqData, FaqItem, FaqToolConfig } from './tools/FaqTool/FaqTool';
+export type {
+    TestimonialData,
+    TestimonialToolConfig,
+    TestimonialVariant,
+} from './tools/TestimonialTool/TestimonialTool';
 
 export type { DefaultPluginName } from './defaultPlugins';
 

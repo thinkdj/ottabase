@@ -16,6 +16,7 @@ import AdvancedImageTool from './tools/AdvancedImageTool/AdvancedImageTool';
 import CodeTool from './tools/CodeTool/CodeTool';
 import CTATool from './tools/CTATool/CTATool';
 import DisclosureTool from './tools/DisclosureTool/DisclosureTool';
+import FaqTool from './tools/FaqTool/FaqTool';
 import LayoutTool from './tools/LayoutTool/LayoutTool';
 import MapTool from './tools/MapTool/MapTool';
 import MediaEmbedTool from './tools/MediaEmbedTool/MediaEmbedTool';
@@ -24,6 +25,7 @@ import RawHtmlTool from './tools/RawHtmlTool/RawHtmlTool';
 import ReviewTool from './tools/ReviewTool/ReviewTool';
 import SpoilerTool from './tools/SpoilerTool/SpoilerTool';
 import StepsTool from './tools/StepsTool/StepsTool';
+import TestimonialTool from './tools/TestimonialTool/TestimonialTool';
 import type { OttaEditorPlugin } from './types';
 
 const Raw = RawHtmlTool;
@@ -56,6 +58,8 @@ export const DEFAULT_PLUGIN_NAMES = {
     STEPS: 'steps',
     MEDIA_EMBED: 'mediaEmbed',
     MEDIA_GALLERY: 'mediaGallery',
+    FAQ: 'faq',
+    TESTIMONIAL: 'testimonial',
 } as const;
 
 /**
@@ -240,6 +244,22 @@ export const defaultPlugins: OttaEditorPlugin[] = [
         tool: MediaGalleryTool as any,
         config: {} as any,
     },
+    {
+        name: DEFAULT_PLUGIN_NAMES.FAQ,
+        tool: FaqTool as any,
+        config: {
+            questionPlaceholder: 'Enter the question...',
+            answerPlaceholder: 'Enter the answer...',
+            defaultStyle: 'accordion',
+        } as any,
+    },
+    {
+        name: DEFAULT_PLUGIN_NAMES.TESTIMONIAL,
+        tool: TestimonialTool as any,
+        config: {
+            defaultVariant: 'card',
+        } as any,
+    },
 ];
 
 /**
@@ -275,6 +295,7 @@ export {
     Delimiter,
     DisclosureTool,
     Embed,
+    FaqTool,
     Header,
     InlineCode,
     LayoutTool,
@@ -290,6 +311,7 @@ export {
     SpoilerTool,
     StepsTool,
     Table,
+    TestimonialTool,
     Underline,
     Warning,
 };

@@ -73,6 +73,7 @@ Header, Paragraph, List, Quote, Code, Table, Delimiter, Attaches.
 | `Code`               | Syntax-highlighted code block                                                                     |
 | `CTA`                | Call-to-action button with alignment (left/center/right) and four theme-aware styles              |
 | `Disclosure`         | Transparency notice block: AI usage disclosure and/or sponsored-content disclaimer                |
+| `Faq`                | FAQ accordion (`accordion` / `flat` style) with `FAQPage` schema.org structured data              |
 | `Layout`             | Multi-column layout (6 presets) with recursive block rendering per column                         |
 | `List`               | Nested ordered/unordered list                                                                     |
 | `Map`                | Embedded map (OpenStreetMap / Google Maps)                                                        |
@@ -83,6 +84,7 @@ Header, Paragraph, List, Quote, Code, Table, Delimiter, Attaches.
 | `MediaEmbed`         | Embedded media (video, audio, PDF, document) with native playback via `MediaPreview`              |
 | `MediaGallery`       | Gallery block with 5 presets (`grid-balanced`, `grid-featured`, `masonry`, `filmstrip`, `mosaic`) |
 | `Table`              | Data table                                                                                        |
+| `Testimonial`        | Social-proof quote card (`card` / `minimal` / `featured`) with avatar, stars, `Review` schema     |
 | `Warning`            | Alert/callout box                                                                                 |
 
 ## Customization

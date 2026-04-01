@@ -8,6 +8,7 @@ export { default as Checklist } from './components/Checklist';
 export { default as Code } from './components/Code';
 export { default as CTA } from './components/CTA';
 export { default as Disclosure } from './components/Disclosure';
+export { default as Faq } from './components/Faq';
 export { default as Layout } from './components/Layout';
 export { default as List } from './components/List';
 export { default as Map } from './components/Map';
@@ -18,6 +19,7 @@ export { default as Review } from './components/Review';
 export { default as Spoiler } from './components/Spoiler';
 export { default as Steps } from './components/Steps';
 export { default as Table } from './components/Table';
+export { default as Testimonial } from './components/Testimonial';
 export { default as Warning } from './components/Warning';
 
 // Export types
@@ -25,6 +27,7 @@ export type { AdvancedImageData, UploadResponse } from './components/AdvancedIma
 export type { ChecklistItem } from './components/Checklist';
 export type { CTAData } from './components/CTA';
 export type { AIDisclosureLevel, DisclosureData } from './components/Disclosure';
+export type { FaqData, FaqItem } from './components/Faq';
 export type { LayoutData, LayoutPreset } from './components/Layout';
 export type { MapData, MapProvider, MapTheme } from './components/Map';
 export type { MediaEmbedData } from './components/MediaEmbed';
@@ -32,6 +35,7 @@ export type { MediaGalleryData, MediaGalleryItem, MediaGalleryLayoutPreset } fro
 export type { QuoteData } from './components/Quote';
 export type { ReviewData } from './components/Review';
 export type { StepItem, StepsData } from './components/Steps';
+export type { TestimonialData, TestimonialVariant } from './components/Testimonial';
 
 // Export configuration and utilities
 export { blockClass, customRenderers, defaultEJSRConfigs, shouldRenderContentBlocks } from './EditorJsRenderer';

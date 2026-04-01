@@ -39,9 +39,13 @@ Raw HTML blocks are sanitized on save to remove wrapper/executable tags (for exa
   toolbox, inserted automatically when Media Library selects a non-image file
 - **Media Gallery** – Full gallery block with media-library picker integration, 5 layout presets, drag-friendly item
   ordering controls, and per-item metadata
+- **FAQ** – Frequently-asked-questions accordion block with add/reorder/delete Q&A pairs and two display styles
+  (`accordion` / `flat`); emits `FAQPage` schema.org structured data for Google rich results
+- **Testimonial** – Social-proof quote card with author avatar, role, company, star rating (0–5), optional company logo,
+  and three variants (`card` / `minimal` / `featured`); emits `Review` schema.org structured data when a rating is set
 
-CTA and Disclosure generate instance-scoped input IDs/names so multiple blocks can coexist without DOM ID or radio-group
-collisions.
+CTA, Disclosure, and FAQ generate instance-scoped input IDs/names so multiple blocks can coexist without DOM ID or
+radio-group collisions.
 
 ## Quick Start
 
@@ -95,7 +99,7 @@ Use these names with `defaultPlugins`:
 
 `'header'`, `'paragraph'`, `'list'`, `'checklist'`, `'code'`, `'quote'`, `'table'`, `'warning'`, `'delimiter'`,
 `'linkTool'`, `'embed'`, `'raw'`, `'Marker'`, `'underline'`, `'inlineCode'`, `'spoiler'`, `'cta'`, `'review'`, `'map'`,
-`'layout'`, `'disclosure'`, `'steps'`, `'mediaEmbed'`, `'mediaGallery'`
+`'layout'`, `'disclosure'`, `'steps'`, `'mediaEmbed'`, `'mediaGallery'`, `'faq'`, `'testimonial'`
 
 ## API
 
@@ -233,6 +237,42 @@ interface MediaGalleryData {
     }>;
 }
 ```
+
+### FAQ
+
+```typescript
+interface FaqItem {
+    question: string;
+    answer: string;
+}
+
+interface FaqData {
+    /** 'accordion' renders native <details>/<summary>; 'flat' shows all answers always */
+    style: 'accordion' | 'flat';
+    items: FaqItem[];
+}
+```
+
+The renderer emits `FAQPage` schema.org structured data (`application/ld+json`) automatically.
+
+### Testimonial
+
+```typescript
+type TestimonialVariant = 'card' | 'minimal' | 'featured';
+
+interface TestimonialData {
+    quote: string;
+    authorName: string;
+    authorRole?: string;
+    authorCompany?: string;
+    authorAvatar?: string; // URL
+    companyLogo?: string; // URL — greyscale thumbnail
+    rating?: number; // 0 (hidden) – 5
+    variant: TestimonialVariant;
+}
+```
+
+The renderer emits `Review` schema.org structured data when `rating` is set.
 
 ## Styling
 

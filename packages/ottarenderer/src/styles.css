@@ -742,3 +742,252 @@
 .cdc-steps-text--no-title {
     margin-top: 0.25rem;
 }
+
+/* ======================================= */
+/* FAQ Block                               */
+/* ======================================= */
+
+.cdc-content-faq {
+    width: 100%;
+}
+
+/* Accordion wrapper */
+.cdc-faq-accordion,
+.cdc-faq-flat {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Individual item */
+.cdc-faq-item {
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.cdc-faq-item:last-child {
+    border-bottom: none;
+}
+
+/* Question — <summary> for accordion, <h3> for flat */
+.cdc-faq-question {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 1rem 1.25rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    list-style: none;
+    background: hsl(var(--card));
+    transition: background 0.15s;
+    user-select: none;
+}
+
+/* Hide default details marker in all browsers */
+.cdc-faq-question::-webkit-details-marker {
+    display: none;
+}
+.cdc-faq-question::marker {
+    display: none;
+}
+
+.cdc-faq-question:hover {
+    background: hsl(var(--muted) / 0.6);
+}
+
+.cdc-faq-question-text {
+    flex: 1;
+}
+
+/* Chevron icon — rotates when open */
+.cdc-faq-chevron {
+    flex-shrink: 0;
+    color: hsl(var(--muted-foreground));
+    transition: transform 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+details[open] > .cdc-faq-question .cdc-faq-chevron {
+    transform: rotate(180deg);
+}
+
+/* Answer */
+.cdc-faq-answer {
+    margin: 0;
+    padding: 0.75rem 1.25rem 1.125rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: hsl(var(--muted-foreground));
+    background: hsl(var(--background));
+    white-space: pre-line;
+}
+
+/* Flat variant: question is an h3, no cursor */
+.cdc-faq-question--flat {
+    cursor: default;
+    margin: 0;
+    font-weight: 600;
+}
+
+.cdc-faq-item--flat {
+    padding: 0;
+}
+
+/* ======================================= */
+/* Testimonial Block                       */
+/* ======================================= */
+
+.cdc-content-testimonial {
+    width: 100%;
+}
+
+/* ── Card variant ─────────────────────────────────────────────────────────── */
+
+.cdc-testimonial-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* ── Minimal variant ──────────────────────────────────────────────────────── */
+
+.cdc-testimonial-minimal {
+    border-left: 4px solid hsl(var(--primary));
+    padding: 0.75rem 0 0.75rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* ── Featured variant ─────────────────────────────────────────────────────── */
+
+.cdc-testimonial-featured {
+    background: hsl(var(--muted) / 0.4);
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    position: relative;
+}
+
+.cdc-testimonial-featured-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.cdc-testimonial-featured-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* ── Quote ───────────────────────────────────────────────────────────────── */
+
+.cdc-testimonial-quote {
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+.cdc-testimonial-quote p {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: hsl(var(--foreground));
+    font-style: italic;
+}
+
+.cdc-testimonial-quote--large p {
+    font-size: 1.25rem;
+    line-height: 1.65;
+}
+
+/* Large open-quote decoration for featured */
+.cdc-testimonial-featured .cdc-testimonial-quote::before {
+    content: '\201C';
+    display: block;
+    font-size: 4rem;
+    line-height: 0.75;
+    color: hsl(var(--primary) / 0.25);
+    font-family: Georgia, serif;
+    margin-bottom: 0.5rem;
+}
+
+/* ── Author attribution ───────────────────────────────────────────────────── */
+
+.cdc-testimonial-author {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.cdc-testimonial-author--compact {
+    gap: 0.5rem;
+}
+
+.cdc-testimonial-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.cdc-testimonial-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.cdc-testimonial-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: hsl(var(--foreground));
+}
+
+.cdc-testimonial-sub {
+    font-size: 0.8125rem;
+    color: hsl(var(--muted-foreground));
+}
+
+/* ── Company logo ─────────────────────────────────────────────────────────── */
+
+.cdc-testimonial-company-logo {
+    height: 24px;
+    width: auto;
+    max-width: 120px;
+    object-fit: contain;
+    opacity: 0.7;
+    filter: grayscale(1);
+}
+
+/* ── Stars ────────────────────────────────────────────────────────────────── */
+
+.cdc-testimonial-stars {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.cdc-testimonial-star--filled {
+    color: hsl(var(--warning, 43 96% 56%));
+}
+
+.cdc-testimonial-star--empty {
+    color: hsl(var(--muted-foreground) / 0.4);
+}

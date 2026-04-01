@@ -8,6 +8,7 @@ import Checklist from './components/Checklist';
 import Code from './components/Code';
 import CTA from './components/CTA';
 import Disclosure from './components/Disclosure';
+import Faq from './components/Faq';
 import List from './components/List';
 import Map from './components/Map';
 import MediaEmbed from './components/MediaEmbed';
@@ -17,6 +18,7 @@ import Review from './components/Review';
 import Spoiler from './components/Spoiler';
 import Steps from './components/Steps';
 import Table from './components/Table';
+import Testimonial from './components/Testimonial';
 import Warning from './components/Warning';
 
 export const baseRenderers = {
@@ -36,4 +38,6 @@ export const baseRenderers = {
     steps: Steps,
     mediaEmbed: MediaEmbed,
     mediaGallery: MediaGallery,
+    faq: Faq,
+    testimonial: Testimonial,
 };

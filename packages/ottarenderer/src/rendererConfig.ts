@@ -88,6 +88,12 @@ export const defaultEJSRConfigs = {
     mediaGallery: {
         className: `${blockClass} cdc-content-media-gallery`,
     },
+    faq: {
+        className: `${blockClass} cdc-content-faq`,
+    },
+    testimonial: {
+        className: `${blockClass} cdc-content-testimonial`,
+    },
 };
 
 export const shouldRenderContentBlocks = (contentBlocks: {} | null) => {
