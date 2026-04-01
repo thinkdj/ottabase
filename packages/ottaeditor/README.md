@@ -9,6 +9,8 @@ A flexible EditorJS wrapper with typesafe plugin management for React applicatio
 - **TypeScript support**
 - **Custom plugin integration**
 - **Zero-config defaults**
+- **Undo/Redo** with keyboard shortcuts (Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y)
+- **Export** to JSON and Markdown
 
 ## Installation
 
@@ -131,8 +133,57 @@ Use these names with `defaultPlugins`:
     toggleReadOnly: (state?: boolean) => Promise<void>;
     isReady: boolean;
     hasUnsavedChanges: boolean; // True when content changes, false after save
+    undo: () => Promise<void>;
+    redo: () => Promise<void>;
+    canUndo: boolean;
+    canRedo: boolean;
+    exportJSON: () => Promise<string | null>;
+    exportMarkdown: () => Promise<string | null>;
 }
 ```
+
+## Undo/Redo
+
+Built-in undo/redo is enabled automatically. Keyboard shortcuts work inside the editor:
+
+- **Undo**: `Ctrl+Z` (or `Cmd+Z` on Mac)
+- **Redo**: `Ctrl+Shift+Z` or `Ctrl+Y` (or `Cmd+Shift+Z` / `Cmd+Y` on Mac)
+
+You can also call `undo()` and `redo()` programmatically from the hook or the `OttaEditor` instance. The `canUndo` and
+`canRedo` booleans update reactively.
+
+```tsx
+const { editorRef, undo, redo, canUndo, canRedo } = useOttaEditor();
+
+<button onClick={undo} disabled={!canUndo}>Undo</button>
+<button onClick={redo} disabled={!canRedo}>Redo</button>
+```
+
+## Export
+
+Export editor content to JSON or Markdown:
+
+```tsx
+const { exportJSON, exportMarkdown } = useOttaEditor();
+
+// Get formatted JSON string
+const json = await exportJSON();
+
+// Get Markdown string
+const markdown = await exportMarkdown();
+```
+
+Standalone export functions are also available:
+
+```typescript
+import { exportToJSON, exportToMarkdown } from '@ottabase/ottaeditor';
+
+const json = exportToJSON(outputData);
+const md = exportToMarkdown(outputData);
+```
+
+The Markdown exporter supports all built-in and custom block types including headers, lists, checklists, code blocks,
+quotes, tables, images, embeds, CTA, FAQ, testimonial, steps, and more.
 
 ## Plugin Reference
 

@@ -1,6 +1,7 @@
 import { OutputData } from '@editorjs/editorjs';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { defaultPlugins, getDefaultPlugins, type DefaultPluginName } from './defaultPlugins';
+import { exportToJSON, exportToMarkdown } from './export';
 import { OttaEditor } from './OttaEditor';
 import type { OttaEditorConfig, OttaEditorPlugin } from './types';
 
@@ -87,6 +88,36 @@ export interface UseOttaEditorReturn {
      * Becomes true when content changes, resets to false after save()
      */
     hasUnsavedChanges: boolean;
+
+    /**
+     * Undo the last change
+     */
+    undo: () => Promise<void>;
+
+    /**
+     * Redo the last undone change
+     */
+    redo: () => Promise<void>;
+
+    /**
+     * Whether undo is available
+     */
+    canUndo: boolean;
+
+    /**
+     * Whether redo is available
+     */
+    canRedo: boolean;
+
+    /**
+     * Export editor content as formatted JSON string
+     */
+    exportJSON: () => Promise<string | null>;
+
+    /**
+     * Export editor content as Markdown string
+     */
+    exportMarkdown: () => Promise<string | null>;
 }
 
 /**
@@ -98,6 +129,8 @@ export function useOttaEditor(options: UseOttaEditorOptions = {}): UseOttaEditor
     const initializingRef = useRef(false);
     const [isReady, setIsReady] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
     const {
         enableOnMount = true,
         plugins,
@@ -140,6 +173,10 @@ export function useOttaEditor(options: UseOttaEditorOptions = {}): UseOttaEditor
                     onChange: (api, event) => {
                         setHasUnsavedChanges(true);
                         editorConfig.onChange?.(api, event);
+                    },
+                    onUndoRedoStateChange: (state) => {
+                        setCanUndo(state.canUndo);
+                        setCanRedo(state.canRedo);
                     },
                 });
 
@@ -224,6 +261,58 @@ export function useOttaEditor(options: UseOttaEditorOptions = {}): UseOttaEditor
         }
     }, []);
 
+    const undo = useCallback(async (): Promise<void> => {
+        if (!editorInstanceRef.current) {
+            console.warn('Editor is not initialized');
+            return;
+        }
+        try {
+            await editorInstanceRef.current.undo();
+        } catch (error) {
+            console.error('Failed to undo:', error);
+        }
+    }, []);
+
+    const redo = useCallback(async (): Promise<void> => {
+        if (!editorInstanceRef.current) {
+            console.warn('Editor is not initialized');
+            return;
+        }
+        try {
+            await editorInstanceRef.current.redo();
+        } catch (error) {
+            console.error('Failed to redo:', error);
+        }
+    }, []);
+
+    const exportJSON = useCallback(async (): Promise<string | null> => {
+        if (!editorInstanceRef.current) {
+            console.warn('Editor is not initialized');
+            return null;
+        }
+        try {
+            const data = await editorInstanceRef.current.save();
+            return exportToJSON(data);
+        } catch (error) {
+            console.error('Failed to export JSON:', error);
+            return null;
+        }
+    }, []);
+
+    const exportMd = useCallback(async (): Promise<string | null> => {
+        if (!editorInstanceRef.current) {
+            console.warn('Editor is not initialized');
+            return null;
+        }
+        try {
+            const data = await editorInstanceRef.current.save();
+            return exportToMarkdown(data);
+        } catch (error) {
+            console.error('Failed to export Markdown:', error);
+            return null;
+        }
+    }, []);
+
     return {
         editorRef,
         editor: editorInstanceRef.current,
@@ -233,5 +322,11 @@ export function useOttaEditor(options: UseOttaEditorOptions = {}): UseOttaEditor
         toggleReadOnly,
         isReady,
         hasUnsavedChanges,
+        undo,
+        redo,
+        canUndo,
+        canRedo,
+        exportJSON,
+        exportMarkdown: exportMd,
     };
 }

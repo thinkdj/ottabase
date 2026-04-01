@@ -8,6 +8,13 @@ export { OttaEditor } from './OttaEditor';
 export { OttaEditorComponent } from './OttaEditorComponent';
 export { useOttaEditor } from './useOttaEditor';
 
+// Export/import utilities
+export { exportToJSON, exportToMarkdown } from './export';
+
+// Undo/redo manager
+export { UndoRedoManager } from './undo-redo';
+export type { UndoRedoState, UndoRedoManagerOptions } from './undo-redo';
+
 // Export default plugins configuration
 export {
     CTATool,

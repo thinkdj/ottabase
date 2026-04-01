@@ -6,6 +6,7 @@ import EditorJS, {
     OutputData,
     ToolSettings,
 } from '@editorjs/editorjs';
+import type { UndoRedoState } from './undo-redo';
 
 /**
  * Configuration for a single EditorJS tool/plugin
@@ -94,6 +95,11 @@ export interface OttaEditorConfig {
         messages?: Record<string, any>;
         direction?: 'ltr' | 'rtl';
     };
+
+    /**
+     * Callback fired when undo/redo state changes (canUndo/canRedo)
+     */
+    onUndoRedoStateChange?: (state: UndoRedoState) => void;
 }
 
 /**
@@ -149,4 +155,19 @@ export interface IOttaEditor {
      * Check if editor is ready
      */
     isReady(): Promise<void>;
+
+    /**
+     * Undo the last change
+     */
+    undo(): Promise<void>;
+
+    /**
+     * Redo the last undone change
+     */
+    redo(): Promise<void>;
+
+    /**
+     * Get current undo/redo availability
+     */
+    getUndoRedoState(): UndoRedoState;
 }

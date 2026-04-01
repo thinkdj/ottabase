@@ -1,5 +1,7 @@
 import EditorJS, { OutputData } from '@editorjs/editorjs';
 import type { OttaEditorConfig, OttaEditorPlugin, IOttaEditor, OttaEditorTools } from './types';
+import { UndoRedoManager } from './undo-redo';
+import type { UndoRedoState } from './undo-redo';
 
 /**
  * OttaEditor - A flexible wrapper around EditorJS with easy plugin management
@@ -9,6 +11,9 @@ export class OttaEditor implements IOttaEditor {
     private config: OttaEditorConfig;
     private plugins: Map<string, OttaEditorPlugin> = new Map();
     private isInitialized = false;
+    private undoRedoManager: UndoRedoManager | null = null;
+    /** Prevents onChange from recording state during programmatic undo/redo renders */
+    private isUndoRedoAction = false;
 
     constructor(config: OttaEditorConfig) {
         this.config = config;
@@ -33,6 +38,11 @@ export class OttaEditor implements IOttaEditor {
             };
         });
 
+        // Initialize undo/redo manager
+        this.undoRedoManager = new UndoRedoManager({
+            onStateChange: this.config.onUndoRedoStateChange,
+        });
+
         // Create EditorJS instance
         this.editor = new EditorJS({
             holder: this.config.holder,
@@ -45,15 +55,57 @@ export class OttaEditor implements IOttaEditor {
             logLevel: this.config.logLevel as any,
             onReady: () => {
                 this.isInitialized = true;
+
+                // Capture initial state
+                if (this.config.data && this.undoRedoManager) {
+                    this.undoRedoManager.pushStateImmediate(this.config.data);
+                }
+
+                // Register keyboard shortcuts on the editor holder element
+                this.registerKeyboardShortcuts();
+
                 this.config.onReady?.();
             },
-            onChange: this.config.onChange as any,
+            onChange: async (api, event) => {
+                // Skip recording during programmatic undo/redo renders
+                if (!this.isUndoRedoAction && this.editor && this.undoRedoManager) {
+                    const data = await this.editor.save();
+                    this.undoRedoManager.pushState(data);
+                }
+                this.config.onChange?.(api, event);
+            },
             defaultBlock: this.config.defaultBlock,
             i18n: this.config.i18n as any,
         });
 
         await this.editor.isReady;
     }
+
+    /**
+     * Register Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y keyboard shortcuts
+     */
+    private registerKeyboardShortcuts(): void {
+        const holder =
+            typeof this.config.holder === 'string' ? document.getElementById(this.config.holder) : this.config.holder;
+
+        if (!holder) return;
+
+        holder.addEventListener('keydown', this.handleKeyDown);
+    }
+
+    /** Bound keydown handler for undo/redo shortcuts */
+    private handleKeyDown = (e: KeyboardEvent): void => {
+        const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+        if (!isCtrlOrMeta) return;
+
+        if (e.key === 'z' && !e.shiftKey) {
+            e.preventDefault();
+            this.undo().catch(console.error);
+        } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+            e.preventDefault();
+            this.redo().catch(console.error);
+        }
+    };
 
     /**
      * Register a plugin/tool before initialization
@@ -113,9 +165,61 @@ export class OttaEditor implements IOttaEditor {
     }
 
     /**
+     * Undo the last change and render the previous state
+     */
+    async undo(): Promise<void> {
+        if (!this.editor || !this.undoRedoManager) return;
+        const state = this.undoRedoManager.undo();
+        if (state) {
+            this.isUndoRedoAction = true;
+            try {
+                await this.editor.render(state);
+            } finally {
+                this.isUndoRedoAction = false;
+            }
+        }
+    }
+
+    /**
+     * Redo the last undone change and render the next state
+     */
+    async redo(): Promise<void> {
+        if (!this.editor || !this.undoRedoManager) return;
+        const state = this.undoRedoManager.redo();
+        if (state) {
+            this.isUndoRedoAction = true;
+            try {
+                await this.editor.render(state);
+            } finally {
+                this.isUndoRedoAction = false;
+            }
+        }
+    }
+
+    /**
+     * Get current undo/redo state
+     */
+    getUndoRedoState(): UndoRedoState {
+        if (!this.undoRedoManager) {
+            return { canUndo: false, canRedo: false };
+        }
+        return this.undoRedoManager.getState();
+    }
+
+    /**
      * Destroy the editor instance and cleanup
      */
     async destroy(): Promise<void> {
+        // Remove keyboard shortcut listener
+        const holder =
+            typeof this.config.holder === 'string' ? document.getElementById(this.config.holder) : this.config.holder;
+        holder?.removeEventListener('keydown', this.handleKeyDown);
+
+        if (this.undoRedoManager) {
+            this.undoRedoManager.destroy();
+            this.undoRedoManager = null;
+        }
+
         if (!this.editor) {
             return;
         }
