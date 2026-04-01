@@ -57,8 +57,7 @@ export class UndoRedoManager {
      * Used for initial state capture and after undo/redo operations.
      */
     pushStateImmediate(data: OutputData): void {
-        // Deep-clone to prevent reference mutations
-        const cloned: OutputData = JSON.parse(JSON.stringify(data));
+        const cloned: OutputData = structuredClone(data);
 
         // If we're not at the end of history, truncate forward history
         if (this.currentIndex < this.history.length - 1) {
@@ -83,7 +82,7 @@ export class UndoRedoManager {
         if (!this.canUndo()) return null;
 
         this.currentIndex--;
-        const state = JSON.parse(JSON.stringify(this.history[this.currentIndex])) as OutputData;
+        const state = structuredClone(this.history[this.currentIndex]) as OutputData;
         this.emitStateChange();
         return state;
     }
@@ -95,7 +94,7 @@ export class UndoRedoManager {
         if (!this.canRedo()) return null;
 
         this.currentIndex++;
-        const state = JSON.parse(JSON.stringify(this.history[this.currentIndex])) as OutputData;
+        const state = structuredClone(this.history[this.currentIndex]) as OutputData;
         this.emitStateChange();
         return state;
     }

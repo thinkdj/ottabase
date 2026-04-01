@@ -37,7 +37,7 @@ export function convertInlineHTML(html: string): string {
     // Strip <br> tags → newline
     md = md.replace(/<br\s*\/?>/gi, '\n');
 
-    // Strip all remaining HTML tags except <u>
+    // Strip all remaining HTML tags except <u> (negative lookahead keeps underline as-is)
     md = md.replace(/<(?!\/?u>)[^>]+>/g, '');
 
     return md;
