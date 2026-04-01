@@ -99,7 +99,7 @@
 .cdx-testimonial__star--filled {
     /* --warning follows the shadcn/ui convention: raw H S% L% values used inside hsl().
        Fallback is a full, valid hsl() color in case the variable is not defined. */
-    color: hsl(var(--warning, 43, 96%, 56%));
+    color: hsl(var(--warning, 43 96% 56%));
 }
 
 .cdx-testimonial__rating-value {
