@@ -23,7 +23,9 @@ type MarketingSection = {
     title?: ReactNode;
     subtitle?: string;
     body?: string;
-    features?: Array<{ id?: string; title: string; description?: string }>;
+    mediaUrl?: string;
+    mediaAlt?: string;
+    features?: Array<{ id?: string; title: string; description?: string; mediaUrl?: string; mediaAlt?: string }>;
     actions?: SectionAction[];
 };
 
@@ -56,6 +58,15 @@ function ActionButtons({ actions, className }: { actions?: SectionAction[]; clas
 function HeroCentered({ section }: { section: MarketingSection }) {
     return (
         <section className="flex w-full flex-col items-center gap-6 px-4 py-20 text-center md:py-28">
+            {section.mediaUrl ? (
+                <div className="mx-auto mb-2 w-full max-w-4xl overflow-hidden rounded-xl border">
+                    <img
+                        src={section.mediaUrl}
+                        alt={section.mediaAlt || ''}
+                        className="h-56 w-full object-cover md:h-72"
+                    />
+                </div>
+            ) : null}
             <h1 className="font-heading text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
                 {section.title}
             </h1>
@@ -83,13 +94,19 @@ function HeroSplit({ section }: { section: MarketingSection }) {
                 ) : null}
                 <ActionButtons actions={section.actions} className="mt-2" />
             </div>
-            <div className="hidden aspect-[4/3] items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-secondary/10 md:flex">
-                <div className="flex flex-col items-center gap-3">
-                    <div className="h-16 w-16 rounded-xl bg-primary/20" />
-                    <div className="h-3 w-24 rounded bg-muted" />
-                    <div className="h-3 w-16 rounded bg-muted/60" />
+            {section.mediaUrl ? (
+                <div className="hidden overflow-hidden rounded-xl border md:block">
+                    <img src={section.mediaUrl} alt={section.mediaAlt || ''} className="h-full w-full object-cover" />
                 </div>
-            </div>
+            ) : (
+                <div className="hidden aspect-[4/3] items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-secondary/10 md:flex">
+                    <div className="flex flex-col items-center gap-3">
+                        <div className="h-16 w-16 rounded-xl bg-primary/20" />
+                        <div className="h-3 w-24 rounded bg-muted" />
+                        <div className="h-3 w-16 rounded bg-muted/60" />
+                    </div>
+                </div>
+            )}
         </section>
     );
 }
@@ -139,6 +156,11 @@ function FeaturesCards({ section }: { section: MarketingSection }) {
                         key={f.id || `${f.title}-${idx}`}
                         className="rounded-lg border border-border bg-card p-5 transition-shadow hover:shadow-md"
                     >
+                        {f.mediaUrl ? (
+                            <div className="mb-3 overflow-hidden rounded-md border">
+                                <img src={f.mediaUrl} alt={f.mediaAlt || ''} className="h-28 w-full object-cover" />
+                            </div>
+                        ) : null}
                         <h3 className="font-heading text-sm font-semibold text-card-foreground">{f.title}</h3>
                         {f.description ? (
                             <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{f.description}</p>
@@ -163,6 +185,13 @@ function FeaturesList({ section }: { section: MarketingSection }) {
                         key={f.id || `${f.title}-${i}`}
                         className={`flex flex-col gap-1 px-4 py-4 ${i % 2 === 1 ? 'bg-muted/30' : ''}`}
                     >
+                        {f.mediaUrl ? (
+                            <img
+                                src={f.mediaUrl}
+                                alt={f.mediaAlt || ''}
+                                className="mb-2 h-24 w-full rounded border object-cover"
+                            />
+                        ) : null}
                         <span className="font-heading text-sm font-semibold text-foreground">{f.title}</span>
                         {f.description ? <span className="text-sm text-muted-foreground">{f.description}</span> : null}
                     </li>

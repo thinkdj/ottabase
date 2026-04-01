@@ -17,10 +17,11 @@ import {
     Switch,
     Textarea,
 } from '@ottabase/ui-shadcn';
-import { Save, Trash2 } from 'lucide-react';
+import { ImagePlus, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ActionListEditor } from './ActionListEditor';
 import type { BlockDefinition, EditableBlock } from './builder-types';
+import { openMediaLibraryPicker } from './mediaPicker';
 import { FeatureListEditor } from './FeatureListEditor';
 
 interface BlockEditorProps {
@@ -65,6 +66,8 @@ export function BlockEditor({
         title: block.title,
         subtitle: block.subtitle,
         body: block.body,
+        mediaUrl: block.mediaUrl,
+        mediaAlt: block.mediaAlt,
         variant: block.variant,
         enabled: block.enabled,
     });
@@ -77,6 +80,8 @@ export function BlockEditor({
             title: block.title,
             subtitle: block.subtitle,
             body: block.body,
+            mediaUrl: block.mediaUrl,
+            mediaAlt: block.mediaAlt,
             variant: block.variant,
             enabled: block.enabled,
         });
@@ -115,6 +120,45 @@ export function BlockEditor({
                         value={draft.body || ''}
                         onChange={(e) => setDraft({ ...draft, body: e.target.value })}
                     />
+                </div>
+
+                <div className="space-y-2 rounded border p-2.5">
+                    <div className="flex items-center justify-between">
+                        <Label className="text-xs">Section image</Label>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={async () => {
+                                const picked = await openMediaLibraryPicker();
+                                if (!picked) return;
+                                setDraft({
+                                    ...draft,
+                                    mediaUrl: picked.url,
+                                    mediaAlt: picked.alt || draft.mediaAlt,
+                                });
+                            }}
+                        >
+                            <ImagePlus className="mr-1 h-3 w-3" /> Pick from library
+                        </Button>
+                    </div>
+
+                    <Input
+                        placeholder="https://..."
+                        value={draft.mediaUrl || ''}
+                        onChange={(e) => setDraft({ ...draft, mediaUrl: e.target.value })}
+                    />
+                    <Input
+                        placeholder="Image alt text"
+                        value={draft.mediaAlt || ''}
+                        onChange={(e) => setDraft({ ...draft, mediaAlt: e.target.value })}
+                    />
+
+                    {draft.mediaUrl ? (
+                        <div className="overflow-hidden rounded border">
+                            <img src={draft.mediaUrl} alt={draft.mediaAlt || ''} className="h-28 w-full object-cover" />
+                        </div>
+                    ) : null}
                 </div>
 
                 {/* Variant picker */}

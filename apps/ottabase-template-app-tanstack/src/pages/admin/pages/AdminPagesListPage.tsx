@@ -105,6 +105,8 @@ export function AdminPagesListPage() {
                 title: section.title,
                 subtitle: section.subtitle,
                 body: section.body,
+                mediaUrl: section.mediaUrl,
+                mediaAlt: section.mediaAlt,
                 enabled: section.enabled,
                 sortOrder: section.sortOrder,
             });
@@ -124,6 +126,8 @@ export function AdminPagesListPage() {
                     description: feature.description,
                     icon: feature.icon,
                     link: feature.link,
+                    mediaUrl: feature.mediaUrl,
+                    mediaAlt: feature.mediaAlt,
                     sortOrder: feature.sortOrder,
                 });
             }

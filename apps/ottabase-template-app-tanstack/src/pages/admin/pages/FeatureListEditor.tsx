@@ -12,8 +12,9 @@ import {
     Label,
     Textarea,
 } from '@ottabase/ui-shadcn';
-import { Plus, Trash2 } from 'lucide-react';
+import { ImagePlus, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { openMediaLibraryPicker } from './mediaPicker';
 
 interface FeatureItem {
     id: string;
@@ -21,6 +22,8 @@ interface FeatureItem {
     description?: string;
     icon?: string;
     link?: string;
+    mediaUrl?: string;
+    mediaAlt?: string;
     sortOrder: number;
 }
 
@@ -55,6 +58,8 @@ function FeatureRow({
         if (current.description !== feature.description) changed.description = current.description;
         if (current.icon !== feature.icon) changed.icon = current.icon;
         if (current.link !== feature.link) changed.link = current.link;
+        if (current.mediaUrl !== feature.mediaUrl) changed.mediaUrl = current.mediaUrl;
+        if (current.mediaAlt !== feature.mediaAlt) changed.mediaAlt = current.mediaAlt;
         if (Object.keys(changed).length > 0) {
             onUpdate(feature.id, changed);
         }
@@ -111,15 +116,63 @@ function FeatureRow({
                             />
                         </div>
                         <div>
-                            <Label className="text-xs">Link</Label>
-                            <Input
-                                className="text-sm"
-                                placeholder="/features"
-                                value={local.link || ''}
-                                onChange={(e) => setLocal({ ...local, link: e.target.value })}
-                                onBlur={commit}
-                            />
+                            <Label className="text-xs">Image</Label>
+                            <div className="flex gap-1">
+                                <Input
+                                    className="text-sm"
+                                    placeholder="https://..."
+                                    value={local.mediaUrl || ''}
+                                    onChange={(e) => setLocal({ ...local, mediaUrl: e.target.value })}
+                                    onBlur={commit}
+                                />
+                                <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-9 w-9"
+                                    onClick={async () => {
+                                        const picked = await openMediaLibraryPicker();
+                                        if (!picked) return;
+                                        const next = {
+                                            ...local,
+                                            mediaUrl: picked.url,
+                                            mediaAlt: picked.alt || local.mediaAlt,
+                                        };
+                                        setLocal(next);
+                                        onUpdate(feature.id, {
+                                            mediaUrl: next.mediaUrl,
+                                            mediaAlt: next.mediaAlt,
+                                        });
+                                    }}
+                                >
+                                    <ImagePlus className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
                         </div>
+                    </div>
+                    <div>
+                        <Label className="text-xs">Image alt text</Label>
+                        <Input
+                            className="text-sm"
+                            placeholder="Feature image alt text"
+                            value={local.mediaAlt || ''}
+                            onChange={(e) => setLocal({ ...local, mediaAlt: e.target.value })}
+                            onBlur={commit}
+                        />
+                    </div>
+                    {local.mediaUrl ? (
+                        <div className="overflow-hidden rounded border">
+                            <img src={local.mediaUrl} alt={local.mediaAlt || ''} className="h-24 w-full object-cover" />
+                        </div>
+                    ) : null}
+                    <div>
+                        <Label className="text-xs">Link</Label>
+                        <Input
+                            className="text-sm"
+                            placeholder="/features"
+                            value={local.link || ''}
+                            onChange={(e) => setLocal({ ...local, link: e.target.value })}
+                            onBlur={commit}
+                        />
                     </div>
                 </div>
             )}

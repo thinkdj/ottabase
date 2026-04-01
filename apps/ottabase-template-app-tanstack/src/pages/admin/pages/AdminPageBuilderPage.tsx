@@ -2,7 +2,7 @@ import { actionHooks, featureHooks, pageHooks, sectionHooks, useBlocksRegistry }
 import { globalStore, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
 import { Badge, Button, Card, CardContent, Input, Label } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
-import { Save } from 'lucide-react';
+import { Monitor, RefreshCw, Smartphone, Tablet, Save } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { BlockEditor } from './BlockEditor';
@@ -15,6 +15,8 @@ export function AdminPageBuilderPage() {
     const { pageId } = useParams({ from: '/admin/pages/$pageId' });
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [pageDraft, setPageDraft] = useState<PageDraft | null>(null);
+    const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+    const [previewRefreshKey, setPreviewRefreshKey] = useState<number>(Date.now());
 
     const organizationId = globalStore.get(organizationIdAtom) || null;
     const userId = globalStore.get(userAtom)?.id || null;
@@ -39,6 +41,10 @@ export function AdminPageBuilderPage() {
     const deleteAction = actionHooks.useDelete();
 
     const updatePage = pageHooks.useUpdate();
+
+    const bumpPreview = useCallback(() => {
+        setPreviewRefreshKey(Date.now());
+    }, []);
 
     // --- Derived data ---
     const sections = useMemo(() => {
@@ -83,8 +89,9 @@ export function AdminPageBuilderPage() {
             });
             toast.success(`${block.label} added`);
             await sectionList.refetch();
+            bumpPreview();
         },
-        [pageId, organizationId, userId, sections.length, createSection, sectionList],
+        [pageId, organizationId, userId, sections.length, createSection, sectionList, bumpPreview],
     );
 
     const handleReorder = useCallback(
@@ -105,8 +112,9 @@ export function AdminPageBuilderPage() {
             );
             toast.success('Blocks reordered');
             await sectionList.refetch();
+            bumpPreview();
         },
-        [sections, updateSection, sectionList],
+        [sections, updateSection, sectionList, bumpPreview],
     );
 
     const handleSaveBlock = useCallback(
@@ -117,14 +125,17 @@ export function AdminPageBuilderPage() {
                     title: draft.title,
                     subtitle: draft.subtitle,
                     body: draft.body,
+                    mediaUrl: draft.mediaUrl,
+                    mediaAlt: draft.mediaAlt,
                     variant: draft.variant,
                     enabled: draft.enabled,
                 },
             });
             toast.success('Block saved');
             await sectionList.refetch();
+            bumpPreview();
         },
-        [updateSection, sectionList],
+        [updateSection, sectionList, bumpPreview],
     );
 
     const handleDeleteBlock = useCallback(
@@ -133,8 +144,9 @@ export function AdminPageBuilderPage() {
             setSelectedId(null);
             toast.success('Block deleted');
             await sectionList.refetch();
+            bumpPreview();
         },
-        [deleteSection, sectionList],
+        [deleteSection, sectionList, bumpPreview],
     );
 
     const handleAddFeature = useCallback(async () => {
@@ -149,22 +161,25 @@ export function AdminPageBuilderPage() {
             sortOrder: selectedFeatures.length,
         });
         await featureList.refetch();
-    }, [selected, organizationId, userId, selectedFeatures.length, createFeature, featureList]);
+        bumpPreview();
+    }, [selected, organizationId, userId, selectedFeatures.length, createFeature, featureList, bumpPreview]);
 
     const handleUpdateFeature = useCallback(
         async (id: string, data: Record<string, unknown>) => {
             await updateFeature.mutateAsync({ id, data });
             await featureList.refetch();
+            bumpPreview();
         },
-        [updateFeature, featureList],
+        [updateFeature, featureList, bumpPreview],
     );
 
     const handleDeleteFeature = useCallback(
         async (id: string) => {
             await deleteFeature.mutateAsync(id);
             await featureList.refetch();
+            bumpPreview();
         },
-        [deleteFeature, featureList],
+        [deleteFeature, featureList, bumpPreview],
     );
 
     const handleAddAction = useCallback(async () => {
@@ -181,23 +196,30 @@ export function AdminPageBuilderPage() {
             sortOrder: selectedActions.length,
         });
         await actionList.refetch();
-    }, [selected, organizationId, userId, selectedActions.length, createAction, actionList]);
+        bumpPreview();
+    }, [selected, organizationId, userId, selectedActions.length, createAction, actionList, bumpPreview]);
 
     const handleUpdateAction = useCallback(
         async (id: string, data: Record<string, unknown>) => {
             await updateAction.mutateAsync({ id, data });
             await actionList.refetch();
+            bumpPreview();
         },
-        [updateAction, actionList],
+        [updateAction, actionList, bumpPreview],
     );
 
     const handleDeleteAction = useCallback(
         async (id: string) => {
             await deleteAction.mutateAsync(id);
             await actionList.refetch();
+            bumpPreview();
         },
-        [deleteAction, actionList],
+        [deleteAction, actionList, bumpPreview],
     );
+
+    const previewWidthClass =
+        previewDevice === 'mobile' ? 'w-[390px]' : previewDevice === 'tablet' ? 'w-[768px]' : 'w-full';
+    const previewUrl = `/pages/${encodeURIComponent(pageDraft?.slug || '')}?preview=true&_k=${previewRefreshKey}`;
 
     return (
         <div className="space-y-6">
@@ -224,6 +246,7 @@ export function AdminPageBuilderPage() {
                             });
                             toast.success(nextStatus === 'published' ? 'Page published' : 'Page moved to draft');
                             await pageQuery.refetch();
+                            bumpPreview();
                         }}
                     >
                         {pageDraft?.status === 'published' ? 'Unpublish' : 'Publish'}
@@ -268,6 +291,7 @@ export function AdminPageBuilderPage() {
                                 },
                             });
                             toast.success('Page settings saved');
+                            bumpPreview();
                         }}
                     >
                         <Save className="mr-1 h-4 w-4" /> Save Page
@@ -326,6 +350,54 @@ export function AdminPageBuilderPage() {
                     )}
                 </div>
             </div>
+
+            <Card>
+                <CardContent className="space-y-3 pt-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 className="text-sm font-semibold">Live Preview</h3>
+                            <p className="text-xs text-muted-foreground">
+                                Renders current page at <code>/pages/{pageDraft?.slug || '...'}</code> in preview mode.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                size="sm"
+                                variant={previewDevice === 'desktop' ? 'default' : 'outline'}
+                                onClick={() => setPreviewDevice('desktop')}
+                            >
+                                <Monitor className="mr-1 h-4 w-4" /> Desktop
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant={previewDevice === 'tablet' ? 'default' : 'outline'}
+                                onClick={() => setPreviewDevice('tablet')}
+                            >
+                                <Tablet className="mr-1 h-4 w-4" /> Tablet
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant={previewDevice === 'mobile' ? 'default' : 'outline'}
+                                onClick={() => setPreviewDevice('mobile')}
+                            >
+                                <Smartphone className="mr-1 h-4 w-4" /> Mobile
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={bumpPreview}>
+                                <RefreshCw className="mr-1 h-4 w-4" /> Refresh
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-center overflow-auto rounded-lg border bg-muted/20 p-2">
+                        <iframe
+                            key={previewRefreshKey}
+                            title="Marketing page live preview"
+                            src={previewUrl}
+                            className={`${previewWidthClass} h-[720px] rounded border bg-background`}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

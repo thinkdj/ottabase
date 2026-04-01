@@ -194,6 +194,8 @@ export async function handleMarketingPageBySlug(context: ApiRouteContext, slug: 
                 title: modelGet(section, 'title'),
                 subtitle: modelGet(section, 'subtitle'),
                 body: modelGet(section, 'body'),
+                mediaUrl: modelGet(section, 'mediaUrl'),
+                mediaAlt: modelGet(section, 'mediaAlt'),
                 enabled: modelGet(section, 'enabled'),
                 sortOrder: modelGet(section, 'sortOrder'),
                 features: features

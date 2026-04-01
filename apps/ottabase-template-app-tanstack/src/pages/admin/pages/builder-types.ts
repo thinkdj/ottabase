@@ -5,6 +5,8 @@ export type EditableBlock = {
     title?: string;
     subtitle?: string;
     body?: string;
+    mediaUrl?: string;
+    mediaAlt?: string;
     variant?: string;
     enabled?: boolean;
 };
