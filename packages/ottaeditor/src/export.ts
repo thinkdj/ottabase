@@ -17,7 +17,11 @@ export function convertInlineHTML(html: string): string {
     let md = html;
 
     // Convert links: <a href="url">text</a>
-    md = md.replace(/<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)');
+    md = md.replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (_match, attrs: string, text: string) => {
+        const hrefMatch = attrs.match(/href="([^"]*)"/);
+        const href = hrefMatch ? hrefMatch[1] : '';
+        return `[${text}](${href})`;
+    });
 
     // Convert bold: <b> or <strong>
     md = md.replace(/<(b|strong)>([\s\S]*?)<\/\1>/gi, '**$2**');
@@ -38,7 +42,12 @@ export function convertInlineHTML(html: string): string {
     md = md.replace(/<br\s*\/?>/gi, '\n');
 
     // Strip all remaining HTML tags except <u> (negative lookahead keeps underline as-is)
-    md = md.replace(/<(?!\/?u>)[^>]+>/g, '');
+    // Loop to handle any residual partial tags from nested stripping
+    let prev;
+    do {
+        prev = md;
+        md = md.replace(/<(?!\/?u>)[^>]+>/g, '');
+    } while (md !== prev);
 
     return md;
 }
