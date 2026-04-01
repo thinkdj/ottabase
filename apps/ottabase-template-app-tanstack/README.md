@@ -496,3 +496,5 @@ Notes:
 - Duplicate and delete operations in the admin pages list/builder now use shadcn `AlertDialog` confirmations.
 - Admin page builder now supports image selection from `@ottabase/medialibrary` for section media and feature images.
 - Admin page builder includes a live preview panel with desktop/tablet/mobile viewport switching.
+- Admin block editor includes an AI Copy Assistant powered by `@ottabase/cf-ai` with per-field generation plus bulk
+  Generate All and rewrite/shorten/expand actions for title/subtitle/body copy.
