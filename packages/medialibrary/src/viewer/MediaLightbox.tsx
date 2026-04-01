@@ -1,5 +1,13 @@
-import { IconArrowBarToDown, IconChevronLeft, IconChevronRight, IconExternalLink, IconX } from '@tabler/icons-react';
-import { useEffect } from 'react';
+import {
+    IconArrowBarToDown,
+    IconChevronLeft,
+    IconChevronRight,
+    IconExternalLink,
+    IconMaximize,
+    IconMinimize,
+    IconX,
+} from '@tabler/icons-react';
+import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { MediaViewerItem } from '../types';
 import { formatMediaFileSize, getMediaDisplayTitle } from '../utils';
@@ -39,6 +47,26 @@ export function MediaLightbox({
     onSelectIndex,
 }: MediaLightboxProps) {
     const currentItem = items[activeIndex] ?? null;
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Fullscreen state sync
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(Boolean(document.fullscreenElement));
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        };
+    }, []);
+
+    const toggleFullscreen = useCallback(() => {
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+        } else {
+            document.documentElement.requestFullscreen().catch(() => {});
+        }
+    }, []);
 
     useEffect(() => {
         if (!isOpen) {
@@ -119,6 +147,14 @@ export function MediaLightbox({
                         >
                             <IconArrowBarToDown className="h-5 w-5" />
                         </a>
+                        <button
+                            type="button"
+                            onClick={toggleFullscreen}
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/40 bg-background/80 text-foreground transition-colors hover:bg-accent"
+                            aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                        >
+                            {isFullscreen ? <IconMinimize className="h-5 w-5" /> : <IconMaximize className="h-5 w-5" />}
+                        </button>
                         <button
                             type="button"
                             onClick={onClose}

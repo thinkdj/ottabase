@@ -39,3 +39,4 @@ export {
     useOptionalMediaLightbox,
 } from './viewer/MediaLightboxProvider';
 export { MediaPreview } from './viewer/MediaPreview';
+export { ZoomableImage } from './viewer/ZoomableImage';

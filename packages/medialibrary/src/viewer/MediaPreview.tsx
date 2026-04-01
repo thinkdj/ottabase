@@ -1,6 +1,7 @@
 import { IconArchive, IconFileDescription, IconFileMusic, IconPhoto, IconPlayerPlay } from '@tabler/icons-react';
 import type { MediaViewerItem } from '../types';
 import { getMediaDisplayTitle, getMediaKindFromMimeType, isDocumentMedia } from '../utils';
+import { ZoomableImage } from './ZoomableImage';
 
 export interface MediaPreviewProps {
     item: Partial<MediaViewerItem> & {
@@ -63,9 +64,16 @@ export function MediaPreview({
     const shellClassName = getShellClassName(mode, className);
 
     if (mediaKind === 'image' && previewUrl) {
-        // In immersive mode, use max-h/max-w so the image fits within the constrained area
-        const imgClassName =
-            mode === 'immersive' ? 'max-h-full max-w-full object-contain' : `h-full w-full ${objectFitClassName}`;
+        // Use ZoomableImage in lightbox / immersive modes for zoom + pan support
+        if (mode === 'lightbox' || mode === 'immersive') {
+            return (
+                <div className={shellClassName}>
+                    <ZoomableImage src={previewUrl} alt={item.altText || title} className="h-full w-full" mode={mode} />
+                </div>
+            );
+        }
+
+        const imgClassName = `h-full w-full ${objectFitClassName}`;
         return (
             <div className={shellClassName}>
                 <img

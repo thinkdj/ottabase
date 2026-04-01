@@ -1,5 +1,12 @@
-import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    IconArrowBarToDown,
+    IconChevronLeft,
+    IconChevronRight,
+    IconMaximize,
+    IconMinimize,
+    IconX,
+} from '@tabler/icons-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { MediaLightboxProps } from './MediaLightbox';
 import { MediaPreview } from './MediaPreview';
@@ -22,8 +29,11 @@ export function MediaImmersiveLightbox({
 }: MediaLightboxProps) {
     const currentItem = items[activeIndex] ?? null;
     const [controlsVisible, setControlsVisible] = useState(true);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [counterPulse, setCounterPulse] = useState(false);
     const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const thumbnailStripRef = useRef<HTMLDivElement>(null);
+    const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
     // Auto-hide controls after inactivity
     const resetHideTimer = useCallback(() => {
@@ -33,6 +43,33 @@ export function MediaImmersiveLightbox({
         }
         hideTimerRef.current = setTimeout(() => setControlsVisible(false), 3000);
     }, []);
+
+    // Fullscreen state sync
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(Boolean(document.fullscreenElement));
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        };
+    }, []);
+
+    const toggleFullscreen = useCallback(() => {
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+        } else {
+            document.documentElement.requestFullscreen().catch(() => {});
+        }
+    }, []);
+
+    // Counter pulse animation when activeIndex changes
+    useEffect(() => {
+        if (!isOpen) return;
+        setCounterPulse(true);
+        const timer = setTimeout(() => setCounterPulse(false), 300);
+        return () => clearTimeout(timer);
+    }, [activeIndex, isOpen]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -73,6 +110,31 @@ export function MediaImmersiveLightbox({
         };
     }, [canGoNext, canGoPrevious, isOpen, onClose, onNext, onPrevious, resetHideTimer]);
 
+    // Touch gesture handlers for swipe navigation
+    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+        if (e.touches.length !== 1) return;
+        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }, []);
+
+    const handleTouchEnd = useCallback(
+        (e: React.TouchEvent) => {
+            if (!touchStartRef.current || e.changedTouches.length !== 1) return;
+            const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+            const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+            touchStartRef.current = null;
+
+            // Only trigger if horizontal swipe is dominant and exceeds threshold
+            if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+                if (dx < 0 && canGoNext) {
+                    onNext();
+                } else if (dx > 0 && canGoPrevious) {
+                    onPrevious();
+                }
+            }
+        },
+        [canGoNext, canGoPrevious, onNext, onPrevious],
+    );
+
     // Scroll active thumbnail into view
     useEffect(() => {
         if (!isOpen || !thumbnailStripRef.current) {
@@ -81,6 +143,14 @@ export function MediaImmersiveLightbox({
         const activeThumb = thumbnailStripRef.current.children[activeIndex] as HTMLElement | undefined;
         activeThumb?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }, [activeIndex, isOpen]);
+
+    const counterStyle = useMemo(
+        () => ({
+            transform: counterPulse ? 'scale(1.15)' : 'scale(1)',
+            transition: 'transform 0.2s ease',
+        }),
+        [counterPulse],
+    );
 
     if (!isOpen || typeof document === 'undefined' || !currentItem) {
         return null;
@@ -97,6 +167,8 @@ export function MediaImmersiveLightbox({
             className="fixed inset-0 z-[100] overflow-hidden bg-black"
             onPointerMove={resetHideTimer}
             onClick={resetHideTimer}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
         >
             {/* Backdrop (click to close) */}
             <button
@@ -111,22 +183,47 @@ export function MediaImmersiveLightbox({
                 className={`pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-between px-4 pt-4 pb-10 transition-opacity duration-300 md:px-6 ${controlsClass}`}
             >
                 {hasMultiple && (
-                    <span className="pointer-events-auto select-none rounded-full bg-white/15 px-3 py-1 text-xs font-medium tabular-nums tracking-widest text-white">
+                    <span
+                        className="pointer-events-auto select-none rounded-full bg-white/15 px-3 py-1 text-xs font-medium tabular-nums tracking-widest text-white"
+                        style={counterStyle}
+                    >
                         {activeIndex + 1} / {items.length}
                     </span>
                 )}
                 {!hasMultiple && <span />}
-                <button
-                    type="button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onClose();
-                    }}
-                    className="pointer-events-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
-                    aria-label="Close gallery"
-                >
-                    <IconX className="h-5 w-5" />
-                </button>
+                <div className="pointer-events-auto flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFullscreen();
+                        }}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
+                        aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                    >
+                        {isFullscreen ? <IconMinimize className="h-5 w-5" /> : <IconMaximize className="h-5 w-5" />}
+                    </button>
+                    <a
+                        href={currentItem.url}
+                        download={currentItem.originalName ?? undefined}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
+                        aria-label="Download"
+                    >
+                        <IconArrowBarToDown className="h-5 w-5" />
+                    </a>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onClose();
+                        }}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
+                        aria-label="Close gallery"
+                    >
+                        <IconX className="h-5 w-5" />
+                    </button>
+                </div>
             </div>
 
             {/* ── Main media area — constrained between top bar and bottom controls ── */}
