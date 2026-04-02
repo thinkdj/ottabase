@@ -179,9 +179,12 @@ export default class AnnotationTool {
         span.dataset.title = title;
         span.dataset.annotation = annotation;
 
-        // Update the text content if title changed
-        if (span.textContent !== title && title.trim()) {
-            span.textContent = title;
+        // Only update text content if it was empty (new annotation) or if user explicitly cleared/changed the title
+        // Keep original selected text otherwise
+        const originalTitle = span.dataset.originalText;
+        if (!originalTitle) {
+            // First save: store original text
+            span.dataset.originalText = span.textContent || '';
         }
 
         this.closePopup();

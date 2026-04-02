@@ -1269,7 +1269,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                                     <DropdownMenuItem
                                                         onClick={async () => {
                                                             const md = await mainEditor.exportMarkdown();
-                                                            downloadText(md, 'post-content.md');
+                                                            downloadText(md ?? '', 'post-content.md');
                                                         }}
                                                     >
                                                         Export Markdown
