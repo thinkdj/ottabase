@@ -25,6 +25,7 @@ import RawHtmlTool from './tools/RawHtmlTool/RawHtmlTool';
 import ReviewTool from './tools/ReviewTool/ReviewTool';
 import SpoilerTool from './tools/SpoilerTool/SpoilerTool';
 import StepsTool from './tools/StepsTool/StepsTool';
+import ReferencesTool from './tools/ReferencesTool/ReferencesTool';
 import TestimonialTool from './tools/TestimonialTool/TestimonialTool';
 import type { OttaEditorPlugin } from './types';
 
@@ -60,6 +61,7 @@ export const DEFAULT_PLUGIN_NAMES = {
     MEDIA_GALLERY: 'mediaGallery',
     FAQ: 'faq',
     TESTIMONIAL: 'testimonial',
+    REFERENCES: 'references',
 } as const;
 
 /**
@@ -260,6 +262,11 @@ export const defaultPlugins: OttaEditorPlugin[] = [
             defaultVariant: 'card',
         } as any,
     },
+    {
+        name: DEFAULT_PLUGIN_NAMES.REFERENCES,
+        tool: ReferencesTool as any,
+        config: {} as any,
+    },
 ];
 
 /**
@@ -307,6 +314,7 @@ export {
     Paragraph,
     Quote,
     Raw,
+    ReferencesTool,
     ReviewTool,
     SpoilerTool,
     StepsTool,

@@ -993,3 +993,147 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 .cdc-testimonial-star--empty {
     color: hsl(var(--muted-foreground) / 0.4);
 }
+
+/* ── References ───────────────────────────────────────────────────────────── */
+
+.cdc-references {
+    margin: 1.5rem 0;
+}
+
+.cdc-references-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.cdc-references-item {
+    display: flex;
+    gap: 0.6rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.cdc-references-label {
+    flex-shrink: 0;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    min-width: 2rem;
+}
+
+.cdc-references--footnote .cdc-references-label {
+    font-size: 0.75rem;
+    vertical-align: super;
+    min-width: 1rem;
+}
+
+.cdc-references-body {
+    flex: 1;
+}
+
+.cdc-references-authors {
+    font-style: italic;
+}
+
+.cdc-references-link {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-all;
+}
+
+.cdc-references-link:hover {
+    opacity: 0.8;
+}
+
+.cdc-references-note {
+    color: hsl(var(--muted-foreground));
+    font-size: 0.8125rem;
+}
+
+.cdc-references-accessed {
+    color: hsl(var(--muted-foreground));
+    font-size: 0.8125rem;
+}
+
+/* ── Testimonial: quote-bubble variant ──────────────────────────────────── */
+
+.cdc-testimonial-bubble {
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    position: relative;
+    background: hsl(var(--card));
+}
+
+.cdc-testimonial-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 2rem;
+    border: 6px solid transparent;
+    border-top-color: hsl(var(--border));
+}
+
+.cdc-testimonial-bubble::before {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 2rem;
+    border: 6px solid transparent;
+    border-top-color: hsl(var(--card));
+    z-index: 1;
+}
+
+.cdc-testimonial-bubble .cdc-testimonial-author {
+    margin-top: 1rem;
+}
+
+/* ── Testimonial: side-by-side variant ──────────────────────────────────── */
+
+.cdc-testimonial-side {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1.5rem;
+    align-items: start;
+    padding: 1.25rem 0;
+    border-top: 1px solid hsl(var(--border));
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.cdc-testimonial-side .cdc-testimonial-side-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 120px;
+    text-align: center;
+}
+
+.cdc-testimonial-side .cdc-testimonial-side-right {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.cdc-testimonial-side .cdc-testimonial-quote {
+    margin: 0;
+}
+
+/* ── Testimonial: verified badge ─────────────────────────────────────────── */
+
+.cdc-testimonial-verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: hsl(var(--primary));
+    background: hsl(var(--primary) / 0.1);
+    border-radius: 9999px;
+    padding: 1px 6px;
+    margin-left: 4px;
+    vertical-align: middle;
+}

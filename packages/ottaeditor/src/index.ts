@@ -35,6 +35,7 @@ export {
     Paragraph,
     Quote,
     Raw,
+    ReferencesTool,
     ReviewTool,
     SpoilerTool,
     StepsTool,
@@ -67,6 +68,7 @@ export { default as MediaLibraryTool } from './tools/MediaLibraryTool/MediaLibra
 export { default as RawHtmlTool } from './tools/RawHtmlTool/RawHtmlTool';
 export type { StepsData, StepsItem, StepsToolConfig } from './tools/StepsTool/StepsTool';
 export type { FaqData, FaqItem, FaqToolConfig } from './tools/FaqTool/FaqTool';
+export type { ReferenceItem, ReferencesData, ReferencesToolConfig } from './tools/ReferencesTool/ReferencesTool';
 export type {
     TestimonialData,
     TestimonialToolConfig,

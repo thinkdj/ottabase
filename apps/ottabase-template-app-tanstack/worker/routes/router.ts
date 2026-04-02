@@ -51,6 +51,7 @@ import {
 } from './auth';
 import {
     handleBlogCategoryBySlug,
+    handleBlogKitchensink,
     handleBlogPostBySlug,
     handleBlogPostUnlock,
     handleBlogPostsList,
@@ -425,6 +426,9 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         }
         if (route === '/api/blog/publish-scheduled') {
             return handleBlogPublishScheduled(context);
+        }
+        if (route === '/api/blog/kitchensink') {
+            return handleBlogKitchensink(context);
         }
     }
 

@@ -1,6 +1,6 @@
 import { RenderFn } from 'editorjs-blocks-react-renderer';
 
-export type TestimonialVariant = 'card' | 'minimal' | 'featured';
+export type TestimonialVariant = 'card' | 'minimal' | 'featured' | 'quote-bubble' | 'side-by-side';
 
 export interface TestimonialData {
     quote?: string;
@@ -11,6 +11,10 @@ export interface TestimonialData {
     companyLogo?: string;
     rating?: number;
     variant?: TestimonialVariant;
+    /** URL to link the author name to */
+    sourceUrl?: string;
+    /** Whether to show a "Verified" badge next to author name */
+    verified?: boolean;
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -46,14 +50,26 @@ function AuthorAttribution({
     authorRole,
     authorCompany,
     authorAvatar,
+    sourceUrl,
+    verified,
     compact = false,
 }: {
     authorName: string;
     authorRole?: string;
     authorCompany?: string;
     authorAvatar?: string;
+    sourceUrl?: string;
+    verified?: boolean;
     compact?: boolean;
 }) {
+    const nameEl = sourceUrl ? (
+        <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="cdc-testimonial-name">
+            {authorName}
+        </a>
+    ) : (
+        <span className="cdc-testimonial-name">{authorName}</span>
+    );
+
     return (
         <div className={`cdc-testimonial-author${compact ? ' cdc-testimonial-author--compact' : ''}`}>
             {authorAvatar && (
@@ -67,7 +83,14 @@ function AuthorAttribution({
                 />
             )}
             <div className="cdc-testimonial-meta">
-                <span className="cdc-testimonial-name">{authorName}</span>
+                <span>
+                    {nameEl}
+                    {verified && (
+                        <span className="cdc-testimonial-verified" aria-label="Verified">
+                            ✓ Verified
+                        </span>
+                    )}
+                </span>
                 {(authorRole || authorCompany) && (
                     <span className="cdc-testimonial-sub">
                         {[authorRole, authorCompany].filter(Boolean).join(' · ')}
@@ -99,6 +122,8 @@ const Testimonial: RenderFn<TestimonialData> = ({ data, className = '' }) => {
     const companyLogo = data?.companyLogo?.trim() || undefined;
     const rating = typeof data?.rating === 'number' && data.rating > 0 ? data.rating : undefined;
     const variant = data?.variant ?? 'card';
+    const sourceUrl = data?.sourceUrl?.trim() || undefined;
+    const verified = data?.verified ?? false;
 
     if (!quote || !authorName) {
         return null;
@@ -148,6 +173,8 @@ const Testimonial: RenderFn<TestimonialData> = ({ data, className = '' }) => {
                             authorRole={authorRole}
                             authorCompany={authorCompany}
                             authorAvatar={authorAvatar}
+                            sourceUrl={sourceUrl}
+                            verified={verified}
                         />
                         {companyLogo && (
                             <img
@@ -176,6 +203,8 @@ const Testimonial: RenderFn<TestimonialData> = ({ data, className = '' }) => {
                             authorRole={authorRole}
                             authorCompany={authorCompany}
                             authorAvatar={authorAvatar}
+                            sourceUrl={sourceUrl}
+                            verified={verified}
                             compact
                         />
                     </figcaption>
@@ -198,6 +227,8 @@ const Testimonial: RenderFn<TestimonialData> = ({ data, className = '' }) => {
                             authorRole={authorRole}
                             authorCompany={authorCompany}
                             authorAvatar={authorAvatar}
+                            sourceUrl={sourceUrl}
+                            verified={verified}
                         />
                         <div className="cdc-testimonial-featured-right">
                             {rating && <StarRating rating={rating} />}
@@ -211,6 +242,90 @@ const Testimonial: RenderFn<TestimonialData> = ({ data, className = '' }) => {
                             )}
                         </div>
                     </figcaption>
+                </figure>
+            )}
+
+            {/* Speech-bubble variant — similar to minimal but with a bubble border + pointer */}
+            {variant === 'quote-bubble' && (
+                <figure
+                    className={`${className} my-6 not-prose cdc-content-testimonial cdc-testimonial-bubble`}
+                    itemScope
+                    itemType="https://schema.org/Review"
+                >
+                    <blockquote className="cdc-testimonial-quote" itemProp="reviewBody">
+                        <p>{quote}</p>
+                    </blockquote>
+                    <figcaption className="cdc-testimonial-author">
+                        <AuthorAttribution
+                            authorName={authorName}
+                            authorRole={authorRole}
+                            authorCompany={authorCompany}
+                            authorAvatar={authorAvatar}
+                            sourceUrl={sourceUrl}
+                            verified={verified}
+                            compact
+                        />
+                    </figcaption>
+                </figure>
+            )}
+
+            {/* Side-by-side variant — avatar/author info on left, quote on right */}
+            {variant === 'side-by-side' && (
+                <figure
+                    className={`${className} my-6 not-prose cdc-content-testimonial cdc-testimonial-side`}
+                    itemScope
+                    itemType="https://schema.org/Review"
+                >
+                    <div className="cdc-testimonial-side-left">
+                        {authorAvatar && (
+                            <img
+                                src={authorAvatar}
+                                alt={authorName}
+                                className="cdc-testimonial-avatar"
+                                width={56}
+                                height={56}
+                                loading="lazy"
+                            />
+                        )}
+                        <div className="cdc-testimonial-meta">
+                            {sourceUrl ? (
+                                <a
+                                    href={sourceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="cdc-testimonial-name"
+                                >
+                                    {authorName}
+                                </a>
+                            ) : (
+                                <span className="cdc-testimonial-name">{authorName}</span>
+                            )}
+                            {verified && (
+                                <span className="cdc-testimonial-verified" aria-label="Verified">
+                                    ✓ Verified
+                                </span>
+                            )}
+                            {(authorRole || authorCompany) && (
+                                <span className="cdc-testimonial-sub">
+                                    {[authorRole, authorCompany].filter(Boolean).join(' · ')}
+                                </span>
+                            )}
+                        </div>
+                        {rating && <StarRating rating={rating} />}
+                    </div>
+                    <div className="cdc-testimonial-side-right">
+                        <blockquote className="cdc-testimonial-quote" itemProp="reviewBody">
+                            <p>{quote}</p>
+                        </blockquote>
+                        {companyLogo && (
+                            <img
+                                src={companyLogo}
+                                alt={authorCompany ? `${authorCompany} logo` : 'Company logo'}
+                                className="cdc-testimonial-company-logo"
+                                loading="lazy"
+                            />
+                        )}
+                    </div>
                 </figure>
             )}
         </>

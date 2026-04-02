@@ -14,6 +14,7 @@ import Map from './components/Map';
 import MediaEmbed from './components/MediaEmbed';
 import MediaGallery from './components/MediaGallery';
 import Quote from './components/Quote';
+import References from './components/References';
 import Review from './components/Review';
 import Spoiler from './components/Spoiler';
 import Steps from './components/Steps';
@@ -40,4 +41,5 @@ export const baseRenderers = {
     mediaGallery: MediaGallery,
     faq: Faq,
     testimonial: Testimonial,
+    references: References,
 };

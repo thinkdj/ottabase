@@ -33,6 +33,7 @@ import {
     Eye,
     FileText,
     Filter,
+    Loader2,
     Plus,
     Search,
     Star,
@@ -71,6 +72,20 @@ export function AdminBlogListPage() {
         title: '',
         message: '',
     });
+    const [kitchensinkState, setKitchensinkState] = useState<'idle' | 'loading' | 'created' | 'exists'>('idle');
+    const [kitchensinkSlug, setKitchensinkSlug] = useState<string | null>(null);
+
+    const seedKitchensink = async () => {
+        setKitchensinkState('loading');
+        try {
+            const res = await fetch('/api/blog/kitchensink', { method: 'POST' });
+            const json = await res.json<{ status: string; slug?: string }>();
+            setKitchensinkSlug(json.slug ?? null);
+            setKitchensinkState(json.status === 'exists' ? 'exists' : 'created');
+        } catch {
+            setKitchensinkState('idle');
+        }
+    };
 
     // Build where clause for server-side filtering
     const whereClause: Record<string, unknown> = {};
@@ -166,12 +181,40 @@ export function AdminBlogListPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Blog Posts</h1>
                     <p className="text-muted-foreground mt-1">Manage your blog posts, changelogs, and documentation.</p>
                 </div>
-                <Button asChild>
-                    <Link to="/admin/blog/new">
-                        <Plus className="mr-2 h-4 w-4" />
-                        New Post
-                    </Link>
-                </Button>
+                <div className="flex items-center gap-2">
+                    {/* Seed Kitchensink: creates a demo post with all block types */}
+                    {(kitchensinkState === 'created' || kitchensinkState === 'exists') && kitchensinkSlug ? (
+                        <Badge variant="outline" className="text-xs">
+                            {kitchensinkState === 'created' ? '✓ Created' : 'Already exists'}{' '}
+                            <a href={`/admin/blog/${kitchensinkSlug}`} className="ml-1 underline text-primary">
+                                View
+                            </a>
+                        </Badge>
+                    ) : null}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={seedKitchensink}
+                        disabled={
+                            kitchensinkState === 'loading' ||
+                            kitchensinkState === 'created' ||
+                            kitchensinkState === 'exists'
+                        }
+                    >
+                        {kitchensinkState === 'loading' ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <FileText className="mr-2 h-4 w-4" />
+                        )}
+                        Seed Kitchensink
+                    </Button>
+                    <Button asChild>
+                        <Link to="/admin/blog/new">
+                            <Plus className="mr-2 h-4 w-4" />
+                            New Post
+                        </Link>
+                    </Button>
+                </div>
             </div>
 
             {/* Filters */}

@@ -693,3 +693,255 @@ export async function handleBlogPublishScheduled(context: BlogRouteContext): Pro
         })),
     });
 }
+
+/**
+ * POST /api/blog/kitchensink
+ * Creates a demo "Kitchensink" blog post with every block type for testing.
+ * Protected by admin auth. Idempotent: skips if a post with slug 'kitchensink-ottablog' exists.
+ */
+export async function handleBlogKitchensink(context: BlogRouteContext): Promise<Response> {
+    const { env } = context;
+    const d1Error = ensureD1(env);
+    if (d1Error) return d1Error;
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+
+    // Idempotent: skip if already exists
+    const existing = await Post.findBy('slug', 'kitchensink-ottablog');
+    if (existing) {
+        return jsonResponse({ status: 'exists', id: existing.get('id'), slug: existing.get('slug') });
+    }
+
+    const KITCHENSINK_CONTENT = {
+        time: Date.now(),
+        version: '2.30.7',
+        blocks: [
+            { type: 'header', data: { text: 'The Kitchensink of Ottablog', level: 1 } },
+            {
+                type: 'paragraph',
+                data: {
+                    text: 'This post demonstrates <b>every block type</b> available in OttaEditor. Use it to test rendering, styling, and export.',
+                },
+            },
+            { type: 'header', data: { text: 'Text Blocks', level: 2 } },
+            {
+                type: 'paragraph',
+                data: {
+                    text: 'A regular paragraph with <i>italic</i>, <b>bold</b>, and <code>inline code</code> formatting.',
+                },
+            },
+            {
+                type: 'quote',
+                data: {
+                    text: 'The best way to predict the future is to invent it.',
+                    caption: 'Alan Kay',
+                    alignment: 'left',
+                },
+            },
+            {
+                type: 'warning',
+                data: {
+                    title: 'Important Note',
+                    message: 'Always backup your data before making changes to production systems.',
+                },
+            },
+            { type: 'delimiter', data: {} },
+            { type: 'header', data: { text: 'Lists', level: 2 } },
+            {
+                type: 'list',
+                data: {
+                    style: 'ordered',
+                    items: [
+                        { content: 'First item', items: [] },
+                        {
+                            content: 'Second item with nested',
+                            items: [
+                                { content: 'Nested item A', items: [] },
+                                { content: 'Nested item B', items: [] },
+                            ],
+                        },
+                        { content: 'Third item', items: [] },
+                    ],
+                },
+            },
+            {
+                type: 'checklist',
+                data: {
+                    items: [
+                        { text: 'Write the code', checked: true },
+                        { text: 'Write the tests', checked: true },
+                        { text: 'Deploy to production', checked: false },
+                    ],
+                },
+            },
+            { type: 'header', data: { text: 'Code & Data', level: 2 } },
+            {
+                type: 'code',
+                data: {
+                    code: 'function greet(name: string): string {\n  return `Hello, ${name}!`;\n}\n\nconsole.log(greet("World"));',
+                    languageCode: 'typescript',
+                },
+            },
+            {
+                type: 'table',
+                data: {
+                    withHeadings: true,
+                    content: [
+                        ['Feature', 'Status', 'Notes'],
+                        ['Export JSON', 'Done', 'Via useOttaEditor'],
+                        ['Export Markdown', 'Done', 'All 20+ block types'],
+                        ['Undo/Redo', 'Done', 'Ctrl+Z / Ctrl+Shift+Z'],
+                    ],
+                },
+            },
+            { type: 'header', data: { text: 'Media', level: 2 } },
+            {
+                type: 'mediaGallery',
+                data: {
+                    items: [
+                        {
+                            url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
+                            altText: 'Mountain landscape',
+                            caption: 'Swiss Alps at sunrise',
+                            mediaKind: 'image',
+                        },
+                        {
+                            url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800',
+                            altText: 'Night sky mountains',
+                            caption: 'Stars over the mountains',
+                            mediaKind: 'image',
+                        },
+                        {
+                            url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800',
+                            altText: 'Rocky mountains',
+                            caption: 'Rocky Mountain National Park',
+                            mediaKind: 'image',
+                        },
+                        {
+                            url: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800',
+                            altText: 'Green hills aerial',
+                            caption: 'Rolling hills from above',
+                            mediaKind: 'image',
+                        },
+                    ],
+                    layout: 'grid',
+                    columns: 2,
+                },
+            },
+            { type: 'header', data: { text: 'Interactive Blocks', level: 2 } },
+            {
+                type: 'spoiler',
+                data: {
+                    title: 'Click to reveal the answer',
+                    content: 'The answer to life, the universe, and everything is 42.',
+                },
+            },
+            {
+                type: 'faq',
+                data: {
+                    style: 'accordion',
+                    items: [
+                        {
+                            id: '1',
+                            question: 'What is OttaEditor?',
+                            answer: 'OttaEditor is a flexible EditorJS wrapper with plugin management, undo/redo, and export capabilities.',
+                        },
+                        {
+                            id: '2',
+                            question: 'What export formats are supported?',
+                            answer: 'JSON and Markdown are supported out of the box.',
+                        },
+                        {
+                            id: '3',
+                            question: 'Is it production ready?',
+                            answer: 'Yes! It ships with undo/redo, export, and 20+ block types.',
+                        },
+                    ],
+                },
+            },
+            {
+                type: 'cta',
+                data: {
+                    text: 'Get Started with OttaEditor',
+                    url: 'https://github.com/thinkdj/ottabase',
+                    style: 'primary',
+                    alignment: 'center',
+                },
+            },
+            { type: 'header', data: { text: 'Rich Content Blocks', level: 2 } },
+            {
+                type: 'testimonial',
+                data: {
+                    quote: 'OttaEditor has completely transformed our content workflow. The undo/redo and export features alone saved us hours every week.',
+                    authorName: 'Sarah Chen',
+                    authorRole: 'Head of Content',
+                    authorCompany: 'TechCorp',
+                    rating: 5,
+                    variant: 'card',
+                },
+            },
+            {
+                type: 'review',
+                data: {
+                    title: 'OttaEditor',
+                    summary:
+                        'A powerful EditorJS wrapper with all the features you need for production content creation.',
+                    rating: 4.5,
+                    maxRating: 5,
+                    pros: ['Easy plugin system', 'Undo/redo built in', 'Great export options', 'Theme-aware UI'],
+                    cons: ['EditorJS dependency', 'React only'],
+                },
+            },
+            {
+                type: 'steps',
+                data: {
+                    items: [
+                        { title: 'Install OttaEditor', content: 'Add @ottabase/ottaeditor to your project.' },
+                        { title: 'Configure Plugins', content: 'Use defaultPlugins: "all" for the full suite.' },
+                        { title: 'Add to your page', content: 'Use useOttaEditor() hook and attach the ref.' },
+                        { title: 'Export content', content: 'Call exportJSON() or exportMarkdown() from the hook.' },
+                    ],
+                },
+            },
+            { type: 'disclosure', data: { aiEnabled: true, aiLevel: 'slight', sponsoredEnabled: false } },
+            { type: 'header', data: { text: 'References', level: 2 } },
+            {
+                type: 'references',
+                data: {
+                    style: 'numbered',
+                    items: [
+                        {
+                            id: '1',
+                            url: 'https://editorjs.io',
+                            title: 'Editor.js',
+                            authors: 'CodeX Team',
+                            year: '2024',
+                            note: 'The base editor this is built on.',
+                        },
+                        {
+                            id: '2',
+                            url: 'https://unsplash.com',
+                            title: 'Unsplash',
+                            authors: 'Unsplash Inc.',
+                            year: '2024',
+                            accessedDate: '2024-04-01',
+                            note: 'Free high-resolution photos.',
+                        },
+                    ],
+                },
+            },
+        ],
+    };
+
+    const post = await Post.create({
+        title: 'The Kitchensink of Ottablog',
+        slug: 'kitchensink-ottablog',
+        excerpt:
+            'A demo post showcasing every block type available in OttaEditor — use this to test rendering, styling, and export.',
+        content: KITCHENSINK_CONTENT,
+        contentType: 'blog',
+        status: 'draft',
+        wordCount: 200,
+    });
+
+    return jsonResponse({ status: 'created', id: post.get('id'), slug: post.get('slug') });
+}

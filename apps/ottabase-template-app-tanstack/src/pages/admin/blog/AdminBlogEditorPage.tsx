@@ -59,6 +59,7 @@ import {
     TabsTrigger,
     Textarea,
 } from '@ottabase/ui-shadcn';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@ottabase/ui-shadcn';
 import { useQueryClient } from '@tanstack/react-query';
 import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
 import { useEditorLeaveGuard } from '@/hooks/useEditorLeaveGuard';
@@ -83,6 +84,9 @@ import {
     StickyNote,
     Tag,
     Trash2,
+    Undo2,
+    Redo2,
+    Download,
     User,
     X,
 } from 'lucide-react';
@@ -176,6 +180,17 @@ const blogTagHooks = createModelHooks<BlogTag>({ entityName: 'post_tags' });
 const blogTagLinkHooks = createModelHooks<BlogTagLink>({ entityName: 'post_tag_links' });
 const blogCategoryHooks = createModelHooks<BlogCategory>({ entityName: 'categories' });
 const blogCategoryLinkHooks = createModelHooks<BlogCategoryLink>({ entityName: 'post_category_links' });
+
+/** Triggers a browser download for a text string as a file. */
+function downloadText(content: string, filename: string): void {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
 
 // Editor configuration with image upload
 const getEditorConfig = (placeholder: string) => ({
@@ -1212,6 +1227,60 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
+                                    {/* Undo/Redo and Export toolbar */}
+                                    <div className="flex items-center gap-1 mb-2 border-b pb-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => mainEditor.undo()}
+                                            disabled={!mainEditor.canUndo}
+                                            title="Undo (Ctrl+Z)"
+                                        >
+                                            <Undo2 className="h-4 w-4 mr-1" />
+                                            Undo
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => mainEditor.redo()}
+                                            disabled={!mainEditor.canRedo}
+                                            title="Redo (Ctrl+Shift+Z)"
+                                        >
+                                            <Redo2 className="h-4 w-4 mr-1" />
+                                            Redo
+                                        </Button>
+                                        <div className="ml-auto">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="sm">
+                                                        <Download className="h-4 w-4 mr-1" />
+                                                        Export
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem
+                                                        onClick={async () => {
+                                                            const json = await mainEditor.exportJSON();
+                                                            downloadText(
+                                                                JSON.stringify(json, null, 2),
+                                                                'post-content.json',
+                                                            );
+                                                        }}
+                                                    >
+                                                        Export JSON
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={async () => {
+                                                            const md = await mainEditor.exportMarkdown();
+                                                            downloadText(md, 'post-content.md');
+                                                        }}
+                                                    >
+                                                        Export Markdown
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    </div>
                                     <div
                                         ref={mainEditor.editorRef}
                                         className="min-h-[400px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
