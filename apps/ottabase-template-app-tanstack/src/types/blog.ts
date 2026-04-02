@@ -48,6 +48,7 @@ export interface BlogPost {
     authorAvatar: string | null;
     isFeatured: boolean;
     allowComments: boolean;
+    exposeToHomepage?: boolean;
     viewCount: number;
     readingTimeMinutes: number | null;
     wordCount: number | null;

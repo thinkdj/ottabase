@@ -92,6 +92,7 @@ export type { Author, ContentType, EditorJSData, HeroImage, PostStatus, ReadingT
 
 // Constants and helpers
 export {
+    BLOG_FEED_CONTENT_TYPES,
     CONTENT_TYPES,
     DEFAULT_SEO_META,
     POST_STATUSES,

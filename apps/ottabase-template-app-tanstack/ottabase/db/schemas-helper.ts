@@ -34,6 +34,16 @@ import {
 } from '@ottabase/ottaorm';
 import { getEnabledPackageTables } from '../config.migrations';
 import { changelogEntriesTable } from '../models/ChangelogEntry';
+// Legacy homepage tables (will be migrated to pages)
+import { homepageActionsTable } from '../models/HomepageAction';
+import { homepageDisplaySettingsTable } from '../models/HomepageDisplaySettings';
+import { homepageFeaturesTable } from '../models/HomepageFeature';
+import { homepageSectionsTable } from '../models/HomepageSection';
+// New flexible page system
+import { pagesTable } from '../models/Page';
+import { pageActionsTable } from '../models/PageAction';
+import { pageFeaturesTable } from '../models/PageFeature';
+import { pageSectionsTable } from '../models/PageSection';
 import { todosTable } from '../models/Todo';
 
 /**
@@ -63,6 +73,16 @@ export function getAllSchemas() {
     const appTables = {
         changelogEntriesTable,
         todosTable,
+        // Legacy homepage (kept for migration)
+        homepageSectionsTable,
+        homepageFeaturesTable,
+        homepageActionsTable,
+        homepageDisplaySettingsTable,
+        // New flexible page system
+        pagesTable,
+        pageSectionsTable,
+        pageFeaturesTable,
+        pageActionsTable,
     };
 
     // 3. Package schemas from enabled packages (ottablog, shortlinks, referrals, etc.)
@@ -105,6 +125,16 @@ export function getSchemaSummary() {
     const appTables = {
         changelogEntriesTable,
         todosTable,
+        // Legacy homepage (kept for migration)
+        homepageSectionsTable,
+        homepageFeaturesTable,
+        homepageActionsTable,
+        homepageDisplaySettingsTable,
+        // New flexible page system
+        pagesTable,
+        pageSectionsTable,
+        pageFeaturesTable,
+        pageActionsTable,
     };
 
     const packageTables = getEnabledPackageTables();

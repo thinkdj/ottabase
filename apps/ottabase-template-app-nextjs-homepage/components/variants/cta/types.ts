@@ -5,6 +5,8 @@ export type CTAAction = {
     href: string;
     label: ReactNode;
     variant?: 'default' | 'secondary' | 'outline' | 'ghost';
+    /** Lucide icon name (e.g. 'Rocket', 'ArrowRight') */
+    icon?: string;
     external?: boolean;
 };
 

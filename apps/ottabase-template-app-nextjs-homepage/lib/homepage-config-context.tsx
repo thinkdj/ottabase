@@ -6,11 +6,16 @@
  * Wraps `loadConfig` / `saveConfig` in React state so every consumer
  * re-renders when a slot variant is changed — enabling live preview on the
  * config page and instant updates on the homepage.
+ *
+ * Supports API-driven initial config: when `initialVariantBySlot` is provided
+ * (from GET /api/homepage/data display settings), it overrides the default
+ * config for any slot that has a valid variant set in the DB. localStorage
+ * takes final precedence (user's local customization wins).
  */
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { HomepageConfig, SlotName } from './homepage-config';
-import { getDefaultConfig, loadConfig, saveConfig } from './homepage-config';
+import { getDefaultConfig, loadConfig, saveConfig, SLOT_NAMES, SLOT_REGISTRY } from './homepage-config';
 
 type HomepageConfigContextValue = {
     config: HomepageConfig;
@@ -20,12 +25,60 @@ type HomepageConfigContextValue = {
 
 const HomepageConfigContext = createContext<HomepageConfigContextValue | null>(null);
 
-export function HomepageConfigProvider({ children }: { children: React.ReactNode }) {
-    const [config, setConfig] = useState<HomepageConfig>(getDefaultConfig);
+export interface HomepageConfigProviderProps {
+    children: React.ReactNode;
+    /** API-driven variant-by-slot from HomepageDisplaySettings (DB source of truth). */
+    initialVariantBySlot?: Record<string, string> | null;
+}
 
-    // Hydrate from localStorage on mount
+/**
+ * Merges API variants with defaults. localStorage precedence is applied
+ * separately in the provider's useEffect hook.
+ */
+function mergeConfig(apiVariants: Record<string, string> | null | undefined): HomepageConfig {
+    const defaults = getDefaultConfig();
+    const merged = { ...defaults };
+
+    // Layer 1: Apply API-driven variants (if valid)
+    if (apiVariants && typeof apiVariants === 'object') {
+        for (const slot of SLOT_NAMES) {
+            const value = apiVariants[slot];
+            if (typeof value === 'string') {
+                const validIds = SLOT_REGISTRY[slot].variants.map((v) => v.id);
+                if (validIds.includes(value)) {
+                    merged[slot] = value;
+                }
+            }
+        }
+    }
+
+    return merged;
+}
+
+export function HomepageConfigProvider({ children, initialVariantBySlot }: HomepageConfigProviderProps) {
+    // Start with API-merged config (or defaults)
+    const [config, setConfig] = useState<HomepageConfig>(() => mergeConfig(initialVariantBySlot));
+
+    // Layer 2: Hydrate from localStorage on mount (takes final precedence)
+    // Note: We detect user-set values by comparing to defaults. This means if a user
+    // explicitly sets a slot back to its default, it won't be treated as "user-configured".
+    // This is an acceptable trade-off vs. the complexity of tracking explicit modifications.
     useEffect(() => {
-        setConfig(loadConfig());
+        const localConfig = loadConfig();
+        // Merge: localStorage overrides API values where localStorage has valid entries
+        setConfig((current) => {
+            const final = { ...current };
+            for (const slot of SLOT_NAMES) {
+                const localValue = localConfig[slot];
+                const defaultValue = getDefaultConfig()[slot];
+                // Only use localStorage value if it differs from the default
+                // (indicating the user explicitly set it)
+                if (localValue !== defaultValue) {
+                    final[slot] = localValue;
+                }
+            }
+            return final;
+        });
     }, []);
 
     const setVariant = useCallback((slot: SlotName, variantId: string) => {
@@ -37,10 +90,11 @@ export function HomepageConfigProvider({ children }: { children: React.ReactNode
     }, []);
 
     const resetConfig = useCallback(() => {
-        const defaults = getDefaultConfig();
-        setConfig(defaults);
-        saveConfig(defaults);
-    }, []);
+        // Reset to API-merged config (not just defaults)
+        const base = mergeConfig(initialVariantBySlot);
+        setConfig(base);
+        saveConfig(base);
+    }, [initialVariantBySlot]);
 
     return (
         <HomepageConfigContext.Provider value={{ config, setVariant, resetConfig }}>
