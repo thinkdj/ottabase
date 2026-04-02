@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState } from 'react';
 
 interface AnnotationProps {
     title: string;
@@ -11,7 +11,7 @@ interface AnnotationProps {
  * Used for inline annotations in the rendered content.
  */
 export default function Annotation({ title, annotation, children }: AnnotationProps) {
-    const [isOpen, setIsOpen] = React.useState(false);
+    const [isOpen, setIsOpen] = useState(false);
 
     return (
         <span
