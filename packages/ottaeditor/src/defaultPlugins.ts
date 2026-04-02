@@ -13,6 +13,7 @@ import Table from '@editorjs/table';
 import Underline from '@editorjs/underline';
 import Warning from '@editorjs/warning';
 import AdvancedImageTool from './tools/AdvancedImageTool/AdvancedImageTool';
+import AnnotationTool from './tools/AnnotationTool/AnnotationTool';
 import CodeTool from './tools/CodeTool/CodeTool';
 import CTATool from './tools/CTATool/CTATool';
 import DisclosureTool from './tools/DisclosureTool/DisclosureTool';
@@ -50,6 +51,7 @@ export const DEFAULT_PLUGIN_NAMES = {
     MARKER: 'Marker',
     UNDERLINE: 'underline',
     INLINE_CODE: 'inlineCode',
+    ANNOTATION: 'annotation',
     SPOILER: 'spoiler',
     CTA: 'cta',
     REVIEW: 'review',
@@ -191,6 +193,11 @@ export const defaultPlugins: OttaEditorPlugin[] = [
         config: {},
     },
     {
+        name: DEFAULT_PLUGIN_NAMES.ANNOTATION,
+        tool: AnnotationTool as any,
+        config: {},
+    },
+    {
         name: DEFAULT_PLUGIN_NAMES.SPOILER,
         tool: SpoilerTool as any,
         config: {
@@ -296,6 +303,7 @@ export function getDefaultPlugins(names: DefaultPluginName[] | 'all'): OttaEdito
  * Re-export all default plugins for custom usage
  */
 export {
+    AnnotationTool,
     CheckList,
     CodeTool,
     CTATool,

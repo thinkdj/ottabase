@@ -52,13 +52,13 @@
 }
 
 .cdc-content-block .inline-code {
-    color: rgb(214, 51, 132);
-    background: rgb(248, 249, 250);
+    color: hsl(var(--destructive, 0 84% 60%));
+    background: hsl(var(--muted, 240 4.8% 95.9%));
 }
 
 .cdx-marker {
-    background: rgb(252, 233, 106);
-    color: rgb(0, 0, 0);
+    background: hsl(var(--warning, 45 93% 47%) / 0.35);
+    color: hsl(var(--foreground, 0 0% 0%));
 }
 
 .cdc-content-block.image-block {
@@ -1136,4 +1136,55 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     padding: 1px 6px;
     margin-left: 4px;
     vertical-align: middle;
+}
+
+/* ─── Annotation Tooltip ────────────────────────────────────────────────────── */
+.cdx-annotation,
+.cdc-annotation {
+    position: relative;
+    background-color: hsl(var(--warning, 45 93% 47%) / 0.2);
+    border-bottom: 2px solid hsl(var(--warning, 45 93% 47%));
+    padding: 0 2px;
+    cursor: help;
+}
+
+.cdc-annotation__tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 200px;
+    max-width: 300px;
+    padding: 12px;
+    background: hsl(var(--background, 0 0% 100%));
+    border: 1px solid hsl(var(--border, 0 0% 89%));
+    border-radius: 8px;
+    box-shadow: 0 4px 12px hsl(var(--foreground, 0 0% 0%) / 0.1);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+}
+
+.cdc-annotation__tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: hsl(var(--border, 0 0% 89%));
+}
+
+.cdc-annotation__title {
+    font-weight: 600;
+    font-size: 14px;
+    color: hsl(var(--foreground, 0 0% 0%));
+}
+
+.cdc-annotation__text {
+    font-size: 13px;
+    color: hsl(var(--muted-foreground, 0 0% 45%));
+    line-height: 1.5;
 }

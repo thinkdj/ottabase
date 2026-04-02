@@ -111,3 +111,117 @@
 
 .cdx-search-field__icon svg {
 }
+
+/* ─── Table Tool Dark Mode Fix ─────────────────────────────────────────────── */
+
+/* Table wrapper */
+.tc-wrap {
+    --color-background: hsl(var(--background));
+    --color-border: hsl(var(--border));
+    --color-text: hsl(var(--foreground));
+}
+
+/* Table cells */
+.tc-table {
+    border-color: hsl(var(--border)) !important;
+}
+
+.tc-row {
+    border-color: hsl(var(--border)) !important;
+}
+
+.tc-cell {
+    border-color: hsl(var(--border)) !important;
+    background: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.tc-cell::before {
+    background: transparent !important;
+}
+
+.tc-cell--selected {
+    background: hsl(var(--accent)) !important;
+}
+
+/* Header row */
+.tc-row--head {
+    background: hsl(var(--muted)) !important;
+}
+
+.tc-row--head .tc-cell {
+    background: hsl(var(--muted)) !important;
+    font-weight: 600;
+}
+
+/* Toolbars and controls */
+.tc-toolbox,
+.tc-toolbox--row,
+.tc-toolbox--column {
+    background: hsl(var(--background)) !important;
+    border-color: hsl(var(--border)) !important;
+}
+
+.tc-toolbox__toggler {
+    background: hsl(var(--background)) !important;
+    border-color: hsl(var(--border)) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.tc-toolbox__toggler:hover {
+    background: hsl(var(--accent)) !important;
+}
+
+.tc-toolbox__toggler svg {
+    fill: hsl(var(--foreground)) !important;
+}
+
+/* Context menu (add column to left/right, delete) */
+.tc-popover {
+    background: hsl(var(--background)) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1) !important;
+}
+
+.tc-popover__item {
+    color: hsl(var(--foreground)) !important;
+}
+
+.tc-popover__item:hover {
+    background: hsl(var(--accent)) !important;
+}
+
+.tc-popover__item-icon {
+    color: hsl(var(--muted-foreground)) !important;
+}
+
+.tc-popover__item-icon svg {
+    fill: currentColor !important;
+}
+
+.tc-popover__item--confirm {
+    color: hsl(var(--destructive)) !important;
+}
+
+.tc-popover__item--confirm:hover {
+    background: hsl(var(--destructive) / 0.1) !important;
+}
+
+/* Add column/row buttons */
+.tc-add-row,
+.tc-add-column {
+    background: hsl(var(--background)) !important;
+    border-color: hsl(var(--border)) !important;
+    color: hsl(var(--muted-foreground)) !important;
+}
+
+.tc-add-row:hover,
+.tc-add-column:hover {
+    background: hsl(var(--accent)) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.tc-add-row svg,
+.tc-add-column svg {
+    fill: currentColor !important;
+}
