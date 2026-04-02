@@ -1261,10 +1261,7 @@ function BlogEditorForm({ postId, isEditMode, initialData }: BlogEditorFormProps
                                                     <DropdownMenuItem
                                                         onClick={async () => {
                                                             const json = await mainEditor.exportJSON();
-                                                            downloadText(
-                                                                JSON.stringify(json, null, 2),
-                                                                'post-content.json',
-                                                            );
+                                                            downloadText(json ?? '', 'post-content.json');
                                                         }}
                                                     >
                                                         Export JSON
