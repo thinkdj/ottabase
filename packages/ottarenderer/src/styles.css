@@ -1188,3 +1188,255 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     color: hsl(var(--muted-foreground, 0 0% 45%));
     line-height: 1.5;
 }
+
+/* ======================================= */
+/* Before / After Slider                   */
+/* ======================================= */
+
+.cdc-before-after {
+    margin: 1.5rem auto;
+}
+
+.cdc-before-after__container {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid hsl(var(--border, 0 0% 89%));
+    cursor: ew-resize;
+    user-select: none;
+    touch-action: none;
+    background: hsl(var(--muted, 240 4.8% 95.9%) / 0.3);
+}
+
+.cdc-before-after__container--vertical {
+    cursor: ns-resize;
+}
+
+/* After image: base layer */
+.cdc-before-after__after {
+    display: block;
+    width: 100%;
+    height: auto;
+    pointer-events: none;
+}
+
+/* Before image: clipped overlay */
+.cdc-before-after__before {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.cdc-before-after__before img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Labels */
+.cdc-before-after__label {
+    position: absolute;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: hsl(var(--primary-foreground, 0 0% 100%));
+    background: hsl(var(--primary, 221.2 83.2% 53.3%) / 0.85);
+    pointer-events: none;
+    z-index: 5;
+    backdrop-filter: blur(4px);
+}
+
+.cdc-before-after__label--before {
+    top: 12px;
+    left: 12px;
+}
+
+.cdc-before-after__label--after {
+    top: 12px;
+    right: 12px;
+}
+
+.cdc-before-after__container--vertical .cdc-before-after__label--before {
+    top: 12px;
+    left: 12px;
+}
+
+.cdc-before-after__container--vertical .cdc-before-after__label--after {
+    top: auto;
+    bottom: 12px;
+    left: 12px;
+    right: auto;
+}
+
+/* Drag handle */
+.cdc-before-after__handle {
+    position: absolute;
+    background: hsl(var(--primary, 221.2 83.2% 53.3%));
+    z-index: 10;
+    cursor: grab;
+    transition: box-shadow 0.15s ease;
+}
+
+.cdc-before-after__handle::before {
+    content: '';
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: hsl(var(--primary, 221.2 83.2% 53.3%));
+    border: 3px solid hsl(var(--primary-foreground, 0 0% 100%));
+    box-shadow: 0 2px 8px hsl(var(--foreground, 0 0% 0%) / 0.2);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.cdc-before-after__handle:hover {
+    box-shadow: 0 0 0 4px hsl(var(--primary, 221.2 83.2% 53.3%) / 0.3);
+}
+
+.cdc-before-after__handle:active {
+    cursor: grabbing;
+}
+
+.cdc-before-after__caption {
+    margin-top: 8px;
+    font-size: 14px;
+    color: hsl(var(--muted-foreground, 0 0% 45%));
+    text-align: center;
+}
+
+/* ======================================= */
+/* Image Hotspots                          */
+/* ======================================= */
+
+.cdc-image-hotspots {
+    margin: 1.5rem auto;
+}
+
+.cdc-image-hotspots__container {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid hsl(var(--border, 0 0% 89%));
+}
+
+.cdc-image-hotspots__image {
+    display: block;
+    width: 100%;
+    height: auto;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* Hotspot dot */
+.cdc-image-hotspots__dot {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: hsl(var(--primary, 221.2 83.2% 53.3%));
+    border: 3px solid hsl(var(--primary-foreground, 0 0% 100%));
+    box-shadow: 0 2px 8px hsl(var(--foreground, 0 0% 0%) / 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    transition:
+        box-shadow 0.15s ease,
+        transform 0.15s ease;
+}
+
+.cdc-image-hotspots__dot:hover {
+    box-shadow: 0 0 0 4px hsl(var(--primary, 221.2 83.2% 53.3%) / 0.3);
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+.cdc-image-hotspots__dot--active {
+    box-shadow: 0 0 0 6px hsl(var(--primary, 221.2 83.2% 53.3%) / 0.35);
+    transform: translate(-50%, -50%) scale(1.15);
+    z-index: 15;
+}
+
+.cdc-image-hotspots__dot:focus-visible {
+    outline: 2px solid hsl(var(--ring, 221.2 83.2% 53.3%));
+    outline-offset: 2px;
+}
+
+.cdc-image-hotspots__dot-number {
+    font-size: 12px;
+    font-weight: 700;
+    color: hsl(var(--primary-foreground, 0 0% 100%));
+    line-height: 1;
+    user-select: none;
+}
+
+/* Tooltip */
+.cdc-image-hotspots__tooltip {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 200px;
+    max-width: 300px;
+    background: hsl(var(--background, 0 0% 100%));
+    border: 1px solid hsl(var(--border, 0 0% 89%));
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 4px 16px hsl(var(--foreground, 0 0% 0%) / 0.12);
+    z-index: 20;
+    text-align: left;
+}
+
+/* Arrow */
+.cdc-image-hotspots__tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-bottom-color: hsl(var(--border, 0 0% 89%));
+}
+
+.cdc-image-hotspots__tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: hsl(var(--background, 0 0% 100%));
+}
+
+.cdc-image-hotspots__tooltip-title {
+    display: block;
+    font-weight: 600;
+    font-size: 14px;
+    color: hsl(var(--foreground, 0 0% 0%));
+    margin-bottom: 4px;
+}
+
+.cdc-image-hotspots__tooltip-content {
+    font-size: 13px;
+    color: hsl(var(--muted-foreground, 0 0% 45%));
+    line-height: 1.5;
+    margin: 0;
+}
+
+.cdc-image-hotspots__caption {
+    margin-top: 8px;
+    font-size: 14px;
+    color: hsl(var(--muted-foreground, 0 0% 45%));
+    text-align: center;
+}

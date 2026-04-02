@@ -14,10 +14,12 @@ import Underline from '@editorjs/underline';
 import Warning from '@editorjs/warning';
 import AdvancedImageTool from './tools/AdvancedImageTool/AdvancedImageTool';
 import AnnotationTool from './tools/AnnotationTool/AnnotationTool';
+import BeforeAfterTool from './tools/BeforeAfterTool/BeforeAfterTool';
 import CodeTool from './tools/CodeTool/CodeTool';
 import CTATool from './tools/CTATool/CTATool';
 import DisclosureTool from './tools/DisclosureTool/DisclosureTool';
 import FaqTool from './tools/FaqTool/FaqTool';
+import ImageHotspotsTool from './tools/ImageHotspotsTool/ImageHotspotsTool';
 import LayoutTool from './tools/LayoutTool/LayoutTool';
 import MapTool from './tools/MapTool/MapTool';
 import MediaEmbedTool from './tools/MediaEmbedTool/MediaEmbedTool';
@@ -52,6 +54,7 @@ export const DEFAULT_PLUGIN_NAMES = {
     UNDERLINE: 'underline',
     INLINE_CODE: 'inlineCode',
     ANNOTATION: 'annotation',
+    BEFORE_AFTER: 'beforeAfter',
     SPOILER: 'spoiler',
     CTA: 'cta',
     REVIEW: 'review',
@@ -62,6 +65,7 @@ export const DEFAULT_PLUGIN_NAMES = {
     MEDIA_EMBED: 'mediaEmbed',
     MEDIA_GALLERY: 'mediaGallery',
     FAQ: 'faq',
+    IMAGE_HOTSPOTS: 'imageHotspots',
     TESTIMONIAL: 'testimonial',
     REFERENCES: 'references',
 } as const;
@@ -198,6 +202,11 @@ export const defaultPlugins: OttaEditorPlugin[] = [
         config: {},
     },
     {
+        name: DEFAULT_PLUGIN_NAMES.BEFORE_AFTER,
+        tool: BeforeAfterTool as any,
+        config: {} as any,
+    },
+    {
         name: DEFAULT_PLUGIN_NAMES.SPOILER,
         tool: SpoilerTool as any,
         config: {
@@ -263,6 +272,11 @@ export const defaultPlugins: OttaEditorPlugin[] = [
         } as any,
     },
     {
+        name: DEFAULT_PLUGIN_NAMES.IMAGE_HOTSPOTS,
+        tool: ImageHotspotsTool as any,
+        config: {} as any,
+    },
+    {
         name: DEFAULT_PLUGIN_NAMES.TESTIMONIAL,
         tool: TestimonialTool as any,
         config: {
@@ -304,6 +318,7 @@ export function getDefaultPlugins(names: DefaultPluginName[] | 'all'): OttaEdito
  */
 export {
     AnnotationTool,
+    BeforeAfterTool,
     CheckList,
     CodeTool,
     CTATool,
@@ -312,6 +327,7 @@ export {
     Embed,
     FaqTool,
     Header,
+    ImageHotspotsTool,
     InlineCode,
     LayoutTool,
     LinkTool,

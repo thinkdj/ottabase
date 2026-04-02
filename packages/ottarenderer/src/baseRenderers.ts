@@ -4,11 +4,13 @@
  * Layout needs these renderers for nested Blocks.
  */
 import AdvancedImageBlock from './components/AdvancedImage/AdvancedImage';
+import BeforeAfter from './components/BeforeAfter';
 import Checklist from './components/Checklist';
 import Code from './components/Code';
 import CTA from './components/CTA';
 import Disclosure from './components/Disclosure';
 import Faq from './components/Faq';
+import ImageHotspots from './components/ImageHotspots';
 import List from './components/List';
 import Map from './components/Map';
 import MediaEmbed from './components/MediaEmbed';
@@ -26,6 +28,7 @@ export const baseRenderers = {
     checklist: Checklist,
     image: AdvancedImageBlock,
     advancedImage: AdvancedImageBlock,
+    beforeAfter: BeforeAfter,
     list: List,
     table: Table,
     code: Code,
@@ -40,6 +43,7 @@ export const baseRenderers = {
     mediaEmbed: MediaEmbed,
     mediaGallery: MediaGallery,
     faq: Faq,
+    imageHotspots: ImageHotspots,
     testimonial: Testimonial,
     references: References,
 };

@@ -26,6 +26,7 @@ export {
     Embed,
     FaqTool,
     Header,
+    ImageHotspotsTool,
     InlineCode,
     LayoutTool,
     LinkTool,
@@ -43,6 +44,7 @@ export {
     TestimonialTool,
     Underline,
     Warning,
+    BeforeAfterTool,
     defaultPlugins,
     defaultPluginsMap,
     getDefaultPlugins,
@@ -74,6 +76,12 @@ export type {
     TestimonialToolConfig,
     TestimonialVariant,
 } from './tools/TestimonialTool/TestimonialTool';
+export type { BeforeAfterData, BeforeAfterToolConfig } from './tools/BeforeAfterTool/BeforeAfterTool';
+export type {
+    HotspotItem,
+    ImageHotspotsData,
+    ImageHotspotsToolConfig,
+} from './tools/ImageHotspotsTool/ImageHotspotsTool';
 
 export type { DefaultPluginName } from './defaultPlugins';
 

@@ -4,11 +4,13 @@ export { default as HtmlRenderer } from './HtmlRenderer';
 
 // Export custom renderers
 export { default as AdvancedImageBlock } from './components/AdvancedImage/AdvancedImage';
+export { default as BeforeAfter } from './components/BeforeAfter';
 export { default as Checklist } from './components/Checklist';
 export { default as Code } from './components/Code';
 export { default as CTA } from './components/CTA';
 export { default as Disclosure } from './components/Disclosure';
 export { default as Faq } from './components/Faq';
+export { default as ImageHotspots } from './components/ImageHotspots';
 export { default as Layout } from './components/Layout';
 export { default as List } from './components/List';
 export { default as Map } from './components/Map';
@@ -25,10 +27,12 @@ export { default as Warning } from './components/Warning';
 
 // Export types
 export type { AdvancedImageData, UploadResponse } from './components/AdvancedImage/advancedimage.types';
+export type { BeforeAfterData } from './components/BeforeAfter';
 export type { ChecklistItem } from './components/Checklist';
 export type { CTAData } from './components/CTA';
 export type { AIDisclosureLevel, DisclosureData } from './components/Disclosure';
 export type { FaqData, FaqItem } from './components/Faq';
+export type { HotspotItem, ImageHotspotsData } from './components/ImageHotspots';
 export type { LayoutData, LayoutPreset } from './components/Layout';
 export type { MapData, MapProvider, MapTheme } from './components/Map';
 export type { MediaEmbedData } from './components/MediaEmbed';

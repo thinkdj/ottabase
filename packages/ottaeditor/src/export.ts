@@ -232,6 +232,29 @@ function blockToMarkdown(block: { type: string; data: Record<string, any> }): st
                 .join('\n');
         }
 
+        case 'beforeAfter': {
+            const lines: string[] = ['### Before / After'];
+            if (data.beforeUrl) lines.push(`**${data.beforeLabel || 'Before'}:** ![before](${data.beforeUrl})`);
+            if (data.afterUrl) lines.push(`**${data.afterLabel || 'After'}:** ![after](${data.afterUrl})`);
+            if (data.caption) lines.push(`*${convertInlineHTML(data.caption)}*`);
+            return lines.join('\n\n');
+        }
+
+        case 'imageHotspots': {
+            const lines: string[] = [];
+            if (data.imageUrl) lines.push(`![${data.alt || ''}](${data.imageUrl})`);
+            const hotspots = data.hotspots || [];
+            if (hotspots.length > 0) {
+                lines.push('');
+                hotspots.forEach((hs: { title: string; content: string; x: number; y: number }, idx: number) => {
+                    const title = hs.title || `Hotspot ${idx + 1}`;
+                    lines.push(`${idx + 1}. **${title}** — ${hs.content || ''}`);
+                });
+            }
+            if (data.caption) lines.push(`\n*${convertInlineHTML(data.caption)}*`);
+            return lines.join('\n');
+        }
+
         default:
             return `<!-- unknown block: ${type} -->`;
     }
