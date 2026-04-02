@@ -53,6 +53,7 @@ export default class BeforeAfterTool {
     /* State for drag interaction */
     private isDragging = false;
     private containerEl: HTMLElement | null = null;
+    private boundEndDrag = () => this.endDrag();
 
     static get toolbox() {
         return {
@@ -294,8 +295,8 @@ export default class BeforeAfterTool {
         handle.addEventListener('touchstart', (e) => this.startDrag(e), { passive: false });
         container.addEventListener('mousemove', (e) => this.onDrag(e));
         container.addEventListener('touchmove', (e) => this.onDrag(e), { passive: false });
-        document.addEventListener('mouseup', () => this.endDrag());
-        document.addEventListener('touchend', () => this.endDrag());
+        document.addEventListener('mouseup', this.boundEndDrag);
+        document.addEventListener('touchend', this.boundEndDrag);
 
         preview.appendChild(container);
         this.wrapper.appendChild(preview);
@@ -416,6 +417,8 @@ export default class BeforeAfterTool {
 
     destroy(): void {
         this.isDragging = false;
+        document.removeEventListener('mouseup', this.boundEndDrag);
+        document.removeEventListener('touchend', this.boundEndDrag);
         this.containerEl = null;
     }
 }

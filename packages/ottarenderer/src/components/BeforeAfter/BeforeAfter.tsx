@@ -32,33 +32,29 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
 
     const isVertical = orientation === 'vertical';
 
-    const handleMove = useCallback(
-        (clientX: number, clientY: number) => {
-            if (!isDragging.current || !containerRef.current) return;
-            const rect = containerRef.current.getBoundingClientRect();
-            let pct: number;
-            if (isVertical) {
-                pct = ((clientY - rect.top) / rect.height) * 100;
-            } else {
-                pct = ((clientX - rect.left) / rect.width) * 100;
-            }
-            setPosition(Math.max(0, Math.min(100, pct)));
-        },
-        [isVertical],
-    );
+    const isVerticalRef = useRef(isVertical);
+    isVerticalRef.current = isVertical;
 
     const handlePointerDown = useCallback(() => {
         isDragging.current = true;
     }, []);
 
-    const handlePointerUp = useCallback(() => {
-        isDragging.current = false;
-    }, []);
-
     useEffect(() => {
-        const onMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
+        const onMouseMove = (e: MouseEvent) => {
+            if (!isDragging.current || !containerRef.current) return;
+            const rect = containerRef.current.getBoundingClientRect();
+            const pct = isVerticalRef.current
+                ? ((e.clientY - rect.top) / rect.height) * 100
+                : ((e.clientX - rect.left) / rect.width) * 100;
+            setPosition(Math.max(0, Math.min(100, pct)));
+        };
         const onTouchMove = (e: TouchEvent) => {
-            if (e.touches.length) handleMove(e.touches[0].clientX, e.touches[0].clientY);
+            if (!isDragging.current || !containerRef.current || !e.touches.length) return;
+            const rect = containerRef.current.getBoundingClientRect();
+            const pct = isVerticalRef.current
+                ? ((e.touches[0].clientY - rect.top) / rect.height) * 100
+                : ((e.touches[0].clientX - rect.left) / rect.width) * 100;
+            setPosition(Math.max(0, Math.min(100, pct)));
         };
         const onUp = () => {
             isDragging.current = false;
@@ -74,7 +70,7 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
             document.removeEventListener('mouseup', onUp);
             document.removeEventListener('touchend', onUp);
         };
-    }, [handleMove]);
+    }, []);
 
     const clipBefore = isVertical ? `inset(0 0 ${100 - position}% 0)` : `inset(0 ${100 - position}% 0 0)`;
 
