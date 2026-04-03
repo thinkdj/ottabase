@@ -27,6 +27,9 @@ const { editorRef, save, hasUnsavedChanges, undo, redo, canUndo, canRedo } = use
 `header`, `paragraph`, `list`, `checklist`, `code`, `quote`, `table`, `warning`, `delimiter`, `linkTool`, `embed`,
 `raw`, `Marker`, `underline`, `inlineCode`
 
+Raw HTML blocks are sanitized on save to remove wrapper/executable tags (`html`, `head`, `body`, `script`, `iframe`) and
+unsafe inline attributes/protocols.
+
 ### Custom Blocks (17)
 
 | Plugin          | Description                                                                            |
@@ -106,6 +109,8 @@ interface DisclosureData {
     sponsoredType: 'preset' | 'custom';
     sponsoredText?: string;
 }
+// AI presets: slight="AI assisted in light editing", mid="significantly used", high="primarily generated"
+// Sponsored preset: "This content was created in partnership with a sponsor."
 ```
 
 </details>
@@ -132,8 +137,20 @@ interface ImageHotspotsData {
     caption: string;
     height?: string; // e.g., '400px'
     imageFit?: 'contain' | 'cover';
+    imagePosition?: ImagePosition; // Focus point when cover mode (default: 'center')
     hotspots: Array<{ id: string; x: number; y: number; title: string; content: string }>;
 }
+
+type ImagePosition =
+    | 'top-left'
+    | 'top'
+    | 'top-right'
+    | 'left'
+    | 'center'
+    | 'right'
+    | 'bottom-left'
+    | 'bottom'
+    | 'bottom-right';
 ```
 
 </details>
@@ -151,8 +168,21 @@ interface BeforeAfterData {
     sliderPosition: number; // 0–100
     height?: string;
     imageFit?: 'contain' | 'cover';
+    beforePosition?: ImagePosition; // Focus point when cover mode
+    afterPosition?: ImagePosition;
     caption: string;
 }
+
+type ImagePosition =
+    | 'top-left'
+    | 'top'
+    | 'top-right'
+    | 'left'
+    | 'center'
+    | 'right'
+    | 'bottom-left'
+    | 'bottom'
+    | 'bottom-right';
 ```
 
 </details>
@@ -246,6 +276,40 @@ window.addEventListener('media-library-selected-item', (e: CustomEvent) => {
 ```
 
 See `ImageHotspotsTool` and `BeforeAfterTool` for examples.
+
+## Export
+
+Standalone export functions:
+
+```typescript
+import { exportToJSON, exportToMarkdown, convertInlineHTML } from '@ottabase/ottaeditor';
+
+const json = exportToJSON(outputData); // Pretty-print JSON
+const md = exportToMarkdown(outputData); // Convert to Markdown
+```
+
+`convertInlineHTML` converts `<b>` → `**`, `<i>` → `*`, `<a>` → `[text](url)`, `<code>` → `` ` ``, `<mark>` → `==`.
+
+## UndoRedoManager
+
+For advanced usage:
+
+```typescript
+import { UndoRedoManager } from '@ottabase/ottaeditor';
+
+const manager = new UndoRedoManager({
+    maxHistory: 50, // max states (default 50)
+    debounceMs: 500, // debounce delay (default 500)
+    onChange: ({ canUndo, canRedo }) => {},
+});
+
+manager.pushState(data); // debounced
+manager.pushStateImmediate(data); // immediate
+manager.undo(); // returns previous state or null
+manager.redo(); // returns next state or null
+manager.clear(); // reset
+manager.destroy(); // cleanup
+```
 
 ## Types
 

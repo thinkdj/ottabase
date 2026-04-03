@@ -27,6 +27,18 @@ const Icons = {
     remove: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
 };
 
+/** Image position presets (maps to CSS object-position) */
+export type ImagePosition =
+    | 'top-left'
+    | 'top'
+    | 'top-right'
+    | 'left'
+    | 'center'
+    | 'right'
+    | 'bottom-left'
+    | 'bottom'
+    | 'bottom-right';
+
 export interface HotspotItem {
     /** Unique id per hotspot (for keying) */
     id: string;
@@ -53,6 +65,8 @@ export interface ImageHotspotsData {
     height?: string;
     /** Image fit mode: 'contain' preserves aspect ratio, 'cover' fills container */
     imageFit?: 'contain' | 'cover';
+    /** Image position when using cover fit */
+    imagePosition?: ImagePosition;
 }
 
 export interface ImageHotspotsToolConfig {
@@ -69,7 +83,24 @@ const DEFAULT_DATA: ImageHotspotsData = {
     hotspots: [],
     height: '',
     imageFit: 'contain',
+    imagePosition: 'center',
 };
+
+/** Convert position preset to CSS object-position value */
+function positionToCSS(pos: ImagePosition): string {
+    const map: Record<ImagePosition, string> = {
+        'top-left': 'left top',
+        top: 'center top',
+        'top-right': 'right top',
+        left: 'left center',
+        center: 'center center',
+        right: 'right center',
+        'bottom-left': 'left bottom',
+        bottom: 'center bottom',
+        'bottom-right': 'right bottom',
+    };
+    return map[pos] || 'center center';
+}
 
 /* ───────────────────────────────────────────────────────────────────────────── */
 
@@ -365,6 +396,30 @@ export default class ImageHotspotsTool {
             }),
         );
 
+        this.wrapper.appendChild(form);
+
+        /* Size controls above canvas */
+        this.buildSizeControls();
+
+        /* Hotspot list (before canvas so image is last) */
+        this.buildHotspotList();
+
+        /* Canvas (image + dots) - LAST */
+        this.buildCanvas();
+    }
+
+    /* ── Size Controls (above canvas) ──────────────────────────────────────── */
+
+    private buildSizeControls(): void {
+        if (!this.wrapper) return;
+
+        /* Remove old size controls */
+        const old = this.wrapper.querySelector('.cdx-image-hotspots__size-controls');
+        if (old) old.remove();
+
+        const sizeControls = document.createElement('div');
+        sizeControls.className = 'cdx-image-hotspots__size-controls';
+
         /* Height + Image Fit row */
         const sizeRow = document.createElement('div');
         sizeRow.className = 'cdx-image-hotspots__size-row';
@@ -404,9 +459,8 @@ export default class ImageHotspotsTool {
         containBtn.title = 'Preserve aspect ratio';
         containBtn.addEventListener('click', () => {
             this.data.imageFit = 'contain';
-            containBtn.classList.add('cdx-image-hotspots__fit-btn--active');
-            coverBtn.classList.remove('cdx-image-hotspots__fit-btn--active');
             this.refreshCanvas();
+            this.buildSizeControls(); // Rebuild to hide position picker
         });
 
         const coverBtn = document.createElement('button');
@@ -416,9 +470,8 @@ export default class ImageHotspotsTool {
         coverBtn.title = 'Fill container';
         coverBtn.addEventListener('click', () => {
             this.data.imageFit = 'cover';
-            coverBtn.classList.add('cdx-image-hotspots__fit-btn--active');
-            containBtn.classList.remove('cdx-image-hotspots__fit-btn--active');
             this.refreshCanvas();
+            this.buildSizeControls(); // Rebuild to show position picker
         });
 
         fitToggle.appendChild(containBtn);
@@ -426,15 +479,76 @@ export default class ImageHotspotsTool {
         fitGroup.appendChild(fitLabel);
         fitGroup.appendChild(fitToggle);
         sizeRow.appendChild(fitGroup);
-        form.appendChild(sizeRow);
 
-        this.wrapper.appendChild(form);
+        /* Position picker (only when cover mode) */
+        if (this.data.imageFit === 'cover') {
+            sizeRow.appendChild(
+                this.createPositionPicker('Image Focus', this.data.imagePosition || 'center', (pos) => {
+                    this.data.imagePosition = pos;
+                    this.refreshCanvas();
+                }),
+            );
+        }
 
-        /* Canvas (image + dots) */
-        this.buildCanvas();
+        sizeControls.appendChild(sizeRow);
 
-        /* Hotspot list */
-        this.buildHotspotList();
+        /* Insert before canvas (so it stays above image on rebuild) */
+        const canvas = this.wrapper.querySelector('.cdx-image-hotspots__canvas');
+        if (canvas) {
+            this.wrapper.insertBefore(sizeControls, canvas);
+        } else {
+            this.wrapper.appendChild(sizeControls);
+        }
+    }
+
+    /* ── Position Picker (3x3 grid) ────────────────────────────────────────── */
+
+    private createPositionPicker(
+        label: string,
+        current: ImagePosition,
+        onChange: (pos: ImagePosition) => void,
+    ): HTMLElement {
+        const group = document.createElement('div');
+        group.className = 'ob-input-group';
+
+        const labelEl = document.createElement('label');
+        labelEl.className = 'ob-label';
+        labelEl.textContent = label;
+        group.appendChild(labelEl);
+
+        const grid = document.createElement('div');
+        grid.className = 'cdx-image-hotspots__position-grid';
+
+        const positions: ImagePosition[] = [
+            'top-left',
+            'top',
+            'top-right',
+            'left',
+            'center',
+            'right',
+            'bottom-left',
+            'bottom',
+            'bottom-right',
+        ];
+
+        positions.forEach((pos) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `cdx-image-hotspots__position-btn${current === pos ? ' cdx-image-hotspots__position-btn--active' : ''}`;
+            btn.dataset.position = pos;
+            btn.title = pos.replace('-', ' ');
+            btn.addEventListener('click', () => {
+                grid.querySelectorAll('.cdx-image-hotspots__position-btn').forEach((b) => {
+                    b.classList.remove('cdx-image-hotspots__position-btn--active');
+                });
+                btn.classList.add('cdx-image-hotspots__position-btn--active');
+                onChange(pos);
+            });
+            grid.appendChild(btn);
+        });
+
+        group.appendChild(grid);
+        return group;
     }
 
     /* ── Canvas ─────────────────────────────────────────────────────────────── */
@@ -463,6 +577,10 @@ export default class ImageHotspotsTool {
         img.src = this.data.imageUrl;
         img.alt = this.data.alt || '';
         img.draggable = false;
+        /* Apply object-position when using cover mode */
+        if (this.data.imageFit === 'cover' && this.data.imagePosition) {
+            img.style.objectPosition = positionToCSS(this.data.imagePosition);
+        }
         canvas.appendChild(img);
 
         /* Click-to-add hint */

@@ -49,6 +49,62 @@
     box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
 }
 
+/* ── Size Controls (below canvas) ────────────────────────────────────────── */
+
+.cdx-image-hotspots__size-controls {
+    margin-top: 12px;
+}
+
+/* ── Position Grid (3x3) ─────────────────────────────────────────────────── */
+
+.cdx-image-hotspots__position-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    width: 72px;
+    height: 72px;
+    padding: 2px;
+    background: hsl(var(--muted));
+    border-radius: 6px;
+}
+
+.cdx-image-hotspots__position-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+.cdx-image-hotspots__position-btn::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: hsl(var(--muted-foreground) / 0.4);
+    transition: all 0.15s ease;
+}
+
+.cdx-image-hotspots__position-btn:hover::before {
+    background: hsl(var(--foreground) / 0.6);
+    transform: scale(1.2);
+}
+
+.cdx-image-hotspots__position-btn--active {
+    background: hsl(var(--background));
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+}
+
+.cdx-image-hotspots__position-btn--active::before {
+    background: hsl(var(--primary));
+    width: 8px;
+    height: 8px;
+}
+
 /* ── Input with Gallery Button ───────────────────────────────────────────── */
 
 .cdx-image-hotspots__input-with-gallery {
@@ -91,16 +147,18 @@
     position: relative;
     margin-top: 12px;
     border-radius: 8px;
-    overflow: hidden;
     border: 1px solid hsl(var(--border));
     background: hsl(var(--muted) / 0.3);
     cursor: crosshair;
+    /* Allow tooltip to overflow */
+    overflow: visible;
 }
 
 .cdx-image-hotspots__canvas img {
     display: block;
     width: 100%;
     height: auto;
+    margin: 0; /* Reset prose styles */
     pointer-events: none;
     user-select: none;
     object-fit: contain;

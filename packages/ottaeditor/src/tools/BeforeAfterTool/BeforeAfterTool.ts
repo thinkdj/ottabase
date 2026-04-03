@@ -28,6 +28,18 @@ const Icons = {
         '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="5" y1="12" x2="19" y2="12"/><path d="M12 9V6"/><path d="M12 18v-3"/></svg>',
 };
 
+/** Image position presets (maps to CSS object-position) */
+export type ImagePosition =
+    | 'top-left'
+    | 'top'
+    | 'top-right'
+    | 'left'
+    | 'center'
+    | 'right'
+    | 'bottom-left'
+    | 'bottom'
+    | 'bottom-right';
+
 export interface BeforeAfterData {
     /** URL for the "before" image (left / top) */
     beforeUrl: string;
@@ -47,6 +59,10 @@ export interface BeforeAfterData {
     height?: string;
     /** Image fit mode: 'contain' preserves aspect ratio, 'cover' fills container */
     imageFit?: 'contain' | 'cover';
+    /** Position of before image when using cover fit */
+    beforePosition?: ImagePosition;
+    /** Position of after image when using cover fit */
+    afterPosition?: ImagePosition;
 }
 
 export interface BeforeAfterToolConfig {
@@ -72,7 +88,25 @@ const DEFAULT_DATA: BeforeAfterData = {
     caption: '',
     height: '',
     imageFit: 'contain',
+    beforePosition: 'center',
+    afterPosition: 'center',
 };
+
+/** Convert position preset to CSS object-position value */
+function positionToCSS(pos: ImagePosition): string {
+    const map: Record<ImagePosition, string> = {
+        'top-left': 'left top',
+        top: 'center top',
+        'top-right': 'right top',
+        left: 'left center',
+        center: 'center center',
+        right: 'right center',
+        'bottom-left': 'left bottom',
+        bottom: 'center bottom',
+        'bottom-right': 'right bottom',
+    };
+    return map[pos] || 'center center';
+}
 
 /* ───────────────────────────────────────────────────────────────────────────── */
 
@@ -312,6 +346,34 @@ export default class BeforeAfterTool {
 
         form.appendChild(optionsRow);
 
+        /* Caption */
+        form.appendChild(
+            this.createInputGroup('Caption', this.data.caption, 'Add a caption…', (v) => {
+                this.data.caption = v;
+            }),
+        );
+
+        this.wrapper.appendChild(form);
+
+        /* Size controls above preview */
+        this.buildSizeControls();
+
+        /* Interactive preview */
+        this.buildPreview();
+    }
+
+    /* ── Size Controls (above preview) ─────────────────────────────────────── */
+
+    private buildSizeControls(): void {
+        if (!this.wrapper) return;
+
+        /* Remove old size controls */
+        const old = this.wrapper.querySelector('.cdx-before-after__size-controls');
+        if (old) old.remove();
+
+        const sizeControls = document.createElement('div');
+        sizeControls.className = 'cdx-before-after__size-controls';
+
         /* Height + Image Fit row */
         const sizeRow = document.createElement('div');
         sizeRow.className = 'cdx-before-after__size-row';
@@ -351,9 +413,8 @@ export default class BeforeAfterTool {
         containBtn.title = 'Preserve aspect ratio';
         containBtn.addEventListener('click', () => {
             this.data.imageFit = 'contain';
-            containBtn.classList.add('cdx-before-after__fit-btn--active');
-            coverBtn.classList.remove('cdx-before-after__fit-btn--active');
             this.refreshPreview();
+            this.buildSizeControls(); // Rebuild to hide/show position pickers
         });
 
         const coverBtn = document.createElement('button');
@@ -363,9 +424,8 @@ export default class BeforeAfterTool {
         coverBtn.title = 'Fill container';
         coverBtn.addEventListener('click', () => {
             this.data.imageFit = 'cover';
-            coverBtn.classList.add('cdx-before-after__fit-btn--active');
-            containBtn.classList.remove('cdx-before-after__fit-btn--active');
             this.refreshPreview();
+            this.buildSizeControls(); // Rebuild to show position pickers
         });
 
         fitToggle.appendChild(containBtn);
@@ -373,19 +433,87 @@ export default class BeforeAfterTool {
         fitGroup.appendChild(fitLabel);
         fitGroup.appendChild(fitToggle);
         sizeRow.appendChild(fitGroup);
-        form.appendChild(sizeRow);
+        sizeControls.appendChild(sizeRow);
 
-        /* Caption */
-        form.appendChild(
-            this.createInputGroup('Caption', this.data.caption, 'Add a caption…', (v) => {
-                this.data.caption = v;
-            }),
-        );
+        /* Position pickers (only shown when imageFit === 'cover') */
+        if (this.data.imageFit === 'cover') {
+            const positionRow = document.createElement('div');
+            positionRow.className = 'cdx-before-after__position-row';
 
-        this.wrapper.appendChild(form);
+            positionRow.appendChild(
+                this.createPositionPicker('Before image focus', this.data.beforePosition || 'center', (pos) => {
+                    this.data.beforePosition = pos;
+                    this.refreshPreview();
+                }),
+            );
 
-        /* Interactive preview */
-        this.buildPreview();
+            positionRow.appendChild(
+                this.createPositionPicker('After image focus', this.data.afterPosition || 'center', (pos) => {
+                    this.data.afterPosition = pos;
+                    this.refreshPreview();
+                }),
+            );
+
+            sizeControls.appendChild(positionRow);
+        }
+
+        /* Insert before preview container (so it stays above image on rebuild) */
+        const preview = this.wrapper.querySelector('.cdx-before-after__container');
+        if (preview) {
+            this.wrapper.insertBefore(sizeControls, preview);
+        } else {
+            this.wrapper.appendChild(sizeControls);
+        }
+    }
+
+    /* ── Position Picker (3x3 grid) ────────────────────────────────────────── */
+
+    private createPositionPicker(
+        label: string,
+        current: ImagePosition,
+        onChange: (pos: ImagePosition) => void,
+    ): HTMLElement {
+        const group = document.createElement('div');
+        group.className = 'ob-input-group';
+
+        const labelEl = document.createElement('label');
+        labelEl.className = 'ob-label';
+        labelEl.textContent = label;
+        group.appendChild(labelEl);
+
+        const grid = document.createElement('div');
+        grid.className = 'cdx-before-after__position-grid';
+
+        const positions: ImagePosition[] = [
+            'top-left',
+            'top',
+            'top-right',
+            'left',
+            'center',
+            'right',
+            'bottom-left',
+            'bottom',
+            'bottom-right',
+        ];
+
+        positions.forEach((pos) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `cdx-before-after__position-btn${current === pos ? ' cdx-before-after__position-btn--active' : ''}`;
+            btn.dataset.position = pos;
+            btn.title = pos.replace('-', ' ');
+            btn.addEventListener('click', () => {
+                grid.querySelectorAll('.cdx-before-after__position-btn').forEach((b) => {
+                    b.classList.remove('cdx-before-after__position-btn--active');
+                });
+                btn.classList.add('cdx-before-after__position-btn--active');
+                onChange(pos);
+            });
+            grid.appendChild(btn);
+        });
+
+        group.appendChild(grid);
+        return group;
     }
 
     /* ── Preview ───────────────────────────────────────────────────────────── */
@@ -421,6 +549,10 @@ export default class BeforeAfterTool {
             afterImg.alt = this.data.afterLabel || 'After';
             afterImg.className = BeforeAfterTool.CSS.after;
             afterImg.draggable = false;
+            /* Apply object-position when using cover mode */
+            if (this.data.imageFit === 'cover' && this.data.afterPosition) {
+                afterImg.style.objectPosition = positionToCSS(this.data.afterPosition);
+            }
             container.appendChild(afterImg);
         }
 
@@ -434,6 +566,10 @@ export default class BeforeAfterTool {
             beforeImg.src = this.data.beforeUrl;
             beforeImg.alt = this.data.beforeLabel || 'Before';
             beforeImg.draggable = false;
+            /* Apply object-position when using cover mode */
+            if (this.data.imageFit === 'cover' && this.data.beforePosition) {
+                beforeImg.style.objectPosition = positionToCSS(this.data.beforePosition);
+            }
             beforeDiv.appendChild(beforeImg);
             container.appendChild(beforeDiv);
         }

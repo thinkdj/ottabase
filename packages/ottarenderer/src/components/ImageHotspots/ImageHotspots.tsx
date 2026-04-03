@@ -1,5 +1,5 @@
 import type { RenderFn } from 'editorjs-blocks-react-renderer';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface HotspotItem {
     id: string;
@@ -9,11 +9,46 @@ export interface HotspotItem {
     content: string;
 }
 
+/** Image position presets (maps to CSS object-position) */
+export type ImagePosition =
+    | 'top-left'
+    | 'top'
+    | 'top-right'
+    | 'left'
+    | 'center'
+    | 'right'
+    | 'bottom-left'
+    | 'bottom'
+    | 'bottom-right';
+
+/** Convert position preset to CSS object-position value */
+function positionToCSS(pos: ImagePosition | undefined): string {
+    if (!pos) return 'center center';
+    const map: Record<ImagePosition, string> = {
+        'top-left': 'left top',
+        top: 'center top',
+        'top-right': 'right top',
+        left: 'left center',
+        center: 'center center',
+        right: 'right center',
+        'bottom-left': 'left bottom',
+        bottom: 'center bottom',
+        'bottom-right': 'right bottom',
+    };
+    return map[pos] || 'center center';
+}
+
 export interface ImageHotspotsData {
     imageUrl?: string;
     alt?: string;
     caption?: string;
     hotspots?: HotspotItem[];
+    /** Optional fixed height (e.g., '400px', '50vh') */
+    height?: string;
+    /** Image fit mode: 'contain' preserves aspect ratio, 'cover' fills container */
+    imageFit?: 'contain' | 'cover';
+    /** Image position when using cover fit */
+    imagePosition?: ImagePosition;
 }
 
 /**
@@ -25,6 +60,9 @@ const ImageHotspots: RenderFn<ImageHotspotsData> = ({ data, className = '' }) =>
     const alt = data?.alt || '';
     const caption = data?.caption || '';
     const hotspots = data?.hotspots || [];
+    const height = data?.height;
+    const imageFit = data?.imageFit || 'contain';
+    const imagePosition = data?.imagePosition;
 
     const [activeId, setActiveId] = useState<string | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -58,10 +96,36 @@ const ImageHotspots: RenderFn<ImageHotspotsData> = ({ data, className = '' }) =>
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
+    /* Container styles for height and cover mode */
+    const containerStyle = useMemo((): React.CSSProperties => {
+        const style: React.CSSProperties = {};
+        if (height) style.height = height;
+        return style;
+    }, [height]);
+
+    /* Image styles for cover mode with position */
+    const imgStyle = useMemo((): React.CSSProperties | undefined => {
+        if (imageFit !== 'cover') return undefined;
+        return { objectPosition: positionToCSS(imagePosition) };
+    }, [imageFit, imagePosition]);
+
+    const containerClasses = [
+        'cdc-image-hotspots__container',
+        imageFit === 'cover' && 'cdc-image-hotspots__container--cover',
+    ]
+        .filter(Boolean)
+        .join(' ');
+
     return (
         <figure className={`${className} cdc-content-block cdc-image-hotspots`}>
-            <div ref={containerRef} className="cdc-image-hotspots__container" onClick={handleContainerClick}>
-                <img src={imageUrl} alt={alt} className="cdc-image-hotspots__image" draggable={false} />
+            <div ref={containerRef} className={containerClasses} style={containerStyle} onClick={handleContainerClick}>
+                <img
+                    src={imageUrl}
+                    alt={alt}
+                    className="cdc-image-hotspots__image"
+                    style={imgStyle}
+                    draggable={false}
+                />
 
                 {hotspots.map((hs, idx) => (
                     <div

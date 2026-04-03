@@ -1,5 +1,34 @@
 import type { RenderFn } from 'editorjs-blocks-react-renderer';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+/** Image position presets (maps to CSS object-position) */
+export type ImagePosition =
+    | 'top-left'
+    | 'top'
+    | 'top-right'
+    | 'left'
+    | 'center'
+    | 'right'
+    | 'bottom-left'
+    | 'bottom'
+    | 'bottom-right';
+
+/** Convert position preset to CSS object-position value */
+function positionToCSS(pos: ImagePosition | undefined): string {
+    if (!pos) return 'center center';
+    const map: Record<ImagePosition, string> = {
+        'top-left': 'left top',
+        top: 'center top',
+        'top-right': 'right top',
+        left: 'left center',
+        center: 'center center',
+        right: 'right center',
+        'bottom-left': 'left bottom',
+        bottom: 'center bottom',
+        'bottom-right': 'right bottom',
+    };
+    return map[pos] || 'center center';
+}
 
 export interface BeforeAfterData {
     beforeUrl?: string;
@@ -11,6 +40,14 @@ export interface BeforeAfterData {
     orientation?: 'horizontal' | 'vertical';
     sliderPosition?: number;
     caption?: string;
+    /** Optional fixed height (e.g., '400px', '50vh') */
+    height?: string;
+    /** Image fit mode: 'contain' preserves aspect ratio, 'cover' fills container */
+    imageFit?: 'contain' | 'cover';
+    /** Position of before image when using cover fit */
+    beforePosition?: ImagePosition;
+    /** Position of after image when using cover fit */
+    afterPosition?: ImagePosition;
 }
 
 /**
@@ -31,6 +68,10 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
     const orientation = data?.orientation || 'horizontal';
     const initialPos = data?.sliderPosition ?? 50;
     const caption = data?.caption || '';
+    const height = data?.height;
+    const imageFit = data?.imageFit || 'contain';
+    const beforePosition = data?.beforePosition;
+    const afterPosition = data?.afterPosition;
 
     const [position, setPosition] = useState(initialPos);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -119,11 +160,38 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
         ? { top: `${position}%`, left: 0, right: 0, width: '100%', height: '4px', transform: 'translateY(-50%)' }
         : { left: `${position}%`, top: 0, bottom: 0, height: '100%', width: '4px', transform: 'translateX(-50%)' };
 
+    /* Container styles for height and cover mode */
+    const containerStyle = useMemo((): React.CSSProperties => {
+        const style: React.CSSProperties = {};
+        if (height) style.height = height;
+        return style;
+    }, [height]);
+
+    /* Image styles for cover mode with position */
+    const afterImgStyle = useMemo((): React.CSSProperties | undefined => {
+        if (imageFit !== 'cover') return undefined;
+        return { objectPosition: positionToCSS(afterPosition) };
+    }, [imageFit, afterPosition]);
+
+    const beforeImgStyle = useMemo((): React.CSSProperties | undefined => {
+        if (imageFit !== 'cover') return undefined;
+        return { objectPosition: positionToCSS(beforePosition) };
+    }, [imageFit, beforePosition]);
+
+    const containerClasses = [
+        'cdc-before-after__container',
+        isVertical && 'cdc-before-after__container--vertical',
+        imageFit === 'cover' && 'cdc-before-after__container--cover',
+    ]
+        .filter(Boolean)
+        .join(' ');
+
     return (
         <figure className={`${className} cdc-content-block cdc-before-after`}>
             <div
                 ref={containerRef}
-                className={`cdc-before-after__container${isVertical ? ' cdc-before-after__container--vertical' : ''}`}
+                className={containerClasses}
+                style={containerStyle}
                 role="slider"
                 aria-label="Before and after comparison slider"
                 aria-valuemin={0}
@@ -139,6 +207,7 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
                         src={afterUrl}
                         alt={afterLabel || 'After'}
                         className="cdc-before-after__after"
+                        style={afterImgStyle}
                         draggable={false}
                     />
                 )}
@@ -146,7 +215,7 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
                 {/* Before layer (clipped) */}
                 {beforeUrl && (
                     <div className="cdc-before-after__before" style={{ clipPath: clipBefore }}>
-                        <img src={beforeUrl} alt={beforeLabel || 'Before'} draggable={false} />
+                        <img src={beforeUrl} alt={beforeLabel || 'Before'} style={beforeImgStyle} draggable={false} />
                     </div>
                 )}
 
