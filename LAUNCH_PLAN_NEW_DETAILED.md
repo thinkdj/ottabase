@@ -4,6 +4,9 @@
 > If you want the higher-level strategy, read [`LAUNCH_PLAN.md`](./LAUNCH_PLAN.md) first.
 > If you want maximum impact, follow this file in order and do not improvise on launch day.
 
+Assumption: Ottabase keeps its governance docs at the repo root (`LICENSE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`).
+If you reuse this runbook elsewhere, keep that structure or update the checklist first.
+
 ---
 
 ## 1. What success looks like
@@ -345,6 +348,7 @@ Why Tuesday:
 
 - All times below are in **UTC** so you can plan once and post consistently across regions
 - Convert them into your local timezone the night before and put them in your calendar
+- Example: `06:00 UTC` = `02:00 US Eastern` during daylight saving time, so check a timezone converter the night before launch to avoid DST mistakes
 - Do not schedule a big personal obligation that day
 - Do not post and disappear
 - Do not improvise your core message
@@ -427,10 +431,11 @@ Built for solo founders and small teams who are tired of wiring the same stack f
 
 Ottabase gives you that in one open-source stack.
 
-GitHub: https://github.com/thinkdj/ottabase
+GitHub: https://github.com/[your-username]/ottabase
 ```
 
-If the repository slug changes before launch, replace the URL everywhere the day before launch so all posts stay consistent.
+For Ottabase itself, replace `[your-username]` with `thinkdj`.
+Do a final search for `github.com/` the day before launch so every post and doc uses the same canonical URL.
 
 #### Follow-up thread
 
@@ -505,6 +510,16 @@ Launched this today and thought you might actually care because of your work on 
 Ottabase is my open-source TypeScript SaaS framework for Cloudflare Workers.
 Would love your honest reaction if you have a minute:
 [link]
+```
+
+Filled example:
+
+```text
+Launched this today and thought you might actually care because of your recent Cloudflare Workers posts.
+
+Ottabase is my open-source TypeScript SaaS framework for Cloudflare Workers.
+Would love your honest reaction if you have a minute:
+https://github.com/thinkdj/ottabase
 ```
 
 ### 12:00-18:00 UTC — Stay in the replies
