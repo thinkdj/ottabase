@@ -7,6 +7,8 @@
 Assumption: Ottabase keeps its governance docs at the repo root (`LICENSE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`).
 If you reuse this runbook elsewhere, keep that structure or update the checklist first.
 
+Ottabase-specific note: the canonical repository URL for launch assets should be `https://github.com/thinkdj/ottabase` unless the repo slug changes before launch.
+
 ---
 
 ## 1. What success looks like
@@ -348,7 +350,7 @@ Why Tuesday:
 
 - All times below are in **UTC** so you can plan once and post consistently across regions
 - Convert them into your local timezone the night before and put them in your calendar
-- Example: `06:00 UTC` = `02:00 US Eastern` during daylight saving time, so check a timezone converter the night before launch to avoid DST mistakes
+- Use a timezone converter the night before launch so daylight saving changes do not throw off your schedule
 - Do not schedule a big personal obligation that day
 - Do not post and disappear
 - Do not improvise your core message
@@ -434,7 +436,6 @@ Ottabase gives you that in one open-source stack.
 GitHub: https://github.com/[your-username]/ottabase
 ```
 
-For Ottabase itself, replace `[your-username]` with `thinkdj`.
 Do a final search for `github.com/` the day before launch so every post and doc uses the same canonical URL.
 
 #### Follow-up thread
@@ -501,6 +502,8 @@ Personalize the message with one real reason they are a fit:
 - their interest in SaaS tooling
 - prior experience with TypeScript frameworks
 - a conversation you already had about developer tooling
+
+Do not send the template below until you have filled in a real personalization point.
 
 Use:
 
