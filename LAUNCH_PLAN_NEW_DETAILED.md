@@ -350,7 +350,7 @@ Why Tuesday:
 
 - All times below are in **UTC** so you can plan once and post consistently across regions
 - Convert them into your local timezone the night before and put them in your calendar
-- Use a timezone converter the night before launch so daylight saving changes do not throw off your schedule
+- Use a timezone converter the night before launch so daylight saving changes do not throw off your schedule (`timeanddate.com` or `worldtimebuddy.com` are fine)
 - Do not schedule a big personal obligation that day
 - Do not post and disappear
 - Do not improvise your core message
@@ -433,7 +433,7 @@ Built for solo founders and small teams who are tired of wiring the same stack f
 
 Ottabase gives you that in one open-source stack.
 
-GitHub: https://github.com/[your-username]/ottabase
+GitHub: https://github.com/thinkdj/ottabase
 ```
 
 Do a final search for `github.com/` the day before launch so every post and doc uses the same canonical URL.
