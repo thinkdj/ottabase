@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import BeforeAfterTool from '../BeforeAfterTool';
 
 function createMockApi() {
@@ -102,10 +102,12 @@ describe('BeforeAfterTool', () => {
         expect(inputs.length).toBeGreaterThanOrEqual(4); // before url, after url, before label, after label
     });
 
-    it('should render orientation select', () => {
+    it('should render orientation toggle buttons', () => {
         const el = tool.render();
-        const select = el.querySelector('.ob-select');
-        expect(select).toBeTruthy();
+        const toggle = el.querySelector('.cdx-before-after__orientation-toggle');
+        expect(toggle).toBeTruthy();
+        const buttons = toggle?.querySelectorAll('.cdx-before-after__orientation-btn');
+        expect(buttons?.length).toBe(2); // horizontal and vertical
     });
 
     /* ── Validation ──────────────────────────────────────────────────────── */

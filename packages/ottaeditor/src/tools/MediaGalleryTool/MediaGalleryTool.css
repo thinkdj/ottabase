@@ -364,6 +364,37 @@
     opacity: 1;
 }
 
+/* Header actions container: expand/collapse + clear button */
+.cdx-media-gallery__header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--mg-space-2);
+}
+
+/* Expand/Collapse toggle button */
+.cdx-media-gallery__expand-collapse-button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--mg-color-muted-text);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    opacity: 0.75;
+}
+
+.cdx-media-gallery__expand-collapse-button:hover {
+    opacity: 1;
+    color: var(--mg-color-primary);
+}
+
+/* Collapsed state for items container */
+.cdx-media-gallery__items--collapsed {
+    display: none;
+}
+
 @media (max-width: 820px) {
     .cdx-media-gallery__top {
         grid-template-columns: 1fr;

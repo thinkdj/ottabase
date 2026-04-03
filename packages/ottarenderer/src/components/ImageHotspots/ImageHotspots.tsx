@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
 import type { RenderFn } from 'editorjs-blocks-react-renderer';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface HotspotItem {
     id: string;
@@ -35,6 +35,18 @@ const ImageHotspots: RenderFn<ImageHotspotsData> = ({ data, className = '' }) =>
         setActiveId((prev) => (prev === id ? null : id));
     }, []);
 
+    /* Close tooltip when clicking on image (not on dot/tooltip) */
+    const handleContainerClick = useCallback((e: React.MouseEvent) => {
+        const target = e.target as HTMLElement;
+        /* Only close if clicking directly on container or image, not on dots/tooltips */
+        if (
+            target.classList.contains('cdc-image-hotspots__container') ||
+            target.classList.contains('cdc-image-hotspots__image')
+        ) {
+            setActiveId(null);
+        }
+    }, []);
+
     /* Close tooltip on outside click */
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -48,7 +60,7 @@ const ImageHotspots: RenderFn<ImageHotspotsData> = ({ data, className = '' }) =>
 
     return (
         <figure className={`${className} cdc-content-block cdc-image-hotspots`}>
-            <div ref={containerRef} className="cdc-image-hotspots__container">
+            <div ref={containerRef} className="cdc-image-hotspots__container" onClick={handleContainerClick}>
                 <img src={imageUrl} alt={alt} className="cdc-image-hotspots__image" draggable={false} />
 
                 {hotspots.map((hs, idx) => (

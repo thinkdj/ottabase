@@ -1,11 +1,13 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
 import type { RenderFn } from 'editorjs-blocks-react-renderer';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface BeforeAfterData {
     beforeUrl?: string;
     afterUrl?: string;
-    beforeLabel?: string;
-    afterLabel?: string;
+    /** Optional label. If null/empty, the label is not rendered. */
+    beforeLabel?: string | null;
+    /** Optional label. If null/empty, the label is not rendered. */
+    afterLabel?: string | null;
     orientation?: 'horizontal' | 'vertical';
     sliderPosition?: number;
     caption?: string;
@@ -14,12 +16,18 @@ export interface BeforeAfterData {
 /**
  * Renderer for the Before/After comparison slider block.
  * Renders two overlapping images with a draggable divider handle.
+ *
+ * ## Enhanced Interactions:
+ * - Drag anywhere on the image to move the slider
+ * - Double-click: Smart toggle between 0 → 50 → 100 (cycles based on current position)
+ * - Triple-click: Always resets to 0 (show full "after" image)
  */
 const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
     const beforeUrl = data?.beforeUrl || '';
     const afterUrl = data?.afterUrl || '';
-    const beforeLabel = data?.beforeLabel || 'Before';
-    const afterLabel = data?.afterLabel || 'After';
+    /* Labels: null or empty string means don't render */
+    const beforeLabel = data?.beforeLabel || null;
+    const afterLabel = data?.afterLabel || null;
     const orientation = data?.orientation || 'horizontal';
     const initialPos = data?.sliderPosition ?? 50;
     const caption = data?.caption || '';
@@ -27,6 +35,8 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
     const [position, setPosition] = useState(initialPos);
     const containerRef = useRef<HTMLDivElement>(null);
     const isDragging = useRef(false);
+    const clickCount = useRef(0);
+    const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     if (!beforeUrl && !afterUrl) return null;
 
@@ -35,9 +45,39 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
     const isVerticalRef = useRef(isVertical);
     isVerticalRef.current = isVertical;
 
+    /* Start drag on container or handle */
     const handlePointerDown = useCallback(() => {
         isDragging.current = true;
     }, []);
+
+    /* Smart double/triple click handler */
+    const handleClick = useCallback(
+        (e: React.MouseEvent) => {
+            clickCount.current++;
+
+            if (clickTimer.current) {
+                clearTimeout(clickTimer.current);
+            }
+
+            clickTimer.current = setTimeout(() => {
+                const clicks = clickCount.current;
+                clickCount.current = 0;
+
+                if (clicks === 3) {
+                    /* Triple-click: always reset to 0 (show full "after" image) */
+                    setPosition(0);
+                } else if (clicks === 2) {
+                    /* Double-click: smart toggle between 0 / 50 / 100 */
+                    setPosition((current) => {
+                        if (current < 25) return 50; // 0-24 → go to 50
+                        if (current < 75) return 100; // 25-74 → go to 100
+                        return 0; // 75-100 → go to 0
+                    });
+                }
+            }, 250); // Wait for potential triple-click
+        },
+        [setPosition],
+    );
 
     useEffect(() => {
         const onMouseMove = (e: MouseEvent) => {
@@ -69,6 +109,7 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
             document.removeEventListener('touchmove', onTouchMove);
             document.removeEventListener('mouseup', onUp);
             document.removeEventListener('touchend', onUp);
+            if (clickTimer.current) clearTimeout(clickTimer.current);
         };
     }, []);
 
@@ -88,20 +129,28 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={Math.round(position)}
+                onMouseDown={handlePointerDown}
+                onTouchStart={handlePointerDown}
+                onClick={handleClick}
             >
                 {/* After layer (bottom) */}
                 {afterUrl && (
-                    <img src={afterUrl} alt={afterLabel} className="cdc-before-after__after" draggable={false} />
+                    <img
+                        src={afterUrl}
+                        alt={afterLabel || 'After'}
+                        className="cdc-before-after__after"
+                        draggable={false}
+                    />
                 )}
 
                 {/* Before layer (clipped) */}
                 {beforeUrl && (
                     <div className="cdc-before-after__before" style={{ clipPath: clipBefore }}>
-                        <img src={beforeUrl} alt={beforeLabel} draggable={false} />
+                        <img src={beforeUrl} alt={beforeLabel || 'Before'} draggable={false} />
                     </div>
                 )}
 
-                {/* Labels */}
+                {/* Labels: only render if the label has content */}
                 {beforeLabel && (
                     <span className="cdc-before-after__label cdc-before-after__label--before">{beforeLabel}</span>
                 )}

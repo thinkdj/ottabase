@@ -4,17 +4,38 @@
  * Renders a split-view with "before" (left) and "after" (right) images.
  * The user drags a handle to reveal more or less of each image.
  * Supports horizontal and vertical orientations, captions, and initial slider position.
+ *
+ * ## Media Gallery Integration
+ * This tool supports selecting images from the Media Gallery. When the user
+ * clicks the gallery icon next to a URL input, it dispatches a `media-library-open`
+ * event with a unique field identifier. The selected image is received via
+ * the `media-library-selected-item` event.
+ *
+ * @see ImageHotspotsTool for the pattern documentation
  */
 import './BeforeAfterTool.css';
+
+/* ── SVG Icons (Lucide-style) ────────────────────────────────────────────── */
+const Icons = {
+    /** Gallery/Image icon for opening media library */
+    gallery:
+        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>',
+    /** Horizontal orientation icon */
+    horizontal:
+        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="12" y1="5" x2="12" y2="19"/><path d="M9 12H6"/><path d="M18 12h-3"/></svg>',
+    /** Vertical orientation icon */
+    vertical:
+        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="5" y1="12" x2="19" y2="12"/><path d="M12 9V6"/><path d="M12 18v-3"/></svg>',
+};
 
 export interface BeforeAfterData {
     /** URL for the "before" image (left / top) */
     beforeUrl: string;
     /** URL for the "after" image (right / bottom) */
     afterUrl: string;
-    /** Optional label shown on the before side */
+    /** Optional label shown on the before side (null/empty = don't render) */
     beforeLabel: string;
-    /** Optional label shown on the after side */
+    /** Optional label shown on the after side (null/empty = don't render) */
     afterLabel: string;
     /** Slider orientation: 'horizontal' (left↔right) or 'vertical' (top↔bottom) */
     orientation: 'horizontal' | 'vertical';
@@ -22,6 +43,10 @@ export interface BeforeAfterData {
     sliderPosition: number;
     /** Optional caption below the block */
     caption: string;
+    /** Optional fixed height (e.g., '400px', '50vh') */
+    height?: string;
+    /** Image fit mode: 'contain' preserves aspect ratio, 'cover' fills container */
+    imageFit?: 'contain' | 'cover';
 }
 
 export interface BeforeAfterToolConfig {
@@ -29,6 +54,12 @@ export interface BeforeAfterToolConfig {
     defaultOrientation?: 'horizontal' | 'vertical';
     /** Default slider position (0–100) */
     defaultPosition?: number;
+    /** Namespace for media library events (default: 'default') */
+    namespace?: string;
+    /** Default height (e.g., '400px', '50vh') */
+    defaultHeight?: string;
+    /** Default image fit mode */
+    defaultImageFit?: 'contain' | 'cover';
 }
 
 const DEFAULT_DATA: BeforeAfterData = {
@@ -39,6 +70,8 @@ const DEFAULT_DATA: BeforeAfterData = {
     orientation: 'horizontal',
     sliderPosition: 50,
     caption: '',
+    height: '',
+    imageFit: 'contain',
 };
 
 /* ───────────────────────────────────────────────────────────────────────────── */
@@ -49,11 +82,18 @@ export default class BeforeAfterTool {
     private config: BeforeAfterToolConfig;
     private wrapper: HTMLElement | null = null;
     private block: any;
+    private namespace: string;
 
     /* State for drag interaction */
     private isDragging = false;
     private containerEl: HTMLElement | null = null;
     private boundEndDrag = () => this.endDrag();
+    private boundOnMediaSelected: (e: Event) => void;
+    private pendingField: 'beforeUrl' | 'afterUrl' | null = null;
+
+    /* State for multi-click detection (double/triple click) */
+    private clickCount = 0;
+    private clickTimeout: ReturnType<typeof setTimeout> | null = null;
 
     static get toolbox() {
         return {
@@ -89,12 +129,49 @@ export default class BeforeAfterTool {
         this.api = api;
         this.block = block;
         this.config = config || {};
+        this.namespace = this.config.namespace || 'default';
         this.data = {
             ...DEFAULT_DATA,
             orientation: this.config.defaultOrientation || DEFAULT_DATA.orientation,
             sliderPosition: this.config.defaultPosition ?? DEFAULT_DATA.sliderPosition,
+            height: this.config.defaultHeight || DEFAULT_DATA.height,
+            imageFit: this.config.defaultImageFit || DEFAULT_DATA.imageFit,
             ...data,
         };
+
+        /* Bind event handler */
+        this.boundOnMediaSelected = this.onMediaSelected.bind(this);
+    }
+
+    /* ── Media Library Event Handler ────────────────────────────────────────── */
+
+    private onMediaSelected(e: Event): void {
+        const event = e as CustomEvent;
+        const detail = event.detail;
+
+        /* Check if this event is for one of our fields */
+        if (detail?.field === 'beforeAfter:beforeUrl') {
+            if (detail?.media?.url) {
+                this.data.beforeUrl = detail.media.url;
+                this.buildUI();
+            }
+        } else if (detail?.field === 'beforeAfter:afterUrl') {
+            if (detail?.media?.url) {
+                this.data.afterUrl = detail.media.url;
+                this.buildUI();
+            }
+        }
+    }
+
+    private openMediaLibrary(field: 'beforeUrl' | 'afterUrl'): void {
+        window.dispatchEvent(
+            new CustomEvent('media-library-open', {
+                detail: {
+                    source: 'editor',
+                    field: `beforeAfter:${field}`,
+                },
+            }),
+        );
     }
 
     /* ── render ─────────────────────────────────────────────────────────────── */
@@ -102,6 +179,9 @@ export default class BeforeAfterTool {
     render(): HTMLElement {
         this.wrapper = document.createElement('div');
         this.wrapper.classList.add('ob-plugin', BeforeAfterTool.CSS.wrapper);
+
+        /* Attach media library event listener */
+        window.addEventListener('media-library-selected-item', this.boundOnMediaSelected);
 
         this.buildUI();
         return this.wrapper;
@@ -127,18 +207,18 @@ export default class BeforeAfterTool {
         const form = document.createElement('div');
         form.className = 'ob-form cdx-before-after__form';
 
-        /* Row: before URL + after URL */
+        /* Row: before URL + after URL (with gallery buttons) */
         const urlRow = document.createElement('div');
         urlRow.className = 'cdx-before-after__url-row';
 
         urlRow.appendChild(
-            this.createInputGroup('Before image URL', this.data.beforeUrl, 'https://…', (v) => {
+            this.createInputGroupWithGallery('Before image URL', this.data.beforeUrl, 'https://…', 'beforeUrl', (v) => {
                 this.data.beforeUrl = v;
                 this.refreshPreview();
             }),
         );
         urlRow.appendChild(
-            this.createInputGroup('After image URL', this.data.afterUrl, 'https://…', (v) => {
+            this.createInputGroupWithGallery('After image URL', this.data.afterUrl, 'https://…', 'afterUrl', (v) => {
                 this.data.afterUrl = v;
                 this.refreshPreview();
             }),
@@ -146,18 +226,18 @@ export default class BeforeAfterTool {
 
         form.appendChild(urlRow);
 
-        /* Row: labels */
+        /* Row: labels (with hint about empty = hidden) */
         const labelRow = document.createElement('div');
         labelRow.className = 'cdx-before-after__label-row';
 
         labelRow.appendChild(
-            this.createInputGroup('Before label', this.data.beforeLabel, 'Before', (v) => {
+            this.createInputGroup('Before label', this.data.beforeLabel, 'Before (empty = hidden)', (v) => {
                 this.data.beforeLabel = v;
                 this.refreshPreview();
             }),
         );
         labelRow.appendChild(
-            this.createInputGroup('After label', this.data.afterLabel, 'After', (v) => {
+            this.createInputGroup('After label', this.data.afterLabel, 'After (empty = hidden)', (v) => {
                 this.data.afterLabel = v;
                 this.refreshPreview();
             }),
@@ -165,38 +245,55 @@ export default class BeforeAfterTool {
 
         form.appendChild(labelRow);
 
-        /* Row: orientation + position + caption */
+        /* Row: orientation toggle + position slider */
         const optionsRow = document.createElement('div');
         optionsRow.className = 'cdx-before-after__options-row';
 
-        /* Orientation select */
+        /* Orientation visual toggle */
         const orientGroup = document.createElement('div');
         orientGroup.className = 'ob-input-group';
         const orientLabel = document.createElement('label');
         orientLabel.className = 'ob-label';
         orientLabel.textContent = 'Orientation';
-        const orientSelect = document.createElement('select');
-        orientSelect.className = 'ob-select';
-        ['horizontal', 'vertical'].forEach((val) => {
-            const opt = document.createElement('option');
-            opt.value = val;
-            opt.textContent = val.charAt(0).toUpperCase() + val.slice(1);
-            if (val === this.data.orientation) opt.selected = true;
-            orientSelect.appendChild(opt);
-        });
-        orientSelect.addEventListener('change', () => {
-            this.data.orientation = orientSelect.value as 'horizontal' | 'vertical';
+
+        const toggleContainer = document.createElement('div');
+        toggleContainer.className = 'cdx-before-after__orientation-toggle';
+
+        const horizBtn = document.createElement('button');
+        horizBtn.type = 'button';
+        horizBtn.className = `cdx-before-after__orientation-btn${this.data.orientation === 'horizontal' ? ' cdx-before-after__orientation-btn--active' : ''}`;
+        horizBtn.innerHTML = Icons.horizontal;
+        horizBtn.title = 'Horizontal (left ↔ right)';
+        horizBtn.addEventListener('click', () => {
+            this.data.orientation = 'horizontal';
+            horizBtn.classList.add('cdx-before-after__orientation-btn--active');
+            vertBtn.classList.remove('cdx-before-after__orientation-btn--active');
             this.refreshPreview();
         });
+
+        const vertBtn = document.createElement('button');
+        vertBtn.type = 'button';
+        vertBtn.className = `cdx-before-after__orientation-btn${this.data.orientation === 'vertical' ? ' cdx-before-after__orientation-btn--active' : ''}`;
+        vertBtn.innerHTML = Icons.vertical;
+        vertBtn.title = 'Vertical (top ↔ bottom)';
+        vertBtn.addEventListener('click', () => {
+            this.data.orientation = 'vertical';
+            vertBtn.classList.add('cdx-before-after__orientation-btn--active');
+            horizBtn.classList.remove('cdx-before-after__orientation-btn--active');
+            this.refreshPreview();
+        });
+
+        toggleContainer.appendChild(horizBtn);
+        toggleContainer.appendChild(vertBtn);
         orientGroup.appendChild(orientLabel);
-        orientGroup.appendChild(orientSelect);
+        orientGroup.appendChild(toggleContainer);
         optionsRow.appendChild(orientGroup);
 
         /* Position slider */
         const posGroup = document.createElement('div');
         posGroup.className = 'ob-input-group';
         const posLabel = document.createElement('label');
-        posLabel.className = 'ob-label';
+        posLabel.className = 'ob-label cdx-before-after__position-label';
         posLabel.textContent = `Position (${this.data.sliderPosition}%)`;
         const posInput = document.createElement('input');
         posInput.type = 'range';
@@ -214,6 +311,69 @@ export default class BeforeAfterTool {
         optionsRow.appendChild(posGroup);
 
         form.appendChild(optionsRow);
+
+        /* Height + Image Fit row */
+        const sizeRow = document.createElement('div');
+        sizeRow.className = 'cdx-before-after__size-row';
+
+        /* Height input */
+        const heightGroup = document.createElement('div');
+        heightGroup.className = 'ob-input-group';
+        const heightLabel = document.createElement('label');
+        heightLabel.className = 'ob-label';
+        heightLabel.textContent = 'Height';
+        const heightInput = document.createElement('input');
+        heightInput.type = 'text';
+        heightInput.className = 'ob-input';
+        heightInput.placeholder = 'e.g., 400px or 50vh';
+        heightInput.value = this.data.height || '';
+        heightInput.addEventListener('input', () => {
+            this.data.height = heightInput.value.trim();
+            this.refreshPreview();
+        });
+        heightGroup.appendChild(heightLabel);
+        heightGroup.appendChild(heightInput);
+        sizeRow.appendChild(heightGroup);
+
+        /* Image Fit toggle */
+        const fitGroup = document.createElement('div');
+        fitGroup.className = 'ob-input-group';
+        const fitLabel = document.createElement('label');
+        fitLabel.className = 'ob-label';
+        fitLabel.textContent = 'Image Fit';
+        const fitToggle = document.createElement('div');
+        fitToggle.className = 'cdx-before-after__fit-toggle';
+
+        const containBtn = document.createElement('button');
+        containBtn.type = 'button';
+        containBtn.className = `cdx-before-after__fit-btn${this.data.imageFit !== 'cover' ? ' cdx-before-after__fit-btn--active' : ''}`;
+        containBtn.textContent = 'Contain';
+        containBtn.title = 'Preserve aspect ratio';
+        containBtn.addEventListener('click', () => {
+            this.data.imageFit = 'contain';
+            containBtn.classList.add('cdx-before-after__fit-btn--active');
+            coverBtn.classList.remove('cdx-before-after__fit-btn--active');
+            this.refreshPreview();
+        });
+
+        const coverBtn = document.createElement('button');
+        coverBtn.type = 'button';
+        coverBtn.className = `cdx-before-after__fit-btn${this.data.imageFit === 'cover' ? ' cdx-before-after__fit-btn--active' : ''}`;
+        coverBtn.textContent = 'Cover';
+        coverBtn.title = 'Fill container';
+        coverBtn.addEventListener('click', () => {
+            this.data.imageFit = 'cover';
+            coverBtn.classList.add('cdx-before-after__fit-btn--active');
+            containBtn.classList.remove('cdx-before-after__fit-btn--active');
+            this.refreshPreview();
+        });
+
+        fitToggle.appendChild(containBtn);
+        fitToggle.appendChild(coverBtn);
+        fitGroup.appendChild(fitLabel);
+        fitGroup.appendChild(fitToggle);
+        sizeRow.appendChild(fitGroup);
+        form.appendChild(sizeRow);
 
         /* Caption */
         form.appendChild(
@@ -245,6 +405,14 @@ export default class BeforeAfterTool {
         const container = document.createElement('div');
         container.className = `${BeforeAfterTool.CSS.container} ${this.data.orientation === 'vertical' ? 'cdx-before-after__container--vertical' : ''}`;
         this.containerEl = container;
+
+        /* Apply height and imageFit if configured */
+        if (this.data.height) {
+            container.style.height = this.data.height;
+        }
+        if (this.data.imageFit === 'cover') {
+            container.classList.add('cdx-before-after__container--cover');
+        }
 
         /* After image (sits behind the clip) */
         if (this.data.afterUrl) {
@@ -290,13 +458,16 @@ export default class BeforeAfterTool {
         this.positionHandle(handle);
         container.appendChild(handle);
 
-        /* Drag events */
-        handle.addEventListener('mousedown', (e) => this.startDrag(e));
-        handle.addEventListener('touchstart', (e) => this.startDrag(e), { passive: false });
+        /* Drag events - whole container responds to dragging, not just handle */
+        container.addEventListener('mousedown', (e) => this.startDrag(e));
+        container.addEventListener('touchstart', (e) => this.startDrag(e), { passive: false });
         container.addEventListener('mousemove', (e) => this.onDrag(e));
         container.addEventListener('touchmove', (e) => this.onDrag(e), { passive: false });
         document.addEventListener('mouseup', this.boundEndDrag);
         document.addEventListener('touchend', this.boundEndDrag);
+
+        /* Click events - double-click to move to cursor, triple-click to cycle */
+        container.addEventListener('click', (e) => this.handleContainerClick(e));
 
         preview.appendChild(container);
         this.wrapper.appendChild(preview);
@@ -348,14 +519,82 @@ export default class BeforeAfterTool {
         /* Sync position slider if visible */
         const rangeInput = this.wrapper?.querySelector('.cdx-before-after__slider-input') as HTMLInputElement | null;
         if (rangeInput) rangeInput.value = String(this.data.sliderPosition);
-        const posLabel = this.wrapper?.querySelector('.ob-input-group .ob-label');
-        if (posLabel && posLabel.textContent?.startsWith('Position')) {
+        const posLabel = this.wrapper?.querySelector('.cdx-before-after__position-label');
+        if (posLabel) {
             posLabel.textContent = `Position (${this.data.sliderPosition}%)`;
         }
     }
 
     private endDrag(): void {
         this.isDragging = false;
+    }
+
+    /**
+     * Handle multi-click on preview container:
+     * - Double-click: moves slider to cursor position
+     * - Triple-click: cycles position 0 → 50 → 100 based on current position
+     */
+    private handleContainerClick(e: MouseEvent): void {
+        this.clickCount++;
+
+        if (this.clickTimeout) {
+            clearTimeout(this.clickTimeout);
+        }
+
+        /* Store click position for double-click */
+        const clickX = e.clientX;
+        const clickY = e.clientY;
+
+        this.clickTimeout = setTimeout(() => {
+            if (this.clickCount === 2 && this.containerEl) {
+                // Double-click: move slider to cursor position
+                const rect = this.containerEl.getBoundingClientRect();
+                let pct: number;
+                if (this.data.orientation === 'vertical') {
+                    pct = ((clickY - rect.top) / rect.height) * 100;
+                } else {
+                    pct = ((clickX - rect.left) / rect.width) * 100;
+                }
+                pct = Math.max(0, Math.min(100, Math.round(pct)));
+                this.setSliderPosition(pct);
+            } else if (this.clickCount >= 3) {
+                // Triple-click: smart cycle 0 → 50 → 100
+                const current = this.data.sliderPosition;
+                let next: number;
+                if (current < 25) {
+                    next = 50;
+                } else if (current < 75) {
+                    next = 100;
+                } else {
+                    next = 0;
+                }
+                this.setSliderPosition(next);
+            }
+            this.clickCount = 0;
+        }, 300);
+    }
+
+    /**
+     * Update slider position and sync all UI elements
+     */
+    private setSliderPosition(position: number): void {
+        this.data.sliderPosition = position;
+
+        if (this.containerEl) {
+            const beforeDiv = this.containerEl.querySelector(`.${BeforeAfterTool.CSS.before}`) as HTMLElement | null;
+            if (beforeDiv) this.applyClip(beforeDiv);
+
+            const handle = this.containerEl.querySelector(`.${BeforeAfterTool.CSS.handle}`) as HTMLElement | null;
+            if (handle) this.positionHandle(handle);
+        }
+
+        /* Sync position slider if visible */
+        const rangeInput = this.wrapper?.querySelector('.cdx-before-after__slider-input') as HTMLInputElement | null;
+        if (rangeInput) rangeInput.value = String(position);
+        const posLabel = this.wrapper?.querySelector('.cdx-before-after__position-label');
+        if (posLabel) {
+            posLabel.textContent = `Position (${position}%)`;
+        }
     }
 
     /* ── Helpers ────────────────────────────────────────────────────────────── */
@@ -413,10 +652,57 @@ export default class BeforeAfterTool {
         return group;
     }
 
+    /**
+     * Creates an input group with a media gallery button.
+     * Pattern for media gallery integration in editor plugins:
+     * - Adds a clickable icon button next to the input
+     * - Dispatches 'media-library-open' event with a unique field identifier
+     * - Listens for 'media-library-selected-item' event with matching field
+     */
+    private createInputGroupWithGallery(
+        label: string,
+        value: string,
+        placeholder: string,
+        field: 'beforeUrl' | 'afterUrl',
+        onChange: (v: string) => void,
+    ): HTMLElement {
+        const group = document.createElement('div');
+        group.className = 'ob-input-group';
+
+        const lbl = document.createElement('label');
+        lbl.className = 'ob-label';
+        lbl.textContent = label;
+
+        const inputWrapper = document.createElement('div');
+        inputWrapper.className = 'cdx-before-after__input-with-gallery';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'ob-input';
+        input.value = value;
+        input.placeholder = placeholder;
+        input.addEventListener('input', () => onChange(input.value));
+
+        const galleryBtn = document.createElement('button');
+        galleryBtn.type = 'button';
+        galleryBtn.className = 'cdx-before-after__gallery-btn';
+        galleryBtn.innerHTML = Icons.gallery;
+        galleryBtn.title = 'Select from Media Library';
+        galleryBtn.addEventListener('click', () => this.openMediaLibrary(field));
+
+        inputWrapper.appendChild(input);
+        inputWrapper.appendChild(galleryBtn);
+
+        group.appendChild(lbl);
+        group.appendChild(inputWrapper);
+        return group;
+    }
+
     /* ── Cleanup ────────────────────────────────────────────────────────────── */
 
     destroy(): void {
         this.isDragging = false;
+        window.removeEventListener('media-library-selected-item', this.boundOnMediaSelected);
         document.removeEventListener('mouseup', this.boundEndDrag);
         document.removeEventListener('touchend', this.boundEndDrag);
         this.containerEl = null;

@@ -9,9 +9,85 @@
 
 .cdx-before-after__options-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
     align-items: end;
+}
+
+/* ── Input with Gallery Button ───────────────────────────────────────────── */
+
+.cdx-before-after__input-with-gallery {
+    display: flex;
+    gap: 4px;
+}
+
+.cdx-before-after__input-with-gallery .ob-input {
+    flex: 1;
+}
+
+.cdx-before-after__gallery-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    flex-shrink: 0;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--input));
+    border-radius: 4px;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cdx-before-after__gallery-btn:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    border-color: hsl(var(--ring));
+}
+
+.cdx-before-after__gallery-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* ── Orientation Toggle ──────────────────────────────────────────────────── */
+
+.cdx-before-after__orientation-toggle {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    background: hsl(var(--muted));
+    border-radius: 6px;
+}
+
+.cdx-before-after__orientation-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cdx-before-after__orientation-btn:hover {
+    color: hsl(var(--foreground));
+    background: hsl(var(--background) / 0.5);
+}
+
+.cdx-before-after__orientation-btn--active {
+    background: hsl(var(--background));
+    color: hsl(var(--primary));
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+}
+
+.cdx-before-after__orientation-btn svg {
+    width: 18px;
+    height: 18px;
 }
 
 .cdx-before-after__slider-input {
@@ -20,6 +96,49 @@
     padding: 4px 0 !important;
     border: none !important;
     background: transparent !important;
+}
+
+/* ── Height / Image Fit Row ──────────────────────────────────────────────── */
+
+.cdx-before-after__size-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.cdx-before-after__fit-toggle {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    background: hsl(var(--muted));
+    border-radius: 6px;
+}
+
+.cdx-before-after__fit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: hsl(var(--muted-foreground));
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cdx-before-after__fit-btn:hover {
+    color: hsl(var(--foreground));
+    background: hsl(var(--background) / 0.5);
+}
+
+.cdx-before-after__fit-btn--active {
+    background: hsl(var(--background));
+    color: hsl(var(--primary));
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
 }
 
 /* ── Preview Container ──────────────────────────────────────────────────── */
@@ -45,12 +164,19 @@
     cursor: ns-resize;
 }
 
+/* Cover mode: images fill container */
+.cdx-before-after__container--cover .cdx-before-after__after {
+    height: 100%;
+    object-fit: cover;
+}
+
 /* After image: full width/height base layer */
 .cdx-before-after__after {
     display: block;
     width: 100%;
     height: auto;
     pointer-events: none;
+    object-fit: contain;
 }
 
 /* Before image: clipped overlay */

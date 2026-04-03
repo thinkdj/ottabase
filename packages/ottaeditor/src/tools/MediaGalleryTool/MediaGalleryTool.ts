@@ -135,6 +135,10 @@ export default class MediaGalleryTool implements BlockTool {
     private emptyEl: HTMLElement | null = null;
     /** Parallel array mirroring this.data.items; entries match by index. */
     private itemCardEls: ItemCardRef[] = [];
+    /** Whether the items list is collapsed */
+    private isCollapsed = false;
+    /** Reference to expand/collapse button for state updates */
+    private expandCollapseBtn: HTMLButtonElement | null = null;
 
     static get toolbox() {
         return {
@@ -266,13 +270,38 @@ export default class MediaGalleryTool implements BlockTool {
         previewPanel.appendChild(itemCountEl);
         previewPanel.appendChild(addButton);
 
-        // Items section: header row (label + clear-all) above the list
+        // Items section: header row (label + expand/collapse + clear-all) above the list
         const itemsHeader = document.createElement('div');
         itemsHeader.classList.add('cdx-media-gallery__items-header');
 
         const itemsLabel = document.createElement('span');
         itemsLabel.classList.add('cdx-media-gallery__items-label');
         itemsLabel.textContent = 'Items';
+
+        // Header actions container
+        const headerActions = document.createElement('div');
+        headerActions.classList.add('cdx-media-gallery__header-actions');
+
+        // Expand/collapse toggle
+        const expandCollapseBtn = document.createElement('button');
+        expandCollapseBtn.type = 'button';
+        expandCollapseBtn.classList.add('cdx-media-gallery__expand-collapse-button');
+        expandCollapseBtn.textContent = this.isCollapsed ? 'Expand' : 'Collapse';
+        expandCollapseBtn.setAttribute('aria-label', this.isCollapsed ? 'Expand items list' : 'Collapse items list');
+        expandCollapseBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            this.isCollapsed = !this.isCollapsed;
+            expandCollapseBtn.textContent = this.isCollapsed ? 'Expand' : 'Collapse';
+            expandCollapseBtn.setAttribute(
+                'aria-label',
+                this.isCollapsed ? 'Expand items list' : 'Collapse items list',
+            );
+            if (this.itemsContainer) {
+                this.itemsContainer.classList.toggle('cdx-media-gallery__items--collapsed', this.isCollapsed);
+            }
+        });
+        this.expandCollapseBtn = expandCollapseBtn;
+        headerActions.appendChild(expandCollapseBtn);
 
         // Clear all removes every item in one click — placed here so it's clearly scoped to the item list
         const clearButton = document.createElement('button');
@@ -293,9 +322,10 @@ export default class MediaGalleryTool implements BlockTool {
                 },
             );
         });
+        headerActions.appendChild(clearButton);
 
         itemsHeader.appendChild(itemsLabel);
-        itemsHeader.appendChild(clearButton);
+        itemsHeader.appendChild(headerActions);
 
         const itemsContainer = document.createElement('div');
         itemsContainer.classList.add('cdx-media-gallery__items');
