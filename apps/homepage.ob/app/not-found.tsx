@@ -9,20 +9,33 @@ export default function NotFound() {
         return (
             <SignalMarketingChrome active={null}>
                 <HpRevealScope>
-                    <main id="main" className="hp-container" style={{ padding: '6rem 0', textAlign: 'center' }}>
+                    <main
+                        id="main"
+                        className="ob-hp-container"
+                        style={{
+                            padding: '6rem 0',
+                            textAlign: 'center',
+                            minHeight: '70vh',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            boxSizing: 'border-box',
+                        }}
+                    >
                         <h1
                             style={{
-                                fontFamily: 'var(--hp-font-display)',
+                                fontFamily: 'var(--ob-font-display)',
                                 fontSize: '2rem',
                                 marginBottom: '1rem',
                             }}
                         >
                             Page not found
                         </h1>
-                        <p style={{ color: 'var(--hp-muted)', marginBottom: '1.5rem' }}>
+                        <p style={{ color: 'var(--ob-muted)', marginBottom: '1.5rem' }}>
                             The page you requested does not exist.
                         </p>
-                        <Link href="/" className="hp-btn hp-btn--primary">
+                        <Link href="/" className="ob-hp-btn ob-hp-btn--primary">
                             Back home
                         </Link>
                     </main>
@@ -33,7 +46,19 @@ export default function NotFound() {
 
     return (
         <MarketingLayout>
-            <div className="container" style={{ padding: '6rem 0', textAlign: 'center' }}>
+            <div
+                className="container"
+                style={{
+                    padding: '6rem 0',
+                    textAlign: 'center',
+                    minHeight: '70vh',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    boxSizing: 'border-box',
+                }}
+            >
                 <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Page not found</h1>
                 <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
                     The page you requested does not exist.

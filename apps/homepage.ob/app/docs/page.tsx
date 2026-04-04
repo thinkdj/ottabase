@@ -19,9 +19,9 @@ export default function DocsPage() {
         return (
             <SignalMarketingChrome active="docs">
                 <HpRevealScope>
-                    <div className="hp-page-hero">
-                        <div className="hp-container">
-                            <p className="hp-eyebrow" style={{ marginBottom: '1rem' }}>
+                    <div className="ob-hp-page-hero">
+                        <div className="ob-hp-container">
+                            <p className="ob-hp-eyebrow" style={{ marginBottom: '1rem' }}>
                                 Get started
                             </p>
                             <h1>
@@ -31,8 +31,8 @@ export default function DocsPage() {
                                         fontSize: '0.7em',
                                         borderRadius: 6,
                                         padding: '0.1em 0.4em',
-                                        background: 'var(--hp-bg-card)',
-                                        color: 'var(--hp-accent)',
+                                        background: 'var(--ob-bg-card)',
+                                        color: 'var(--ob-accent)',
                                     }}
                                 >
                                     git clone
@@ -40,14 +40,14 @@ export default function DocsPage() {
                                 <br />
                                 to running SaaS.
                             </h1>
-                            <p style={{ color: 'var(--hp-muted)', maxWidth: '52ch' }}>
+                            <p style={{ color: 'var(--ob-muted)', maxWidth: '52ch' }}>
                                 Prerequisites: Node.js ≥ 24, pnpm ≥ 10, a Cloudflare account (free tier is fine).
                                 That&apos;s genuinely all.
                             </p>
                         </div>
                     </div>
-                    <div className="hp-container">
-                        <div className="hp-docs">
+                    <div className="ob-hp-container">
+                        <div className="ob-hp-docs">
                             <DocsSidebar />
                             <DocsMain />
                         </div>

@@ -3,7 +3,7 @@
 Marketing site for Ottabase, built with **Next.js** (App Router). The default look matches the original `homepage.ob`
 design system (`app/globals.css`). You can switch the entire site to the **Signal Horizon** theme (from `homepage.ob.1`)
 by setting `THEME` in `config.ts` to `'signalHorizon'` and rebuilding — that loads `app/themes/signal-horizon.css` via
-`app/signal-root.tsx` and uses the `hp-*` shell, nav, and page variants.
+`app/signal-root.tsx` and uses the `ob-hp-*` shell, nav, and page variants.
 
 Light/dark uses `next-themes`; the storage key comes from `siteConfig` (`hp-ob-theme` for classic, `hp-theme` for Signal
 Horizon).

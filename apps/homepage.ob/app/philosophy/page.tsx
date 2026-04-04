@@ -18,9 +18,9 @@ export default function PhilosophyPage() {
         return (
             <SignalMarketingChrome active="philosophy">
                 <HpRevealScope>
-                    <div className="hp-page-hero">
-                        <div className="hp-container">
-                            <p className="hp-eyebrow" style={{ marginBottom: '1rem' }}>
+                    <div className="ob-hp-page-hero">
+                        <div className="ob-hp-container">
+                            <p className="ob-hp-eyebrow" style={{ marginBottom: '1rem' }}>
                                 Philosophy
                             </p>
                             <h1>
@@ -30,7 +30,7 @@ export default function PhilosophyPage() {
                                 <br />
                                 it matters.
                             </h1>
-                            <p style={{ color: 'var(--hp-muted)', maxWidth: '52ch' }}>
+                            <p style={{ color: 'var(--ob-muted)', maxWidth: '52ch' }}>
                                 Every decision in Ottabase has a reason. Here&apos;s why we made the calls we made — and
                                 what we&apos;d change if we were starting over.
                             </p>

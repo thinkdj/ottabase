@@ -12,13 +12,13 @@ const h2: CSSProperties = {
 export function DocsMain() {
     const sh = siteConfig.theme === 'signalHorizon';
     const lead: CSSProperties = {
-        color: sh ? 'var(--hp-muted)' : 'var(--text-muted)',
+        color: sh ? 'var(--ob-muted)' : 'var(--text-muted)',
         marginBottom: '1.25rem',
         lineHeight: 1.7,
     };
-    const div = sh ? 'hp-prose-divider' : 'prose-divider';
-    const linkColor = sh ? 'var(--hp-accent)' : 'var(--violet-lt)';
-    const mainClass = sh ? 'docs-content hp-reveal' : 'docs-content animate animate-delay-2';
+    const div = sh ? 'ob-hp-prose-divider' : 'prose-divider';
+    const linkColor = sh ? 'var(--ob-accent)' : 'var(--violet-lt)';
+    const mainClass = sh ? 'docs-content ob-hp-reveal' : 'docs-content animate animate-delay-2';
     const listClass = sh ? undefined : 'prose-section';
 
     return (
@@ -66,7 +66,7 @@ export function DocsMain() {
                 </div>
                 <p
                     style={{
-                        color: sh ? 'var(--hp-muted)' : 'var(--text-muted)',
+                        color: sh ? 'var(--ob-muted)' : 'var(--text-muted)',
                         fontSize: '0.9375rem',
                         lineHeight: 1.7,
                     }}
@@ -218,14 +218,14 @@ function CodeWindow({ filename, code }: { filename: string; code: string }) {
     const sh = siteConfig.theme === 'signalHorizon';
     if (sh) {
         return (
-            <div className="hp-window">
-                <div className="hp-window-bar" aria-hidden="true">
-                    <span className="hp-window-dot" />
-                    <span className="hp-window-dot" />
-                    <span className="hp-window-dot" />
-                    <span className="hp-window-name">{filename}</span>
+            <div className="ob-hp-window">
+                <div className="ob-hp-window-bar" aria-hidden="true">
+                    <span className="ob-hp-window-dot" />
+                    <span className="ob-hp-window-dot" />
+                    <span className="ob-hp-window-dot" />
+                    <span className="ob-hp-window-name">{filename}</span>
                 </div>
-                <pre className="hp-code-block">
+                <pre className="ob-hp-code-block">
                     <code>{code}</code>
                 </pre>
             </div>

@@ -2,14 +2,14 @@ import Link from 'next/link';
 
 export function SignalFooter() {
     return (
-        <footer className="hp-footer">
-            <div className="hp-container hp-footer-inner">
+        <footer className="ob-hp-footer">
+            <div className="ob-hp-container ob-hp-footer-inner">
                 <div>
-                    <div className="hp-mark" style={{ marginBottom: '0.35rem' }}>
-                        <span className="hp-mark-ot">otta</span>
-                        <span className="hp-mark-base">base</span>
+                    <div className="ob-hp-mark" style={{ marginBottom: '0.35rem' }}>
+                        <span className="ob-hp-mark-ot">otta</span>
+                        <span className="ob-hp-mark-base">base</span>
                     </div>
-                    <p style={{ fontSize: '0.82rem', color: 'var(--hp-dim)' }}>Edge-native SaaS framework</p>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--ob-dim)' }}>Edge-native SaaS framework</p>
                 </div>
                 <nav aria-label="Footer">
                     <Link href="/packages">Packages</Link>
@@ -25,7 +25,7 @@ export function SignalFooter() {
                         Twitter
                     </a>
                 </nav>
-                <div className="hp-footer-meta">
+                <div className="ob-hp-footer-meta">
                     MIT License
                     <br />
                     Built for Cloudflare Workers

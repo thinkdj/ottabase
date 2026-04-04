@@ -18,9 +18,9 @@ export default function PackagesPage() {
         return (
             <SignalMarketingChrome active="packages">
                 <HpRevealScope>
-                    <div className="hp-page-hero">
-                        <div className="hp-container">
-                            <p className="hp-eyebrow" style={{ marginBottom: '1rem' }}>
+                    <div className="ob-hp-page-hero">
+                        <div className="ob-hp-container">
+                            <p className="ob-hp-eyebrow" style={{ marginBottom: '1rem' }}>
                                 Package ecosystem
                             </p>
                             <h1>
@@ -28,7 +28,7 @@ export default function PackagesPage() {
                                 <br />
                                 Nothing missing.
                             </h1>
-                            <p style={{ color: 'var(--hp-muted)', maxWidth: '52ch', marginTop: '0.75rem' }}>
+                            <p style={{ color: 'var(--ob-muted)', maxWidth: '52ch', marginTop: '0.75rem' }}>
                                 Every package is independently versioned, documented, and tested. Use the whole stack or
                                 cherry-pick what you need.
                             </p>

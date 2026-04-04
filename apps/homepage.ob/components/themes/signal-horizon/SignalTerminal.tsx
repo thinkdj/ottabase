@@ -46,19 +46,19 @@ export function SignalTerminal() {
             for (const line of TERMINAL_LINES) {
                 if (line.type === 'gap') {
                     const g = document.createElement('div');
-                    g.className = 'hp-gap';
+                    g.className = 'ob-hp-gap';
                     termBody.appendChild(g);
                     await sleep(140);
                     continue;
                 }
                 if (line.type === 'cmd') {
                     const row = document.createElement('div');
-                    row.className = 'hp-term-line';
+                    row.className = 'ob-hp-term-line';
                     const pr = document.createElement('span');
-                    pr.className = 'hp-prompt';
+                    pr.className = 'ob-hp-prompt';
                     pr.textContent = line.prompt;
                     const cmd = document.createElement('span');
-                    cmd.className = 'hp-cmd';
+                    cmd.className = 'ob-hp-cmd';
                     row.appendChild(pr);
                     row.appendChild(cmd);
                     termBody.appendChild(row);
@@ -66,24 +66,39 @@ export function SignalTerminal() {
                     await sleep(200);
                 } else if (line.type === 'out') {
                     const o = document.createElement('div');
-                    o.className = 'hp-out';
-                    o.textContent = line.text;
+                    o.className = 'ob-hp-out';
+                    const check = /^(\s*✓\s+)(.*)$/.exec(line.text);
+                    if (check) {
+                        const mark = document.createElement('span');
+                        mark.className = 'ob-hp-out-mark';
+                        mark.textContent = check[1];
+                        const rest = document.createElement('span');
+                        rest.className = 'ob-hp-out-rest';
+                        rest.textContent = check[2];
+                        o.appendChild(mark);
+                        o.appendChild(rest);
+                    } else {
+                        const plain = document.createElement('span');
+                        plain.className = 'ob-hp-out-plain';
+                        plain.textContent = line.text;
+                        o.appendChild(plain);
+                    }
                     termBody.appendChild(o);
                     await sleep(70);
                 } else if (line.type === 'success') {
                     const o = document.createElement('div');
-                    o.className = 'hp-ok';
+                    o.className = 'ob-hp-ok';
                     o.textContent = line.text;
                     termBody.appendChild(o);
                 }
             }
             const last = document.createElement('div');
-            last.className = 'hp-term-line';
+            last.className = 'ob-hp-term-line';
             const pr = document.createElement('span');
-            pr.className = 'hp-prompt';
+            pr.className = 'ob-hp-prompt';
             pr.textContent = '$';
             const cur = document.createElement('span');
-            cur.className = 'hp-cursor';
+            cur.className = 'ob-hp-cursor';
             last.appendChild(pr);
             last.appendChild(cur);
             termBody.appendChild(last);
@@ -93,14 +108,14 @@ export function SignalTerminal() {
     }, [started]);
 
     return (
-        <div className="hp-term hp-reveal" role="region" aria-label="Terminal demo">
-            <div className="hp-term-bar" aria-hidden="true">
-                <span className="hp-window-dot" style={{ background: '#ff5f57' }} />
-                <span className="hp-window-dot" style={{ background: '#febc2e' }} />
-                <span className="hp-window-dot" style={{ background: '#28c840' }} />
-                <span style={{ fontSize: '0.72rem', color: 'var(--hp-dim)', marginLeft: '0.35rem' }}>bash</span>
+        <div className="ob-hp-term ob-hp-reveal" role="region" aria-label="Terminal demo">
+            <div className="ob-hp-term-bar" aria-hidden="true">
+                <span className="ob-hp-window-dot" style={{ background: '#ff5f57' }} />
+                <span className="ob-hp-window-dot" style={{ background: '#febc2e' }} />
+                <span className="ob-hp-window-dot" style={{ background: '#28c840' }} />
+                <span className="ob-hp-term-bar-title">bash</span>
             </div>
-            <div ref={bodyRef} className="hp-term-body" id="hp-terminal-body" aria-live="polite" />
+            <div ref={bodyRef} className="ob-hp-term-body" id="ob-hp-terminal-body" aria-live="polite" />
         </div>
     );
 }

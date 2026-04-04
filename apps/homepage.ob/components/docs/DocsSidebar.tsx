@@ -58,7 +58,7 @@ export function DocsSidebar() {
 
     return (
         <aside
-            className={sh ? 'docs-sidebar hp-docs-nav hp-reveal' : 'docs-sidebar animate'}
+            className={sh ? 'docs-sidebar ob-hp-docs-nav ob-hp-reveal' : 'docs-sidebar animate'}
             aria-label="Documentation navigation"
         >
             {NAV.map((group) => (

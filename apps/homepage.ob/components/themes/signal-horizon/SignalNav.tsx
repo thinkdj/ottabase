@@ -28,14 +28,19 @@ export function SignalNav({ active }: Props) {
     const dark = mounted && resolvedTheme === 'dark';
 
     return (
-        <nav className={`hp-nav${scrolled ? ' is-scrolled' : ''}`} id="hp-nav" role="navigation" aria-label="Main">
-            <div className="hp-container hp-nav-inner">
-                <Link href="/" className="hp-mark" aria-label="Ottabase home">
-                    <span className="hp-mark-ot">otta</span>
-                    <span className="hp-mark-base">base</span>
-                    <span className="hp-mark-tag">oss</span>
+        <nav
+            className={`ob-hp-nav${scrolled ? ' is-scrolled' : ''}`}
+            id="ob-hp-nav"
+            role="navigation"
+            aria-label="Main"
+        >
+            <div className="ob-hp-container ob-hp-nav-inner">
+                <Link href="/" className="ob-hp-mark" aria-label="Ottabase home">
+                    <span className="ob-hp-mark-ot">otta</span>
+                    <span className="ob-hp-mark-base">base</span>
+                    <span className="ob-hp-mark-tag">oss</span>
                 </Link>
-                <div className={`hp-nav-links${menuOpen ? ' is-open' : ''}`} id="hp-nav-links">
+                <div className={`ob-hp-nav-links${menuOpen ? ' is-open' : ''}`} id="ob-hp-nav-links">
                     <Link href="/packages" aria-current={active === 'packages' ? 'page' : undefined}>
                         Packages
                     </Link>
@@ -46,17 +51,17 @@ export function SignalNav({ active }: Props) {
                         Docs
                     </Link>
                 </div>
-                <div className="hp-nav-actions">
+                <div className="ob-hp-nav-actions">
                     <button
                         type="button"
-                        className="hp-icon-btn"
-                        id="hp-theme-toggle"
+                        className="ob-hp-icon-btn"
+                        id="ob-hp-theme-toggle"
                         aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
                         title={dark ? 'Switch to light theme' : 'Switch to dark theme'}
                         onClick={() => setTheme(dark ? 'light' : 'dark')}
                     >
                         <svg
-                            className="hp-theme-icon hp-theme-icon--moon"
+                            className="ob-hp-theme-icon ob-hp-theme-icon--moon"
                             width={18}
                             height={18}
                             viewBox="0 0 24 24"
@@ -68,7 +73,7 @@ export function SignalNav({ active }: Props) {
                             <path d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
                         </svg>
                         <svg
-                            className="hp-theme-icon hp-theme-icon--sun"
+                            className="ob-hp-theme-icon ob-hp-theme-icon--sun"
                             width={18}
                             height={18}
                             viewBox="0 0 24 24"
@@ -83,7 +88,7 @@ export function SignalNav({ active }: Props) {
                     </button>
                     <a
                         href="https://github.com/thinkdj/ottabase"
-                        className="hp-btn hp-btn--ghost"
+                        className="ob-hp-btn ob-hp-btn--ghost"
                         target="_blank"
                         rel="noopener noreferrer"
                     >
@@ -91,7 +96,7 @@ export function SignalNav({ active }: Props) {
                     </a>
                     <a
                         href="https://github.com/thinkdj/ottabase"
-                        className="hp-btn hp-btn--primary"
+                        className="ob-hp-btn ob-hp-btn--primary"
                         target="_blank"
                         rel="noopener noreferrer"
                     >
@@ -100,8 +105,8 @@ export function SignalNav({ active }: Props) {
                 </div>
                 <button
                     type="button"
-                    className="hp-hamburger"
-                    id="hp-hamburger"
+                    className="ob-hp-hamburger"
+                    id="ob-hp-hamburger"
                     aria-label="Toggle menu"
                     aria-expanded={menuOpen}
                     onClick={() => setMenuOpen((o) => !o)}

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 
 /**
- * Mirrors homepage.ob.1 `site.js`: IntersectionObserver + first-paint reveal for `.hp-reveal`.
+ * Mirrors homepage.ob.1 `site.js`: IntersectionObserver + first-paint reveal for `.ob-hp-reveal`.
  */
 export function HpRevealScope({ children }: { children: ReactNode }) {
     const ref = useRef<HTMLDivElement>(null);
@@ -21,7 +21,7 @@ export function HpRevealScope({ children }: { children: ReactNode }) {
             }
         };
 
-        const els = root.querySelectorAll('.hp-reveal');
+        const els = root.querySelectorAll('.ob-hp-reveal');
         const io = new IntersectionObserver(
             (entries) => {
                 entries.forEach((e) => {

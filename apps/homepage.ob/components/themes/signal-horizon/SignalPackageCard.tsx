@@ -21,13 +21,13 @@ export function SignalPackageCard({ category, name, description }: Props) {
     };
 
     return (
-        <div className="hp-pkg-card" data-cat={category}>
-            <div className="hp-pkg-card-head">
-                <span className="hp-pkg-dot" style={{ background: `var(--cat-${category})` as never }} />
-                <span className="hp-pkg-name">{name}</span>
+        <div className="ob-hp-pkg-card" data-cat={category}>
+            <div className="ob-hp-pkg-card-head">
+                <span className="ob-hp-pkg-dot" style={{ background: `var(--cat-${category})` as never }} />
+                <span className="ob-hp-pkg-name">{name}</span>
             </div>
-            <p className="hp-pkg-desc">{description}</p>
-            <button type="button" className="hp-pkg-install" title="Click to copy" onClick={onCopy}>
+            <p className="ob-hp-pkg-desc">{description}</p>
+            <button type="button" className="ob-hp-pkg-install" title="Click to copy" onClick={onCopy}>
                 {copied ? 'copied!' : install}
             </button>
         </div>
