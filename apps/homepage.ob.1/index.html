@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Ottabase — Edge-native SaaS kit</title>
+	<meta name="description" content="47 TypeScript packages. One monorepo. Cloudflare Workers, OttaORM, auth, RBAC, realtime — ship multi-tenant SaaS without rebuilding the same fifteen systems." />
+	<meta property="og:title" content="Ottabase — Edge-native SaaS kit" />
+	<meta property="og:description" content="47 packages. Zero boilerplate. Ship your SaaS on Cloudflare Workers." />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://ottabase.dev" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+	<link rel="stylesheet" href="css/site.css" />
+</head>
+<body>
+	<a class="hp-skip" href="#main">Skip to content</a>
+	<div class="hp-shell">
+		<nav class="hp-nav" id="hp-nav" role="navigation" aria-label="Main">
+			<div class="hp-container hp-nav-inner">
+				<a href="index.html" class="hp-mark" aria-label="Ottabase home">
+					<span class="hp-mark-ot">otta</span><span class="hp-mark-base">base</span><span class="hp-mark-tag">oss</span>
+				</a>
+				<div class="hp-nav-links" id="hp-nav-links">
+					<a href="packages.html">Packages</a>
+					<a href="philosophy.html">Philosophy</a>
+					<a href="docs.html">Docs</a>
+				</div>
+				<div class="hp-nav-actions">
+					<button type="button" class="hp-icon-btn" id="hp-theme-toggle" aria-label="Switch to light mode" title="Switch to light theme">
+						<!-- Moon: dark mode only — means “go to light” -->
+						<svg class="hp-theme-icon hp-theme-icon--moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+						</svg>
+						<!-- Sun: light mode only — means “go to dark” -->
+						<svg class="hp-theme-icon hp-theme-icon--sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<circle cx="12" cy="12" r="4" />
+							<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+						</svg>
+					</button>
+					<a href="https://github.com/thinkdj/ottabase" class="hp-btn hp-btn--ghost" target="_blank" rel="noopener noreferrer">GitHub</a>
+					<a href="https://github.com/thinkdj/ottabase" class="hp-btn hp-btn--primary" target="_blank" rel="noopener noreferrer">Star</a>
+				</div>
+				<button type="button" class="hp-hamburger" id="hp-hamburger" aria-label="Toggle menu" aria-expanded="false">
+					<span></span><span></span><span></span>
+				</button>
+			</div>
+		</nav>
+
+		<main id="main">
+			<section class="hp-hero hp-container" aria-labelledby="hp-hero-title">
+				<div class="hp-hero-grid">
+					<div>
+						<p class="hp-eyebrow">Cloudflare · TypeScript · monorepo</p>
+						<h1 id="hp-hero-title">Stop wiring.<span class="hp-line2">Start shipping.</span></h1>
+						<p class="hp-lede">
+							Forty-seven packages wired for multi-tenant SaaS: OttaORM, Auth.js, RBAC, realtime, queues, blog, UI primitives — on Workers, not on fire.
+						</p>
+						<div class="hp-hero-cta">
+							<a href="https://github.com/thinkdj/ottabase" class="hp-btn hp-btn--primary hp-btn--lg" target="_blank" rel="noopener noreferrer">Star on GitHub</a>
+							<a href="docs.html" class="hp-btn hp-btn--ghost hp-btn--lg">Read the quickstart</a>
+						</div>
+						<p class="hp-micro">
+							<span>TanStack Router</span>
+							<span>·</span>
+							<span>D1 + Drizzle</span>
+							<span>·</span>
+							<span>Durable Objects</span>
+							<span>·</span>
+							<span>MIT</span>
+						</p>
+					</div>
+					<div class="hp-orbit-wrap hp-reveal" aria-hidden="true">
+						<p class="hp-orbit-caption">Edge stack</p>
+						<div class="hp-orbit">
+							<div class="hp-orbit-ring"></div>
+							<div class="hp-orbit-ring hp-orbit-ring--2"></div>
+							<div class="hp-orbit-ring hp-orbit-ring--3"></div>
+							<div class="hp-orbit-core">47<br />mods</div>
+							<span class="hp-dot" style="--a: 0deg"></span>
+							<span class="hp-dot" style="--a: 30deg"></span>
+							<span class="hp-dot" style="--a: 60deg"></span>
+							<span class="hp-dot" style="--a: 90deg"></span>
+							<span class="hp-dot" style="--a: 120deg"></span>
+							<span class="hp-dot" style="--a: 150deg"></span>
+							<span class="hp-dot" style="--a: 180deg"></span>
+							<span class="hp-dot" style="--a: 210deg"></span>
+							<span class="hp-dot" style="--a: 240deg"></span>
+							<span class="hp-dot" style="--a: 270deg"></span>
+							<span class="hp-dot" style="--a: 300deg"></span>
+							<span class="hp-dot" style="--a: 330deg"></span>
+							<span class="hp-orbit-sat" style="--sat: 38deg">Workers</span>
+							<span class="hp-orbit-sat" style="--sat: 128deg">D1 + Drizzle</span>
+							<span class="hp-orbit-sat" style="--sat: 218deg">Queues</span>
+							<span class="hp-orbit-sat" style="--sat: 308deg">Realtime</span>
+						</div>
+						<p class="hp-orbit-foot">Monorepo modules around one runtime — same patterns you ship in production.</p>
+					</div>
+				</div>
+
+				<div class="hp-pain hp-reveal">
+					<div class="hp-pain-label">Truth</div>
+					<div class="hp-pain-lines">
+						<strong>You’ve shipped auth five times.</strong> The queue is three libraries taped together. Tenancy showed up in month seven. Real-time ate a weekend. <strong>Ottabase is the extraction layer</strong> — opinionated, edge-native, yours to fork.
+					</div>
+				</div>
+				<div class="hp-receipt hp-reveal" aria-label="By the numbers">
+					<div class="hp-receipt-item">
+						<span class="hp-receipt-val">47</span>
+						<span class="hp-receipt-key">packages</span>
+					</div>
+					<div class="hp-receipt-item">
+						<span class="hp-receipt-val">100%</span>
+						<span class="hp-receipt-key">TypeScript</span>
+					</div>
+					<div class="hp-receipt-item">
+						<span class="hp-receipt-val">~$5</span>
+						<span class="hp-receipt-key">/ mo scale</span>
+					</div>
+					<div class="hp-receipt-item">
+						<span class="hp-receipt-val">300+</span>
+						<span class="hp-receipt-key">edge pops</span>
+					</div>
+					<div class="hp-receipt-item">
+						<span class="hp-receipt-val">0</span>
+						<span class="hp-receipt-key">servers</span>
+					</div>
+				</div>
+			</section>
+
+			<section class="hp-section" aria-labelledby="hp-eco-title">
+				<div class="hp-container">
+					<header class="hp-section-head hp-reveal">
+						<h2 id="hp-eco-title">Six clusters. One spine.</h2>
+						<p>Not a starter kit — a full stack you can peel apart. Core, UI, content, business, brand, utilities.</p>
+					</header>
+					<div class="hp-bento">
+						<article class="hp-bento-card hp-bento--wide hp-reveal" style="--hp-card-accent: #2ee6d6">
+							<div class="hp-bento-top">
+								<h3>Core infrastructure</h3>
+								<span class="hp-bento-count">11 pkgs</span>
+							</div>
+							<div class="hp-bento-tags">
+								<span class="hp-tag">@ottabase/ottaorm</span>
+								<span class="hp-tag">@ottabase/auth</span>
+								<span class="hp-tag">@ottabase/rbac</span>
+								<span class="hp-tag">@ottabase/cf</span>
+								<span class="hp-tag">@ottabase/queue</span>
+							</div>
+							<p class="hp-bento-desc">Fat models, Auth.js v5, KV-cached RBAC, queues, audit — the spine of your tenant graph.</p>
+						</article>
+						<article class="hp-bento-card hp-bento--tall hp-reveal" style="--hp-card-accent: #ffb547">
+							<div class="hp-bento-top">
+								<h3>UI layer</h3>
+								<span class="hp-bento-count">12</span>
+							</div>
+							<div class="hp-bento-tags">
+								<span class="hp-tag">ui-shadcn</span>
+								<span class="hp-tag">ui-datatable</span>
+								<span class="hp-tag">spotlight</span>
+							</div>
+							<p class="hp-bento-desc">Tables, command palette, cropper, date — components that match your tokens, not fight them.</p>
+						</article>
+						<article class="hp-bento-card hp-bento--half hp-reveal" style="--hp-card-accent: #7dd3fc">
+							<div class="hp-bento-top">
+								<h3>Content</h3>
+								<span class="hp-bento-count">5</span>
+							</div>
+							<p class="hp-bento-desc">OttaBlog, EditorJS, renderer, uploads to R2 — ship a CMS beside your product.</p>
+						</article>
+						<article class="hp-bento-card hp-bento--half hp-reveal" style="--hp-card-accent: #fb7185">
+							<div class="hp-bento-top">
+								<h3>Business</h3>
+								<span class="hp-bento-count">5</span>
+							</div>
+							<p class="hp-bento-desc">Shortlinks, referrals, notifications, comments, model-driven forms.</p>
+						</article>
+						<article class="hp-bento-card hp-bento--wide hp-reveal" style="--hp-card-accent: #a78bfa">
+							<div class="hp-bento-top">
+								<h3>Brand &amp; layout</h3>
+								<span class="hp-bento-count">5</span>
+							</div>
+							<div class="hp-bento-tags">
+								<span class="hp-tag">brand-engine</span>
+								<span class="hp-tag">ottalayout</span>
+								<span class="hp-tag">homepage-contract</span>
+							</div>
+							<p class="hp-bento-desc">Tokens, presets, menus — white-label without a second codebase.</p>
+						</article>
+						<article class="hp-bento-card hp-bento--half hp-reveal" style="--hp-card-accent: #94a3b8">
+							<div class="hp-bento-top">
+								<h3>Utilities</h3>
+								<span class="hp-bento-count">9</span>
+							</div>
+							<p class="hp-bento-desc">Email, i18n, scripts, AI gateway helpers — the glue stays boring on purpose.</p>
+						</article>
+					</div>
+					<p style="text-align: center; margin-top: 2.5rem" class="hp-reveal">
+						<a href="packages.html" class="hp-btn hp-btn--ghost hp-btn--lg">Browse all 47 packages →</a>
+					</p>
+				</div>
+			</section>
+
+			<section class="hp-code-zone" aria-labelledby="hp-code-title">
+				<div class="hp-container hp-code-layout">
+					<div class="hp-reveal">
+						<h2 id="hp-code-title">APIs you want to read.</h2>
+						<p style="color: var(--hp-muted); margin-top: 0.75rem; max-width: 42ch">
+							Domain logic lives on the model — not spread across controllers and “service layers” that only forward calls.
+						</p>
+						<div class="hp-code-tabs" role="tablist" aria-label="Code examples">
+							<button type="button" class="hp-code-tab is-active" data-tab="model" role="tab" aria-selected="true">Model</button>
+							<button type="button" class="hp-code-tab" data-tab="hooks" role="tab" aria-selected="false">Hooks</button>
+							<button type="button" class="hp-code-tab" data-tab="rls" role="tab" aria-selected="false">RLS</button>
+							<button type="button" class="hp-code-tab" data-tab="deploy" role="tab" aria-selected="false">Ship</button>
+						</div>
+					</div>
+					<div class="hp-reveal">
+						<div class="hp-window" role="tabpanel">
+							<div class="hp-window-bar" aria-hidden="true">
+								<span class="hp-window-dot" style="background: #ff5f57"></span>
+								<span class="hp-window-dot" style="background: #febc2e"></span>
+								<span class="hp-window-dot" style="background: #28c840"></span>
+								<span class="hp-window-name" id="hp-code-filename">ottabase/models/Todo.ts</span>
+							</div>
+							<div class="hp-code-panel is-active" data-panel="model" id="panel-model">
+								<pre class="hp-code-block"><code><span class="t-kw">import</span> <span class="t-op">{</span> <span class="t-cls">BaseModel</span> <span class="t-op">}</span> <span class="t-kw">from</span> <span class="t-str">'@ottabase/ottaorm'</span><span class="t-op">;</span>
+<span class="t-kw">import</span> <span class="t-op">{</span> <span class="t-cls">todosTable</span> <span class="t-op">}</span> <span class="t-kw">from</span> <span class="t-str">'../db/schema'</span><span class="t-op">;</span>
+
+<span class="t-kw">export class</span> <span class="t-cls">Todo</span> <span class="t-kw">extends</span> <span class="t-cls">BaseModel</span> <span class="t-op">{</span>
+  <span class="t-kw">static</span> entity <span class="t-op">=</span> <span class="t-str">'todos'</span><span class="t-op">;</span>
+  <span class="t-kw">static</span> table  <span class="t-op">=</span> todosTable<span class="t-op">;</span>
+
+  <span class="t-kw">async</span> <span class="t-fn">user</span><span class="t-op">() {</span>
+    <span class="t-kw">const</span> <span class="t-op">{</span> <span class="t-cls">User</span> <span class="t-op">} =</span> <span class="t-kw">await import</span><span class="t-op">(</span><span class="t-str">'@ottabase/ottaorm'</span><span class="t-op">);</span>
+    <span class="t-kw">return this</span><span class="t-op">.</span><span class="t-fn">belongsTo</span><span class="t-op">(</span><span class="t-cls">User</span><span class="t-op">,</span> <span class="t-str">'userId'</span><span class="t-op">);</span>
+  <span class="t-op">}</span>
+
+  <span class="t-kw">async</span> <span class="t-fn">toggle</span><span class="t-op">() {</span>
+    <span class="t-kw">this</span><span class="t-op">.</span><span class="t-fn">set</span><span class="t-op">(</span><span class="t-str">'completed'</span><span class="t-op">,</span> <span class="t-op">!</span><span class="t-kw">this</span><span class="t-op">.</span><span class="t-fn">get</span><span class="t-op">(</span><span class="t-str">'completed'</span><span class="t-op">));</span>
+    <span class="t-kw">return this</span><span class="t-op">.</span><span class="t-fn">save</span><span class="t-op">();</span>
+  <span class="t-op">}</span>
+<span class="t-op">}</span></code></pre>
+							</div>
+							<div class="hp-code-panel" data-panel="hooks" id="panel-hooks">
+								<pre class="hp-code-block"><code><span class="t-kw">import</span> <span class="t-op">{</span> <span class="t-fn">createModelHooks</span> <span class="t-op">}</span> <span class="t-kw">from</span> <span class="t-str">'@ottabase/ottaorm/client'</span><span class="t-op">;</span>
+
+<span class="t-kw">export const</span> <span class="t-op">{</span>
+  useList<span class="t-op">:</span> useTodos<span class="t-op">,</span>
+  useCreate<span class="t-op">:</span> useCreateTodo<span class="t-op">,</span>
+<span class="t-op">} =</span> <span class="t-fn">createModelHooks</span><span class="t-op">({</span> entityName<span class="t-op">:</span> <span class="t-str">'todos'</span> <span class="t-op">});</span>
+
+<span class="t-kw">const</span> <span class="t-op">{</span> data <span class="t-op">} =</span> <span class="t-fn">useTodos</span><span class="t-op">();</span>
+<span class="t-cm">// GET /api/ottaorm/todos — no hand-written router.</span></code></pre>
+							</div>
+							<div class="hp-code-panel" data-panel="rls" id="panel-rls">
+								<pre class="hp-code-block"><code><span class="t-kw">await</span> <span class="t-fn">initRLS</span><span class="t-op">({</span>
+  organizationId<span class="t-op">:</span> session<span class="t-op">.</span>orgId<span class="t-op">,</span>
+  userId<span class="t-op">:</span> session<span class="t-op">.</span>user<span class="t-op">.</span>id<span class="t-op">,</span>
+<span class="t-op">});</span>
+
+<span class="t-cm">// Todo.all() is tenant-scoped. Full stop.</span>
+<span class="t-kw">const</span> rows <span class="t-op">=</span> <span class="t-kw">await</span> <span class="t-cls">Todo</span><span class="t-op">.</span><span class="t-fn">all</span><span class="t-op">();</span></code></pre>
+							</div>
+							<div class="hp-code-panel" data-panel="deploy" id="panel-deploy">
+								<pre class="hp-code-block"><code><span class="t-cm"># One POST bootstraps schema — no migration dir sprawl.</span>
+$ curl <span class="t-op">-X</span> POST localhost:3004/api/ottaorm/init
+
+$ wrangler deploy
+✓ https://your-saas.workers.dev</code></pre>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="hp-stack hp-section" aria-labelledby="hp-stack-title">
+				<div class="hp-container hp-stack-inner">
+					<div class="hp-reveal">
+						<h2 id="hp-stack-title">First-class edge.</h2>
+						<p style="color: var(--hp-muted); margin-top: 0.65rem; max-width: 48ch">
+							D1, KV, R2, Durable Objects, Queues — not retrofitted. The ORM and worker routes were shaped for this runtime.
+						</p>
+						<div class="hp-timeline">
+							<div class="hp-tl-row">
+								<div class="hp-tl-glyph" aria-hidden="true"></div>
+								<div>
+									<strong>Browser</strong>
+									<span>TanStack Router · Vite · TanStack Query</span>
+								</div>
+							</div>
+							<div class="hp-tl-row">
+								<div class="hp-tl-glyph" aria-hidden="true"></div>
+								<div>
+									<strong>Edge worker</strong>
+									<span>300+ PoPs · OttaORM · RLS · RBAC</span>
+								</div>
+							</div>
+							<div class="hp-tl-row">
+								<div class="hp-tl-glyph" aria-hidden="true"></div>
+								<div>
+									<strong>D1</strong>
+									<span>SQLite · replicated · Drizzle driver</span>
+								</div>
+							</div>
+						</div>
+						<p style="margin-top: 1.5rem">
+							<a href="philosophy.html" class="hp-btn hp-btn--ghost">Why fat models →</a>
+						</p>
+					</div>
+					<div class="hp-stack-visual hp-reveal">
+						<div class="hp-stack-card">Client <span>hooks</span></div>
+						<div class="hp-stack-card hp-stack-card--hl">Workers + OttaORM <span>RLS</span></div>
+						<div class="hp-stack-card">D1 <span>data</span></div>
+						<div class="hp-mini-grid" aria-label="Side services">
+							<div class="hp-mini">KV</div>
+							<div class="hp-mini">R2</div>
+							<div class="hp-mini">DO</div>
+							<div class="hp-mini">Queues</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="hp-term-wrap" aria-labelledby="hp-qs-title">
+				<div class="hp-container hp-term-grid">
+					<div class="hp-reveal">
+						<h2 id="hp-qs-title">From empty folder to live.</h2>
+						<p style="color: var(--hp-muted); margin-top: 0.65rem">
+							Scaffold, install, dev servers, one init call — then deploy. No Docker sermon required.
+						</p>
+						<ol style="margin-top: 1.5rem; color: var(--hp-muted); font-size: 0.95rem; line-height: 1.8; padding-left: 1.2rem; list-style: decimal">
+							<li><strong style="color: var(--hp-text)">Scaffold</strong> — monorepo with packages wired.</li>
+							<li><strong style="color: var(--hp-text)">pnpm dev</strong> — Vite 3003, Wrangler 3004.</li>
+							<li><strong style="color: var(--hp-text)">POST /api/ottaorm/init</strong> — tables appear.</li>
+							<li><strong style="color: var(--hp-text)">wrangler deploy</strong> — edge.</li>
+						</ol>
+					</div>
+					<div class="hp-term hp-reveal" role="region" aria-label="Terminal demo">
+						<div class="hp-term-bar" aria-hidden="true">
+							<span class="hp-window-dot" style="background: #ff5f57"></span>
+							<span class="hp-window-dot" style="background: #febc2e"></span>
+							<span class="hp-window-dot" style="background: #28c840"></span>
+							<span style="font-size: 0.72rem; color: var(--hp-dim); margin-left: 0.35rem">bash</span>
+						</div>
+						<div class="hp-term-body" id="hp-terminal-body" aria-live="polite"></div>
+					</div>
+				</div>
+			</section>
+
+			<section class="hp-manifesto">
+				<div class="hp-container hp-manifesto-inner">
+					<div class="hp-reveal">
+						<p class="hp-eyebrow" style="margin-bottom: 0.5rem">Philosophy</p>
+						<h2 style="font-family: var(--hp-font-display); font-size: clamp(1.75rem, 3vw, 2.25rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1">
+							One file.<br />The whole behavior.
+						</h2>
+					</div>
+					<blockquote class="hp-reveal">
+						<p>
+							<strong>Six layers of ceremony to insert a row is not architecture — it’s fatigue.</strong> OttaORM keeps validation, relationships, and mutations on the model so your routes stay thin and your tests know where to look.
+						</p>
+						<p style="margin-top: 1rem">
+							<a href="philosophy.html" class="hp-btn hp-btn--ghost" style="margin-top: 0.5rem">Read the manifesto →</a>
+						</p>
+					</blockquote>
+				</div>
+			</section>
+
+			<section class="hp-cta" aria-labelledby="hp-cta-title">
+				<div class="hp-container">
+					<h2 id="hp-cta-title" class="hp-reveal">Own the stack.<br /><em>Ship the product.</em></h2>
+					<p class="hp-reveal">Open source under MIT. Discord for humans. GitHub for patches.</p>
+					<div class="hp-cta-actions hp-reveal">
+						<a href="https://github.com/thinkdj/ottabase" class="hp-btn hp-btn--primary hp-btn--lg" target="_blank" rel="noopener noreferrer">Star on GitHub</a>
+						<a href="docs.html" class="hp-btn hp-btn--ghost hp-btn--lg">Get started</a>
+						<a href="https://discord.gg/ottabase" class="hp-btn hp-btn--ghost hp-btn--lg" target="_blank" rel="noopener noreferrer">Discord</a>
+					</div>
+					<p class="hp-cta-note hp-reveal">Aligned with the Ottabase open-source launch playbook · demo &amp; docs on the roadmap</p>
+				</div>
+			</section>
+		</main>
+
+		<footer class="hp-footer">
+			<div class="hp-container hp-footer-inner">
+				<div>
+					<div class="hp-mark" style="margin-bottom: 0.35rem">
+						<span class="hp-mark-ot">otta</span><span class="hp-mark-base">base</span>
+					</div>
+					<p style="font-size: 0.82rem; color: var(--hp-dim)">Edge-native SaaS framework</p>
+				</div>
+				<nav aria-label="Footer">
+					<a href="packages.html">Packages</a>
+					<a href="philosophy.html">Philosophy</a>
+					<a href="docs.html">Docs</a>
+					<a href="https://github.com/thinkdj/ottabase" target="_blank" rel="noopener noreferrer">GitHub</a>
+					<a href="https://discord.gg/ottabase" target="_blank" rel="noopener noreferrer">Discord</a>
+					<a href="https://twitter.com/ottabase" target="_blank" rel="noopener noreferrer">Twitter</a>
+				</nav>
+				<div class="hp-footer-meta">
+					MIT License<br />
+					Built for Cloudflare Workers
+				</div>
+			</div>
+		</footer>
+	</div>
+	<script src="js/site.js"></script>
+</body>
+</html>
