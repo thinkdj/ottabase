@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Packages — Ottabase</title>
+  <meta name="description" content="All 47 Ottabase packages across core infrastructure, UI, content, business features, brand, and utilities. Browse and filter by category." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     NAVIGATION
+═══════════════════════════════════════════════════════════ -->
+<nav class="nav" id="nav" role="navigation" aria-label="Main">
+  <div class="container nav-inner">
+    <a href="index.html" class="nav-logo" aria-label="Ottabase home">
+      <span class="logo-otta">otta</span><span class="logo-base">base</span>
+    </a>
+    <div class="nav-links" id="nav-links">
+      <a href="packages.html" style="color: var(--text)">Packages</a>
+      <a href="philosophy.html">Philosophy</a>
+      <a href="docs.html">Docs</a>
+    </div>
+    <div class="nav-actions">
+      <a href="https://github.com/thinkdj/ottabase" class="btn btn-ghost" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://github.com/thinkdj/ottabase" class="btn btn-primary" target="_blank" rel="noopener noreferrer">⭐ Star</a>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE HERO
+═══════════════════════════════════════════════════════════ -->
+<div class="page-hero animate">
+  <div class="container page-hero-inner">
+    <span class="page-label">Package Ecosystem</span>
+    <h1>47 packages.<br/>Nothing missing.</h1>
+    <p>
+      Every package is independently versioned, documented, and tested.
+      Use the whole stack or cherry-pick what you need.
+    </p>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     FILTER + PACKAGES
+═══════════════════════════════════════════════════════════ -->
+<div class="container">
+
+  <!-- Filter bar -->
+  <div class="pkg-filter" role="toolbar" aria-label="Filter packages by category">
+    <button class="pkg-filter-btn active" data-cat="all" aria-pressed="true">
+      All <span style="color: var(--text-dim); margin-left: 4px">47</span>
+    </button>
+    <button class="pkg-filter-btn" data-cat="core" aria-pressed="false">
+      <span class="pkg-filter-dot" style="background: var(--cat-core)"></span>
+      Core <span style="color: var(--text-dim); margin-left: 4px">11</span>
+    </button>
+    <button class="pkg-filter-btn" data-cat="ui" aria-pressed="false">
+      <span class="pkg-filter-dot" style="background: var(--cat-ui)"></span>
+      UI <span style="color: var(--text-dim); margin-left: 4px">12</span>
+    </button>
+    <button class="pkg-filter-btn" data-cat="content" aria-pressed="false">
+      <span class="pkg-filter-dot" style="background: var(--cat-content)"></span>
+      Content <span style="color: var(--text-dim); margin-left: 4px">5</span>
+    </button>
+    <button class="pkg-filter-btn" data-cat="business" aria-pressed="false">
+      <span class="pkg-filter-dot" style="background: var(--cat-business)"></span>
+      Business <span style="color: var(--text-dim); margin-left: 4px">5</span>
+    </button>
+    <button class="pkg-filter-btn" data-cat="brand" aria-pressed="false">
+      <span class="pkg-filter-dot" style="background: var(--cat-brand)"></span>
+      Brand <span style="color: var(--text-dim); margin-left: 4px">5</span>
+    </button>
+    <button class="pkg-filter-btn" data-cat="utils" aria-pressed="false">
+      <span class="pkg-filter-dot" style="background: var(--cat-utils)"></span>
+      Utilities <span style="color: var(--text-dim); margin-left: 4px">9</span>
+    </button>
+  </div>
+
+  <div style="padding-bottom: 5rem;">
+
+    <!-- ── Core Infrastructure ─────────────────────────────── -->
+    <div class="pkg-section" data-cat="core">
+      <h2 class="pkg-section-title animate">
+        <span class="pkg-filter-dot" style="background: var(--cat-core)"></span>
+        Core Infrastructure
+      </h2>
+      <div class="pkg-grid animate">
+
+        <div class="pkg-card" data-cat="core">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-core)"></span>
+            <span class="pkg-name">@ottabase/ottaorm</span>
+          </div>
+          <p class="pkg-desc">Fat models ORM built on Drizzle. Auto-migrations, relationships, RLS, CRUD API generation. The core of Ottabase.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ottaorm</span>
+        </div>
+
+        <div class="pkg-card" data-cat="core">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-core)"></span>
+            <span class="pkg-name">@ottabase/auth</span>
+          </div>
+          <p class="pkg-desc">Auth.js v5 with Cloudflare D1 adapter. OAuth, Magic Link, and Credentials — all preconfigured.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/auth</span>
+        </div>
+
+        <div class="pkg-card" data-cat="core">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-core)"></span>
+            <span class="pkg-name">@ottabase/rbac</span>
+          </div>
+          <p class="pkg-desc">Role-based access control with KV-cached permissions. Supports per-org, per-app, and per-user roles.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/rbac</span>
+        </div>
+
+        <div class="pkg-card" data-cat="core">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-core)"></span>
+            <span class="pkg-name">@ottabase/cf</span>
+          </div>
+          <p class="pkg-desc">Typed wrappers for all Cloudflare bindings: D1, KV, R2, Images, Hyperdrive, Queues, Rate Limiting.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/cf</span>
+        </div>
+
+        <div class="pkg-card" data-cat="core">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-core)"></span>
+            <span class="pkg-name">@ottabase/cf-realtime</span>
+          </div>
+          <p class="pkg-desc">WebSocket pub/sub via Durable Objects. Pusher-compatible API without the Pusher bill.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/cf-realtime</span>
+        </div>
+
+        <div class="pkg-card" data-cat="core">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-core)"></span>
+            <span class="pkg-name">@ottabase/queue</span>
+          </div>
+          <p class="pkg-desc">Job queue built on Cloudflare Queues. Dispatch, handlers, deduplication, chaining, and priority levels.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/queue</span>
+        </div>
+
+        <div class="pkg-card" data-cat="core">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-core)"></span>
+            <span class="pkg-name">@ottabase/db</span>
+          </div>
+          <p class="pkg-desc">Drizzle D1 driver with connection pooling and edge-optimised query helpers.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/db</span>
+        </div>
+
+        <div class="pkg-card" data-cat="core">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-core)"></span>
+            <span class="pkg-name">@ottabase/audit</span>
+          </div>
+          <p class="pkg-desc">Audit logging with full change tracking, RBAC context, and queryable history. Compliance-ready.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/audit</span>
+        </div>
+
+        <div class="pkg-card" data-cat="core">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-core)"></span>
+            <span class="pkg-name">@ottabase/analytics</span>
+          </div>
+          <p class="pkg-desc">Cloudflare Analytics Engine wrapper. Track custom events with dimensions and metrics at edge speed.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/analytics</span>
+        </div>
+
+        <div class="pkg-card" data-cat="core">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-core)"></span>
+            <span class="pkg-name">@ottabase/cron</span>
+          </div>
+          <p class="pkg-desc">Cron job handlers. Supports both static code-defined and database-driven scheduled tasks.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/cron</span>
+        </div>
+
+        <div class="pkg-card" data-cat="core">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-core)"></span>
+            <span class="pkg-name">@ottabase/logger</span>
+          </div>
+          <p class="pkg-desc">Structured logging with multiple transports. Edge-compatible, context-aware, zero overhead in prod.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/logger</span>
+        </div>
+
+      </div>
+    </div><!-- /core -->
+
+    <!-- ── UI Components ──────────────────────────────────── -->
+    <div class="pkg-section" data-cat="ui">
+      <h2 class="pkg-section-title animate">
+        <span class="pkg-filter-dot" style="background: var(--cat-ui)"></span>
+        UI Components
+      </h2>
+      <div class="pkg-grid animate">
+
+        <div class="pkg-card" data-cat="ui">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-ui)"></span>
+            <span class="pkg-name">@ottabase/ui-shadcn</span>
+          </div>
+          <p class="pkg-desc">The full shadcn/ui component library, pre-configured and theme-aware. Buttons, dialogs, tables, forms.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ui-shadcn</span>
+        </div>
+
+        <div class="pkg-card" data-cat="ui">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-ui)"></span>
+            <span class="pkg-name">@ottabase/ui-mantine</span>
+          </div>
+          <p class="pkg-desc">Mantine provider with pre-built themes and dark mode. Drop in, configure once, works everywhere.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ui-mantine</span>
+        </div>
+
+        <div class="pkg-card" data-cat="ui">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-ui)"></span>
+            <span class="pkg-name">@ottabase/ui-datatable</span>
+          </div>
+          <p class="pkg-desc">Headless TanStack Table v8 wrapper with sorting, filtering, pagination, and selection built in.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ui-datatable</span>
+        </div>
+
+        <div class="pkg-card" data-cat="ui">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-ui)"></span>
+            <span class="pkg-name">@ottabase/spotlight</span>
+          </div>
+          <p class="pkg-desc">Command palette / spotlight search. Keyboard-driven, extensible actions, accessible. Like Raycast for your app.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/spotlight</span>
+        </div>
+
+        <div class="pkg-card" data-cat="ui">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-ui)"></span>
+            <span class="pkg-name">@ottabase/ottadate</span>
+          </div>
+          <p class="pkg-desc">Date picker with range selection, datetime, fuzzy dates, and timezone-aware display. No moment.js.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ottadate</span>
+        </div>
+
+        <div class="pkg-card" data-cat="ui">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-ui)"></span>
+            <span class="pkg-name">@ottabase/ui-cropper</span>
+          </div>
+          <p class="pkg-desc">Vanilla JS image cropper at 3–4 KB with zero dependencies. Crop, zoom, rotate. Works anywhere.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ui-cropper</span>
+        </div>
+
+        <div class="pkg-card" data-cat="ui">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-ui)"></span>
+            <span class="pkg-name">@ottabase/ui-split-pane</span>
+          </div>
+          <p class="pkg-desc">Resizable split-pane layout component. Drag to resize, controlled or uncontrolled, vertical or horizontal.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ui-split-pane</span>
+        </div>
+
+        <div class="pkg-card" data-cat="ui">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-ui)"></span>
+            <span class="pkg-name">@ottabase/ottaselect</span>
+          </div>
+          <p class="pkg-desc">Headless select, combobox, and multi-select. Accessible, keyboard-navigable, ARIA-compliant.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ottaselect</span>
+        </div>
+
+        <div class="pkg-card" data-cat="ui">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-ui)"></span>
+            <span class="pkg-name">@ottabase/ui-code-highlight</span>
+          </div>
+          <p class="pkg-desc">Syntax highlighting component with copy button. Supports 30+ languages, themes, and line numbers.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ui-code-highlight</span>
+        </div>
+
+        <div class="pkg-card" data-cat="ui">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-ui)"></span>
+            <span class="pkg-name">@ottabase/ui-components</span>
+          </div>
+          <p class="pkg-desc">Shared UI primitives: DarkModeToggle, Logo, Avatar, Badge, and more. Framework-agnostic.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ui-components</span>
+        </div>
+
+        <div class="pkg-card" data-cat="ui">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-ui)"></span>
+            <span class="pkg-name">@ottabase/ui-tailwind</span>
+          </div>
+          <p class="pkg-desc">Shared Tailwind CSS configuration with Ottabase design tokens, dark mode, and typography plugin.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ui-tailwind</span>
+        </div>
+
+        <div class="pkg-card" data-cat="ui">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-ui)"></span>
+            <span class="pkg-name">@ottabase/ui-base</span>
+          </div>
+          <p class="pkg-desc">Framework-agnostic base styles, CSS resets, and design token CSS variables for cross-app consistency.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ui-base</span>
+        </div>
+
+      </div>
+    </div><!-- /ui -->
+
+    <!-- ── Content & Media ────────────────────────────────── -->
+    <div class="pkg-section" data-cat="content">
+      <h2 class="pkg-section-title animate">
+        <span class="pkg-filter-dot" style="background: var(--cat-content)"></span>
+        Content & Media
+      </h2>
+      <div class="pkg-grid animate">
+
+        <div class="pkg-card" data-cat="content">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-content)"></span>
+            <span class="pkg-name">@ottabase/ottablog</span>
+          </div>
+          <p class="pkg-desc">Full blog/CMS engine. Posts, categories, tags, series, changelogs, docs, and pages. With a studio UI.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ottablog</span>
+        </div>
+
+        <div class="pkg-card" data-cat="content">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-content)"></span>
+            <span class="pkg-name">@ottabase/ottaeditor</span>
+          </div>
+          <p class="pkg-desc">EditorJS wrapper with 30 plugins: headers, lists, tables, code, embeds, maps, layout, FAQ, and more.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ottaeditor</span>
+        </div>
+
+        <div class="pkg-card" data-cat="content">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-content)"></span>
+            <span class="pkg-name">@ottabase/ottarenderer</span>
+          </div>
+          <p class="pkg-desc">EditorJS block renderer. Converts JSON output to React components with theming and custom block support.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ottarenderer</span>
+        </div>
+
+        <div class="pkg-card" data-cat="content">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-content)"></span>
+            <span class="pkg-name">@ottabase/ottaupload</span>
+          </div>
+          <p class="pkg-desc">File uploads to Cloudflare R2 and Cloudflare Images. Progress, validation, presigned URLs, image transforms.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ottaupload</span>
+        </div>
+
+        <div class="pkg-card" data-cat="content">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-content)"></span>
+            <span class="pkg-name">@ottabase/medialibrary</span>
+          </div>
+          <p class="pkg-desc">Media library schema, API, and viewer components. Browse, search, and select uploaded assets from anywhere.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/medialibrary</span>
+        </div>
+
+      </div>
+    </div><!-- /content -->
+
+    <!-- ── Business Features ──────────────────────────────── -->
+    <div class="pkg-section" data-cat="business">
+      <h2 class="pkg-section-title animate">
+        <span class="pkg-filter-dot" style="background: var(--cat-business)"></span>
+        Business Features
+      </h2>
+      <div class="pkg-grid animate">
+
+        <div class="pkg-card" data-cat="business">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-business)"></span>
+            <span class="pkg-name">@ottabase/shortlinks</span>
+          </div>
+          <p class="pkg-desc">URL shortener with custom slugs, interstitial pages, expiry dates, and Cloudflare Analytics tracking.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/shortlinks</span>
+        </div>
+
+        <div class="pkg-card" data-cat="business">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-business)"></span>
+            <span class="pkg-name">@ottabase/referrals</span>
+          </div>
+          <p class="pkg-desc">Referral tracking with first-touch attribution, click tracking via Analytics Engine, and conversion funnels.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/referrals</span>
+        </div>
+
+        <div class="pkg-card" data-cat="business">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-business)"></span>
+            <span class="pkg-name">@ottabase/notifications</span>
+          </div>
+          <p class="pkg-desc">Multi-channel notifications: in-app (WebSocket), email, and system. Preferences, read state, batching.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/notifications</span>
+        </div>
+
+        <div class="pkg-card" data-cat="business">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-business)"></span>
+            <span class="pkg-name">@ottabase/comments</span>
+          </div>
+          <p class="pkg-desc">Threaded comment system, polymorphic (attach to anything), nestable, reactions, moderation-ready.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/comments</span>
+        </div>
+
+        <div class="pkg-card" data-cat="business">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-business)"></span>
+            <span class="pkg-name">@ottabase/forms</span>
+          </div>
+          <p class="pkg-desc">Auto-generated CRUD forms from OttaORM model metadata. Field types, validation, labels — all inferred.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/forms</span>
+        </div>
+
+      </div>
+    </div><!-- /business -->
+
+    <!-- ── Brand & Layout ─────────────────────────────────── -->
+    <div class="pkg-section" data-cat="brand">
+      <h2 class="pkg-section-title animate">
+        <span class="pkg-filter-dot" style="background: var(--cat-brand)"></span>
+        Brand & Layout
+      </h2>
+      <div class="pkg-grid animate">
+
+        <div class="pkg-card" data-cat="brand">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-brand)"></span>
+            <span class="pkg-name">@ottabase/brand-engine</span>
+          </div>
+          <p class="pkg-desc">Design token engine with 8 presets. Runtime CSS variable injection, email branding, preset expansion.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/brand-engine</span>
+        </div>
+
+        <div class="pkg-card" data-cat="brand">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-brand)"></span>
+            <span class="pkg-name">@ottabase/brand-engine-react</span>
+          </div>
+          <p class="pkg-desc">React bindings for Brand Engine. BrandProvider, LayoutResolver, useBrand() hook, theme switcher.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/brand-engine-react</span>
+        </div>
+
+        <div class="pkg-card" data-cat="brand">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-brand)"></span>
+            <span class="pkg-name">@ottabase/ottalayout</span>
+          </div>
+          <p class="pkg-desc">Layout types, 10 presets, path resolver, and React slot system. From sidebar to fullscreen, covered.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ottalayout</span>
+        </div>
+
+        <div class="pkg-card" data-cat="brand">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-brand)"></span>
+            <span class="pkg-name">@ottabase/ottamenu</span>
+          </div>
+          <p class="pkg-desc">Menu type definitions, tree utilities, and renderers. Supports nested, flat, and dynamic menu structures.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/ottamenu</span>
+        </div>
+
+        <div class="pkg-card" data-cat="brand">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-brand)"></span>
+            <span class="pkg-name">@ottabase/homepage-contract</span>
+          </div>
+          <p class="pkg-desc">Zod-validated API contract for homepage data. Shared between Next.js frontend and Workers backend.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/homepage-contract</span>
+        </div>
+
+      </div>
+    </div><!-- /brand -->
+
+    <!-- ── Utilities ──────────────────────────────────────── -->
+    <div class="pkg-section" data-cat="utils">
+      <h2 class="pkg-section-title animate">
+        <span class="pkg-filter-dot" style="background: var(--cat-utils)"></span>
+        Utilities
+      </h2>
+      <div class="pkg-grid animate">
+
+        <div class="pkg-card" data-cat="utils">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-utils)"></span>
+            <span class="pkg-name">@ottabase/scripts</span>
+          </div>
+          <p class="pkg-desc">CLI tools: cf:login, cf:setup, cf:validate, db:reset, clean:*. Automates the tedious Cloudflare setup.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/scripts</span>
+        </div>
+
+        <div class="pkg-card" data-cat="utils">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-utils)"></span>
+            <span class="pkg-name">@ottabase/email</span>
+          </div>
+          <p class="pkg-desc">Email templating and mailer supporting Resend, AWS SES, MailChannels, and SMTP. Edge-compatible.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/email</span>
+        </div>
+
+        <div class="pkg-card" data-cat="utils">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-utils)"></span>
+            <span class="pkg-name">@ottabase/i18n</span>
+          </div>
+          <p class="pkg-desc">i18next wrapper with built-in support for English, Spanish, French, and German. Type-safe translations.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/i18n</span>
+        </div>
+
+        <div class="pkg-card" data-cat="utils">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-utils)"></span>
+            <span class="pkg-name">@ottabase/cf-ai</span>
+          </div>
+          <p class="pkg-desc">Cloudflare AI Gateway and Workers AI wrapper. Chat, embeddings, image generation — at edge latency.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/cf-ai</span>
+        </div>
+
+        <div class="pkg-card" data-cat="utils">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-utils)"></span>
+            <span class="pkg-name">@ottabase/api</span>
+          </div>
+          <p class="pkg-desc">Type-safe fetch wrapper with request deduplication, retry logic, and error normalisation.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/api</span>
+        </div>
+
+        <div class="pkg-card" data-cat="utils">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-utils)"></span>
+            <span class="pkg-name">@ottabase/state</span>
+          </div>
+          <p class="pkg-desc">Jotai atoms for theme, user session, sidebar state, and organisation context. SSR-compatible.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/state</span>
+        </div>
+
+        <div class="pkg-card" data-cat="utils">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-utils)"></span>
+            <span class="pkg-name">@ottabase/utils</span>
+          </div>
+          <p class="pkg-desc">Timezone handling, string manipulation, file utilities, URL helpers, and git utilities. Check before reinventing.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/utils</span>
+        </div>
+
+        <div class="pkg-card" data-cat="utils">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-utils)"></span>
+            <span class="pkg-name">@ottabase/config</span>
+          </div>
+          <p class="pkg-desc">Application configuration, environment variable helpers, and storage key utilities. Typed, validated.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/config</span>
+        </div>
+
+        <div class="pkg-card" data-cat="utils">
+          <div class="pkg-card-head">
+            <span class="pkg-dot" style="background: var(--cat-utils)"></span>
+            <span class="pkg-name">@ottabase/docs</span>
+          </div>
+          <p class="pkg-desc">Markdown documentation viewer component. Renders .md files with syntax highlighting and TOC generation.</p>
+          <span class="pkg-install" title="Click to copy">pnpm add @ottabase/docs</span>
+        </div>
+
+      </div>
+    </div><!-- /utils -->
+
+  </div><!-- /container inner -->
+</div><!-- /container -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     CTA
+═══════════════════════════════════════════════════════════ -->
+<section class="cta-banner animate">
+  <div class="container cta-inner">
+    <h2>Ready to use <span>all 47?</span></h2>
+    <p>Clone the monorepo, run one command, and your full SaaS stack is live.</p>
+    <div class="cta-actions">
+      <a href="https://github.com/thinkdj/ottabase" class="btn btn-primary btn-lg" target="_blank" rel="noopener noreferrer">⭐ Star on GitHub</a>
+      <a href="docs.html" class="btn btn-ghost btn-lg">Get Started →</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════════════════════ -->
+<footer class="site-footer" role="contentinfo">
+  <div class="container footer-inner">
+    <div>
+      <div class="footer-brand">otta<span>base</span></div>
+      <div class="footer-sub">The edge-native SaaS framework.</div>
+    </div>
+    <nav class="footer-links" aria-label="Footer navigation">
+      <a href="packages.html">Packages</a>
+      <a href="philosophy.html">Philosophy</a>
+      <a href="docs.html">Docs</a>
+      <a href="https://github.com/thinkdj/ottabase" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://discord.gg/ottabase"          target="_blank" rel="noopener noreferrer">Discord</a>
+    </nav>
+    <div class="footer-right">MIT License<br/>Built on Cloudflare Workers</div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

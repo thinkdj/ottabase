@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Get Started — Ottabase</title>
+  <meta name="description" content="Get your Ottabase SaaS monorepo running in minutes. Step-by-step setup for Cloudflare Workers, D1, KV, R2, and deployment." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     NAVIGATION
+═══════════════════════════════════════════════════════════ -->
+<nav class="nav" id="nav" role="navigation" aria-label="Main">
+  <div class="container nav-inner">
+    <a href="index.html" class="nav-logo" aria-label="Ottabase home">
+      <span class="logo-otta">otta</span><span class="logo-base">base</span>
+    </a>
+    <div class="nav-links" id="nav-links">
+      <a href="packages.html">Packages</a>
+      <a href="philosophy.html">Philosophy</a>
+      <a href="docs.html" style="color: var(--text)">Docs</a>
+    </div>
+    <div class="nav-actions">
+      <a href="https://github.com/thinkdj/ottabase" class="btn btn-ghost" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://github.com/thinkdj/ottabase" class="btn btn-primary" target="_blank" rel="noopener noreferrer">⭐ Star</a>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE HERO
+═══════════════════════════════════════════════════════════ -->
+<div class="page-hero animate">
+  <div class="container page-hero-inner">
+    <span class="page-label">Get Started</span>
+    <h1>From <code style="font-size: 0.7em; border-radius: 6px; padding: 0.1em 0.4em; background: var(--bg-card); color: var(--violet-lt)">git clone</code><br/>to running SaaS.</h1>
+    <p>
+      Prerequisites: Node.js ≥ 24, pnpm ≥ 10, a Cloudflare account (free tier is fine).
+      That's genuinely all.
+    </p>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     DOCS LAYOUT
+═══════════════════════════════════════════════════════════ -->
+<div class="container">
+  <div class="docs-layout">
+
+    <!-- ── Sidebar ──────────────────────────────────────── -->
+    <aside class="docs-sidebar animate" aria-label="Documentation navigation">
+      <div class="docs-nav-group">
+        <div class="docs-nav-label">Getting Started</div>
+        <a href="#prerequisites" class="docs-nav-item active">Prerequisites</a>
+        <a href="#clone"         class="docs-nav-item">Clone & Install</a>
+        <a href="#cloudflare"    class="docs-nav-item">Cloudflare Setup</a>
+        <a href="#dev"           class="docs-nav-item">Local Development</a>
+        <a href="#bootstrap"     class="docs-nav-item">Bootstrap</a>
+        <a href="#deploy"        class="docs-nav-item">Deploy</a>
+      </div>
+      <div class="docs-nav-group">
+        <div class="docs-nav-label">Core Concepts</div>
+        <a href="#models"     class="docs-nav-item">Fat Models</a>
+        <a href="#crud"       class="docs-nav-item">Auto CRUD</a>
+        <a href="#rls"        class="docs-nav-item">Row-Level Security</a>
+        <a href="#rbac"       class="docs-nav-item">RBAC</a>
+        <a href="#migrations" class="docs-nav-item">Auto-Migrations</a>
+      </div>
+      <div class="docs-nav-group">
+        <div class="docs-nav-label">Resources</div>
+        <a href="https://github.com/thinkdj/ottabase"       class="docs-nav-item" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+        <a href="packages.html"                              class="docs-nav-item">Package List</a>
+        <a href="philosophy.html"                            class="docs-nav-item">Philosophy</a>
+        <a href="https://discord.gg/ottabase"                class="docs-nav-item" target="_blank" rel="noopener noreferrer">Discord ↗</a>
+      </div>
+    </aside>
+
+    <!-- ── Main content ─────────────────────────────────── -->
+    <main class="docs-content animate animate-delay-2">
+
+      <!-- Prerequisites -->
+      <section id="prerequisites">
+        <h2 style="font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.75rem;">Prerequisites</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.7;">
+          Before you begin, make sure you have the following installed and configured.
+        </p>
+        <ul class="prose-section" style="padding: 0; max-width: 100%;">
+          <li><strong>Node.js ≥ 24</strong> — use <code>nvm install 24 && nvm use 24</code> if needed.</li>
+          <li><strong>pnpm ≥ 10</strong> — install via <code>corepack enable pnpm</code>.</li>
+          <li><strong>Cloudflare account</strong> — free tier works. No credit card required to start.</li>
+          <li><strong>Wrangler CLI</strong> — installed automatically by pnpm as part of the monorepo.</li>
+        </ul>
+      </section>
+
+      <div class="prose-divider"></div>
+
+      <!-- Clone & Install -->
+      <section id="clone">
+        <h2 style="font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.75rem;">Clone & Install</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.7;">
+          Clone the repository and install dependencies. The monorepo uses pnpm workspaces —
+          never use <code>npm</code> or <code>yarn</code> here.
+        </p>
+        <div class="code-window">
+          <div class="code-window-bar" aria-hidden="true">
+            <span class="code-window-dot" style="background:#ef4444"></span>
+            <span class="code-window-dot" style="background:#f59e0b"></span>
+            <span class="code-window-dot" style="background:#10b981"></span>
+            <span class="code-window-filename">terminal</span>
+          </div>
+          <pre class="code-block"><code><span class="cm"># Clone the repository</span>
+$ git clone https://github.com/thinkdj/ottabase.git my-saas
+$ cd my-saas
+
+<span class="cm"># Install all dependencies (pnpm workspaces handles everything)</span>
+$ pnpm install
+
+<span class="cm"># Build shared packages first — required before first dev run</span>
+$ pnpm build:pkg</code></pre>
+        </div>
+      </section>
+
+      <div class="prose-divider"></div>
+
+      <!-- Cloudflare Setup -->
+      <section id="cloudflare">
+        <h2 style="font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.75rem;">Cloudflare Setup</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.7;">
+          Ottabase includes a CLI command that creates all required Cloudflare resources:
+          D1 database, KV namespace, R2 bucket, and Queues. Run it once.
+        </p>
+        <div class="code-window" style="margin-bottom: 1.25rem;">
+          <div class="code-window-bar" aria-hidden="true">
+            <span class="code-window-dot" style="background:#ef4444"></span>
+            <span class="code-window-dot" style="background:#f59e0b"></span>
+            <span class="code-window-dot" style="background:#10b981"></span>
+            <span class="code-window-filename">terminal</span>
+          </div>
+          <pre class="code-block"><code><span class="cm"># Log in to Cloudflare via Wrangler</span>
+$ pnpm cf:login
+
+<span class="cm"># Create all required Cloudflare resources automatically</span>
+$ pnpm cf:setup
+<span class="str">  ✓ D1 database 'my-saas-db' created</span>
+<span class="str">  ✓ KV namespace 'my-saas-kv' created</span>
+<span class="str">  ✓ R2 bucket 'my-saas-r2' created</span>
+<span class="str">  ✓ Queue 'my-saas-queue' created</span>
+<span class="str">  ✓ wrangler.jsonc updated with binding IDs</span>
+
+<span class="cm"># Validate your configuration looks correct</span>
+$ pnpm cf:validate</code></pre>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.9375rem; line-height: 1.7;">
+          After <code>cf:setup</code>, copy <code>.env.example</code> to <code>.env.local</code>
+          and fill in the required secrets: <code>AUTH_SECRET</code>, <code>BOOTSTRAP_OWNER_SECRET</code>,
+          and any OAuth credentials you want (GitHub, Google).
+        </p>
+      </section>
+
+      <div class="prose-divider"></div>
+
+      <!-- Local Dev -->
+      <section id="dev">
+        <h2 style="font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.75rem;">Local Development</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.7;">
+          Two servers run in parallel. Vite handles the frontend with hot module replacement.
+          Wrangler emulates the Cloudflare Worker locally with your real D1 data.
+        </p>
+        <div class="code-window">
+          <div class="code-window-bar" aria-hidden="true">
+            <span class="code-window-dot" style="background:#ef4444"></span>
+            <span class="code-window-dot" style="background:#f59e0b"></span>
+            <span class="code-window-dot" style="background:#10b981"></span>
+            <span class="code-window-filename">terminal</span>
+          </div>
+          <pre class="code-block"><code>$ pnpm dev
+
+<span class="str">  ┌─────────────────────────────────────────────┐</span>
+<span class="str">  │  Vite dev server    → localhost:3003          │</span>
+<span class="str">  │  Wrangler worker    → localhost:3004          │</span>
+<span class="str">  └─────────────────────────────────────────────┘</span>
+
+<span class="cm"># Or start them separately for more control:</span>
+$ pnpm dev:fe   <span class="cm"># Vite only</span>
+$ pnpm dev:be   <span class="cm"># Wrangler only</span></code></pre>
+        </div>
+      </section>
+
+      <div class="prose-divider"></div>
+
+      <!-- Bootstrap -->
+      <section id="bootstrap">
+        <h2 style="font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.75rem;">Bootstrap</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.7;">
+          With the dev server running, run these four curl commands to initialise the platform:
+          create tables, seed roles, create your owner account, and finalise the setup.
+        </p>
+        <div class="code-window">
+          <div class="code-window-bar" aria-hidden="true">
+            <span class="code-window-dot" style="background:#ef4444"></span>
+            <span class="code-window-dot" style="background:#f59e0b"></span>
+            <span class="code-window-dot" style="background:#10b981"></span>
+            <span class="code-window-filename">terminal</span>
+          </div>
+          <pre class="code-block"><code><span class="cm"># Get your bootstrap secret from .env.local</span>
+$ SECRET=$(grep BOOTSTRAP_OWNER_SECRET .env.local | cut -d= -f2)
+$ BASE=http://localhost:3004/__bootstrap__/api
+
+<span class="cm"># 1. Initialise — clears KV, runs migrations, creates tables</span>
+$ curl -s -X POST $BASE/init -H "X-Bootstrap-Secret: $SECRET"
+
+<span class="cm"># 2. Seed — creates default roles and permissions</span>
+$ curl -s -X POST $BASE/seed -H "X-Bootstrap-Secret: $SECRET"
+
+<span class="cm"># 3. Create owner account</span>
+$ curl -s -X POST $BASE/create-owner \
+    -H "X-Bootstrap-Secret: $SECRET" \
+    -H "Content-Type: application/json" \
+    -d '{"email":"you@example.com","password":"SecurePass1!","name":"You"}'
+
+<span class="cm"># 4. Finalise platform state</span>
+$ curl -s -X POST $BASE/finalize -H "X-Bootstrap-Secret: $SECRET"
+
+<span class="cm"># Done. Open localhost:3003 and log in.</span></code></pre>
+        </div>
+      </section>
+
+      <div class="prose-divider"></div>
+
+      <!-- Deploy -->
+      <section id="deploy">
+        <h2 style="font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.75rem;">Deploy to Production</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.7;">
+          Deploy to Cloudflare Workers. The same code runs locally and in production —
+          no environment configuration differences, no "it works on my machine."
+        </p>
+        <div class="code-window">
+          <div class="code-window-bar" aria-hidden="true">
+            <span class="code-window-dot" style="background:#ef4444"></span>
+            <span class="code-window-dot" style="background:#f59e0b"></span>
+            <span class="code-window-dot" style="background:#10b981"></span>
+            <span class="code-window-filename">terminal</span>
+          </div>
+          <pre class="code-block"><code><span class="cm"># Build the worker bundle</span>
+$ pnpm build
+
+<span class="cm"># Deploy to Cloudflare Workers</span>
+$ wrangler deploy
+<span class="str">  ✓ Uploaded my-saas (5.2 sec)</span>
+<span class="str">  ✓ Deployed to https://my-saas.workers.dev</span>
+
+<span class="cm"># Run bootstrap on production (once, same 4 commands)</span>
+<span class="cm"># Just change localhost:3004 → https://my-saas.workers.dev</span>
+
+<span class="cm"># Set a custom domain (optional)</span>
+$ wrangler custom-domain add my-saas.com</code></pre>
+        </div>
+      </section>
+
+      <div class="prose-divider"></div>
+
+      <!-- Fat Models -->
+      <section id="models">
+        <h2 style="font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.75rem;">Creating a Fat Model</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.7;">
+          Models live in <code>ottabase/models/</code>. They inherit from <code>BaseModel</code>
+          and declare a Drizzle table schema, static metadata, and domain methods.
+        </p>
+        <div class="code-window">
+          <div class="code-window-bar" aria-hidden="true">
+            <span class="code-window-dot" style="background:#ef4444"></span>
+            <span class="code-window-dot" style="background:#f59e0b"></span>
+            <span class="code-window-dot" style="background:#10b981"></span>
+            <span class="code-window-filename">ottabase/models/Project.ts</span>
+          </div>
+          <pre class="code-block"><code><span class="kw">import</span> <span class="op">{</span> sqliteTable<span class="op">,</span> text<span class="op">,</span> integer <span class="op">}</span> <span class="kw">from</span> <span class="str">'drizzle-orm/sqlite-core'</span><span class="op">;</span>
+<span class="kw">import</span> <span class="op">{</span> <span class="cls">BaseModel</span> <span class="op">}</span> <span class="kw">from</span> <span class="str">'@ottabase/ottaorm'</span><span class="op">;</span>
+
+<span class="cm">// 1. Define the schema (Drizzle + SQLite)</span>
+<span class="kw">export const</span> projectsTable <span class="op">=</span> <span class="fn">sqliteTable</span><span class="op">(</span><span class="str">'projects'</span><span class="op">, {</span>
+  id<span class="op">:</span>    <span class="fn">text</span><span class="op">(</span><span class="str">'id'</span><span class="op">).</span><span class="fn">primaryKey</span><span class="op">(),</span>
+  name<span class="op">:</span>  <span class="fn">text</span><span class="op">(</span><span class="str">'name'</span><span class="op">).</span><span class="fn">notNull</span><span class="op">(),</span>
+  status<span class="op">:</span> <span class="fn">text</span><span class="op">(</span><span class="str">'status'</span><span class="op">).</span><span class="fn">default</span><span class="op">(</span><span class="str">'draft'</span><span class="op">),</span>
+  orgId<span class="op">:</span> <span class="fn">text</span><span class="op">(</span><span class="str">'org_id'</span><span class="op">),</span>
+<span class="op">});</span>
+
+<span class="cm">// 2. Define the model (fat model pattern)</span>
+<span class="kw">export class</span> <span class="cls">Project</span> <span class="kw">extends</span> <span class="cls">BaseModel</span> <span class="op">{</span>
+  <span class="kw">static</span> entity <span class="op">=</span> <span class="str">'projects'</span><span class="op">;</span>
+  <span class="kw">static</span> table  <span class="op">=</span> projectsTable<span class="op">;</span>
+
+  <span class="cm">// Domain method — logic lives here, not in a service</span>
+  <span class="kw">async</span> <span class="fn">publish</span><span class="op">() {</span>
+    <span class="kw">this</span><span class="op">.</span><span class="fn">set</span><span class="op">(</span><span class="str">'status'</span><span class="op">,</span> <span class="str">'published'</span><span class="op">);</span>
+    <span class="kw">return this</span><span class="op">.</span><span class="fn">save</span><span class="op">();</span>
+  <span class="op">}</span>
+<span class="op">}</span>
+
+<span class="cm">// 3. Export the table in ottabase/db/schema.ts</span>
+<span class="cm">// 4. Register in worker/lib/db-utils.ts → initDbConnection</span>
+<span class="cm">// 5. POST /api/ottaorm/init to create the table</span></code></pre>
+        </div>
+      </section>
+
+      <div class="prose-divider"></div>
+
+      <!-- Auto CRUD -->
+      <section id="crud">
+        <h2 style="font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.75rem;">Auto CRUD API & Hooks</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.7;">
+          Register your model in <code>initDbConnection</code> and a full CRUD API appears automatically
+          at <code>/api/ottaorm/{entity}</code>. Then generate client hooks in one line.
+        </p>
+        <div class="code-window">
+          <div class="code-window-bar" aria-hidden="true">
+            <span class="code-window-dot" style="background:#ef4444"></span>
+            <span class="code-window-dot" style="background:#f59e0b"></span>
+            <span class="code-window-dot" style="background:#10b981"></span>
+            <span class="code-window-filename">ottabase/hooks/useProjects.ts</span>
+          </div>
+          <pre class="code-block"><code><span class="kw">import</span> <span class="op">{</span> <span class="fn">createModelHooks</span> <span class="op">}</span> <span class="kw">from</span> <span class="str">'@ottabase/ottaorm/client'</span><span class="op">;</span>
+<span class="kw">import type</span> <span class="op">{</span> <span class="cls">Project</span> <span class="op">}</span> <span class="kw">from</span> <span class="str">'../models/Project'</span><span class="op">;</span>
+
+<span class="kw">export const</span> <span class="op">{</span>
+  useList<span class="op">:</span>         useProjects<span class="op">,</span>       <span class="cm">// GET /api/ottaorm/projects</span>
+  useDetail<span class="op">:</span>       useProject<span class="op">,</span>        <span class="cm">// GET /api/ottaorm/projects/:id</span>
+  useCreate<span class="op">:</span>       useCreateProject<span class="op">,</span>  <span class="cm">// POST /api/ottaorm/projects</span>
+  useUpdate<span class="op">:</span>       useUpdateProject<span class="op">,</span>  <span class="cm">// PUT /api/ottaorm/projects/:id</span>
+  useDelete<span class="op">:</span>       useDeleteProject<span class="op">,</span>  <span class="cm">// DELETE /api/ottaorm/projects/:id</span>
+  useInfiniteList<span class="op">:</span> useProjectsInfinite<span class="op">,</span>
+<span class="op">} =</span> <span class="fn">createModelHooks</span><span class="op">&lt;</span><span class="cls">Project</span><span class="op">&gt;({</span> entityName<span class="op">:</span> <span class="str">'projects'</span> <span class="op">});</span></code></pre>
+        </div>
+      </section>
+
+      <div class="prose-divider"></div>
+
+      <!-- RLS -->
+      <section id="rls">
+        <h2 style="font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.75rem;">Row-Level Security</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.7;">
+          Call <code>initRLS()</code> at the start of each request. Every OttaORM query
+          after that call is automatically scoped to the current tenant. No accidental cross-tenant data leakage.
+        </p>
+        <div class="code-window">
+          <div class="code-window-bar" aria-hidden="true">
+            <span class="code-window-dot" style="background:#ef4444"></span>
+            <span class="code-window-dot" style="background:#f59e0b"></span>
+            <span class="code-window-dot" style="background:#10b981"></span>
+            <span class="code-window-filename">worker/middleware/rls.ts</span>
+          </div>
+          <pre class="code-block"><code><span class="kw">import</span> <span class="op">{</span> <span class="fn">initRLS</span> <span class="op">}</span> <span class="kw">from</span> <span class="str">'@ottabase/ottaorm'</span><span class="op">;</span>
+
+<span class="cm">// Called once per request in your middleware</span>
+<span class="kw">await</span> <span class="fn">initRLS</span><span class="op">({</span>
+  organizationId<span class="op">:</span> session<span class="op">.</span>user<span class="op">.</span>orgId<span class="op">,</span>
+  userId<span class="op">:</span>         session<span class="op">.</span>user<span class="op">.</span>id<span class="op">,</span>
+  appId<span class="op">:</span>          env<span class="op">.</span>APP_ID<span class="op">,</span>
+<span class="op">});</span>
+
+<span class="cm">// These queries are automatically tenant-scoped.</span>
+<span class="cm">// No WHERE clause needed. No accident possible.</span>
+<span class="kw">const</span> projects <span class="op">=</span> <span class="kw">await</span> <span class="cls">Project</span><span class="op">.</span><span class="fn">all</span><span class="op">();</span>
+<span class="kw">const</span> project  <span class="op">=</span> <span class="kw">await</span> <span class="cls">Project</span><span class="op">.</span><span class="fn">find</span><span class="op">(</span>projectId<span class="op">);</span></code></pre>
+        </div>
+      </section>
+
+      <div class="prose-divider"></div>
+
+      <!-- Migrations -->
+      <section id="migrations">
+        <h2 style="font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.75rem;">Auto-Migrations</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.7;">
+          No migration files. No SQL to write. OttaORM inspects the registered models
+          and creates or alters tables to match. Call the init endpoint whenever you add or
+          change a model.
+        </p>
+        <div class="code-window">
+          <div class="code-window-bar" aria-hidden="true">
+            <span class="code-window-dot" style="background:#ef4444"></span>
+            <span class="code-window-dot" style="background:#f59e0b"></span>
+            <span class="code-window-dot" style="background:#10b981"></span>
+            <span class="code-window-filename">terminal</span>
+          </div>
+          <pre class="code-block"><code><span class="cm"># Local development</span>
+$ curl -X POST http://localhost:3004/api/ottaorm/init
+<span class="str">  { "created": ["projects"], "updated": [], "unchanged": 11 }</span>
+
+<span class="cm"># Production (run after deploy)</span>
+$ curl -X POST https://my-saas.workers.dev/api/ottaorm/init \
+    -H "Authorization: Bearer $ADMIN_TOKEN"
+
+<span class="cm"># Capabilities:</span>
+<span class="cm">#   ✓ Create new tables</span>
+<span class="cm">#   ✓ Add new columns (with DEFAULT values)</span>
+<span class="cm">#   ✗ Rename or drop columns (use custom migration)</span></code></pre>
+        </div>
+      </section>
+
+      <div class="prose-divider"></div>
+
+      <!-- Next steps -->
+      <section style="padding-bottom: 3rem;">
+        <h2 style="font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 1rem;">Where to go from here</h2>
+        <ul class="prose-section" style="padding: 0; max-width: 100%;">
+          <li>Read the <a href="philosophy.html" style="color: var(--violet-lt)">Philosophy</a> to understand why Ottabase works the way it does.</li>
+          <li>Browse all <a href="packages.html" style="color: var(--violet-lt)">47 packages</a> to see what's available out of the box.</li>
+          <li>Check the <code>SOLO_FOUNDER_SAAS_GUIDE.md</code> in the repo root for a full product-building walkthrough.</li>
+          <li>Join <a href="https://discord.gg/ottabase" style="color: var(--violet-lt)" target="_blank" rel="noopener noreferrer">Discord</a> to ask questions and share what you're building.</li>
+          <li>Read <code>AGENTS.MD</code> in the repo root for AI assistant integration instructions.</li>
+        </ul>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════════════════════ -->
+<footer class="site-footer" role="contentinfo">
+  <div class="container footer-inner">
+    <div>
+      <div class="footer-brand">otta<span>base</span></div>
+      <div class="footer-sub">The edge-native SaaS framework.</div>
+    </div>
+    <nav class="footer-links" aria-label="Footer navigation">
+      <a href="packages.html">Packages</a>
+      <a href="philosophy.html">Philosophy</a>
+      <a href="docs.html">Docs</a>
+      <a href="https://github.com/thinkdj/ottabase" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://discord.gg/ottabase"          target="_blank" rel="noopener noreferrer">Discord</a>
+    </nav>
+    <div class="footer-right">MIT License<br/>Built on Cloudflare Workers</div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+<script>
+  // Docs sidebar active state on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const navItems = document.querySelectorAll('.docs-nav-item[href^="#"]');
+  const updateActive = () => {
+    let current = '';
+    sections.forEach((s) => { if (window.scrollY >= s.offsetTop - 120) current = s.id; });
+    navItems.forEach((a) => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  };
+  window.addEventListener('scroll', updateActive, { passive: true });
+  updateActive();
+</script>
+</body>
+</html>
