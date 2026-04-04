@@ -1,0 +1,27 @@
+{
+    "name": "@ottabase/homepage-ob",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev --port 3010",
+        "build": "next build",
+        "start": "next start --port 3010",
+        "lint": "tsc --noEmit",
+        "type-check": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@tabler/icons-react": "catalog:",
+        "next": "^16.1.1",
+        "next-themes": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "eslint": "catalog:",
+        "eslint-config-next": "^16.1.1",
+        "typescript": "catalog:"
+    }
+}

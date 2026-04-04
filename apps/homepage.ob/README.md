@@ -1,83 +1,52 @@
 # Ottabase Homepage (`homepage.ob`)
 
-A standalone static landing page for the Ottabase open-source launch. **No framework, no build step, no dependencies.**
-Pure HTML, CSS, and vanilla JS. Open any `.html` file in a browser or serve with any static file server.
+Marketing site for Ottabase, built with **Next.js** (App Router). Styling is the original `homepage.ob` design system
+(`app/globals.css`); light/dark uses `next-themes` with storage key `hp-ob-theme`.
 
-## Pages
-
-| File              | URL           | Purpose                                       |
-| ----------------- | ------------- | --------------------------------------------- |
-| `index.html`      | `/`           | Main landing page                             |
-| `packages.html`   | `/packages`   | All 47 packages with category filter          |
-| `philosophy.html` | `/philosophy` | Fat models manifesto + architecture decisions |
-| `docs.html`       | `/docs`       | Get started guide with code examples          |
-
-## Design
-
-- **Light + dark** — default light (warm paper `#fafaf9`); dark mode (`#09090b`) via sun/moon toggle in the nav; choice
-  stored in `localStorage` as `hp-ob-theme`
-- **Typography** — Inter (body), JetBrains Mono (code/labels)
-- **No dependencies** — Google Fonts CDN is the only external resource
-- **Scroll animations** — Intersection Observer API, no library
-- **Terminal animation** — vanilla JS typing effect on the quick start terminal
-- **Code syntax highlighting** — CSS token classes, no Prism or highlight.js
-- **Package filter** — instant client-side filter with `data-cat` attributes
-- **Copy-to-clipboard** — click any install command to copy it
-- **Accessible** — semantic HTML, ARIA labels, keyboard navigation, skip links
-
-## Serving locally
+## Scripts
 
 ```bash
-# With Python
-python3 -m http.server 8080 --directory apps/homepage.ob
-
-# With Node.js (npx)
-npx serve apps/homepage.ob
-
-# With any static host — no build required
+pnpm --filter @ottabase/homepage-ob dev
+pnpm --filter @ottabase/homepage-ob build
+pnpm --filter @ottabase/homepage-ob lint
+pnpm --filter @ottabase/homepage-ob type-check
 ```
+
+The `lint` script runs TypeScript checking (`tsc --noEmit`). `.eslintrc.json` is kept for editors that still read legacy
+ESLint config.
+
+Dev server defaults to port **3010**.
+
+## Routes
+
+| Path          | Purpose                                       |
+| ------------- | --------------------------------------------- |
+| `/`           | Landing — hero, ecosystem, code showcase, CTA |
+| `/packages`   | All 47 packages with category filter          |
+| `/philosophy` | Fat models manifesto + architecture           |
+| `/docs`       | Get started + docs sidebar                    |
+
+## Project layout
+
+| Area                       | Role                                                                                                |
+| -------------------------- | --------------------------------------------------------------------------------------------------- |
+| `app/`                     | Routes, `layout.tsx`, `globals.css`, providers                                                      |
+| `components/core/`         | `MarketingLayout`, `SiteNav`, `SiteFooter`, `AnimateOnView`, `LegacyAnimateScope`, `ThemeColorMeta` |
+| `components/home/`         | Home page sections                                                                                  |
+| `components/packages/`     | `PackagesView`, `PackageCard`                                                                       |
+| `components/philosophy/`   | `PhilosophyArticle`                                                                                 |
+| `components/docs/`         | `DocsSidebar`, `DocsMain`                                                                           |
+| `data/package-sections.ts` | Package list + filter metadata                                                                      |
+
+## Content updates
+
+- **Packages** — edit `data/package-sections.ts` (and copy in `PackageCard` / home ecosystem if needed).
+- **Philosophy** — `components/philosophy/PhilosophyArticle.tsx`.
+- **Docs** — `components/docs/DocsMain.tsx` (and sidebar links in `DocsSidebar.tsx`).
+- **Design tokens** — `app/globals.css`.
+- **Home copy** — under `components/home/`.
 
 ## Deploying
 
-This site deploys to any static host as-is.
-
-### Cloudflare Pages (recommended)
-
-```bash
-# From the repo root
-npx wrangler pages deploy apps/homepage.ob --project-name ottabase-homepage
-```
-
-### Netlify / Vercel
-
-Drag and drop the `apps/homepage.ob/` folder into the Netlify or Vercel dashboard.
-
-### GitHub Pages
-
-Push the contents of `apps/homepage.ob/` to a `gh-pages` branch.
-
-## Updating content
-
-All content is hardcoded in the HTML files. The package list lives in `packages.html`. To update:
-
-- **Tagline / hero copy** → `index.html` hero section
-- **Package details** → `packages.html` individual `.pkg-card` elements
-- **Philosophy text** → `philosophy.html` prose sections
-- **Get started code** → `docs.html` code blocks
-- **Colors / design tokens** → `css/main.css` `:root` block
-- **Animations** → `js/main.js`
-
-## File structure
-
-```
-apps/homepage.ob/
-├── index.html        ← Main landing page
-├── packages.html     ← Package ecosystem
-├── philosophy.html   ← Architecture manifesto
-├── docs.html         ← Get started guide
-├── css/
-│   └── main.css      ← Design system (tokens, components, animations)
-├── js/
-│   └── main.js       ← Interactions (tabs, scroll, terminal, filter, copy)
-└── README.md
-```
+Static export is not configured; deploy as a Node server (`pnpm build` → `pnpm start`) or adapt hosting to your
+platform. For Cloudflare, consider OpenNext or similar in line with other Next apps in the monorepo.

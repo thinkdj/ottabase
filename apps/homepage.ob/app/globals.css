@@ -1594,3 +1594,8 @@ pre.code-block code {
         padding: 0.4rem 0.6rem;
     }
 }
+
+/* App router: home hero spacing (from legacy index.html) */
+.hero-problem {
+    margin-bottom: 2rem;
+}
