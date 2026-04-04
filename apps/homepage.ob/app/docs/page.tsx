@@ -3,6 +3,9 @@ import { MarketingLayout } from '@/components/core/MarketingLayout';
 import { PageHero } from '@/components/core/PageHero';
 import { DocsMain } from '@/components/docs/DocsMain';
 import { DocsSidebar } from '@/components/docs/DocsSidebar';
+import { HpRevealScope } from '@/components/themes/signal-horizon/HpRevealScope';
+import { SignalMarketingChrome } from '@/components/themes/signal-horizon/SignalMarketingChrome';
+import { siteConfig } from '@/config';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -12,6 +15,48 @@ export const metadata: Metadata = {
 };
 
 export default function DocsPage() {
+    if (siteConfig.theme === 'signalHorizon') {
+        return (
+            <SignalMarketingChrome active="docs">
+                <HpRevealScope>
+                    <div className="hp-page-hero">
+                        <div className="hp-container">
+                            <p className="hp-eyebrow" style={{ marginBottom: '1rem' }}>
+                                Get started
+                            </p>
+                            <h1>
+                                From{' '}
+                                <code
+                                    style={{
+                                        fontSize: '0.7em',
+                                        borderRadius: 6,
+                                        padding: '0.1em 0.4em',
+                                        background: 'var(--hp-bg-card)',
+                                        color: 'var(--hp-accent)',
+                                    }}
+                                >
+                                    git clone
+                                </code>
+                                <br />
+                                to running SaaS.
+                            </h1>
+                            <p style={{ color: 'var(--hp-muted)', maxWidth: '52ch' }}>
+                                Prerequisites: Node.js ≥ 24, pnpm ≥ 10, a Cloudflare account (free tier is fine).
+                                That&apos;s genuinely all.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="hp-container">
+                        <div className="hp-docs">
+                            <DocsSidebar />
+                            <DocsMain />
+                        </div>
+                    </div>
+                </HpRevealScope>
+            </SignalMarketingChrome>
+        );
+    }
+
     return (
         <MarketingLayout navActive="docs">
             <PageHero

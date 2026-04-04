@@ -1,6 +1,10 @@
 import { MarketingLayout } from '@/components/core/MarketingLayout';
 import { PageHero } from '@/components/core/PageHero';
 import { PackagesView } from '@/components/packages/PackagesView';
+import { HpRevealScope } from '@/components/themes/signal-horizon/HpRevealScope';
+import { SignalMarketingChrome } from '@/components/themes/signal-horizon/SignalMarketingChrome';
+import { SignalPackagesView } from '@/components/themes/signal-horizon/SignalPackagesView';
+import { siteConfig } from '@/config';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -10,6 +14,34 @@ export const metadata: Metadata = {
 };
 
 export default function PackagesPage() {
+    if (siteConfig.theme === 'signalHorizon') {
+        return (
+            <SignalMarketingChrome active="packages">
+                <HpRevealScope>
+                    <div className="hp-page-hero">
+                        <div className="hp-container">
+                            <p className="hp-eyebrow" style={{ marginBottom: '1rem' }}>
+                                Package ecosystem
+                            </p>
+                            <h1>
+                                47 packages.
+                                <br />
+                                Nothing missing.
+                            </h1>
+                            <p style={{ color: 'var(--hp-muted)', maxWidth: '52ch', marginTop: '0.75rem' }}>
+                                Every package is independently versioned, documented, and tested. Use the whole stack or
+                                cherry-pick what you need.
+                            </p>
+                        </div>
+                    </div>
+                    <main id="main">
+                        <SignalPackagesView />
+                    </main>
+                </HpRevealScope>
+            </SignalMarketingChrome>
+        );
+    }
+
     return (
         <MarketingLayout navActive="packages">
             <PageHero

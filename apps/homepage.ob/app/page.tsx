@@ -7,8 +7,24 @@ import { HomeHero } from '@/components/home/HomeHero';
 import { ManifestoTeaser } from '@/components/home/ManifestoTeaser';
 import { MetricsStrip } from '@/components/home/MetricsStrip';
 import { QuickStartSection } from '@/components/home/QuickStartSection';
+import { HpRevealScope } from '@/components/themes/signal-horizon/HpRevealScope';
+import { SignalHomePage } from '@/components/themes/signal-horizon/SignalHomePage';
+import { SignalMarketingChrome } from '@/components/themes/signal-horizon/SignalMarketingChrome';
+import { siteConfig } from '@/config';
 
 export default function HomePage() {
+    if (siteConfig.theme === 'signalHorizon') {
+        return (
+            <SignalMarketingChrome active={null}>
+                <HpRevealScope>
+                    <main id="main">
+                        <SignalHomePage />
+                    </main>
+                </HpRevealScope>
+            </SignalMarketingChrome>
+        );
+    }
+
     return (
         <MarketingLayout>
             <HomeHero />

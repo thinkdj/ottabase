@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { siteConfig } from '@/config';
 import type { CSSProperties } from 'react';
 
 const h2: CSSProperties = {
@@ -8,19 +9,24 @@ const h2: CSSProperties = {
     marginBottom: '0.75rem',
 };
 
-const lead: CSSProperties = {
-    color: 'var(--text-muted)',
-    marginBottom: '1.25rem',
-    lineHeight: 1.7,
-};
-
 export function DocsMain() {
+    const sh = siteConfig.theme === 'signalHorizon';
+    const lead: CSSProperties = {
+        color: sh ? 'var(--hp-muted)' : 'var(--text-muted)',
+        marginBottom: '1.25rem',
+        lineHeight: 1.7,
+    };
+    const div = sh ? 'hp-prose-divider' : 'prose-divider';
+    const linkColor = sh ? 'var(--hp-accent)' : 'var(--violet-lt)';
+    const mainClass = sh ? 'docs-content hp-reveal' : 'docs-content animate animate-delay-2';
+    const listClass = sh ? undefined : 'prose-section';
+
     return (
-        <main className="docs-content animate animate-delay-2">
+        <main className={mainClass} id={sh ? 'main' : undefined}>
             <section id="prerequisites">
                 <h2 style={h2}>Prerequisites</h2>
                 <p style={lead}>Before you begin, make sure you have the following installed and configured.</p>
-                <ul className="prose-section" style={{ padding: 0, maxWidth: '100%' }}>
+                <ul className={listClass} style={{ padding: 0, maxWidth: '100%' }}>
                     <li>
                         <strong>Node.js ≥ 24</strong> — use <code>nvm install 24 && nvm use 24</code> if needed.
                     </li>
@@ -36,7 +42,7 @@ export function DocsMain() {
                 </ul>
             </section>
 
-            <div className="prose-divider" />
+            <div className={div} />
 
             <section id="clone">
                 <h2 style={h2}>Clone & Install</h2>
@@ -47,7 +53,7 @@ export function DocsMain() {
                 <CodeWindow filename="terminal" code={CLONE_CODE} />
             </section>
 
-            <div className="prose-divider" />
+            <div className={div} />
 
             <section id="cloudflare">
                 <h2 style={h2}>Cloudflare Setup</h2>
@@ -58,14 +64,20 @@ export function DocsMain() {
                 <div style={{ marginBottom: '1.25rem' }}>
                     <CodeWindow filename="terminal" code={CF_CODE} />
                 </div>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', lineHeight: 1.7 }}>
+                <p
+                    style={{
+                        color: sh ? 'var(--hp-muted)' : 'var(--text-muted)',
+                        fontSize: '0.9375rem',
+                        lineHeight: 1.7,
+                    }}
+                >
                     After <code>cf:setup</code>, copy <code>.env.example</code> to <code>.env.local</code> and fill in
                     the required secrets: <code>AUTH_SECRET</code>, <code>BOOTSTRAP_OWNER_SECRET</code>, and any OAuth
                     credentials you want (GitHub, Google).
                 </p>
             </section>
 
-            <div className="prose-divider" />
+            <div className={div} />
 
             <section id="dev">
                 <h2 style={h2}>Local Development</h2>
@@ -76,7 +88,7 @@ export function DocsMain() {
                 <CodeWindow filename="terminal" code={DEV_CODE} />
             </section>
 
-            <div className="prose-divider" />
+            <div className={div} />
 
             <section id="bootstrap">
                 <h2 style={h2}>Bootstrap</h2>
@@ -87,7 +99,7 @@ export function DocsMain() {
                 <CodeWindow filename="terminal" code={BOOTSTRAP_CODE} />
             </section>
 
-            <div className="prose-divider" />
+            <div className={div} />
 
             <section id="deploy">
                 <h2 style={h2}>Deploy to Production</h2>
@@ -98,7 +110,7 @@ export function DocsMain() {
                 <CodeWindow filename="terminal" code={DEPLOY_CODE} />
             </section>
 
-            <div className="prose-divider" />
+            <div className={div} />
 
             <section id="models">
                 <h2 style={h2}>Creating a Fat Model</h2>
@@ -109,7 +121,7 @@ export function DocsMain() {
                 <CodeWindow filename="ottabase/models/Project.ts" code={MODEL_CODE} />
             </section>
 
-            <div className="prose-divider" />
+            <div className={div} />
 
             <section id="crud">
                 <h2 style={h2}>Auto CRUD API & Hooks</h2>
@@ -120,7 +132,7 @@ export function DocsMain() {
                 <CodeWindow filename="ottabase/hooks/useProjects.ts" code={CRUD_CODE} />
             </section>
 
-            <div className="prose-divider" />
+            <div className={div} />
 
             <section id="rls">
                 <h2 style={h2}>Row-Level Security</h2>
@@ -131,7 +143,7 @@ export function DocsMain() {
                 <CodeWindow filename="worker/middleware/rls.ts" code={RLS_CODE} />
             </section>
 
-            <div className="prose-divider" />
+            <div className={div} />
 
             <section id="rbac">
                 <h2 style={h2}>RBAC</h2>
@@ -140,14 +152,14 @@ export function DocsMain() {
                     in KV so hot paths avoid extra D1 round-trips. Pair RBAC with RLS: RLS enforces tenant boundaries;
                     RBAC enforces what a user may do inside that tenant.
                 </p>
-                <ul className="prose-section" style={{ padding: 0, maxWidth: '100%' }}>
+                <ul className={listClass} style={{ padding: 0, maxWidth: '100%' }}>
                     <li>Define roles and permissions during bootstrap; seed defaults with the bootstrap API.</li>
                     <li>Check permissions in route handlers or model methods before mutating data.</li>
                     <li>Keep permission keys stable — they are stored in KV and referenced from your app config.</li>
                 </ul>
             </section>
 
-            <div className="prose-divider" />
+            <div className={div} />
 
             <section id="migrations">
                 <h2 style={h2}>Auto-Migrations</h2>
@@ -158,21 +170,21 @@ export function DocsMain() {
                 <CodeWindow filename="terminal" code={MIGRATIONS_CODE} />
             </section>
 
-            <div className="prose-divider" />
+            <div className={div} />
 
             <section style={{ paddingBottom: '3rem' }}>
                 <h2 style={{ ...h2, marginBottom: '1rem' }}>Where to go from here</h2>
-                <ul className="prose-section" style={{ padding: 0, maxWidth: '100%' }}>
+                <ul className={listClass} style={{ padding: 0, maxWidth: '100%' }}>
                     <li>
                         Read the{' '}
-                        <Link href="/philosophy" style={{ color: 'var(--violet-lt)' }}>
+                        <Link href="/philosophy" style={{ color: linkColor }}>
                             Philosophy
                         </Link>{' '}
                         to understand why Ottabase works the way it does.
                     </li>
                     <li>
                         Browse all{' '}
-                        <Link href="/packages" style={{ color: 'var(--violet-lt)' }}>
+                        <Link href="/packages" style={{ color: linkColor }}>
                             47 packages
                         </Link>{' '}
                         to see what&apos;s available out of the box.
@@ -185,7 +197,7 @@ export function DocsMain() {
                         Join{' '}
                         <a
                             href="https://discord.gg/ottabase"
-                            style={{ color: 'var(--violet-lt)' }}
+                            style={{ color: linkColor }}
                             target="_blank"
                             rel="noopener noreferrer"
                         >
@@ -203,6 +215,22 @@ export function DocsMain() {
 }
 
 function CodeWindow({ filename, code }: { filename: string; code: string }) {
+    const sh = siteConfig.theme === 'signalHorizon';
+    if (sh) {
+        return (
+            <div className="hp-window">
+                <div className="hp-window-bar" aria-hidden="true">
+                    <span className="hp-window-dot" />
+                    <span className="hp-window-dot" />
+                    <span className="hp-window-dot" />
+                    <span className="hp-window-name">{filename}</span>
+                </div>
+                <pre className="hp-code-block">
+                    <code>{code}</code>
+                </pre>
+            </div>
+        );
+    }
     return (
         <div className="code-window">
             <div className="code-window-bar" aria-hidden="true">

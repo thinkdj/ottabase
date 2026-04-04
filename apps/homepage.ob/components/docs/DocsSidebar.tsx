@@ -1,5 +1,6 @@
 'use client';
 
+import { siteConfig } from '@/config';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -37,6 +38,7 @@ const NAV: { label: string; items: { href: string; label: string; external?: boo
 ];
 
 export function DocsSidebar() {
+    const sh = siteConfig.theme === 'signalHorizon';
     const [active, setActive] = useState('prerequisites');
 
     useEffect(() => {
@@ -55,7 +57,10 @@ export function DocsSidebar() {
     }, []);
 
     return (
-        <aside className="docs-sidebar animate" aria-label="Documentation navigation">
+        <aside
+            className={sh ? 'docs-sidebar hp-docs-nav hp-reveal' : 'docs-sidebar animate'}
+            aria-label="Documentation navigation"
+        >
             {NAV.map((group) => (
                 <div key={group.label} className="docs-nav-group">
                     <div className="docs-nav-label">{group.label}</div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { siteConfig } from '@/config';
 import { ThemeProvider } from 'next-themes';
 import type { ReactNode } from 'react';
 
@@ -9,7 +10,7 @@ export function Providers({ children }: { children: ReactNode }) {
             attribute="data-theme"
             defaultTheme="system"
             enableSystem
-            storageKey="hp-ob-theme"
+            storageKey={siteConfig.colorModeStorageKey}
             themes={['light', 'dark']}
         >
             {children}
