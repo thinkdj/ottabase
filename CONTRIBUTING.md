@@ -63,7 +63,7 @@ See [AGENTS.MD](./AGENTS.MD) for full architecture details.
    ```bash
    pnpm lint                              # Lint all packages
    pnpm type-check                        # TypeScript validation
-   pnpm test --filter=@ottabase/<package> # Run tests for your package
+   pnpm --filter=@ottabase/<package> test # Run tests for your package
    ```
 6. **Submit a pull request** using the PR template
 
@@ -106,13 +106,13 @@ Look for issues labeled:
 
 ```bash
 # Build a specific package
-pnpm build:pkg --filter=@ottabase/<package>
+pnpm --filter=@ottabase/<package> build:pkg
 
 # Run tests for a specific package
-pnpm test --filter=@ottabase/<package>
+pnpm --filter=@ottabase/<package> test
 
 # Type-check a specific package
-pnpm type-check --filter=@ottabase/<package>
+pnpm --filter=@ottabase/<package> type-check
 ```
 
 ### Adding Dependencies
