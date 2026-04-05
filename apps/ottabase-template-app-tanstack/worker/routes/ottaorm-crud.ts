@@ -2,17 +2,27 @@ import { getSession, hashPassword } from '@ottabase/auth/backend';
 import { Comment } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { Post } from '@ottabase/ottablog';
-import { executeSecureCrudRequest, parseCrudRequest, registerConnection } from '@ottabase/ottaorm';
+import { autoInit, executeSecureCrudRequest, parseCrudRequest, registerConnection } from '@ottabase/ottaorm';
 import { OrganizationMember, User } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
+import { getAllSchemas } from '../../ottabase/db/schemas-helper';
+import { appMigrations } from '../../ottabase/migrations';
 import { getAuthOptions, getSecurityContext } from '../lib/auth-utils';
 
 export interface OttaormCrudContext {
     request: Request;
     env: CloudflareEnv;
     url: URL;
+}
+
+function isMissingSchemaError(result: { code?: string; error?: string | null }) {
+    const message = String(result.error || '').toLowerCase();
+    return (
+        result.code === 'DATABASE_ERROR' &&
+        (message.includes('no such table') || message.includes('no such column') || message.includes('sqlite_error'))
+    );
 }
 
 export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Response> {
@@ -155,6 +165,26 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     }
 
     const result = await executeSecureCrudRequest(crudRequest, securityContext);
+
+    // Auto-heal schema drift in local/dev flows where new columns/tables were added
+    // but /api/ottaorm/init hasn't been called yet.
+    if (!result.success && isMissingSchemaError(result)) {
+        const isDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT;
+        if (isDev) {
+            const driver = createD1Driver(env.OBCF_D1);
+            await autoInit({
+                driver,
+                schema: getAllSchemas(),
+                customMigrations: appMigrations,
+                verbose: false,
+                allowDestructive: false,
+            });
+            const retryResult = await executeSecureCrudRequest(crudRequest, securityContext);
+            if (retryResult.success) {
+                return jsonResponse(retryResult.data, retryResult.status);
+            }
+        }
+    }
 
     if (!result.success) {
         console.error(`[CRUD Error] ${crudRequest.method} ${crudRequest.model}:`, {

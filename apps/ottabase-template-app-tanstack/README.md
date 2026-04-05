@@ -474,3 +474,20 @@ In production apps, you can safely delete:
 - [Migrations Guide](./ottabase/migrations/README.md) - Database migrations
 - [Cloudflare Deploy](../../CLOUDFLARE_DEPLOY.md) - Deployment guide
 - [Cloudflare Config](../../CLOUDFLARE_CONFIGURATION_GUIDE.md) - Bindings setup
+
+## Marketing Pages Builder (new)
+
+Ottabase now includes a dynamic marketing pages system with OttaORM CRUD + drag-and-drop admin builder.
+
+### Endpoints
+
+- `GET /api/blocks` — discover available blocks (including app-registered custom blocks)
+- `GET /api/pages/nav` — published pages list for static param generation/navigation
+- `GET /api/pages/:slug?preview=true` — fetch full page payload (sections + features + actions)
+- `GET/POST/PUT/DELETE /api/ottaorm/pages` and related entities via generic OttaORM CRUD
+
+### Admin UI
+
+- `/admin/pages` — list/create/duplicate/delete marketing pages
+- `/admin/pages/$pageId` — block builder with drag-and-drop reordering and inline editor
+- Public preview route in TanStack app: `/pages/$slug`
