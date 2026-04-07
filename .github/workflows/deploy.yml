@@ -394,7 +394,7 @@ jobs:
                   echo "✅ All required secrets are configured"
 
             - name: Setup pnpm
-              uses: pnpm/action-setup@v3
+              uses: pnpm/action-setup@v5
 
             - name: Setup Node.js
               uses: actions/setup-node@v4
