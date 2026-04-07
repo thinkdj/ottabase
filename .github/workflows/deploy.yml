@@ -63,7 +63,7 @@ jobs:
                   fetch-depth: 0 # Full history needed for push-range diff (github.event.before..github.sha)
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version: "24"
 
@@ -397,7 +397,7 @@ jobs:
               uses: pnpm/action-setup@v3
 
             - name: Setup Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version: "24"
                   cache: "pnpm"
