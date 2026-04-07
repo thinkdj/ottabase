@@ -197,6 +197,13 @@ export const DEMO_ITEMS: DemoItem[] = [
         buttonVariant: 'outline',
     },
     {
+        to: '/ai/chat',
+        icon: Bot,
+        label: 'AI Chat',
+        title: 'AI Chat Interface',
+        description: 'Full-featured AI chat with conversation history, model selection, and multi-turn context',
+    },
+    {
         to: '/demo/cloudflare/file-upload',
         icon: Upload,
         label: 'File Upload',

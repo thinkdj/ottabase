@@ -37,6 +37,8 @@ import { ReferralTracking } from '@ottabase/referrals';
 import { Shortlink } from '@ottabase/shortlinks';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { AiConversation } from '../../ottabase/models/AiConversation';
+import { AiMessage } from '../../ottabase/models/AiMessage';
 import { ChangelogEntry } from '../../ottabase/models/ChangelogEntry';
 import { changelogPolicy } from '../../ottabase/models/changelogPolicy';
 import { Todo } from '../../ottabase/models/Todo';
@@ -127,7 +129,7 @@ export function initDbConnection(env: CloudflareEnv): void {
     registerPolicy(mediaLibraryPolicy);
     registerPolicy(changelogPolicy);
 
-    const appModels = [Todo, ChangelogEntry];
+    const appModels = [Todo, ChangelogEntry, AiConversation, AiMessage];
 
     registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
 

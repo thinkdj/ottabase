@@ -12,6 +12,7 @@ const NAV_LINKS_ALL: NavLink[] = [
     { to: '/changelog', label: "What's New" },
     { to: '/blog', label: 'Blog' },
     { to: '/demo', label: 'Demo' },
+    { to: '/ai/chat', label: 'AI Chat', authRequired: true },
     { to: '/shortlinks', label: 'Links' },
     { to: '/analytics', label: 'Analytics', authRequired: true },
     { to: '/admin', label: 'Admin' },

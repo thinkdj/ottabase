@@ -33,6 +33,8 @@ import {
     verificationTokensTable,
 } from '@ottabase/ottaorm';
 import { getEnabledPackageTables } from '../config.migrations';
+import { aiConversationsTable } from '../models/AiConversation';
+import { aiMessagesTable } from '../models/AiMessage';
 import { changelogEntriesTable } from '../models/ChangelogEntry';
 import { todosTable } from '../models/Todo';
 
@@ -61,6 +63,8 @@ export function getAllSchemas() {
 
     // 2. App-specific schemas
     const appTables = {
+        aiConversationsTable,
+        aiMessagesTable,
         changelogEntriesTable,
         todosTable,
     };
@@ -103,6 +107,8 @@ export function getSchemaSummary() {
     };
 
     const appTables = {
+        aiConversationsTable,
+        aiMessagesTable,
         changelogEntriesTable,
         todosTable,
     };

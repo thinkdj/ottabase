@@ -541,6 +541,21 @@ const dashboardRoute = new Route({
     ),
 });
 
+// AI Chat route (auth required)
+const aiChatRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/ai/chat',
+    component: lazyRouteComponent(() =>
+        import('@/pages/ai/AiChatPage').then((m) => ({
+            default: () => (
+                <ProtectedRoute>
+                    <m.AiChatPage />
+                </ProtectedRoute>
+            ),
+        })),
+    ),
+});
+
 // Shortlinks route
 const shortlinksRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -1083,6 +1098,17 @@ const adminKillSwitchesRoute = new Route({
     ),
 });
 
+// Admin AI settings
+const adminAiRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/admin/ai',
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/AdminAiPage').then((m) => ({
+            default: () => renderAdminRoute(<m.AdminAiPage />),
+        })),
+    ),
+});
+
 demoLayoutRoute.addChildren([
     demoIndexRoute,
     demoMantineRoute,
@@ -1156,6 +1182,7 @@ const coreRoutes = [
     verifyEmailRoute,
     resetPasswordRoute,
     dashboardRoute,
+    aiChatRoute,
     analyticsRoute,
     migrationStatusRoute,
     adminRoute,
@@ -1173,6 +1200,7 @@ const coreRoutes = [
     adminAuditRoute,
     adminSecurityRLSRoute,
     adminKillSwitchesRoute,
+    adminAiRoute,
     adminUsersRoute,
     adminUserRBACRoute,
     organizationsRoute,
