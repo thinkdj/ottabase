@@ -1,30 +1,27 @@
 /**
  * Public changelog listing — minimal timeline layout using theme tokens.
+ *
+ * Uses the unified ottablog Post model with contentType='changelog'.
  */
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { useSession } from '@/lib/auth';
 import type { OutputData } from '@ottabase/ottaeditor';
+import type { HeroImage } from '@ottabase/ottablog';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Button } from '@ottabase/ui-shadcn';
-import { IconArrowRight, IconPlayerPlay, IconPlus, IconStarFilled } from '@tabler/icons-react';
+import { IconArrowRight, IconPlus, IconStarFilled } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 
-type ChangelogHeroMedia =
-    | { kind: 'image'; url: string; alt?: string; caption?: string }
-    | { kind: 'video'; url: string; mimeType?: string; caption?: string };
-
-interface ChangelogEntryPublic {
+interface ChangelogPostPublic {
     id: string;
     title: string;
     slug: string;
-    summary: string | null;
+    excerpt: string | null;
     content: OutputData | null;
-    heroMedia: ChangelogHeroMedia | null;
+    heroImage: HeroImage | null;
     status: string;
-    highlight: boolean | null;
-    autoplayMedia: boolean | null;
-    showAuthor: boolean | null;
+    isFeatured: boolean;
     authorId: string | null;
     authorName: string | null;
     authorAvatar: string | null;
@@ -33,7 +30,7 @@ interface ChangelogEntryPublic {
 }
 
 interface ChangelogListResponse {
-    data: ChangelogEntryPublic[];
+    data: ChangelogPostPublic[];
     pagination: { page: number; perPage: number; total: number; totalPages: number };
 }
 
@@ -51,14 +48,12 @@ function formatChangelogDate(iso: string | null): string {
 
 export function ChangelogListPage() {
     const { isAuthenticated } = useSession({ skipAutoSync: true });
-    const listParams = new URLSearchParams();
-    listParams.set('page', '1');
-    listParams.set('perPage', String(PER_PAGE));
 
+    // Use the blog API with contentType filter for changelogs
     const { data: listResponse, isLoading } = useApiQuery<ChangelogListResponse>({
-        entity: 'changelog_entries',
-        queryKey: ['public-list', { perPage: PER_PAGE }],
-        endpoint: `/api/changelog/entries?${listParams.toString()}`,
+        entity: 'posts',
+        queryKey: ['changelog-list', { perPage: PER_PAGE }],
+        endpoint: `/api/blog/posts?contentType=changelog&perPage=${PER_PAGE}`,
         queryOptions: BLOG_LIST_QUERY_CONFIG,
     });
 
@@ -86,7 +81,7 @@ export function ChangelogListPage() {
                         </div>
                         {isAuthenticated && (
                             <Button asChild>
-                                <Link to="/admin/changelog/new">
+                                <Link to="/admin/blog/new" search={{ contentType: 'changelog' }}>
                                     <IconPlus className="mr-2 h-4 w-4" />
                                     New Entry
                                 </Link>
@@ -109,9 +104,7 @@ export function ChangelogListPage() {
 
                 <ol className="relative space-y-14 border-l border-border pl-8 dark:border-border">
                     {entries.map((entry) => {
-                        const isHighlighted = entry.highlight === true;
-                        const shouldAutoplay = entry.autoplayMedia !== false;
-                        const shouldShowAuthor = entry.showAuthor !== false;
+                        const isHighlighted = entry.isFeatured === true;
                         return (
                             <li key={entry.id} className="relative">
                                 {/* Timeline dot — golden star for highlighted, green dot otherwise */}
@@ -168,50 +161,32 @@ export function ChangelogListPage() {
                                 </Link>
 
                                 {/* Excerpt */}
-                                {entry.summary && (
+                                {entry.excerpt && (
                                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground sm:text-base">
-                                        {entry.summary}
+                                        {entry.excerpt}
                                     </p>
                                 )}
 
-                                {/* Hero media — placed after title and excerpt for easier click-through */}
+                                {/* Hero image — placed after title and excerpt for easier click-through */}
                                 <Link
                                     to="/changelog/$slug"
                                     params={{ slug: entry.slug }}
                                     className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 >
-                                    {entry.heroMedia?.kind === 'image' && entry.heroMedia.url && (
+                                    {entry.heroImage?.url && (
                                         <div className="mt-4 overflow-hidden rounded-2xl bg-muted/40 ring-1 ring-border dark:bg-muted/30 dark:ring-border">
                                             <img
-                                                src={entry.heroMedia.url}
-                                                alt={entry.heroMedia.alt ?? ''}
+                                                src={entry.heroImage.url}
+                                                alt={entry.heroImage.alt ?? ''}
                                                 className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                                                 loading="lazy"
                                             />
                                         </div>
                                     )}
-                                    {entry.heroMedia?.kind === 'video' && entry.heroMedia.url && (
-                                        <div className="relative mt-4 overflow-hidden rounded-2xl bg-muted/40 ring-1 ring-border dark:bg-muted/30 dark:ring-border">
-                                            <video
-                                                src={entry.heroMedia.url}
-                                                className="aspect-video w-full object-cover"
-                                                controls
-                                                playsInline
-                                                autoPlay={shouldAutoplay}
-                                                muted={shouldAutoplay}
-                                                loop={shouldAutoplay}
-                                                preload={shouldAutoplay ? 'auto' : 'metadata'}
-                                            />
-                                            <span className="pointer-events-none absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-0.5 text-xs text-foreground backdrop-blur dark:bg-background/80">
-                                                <IconPlayerPlay className="size-3" aria-hidden />
-                                                Video
-                                            </span>
-                                        </div>
-                                    )}
                                 </Link>
 
-                                {/* Author (shown only if showAuthor is true) */}
-                                {shouldShowAuthor && (entry.authorName || entry.authorAvatar) && (
+                                {/* Author */}
+                                {(entry.authorName || entry.authorAvatar) && (
                                     <div className="mt-4 flex items-center gap-2">
                                         {entry.authorAvatar ? (
                                             <img

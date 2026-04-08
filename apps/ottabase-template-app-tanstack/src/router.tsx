@@ -990,24 +990,27 @@ const adminChangelogRoute = new Route({
     ),
 });
 
+// Admin changelog new/edit routes redirect to blog editor with contentType=changelog
+// Note: The new/edit links in the changelog list page now point directly to /admin/blog routes
 const adminChangelogNewRoute = new Route({
     getParentRoute: () => rootRoute,
     path: '/admin/changelog/new',
-    component: lazyRouteComponent(() =>
-        import('@/pages/admin/changelog/AdminChangelogEditorPage').then((m) => ({
-            default: () => renderAdminRoute(<m.AdminChangelogEditorPage />),
-        })),
-    ),
+    component: () => {
+        // Redirect to blog editor with changelog content type
+        window.location.href = '/admin/blog/new?contentType=changelog';
+        return null;
+    },
 });
 
 const adminChangelogEditRoute = new Route({
     getParentRoute: () => rootRoute,
     path: '/admin/changelog/$entryId/edit',
-    component: lazyRouteComponent(() =>
-        import('@/pages/admin/changelog/AdminChangelogEditorPage').then((m) => ({
-            default: () => renderAdminRoute(<m.AdminChangelogEditorPage />),
-        })),
-    ),
+    component: () => {
+        // Redirect to blog editor - the entryId is now a post ID
+        const entryId = window.location.pathname.split('/')[3];
+        window.location.href = `/admin/blog/${entryId}/edit`;
+        return null;
+    },
 });
 
 // Organizations routes

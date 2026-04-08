@@ -1,11 +1,14 @@
 /**
  * Public changelog detail — blog-style article with OttaRenderer for EditorJS body.
+ *
+ * Uses the unified ottablog Post model with contentType='changelog'.
  */
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_DETAIL_QUERY_CONFIG } from '@/config/queryConfig';
 import { useSession } from '@/lib/auth';
 import { MediaLightboxProvider } from '@ottabase/medialibrary';
 import type { OutputData } from '@ottabase/ottaeditor';
+import type { HeroImage } from '@ottabase/ottablog';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
@@ -13,21 +16,15 @@ import { Badge, Button } from '@ottabase/ui-shadcn';
 import { IconArrowLeft, IconEdit } from '@tabler/icons-react';
 import { Link, useParams } from '@tanstack/react-router';
 
-type ChangelogHeroMedia =
-    | { kind: 'image'; url: string; alt?: string; caption?: string }
-    | { kind: 'video'; url: string; mimeType?: string; caption?: string };
-
-interface ChangelogEntryDetail {
+interface ChangelogPostDetail {
     id: string;
     title: string;
     slug: string;
-    summary: string | null;
+    excerpt: string | null;
     content: OutputData | null;
-    heroMedia: ChangelogHeroMedia | null;
+    heroImage: HeroImage | null;
     status: string;
-    highlight: boolean | null;
-    autoplayMedia: boolean | null;
-    showAuthor: boolean | null;
+    isFeatured: boolean;
     authorId: string | null;
     authorName: string | null;
     authorAvatar: string | null;
@@ -53,14 +50,15 @@ export function ChangelogDetailPage() {
     const slug = (params as { slug?: string }).slug ?? '';
     const { user } = useSession({ skipAutoSync: true });
 
+    // Use the blog API with contentType filter for changelogs
     const {
         data: entry,
         isLoading,
         isError,
-    } = useApiQuery<ChangelogEntryDetail>({
-        entity: 'changelog_entries',
-        queryKey: ['by-slug', slug],
-        endpoint: `/api/changelog/entries/by-slug/${encodeURIComponent(slug)}`,
+    } = useApiQuery<ChangelogPostDetail>({
+        entity: 'posts',
+        queryKey: ['changelog-by-slug', slug],
+        endpoint: `/api/blog/post/${encodeURIComponent(slug)}?contentType=changelog`,
         queryOptions: {
             enabled: !!slug,
             throwOnError: false,
@@ -93,10 +91,8 @@ export function ChangelogDetailPage() {
         );
     }
 
-    const description = entry.summary ?? undefined;
-    const heroUrl = entry.heroMedia?.kind === 'image' ? entry.heroMedia.url : undefined;
-    const shouldAutoplay = entry.autoplayMedia !== false;
-    const shouldShowAuthor = entry.showAuthor !== false;
+    const description = entry.excerpt ?? undefined;
+    const heroUrl = entry.heroImage?.url;
     const currentUserId = (user as any)?.id;
     const isAuthor = currentUserId && entry.authorId && currentUserId === entry.authorId;
 
@@ -122,7 +118,7 @@ export function ChangelogDetailPage() {
                     </Button>
                     {isAuthor && (
                         <Button variant="outline" size="sm" asChild>
-                            <Link to="/admin/changelog/$entryId/edit" params={{ entryId: entry.id }}>
+                            <Link to="/admin/blog/$postId/edit" params={{ postId: entry.id }}>
                                 <IconEdit className="mr-1.5 size-4" aria-hidden />
                                 Edit
                             </Link>
@@ -142,7 +138,7 @@ export function ChangelogDetailPage() {
                     <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground dark:text-foreground sm:text-4xl">
                         {entry.title}
                     </h1>
-                    {shouldShowAuthor && (entry.authorName || entry.authorAvatar) && (
+                    {(entry.authorName || entry.authorAvatar) && (
                         <div className="mt-6 flex items-center gap-3">
                             {entry.authorAvatar ? (
                                 <img
@@ -160,43 +156,24 @@ export function ChangelogDetailPage() {
                     )}
                 </header>
 
-                {entry.heroMedia?.kind === 'image' && entry.heroMedia.url && (
+                {entry.heroImage?.url && (
                     <div className="mb-8 overflow-hidden rounded-2xl bg-muted/30 p-2 ring-1 ring-border dark:bg-muted/20 dark:ring-border sm:p-3">
                         <img
-                            src={entry.heroMedia.url}
-                            alt={entry.heroMedia.alt ?? ''}
+                            src={entry.heroImage.url}
+                            alt={entry.heroImage.alt ?? ''}
                             className="w-full rounded-xl object-cover"
                         />
-                        {entry.heroMedia.caption && (
+                        {entry.heroImage.caption && (
                             <p className="mt-2 text-center text-sm text-muted-foreground dark:text-muted-foreground">
-                                {entry.heroMedia.caption}
+                                {entry.heroImage.caption}
                             </p>
                         )}
                     </div>
                 )}
 
-                {entry.heroMedia?.kind === 'video' && entry.heroMedia.url && (
-                    <div className="mb-8 overflow-hidden rounded-2xl bg-muted/30 p-2 ring-1 ring-border dark:bg-muted/20 dark:ring-border sm:p-3">
-                        <video
-                            src={entry.heroMedia.url}
-                            className="w-full rounded-xl"
-                            controls
-                            playsInline
-                            autoPlay={shouldAutoplay}
-                            muted={shouldAutoplay}
-                            loop={shouldAutoplay}
-                        />
-                        {entry.heroMedia.caption && (
-                            <p className="mt-2 text-center text-sm text-muted-foreground dark:text-muted-foreground">
-                                {entry.heroMedia.caption}
-                            </p>
-                        )}
-                    </div>
-                )}
-
-                {entry.summary && (
+                {entry.excerpt && (
                     <p className="mb-8 text-lg leading-relaxed text-muted-foreground dark:text-muted-foreground">
-                        {entry.summary}
+                        {entry.excerpt}
                     </p>
                 )}
 

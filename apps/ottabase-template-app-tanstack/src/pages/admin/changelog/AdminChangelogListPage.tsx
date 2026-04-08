@@ -1,37 +1,78 @@
 /**
  * Admin changelog entries list
+ *
+ * Uses the unified ottablog Post model with contentType='changelog'.
+ * Changelogs are now blog posts with a specific content type.
  */
 import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
+import { formatShortDate, POST_STATUSES, type PostStatus } from '@ottabase/ottablog';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { IconEdit, IconPlus, IconStar, IconStarFilled } from '@tabler/icons-react';
+import { IconEdit, IconEye, IconPlus, IconStar, IconStarFilled, IconTrash } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
+import { ConfirmDialog } from '@ottabase/ui-components';
+import { useState } from 'react';
 
-interface ChangelogRow {
+interface ChangelogPost {
     id: string;
     title: string;
     slug: string;
-    status: string;
-    highlight: boolean | null;
+    excerpt: string | null;
+    status: PostStatus;
+    isFeatured: boolean;
+    readingTimeMinutes: number | null;
     publishedAt: string | null;
     updatedAt: string;
 }
 
-const changelogHooks = createModelHooks<ChangelogRow>({ entityName: 'changelog_entries' });
+const postHooks = createModelHooks<ChangelogPost>({ entityName: 'posts' });
 
 export function AdminChangelogListPage() {
-    const { data, isLoading } = changelogHooks.useList(
-        { orderBy: 'updatedAt', orderDirection: 'desc' },
+    const [deleteDialog, setDeleteDialog] = useState<{ id: string; title: string } | null>(null);
+
+    // Fetch posts filtered by contentType='changelog'
+    const { data, isLoading } = postHooks.useList(
+        {
+            where: { contentType: 'changelog' },
+            orderBy: 'updatedAt',
+            orderDirection: 'desc',
+        },
         ADMIN_LIST_QUERY_CONFIG,
     );
-    const updateEntry = changelogHooks.useUpdate();
+    const updatePost = postHooks.useUpdate();
+    const deletePost = postHooks.useDelete();
 
-    let rows: ChangelogRow[] = [];
+    let rows: ChangelogPost[] = [];
     if (Array.isArray(data)) {
         rows = data;
     } else if (data && typeof data === 'object' && 'data' in data && Array.isArray((data as { data: unknown }).data)) {
-        rows = (data as { data: ChangelogRow[] }).data;
+        rows = (data as { data: ChangelogPost[] }).data;
     }
+
+    const handleDelete = (id: string, title: string) => {
+        setDeleteDialog({ id, title });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteDialog) return;
+        try {
+            await deletePost.mutateAsync(deleteDialog.id);
+        } catch (err) {
+            console.error('Failed to delete changelog entry:', err);
+        } finally {
+            setDeleteDialog(null);
+        }
+    };
+
+    const getStatusBadge = (status: PostStatus) => {
+        const variants: Record<PostStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+            published: 'default',
+            draft: 'secondary',
+            scheduled: 'outline',
+            archived: 'destructive',
+        };
+        return <Badge variant={variants[status]}>{POST_STATUSES[status].label}</Badge>;
+    };
 
     return (
         <div className="mx-auto max-w-5xl px-4 py-8">
@@ -43,7 +84,7 @@ export function AdminChangelogListPage() {
                     </p>
                 </div>
                 <Button asChild>
-                    <Link to="/admin/changelog/new">
+                    <Link to="/admin/blog/new" search={{ contentType: 'changelog' }}>
                         <IconPlus className="mr-2 size-4" aria-hidden />
                         New entry
                     </Link>
@@ -71,37 +112,65 @@ export function AdminChangelogListPage() {
                                 <div className="min-w-0 flex items-center gap-2">
                                     <button
                                         type="button"
-                                        title={row.highlight ? 'Remove highlight' : 'Highlight this entry'}
+                                        title={row.isFeatured ? 'Remove highlight' : 'Highlight this entry'}
                                         className="shrink-0 text-muted-foreground hover:text-yellow-500 transition-colors"
                                         onClick={() =>
-                                            updateEntry.mutate({
+                                            updatePost.mutate({
                                                 id: row.id,
-                                                data: { highlight: !row.highlight },
+                                                data: { isFeatured: !row.isFeatured },
                                             })
                                         }
                                     >
-                                        {row.highlight ? (
+                                        {row.isFeatured ? (
                                             <IconStarFilled className="size-4 text-yellow-500" />
                                         ) : (
                                             <IconStar className="size-4" />
                                         )}
                                     </button>
                                     <div className="min-w-0">
-                                        <p className="font-medium text-foreground dark:text-foreground">{row.title}</p>
+                                        <Link
+                                            to="/admin/blog/$postId/edit"
+                                            params={{ postId: row.id }}
+                                            className="font-medium text-foreground dark:text-foreground hover:underline"
+                                        >
+                                            {row.title}
+                                        </Link>
                                         <p className="truncate text-xs text-muted-foreground dark:text-muted-foreground">
                                             /changelog/{row.slug}
+                                            {row.readingTimeMinutes ? ` · ${row.readingTimeMinutes} min read` : ''}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <Badge variant={row.status === 'published' ? 'default' : 'secondary'}>
-                                        {row.status}
-                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                        {row.status === 'published'
+                                            ? `Published ${formatShortDate(row.publishedAt)}`
+                                            : `Updated ${formatShortDate(row.updatedAt)}`}
+                                    </span>
+                                    {getStatusBadge(row.status)}
+                                    <Button variant="ghost" size="sm" asChild>
+                                        <a
+                                            href={`/changelog/${row.slug}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            aria-label="View"
+                                        >
+                                            <IconEye className="size-4" aria-hidden />
+                                        </a>
+                                    </Button>
                                     <Button variant="outline" size="sm" asChild>
-                                        <Link to="/admin/changelog/$entryId/edit" params={{ entryId: row.id }}>
+                                        <Link to="/admin/blog/$postId/edit" params={{ postId: row.id }}>
                                             <IconEdit className="mr-1 size-4" aria-hidden />
                                             Edit
                                         </Link>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDelete(row.id, row.title)}
+                                        disabled={deletePost.isPending}
+                                    >
+                                        <IconTrash className="size-4 text-destructive" aria-hidden />
                                     </Button>
                                 </div>
                             </li>
@@ -109,6 +178,19 @@ export function AdminChangelogListPage() {
                     </ul>
                 </CardContent>
             </Card>
+
+            <ConfirmDialog
+                open={deleteDialog !== null}
+                onOpenChange={(open) => !open && setDeleteDialog(null)}
+                title="Delete Entry?"
+                description={`Are you sure you want to delete "${deleteDialog?.title}"?`}
+                tone="destructive"
+                secondaryActionText="Cancel"
+                primaryActionText="Delete"
+                onConfirm={handleConfirmDelete}
+                confirmProps={{ disabled: deletePost.isPending }}
+                cancelProps={{ disabled: deletePost.isPending }}
+            />
         </div>
     );
 }
