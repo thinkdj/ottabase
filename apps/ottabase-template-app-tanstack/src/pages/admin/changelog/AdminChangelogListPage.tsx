@@ -153,13 +153,17 @@ export function AdminChangelogListPage() {
                                             href={`/changelog/${row.slug}`}
                                             target="_blank"
                                             rel="noreferrer"
-                                            aria-label="View"
+                                            aria-label={`View ${row.title}`}
                                         >
                                             <IconEye className="size-4" aria-hidden />
                                         </a>
                                     </Button>
                                     <Button variant="outline" size="sm" asChild>
-                                        <Link to="/admin/blog/$postId/edit" params={{ postId: row.id }}>
+                                        <Link
+                                            to="/admin/blog/$postId/edit"
+                                            params={{ postId: row.id }}
+                                            aria-label={`Edit ${row.title}`}
+                                        >
                                             <IconEdit className="mr-1 size-4" aria-hidden />
                                             Edit
                                         </Link>
@@ -169,6 +173,7 @@ export function AdminChangelogListPage() {
                                         size="sm"
                                         onClick={() => handleDelete(row.id, row.title)}
                                         disabled={deletePost.isPending}
+                                        aria-label={`Delete ${row.title}`}
                                     >
                                         <IconTrash className="size-4 text-destructive" aria-hidden />
                                     </Button>

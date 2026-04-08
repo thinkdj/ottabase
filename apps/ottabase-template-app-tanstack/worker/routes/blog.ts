@@ -369,18 +369,19 @@ export async function handleBlogPostBySlug(context: BlogRouteContext, slug: stri
     const appId = resolveAppId(context);
     const contentTypeParam = url.searchParams.get('contentType') || null;
     const where: Record<string, unknown> = { slug, status: 'published', appId };
-    
+
     // Add contentType filter if provided
     if (contentTypeParam) {
         where.contentType = contentTypeParam;
     }
-    
+
     const record = await Post.first(where);
     if (!record) {
         return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
     }
 
-    // Block changelog access unless explicitly requested via contentType param
+    // Changelogs require explicit opt-in via contentType=changelog parameter.
+    // Without it, changelog posts are hidden from the regular blog API.
     if (!contentTypeParam && record.get('contentType') === 'changelog') {
         return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
     }
@@ -413,18 +414,19 @@ export async function handleBlogPostUnlock(context: BlogRouteContext): Promise<R
     const appId = resolveAppId(context);
     const contentTypeParam = url.searchParams.get('contentType') || null;
     const where: Record<string, unknown> = { slug, status: 'published', appId };
-    
+
     // Add contentType filter if provided
     if (contentTypeParam) {
         where.contentType = contentTypeParam;
     }
-    
+
     const record = await Post.first(where);
     if (!record) {
         return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
     }
 
-    // Block changelog access unless explicitly requested via contentType param
+    // Changelogs require explicit opt-in via contentType=changelog parameter.
+    // Without it, changelog posts are hidden from the regular blog API.
     if (!contentTypeParam && record.get('contentType') === 'changelog') {
         return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
     }

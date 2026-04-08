@@ -12,6 +12,7 @@ import {
     createBrowserHistory,
     lazyRouteComponent,
     Link,
+    Navigate,
     Outlet,
     RootRoute,
     Route,
@@ -995,22 +996,17 @@ const adminChangelogRoute = new Route({
 const adminChangelogNewRoute = new Route({
     getParentRoute: () => rootRoute,
     path: '/admin/changelog/new',
-    component: () => {
-        // Redirect to blog editor with changelog content type
-        window.location.href = '/admin/blog/new?contentType=changelog';
-        return null;
-    },
+    component: () => <Navigate to="/admin/blog/new" search={{ contentType: 'changelog' }} />,
 });
 
 const adminChangelogEditRoute = new Route({
     getParentRoute: () => rootRoute,
     path: '/admin/changelog/$entryId/edit',
-    component: () => {
-        // Redirect to blog editor - the entryId is now a post ID
-        const entryId = window.location.pathname.split('/')[3];
-        window.location.href = `/admin/blog/${entryId}/edit`;
-        return null;
-    },
+    component: lazyRouteComponent(() =>
+        import('@/pages/admin/changelog/ChangelogEditRedirect').then((m) => ({
+            default: m.ChangelogEditRedirect,
+        })),
+    ),
 });
 
 // Organizations routes
