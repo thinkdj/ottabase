@@ -74,7 +74,7 @@ export function ChangelogDetailPage() {
         );
     }
 
-    if (!isLoading && (isError || !entry)) {
+    if (isError || !entry) {
         return (
             <div className="mx-auto max-w-2xl px-4 py-16 text-center">
                 <h1 className="text-2xl font-semibold text-foreground dark:text-foreground">Not found</h1>
@@ -91,6 +91,7 @@ export function ChangelogDetailPage() {
         );
     }
 
+    // entry is guaranteed to be defined after the above checks
     const description = entry.excerpt ?? undefined;
     const heroUrl = entry.heroImage?.url;
     const currentUserId = (user as any)?.id;
