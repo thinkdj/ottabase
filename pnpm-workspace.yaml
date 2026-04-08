@@ -19,7 +19,7 @@ catalog:
     "@prisma/client": ^5.22.0
     "@storybook/addon-docs": ^10.2.3
     "@storybook/addon-links": ^10.2.3
-    "@storybook/addon-styling-webpack": ^3.0.0
+    "@storybook/addon-styling-webpack": ^3.0.2
     "@storybook/react-webpack5": ^10.2.3
     "@storybook/test": ^9.1.15
     "@tabler/icons-react": ^3.35.0
