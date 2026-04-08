@@ -41,7 +41,7 @@ jobs:
 
             # Cache Turborepo build outputs
             - name: Setup Turborepo cache
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: |
                       .turbo

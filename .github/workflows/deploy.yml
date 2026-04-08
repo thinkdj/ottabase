@@ -407,7 +407,7 @@ jobs:
 
             # Cache Turborepo outputs for faster builds
             - name: Cache Turborepo
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: .turbo
                   key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
@@ -418,7 +418,7 @@ jobs:
             # Cache framework-specific build outputs
             - name: Cache Next.js builds
               if: steps.config.outputs.app-type == 'nextjs'
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: |
                       apps/${{ matrix.folder }}/.next/cache
@@ -435,7 +435,7 @@ jobs:
 
             - name: Cache TanStack builds
               if: steps.config.outputs.app-type == 'tanstack'
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: |
                       apps/${{ matrix.folder }}/dist
@@ -488,7 +488,7 @@ jobs:
                   echo "📦 Cache key: ${CACHE_KEY}"
 
             - name: Restore cached packages
-              uses: actions/cache/restore@v4
+              uses: actions/cache/restore@v5
               with:
                   path: |
                       packages/*/dist
