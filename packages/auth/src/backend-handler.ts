@@ -274,7 +274,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
         sessionStrategy,
         sessionMaxAge: sessionMaxAge ?? 30 * 24 * 60 * 60, // 30 days
         authConfig: {
-            secret: env.AUTH_SECRET || 'dev-secret-change-in-production',
+            secret: env.AUTH_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('[auth] AUTH_SECRET env var is required in production'); })() : 'dev-secret-change-in-production'),
             /**
              * trustHost:
              *   Cloudflare Workers and other edge runtimes often require `trustHost: true`

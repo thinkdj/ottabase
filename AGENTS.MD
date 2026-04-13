@@ -657,7 +657,7 @@ limits), then runs migrations — use this for a clean fresh install when KV may
 BOOTSTRAP_SECRET=$(grep BOOTSTRAP_OWNER_SECRET apps/ottabase-template-app-tanstack/.env.local | cut -d= -f2)
 curl -s -X POST http://localhost:3004/__bootstrap__/api/init -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET"
 curl -s -X POST http://localhost:3004/__bootstrap__/api/seed -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET"
-curl -s -X POST http://localhost:3004/__bootstrap__/api/create-owner -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET" -H "Content-Type: application/json" -d '{"email":"admin@ottabase.dev","password":"Admin@12345","name":"Admin"}'
+curl -s -X POST http://localhost:3004/__bootstrap__/api/create-owner -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET" -H "Content-Type: application/json" -d '{"email":"admin@example.com","password":"<your-secure-password>","name":"Admin"}'
 curl -s -X POST http://localhost:3004/__bootstrap__/api/finalize -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET"
 ```
 

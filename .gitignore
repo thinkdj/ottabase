@@ -10,6 +10,9 @@ wrangler.preview.jsonc
 .dev.vars
 .wrangler/
 
+# AI coding agent local settings (IDE-specific, not for repo)
+.claude/
+
 # Force-ignore .gitignore files
 # Add this to your local files that need not be committed (Eg: google-oauth.gitignore.json)
 *.gitignore.*
