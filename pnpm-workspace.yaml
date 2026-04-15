@@ -15,7 +15,7 @@ catalog:
     "@mantine/hooks": ^8.3.15
     "@mantine/modals": ^8.3.15
     "@mantine/notifications": ^8.3.15
-    "@prisma/adapter-d1": ^5.22.0
+    "@prisma/adapter-d1": ^7.7.0
     "@prisma/client": ^5.22.0
     "@storybook/addon-docs": ^10.2.10
     "@storybook/addon-links": ^10.2.10
