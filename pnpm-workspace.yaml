@@ -35,6 +35,7 @@ catalog:
     "@typescript-eslint/eslint-plugin": ^8.54.0
     "@typescript-eslint/parser": ^8.54.0
     "@vitejs/plugin-react": ^4.7.0
+    "@vitest/coverage-v8": 4.0.18
     autoprefixer: ^10.4.21
     babel-loader: ^10.0.0
     class-variance-authority: ^0.7.0

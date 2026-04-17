@@ -26,6 +26,7 @@
     },
     "devDependencies": {
         "@ottabase/config": "workspace:*",
+        "@vitest/coverage-v8": "catalog:",
         "drizzle-orm": "catalog:",
         "typescript": "catalog:"
     },

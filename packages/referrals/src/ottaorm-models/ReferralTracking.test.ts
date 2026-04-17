@@ -90,7 +90,7 @@ describe('ReferralTracking instance methods', () => {
 
         expect(record.get('status')).toBe('completed');
         expect(record.get('referredUserId')).toBe('new-user-1');
-        expect(record.get('conversionAt')).toBe(123_456);
+        expect(record.get('conversionAt')).toEqual(new Date(123_456));
         expect(saveSpy).toHaveBeenCalledTimes(1);
     });
 
