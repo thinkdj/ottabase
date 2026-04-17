@@ -69,7 +69,7 @@
         "@tabler/icons-react": "catalog:",
         "@tanstack/react-query": "catalog:",
         "@tanstack/react-router": "catalog:",
-        "diff": "^8.0.3",
+        "diff": "^9.0.0",
         "drizzle-orm": "catalog:",
         "jotai": "catalog:",
         "lucide-react": "catalog:",
