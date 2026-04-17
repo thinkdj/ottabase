@@ -52,7 +52,7 @@ catalog:
     highlight.js: ^11.11.1
     husky: ^9.1.7
     jotai: ^2.16.2
-    lint-staged: ^15.5.2
+    lint-staged: ^16.4.0
     localflare: ^0.1.2
     lucide-react: ^0.468.0
     mongodb: ^7.0.0
