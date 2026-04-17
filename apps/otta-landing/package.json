@@ -38,7 +38,7 @@
     },
     "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
-        "@opennextjs/cloudflare": "^1.11.0",
+        "@opennextjs/cloudflare": "^1.19.1",
         "@ottabase/ui-tailwind": "workspace:*",
         "@tailwindcss/forms": "catalog:",
         "@tailwindcss/typography": "catalog:",
