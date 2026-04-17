@@ -30,7 +30,7 @@ catalog:
     "@tanstack/react-router": ^1.145.2
     "@types/node": ^20.19.27
     "@types/nodemailer": ^7.0.0
-    "@types/react": ^19.2.7
+    "@types/react": ^19.2.14
     "@types/react-dom": ^19.2.3
     "@typescript-eslint/eslint-plugin": ^8.54.0
     "@typescript-eslint/parser": ^8.54.0
@@ -65,7 +65,7 @@ catalog:
     postcss-simple-vars: ^7.0.1
     prettier: ^3.7.4
     prisma: ^5.22.0
-    react: ^19.2.4
+    react: ^19.2.5
     react-dom: ^19.2.4
     react-hook-form: ^7.54.2
     rimraf: ^6.1.2
