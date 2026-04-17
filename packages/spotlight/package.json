@@ -58,7 +58,7 @@
         "@types/react-dom": "catalog:",
         "@vitejs/plugin-react": "catalog:",
         "eslint": "catalog:",
-        "jsdom": "^27.4.0",
+        "jsdom": "^29.0.2",
         "react": "catalog:",
         "react-dom": "catalog:",
         "rimraf": "catalog:",

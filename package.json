@@ -104,7 +104,7 @@
         "eslint-plugin-storybook": "catalog:",
         "happy-dom": "^20.4.0",
         "husky": "catalog:",
-        "jsdom": "^27.4.0",
+        "jsdom": "^29.0.2",
         "lint-staged": "catalog:",
         "next-themes": "catalog:",
         "pnpm": "10.27.0",
