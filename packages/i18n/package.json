@@ -53,14 +53,14 @@
         "eslint": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-        "react-i18next": "^15.2.0",
+        "react-i18next": "^17.0.4",
         "rimraf": "catalog:",
         "tsup": "catalog:",
         "typescript": "catalog:"
     },
     "peerDependencies": {
         "react": "catalog:",
-        "react-i18next": "^15.2.0"
+        "react-i18next": "^17.0.4"
     },
     "repository": {
         "type": "git",
