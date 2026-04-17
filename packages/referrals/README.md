@@ -101,6 +101,20 @@ import {
 
 See the Vite app implementation (`/api/referrals/*`) for a full example.
 
+## Testing
+
+Run package tests:
+
+```bash
+pnpm --filter @ottabase/referrals test
+```
+
+Run package coverage:
+
+```bash
+pnpm --filter @ottabase/referrals test:coverage
+```
+
 ## License
 
 MIT

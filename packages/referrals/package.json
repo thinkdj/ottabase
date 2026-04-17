@@ -13,6 +13,8 @@
     "scripts": {
         "build": "tsc",
         "dev": "tsc --watch",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
         "clean": "rm -rf dist .turbo node_modules"
     },
     "dependencies": {
