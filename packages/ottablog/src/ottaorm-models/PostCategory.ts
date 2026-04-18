@@ -4,14 +4,9 @@
  * OttaORM model for post categories with hierarchy support.
  */
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
+import { prepareCreateSlug, prepareUpdateSlug, type SlugLifecycleConfig } from '../slug-utils';
 import { generateSlug } from '../types';
-import {
-    categoriesTable,
-    type Category,
-    type NewCategory,
-    type NewPostCategoryType,
-    type PostCategoryType,
-} from './PostCategory.schema';
+import { categoriesTable } from './PostCategory.schema';
 
 export {
     categoriesTable,
@@ -27,6 +22,11 @@ export class PostCategory extends BaseModel {
     static primaryKey = 'id';
     static packageName = '@ottabase/ottablog';
     static packageType: PackageType = 'package';
+
+    static writable = {
+        create: ['name', 'slug', 'description', 'parentId', 'sortOrder', 'type', 'appId'],
+        update: ['name', 'slug', 'description', 'parentId', 'sortOrder', 'type'],
+    };
 
     static casts = {
         sortOrder: 'number' as const,
@@ -74,6 +74,7 @@ export class PostCategory extends BaseModel {
         },
         slug: {
             type: 'string',
+            unique: true,
             editable: true,
             searchable: true,
             sortable: true,
@@ -186,14 +187,42 @@ export class PostCategory extends BaseModel {
         },
     };
 
+    // ==================== Slug Lifecycle Config ====================
+
+    private static readonly slugConfig: SlugLifecycleConfig = {
+        slugPrefix: 'category',
+        nameField: 'name',
+        hasType: true,
+        entityLabel: 'categories',
+    };
+
     // ==================== Query Scopes ====================
 
+    static async create<T extends typeof BaseModel>(
+        this: T,
+        data: Record<string, any>,
+        driver?: any,
+    ): Promise<InstanceType<T>> {
+        await prepareCreateSlug(this, data, PostCategory.slugConfig, driver);
+        return (await super.create.call(this, data, driver)) as InstanceType<T>;
+    }
+
+    static async update<T extends typeof BaseModel>(
+        this: T,
+        id: string | number,
+        data: Record<string, any>,
+        driver?: any,
+    ): Promise<InstanceType<T>> {
+        await prepareUpdateSlug(this, id, data, PostCategory.slugConfig, driver);
+        return (await super.update.call(this, id, data, driver)) as InstanceType<T>;
+    }
+
     /**
-     * Get root categories (no parent)
+     * Get root categories (no parent).
+     * appId is required — matches NOT NULL schema constraint and prevents cross-tenant data leaks.
      */
-    static async roots(options?: { appId?: string; orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
-        const query: Record<string, unknown> = { parentId: null };
-        if (options?.appId) query.appId = options.appId;
+    static async roots(options: { appId: string; orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
+        const query: Record<string, unknown> = { parentId: null, appId: options.appId };
 
         return this.where(query, {
             orderBy: options?.orderBy || 'sortOrder',
@@ -202,18 +231,18 @@ export class PostCategory extends BaseModel {
     }
 
     /**
-     * Get children of a category
+     * Get children of a category.
+     * appId is required — matches NOT NULL schema constraint and prevents cross-tenant data leaks.
      */
     static async children(
         parentId: string,
-        options?: {
-            appId?: string;
+        options: {
+            appId: string;
             orderBy?: string;
             orderDirection?: 'asc' | 'desc';
         },
     ) {
-        const query: Record<string, unknown> = { parentId };
-        if (options?.appId) query.appId = options.appId;
+        const query: Record<string, unknown> = { parentId, appId: options.appId };
 
         return this.where(query, {
             orderBy: options?.orderBy || 'sortOrder',
@@ -224,9 +253,9 @@ export class PostCategory extends BaseModel {
     /**
      * Find category by slug
      */
-    static async findBySlug(slug: string, options?: { appId?: string }): Promise<PostCategory | null> {
-        const query: Record<string, unknown> = { slug };
-        if (options?.appId) query.appId = options.appId;
+    static async findBySlug(slug: string, options: { appId: string; type?: string }): Promise<PostCategory | null> {
+        const query: Record<string, unknown> = { slug, appId: options.appId };
+        if (options.type) query.type = options.type;
 
         const results = await this.where(query);
         return results.length > 0 ? (results[0] as PostCategory) : null;

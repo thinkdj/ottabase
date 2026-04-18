@@ -27,13 +27,9 @@ const Checklist: RenderFn<{ items: ChecklistItem[] }> = ({ data, className = '' 
     return (
         <ul className={`${className} list-none p-0 m-0 space-y-2`}>
             {data?.items?.map((item, i) => {
-                const textColor = item.checked
-                    ? 'text-gray-500 dark:text-gray-400 line-through'
-                    : 'text-gray-800 dark:text-gray-200';
-                const checkboxBorderColor = item.checked
-                    ? 'border-gray-400 dark:border-gray-500'
-                    : 'border-gray-300 dark:border-gray-600';
-                const checkboxBgColor = item.checked ? 'bg-blue-500 dark:bg-blue-600' : 'bg-white dark:bg-gray-700';
+                const textColor = item.checked ? 'text-muted-foreground line-through' : 'text-foreground';
+                const checkboxBorderColor = item.checked ? 'border-primary' : 'border-border';
+                const checkboxBgColor = item.checked ? 'bg-primary' : 'bg-background';
 
                 return (
                     <li key={i} className="flex items-start">
@@ -42,10 +38,7 @@ const Checklist: RenderFn<{ items: ChecklistItem[] }> = ({ data, className = '' 
                                 className={`mt-1 h-5 w-5 border ${checkboxBorderColor} rounded-sm ${checkboxBgColor} focus:outline-none transition duration-200 align-top cursor-pointer mr-2 flex items-center justify-center`}
                             >
                                 {item.checked && (
-                                    <IconCheck
-                                        size={12}
-                                        className="text-white dark:text-gray-100 pointer-events-none"
-                                    />
+                                    <IconCheck size={12} className="text-primary-foreground pointer-events-none" />
                                 )}
                             </div>
                         </div>

@@ -1,6 +1,12 @@
 {
     "extends": "../../tsconfig.json",
     "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "@ottabase/ui-components": ["./src/index.ts"],
+            "@ottabase/ui-components/*": ["./src/*"]
+        },
+        "rootDir": "src",
         "outDir": "dist",
         "jsx": "react-jsx",
         "declaration": true,

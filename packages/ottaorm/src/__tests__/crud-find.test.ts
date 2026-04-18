@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BaseModel } from '../base/BaseModel';
 import { handleCrud, parseCrudRequest } from '../crud';
 import { clearModelRegistry, registerModel } from '../registry';
+import { ValidationError } from '../validation';
 
 const testTable = sqliteTable('tests', {
     id: text('id').primaryKey(),
@@ -315,5 +316,294 @@ describe('OttaORM field/value find functionality', () => {
 
             expect(parsed?.query?.search).toBe('hello');
         });
+    });
+
+    describe('handleCrud - model not found', () => {
+        it('should include available models in error hint', async () => {
+            registerModel(TestModel);
+
+            const result = await handleCrud({
+                method: 'GET',
+                model: 'nonexistent',
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.status).toBe(404);
+            expect(result.code).toBe('MODEL_NOT_FOUND');
+            expect(result.hint).toContain('tests');
+        });
+    });
+
+    describe('parseCrudRequest - malformed input fails closed', () => {
+        it('should flag invalid JSON in "where" query param as parseError', async () => {
+            const url = new URL('http://localhost/api/ottaorm/tests?where=not-json');
+            const request = new Request(url.toString(), { method: 'GET' });
+            const parsed = await parseCrudRequest(request, url, '/api/ottaorm');
+
+            expect(parsed?.parseError).toBeDefined();
+            expect(parsed?.parseError?.code).toBe('INVALID_QUERY');
+        });
+
+        it('should flag invalid JSON body on POST as parseError', async () => {
+            const url = new URL('http://localhost/api/ottaorm/tests');
+            const request = new Request(url.toString(), {
+                method: 'POST',
+                body: 'not-json',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const parsed = await parseCrudRequest(request, url, '/api/ottaorm');
+
+            expect(parsed?.parseError).toBeDefined();
+            expect(parsed?.parseError?.code).toBe('INVALID_BODY');
+        });
+
+        it('handleCrud should short-circuit with 400 when parseError is present', async () => {
+            registerModel(TestModel);
+
+            const result = await handleCrud({
+                method: 'POST',
+                model: 'tests',
+                body: {},
+                parseError: { message: 'Invalid JSON in request body', code: 'INVALID_BODY' },
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.status).toBe(400);
+            expect(result.code).toBe('INVALID_BODY');
+        });
+    });
+
+    describe('handleCrud - ValidationError handling', () => {
+        it('should return 422 with fieldErrors on ValidationError', async () => {
+            // Make create throw a ValidationError
+            vi.spyOn(TestModel, 'create').mockRejectedValue(
+                new ValidationError({ email: 'Email is required', name: 'Name is too short' }),
+            );
+
+            registerModel(TestModel);
+
+            const result = await handleCrud({
+                method: 'POST',
+                model: 'tests',
+                body: { email: '', name: 'a' },
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.status).toBe(422);
+            expect(result.code).toBe('VALIDATION_ERROR');
+            expect(result.fieldErrors).toBeDefined();
+            expect(result.fieldErrors!.email).toContain('Email is required');
+            expect(result.fieldErrors!.name).toContain('Name is too short');
+        });
+    });
+});
+
+describe('handleCrud - list query limit/offset capping', () => {
+    beforeEach(() => {
+        clearModelRegistry();
+    });
+
+    it('should cap limit to MAX_LIST_LIMIT (1000)', async () => {
+        const whereSpy = vi.spyOn(TestModel, 'where').mockResolvedValue([]);
+        registerModel(TestModel);
+
+        await handleCrud({
+            method: 'GET',
+            model: 'tests',
+            query: { limit: 99999 },
+        });
+
+        expect(whereSpy).toHaveBeenCalledWith({}, expect.objectContaining({ limit: 1000 }));
+        whereSpy.mockRestore();
+    });
+
+    it('should cap offset to MAX_LIST_OFFSET (100000)', async () => {
+        const whereSpy = vi.spyOn(TestModel, 'where').mockResolvedValue([]);
+        registerModel(TestModel);
+
+        await handleCrud({
+            method: 'GET',
+            model: 'tests',
+            query: { offset: 9999999 },
+        });
+
+        expect(whereSpy).toHaveBeenCalledWith({}, expect.objectContaining({ offset: 100000 }));
+        whereSpy.mockRestore();
+    });
+
+    it('should pass through valid limit/offset unchanged', async () => {
+        const whereSpy = vi.spyOn(TestModel, 'where').mockResolvedValue([]);
+        registerModel(TestModel);
+
+        await handleCrud({
+            method: 'GET',
+            model: 'tests',
+            query: { limit: 50, offset: 100 },
+        });
+
+        expect(whereSpy).toHaveBeenCalledWith({}, expect.objectContaining({ limit: 50, offset: 100 }));
+        whereSpy.mockRestore();
+    });
+
+    it('should floor negative limit to 1', async () => {
+        const whereSpy = vi.spyOn(TestModel, 'where').mockResolvedValue([]);
+        registerModel(TestModel);
+
+        await handleCrud({
+            method: 'GET',
+            model: 'tests',
+            query: { limit: -5 },
+        });
+
+        expect(whereSpy).toHaveBeenCalledWith({}, expect.objectContaining({ limit: 1 }));
+        whereSpy.mockRestore();
+    });
+});
+
+describe('BaseModel - soft delete', () => {
+    it('should have softDeletes disabled by default', () => {
+        expect(TestModel.softDeletes).toBe(false);
+    });
+
+    it('should throw if forceDelete has no driver connection', async () => {
+        class NoPkModel extends BaseModel {
+            static entity = 'nopk';
+            static table = testTable;
+            static primaryKey = 'nonexistent';
+        }
+
+        // forceDelete requires a registered driver connection
+        await expect(NoPkModel.forceDelete('123')).rejects.toThrow('not registered');
+    });
+
+    it('should throw if restore is called on non-softDelete model', async () => {
+        await expect(TestModel.restore('123')).rejects.toThrow('does not have soft deletes');
+    });
+});
+
+describe('BaseModel - eager loading', () => {
+    it('should throw if relationship method does not exist', async () => {
+        const record = new TestModel({
+            entity: 'tests',
+            data: { id: 'test-1', slug: 'test' },
+        });
+
+        await expect(record.load('nonexistentRelation')).rejects.toThrow(
+            'Relationship "nonexistentRelation" is not defined',
+        );
+    });
+
+    it('should call relationship method and attach result', async () => {
+        class PostModel extends BaseModel {
+            static entity = 'posts';
+            static table = testTable;
+            static primaryKey = 'id';
+
+            async author() {
+                // Simulate a belongsTo returning a model instance
+                return new TestModel({
+                    entity: 'tests',
+                    data: { id: 'author-1', slug: 'author', email: 'a@b.com' },
+                });
+            }
+        }
+
+        const post = new PostModel({
+            entity: 'posts',
+            data: { id: 'post-1', slug: 'post-slug' },
+        });
+
+        await post.load('author');
+
+        const author = post.get('author');
+        expect(author).toBeDefined();
+        expect((author as any).id).toBe('author-1');
+    });
+
+    it('should handle null relationship result', async () => {
+        class PostModel extends BaseModel {
+            static entity = 'posts';
+            static table = testTable;
+            static primaryKey = 'id';
+
+            async author() {
+                return null;
+            }
+        }
+
+        const post = new PostModel({
+            entity: 'posts',
+            data: { id: 'post-1', slug: 'post-slug' },
+        });
+
+        await post.load('author');
+        expect(post.get('author')).toBeNull();
+    });
+
+    it('should handle array relationship result', async () => {
+        class PostModel extends BaseModel {
+            static entity = 'posts';
+            static table = testTable;
+            static primaryKey = 'id';
+
+            async comments() {
+                return [
+                    new TestModel({ entity: 'tests', data: { id: 'c1', slug: 'comment-1' } }),
+                    new TestModel({ entity: 'tests', data: { id: 'c2', slug: 'comment-2' } }),
+                ];
+            }
+        }
+
+        const post = new PostModel({
+            entity: 'posts',
+            data: { id: 'post-1', slug: 'post-slug' },
+        });
+
+        await post.load('comments');
+        const comments = post.get('comments') as any[];
+        expect(comments).toHaveLength(2);
+        expect(comments[0].id).toBe('c1');
+    });
+});
+
+describe('BaseModel - batch', () => {
+    it('should throw if driver does not support executeBatch', async () => {
+        // Mock a driver without executeBatch
+        const mockDriver = {
+            getDb: () => ({}),
+            execute: vi.fn(),
+            executeRaw: vi.fn(),
+        };
+
+        await expect(TestModel.batch(['SELECT 1'], mockDriver as any)).rejects.toThrow(
+            'Driver does not support executeBatch',
+        );
+    });
+
+    it('should call executeBatch on driver', async () => {
+        const executeBatchMock = vi.fn().mockResolvedValue([]);
+        const mockDriver = {
+            getDb: () => ({}),
+            execute: vi.fn(),
+            executeRaw: vi.fn(),
+            executeBatch: executeBatchMock,
+        };
+
+        await TestModel.batch(['INSERT INTO tests VALUES ("1", "a", "b", "c")'], mockDriver as any);
+        expect(executeBatchMock).toHaveBeenCalledWith(['INSERT INTO tests VALUES ("1", "a", "b", "c")']);
+    });
+});
+
+describe('BaseModel - withTrashed', () => {
+    it('should return a scoped query object with all query methods', () => {
+        const scoped = TestModel.withTrashed();
+        expect(typeof scoped.find).toBe('function');
+        expect(typeof scoped.first).toBe('function');
+        expect(typeof scoped.where).toBe('function');
+        expect(typeof scoped.whereIn).toBe('function');
+        expect(typeof scoped.all).toBe('function');
+        expect(typeof scoped.count).toBe('function');
+        expect(typeof scoped.search).toBe('function');
+        expect(typeof scoped.searchPaginate).toBe('function');
     });
 });

@@ -90,9 +90,29 @@ export class ApiError extends Error {
     }
 }
 
+/** HTTP methods supported by the shorthand syntax */
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
 // ============================================================
 // API Client Configuration
 // ============================================================
+
+export interface ApiRetryOptions {
+    /** Total attempts including the first request (default: 1, meaning no retry) */
+    attempts?: number;
+
+    /** Base backoff delay in milliseconds (default: 250) */
+    baseDelayMs?: number;
+
+    /** Maximum backoff delay in milliseconds (default: 2000) */
+    maxDelayMs?: number;
+
+    /** HTTP statuses that should be retried for allowed methods (default: 502, 503, 504) */
+    retryableStatuses?: number[];
+
+    /** HTTP methods eligible for retries (default: GET, HEAD, OPTIONS) */
+    retryableMethods?: string[];
+}
 
 export interface ApiClientConfig {
     /** Base URL for all requests (e.g., "https://api.example.com") */
@@ -115,6 +135,9 @@ export interface ApiClientConfig {
 
     /** Deduplicate in-flight requests with identical inputs (default: true) */
     dedupe?: boolean;
+
+    /** Retry transient failures for eligible requests */
+    retry?: number | ApiRetryOptions;
 }
 
 export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
@@ -144,10 +167,10 @@ export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
 
     /** Optional identifier for logging/debugging deduped calls */
     callerId?: string;
-}
 
-/** HTTP methods supported by the shorthand syntax */
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+    /** Retry transient failures for this request */
+    retry?: number | ApiRetryOptions;
+}
 
 /** API function signature with overloads for shorthand method syntax */
 export interface ApiFunction {
@@ -182,21 +205,70 @@ function buildDedupeKey(params: {
     url: string;
     method: string;
     headers: Record<string, string>;
-    body: string | undefined;
+    body: string | FormData | undefined;
     timeout: number;
     fetchOptions: Pick<RequestInit, 'cache' | 'credentials' | 'mode' | 'redirect'>;
+    retry: ResolvedRetryOptions;
 }): string {
     return JSON.stringify({
         url: params.url,
         method: params.method,
         headers: normalizeHeaders(params.headers),
-        body: params.body ?? null,
+        // FormData can't be meaningfully serialized; use a placeholder so
+        // multipart uploads are never deduped against each other.
+        body: params.body instanceof FormData ? '__formdata__' : (params.body ?? null),
         timeout: params.timeout,
         cache: params.fetchOptions.cache ?? null,
         credentials: params.fetchOptions.credentials ?? null,
         mode: params.fetchOptions.mode ?? null,
         redirect: params.fetchOptions.redirect ?? null,
+        retry: params.retry,
     });
+}
+
+const DEFAULT_RETRYABLE_STATUSES = [502, 503, 504];
+const DEFAULT_RETRYABLE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
+const DEFAULT_RETRY_BASE_DELAY_MS = 250;
+const DEFAULT_RETRY_MAX_DELAY_MS = 2000;
+
+interface ResolvedRetryOptions {
+    attempts: number;
+    baseDelayMs: number;
+    maxDelayMs: number;
+    retryableStatuses: number[];
+    retryableMethods: string[];
+}
+
+function normalizeRetryOptions(retry: number | ApiRetryOptions | undefined): ResolvedRetryOptions {
+    const retryOptions = typeof retry === 'number' ? { attempts: retry } : (retry ?? {});
+    const attempts = Math.max(1, Math.floor(retryOptions.attempts ?? 1));
+
+    return {
+        attempts,
+        baseDelayMs: Math.max(0, retryOptions.baseDelayMs ?? DEFAULT_RETRY_BASE_DELAY_MS),
+        maxDelayMs: Math.max(0, retryOptions.maxDelayMs ?? DEFAULT_RETRY_MAX_DELAY_MS),
+        retryableStatuses: retryOptions.retryableStatuses ?? DEFAULT_RETRYABLE_STATUSES,
+        retryableMethods: (retryOptions.retryableMethods ?? DEFAULT_RETRYABLE_METHODS).map((method) =>
+            method.toUpperCase(),
+        ),
+    };
+}
+
+function isRetryableMethod(method: string, retry: ResolvedRetryOptions): boolean {
+    return retry.attempts > 1 && retry.retryableMethods.includes(method.toUpperCase());
+}
+
+function isRetryableStatus(status: number, retry: ResolvedRetryOptions): boolean {
+    return retry.retryableStatuses.includes(status);
+}
+
+function getRetryDelayMs(attempt: number, retry: ResolvedRetryOptions): number {
+    const exponentialDelay = retry.baseDelayMs * Math.pow(2, Math.max(0, attempt - 1));
+    return Math.min(exponentialDelay, retry.maxDelayMs);
+}
+
+function delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ============================================================
@@ -234,6 +306,7 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
         defaultHeaders = {},
         timeout: defaultTimeout = 30000,
         dedupe: dedupeDefault = true,
+        retry: retryDefault,
     } = config;
 
     return async function api<T = unknown>(
@@ -254,6 +327,7 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
             dedupe,
             dedupeKey,
             callerId,
+            retry,
             ...fetchOptions
         } = options;
 
@@ -288,39 +362,70 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
             }
         }
 
-        // Add Content-Type for JSON body
-        if (body !== undefined && !headers['Content-Type']) {
+        // Detect FormData – skip Content-Type (browser sets multipart boundary)
+        // and skip JSON.stringify so the raw FormData is sent as-is.
+        const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+
+        // Add Content-Type for JSON body (skip for FormData)
+        if (body !== undefined && !isFormData && !headers['Content-Type']) {
             headers['Content-Type'] = 'application/json';
         }
 
-        const requestBody = body !== undefined ? JSON.stringify(body) : undefined;
+        const requestBody = body !== undefined ? (isFormData ? body : JSON.stringify(body)) : undefined;
+        const requestMethod = (fetchOptions.method ?? 'GET').toUpperCase();
+        const resolvedRetry = normalizeRetryOptions(retry ?? retryDefault);
 
         const shouldDedupe = dedupe ?? dedupeDefault;
         const inFlightKey = shouldDedupe
             ? (dedupeKey ??
               buildDedupeKey({
                   url,
-                  method: fetchOptions.method ?? 'GET',
+                  method: requestMethod,
                   headers,
                   body: requestBody,
                   timeout,
                   fetchOptions,
+                  retry: resolvedRetry,
               }))
             : null;
 
-        // Create abort controller for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
-
         const executeFetch = async (): Promise<Response> => {
-            const response = await fetch(url, {
-                ...fetchOptions,
-                headers,
-                body: requestBody,
-                signal: controller.signal,
-            });
-            clearTimeout(timeoutId);
-            return response;
+            for (let attempt = 1; attempt <= resolvedRetry.attempts; attempt += 1) {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+                try {
+                    const response = await fetch(url, {
+                        ...fetchOptions,
+                        headers,
+                        body: requestBody,
+                        signal: controller.signal,
+                    });
+                    clearTimeout(timeoutId);
+
+                    if (
+                        attempt < resolvedRetry.attempts &&
+                        isRetryableMethod(requestMethod, resolvedRetry) &&
+                        isRetryableStatus(response.status, resolvedRetry)
+                    ) {
+                        await delay(getRetryDelayMs(attempt, resolvedRetry));
+                        continue;
+                    }
+
+                    return response;
+                } catch (error) {
+                    clearTimeout(timeoutId);
+
+                    if (attempt < resolvedRetry.attempts && isRetryableMethod(requestMethod, resolvedRetry)) {
+                        await delay(getRetryDelayMs(attempt, resolvedRetry));
+                        continue;
+                    }
+
+                    throw error;
+                }
+            }
+
+            throw new Error('Request retry loop exited unexpectedly');
         };
 
         try {
@@ -330,11 +435,10 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
                 if (existing) {
                     console.log('[ottabase/api] Deduped in-flight request', {
                         url,
-                        method: fetchOptions.method ?? 'GET',
+                        method: requestMethod,
                         inFlightCount: inFlightRequests.size,
                         callerId,
                     });
-                    clearTimeout(timeoutId);
                     response = await existing;
                 } else {
                     const fetchPromise = executeFetch().finally(() => {
@@ -400,8 +504,6 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
 
             return await responseForRead.json();
         } catch (error) {
-            clearTimeout(timeoutId);
-
             // Re-throw ApiError as-is
             if (error instanceof ApiError) {
                 throw error;

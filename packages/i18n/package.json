@@ -1,6 +1,6 @@
 {
     "name": "@ottabase/i18n",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "description": "Internationalization (i18n) configuration and utilities for the Ottabase monorepo",
     "main": "dist/index.js",
     "module": "dist/index.mjs",
@@ -61,5 +61,14 @@
     "peerDependencies": {
         "react": "catalog:",
         "react-i18next": "^15.2.0"
-    }
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/i18n"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/i18n#readme"
 }

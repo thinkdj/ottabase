@@ -48,7 +48,9 @@ export interface RLSPolicy {
     readOnly?: boolean;
 
     /**
-     * Required permissions to access this model
+     * Required permissions to access this model.
+     * Supports wildcards: *:* (all), brand:* (matches brand:edit), *:edit (edit on any resource).
+     * Only 2-segment resource:action format; bare * does not grant; 3+ segments use exact match only.
      */
     requiredPermissions?: string[];
 
@@ -140,7 +142,8 @@ export const RLSPolicies = {
     }),
 
     /**
-     * Permission-based: Requires specific permissions
+     * Permission-based: Requires specific permissions.
+     * Supports wildcards: *:* (all), brand:* (matches brand:edit), *:edit.
      */
     PermissionBased: (permissions: string[]): RLSPolicy => ({
         level: 'custom',

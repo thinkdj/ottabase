@@ -93,6 +93,7 @@ module.exports = {
             },
 
             transitionDuration: {
+                DEFAULT: 'var(--duration-normal)',
                 fast: 'var(--duration-fast)',
                 normal: 'var(--duration-normal)',
                 slow: 'var(--duration-slow)',

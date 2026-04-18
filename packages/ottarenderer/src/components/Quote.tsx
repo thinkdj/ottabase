@@ -23,26 +23,32 @@ const Quote: RenderFn<QuoteData> = ({ data, className = '' }) => {
             center: 'text-center',
             right: 'text-right',
         }[alignment] || 'text-left';
+    const captionAlignmentClass =
+        {
+            left: 'justify-start',
+            center: 'justify-center',
+            right: 'justify-end',
+        }[alignment] || 'justify-start';
 
     return (
-        <div className={`${className} ${alignmentClass}`}>
-            <blockquote className="relative group my-16">
+        <div className={`${className} not-prose ${alignmentClass}`}>
+            <blockquote className="relative group my-16 mx-0 border-0 pl-0 pr-0">
                 {/* Floating quote mark */}
-                <div className="absolute -top-4 -left-2 text-6xl font-serif text-gray-200 dark:text-gray-800 leading-none select-none pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="absolute -top-4 -left-2 text-6xl font-serif text-muted-foreground/20 leading-none select-none pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity duration-300">
                     <IconQuote className="w-10 h-10" />
                 </div>
                 {/* QUOTE*/}
                 {text && (
-                    <div className="relative z-10 text-2xl font-light text-gray-900 dark:text-gray-100 leading-relaxed tracking-normal mb-4 pl-8">
+                    <div className="relative z-10 text-2xl font-light text-foreground leading-relaxed tracking-normal mb-4 pl-8 m-0">
                         {text}
                     </div>
                 )}
                 {/* Author / Caption */}
                 {caption && (
-                    <footer className="flex items-center justify-end">
+                    <footer className={`flex items-center ${captionAlignmentClass}`}>
                         <div className="flex items-center space-x-3">
-                            <div className="w-8 h-px bg-gradient-to-r from-transparent to-gray-400 dark:to-gray-600"></div>
-                            <cite className="text-sm font-medium text-gray-600 dark:text-gray-400 not-italic tracking-wider uppercase">
+                            <div className="w-8 h-px bg-gradient-to-r from-transparent to-border"></div>
+                            <cite className="text-sm font-medium text-muted-foreground not-italic tracking-wider uppercase m-0">
                                 {caption}
                             </cite>
                         </div>
@@ -50,7 +56,7 @@ const Quote: RenderFn<QuoteData> = ({ data, className = '' }) => {
                 )}
 
                 {/* Subtle background accent */}
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-50/30 to-transparent dark:from-gray-900/20 rounded-2xl -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-muted/30 to-transparent rounded-2xl -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             </blockquote>
         </div>
     );

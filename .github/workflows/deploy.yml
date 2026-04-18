@@ -12,6 +12,14 @@ on:
                 default: true
                 type: boolean
 
+permissions:
+    contents: read
+
+# Prevent overlapping production deploys: queue rather than cancel a mid-flight deploy
+concurrency:
+    group: production-deploy-${{ github.ref }}
+    cancel-in-progress: false
+
 jobs:
     # Check commit message for #skipdeploy first (skip build-packages + deploy when set)
     check-skip-deploy:
@@ -52,7 +60,7 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v4
               with:
-                  fetch-depth: 2 # Need previous commit to compare
+                  fetch-depth: 0 # Full history needed for push-range diff (github.event.before..github.sha)
 
             - name: Setup Node.js
               uses: actions/setup-node@v4
@@ -74,11 +82,15 @@ jobs:
                     exit 0
                   fi
 
-                  # Step 1: Get target apps from secret or use default
+                  # Step 1: Get target apps from secret or use default.
+                  # APPS_TO_DEPLOY is a comma-separated list of app *folder* names under apps/.
+                  # Each app must have a cloudflare-config.json that drives its build + deploy.
+                  # When you rename/copy an app, update cloudflare-config.json + wrangler.jsonc
+                  # inside that app, then set the APPS_TO_DEPLOY secret - no yml editing needed.
                   APPS_TO_DEPLOY="${{ secrets.APPS_TO_DEPLOY }}"
                   if [ -z "$APPS_TO_DEPLOY" ]; then
-                    APPS_TO_DEPLOY="ottabase-template-app-tanstack"
-                    echo "📋 Using default app: ${APPS_TO_DEPLOY}"
+                    APPS_TO_DEPLOY="otta-web,otta-landing"
+                    echo "📋 Using default apps: ${APPS_TO_DEPLOY}"
                   else
                     echo "📋 Apps from secret: ${APPS_TO_DEPLOY}"
                   fi
@@ -91,18 +103,39 @@ jobs:
                   echo ""
                   echo "🔍 Detecting file changes..."
 
-                  # Get list of changed files in the last commit
-                  CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
+                  # Initialize before the push-range check so the value is never reset accidentally
+                  PACKAGES_CHANGED="false"
+
+                  # Diff the full push range so squash-merges and multi-commit pushes are covered.
+                  # github.event.before = SHA before the push; github.sha = SHA after.
+                  # Falls back gracefully on workflow_dispatch (no event.before) or first push (000...0).
+                  BEFORE="${{ github.event.before }}"
+                  AFTER="${{ github.sha }}"
+
+                  if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+                    echo "⚠️  First push or force push — no before SHA; treating all apps as changed"
+                    PACKAGES_CHANGED="true"
+                    CHANGED_FILES=""
+                  else
+                    CHANGED_FILES=$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null || git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
+                  fi
 
                   echo "📝 Changed files:"
                   echo "$CHANGED_FILES"
                   echo ""
 
-                  # Check if packages changed
-                  PACKAGES_CHANGED="false"
-                  if echo "$CHANGED_FILES" | grep -q "^packages/"; then
-                    PACKAGES_CHANGED="true"
-                    echo "📦 Packages changed - will deploy all target apps"
+                  # Only run these checks when we have a file list (skip when already true from above)
+                  if [ "$PACKAGES_CHANGED" != "true" ]; then
+                    if echo "$CHANGED_FILES" | grep -q "^packages/"; then
+                      PACKAGES_CHANGED="true"
+                      echo "📦 Packages changed - will deploy all target apps"
+                    fi
+
+                    # Root-level files that affect all app builds (lock file, workspace config, turbo, etc.)
+                    if echo "$CHANGED_FILES" | grep -qE "^(pnpm-lock\.yaml|package\.json|pnpm-workspace\.yaml|turbo\.json|tsconfig\.json|vitest\.config\.ts)"; then
+                      PACKAGES_CHANGED="true"
+                      echo "🔧 Root-level config/lockfile changed - will deploy all target apps"
+                    fi
                   fi
 
                   # For FORCE_DEPLOY, treat as if packages changed (deploy all)
@@ -146,7 +179,7 @@ jobs:
                       # Search for package name in apps
                       for dir in apps/*/; do
                         if [ -f "${dir}package.json" ]; then
-                          PKG_NAME=$(cat "${dir}package.json" | grep '"name"' | head -1 | sed 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+                          PKG_NAME=$(jq -r '.name // empty' "${dir}package.json")
                           if [ "$PKG_NAME" == "$target_app" ]; then
                             APP_FOLDER=$(basename "$dir")
                             break
@@ -194,7 +227,7 @@ jobs:
                     fi
 
                     # Get package name
-                    PKG_NAME=$(cat "$PKG_JSON" | grep '"name"' | head -1 | sed 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+                    PKG_NAME=$(jq -r '.name // empty' "$PKG_JSON")
 
                     # Get config (use defaults if no config file)
                     if [ -f "$CONFIG_JSON" ]; then
@@ -205,18 +238,17 @@ jobs:
                         echo "⚠️  Warning: No cloudflare-config.json or wrangler.jsonc for ${app_folder}, skipping"
                         continue
                       fi
-                      # Use TanStack defaults (default template app is TanStack)
+                      # Use Vite defaults (default template app uses Vite build output)
                       CONFIG='{
                         "deployable": true,
-                        "appType": "tanstack",
+                        "appType": "vite",
                         "buildCommand": "build",
                         "workerBuildCommand": null,
                         "outputDirectory": "dist",
                         "verifyPaths": ["dist", "cloudflare-worker.ts"],
                         "wranglerConfig": "wrangler.jsonc",
                         "wranglerEnv": "production",
-                        "healthCheckPath": "/",
-                        "requiresSecrets": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "D1_DATABASE_ID", "KV_NAMESPACE_ID"]
+                        "healthCheckPath": "/"
                       }'
                     fi
 
@@ -307,76 +339,53 @@ jobs:
                   echo "${VERIFY_PATHS}" >> $GITHUB_OUTPUT
                   echo "EOF" >> $GITHUB_OUTPUT
 
-                  # Store required secrets as space-separated list
-                  REQUIRED_SECRETS=$(echo "${CONFIG}" | jq -r '.requiresSecrets[]?' | tr '\n' ' ')
-                  echo "required-secrets=${REQUIRED_SECRETS}" >> $GITHUB_OUTPUT
+                  # Optional: extra secrets from config (merged with derived placeholders in Verify step)
+                  EXTRA_SECRETS=$(echo "${CONFIG}" | jq -r '.requiresSecrets[]?' | tr '\n' ' ')
+                  echo "extra-secrets=${EXTRA_SECRETS}" >> $GITHUB_OUTPUT
 
                   echo "📋 Configuration loaded for ${{ matrix.name }} (${{ matrix.config.appType }})"
 
             - name: Verify required secrets
               if: github.ref == 'refs/heads/main'
+              working-directory: apps/${{ matrix.folder }}
+              env:
+                  SECRETS_JSON: ${{ toJson(secrets) }}
+                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
+                  TARGET_ENV: production
               run: |
                   echo "🔍 Verifying required secrets for ${{ matrix.name }}..."
-                  MISSING_SECRETS=()
-                  REQUIRED="${{ steps.config.outputs.required-secrets }}"
 
-                  # Check each required secret
+                  # Base secrets (wrangler-action needs these; not in wrangler.jsonc)
+                  BASE="CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID"
+
+                  # Derive placeholders from wrangler.jsonc env.production (single source of truth; no drift)
+                  PLACEHOLDERS=$(python ../../.github/scripts/substitute-wrangler-secrets.py --list-only)
+
+                  # Optional extra from cloudflare-config.json requiresSecrets
+                  EXTRA="${{ steps.config.outputs.extra-secrets }}"
+
+                  # Merge: base + placeholders + extra, deduplicate, drop empty
+                  REQUIRED=$(echo "$BASE $PLACEHOLDERS $EXTRA" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')
+
+                  MISSING_SECRETS=()
                   for SECRET_NAME in $REQUIRED; do
-                    # Dynamically check if secret exists using indirect reference
-                    case "$SECRET_NAME" in
-                      "CLOUDFLARE_API_TOKEN")
-                        if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ CLOUDFLARE_API_TOKEN is not set"
-                        else
-                          echo "  ✅ CLOUDFLARE_API_TOKEN is configured"
-                        fi
-                        ;;
-                      "CLOUDFLARE_ACCOUNT_ID")
-                        if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ CLOUDFLARE_ACCOUNT_ID is not set"
-                        else
-                          echo "  ✅ CLOUDFLARE_ACCOUNT_ID is configured"
-                        fi
-                        ;;
-                      "D1_DATABASE_ID")
-                        if [ -z "${{ secrets.D1_DATABASE_ID }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ D1_DATABASE_ID is not set"
-                        else
-                          echo "  ✅ D1_DATABASE_ID is configured"
-                        fi
-                        ;;
-                      "KV_NAMESPACE_ID")
-                        if [ -z "${{ secrets.KV_NAMESPACE_ID }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ KV_NAMESPACE_ID is not set"
-                        else
-                          echo "  ✅ KV_NAMESPACE_ID is configured"
-                        fi
-                        ;;
-                      *)
-                        echo "  ⚠️  Warning: Unknown secret $SECRET_NAME - cannot verify"
-                        ;;
-                    esac
+                    VAL=$(echo "$SECRETS_JSON" | jq -r --arg k "$SECRET_NAME" '.[$k] // empty')
+                    if [ -z "$VAL" ]; then
+                      MISSING_SECRETS+=("$SECRET_NAME")
+                      echo "  ❌ $SECRET_NAME is not set"
+                    else
+                      echo "  ✅ $SECRET_NAME is configured"
+                    fi
                   done
 
                   if [ ${#MISSING_SECRETS[@]} -ne 0 ]; then
                     echo ""
                     echo "❌ ERROR: Missing required GitHub secrets for deployment"
                     echo ""
-                    echo "The following secrets are required but not configured:"
                     printf '  • %s\n' "${MISSING_SECRETS[@]}"
                     echo ""
-                    echo "To fix this, add the missing secrets in GitHub repository settings:"
+                    echo "Add the missing secrets in GitHub repository settings:"
                     echo "  Settings → Secrets and variables → Actions → New repository secret"
-                    echo ""
-                    echo "Required secret locations:"
-                    echo "  • CLOUDFLARE_API_TOKEN: Get from Cloudflare dashboard → My Profile → API Tokens"
-                    echo "  • CLOUDFLARE_ACCOUNT_ID: Get from Cloudflare dashboard → Workers & Pages → Account ID"
-                    echo "  • D1_DATABASE_ID: Run 'wrangler d1 create <name>' to create database"
-                    echo "  • KV_NAMESPACE_ID: Run 'wrangler kv:namespace create <name>' to create namespace"
                     echo ""
                     exit 1
                   fi
@@ -424,21 +433,21 @@ jobs:
                       ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
                       ${{ runner.os }}-nextjs-${{ matrix.folder }}-
 
-            - name: Cache TanStack builds
-              if: steps.config.outputs.app-type == 'tanstack'
+            - name: Cache Vite builds
+              if: steps.config.outputs.app-type == 'vite'
               uses: actions/cache@v4
               with:
                   path: |
                       apps/${{ matrix.folder }}/dist
                       apps/${{ matrix.folder }}/node_modules/.vite
                   key:
-                      ${{ runner.os }}-tanstack-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{
+                      ${{ runner.os }}-vite-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{
                       hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-${{ hashFiles('apps/${{
                       matrix.folder }}/wrangler.jsonc', 'apps/${{ matrix.folder }}/vite.config.ts') }}
                   restore-keys: |
-                      ${{ runner.os }}-tanstack-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-
-                      ${{ runner.os }}-tanstack-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
-                      ${{ runner.os }}-tanstack-${{ matrix.folder }}-
+                      ${{ runner.os }}-vite-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-
+                      ${{ runner.os }}-vite-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
+                      ${{ runner.os }}-vite-${{ matrix.folder }}-
 
             # Verify build tools are accessible
             - name: Verify build tools
@@ -454,29 +463,17 @@ jobs:
                     echo "  - next: $(pnpm exec next --version 2>&1 || echo 'installed')"
                   fi
 
-                  if [ "${{ steps.config.outputs.app-type }}" == "tanstack" ]; then
+                  if [ "${{ steps.config.outputs.app-type }}" == "vite" ]; then
                     echo "  - vite: $(pnpm exec vite --version 2>&1 || echo 'installed')"
                   fi
 
                   echo "✅ Build tools verified"
 
-            # Restore pre-built packages from cache (built by build-packages job)
-            - name: Restore packages cache
-              id: restore-packages
-              run: |
-                  echo "📦 Restoring pre-built packages from cache..."
-
-                  # Generate the same cache key used by build-packages workflow
-                  PACKAGE_HASH=$(find packages -type f \
-                    -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.json" \
-                    | sort | xargs cat | sha256sum | cut -d' ' -f1)
-
-                  LOCK_HASH=$(sha256sum pnpm-lock.yaml | cut -d' ' -f1)
-                  CACHE_KEY="packages-build-${LOCK_HASH}-${PACKAGE_HASH}"
-
-                  echo "cache-key=${CACHE_KEY}" >> $GITHUB_OUTPUT
-                  echo "📦 Cache key: ${CACHE_KEY}"
-
+            # Restore pre-built packages from cache (built by build-packages job).
+            # Uses the key emitted by build-packages directly — no hash recomputation here.
+            # This is the single source of truth: same key that was saved = guaranteed hit.
+            # Fallback restore-key covers the edge case where build-packages was skipped
+            # (e.g. workflow_dispatch without build-packages running).
             - name: Restore cached packages
               uses: actions/cache/restore@v4
               with:
@@ -485,7 +482,7 @@ jobs:
                       packages/*/build
                       packages/*/.turbo
                       .turbo
-                  key: ${{ steps.restore-packages.outputs.cache-key }}
+                  key: ${{ needs.build-packages.outputs.cache-key }}
                   restore-keys: |
                       packages-build-${{ hashFiles('pnpm-lock.yaml') }}-
                   fail-on-cache-miss: true # Fail if cache not found (should always exist from build-packages job)
@@ -531,8 +528,8 @@ jobs:
                     echo "✅ Next.js build output verified (.next directory exists)"
                   fi
 
-                  # For TanStack apps, verify dist directory was created
-                  if [ "${{ steps.config.outputs.app-type }}" == "tanstack" ]; then
+                  # For Vite apps, verify dist directory was created
+                  if [ "${{ steps.config.outputs.app-type }}" == "vite" ]; then
                     echo "Checking for dist directory at: apps/${{ matrix.folder }}/dist"
                     echo "Current working directory: $(pwd)"
                     echo "Directory listing of apps/${{ matrix.folder }}:"
@@ -540,14 +537,14 @@ jobs:
 
                     if [ ! -d "apps/${{ matrix.folder }}/dist" ]; then
                       echo ""
-                      echo "❌ ERROR: TanStack build output not found"
+                      echo "❌ ERROR: Vite build output not found"
                       echo ""
                       echo "Expected directory 'apps/${{ matrix.folder }}/dist' was not created."
                       echo "This indicates the Vite build did not complete successfully."
                       echo ""
                       exit 1
                     fi
-                    echo "✅ TanStack build output verified (dist directory exists)"
+                    echo "✅ Vite build output verified (dist directory exists)"
                   fi
 
                   echo "✅ Application build completed successfully"
@@ -652,8 +649,8 @@ jobs:
                       echo "  3. The Next.js build (.next directory) is missing"
                       echo ""
                     fi
-                    if [ "${{ steps.config.outputs.app-type }}" == "tanstack" ]; then
-                      echo "For TanStack apps, the expected structure is:"
+                    if [ "${{ steps.config.outputs.app-type }}" == "vite" ]; then
+                      echo "For Vite apps, the expected structure is:"
                       echo "  • dist/ - Vite build output directory"
                       echo "  • cloudflare-worker.ts - Cloudflare Worker entry point"
                       echo ""
@@ -681,70 +678,32 @@ jobs:
                   echo "✅ Worker bundle structure verified - all required paths exist"
 
             # Generate production wrangler config from template
-            # Creates a temporary config with secrets injected, without modifying source files
+            # Auto-detects placeholders in env.production and substitutes from GitHub Secrets
             - name: Generate production wrangler config
               if: github.ref == 'refs/heads/main'
               working-directory: apps/${{ matrix.folder }}
               run: |
-                  WRANGLER_CONFIG="${{ steps.config.outputs.wrangler-config }}"
-                  echo "🔧 Generating production wrangler configuration from ${WRANGLER_CONFIG}..."
+                  echo "🔧 Generating production wrangler configuration..."
+                  python ../../.github/scripts/substitute-wrangler-secrets.py
+              env:
+                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
+                  OUTPUT_FILE: wrangler.production.jsonc
+                  TARGET_ENV: production
+                  SECRETS_JSON: ${{ toJson(secrets) }}
 
-                  # Verify wrangler config exists
-                  if [ ! -f "${WRANGLER_CONFIG}" ]; then
-                    echo ""
-                    echo "❌ ERROR: Wrangler configuration file not found"
-                    echo ""
-                    echo "Expected file: ${WRANGLER_CONFIG}"
-                    echo "Current directory: $(pwd)"
-                    echo ""
-                    echo "Wrangler config is required for Cloudflare Workers deployment."
-                    echo "Make sure your app has a wrangler.jsonc file in its root directory."
-                    echo ""
+            # Verify generated config exists (substitution runs before deploy)
+            - name: Verify production wrangler config
+              if: github.ref == 'refs/heads/main'
+              working-directory: apps/${{ matrix.folder }}
+              run: |
+                  if [ ! -f "wrangler.production.jsonc" ]; then
+                    echo "❌ ERROR: wrangler.production.jsonc not found - Generate step must run first"
                     exit 1
                   fi
-
-                  # Create a temporary production config by substituting placeholders
-                  # The output goes to a temporary file that won't be committed
-                  cat ${WRANGLER_CONFIG} | \
-                    sed -e "s/PRODUCTION_D1_DATABASE_ID/${{ secrets.D1_DATABASE_ID }}/g" \
-                        -e "s/PRODUCTION_KV_NAMESPACE_ID/${{ secrets.KV_NAMESPACE_ID }}/g" \
-                        -e "s/YOUR_CLOUDFLARE_ACCOUNT_ID/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/g" \
-                    > wrangler.production.jsonc
-
-                  # Verify no placeholders remain in the generated file
-                  if grep -q "PRODUCTION_" wrangler.production.jsonc; then
-                    echo ""
-                    echo "❌ ERROR: Secret substitution incomplete"
-                    echo ""
-                    echo "The following placeholders were not replaced:"
-                    grep "PRODUCTION_" wrangler.production.jsonc
-                    echo ""
-                    echo "This usually means the corresponding GitHub secrets are not set."
-                    echo "Check that all required secrets are configured in repository settings."
-                    echo ""
-                    rm -f wrangler.production.jsonc
-                    exit 1
-                  fi
-
-                  # Validate JSON structure
-                  if ! grep -q "{" wrangler.production.jsonc; then
-                    echo ""
-                    echo "❌ ERROR: Generated wrangler config appears invalid"
-                    echo ""
-                    echo "The generated config file doesn't contain valid JSON."
-                    echo "Check the source file: ${WRANGLER_CONFIG}"
-                    echo ""
-                    rm -f wrangler.production.jsonc
-                    exit 1
-                  fi
-
-                  echo "✅ Production configuration generated successfully"
-                  echo "📝 Using temporary config file: wrangler.production.jsonc"
+                  echo "✅ wrangler.production.jsonc ready for deploy"
 
             # Deploy to Cloudflare Workers (NOT Cloudflare Pages)
-            # This uses wrangler to deploy directly to Workers
-            # Uses the generated production config file (wrangler.production.jsonc)
-            # The source wrangler.jsonc remains unmodified
+            # Uses wrangler.production.jsonc - secrets substituted by Generate step above
             - name: Deploy to Cloudflare Workers
               if: github.ref == 'refs/heads/main'
               uses: cloudflare/wrangler-action@v3

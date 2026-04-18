@@ -2,8 +2,8 @@
 // BrandEngine – Brand Theme definition
 // ---------------------------------------------------------------------------
 
-import type { DesignTokens, TokenCursors } from './tokens';
-import type { LayoutConfig } from './layout';
+import type { LayoutConfig } from '@ottabase/ottalayout';
+import type { DesignTokens, ModeValue, TokenCursors } from './tokens';
 
 /**
  * A complete BrandTheme – the union of design tokens, layout configuration,
@@ -22,5 +22,5 @@ export interface BrandTheme {
     layout?: LayoutConfig;
 
     /** Cursor appearance overrides */
-    cursors?: TokenCursors;
+    cursors?: ModeValue<TokenCursors>;
 }

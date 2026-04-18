@@ -1,5 +1,6 @@
 export * from './mailer';
 export * from './providers/cloudflare';
+export * from './providers/dev-trap';
 export * from './providers/resend';
 export * from './providers/ses';
 export * from './render';

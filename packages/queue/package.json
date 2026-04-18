@@ -2,6 +2,25 @@
     "name": "@ottabase/queue",
     "version": "1.0.0",
     "description": "Minimal queue system for Cloudflare Workers - Laravel-inspired job dispatching",
+    "keywords": [
+        "queue",
+        "jobs",
+        "cloudflare",
+        "workers",
+        "async",
+        "dispatch"
+    ],
+    "author": "thinkdj",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/queue"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/queue#readme",
     "type": "module",
     "main": "dist/index.js",
     "module": "dist/index.mjs",

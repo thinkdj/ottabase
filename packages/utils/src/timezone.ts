@@ -564,27 +564,73 @@ export function getCommonTimezones(): Array<{
 }> {
     const commonTzs: Timezone[] = [
         'UTC',
+        // Americas
         'America/New_York',
         'America/Chicago',
         'America/Denver',
         'America/Los_Angeles',
+        'America/Phoenix',
         'America/Anchorage',
         'Pacific/Honolulu',
         'America/Toronto',
+        'America/Vancouver',
+        'America/Edmonton',
+        'America/Winnipeg',
+        'America/Montreal',
         'America/Mexico_City',
+        'America/Bogota',
+        'America/Lima',
+        'America/Caracas',
         'America/Sao_Paulo',
+        'America/Buenos_Aires',
+        // Europe
         'Europe/London',
+        'Europe/Dublin',
         'Europe/Paris',
         'Europe/Berlin',
+        'Europe/Amsterdam',
+        'Europe/Brussels',
+        'Europe/Rome',
+        'Europe/Madrid',
+        'Europe/Stockholm',
+        'Europe/Oslo',
+        'Europe/Copenhagen',
+        'Europe/Helsinki',
+        'Europe/Athens',
+        'Europe/Istanbul',
         'Europe/Moscow',
+        'Europe/Kyiv',
+        // Africa
         'Africa/Cairo',
+        'Africa/Johannesburg',
+        'Africa/Lagos',
+        'Africa/Nairobi',
+        'Africa/Casablanca',
+        // Middle East
         'Asia/Dubai',
+        'Asia/Riyadh',
+        'Asia/Jerusalem',
+        // Asia
         'Asia/Kolkata',
+        'Asia/Karachi',
+        'Asia/Dhaka',
+        'Asia/Bangkok',
         'Asia/Singapore',
+        'Asia/Jakarta',
+        'Asia/Manila',
+        'Asia/Hong_Kong',
         'Asia/Shanghai',
+        'Asia/Seoul',
         'Asia/Tokyo',
+        // Oceania
+        'Australia/Perth',
+        'Australia/Adelaide',
+        'Australia/Brisbane',
         'Australia/Sydney',
+        'Australia/Melbourne',
         'Pacific/Auckland',
+        'Pacific/Fiji',
+        'Pacific/Guam',
     ];
 
     return commonTzs.map((tz) => {
@@ -602,6 +648,42 @@ export function getCommonTimezones(): Array<{
             label: `${tz.replace(/_/g, ' ')} (${offsetStr})`,
         };
     });
+}
+
+/**
+ * Get all IANA timezones (when supported) or common timezones as fallback.
+ * Use for searchable timezone selectors.
+ *
+ * @param options.preferredTimezone - IANA timezone to show first (e.g. browser guess or saved user preference)
+ */
+export function getTimezonesForSelect(options?: {
+    preferredTimezone?: Timezone;
+}): Array<{ name: Timezone; offset: number; label: string }> {
+    const preferred = options?.preferredTimezone?.trim();
+    const buildList = () => {
+        try {
+            if (typeof Intl !== 'undefined' && 'supportedValuesOf' in Intl) {
+                const all = (Intl as any).supportedValuesOf('timeZone') as string[];
+                return all.map((tz) => {
+                    const offset = getTimezoneOffsetMinutes(tz);
+                    const hours = Math.floor(Math.abs(offset) / 60);
+                    const minutes = Math.abs(offset) % 60;
+                    const sign = offset < 0 ? '-' : '+';
+                    const offsetStr = `UTC${sign}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                    return { name: tz, offset, label: `${tz.replace(/_/g, ' ')} (${offsetStr})` };
+                });
+            }
+        } catch {
+            // Fallback to common list
+        }
+        return getCommonTimezones();
+    };
+    const list = buildList();
+    if (!preferred) return list;
+    const idx = list.findIndex((t) => t.name === preferred);
+    if (idx <= 0) return list;
+    const [preferredItem] = list.splice(idx, 1);
+    return [preferredItem, ...list];
 }
 
 /**

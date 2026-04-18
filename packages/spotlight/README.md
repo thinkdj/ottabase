@@ -5,18 +5,18 @@ search.
 
 ## Features
 
-- 🎨 **Lightweight** - Minimal dependencies, built on shadcn/ui Dialog
-- 🌓 **Dark/Light Mode** - Automatic theme support via Tailwind
-- ✨ **CSS Effects** - Background blur and smooth animations
-- ⌨️ **Keyboard Shortcuts** - Configurable trigger keys (default: `/`)
-- 🔍 **Configurable Search** - Custom search callback with debouncing
-- 🎯 **Keyboard Navigation** - Arrow keys, Enter, Escape support
-- ⚡ **Debounced Search** - Configurable debounce delay (default: 300ms)
-- 🚫 **Request Cancellation** - AbortController support for API calls
-- 🔄 **Loading States** - Built-in loading indicators with custom renderers
-- ❌ **Error Handling** - Error states with custom error renderers
-- 📊 **Event Callbacks** - onQueryChange, onResultSelect, onOpenChange hooks
-- 🎛️ **Production Ready** - TypeScript, error boundaries, cleanup, performance optimized
+- **Lightweight** - Minimal dependencies, built on shadcn/ui Dialog
+- **Dark/Light Mode** - Automatic theme support via Tailwind
+- **CSS Effects** - Background blur and smooth animations
+- **Keyboard Shortcuts** - Configurable trigger keys (default: `/`)
+- **Configurable Search** - Custom search callback with debouncing
+- **Keyboard Navigation** - Arrow keys, Enter, Escape support
+- **Debounced Search** - Configurable debounce delay (default: 300ms)
+- **Request Cancellation** - AbortController support for API calls
+- **Loading States** - Built-in loading indicators with custom renderers
+- **Error Handling** - Error states with custom error renderers
+- **Event Callbacks** - onQueryChange, onResultSelect, onOpenChange hooks
+- **Production Ready** - TypeScript, error boundaries, cleanup, performance optimized
 
 ## Installation
 

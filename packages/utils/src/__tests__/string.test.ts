@@ -1,13 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-    isEmail,
     changeCase,
-    getInitials,
-    isEmptyStr,
-    humanizeString,
-    ucFirst,
-    replaceStringTokens,
     generateUUID,
+    getInitials,
+    humanizeString,
+    isEmail,
+    isEmptyStr,
+    replaceStringTokens,
+    stripHtml,
+    ucFirst,
 } from '../string';
 
 describe('String Utilities', () => {
@@ -212,6 +213,52 @@ describe('String Utilities', () => {
         it('should return empty string for length 0 or less', () => {
             expect(generateUUID(0)).toBe('');
             expect(generateUUID(-5)).toBe('');
+        });
+    });
+
+    describe('stripHtml', () => {
+        it('should strip basic HTML tags', () => {
+            expect(stripHtml('<p>Hello <strong>world</strong>!</p>')).toBe('Hello world!');
+        });
+
+        it('should convert block elements to newlines', () => {
+            expect(stripHtml('<p>Line 1</p><p>Line 2</p>')).toBe('Line 1\nLine 2');
+        });
+
+        it('should decode HTML entities', () => {
+            expect(stripHtml('Tom &amp; Jerry &lt;3')).toBe('Tom & Jerry <3');
+        });
+
+        it('should remove script and style blocks', () => {
+            const html = '<p>Content</p><script>alert("xss")</script><style>body { color: red; }</style><p>More</p>';
+            expect(stripHtml(html)).toBe('Content\nMore');
+        });
+
+        it('should remove comments', () => {
+            expect(stripHtml('<!-- comment --><p>Visible</p>')).toBe('Visible');
+        });
+
+        it('should handle empty or invalid input', () => {
+            expect(stripHtml('')).toBe('');
+            expect(stripHtml('   ')).toBe('');
+            expect(stripHtml(null as any)).toBe('');
+            expect(stripHtml(undefined as any)).toBe('');
+        });
+
+        it('should collapse excessive newlines', () => {
+            expect(stripHtml('<p>Line 1</p>\n\n\n<p>Line 2</p>')).toBe('Line 1\nLine 2');
+        });
+
+        it('should handle complex HTML', () => {
+            const html = `
+                <div>
+                    <h1>Title</h1>
+                    <p>Paragraph 1</p>
+                    <br>
+                    <p>Paragraph 2</p>
+                </div>
+            `;
+            expect(stripHtml(html)).toBe('Title\nParagraph 1\nParagraph 2');
         });
     });
 });

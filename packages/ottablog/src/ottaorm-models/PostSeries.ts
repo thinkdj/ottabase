@@ -5,14 +5,9 @@
  * Perfect for multi-part tutorials, article series, or themed content.
  */
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
+import { prepareCreateSlug, prepareUpdateSlug, type SlugLifecycleConfig } from '../slug-utils';
 import { generateSlug } from '../types';
-import {
-    seriesTable,
-    type NewPostSeriesType,
-    type NewSeries,
-    type PostSeriesType,
-    type Series,
-} from './PostSeries.schema';
+import { seriesTable } from './PostSeries.schema';
 
 export {
     seriesTable,
@@ -28,6 +23,11 @@ export class PostSeries extends BaseModel {
     static primaryKey = 'id';
     static packageName = '@ottabase/ottablog';
     static packageType: PackageType = 'package';
+
+    static writable = {
+        create: ['title', 'slug', 'description', 'coverImage', 'isComplete', 'sortOrder', 'appId'],
+        update: ['title', 'slug', 'description', 'coverImage', 'isComplete', 'sortOrder'],
+    };
 
     static casts = {
         coverImage: 'json' as const,
@@ -78,6 +78,7 @@ export class PostSeries extends BaseModel {
         },
         slug: {
             type: 'string',
+            unique: true,
             editable: true,
             searchable: true,
             sortable: true,
@@ -189,40 +190,69 @@ export class PostSeries extends BaseModel {
         },
     };
 
+    // ==================== Slug Lifecycle Config ====================
+
+    private static readonly slugConfig: SlugLifecycleConfig = {
+        slugPrefix: 'series',
+        nameField: 'title',
+        // Series are not type-scoped — unlike tags/categories, a series groups posts
+        // regardless of content type, so slug uniqueness is per-app only.
+        hasType: false,
+        entityLabel: 'series',
+    };
+
     // ==================== Query Scopes ====================
 
+    static async create<T extends typeof BaseModel>(
+        this: T,
+        data: Record<string, any>,
+        driver?: any,
+    ): Promise<InstanceType<T>> {
+        await prepareCreateSlug(this, data, PostSeries.slugConfig, driver);
+        return (await super.create.call(this, data, driver)) as InstanceType<T>;
+    }
+
+    static async update<T extends typeof BaseModel>(
+        this: T,
+        id: string | number,
+        data: Record<string, any>,
+        driver?: any,
+    ): Promise<InstanceType<T>> {
+        await prepareUpdateSlug(this, id, data, PostSeries.slugConfig, driver);
+        return (await super.update.call(this, id, data, driver)) as InstanceType<T>;
+    }
+
     /**
-     * Get all series
+     * Get all series.
+     * appId is required — matches NOT NULL schema constraint and prevents cross-tenant data leaks.
      */
-    static async list(options?: { appId?: string; orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
-        const query: Record<string, unknown> = {};
-        if (options?.appId) query.appId = options.appId;
+    static async list(options: { appId: string; orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
+        const query: Record<string, unknown> = { appId: options.appId };
 
         return this.where(query, {
-            orderBy: options?.orderBy || 'sortOrder',
-            orderDirection: options?.orderDirection || 'asc',
+            orderBy: options.orderBy || 'sortOrder',
+            orderDirection: options.orderDirection || 'asc',
         });
     }
 
     /**
-     * Get complete series only
+     * Get complete series only.
+     * appId is required — matches NOT NULL schema constraint and prevents cross-tenant data leaks.
      */
-    static async complete(options?: { appId?: string; orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
-        const query: Record<string, unknown> = { isComplete: true };
-        if (options?.appId) query.appId = options.appId;
+    static async complete(options: { appId: string; orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
+        const query: Record<string, unknown> = { isComplete: true, appId: options.appId };
 
         return this.where(query, {
-            orderBy: options?.orderBy || 'sortOrder',
-            orderDirection: options?.orderDirection || 'asc',
+            orderBy: options.orderBy || 'sortOrder',
+            orderDirection: options.orderDirection || 'asc',
         });
     }
 
     /**
      * Find series by slug
      */
-    static async findBySlug(slug: string, options?: { appId?: string }): Promise<PostSeries | null> {
-        const query: Record<string, unknown> = { slug };
-        if (options?.appId) query.appId = options.appId;
+    static async findBySlug(slug: string, options: { appId: string }): Promise<PostSeries | null> {
+        const query: Record<string, unknown> = { slug, appId: options.appId };
 
         const results = await this.where(query);
         return results.length > 0 ? (results[0] as PostSeries) : null;

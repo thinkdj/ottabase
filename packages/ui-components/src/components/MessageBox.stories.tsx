@@ -70,7 +70,7 @@ export const Help: Story = {
         messageType: 'help',
         message: {
             title: 'Need a hand?',
-            body: 'Reach out to support@ottabase.dev or check the documentation.',
+            body: 'Reach out to support@ottabase.com or check the documentation.',
         },
     },
 };

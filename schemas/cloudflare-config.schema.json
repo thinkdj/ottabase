@@ -11,9 +11,9 @@
         },
         "appType": {
             "type": "string",
-            "enum": ["tanstack", "nextjs", "react", "remix", "vite", "custom"],
+            "enum": ["vite", "nextjs", "react", "remix", "custom"],
             "description": "Type of application framework",
-            "default": "tanstack"
+            "default": "vite"
         },
         "workerName": {
             "type": "string",
@@ -67,8 +67,15 @@
             "items": {
                 "type": "string"
             },
-            "description": "List of required GitHub secrets",
-            "default": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
+            "description": "Optional, additive. Extra secrets for production verify. Placeholders are auto-derived from wrangler.jsonc; add here only secrets not in wrangler (e.g. build-time). Base CLOUDFLARE_* always included.",
+            "default": []
+        },
+        "requiresPreviewSecrets": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Optional, additive. Extra secrets for PR preview verify. Placeholders from wrangler.jsonc env.preview are auto-derived; add here only extras."
         },
         "customBuildSteps": {
             "type": "array",

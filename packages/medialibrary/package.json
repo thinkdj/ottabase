@@ -1,0 +1,48 @@
+{
+    "name": "@ottabase/medialibrary",
+    "version": "0.0.1",
+    "description": "Media library primitives, schema, and viewer components for Ottabase apps",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./schema": {
+            "types": "./src/schema.ts",
+            "default": "./src/schema.ts"
+        }
+    },
+    "scripts": {
+        "clean": "rm -rf .turbo node_modules",
+        "test": "vitest"
+    },
+    "peerDependencies": {
+        "@ottabase/ottaorm": "workspace:*",
+        "drizzle-orm": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:"
+    },
+    "dependencies": {
+        "@tabler/icons-react": "catalog:"
+    },
+    "devDependencies": {
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "drizzle-orm": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/medialibrary"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/medialibrary#readme"
+}

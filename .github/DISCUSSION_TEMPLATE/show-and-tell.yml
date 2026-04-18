@@ -1,0 +1,27 @@
+title: "[Show & Tell] "
+labels: ["discussion", "showcase"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Share what you built with Ottabase.
+    - type: input
+      id: project-name
+      attributes:
+          label: Project name
+      validations:
+          required: true
+    - type: textarea
+      id: summary
+      attributes:
+          label: What did you build?
+          description: Tell the community what the project does and how Ottabase helped.
+      validations:
+          required: true
+    - type: input
+      id: link
+      attributes:
+          label: Link
+          description: Demo, repo, or screenshot link.
+      validations:
+          required: false

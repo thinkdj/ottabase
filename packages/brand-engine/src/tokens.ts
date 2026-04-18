@@ -6,6 +6,9 @@
 export interface TokenTypography {
     fontFamily: string;
     url?: string;
+    lineHeight?: string;
+    letterSpacing?: string;
+    fontWeight?: string | number;
 }
 
 /** Semantic color tokens shared across light and dark palettes (HSL channels) */
@@ -80,6 +83,8 @@ export interface TokenMotion {
     easingEnter?: string;
     /** Easing curve for exit animations */
     easingExit?: string;
+    /** Disable all animations – sets animation: none, transition: 0s */
+    disableAnimations?: boolean;
 }
 
 /** Cursor appearance map */
@@ -113,23 +118,52 @@ export type TokenAliases = Record<string, string>;
 // ---------------------------------------------------------------------------
 
 /**
+ * A token value that can optionally be overridden per color scheme (light, dark, etc.)
+ * If provided as a single value `T`, it applies to all modes.
+ * If provided as an object with `light`/`dark` keys, the resolver extracts the active mode.
+ */
+export type ModeValue<T> =
+    | T
+    | {
+          light?: T;
+          dark?: T;
+          [scheme: string]: T | undefined;
+      };
+
+/**
+ * Named color scheme identifier.
+ * `light` and `dark` are always present. Additional custom schemes
+ * (e.g. `'high-contrast'`, `'colorblind-deuteranopia'`) can be added
+ * and resolved at runtime via the `mode` parameter.
+ */
+export type ColorScheme = 'light' | 'dark' | (string & {});
+
+/**
+ * Color palette map keyed by scheme name.
+ * `light` and `dark` are required; additional custom schemes are optional.
+ */
+export type ColorPalettes = {
+    light: TokenColors;
+    dark: TokenColors;
+    /** Custom color schemes (high-contrast, colorblind-safe, seasonal, etc.) */
+    [scheme: string]: TokenColors | undefined;
+};
+
+/**
  * The complete set of design tokens that defines a brand's visual identity.
  * This is the "single JSON source" described in the BrandEngine spec.
  */
 export interface DesignTokens {
-    color: {
-        light: TokenColors;
-        dark: TokenColors;
-    };
-    typography: {
+    color: ColorPalettes;
+    typography?: ModeValue<{
         heading: TokenTypography;
         body: TokenTypography;
         handwriting: TokenTypography;
-    };
-    spacing?: TokenSpacing;
-    radius?: string;
-    shadow?: TokenShadows;
-    motion?: TokenMotion;
+    }>;
+    spacing?: ModeValue<TokenSpacing>;
+    radius?: ModeValue<string>;
+    shadow?: ModeValue<TokenShadows>;
+    motion?: ModeValue<TokenMotion>;
     /** Token aliases – remap semantic names to other token keys */
     aliases?: TokenAliases;
 }

@@ -8,6 +8,44 @@ import { handleCrud, type CrudRequest, type CrudResponse } from '../crud';
 import { globalRLS, RLSError } from './engine';
 import type { SecurityContext } from './types';
 
+/** DB column names SQLite lists in composite UNIQUE errors (snake_case). */
+const UNIQUE_FIELD_PRIORITY = ['slug', 'email', 'name', 'session_token', 'credential_id', 'referral_username'] as const;
+
+/**
+ * Map SQLite "UNIQUE constraint failed: table.col1, table.col2" to a single API/model field
+ * (camelCase) for forms. Prefer human-meaningful columns (e.g. slug) in composites.
+ */
+export function parseSqliteUniqueConstraintForApi(sqliteMessage: string): string {
+    const m = sqliteMessage.match(/UNIQUE constraint failed:\s*(.+)/i);
+    if (!m?.[1]) return 'unknown';
+    const segments = m[1].split(',').map((s) => s.trim());
+    const dbCols: string[] = [];
+    for (const seg of segments) {
+        const col = seg.match(/^[\w.]+\.(\w+)$/)?.[1];
+        if (col) dbCols.push(col);
+    }
+    if (dbCols.length === 0) return 'unknown';
+    for (const pref of UNIQUE_FIELD_PRIORITY) {
+        if (dbCols.includes(pref)) return sqliteColumnToApiField(pref);
+    }
+    return sqliteColumnToApiField(dbCols[dbCols.length - 1]!);
+}
+
+function sqliteColumnToApiField(dbCol: string): string {
+    const map: Record<string, string> = {
+        organization_id: 'organizationId',
+        app_id: 'appId',
+        user_id: 'userId',
+        author_id: 'authorId',
+        category_id: 'categoryId',
+        session_token: 'sessionToken',
+        credential_id: 'credentialId',
+        referral_username: 'referralUsername',
+        content_type: 'contentType',
+    };
+    return map[dbCol] ?? dbCol;
+}
+
 export interface SecureCrudOptions {
     request: Request;
     url: URL;
@@ -106,7 +144,7 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
                         },
                     );
                 }
-                query.limit = parsedLimit;
+                query.limit = Math.min(Math.max(1, parsedLimit), 1000);
             }
 
             const offset = url.searchParams.get('offset');
@@ -124,7 +162,7 @@ export async function secureCrud(options: SecureCrudOptions): Promise<Response> 
                         },
                     );
                 }
-                query.offset = parsedOffset;
+                query.offset = Math.min(Math.max(0, parsedOffset), 100_000);
             }
 
             const page = url.searchParams.get('page');
@@ -251,6 +289,18 @@ export async function executeSecureCrudRequest(
 ): Promise<CrudResponse> {
     const { method, model, id, body, query } = crudRequest;
 
+    // Fail closed on malformed request payloads surfaced by parseCrudRequest.
+    // Prevents invalid JSON bodies from silently degrading into empty-body no-ops,
+    // and invalid `where` JSON from running an unfiltered query.
+    if (crudRequest.parseError) {
+        return {
+            success: false,
+            error: crudRequest.parseError.message,
+            code: crudRequest.parseError.code,
+            status: 400,
+        };
+    }
+
     try {
         return await executeSecureCrud({
             method,
@@ -291,7 +341,24 @@ export async function executeSecureCrudRequest(
             };
         }
 
+        // Handle SQLite UNIQUE constraint violations (single or composite indexes)
         const message = error instanceof Error ? error.message : 'Unknown error';
+        if (message.includes('UNIQUE constraint failed')) {
+            const field = parseSqliteUniqueConstraintForApi(message);
+            const detail =
+                field === 'slug'
+                    ? 'This slug is already in use for this organization and app.'
+                    : 'This value is already in use.';
+            return {
+                success: false,
+                error: `${field} already exists`,
+                code: 'UNIQUE_CONSTRAINT_VIOLATION',
+                fieldErrors: { [field]: [detail] },
+                hint: `A record with this ${field} already exists`,
+                status: 409,
+            };
+        }
+
         const stack = error instanceof Error ? error.stack : undefined;
         console.error(`[executeSecureCrudRequest] Error for ${model}:`, {
             error: message,
@@ -329,7 +396,14 @@ async function executeSecureCrud(params: {
     if (method === 'GET') {
         try {
             // Apply RLS filter
-            const rlsWhere = globalRLS.applyReadFilter(model, context, query?.where);
+            let rlsWhere = globalRLS.applyReadFilter(model, context, query?.where);
+
+            // Slug uniqueness must match DB scope (organization + app), not "only my rows".
+            // Posts use Hierarchical RLS (organizationId + userId + appId); strip userId for /unique only.
+            if (id === 'unique' && model === 'posts') {
+                const { userId: _omitUserId, ...orgAndApp } = rlsWhere as Record<string, unknown>;
+                rlsWhere = orgAndApp as Record<string, any>;
+            }
 
             const crudRequest: CrudRequest = {
                 method: 'GET',
@@ -468,7 +542,7 @@ async function executeSecureCrud(params: {
 export function extractSecurityContext(request: Request, env?: any): SecurityContext {
     // Extract from headers
     const userId = request.headers.get('x-user-id') || undefined;
-    const organizationId = request.headers.get('x-organization-id') || undefined;
+    const organizationId = request.headers.get('x-org-id') || undefined;
     const appId = request.headers.get('x-app-id') || undefined;
 
     // Parse roles and permissions from header (comma-separated)

@@ -1,3 +1,4 @@
+import { DEFAULT_LAYOUT, pathPatternToRegex } from '@ottabase/ottalayout';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { BrandTheme, ResolvedBrandTheme, TokenColors } from '../index';
 import {
@@ -8,7 +9,6 @@ import {
     DEFAULT_COLORS_DARK,
     DEFAULT_COLORS_LIGHT,
     DEFAULT_CURSORS,
-    DEFAULT_LAYOUT,
     DEFAULT_MOTION,
     DEFAULT_SHADOWS,
     DEFAULT_SPACING,
@@ -26,6 +26,19 @@ import {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Cast helper: test fixtures always pass typography as a flat `{heading, body, handwriting}` literal.
+ * `ModeValue<T>` adds an index signature that makes TypeScript think `.heading` might be the mode-split
+ * form. This helper re-asserts the expected flat structure so tests keep reading naturally.
+ */
+function flatTypo(t: unknown): {
+    heading: { fontFamily: string };
+    body: { fontFamily: string };
+    handwriting: { fontFamily: string };
+} {
+    return t as { heading: { fontFamily: string }; body: { fontFamily: string }; handwriting: { fontFamily: string } };
+}
 
 /** Minimal valid BrandTheme fixture */
 function makeTheme(overrides: Partial<BrandTheme> = {}): BrandTheme {
@@ -219,6 +232,77 @@ describe('resolveTheme', () => {
         expect(resolved.colors.background).toBe(DEFAULT_COLORS_LIGHT.background);
     });
 
+    it('resolves mode-split typography for light vs dark', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: DEFAULT_COLORS_LIGHT, dark: DEFAULT_COLORS_DARK },
+                typography: {
+                    light: {
+                        heading: { fontFamily: 'Inter', fontWeight: '700' },
+                        body: { fontFamily: 'Inter' },
+                        handwriting: { fontFamily: 'Caveat' },
+                    },
+                    dark: {
+                        heading: { fontFamily: 'Inter', fontWeight: '300' },
+                        body: { fontFamily: 'Inter' },
+                        handwriting: { fontFamily: 'Caveat' },
+                    },
+                },
+            },
+        });
+        const light = resolveTheme({ base: theme, mode: 'light' });
+        const dark = resolveTheme({ base: theme, mode: 'dark' });
+        expect(light.typography.heading.fontWeight).toBe('700');
+        expect(dark.typography.heading.fontWeight).toBe('300');
+    });
+
+    it('resolves mode-split spacing for light vs dark', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: DEFAULT_COLORS_LIGHT, dark: DEFAULT_COLORS_DARK },
+                spacing: {
+                    light: { section: '3rem', card: '1.5rem', element: '0.5rem' },
+                    dark: { section: '4rem', card: '2rem', element: '0.75rem' },
+                },
+            },
+        });
+        const light = resolveTheme({ base: theme, mode: 'light' });
+        const dark = resolveTheme({ base: theme, mode: 'dark' });
+        expect(light.spacing.section).toBe('3rem');
+        expect(dark.spacing.section).toBe('4rem');
+    });
+
+    it('resolves mode-split motion for light vs dark', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: DEFAULT_COLORS_LIGHT, dark: DEFAULT_COLORS_DARK },
+                motion: {
+                    light: { durationFast: '150ms', easing: 'linear' },
+                    dark: { durationFast: '80ms', easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
+                },
+            },
+        });
+        const light = resolveTheme({ base: theme, mode: 'light' });
+        const dark = resolveTheme({ base: theme, mode: 'dark' });
+        expect(light.motion.durationFast).toBe('150ms');
+        expect(dark.motion.durationFast).toBe('80ms');
+        expect(light.motion.easing).toBe('linear');
+        expect(dark.motion.easing).toBe('cubic-bezier(0.4, 0, 0.2, 1)');
+    });
+
+    it('resolves mode-split cursors for light vs dark', () => {
+        const theme = makeTheme({
+            cursors: {
+                light: { default: 'auto', pointer: 'pointer' },
+                dark: { default: 'crosshair', pointer: 'crosshair' },
+            },
+        });
+        const light = resolveTheme({ base: theme, mode: 'light' });
+        const dark = resolveTheme({ base: theme, mode: 'dark' });
+        expect(light.cursors?.default).toBe('auto');
+        expect(dark.cursors?.default).toBe('crosshair');
+    });
+
     it('uses custom cursors when provided on theme', () => {
         const theme = makeTheme({
             cursors: { default: 'url(custom.svg), auto', pointer: 'url(hand.svg), pointer' },
@@ -322,6 +406,79 @@ describe('resolveTheme', () => {
         expect(resolved.motion.durationFast).toBe('50ms');
         expect(resolved.motion.durationNormal).toBe(DEFAULT_MOTION.durationNormal);
     });
+
+    it('resolves custom color scheme when defined', () => {
+        const highContrastColors: typeof DEFAULT_COLORS_LIGHT = {
+            ...DEFAULT_COLORS_LIGHT,
+            background: '0 0% 0%',
+            foreground: '0 0% 100%',
+            primary: '60 100% 50%',
+        };
+        const theme = makeTheme({
+            tokens: {
+                color: {
+                    light: DEFAULT_COLORS_LIGHT,
+                    dark: DEFAULT_COLORS_DARK,
+                    'high-contrast': highContrastColors,
+                },
+                typography: {
+                    heading: { fontFamily: 'Inter' },
+                    body: { fontFamily: 'Inter' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        });
+        const resolved = resolveTheme({ base: theme, mode: 'high-contrast' });
+        expect(resolved.colors.background).toBe('0 0% 0%');
+        expect(resolved.colors.foreground).toBe('0 0% 100%');
+        expect(resolved.colors.primary).toBe('60 100% 50%');
+    });
+
+    it('falls back to light palette when custom scheme is not defined', () => {
+        const theme = makeTheme();
+        const resolved = resolveTheme({ base: theme, mode: 'colorblind-deuteranopia' });
+        // Should fall back to light since the custom scheme doesn't exist
+        expect(resolved.colors.background).toBe(DEFAULT_COLORS_LIGHT.background);
+        expect(resolved.colors.primary).toBe(DEFAULT_COLORS_LIGHT.primary);
+    });
+
+    it('merges custom scheme with light defaults for missing tokens', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: {
+                    light: DEFAULT_COLORS_LIGHT,
+                    dark: DEFAULT_COLORS_DARK,
+                    'high-contrast': {
+                        // Only override a few tokens – rest should come from light defaults
+                        background: '0 0% 0%',
+                        foreground: '0 0% 100%',
+                        primary: '60 100% 50%',
+                        'primary-foreground': '0 0% 0%',
+                        secondary: '180 100% 50%',
+                        'secondary-foreground': '0 0% 0%',
+                        muted: '0 0% 20%',
+                        'muted-foreground': '0 0% 80%',
+                        accent: '300 100% 50%',
+                        'accent-foreground': '0 0% 0%',
+                        destructive: '0 100% 50%',
+                        'destructive-foreground': '0 0% 100%',
+                        border: '0 0% 50%',
+                        input: '0 0% 30%',
+                        ring: '60 100% 50%',
+                    } as typeof DEFAULT_COLORS_LIGHT,
+                },
+                typography: {
+                    heading: { fontFamily: 'Inter' },
+                    body: { fontFamily: 'Inter' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        });
+        const resolved = resolveTheme({ base: theme, mode: 'high-contrast' });
+        expect(resolved.colors.background).toBe('0 0% 0%');
+        // card not specified in high-contrast – should get light default as base
+        expect(resolved.colors.card).toBe(DEFAULT_COLORS_LIGHT.card);
+    });
 });
 
 // ===========================================================================
@@ -375,7 +532,7 @@ describe('buildCSSVarMap', () => {
         const vars = buildCSSVarMap(resolved);
         expect(vars['--layout-header']).toBe('topbar');
         expect(vars['--layout-navigation']).toBe('sidebar');
-        expect(vars['--layout-content-width']).toBe('fluid');
+        expect(vars['--layout-content-width']).toBe('lg');
         expect(vars['--layout-footer']).toBe('1');
         expect(vars['--layout-density']).toBe('comfy');
     });
@@ -423,6 +580,72 @@ describe('buildCSSVarMap', () => {
         expect(vars['--ease']).toBeDefined();
         expect(vars['--ease-enter']).toBeDefined();
         expect(vars['--ease-exit']).toBeDefined();
+    });
+
+    it('generates --motion-* alias vars matching motion defaults', () => {
+        const vars = buildCSSVarMap(resolved);
+        // Semantic aliases used by component-level transitions
+        expect(vars['--motion-duration-fast']).toBe(vars['--duration-fast']);
+        expect(vars['--motion-duration-normal']).toBe(vars['--duration-normal']);
+        expect(vars['--motion-duration-slow']).toBe(vars['--duration-slow']);
+        expect(vars['--motion-ease-default']).toBe(vars['--ease']);
+        expect(vars['--motion-ease-enter']).toBe(vars['--ease-enter']);
+        expect(vars['--motion-ease-exit']).toBe(vars['--ease-exit']);
+        // Fixed bouncy easing preset
+        expect(vars['--motion-ease-bouncy']).toBe('cubic-bezier(0.34, 1.56, 0.64, 1)');
+    });
+
+    it('generates typography extended vars (weight, line-height, letter-spacing)', () => {
+        const vars = buildCSSVarMap(resolved);
+        expect(vars['--typography-heading-weight']).toBeDefined();
+        expect(vars['--typography-heading-line-height']).toBeDefined();
+        expect(vars['--typography-heading-spacing']).toBeDefined();
+        expect(vars['--typography-body-weight']).toBeDefined();
+        expect(vars['--typography-body-line-height']).toBeDefined();
+        expect(vars['--typography-body-spacing']).toBeDefined();
+    });
+
+    it('reflects custom typography extended props in CSS vars', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: { ...DEFAULT_COLORS_LIGHT }, dark: { ...DEFAULT_COLORS_DARK } },
+                typography: {
+                    heading: {
+                        fontFamily: 'Playfair Display',
+                        fontWeight: '700',
+                        lineHeight: 'tight',
+                        letterSpacing: 'tighter',
+                    },
+                    body: { fontFamily: 'Inter', fontWeight: '400', lineHeight: 'relaxed', letterSpacing: 'normal' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        });
+        const r = resolveTheme({ base: theme, mode: 'light' });
+        const vars = buildCSSVarMap(r);
+        expect(vars['--typography-heading-weight']).toBe('700');
+        expect(vars['--typography-heading-line-height']).toBe('tight');
+        expect(vars['--typography-heading-spacing']).toBe('tighter');
+        expect(vars['--typography-body-weight']).toBe('400');
+        expect(vars['--typography-body-line-height']).toBe('relaxed');
+        expect(vars['--typography-body-spacing']).toBe('normal');
+    });
+
+    it('normalizes semantic fontWeight to numeric CSS values', () => {
+        const theme = makeTheme({
+            tokens: {
+                color: { light: { ...DEFAULT_COLORS_LIGHT }, dark: { ...DEFAULT_COLORS_DARK } },
+                typography: {
+                    heading: { fontFamily: 'Inter', fontWeight: 'bold' },
+                    body: { fontFamily: 'Inter', fontWeight: 'normal' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        });
+        const r = resolveTheme({ base: theme, mode: 'light' });
+        const vars = buildCSSVarMap(r);
+        expect(vars['--typography-heading-weight']).toBe('700');
+        expect(vars['--typography-body-weight']).toBe('400');
     });
 
     it('dark mode produces different colour vars than light', () => {
@@ -474,13 +697,13 @@ describe('fromLegacyThemeConfig', () => {
             spacing: { section: '2rem' },
             shadows: { xs: 'custom-shadow' },
             motion: { durationFast: '80ms' },
-            appearance: { cursors: { default: 'crosshair' } },
+            cursors: { default: 'crosshair' },
         };
 
         const brand = fromLegacyThemeConfig(legacy);
 
         expect(brand.name).toBe('default');
-        expect(brand.tokens.typography.heading.fontFamily).toBe('Inter');
+        expect(flatTypo(brand.tokens.typography).heading.fontFamily).toBe('Inter');
         expect(brand.tokens.color.light.background).toBe('0 0% 100%');
         expect(brand.tokens.radius).toBe('0.5rem');
         expect(brand.tokens.spacing).toEqual({ section: '2rem' });
@@ -527,26 +750,6 @@ describe('fromLegacyThemeConfig', () => {
         const brand = fromLegacyThemeConfig(legacy);
         expect(brand.cursors?.default).toBe('url(arrow.svg), auto');
         expect(brand.cursors?.pointer).toBe('url(hand.svg), pointer');
-    });
-
-    it('top-level cursors take precedence over appearance.cursors', () => {
-        const legacy = {
-            name: 'both',
-            typography: {
-                heading: { fontFamily: 'Inter' },
-                body: { fontFamily: 'Inter' },
-                handwriting: { fontFamily: 'Inter' },
-            },
-            colors: {
-                light: { background: '0 0% 100%' } as any,
-                dark: { background: '0 0% 0%' } as any,
-            },
-            cursors: { default: 'top-level-cursor' },
-            appearance: { cursors: { default: 'legacy-cursor' } },
-        };
-
-        const brand = fromLegacyThemeConfig(legacy);
-        expect(brand.cursors?.default).toBe('top-level-cursor');
     });
 
     it('passes layout config through to BrandTheme', () => {
@@ -660,7 +863,7 @@ describe('Theme Registry', () => {
         });
         registerTheme(v1);
         registerTheme(v2);
-        expect(getThemeByName('brand')?.tokens.typography.heading.fontFamily).toBe('Roboto');
+        expect(flatTypo(getThemeByName('brand')?.tokens.typography).heading.fontFamily).toBe('Roboto');
         expect(getRegisteredThemeNames()).toEqual(['brand']); // still one entry
     });
 
@@ -678,18 +881,372 @@ describe('Theme Registry', () => {
 });
 
 // ===========================================================================
+// Inheritance diff – deepMerge with partial tokensJson
+// Simulates the resolveInheritanceChain behavior where child kits only
+// store overridden sections, not the full config.
+// ===========================================================================
+
+describe('inheritance diff (partial tokensJson overlay)', () => {
+    it('child with only typography inherits parent colors', () => {
+        // Parent provides full tokens (color + typography)
+        const parentTheme: Partial<BrandTheme> = {
+            name: 'parent',
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '120 80% 40%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Playfair Display' },
+                    body: { fontFamily: 'Lora' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        };
+
+        // Child only overrides typography (diff-only: no color key)
+        const childTheme: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {
+                typography: {
+                    heading: { fontFamily: 'Roboto' },
+                    body: { fontFamily: 'Roboto' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            } as BrandTheme['tokens'],
+        };
+
+        // Simulate inheritance chain merge: parent → child
+        const merged = deepMerge(
+            parentTheme as Record<string, unknown>,
+            childTheme as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+
+        // Color should be inherited from parent (child didn't override)
+        expect(merged.tokens.color.light.primary).toBe('120 80% 40%');
+        // Typography should be the child's override
+        expect(flatTypo(merged.tokens.typography).heading.fontFamily).toBe('Roboto');
+    });
+
+    it('child with only color inherits parent typography', () => {
+        const parentTheme: Partial<BrandTheme> = {
+            name: 'parent',
+            tokens: {
+                color: {
+                    light: DEFAULT_COLORS_LIGHT,
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Merriweather' },
+                    body: { fontFamily: 'Source Sans Pro' },
+                    handwriting: { fontFamily: 'Dancing Script' },
+                },
+            },
+        };
+
+        // Child only overrides color (diff-only: no typography key)
+        const childTheme: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '0 100% 50%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+            } as BrandTheme['tokens'],
+        };
+
+        const merged = deepMerge(
+            parentTheme as Record<string, unknown>,
+            childTheme as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+
+        // Typography should be inherited from parent (child didn't override)
+        expect(flatTypo(merged.tokens.typography).heading.fontFamily).toBe('Merriweather');
+        expect(flatTypo(merged.tokens.typography).body.fontFamily).toBe('Source Sans Pro');
+        // Color should be child's override
+        expect(merged.tokens.color.light.primary).toBe('0 100% 50%');
+    });
+
+    it('child with empty tokens inherits everything from parent', () => {
+        const parentTheme: Partial<BrandTheme> = {
+            name: 'parent',
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '250 50% 50%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Georgia' },
+                    body: { fontFamily: 'Georgia' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+                radius: '1rem',
+                spacing: { section: '4rem', card: '2rem', element: '1rem' },
+            },
+        };
+
+        // Child has empty tokens (equivalent to tokensJson = "{}")
+        const childTheme: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {} as BrandTheme['tokens'],
+        };
+
+        const merged = deepMerge(
+            parentTheme as Record<string, unknown>,
+            childTheme as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+
+        // Everything inherited from parent
+        expect(merged.tokens.color.light.primary).toBe('250 50% 50%');
+        expect(flatTypo(merged.tokens.typography).heading.fontFamily).toBe('Georgia');
+        expect(merged.tokens.radius).toBe('1rem');
+        expect(merged.tokens.spacing).toEqual({ section: '4rem', card: '2rem', element: '1rem' });
+    });
+
+    it('removing a section from child causes parent values to show through', () => {
+        const parentTheme: Partial<BrandTheme> = {
+            name: 'parent',
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '200 60% 45%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Poppins' },
+                    body: { fontFamily: 'Open Sans' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        };
+
+        // Step 1: Child initially overrides both color + typography
+        const childWithBoth: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '0 100% 50%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Roboto' },
+                    body: { fontFamily: 'Roboto' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        };
+
+        const mergedBoth = deepMerge(
+            parentTheme as Record<string, unknown>,
+            childWithBoth as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+        expect(mergedBoth.tokens.color.light.primary).toBe('0 100% 50%');
+        expect(flatTypo(mergedBoth.tokens.typography).heading.fontFamily).toBe('Roboto');
+
+        // Step 2: Child removes color override (simulates toggle OFF)
+        const childWithoutColor: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {
+                typography: {
+                    heading: { fontFamily: 'Roboto' },
+                    body: { fontFamily: 'Roboto' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            } as BrandTheme['tokens'],
+        };
+
+        const mergedWithoutColor = deepMerge(
+            parentTheme as Record<string, unknown>,
+            childWithoutColor as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+
+        // Color should now come from parent
+        expect(mergedWithoutColor.tokens.color.light.primary).toBe('200 60% 45%');
+        // Typography still from child
+        expect(flatTypo(mergedWithoutColor.tokens.typography).heading.fontFamily).toBe('Roboto');
+    });
+
+    it('three-level chain: grandparent → parent → child with selective overrides', () => {
+        const grandparent: Partial<BrandTheme> = {
+            name: 'grandparent',
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '100 50% 50%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Serif A' },
+                    body: { fontFamily: 'Sans A' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+                radius: '0.25rem',
+            },
+        };
+
+        // Parent overrides only typography
+        const parent: Partial<BrandTheme> = {
+            name: 'parent',
+            tokens: {
+                typography: {
+                    heading: { fontFamily: 'Serif B' },
+                    body: { fontFamily: 'Sans B' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            } as BrandTheme['tokens'],
+        };
+
+        // Child overrides only radius
+        const child: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {
+                radius: '1rem',
+            } as BrandTheme['tokens'],
+        };
+
+        // Merge: grandparent → parent → child
+        let merged = deepMerge(
+            grandparent as Record<string, unknown>,
+            parent as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+        merged = deepMerge(
+            merged as unknown as Record<string, unknown>,
+            child as unknown as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+
+        // Color from grandparent (neither parent nor child overrode it)
+        expect(merged.tokens.color.light.primary).toBe('100 50% 50%');
+        // Typography from parent
+        expect(flatTypo(merged.tokens.typography).heading.fontFamily).toBe('Serif B');
+        // Radius from child
+        expect(merged.tokens.radius).toBe('1rem');
+    });
+
+    it('child overriding a single color sub-key merges with parent color', () => {
+        const parentTheme: Partial<BrandTheme> = {
+            name: 'parent',
+            tokens: {
+                color: {
+                    light: {
+                        ...DEFAULT_COLORS_LIGHT,
+                        primary: '200 50% 50%',
+                        accent: '100 50% 50%',
+                    },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Inter' },
+                    body: { fontFamily: 'Inter' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+            },
+        };
+
+        // Child overrides only primary in light, accent should inherit from parent
+        const childTheme: Partial<BrandTheme> = {
+            name: 'child',
+            tokens: {
+                color: {
+                    light: { primary: '0 100% 50%' },
+                },
+            } as BrandTheme['tokens'],
+        };
+
+        const merged = deepMerge(
+            parentTheme as Record<string, unknown>,
+            childTheme as Record<string, unknown>,
+        ) as unknown as BrandTheme;
+
+        expect(merged.tokens.color.light.primary).toBe('0 100% 50%');
+        expect(merged.tokens.color.light.accent).toBe('100 50% 50%'); // inherited
+        expect(merged.tokens.color.dark).toEqual(DEFAULT_COLORS_DARK); // inherited
+    });
+
+    it('resolveTheme correctly handles partial tenant overrides (diff-only)', () => {
+        const base = makeTheme({
+            tokens: {
+                color: {
+                    light: { ...DEFAULT_COLORS_LIGHT, primary: '220 60% 50%' },
+                    dark: DEFAULT_COLORS_DARK,
+                },
+                typography: {
+                    heading: { fontFamily: 'Times New Roman' },
+                    body: { fontFamily: 'Arial' },
+                    handwriting: { fontFamily: 'Caveat' },
+                },
+                radius: '0.5rem',
+            },
+        });
+
+        // Tenant overrides only typography (simulates diff-only from child kit)
+        const resolved = resolveTheme({
+            base,
+            tenantOverrides: {
+                tokens: {
+                    typography: {
+                        heading: { fontFamily: 'Montserrat' },
+                        body: { fontFamily: 'Lato' },
+                        handwriting: { fontFamily: 'Caveat' },
+                    },
+                } as BrandTheme['tokens'],
+            },
+            mode: 'light',
+        });
+
+        // Colors from base (not overridden by tenant)
+        expect(resolved.colors.primary).toBe('220 60% 50%');
+        // Typography from tenant override
+        expect(resolved.typography.heading.fontFamily).toBe('Montserrat');
+        expect(resolved.typography.body.fontFamily).toBe('Lato');
+        // Radius from base (not overridden)
+        expect(resolved.radius).toBe('0.5rem');
+    });
+});
+
+// ===========================================================================
+// pathPatternToRegex
+// ===========================================================================
+
+describe('pathPatternToRegex', () => {
+    it('/blog/** matches /blog and /blog/foo', () => {
+        const re = pathPatternToRegex('/blog/**');
+        expect(re.test('/blog')).toBe(true);
+        expect(re.test('/blog/')).toBe(true);
+        expect(re.test('/blog/foo')).toBe(true);
+        expect(re.test('/blog/foo/bar')).toBe(true);
+        expect(re.test('/blogging')).toBe(false);
+    });
+
+    it('/* matches single segment', () => {
+        const re = pathPatternToRegex('/*');
+        expect(re.test('/')).toBe(false);
+        expect(re.test('/a')).toBe(true);
+        expect(re.test('/a/b')).toBe(false);
+    });
+
+    it('/** matches any path', () => {
+        const re = pathPatternToRegex('/**');
+        expect(re.test('/')).toBe(true);
+        expect(re.test('/foo')).toBe(true);
+        expect(re.test('/foo/bar')).toBe(true);
+    });
+});
+
+// ===========================================================================
 // Layout defaults
 // ===========================================================================
 
 describe('Layout', () => {
     it('DEFAULT_LAYOUT has expected shape', () => {
-        expect(DEFAULT_LAYOUT).toEqual({
+        expect(DEFAULT_LAYOUT).toMatchObject({
             header: 'topbar',
             navigation: 'sidebar',
-            contentWidth: 'fluid',
+            contentWidth: 'lg',
             footer: true,
             density: 'comfy',
         });
+        // Extended fields
+        expect(DEFAULT_LAYOUT.headerSticky).toBe(true);
+        expect(DEFAULT_LAYOUT.sidebarWidth).toBe('standard');
+        expect(DEFAULT_LAYOUT.centerContent).toBe(false);
     });
 
     it('layout vars reflect custom config', () => {

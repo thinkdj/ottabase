@@ -31,6 +31,40 @@ const api = createApiClient({
     onUnauthorized: () => redirect('/login'),
     timeout: 30000,
     dedupe: true,
+    retry: {
+        attempts: 4,
+        baseDelayMs: 250,
+        maxDelayMs: 1500,
+        retryableStatuses: [502, 503, 504],
+        retryableMethods: ['GET', 'HEAD', 'OPTIONS'],
+    },
+});
+```
+
+### Transient retries
+
+Use `retry` for safe, idempotent reads when the backend may need a moment to warm up in cases like cold boot (CF:1101)
+or temporary network issues.
+
+```ts
+const api = createApiClient({
+    retry: {
+        attempts: 4,
+        baseDelayMs: 250,
+        maxDelayMs: 1500,
+        retryableStatuses: [502, 503, 504],
+        retryableMethods: ['GET', 'HEAD', 'OPTIONS'],
+    },
+});
+
+await api('/api/health');
+```
+
+You can also override retry behavior per request:
+
+```ts
+await api('/api/health', {
+    retry: { attempts: 2, baseDelayMs: 100 },
 });
 ```
 

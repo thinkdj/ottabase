@@ -1,48 +1,71 @@
 name: PR Preview Deployments
 
 on:
+    workflow_dispatch:
+        inputs:
+            pr_number:
+                description: "PR number for manual preview naming/cleanup alignment (optional)"
+                required: false
+                type: string
     pull_request:
         types: [opened, synchronize, reopened, closed]
 
 concurrency:
-    group: pr-preview-${{ github.event.pull_request.number }}
+    group: pr-preview-${{ github.event.pull_request.number || github.run_id }}
     cancel-in-progress: true
 
+# cancel-in-progress (concurrency block above) is handled by the Actions runner
+# and does not require actions: write — contents: read is sufficient.
 permissions:
     contents: read
-    actions: write
 
 jobs:
-    # Check PR title/body for #skippr or #skipdeploy to skip preview build & deploy
-    check-skip-pr:
+    # Preview deploy is opt-in: run on manual dispatch or when PR title/body contains #deploy/#preview
+    check-preview-requested:
         runs-on: ubuntu-latest
         outputs:
-            skip_pr: ${{ steps.check.outputs.skip_pr }}
+            preview_requested: ${{ steps.check.outputs.preview_requested }}
         steps:
-            - name: Check for skip markers
+            - name: Check preview trigger markers
               id: check
               env:
-                  PR_TITLE: ${{ github.event.pull_request.title }}
-                  PR_BODY: ${{ github.event.pull_request.body || '' }}
+                  EVENT_NAME: ${{ github.event_name }}
+                  PR_ACTION: ${{ github.event.action || '' }}
+                  PR_TITLE: ${{ github.event_name == 'pull_request' && github.event.pull_request.title || '' }}
+                  PR_BODY: ${{ github.event_name == 'pull_request' && github.event.pull_request.body || '' }}
               run: |
-                  if printf '%s\n' "$PR_TITLE" "$PR_BODY" | grep -qiE '#skippr|#skipdeploy'; then
-                    echo "skip_pr=true" >> $GITHUB_OUTPUT
-                    echo "⏭️  Skipping PR preview: #skippr or #skipdeploy found in PR title/description"
+                  # Closed PR events are cleanup-only; no preview deploy needed.
+                  if [ "$EVENT_NAME" = "pull_request" ] && [ "$PR_ACTION" = "closed" ]; then
+                    echo "preview_requested=false" >> $GITHUB_OUTPUT
+                    echo "🧹 PR closed event detected — deploy jobs disabled; cleanup job will handle teardown"
+                    exit 0
+                  fi
+
+                  # Manual workflow runs are explicitly opt-in.
+                  if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+                    echo "preview_requested=true" >> $GITHUB_OUTPUT
+                    echo "✅ Manual preview requested via workflow_dispatch"
+                    exit 0
+                  fi
+
+                  if printf '%s\n' "$PR_TITLE" "$PR_BODY" | grep -qiE '#deploy|#preview'; then
+                    echo "preview_requested=true" >> $GITHUB_OUTPUT
+                    echo "✅ Preview requested: found #deploy or #preview in PR title/description"
                   else
-                    echo "skip_pr=false" >> $GITHUB_OUTPUT
-                    echo "✅ No skip markers – PR preview will run"
+                    echo "preview_requested=false" >> $GITHUB_OUTPUT
+                    echo "⏭️  Skipping PR preview: add #deploy or #preview to PR title/description, or run manually"
                   fi
 
     # Build and cache packages first (reusable workflow)
     build-packages:
-        needs: check-skip-pr
-        if: github.event.action != 'closed' && needs.check-skip-pr.outputs.skip_pr != 'true'
+        needs: check-preview-requested
+        if: github.event.action != 'closed' && needs.check-preview-requested.outputs.preview_requested == 'true'
         uses: ./.github/workflows/build-packages.yml
 
-    # Prepare deployment matrix for preview environments (skipped when build-packages is skipped, i.e. skip_pr=true)
+    # Prepare deployment matrix for preview environments (runs only when preview is requested)
     prepare-deployment:
-        needs: [build-packages, check-skip-pr]
-        if: github.event.action != 'closed'
+        needs: [build-packages, check-preview-requested]
+        if: github.event.action != 'closed' && needs.check-preview-requested.outputs.preview_requested == 'true'
         runs-on: ubuntu-latest
         timeout-minutes: 5
         name: Prepare preview deployment
@@ -65,11 +88,15 @@ jobs:
               run: |
                   echo "🔍 Preparing preview deployment matrix..."
 
-                  # Always deploy previews for the configured apps
+                  # Always deploy previews for the configured apps.
+                  # APPS_TO_DEPLOY is a comma-separated list of app *folder* names under apps/.
+                  # Each app must have a cloudflare-config.json that drives its build + deploy.
+                  # When you rename/copy an app, update cloudflare-config.json + wrangler.jsonc
+                  # inside that app, then set the APPS_TO_DEPLOY secret - no yml editing needed.
                   APPS_TO_DEPLOY="${{ secrets.APPS_TO_DEPLOY }}"
                   if [ -z "$APPS_TO_DEPLOY" ]; then
-                    APPS_TO_DEPLOY="ottabase-template-app-tanstack"
-                    echo "📋 Using default app: ${APPS_TO_DEPLOY}"
+                    APPS_TO_DEPLOY="otta-web,otta-landing"
+                    echo "📋 Using default apps: ${APPS_TO_DEPLOY}"
                   else
                     echo "📋 Apps from secret: ${APPS_TO_DEPLOY}"
                   fi
@@ -131,7 +158,7 @@ jobs:
                         echo "⚠️  Warning: No cloudflare-config.json or wrangler.jsonc for ${APP_FOLDER}, skipping"
                         continue
                       fi
-                      CONFIG='{"deployable":true,"appType":"tanstack","buildCommand":"build","workerBuildCommand":null,"outputDirectory":"dist","verifyPaths":["dist","cloudflare-worker.ts"],"wranglerConfig":"wrangler.jsonc","wranglerEnv":"production","healthCheckPath":"/","requiresSecrets":["CLOUDFLARE_API_TOKEN","CLOUDFLARE_ACCOUNT_ID","D1_DATABASE_ID","KV_NAMESPACE_ID"]}'
+                      CONFIG='{"deployable":true,"appType":"vite","buildCommand":"build","workerBuildCommand":null,"outputDirectory":"dist","verifyPaths":["dist","cloudflare-worker.ts"],"wranglerConfig":"wrangler.jsonc","wranglerEnv":"production","healthCheckPath":"/"}'
                     fi
 
                     DEPLOYABLE=$(echo "$CONFIG" | jq -r '.deployable // true')
@@ -189,7 +216,16 @@ jobs:
               id: preview-name
               run: |
                   BASE_NAME="${{ matrix.config.workerName || matrix.folder }}"
-                  echo "preview-name=${BASE_NAME}-pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+
+                  if [ "${{ github.event_name }}" = "pull_request" ]; then
+                    SUFFIX="pr-${{ github.event.pull_request.number }}"
+                  elif [ -n "${{ inputs.pr_number }}" ]; then
+                    SUFFIX="pr-${{ inputs.pr_number }}"
+                  else
+                    SUFFIX="manual-${{ github.run_number }}"
+                  fi
+
+                  echo "preview-name=${BASE_NAME}-${SUFFIX}" >> $GITHUB_OUTPUT
 
             - name: Load app configuration
               id: config
@@ -216,55 +252,43 @@ jobs:
                   echo "${VERIFY_PATHS}" >> $GITHUB_OUTPUT
                   echo "EOF" >> $GITHUB_OUTPUT
 
-                  REQUIRED_SECRETS=$(echo "${CONFIG}" | jq -r '.requiresSecrets[]?' | tr '\n' ' ')
-                  echo "required-secrets=${REQUIRED_SECRETS}" >> $GITHUB_OUTPUT
+                  # Optional: extra secrets from config (merged with derived placeholders in Verify step)
+                  EXTRA=$(echo "${CONFIG}" | jq -r '.requiresPreviewSecrets[]?' | tr '\n' ' ')
+                  echo "extra-secrets=${EXTRA}" >> $GITHUB_OUTPUT
 
                   echo "📋 Configuration loaded for ${{ matrix.name }} (preview)"
 
+            # Secrets derived from wrangler.jsonc env.preview + base + optional extra (single source of truth; no drift)
             - name: Verify required secrets
+              working-directory: apps/${{ matrix.folder }}
+              env:
+                  SECRETS_JSON: ${{ toJson(secrets) }}
+                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
+                  TARGET_ENV: preview
               run: |
                   echo "🔍 Verifying required secrets for ${{ matrix.name }}..."
-                  MISSING_SECRETS=()
-                  REQUIRED="${{ steps.config.outputs.required-secrets }}"
 
+                  # Base secrets (wrangler-action needs these)
+                  BASE="CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID"
+
+                  # Derive placeholders from wrangler.jsonc env.preview (single source of truth; no drift)
+                  PLACEHOLDERS=$(python ../../.github/scripts/substitute-wrangler-secrets.py --list-only)
+
+                  # Optional extra from cloudflare-config.json requiresPreviewSecrets
+                  EXTRA="${{ steps.config.outputs.extra-secrets }}"
+
+                  # Merge: base + placeholders + extra, deduplicate, drop empty
+                  REQUIRED=$(echo "$BASE $PLACEHOLDERS $EXTRA" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')
+
+                  MISSING_SECRETS=()
                   for SECRET_NAME in $REQUIRED; do
-                    case "$SECRET_NAME" in
-                      "CLOUDFLARE_API_TOKEN")
-                        if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ CLOUDFLARE_API_TOKEN is not set"
-                        else
-                          echo "  ✅ CLOUDFLARE_API_TOKEN is configured"
-                        fi
-                        ;;
-                      "CLOUDFLARE_ACCOUNT_ID")
-                        if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ CLOUDFLARE_ACCOUNT_ID is not set"
-                        else
-                          echo "  ✅ CLOUDFLARE_ACCOUNT_ID is configured"
-                        fi
-                        ;;
-                      "D1_DATABASE_ID")
-                        if [ -z "${{ secrets.D1_DATABASE_ID }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ D1_DATABASE_ID is not set"
-                        else
-                          echo "  ✅ D1_DATABASE_ID is configured"
-                        fi
-                        ;;
-                      "KV_NAMESPACE_ID")
-                        if [ -z "${{ secrets.KV_NAMESPACE_ID }}" ]; then
-                          MISSING_SECRETS+=("$SECRET_NAME")
-                          echo "  ❌ KV_NAMESPACE_ID is not set"
-                        else
-                          echo "  ✅ KV_NAMESPACE_ID is configured"
-                        fi
-                        ;;
-                      *)
-                        echo "  ⚠️  Warning: Unknown secret $SECRET_NAME - cannot verify"
-                        ;;
-                    esac
+                    VAL=$(echo "$SECRETS_JSON" | jq -r --arg k "$SECRET_NAME" '.[$k] // empty')
+                    if [ -z "$VAL" ]; then
+                      MISSING_SECRETS+=("$SECRET_NAME")
+                      echo "  ❌ $SECRET_NAME is not set (run pnpm cf:setup, add to GitHub Secrets)"
+                    else
+                      echo "  ✅ $SECRET_NAME is configured"
+                    fi
                   done
 
                   if [ ${#MISSING_SECRETS[@]} -ne 0 ]; then
@@ -315,21 +339,21 @@ jobs:
                       ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
                       ${{ runner.os }}-nextjs-${{ matrix.folder }}-
 
-            - name: Cache TanStack builds
-              if: steps.config.outputs.app-type == 'tanstack'
+            - name: Cache Vite builds
+              if: steps.config.outputs.app-type == 'vite'
               uses: actions/cache@v4
               with:
                   path: |
                       apps/${{ matrix.folder }}/dist
                       apps/${{ matrix.folder }}/node_modules/.vite
                   key:
-                      ${{ runner.os }}-tanstack-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{
+                      ${{ runner.os }}-vite-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{
                       hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-${{ hashFiles('apps/${{
                       matrix.folder }}/wrangler.jsonc', 'apps/${{ matrix.folder }}/vite.config.ts') }}
                   restore-keys: |
-                      ${{ runner.os }}-tanstack-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-
-                      ${{ runner.os }}-tanstack-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
-                      ${{ runner.os }}-tanstack-${{ matrix.folder }}-
+                      ${{ runner.os }}-vite-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-
+                      ${{ runner.os }}-vite-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
+                      ${{ runner.os }}-vite-${{ matrix.folder }}-
 
             - name: Verify build tools
               run: |
@@ -341,7 +365,7 @@ jobs:
                     echo "  - next: $(pnpm exec next --version 2>&1 || echo 'installed')"
                   fi
 
-                  if [ "${{ steps.config.outputs.app-type }}" == "tanstack" ]; then
+                  if [ "${{ steps.config.outputs.app-type }}" == "vite" ]; then
                     echo "  - vite: $(pnpm exec vite --version 2>&1 || echo 'installed')"
                   fi
 
@@ -352,12 +376,14 @@ jobs:
               run: |
                   echo "📦 Restoring pre-built packages from cache..."
 
+                  # Must match build-packages.yml key: LOCK + ROOT + PACKAGE hashes
                   PACKAGE_HASH=$(find packages -type f \
                     -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.json" \
                     | sort | xargs cat | sha256sum | cut -d' ' -f1)
 
                   LOCK_HASH=$(sha256sum pnpm-lock.yaml | cut -d' ' -f1)
-                  CACHE_KEY="packages-build-${LOCK_HASH}-${PACKAGE_HASH}"
+                  ROOT_HASH=$(cat turbo.json package.json pnpm-workspace.yaml | sha256sum | cut -d' ' -f1)
+                  CACHE_KEY="packages-build-${LOCK_HASH}-${ROOT_HASH}-${PACKAGE_HASH}"
 
                   echo "cache-key=${CACHE_KEY}" >> $GITHUB_OUTPUT
                   echo "📦 Cache key: ${CACHE_KEY}"
@@ -398,12 +424,12 @@ jobs:
                     echo "✅ Next.js build output verified (.next directory exists)"
                   fi
 
-                  if [ "${{ steps.config.outputs.app-type }}" == "tanstack" ]; then
+                  if [ "${{ steps.config.outputs.app-type }}" == "vite" ]; then
                     if [ ! -d "apps/${{ matrix.folder }}/dist" ]; then
-                      echo "❌ ERROR: TanStack/Vite build output not found"
+                      echo "❌ ERROR: Vite build output not found"
                       exit 1
                     fi
-                    echo "✅ TanStack/Vite build output verified (dist directory exists)"
+                    echo "✅ Vite build output verified (dist directory exists)"
                   fi
 
                   echo "✅ Application build completed successfully"
@@ -469,29 +495,22 @@ jobs:
             - name: Generate preview wrangler config
               working-directory: apps/${{ matrix.folder }}
               run: |
-                  WRANGLER_CONFIG="${{ steps.config.outputs.wrangler-config }}"
-                  echo "🔧 Generating preview wrangler configuration from ${WRANGLER_CONFIG}..."
-
-                  if [ ! -f "${WRANGLER_CONFIG}" ]; then
-                    echo "❌ ERROR: Wrangler configuration file not found"
-                    exit 1
-                  fi
-
-                    python -c $'import os\nimport pathlib\n\nconfig_path = pathlib.Path(os.environ["WRANGLER_CONFIG"])\ncontent = config_path.read_text()\n\nreplacements = {\n    "PRODUCTION_D1_DATABASE_ID": os.environ.get("D1_DATABASE_ID", ""),\n    "PRODUCTION_KV_NAMESPACE_ID": os.environ.get("KV_NAMESPACE_ID", ""),\n    "YOUR_CLOUDFLARE_ACCOUNT_ID": os.environ.get("CLOUDFLARE_ACCOUNT_ID", ""),\n}\n\nfor key, value in replacements.items():\n    content = content.replace(key, value)\n\npathlib.Path("wrangler.preview.jsonc").write_text(content)\n'
-
-                  if grep -q "PRODUCTION_" wrangler.preview.jsonc; then
-                    echo "❌ ERROR: Secret substitution incomplete"
-                    rm -f wrangler.preview.jsonc
-                    exit 1
-                  fi
-
-                  echo "✅ Preview configuration generated successfully"
+                  echo "🔧 Generating preview wrangler config..."
+                  python ../../.github/scripts/substitute-wrangler-secrets.py
               env:
-                  D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
-                  KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
-                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
                   WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
-                  PREVIEW_WORKER_NAME: ${{ steps.preview-name.outputs.preview-name }}
+                  OUTPUT_FILE: wrangler.preview.jsonc
+                  TARGET_ENV: preview
+                  SECRETS_JSON: ${{ toJson(secrets) }}
+
+            - name: Verify preview wrangler config
+              working-directory: apps/${{ matrix.folder }}
+              run: |
+                  if [ ! -f "wrangler.preview.jsonc" ]; then
+                    echo "❌ ERROR: wrangler.preview.jsonc not found - Generate step must run first"
+                    exit 1
+                  fi
+                  echo "✅ wrangler.preview.jsonc ready for deploy"
 
             - name: Deploy preview to Cloudflare Workers
               uses: cloudflare/wrangler-action@v3
@@ -500,8 +519,13 @@ jobs:
                   accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
                   workingDirectory: apps/${{ matrix.folder }}
                   command:
-                      deploy --env ${{ steps.config.outputs.wrangler-env }} --name ${{
-                      steps.preview-name.outputs.preview-name }} --config wrangler.preview.jsonc
+                      # --env preview  → use env.preview bindings/vars from wrangler.preview.jsonc
+                      # --name <name>  → explicitly sets the deployed worker name; overrides the default
+                      #                  <name>-preview suffix that Wrangler would otherwise append.
+                      #                  The resulting worker is named exactly <base>-pr-<N>, not <base>-pr-<N>-preview.
+                      # This is intentional: cleanup uses wrangler delete --name <base>-pr-<N> to match.
+                      deploy --env preview --name ${{ steps.preview-name.outputs.preview-name }} --config
+                      wrangler.preview.jsonc
               continue-on-error: false
 
             - name: Preview deployment summary
@@ -509,6 +533,25 @@ jobs:
               run: |
                   PREVIEW_URL="https://${{ steps.preview-name.outputs.preview-name }}.${{ steps.config.outputs.worker-subdomain }}.workers.dev/"
                   echo "✅ Preview deployed: ${PREVIEW_URL}"
+
+            - name: Verify deployed worker name via Cloudflare API
+              # Confirms the worker was registered under the exact --name we passed (not <name>-preview).
+              # Wrangler docs: explicit --name overrides any env-derived suffix; this step makes that visible.
+              # Soft check only — a failed API call does not fail the deployment.
+              if: success()
+              env:
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+              run: |
+                  PREVIEW_NAME="${{ steps.preview-name.outputs.preview-name }}"
+                  HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+                    -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+                    "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${PREVIEW_NAME}")
+                  if [ "$HTTP" = "200" ]; then
+                    echo "✅ Worker '${PREVIEW_NAME}' confirmed in Cloudflare (HTTP 200) — no -preview suffix appended"
+                  else
+                    echo "::warning::Worker '${PREVIEW_NAME}' not found via API (HTTP ${HTTP}) — verify manually in Cloudflare dashboard"
+                  fi
 
             - name: Preview deployment failure summary
               if: failure()
@@ -537,6 +580,9 @@ jobs:
             - name: Install dependencies
               run: pnpm install --frozen-lockfile --ignore-scripts=false
 
+            - name: Install wrangler CLI
+              run: pnpm add -w wrangler@4 --save-dev
+
             - name: Determine worker subdomain
               id: cleanup-config
               run: |
@@ -546,64 +592,76 @@ jobs:
                   fi
                   echo "worker-subdomain=${WORKER_SUBDOMAIN}" >> $GITHUB_OUTPUT
 
-            - name: Compute preview worker name
-              id: cleanup-name
+            - name: Delete preview workers for all apps
+              id: delete-previews
+              # Loop over every configured app and delete its preview worker.
+              # Preview workers are deployed with an explicit --name override (not via --env),
+              # so wrangler delete must use --name to target the correct worker.
               run: |
                   APPS_TO_DEPLOY="${{ secrets.APPS_TO_DEPLOY }}"
                   if [ -z "$APPS_TO_DEPLOY" ]; then
-                    APPS_TO_DEPLOY="ottabase-template-app-tanstack"
+                    APPS_TO_DEPLOY="otta-web,otta-landing"
                   fi
+
+                  WORKER_SUBDOMAIN="${{ steps.cleanup-config.outputs.worker-subdomain }}"
+                  PR_NUMBER="${{ github.event.pull_request.number }}"
 
                   IFS=',' read -ra TARGET_APPS <<< "$APPS_TO_DEPLOY"
-                  FIRST_APP="${TARGET_APPS[0]}"
-                  APP_FOLDER=""
 
-                  if [ -d "apps/${FIRST_APP}" ]; then
-                    APP_FOLDER="${FIRST_APP}"
-                  else
-                    for dir in apps/*/; do
-                      if [ -f "${dir}package.json" ]; then
-                        PKG_NAME=$(jq -r '.name // empty' "${dir}package.json")
-                        if [ "$PKG_NAME" == "$FIRST_APP" ]; then
-                          APP_FOLDER=$(basename "$dir")
-                          break
+                  for app in "${TARGET_APPS[@]}"; do
+                    app=$(echo "$app" | xargs) # trim whitespace
+
+                    # Resolve folder name (supports both folder name and package name)
+                    APP_FOLDER=""
+                    if [ -d "apps/${app}" ]; then
+                      APP_FOLDER="${app}"
+                    else
+                      for dir in apps/*/; do
+                        if [ -f "${dir}package.json" ]; then
+                          PKG_NAME=$(jq -r '.name // empty' "${dir}package.json")
+                          if [ "$PKG_NAME" == "$app" ]; then
+                            APP_FOLDER=$(basename "$dir")
+                            break
+                          fi
                         fi
-                      fi
-                    done
-                  fi
-
-                  if [ -z "$APP_FOLDER" ]; then
-                    echo "⚠️ Could not determine app folder, defaulting to ${FIRST_APP}"
-                    APP_FOLDER="${FIRST_APP}"
-                  fi
-
-                  CONFIG_JSON="apps/${APP_FOLDER}/cloudflare-config.json"
-                  BASE_NAME="${APP_FOLDER}"
-                  if [ -f "$CONFIG_JSON" ]; then
-                    CANDIDATE=$(jq -r '.workerName // empty' "$CONFIG_JSON")
-                    if [ -n "$CANDIDATE" ] && [ "$CANDIDATE" != "null" ]; then
-                      BASE_NAME="$CANDIDATE"
+                      done
                     fi
-                  fi
 
-                  echo "preview-name=${BASE_NAME}-pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+                    if [ -z "$APP_FOLDER" ]; then
+                      echo "⚠️ Could not find folder for '${app}', skipping cleanup"
+                      continue
+                    fi
 
-            - name: Delete preview worker
-              run: |
-                  pnpm exec wrangler delete ${{ steps.cleanup-name.outputs.preview-name }}
+                    # Determine base worker name from cloudflare-config.json
+                    CONFIG_JSON="apps/${APP_FOLDER}/cloudflare-config.json"
+                    BASE_NAME="${APP_FOLDER}"
+                    if [ -f "$CONFIG_JSON" ]; then
+                      CANDIDATE=$(jq -r '.workerName // empty' "$CONFIG_JSON")
+                      if [ -n "$CANDIDATE" ] && [ "$CANDIDATE" != "null" ]; then
+                        BASE_NAME="$CANDIDATE"
+                      fi
+                    fi
+
+                    PREVIEW_NAME="${BASE_NAME}-pr-${PR_NUMBER}"
+                    PREVIEW_URL="https://${PREVIEW_NAME}.${WORKER_SUBDOMAIN}.workers.dev/"
+
+                    echo "🧹 Deleting preview worker: ${PREVIEW_NAME}"
+                    # Use --name because previews are deployed with an explicit name override,
+                    # not via a named wrangler environment. --env would target a different worker.
+                    pnpm exec wrangler delete --name "${PREVIEW_NAME}" || echo "⚠️ Delete failed or worker already absent: ${PREVIEW_NAME}"
+                    echo "   ${PREVIEW_URL}"
+                  done
               env:
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
               continue-on-error: true
 
             - name: Cleanup summary
-              if: success()
+              if: always() && steps.delete-previews.outcome == 'success'
               run: |
-                  PREVIEW_URL="https://${{ steps.cleanup-name.outputs.preview-name }}.${{ steps.cleanup-config.outputs.worker-subdomain }}.workers.dev/"
-                  echo "🧹 Preview worker cleaned up (or already absent): ${PREVIEW_URL}"
+                  echo "🧹 Preview worker cleanup complete for PR #${{ github.event.pull_request.number }}"
 
             - name: Cleanup failure summary
-              if: failure()
+              if: always() && steps.delete-previews.outcome == 'failure'
               run: |
-                  PREVIEW_URL="https://${{ steps.cleanup-name.outputs.preview-name }}.${{ steps.cleanup-config.outputs.worker-subdomain }}.workers.dev/"
-                  echo "⚠️ Cleanup may have failed for ${PREVIEW_URL}"
+                  echo "⚠️ One or more preview worker cleanups may have failed for PR #${{ github.event.pull_request.number }}"

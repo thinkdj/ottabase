@@ -5,7 +5,7 @@
 // ============================================================
 
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
-import { JsonEditor } from 'json-edit-react';
+import { JsonEditor, type JsonValue } from '@ottabase/ui-components';
 import { clsx } from 'clsx';
 import { AlertCircle, Calendar, Check, Eye, EyeOff, Upload, X } from 'lucide-react';
 import React, { useCallback } from 'react';
@@ -37,14 +37,12 @@ export function FormField({
 
     const baseInputClasses = clsx(
         'w-full px-3 py-2 rounded-lg border transition-colors duration-150',
-        'bg-white dark:bg-gray-800',
-        'text-gray-900 dark:text-gray-100',
-        'placeholder:text-gray-400 dark:placeholder:text-gray-500',
-        'focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent',
-        error
-            ? 'border-red-500 dark:border-red-400'
-            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500',
-        disabled && 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-900',
+        'bg-background',
+        'text-foreground',
+        'placeholder:text-muted-foreground',
+        'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
+        error ? 'border-destructive' : 'border-input hover:border-input/80',
+        disabled && 'opacity-50 cursor-not-allowed bg-muted',
     );
 
     // Check if value is an object (not null, not array, not Date, not primitive)
@@ -193,7 +191,7 @@ export function FormField({
                             disabled={disabled}
                             className={baseInputClasses}
                         />
-                        <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                     </div>
                 );
 
@@ -233,9 +231,9 @@ export function FormField({
                             checked={Boolean(value)}
                             onChange={(e) => onChange(e.target.checked)}
                             disabled={disabled}
-                            className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-400"
+                            className="w-5 h-5 rounded border-input text-primary focus:ring-ring"
                         />
-                        <span className="text-gray-700 dark:text-gray-300">{uiConfig.description || label}</span>
+                        <span className="text-foreground">{uiConfig.description || label}</span>
                     </label>
                 );
 
@@ -285,7 +283,7 @@ export function FormField({
 
             case 'readonly':
                 return (
-                    <div className={clsx(baseInputClasses, 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed')}>
+                    <div className={clsx(baseInputClasses, 'bg-muted cursor-not-allowed')}>
                         {formatDisplayValue(value, field)}
                     </div>
                 );
@@ -316,9 +314,9 @@ export function FormField({
         <div className={clsx('space-y-1.5', className)} onBlur={onBlur}>
             {/* Label */}
             {fieldType !== 'boolean' && (
-                <label htmlFor={name} className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label htmlFor={name} className="block text-sm font-medium text-foreground">
                     {label}
-                    {field.validation?.rules?.includes('required') && <span className="text-red-500 ml-1">*</span>}
+                    {field.validation?.rules?.includes('required') && <span className="text-destructive ml-1">*</span>}
                 </label>
             )}
 
@@ -326,10 +324,10 @@ export function FormField({
             {renderField()}
 
             {/* Help text */}
-            {helpText && !error && <p className="text-sm text-gray-500 dark:text-gray-400">{helpText}</p>}
+            {helpText && !error && <p className="text-sm text-muted-foreground">{helpText}</p>}
 
             {/* Error */}
-            {error && <p className="text-sm text-red-500 dark:text-red-400">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
     );
 }
@@ -339,17 +337,20 @@ export function FormField({
 // ============================================================
 
 /**
- * JSON field: Edit (textarea) + Tree view (@uiw/react-json-view).
- * Used for fieldType 'json' and for object values (instead of [Object]).
- * Tree view gives collapsible nodes, copy, and light/dark theme.
+ * JSON field: wraps `@ottabase/ui-components` JsonEditor (Tree + Raw modes,
+ * inline editing, live validation). Used for fieldType 'json' and for
+ * arbitrary object values (instead of rendering [Object]).
+ *
+ * Accepts `unknown` from the form system and normalizes it to a JsonValue:
+ * - string: try to parse; fall back to wrapping as `{ value: string }` so
+ *   the user always has a tree to edit.
+ * - null/undefined: empty object.
+ * - object/array/primitive: passed through.
  */
 function JsonField({
-    name,
     value,
     onChange,
     disabled,
-    placeholder,
-    rows,
     className,
 }: {
     name: string;
@@ -360,149 +361,33 @@ function JsonField({
     rows: number;
     className: string;
 }) {
-    const fromProps =
-        typeof value === 'string' ? value : value === null || value === undefined ? '' : JSON.stringify(value, null, 2);
-    const [localText, setLocalText] = React.useState<string | null>(null);
-    const [parseError, setParseError] = React.useState<string | null>(null);
-    const [tab, setTab] = React.useState<'edit' | 'view'>('view');
-    const displayValue = localText !== null ? localText : fromProps;
-
-    // Resolve tree value: object or array for JsonEditor (editable tree)
-    const treeValue = React.useMemo(() => {
+    // Normalize the incoming value so the editor always has something JSON-shaped
+    const normalized: JsonValue = React.useMemo(() => {
         if (value === null || value === undefined) return {};
-        if (typeof value === 'object' && (value.constructor === Object || Array.isArray(value))) return value;
         if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (trimmed === '') return {};
             try {
-                const parsed = JSON.parse(value);
-                return typeof parsed === 'object' && parsed !== null ? parsed : { value: parsed };
+                return JSON.parse(trimmed) as JsonValue;
             } catch {
-                return null;
+                // Invalid JSON string: keep the raw text under a `value` key so
+                // users don't lose their input. They can fix it in Raw mode.
+                return { value };
             }
         }
-        return { value };
+        if (typeof value === 'object') return value as JsonValue;
+        // Primitive (number/boolean): wrap so root remains an object
+        return { value: value as JsonValue };
     }, [value]);
-
-    const canShowTree = treeValue !== null;
-
-    const handleChange = useCallback(
-        (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-            const raw = e.target.value;
-            setLocalText(raw);
-            if (raw.trim() === '') {
-                setParseError(null);
-                onChange(null);
-                return;
-            }
-            try {
-                const parsed = JSON.parse(raw);
-                setParseError(null);
-                setLocalText(null);
-                onChange(parsed);
-            } catch {
-                setParseError('Invalid JSON');
-            }
-        },
-        [onChange],
-    );
-
-    React.useEffect(() => {
-        setLocalText(null);
-        if (typeof value === 'string' && value.trim() !== '') {
-            try {
-                JSON.parse(value);
-                setParseError(null);
-            } catch {
-                setParseError('Invalid JSON');
-            }
-        } else {
-            setParseError(null);
-        }
-    }, [value]);
-
-    const handleSetData = useCallback(
-        (newData: unknown) => {
-            onChange(newData);
-        },
-        [onChange],
-    );
 
     return (
-        <div className="space-y-2">
-            <div className="flex gap-1 border-b border-gray-200 dark:border-gray-600">
-                <button
-                    type="button"
-                    onClick={() => setTab('edit')}
-                    className={clsx(
-                        'px-3 py-1.5 text-sm font-medium rounded-t transition-colors',
-                        tab === 'edit'
-                            ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-b-0 border-gray-200 dark:border-gray-600'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200',
-                    )}
-                >
-                    Edit
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setTab('view')}
-                    className={clsx(
-                        'px-3 py-1.5 text-sm font-medium rounded-t transition-colors',
-                        tab === 'view'
-                            ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-b-0 border-gray-200 dark:border-gray-600'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200',
-                    )}
-                >
-                    Tree view
-                </button>
-            </div>
-
-            {tab === 'edit' && (
-                <div className="space-y-1">
-                    <textarea
-                        id={name}
-                        name={name}
-                        value={displayValue}
-                        onChange={handleChange}
-                        placeholder={placeholder}
-                        disabled={disabled}
-                        rows={rows}
-                        className={className}
-                        spellCheck={false}
-                    />
-                    {parseError && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                            {parseError}
-                        </p>
-                    )}
-                </div>
-            )}
-
-            {tab === 'view' && (
-                <div
-                    className={clsx(
-                        'rounded-lg border overflow-auto min-h-[120px] max-h-[400px] p-2',
-                        'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800',
-                    )}
-                >
-                    {canShowTree ? (
-                        <JsonEditor
-                            data={treeValue as object}
-                            setData={handleSetData}
-                            viewOnly={disabled}
-                            rootName=""
-                            collapse={2}
-                            enableClipboard
-                        />
-                    ) : parseError ? (
-                        <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                            <AlertCircle className="w-4 h-4 shrink-0" />
-                            Invalid JSON — fix in Edit tab
-                        </p>
-                    ) : (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Empty — edit to add JSON</p>
-                    )}
-                </div>
-            )}
+        <div className={clsx('min-h-[150px]', className)}>
+            <JsonEditor
+                value={normalized}
+                onChange={(next) => onChange(next)}
+                readOnly={disabled}
+                collapseAtDepth={2}
+            />
         </div>
     );
 }

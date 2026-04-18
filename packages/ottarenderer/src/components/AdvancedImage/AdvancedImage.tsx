@@ -1,5 +1,6 @@
-import React from 'react';
+import { useMediaLightboxRegistration } from '@ottabase/medialibrary';
 import { RenderFn } from 'editorjs-blocks-react-renderer';
+import React from 'react';
 import { AdvancedImageData } from './advancedimage.types';
 
 const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' }) => {
@@ -20,7 +21,31 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
         height,
         featuredImage = false,
         aspectRatio = 'original',
+        mediaId,
+        mimeType,
     } = data;
+
+    const lightboxItem = React.useMemo(
+        () => ({
+            id: mediaId || resolvedUrl,
+            url: resolvedUrl,
+            previewUrl: resolvedUrl,
+            thumbnailUrl: resolvedUrl,
+            title: caption || alt || null,
+            originalName: alt || caption || resolvedUrl.substring(resolvedUrl.lastIndexOf('/') + 1),
+            altText: alt || caption || null,
+            caption: caption || null,
+            mimeType: mimeType || null,
+            mediaKind: 'image' as const,
+            width: width || null,
+            height: height || null,
+        }),
+        [alt, caption, height, mediaId, mimeType, resolvedUrl, width],
+    );
+    const { open: openLightbox, isEnabled: hasLightbox } = useMediaLightboxRegistration(
+        mediaId || resolvedUrl,
+        linkUrl ? null : lightboxItem,
+    );
 
     // Base Tailwind classes for the figure (includes image-block container styles)
     let figureTailwindClasses = [
@@ -31,8 +56,7 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
         'justify-center',
         'flex-col',
         'box-border',
-        'text-gray-700',
-        'dark:text-gray-100',
+        'text-foreground',
     ];
 
     // Add default width and centering if not stretched
@@ -42,10 +66,10 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
 
     // Conditional Tailwind classes based on data props
     if (withBorder) {
-        figureTailwindClasses.push('border', 'border-gray-200', 'dark:border-gray-700', 'p-1');
+        figureTailwindClasses.push('border', 'border-border', 'p-1');
     }
     if (withBackground) {
-        figureTailwindClasses.push('bg-gray-100', 'dark:bg-slate-900', 'p-2');
+        figureTailwindClasses.push('bg-muted', 'p-2');
     }
     if (stretched) {
         // For stretched images, we need special handling
@@ -58,7 +82,7 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
         className.includes('advanced-image-block--featured-image') ||
         className.includes('image-block--featured-image')
     ) {
-        figureTailwindClasses.push('shadow-lg', 'dark:shadow-gray-700/50', 'relative');
+        figureTailwindClasses.push('shadow-lg', 'dark:shadow-muted-foreground/20', 'relative');
     }
 
     // Add feature classes to className for CSS targeting
@@ -98,7 +122,7 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
 
     // Image classes based on stretched state and aspect ratio
     let imageClasses = stretched
-        ? `w-full h-auto object-cover ${!linkUrl ? 'cursor-pointer' : ''}`
+        ? `w-full h-auto max-h-[100vh] object-cover ${!linkUrl ? 'cursor-pointer' : ''}`
         : `w-full h-auto max-w-2xl mx-auto object-contain ${!linkUrl ? 'cursor-pointer' : ''}`;
 
     // Apply aspect ratio classes
@@ -116,7 +140,18 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
         }
     }
 
-    const imageComponent = <img src={resolvedUrl} alt={altFinal} className={imageClasses} />;
+    const imageComponent = (
+        <img
+            src={resolvedUrl}
+            alt={altFinal}
+            className={imageClasses}
+            onClick={() => {
+                if (!linkUrl && hasLightbox) {
+                    openLightbox();
+                }
+            }}
+        />
+    );
 
     return (
         <>
@@ -140,9 +175,7 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
                     imageComponent
                 )}
                 {caption && (
-                    <figcaption className="mt-2 text-sm italic text-center text-gray-600 dark:text-gray-400">
-                        {caption}
-                    </figcaption>
+                    <figcaption className="mt-2 text-sm italic text-center text-muted-foreground">{caption}</figcaption>
                 )}
             </figure>
         </>

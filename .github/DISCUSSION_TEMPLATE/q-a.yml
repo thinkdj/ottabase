@@ -1,0 +1,21 @@
+title: "[Q&A] "
+labels: ["discussion", "q-a"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Ask usage, setup, or architecture questions here.
+    - type: textarea
+      id: question
+      attributes:
+          label: Question
+          description: What are you trying to understand or achieve?
+      validations:
+          required: true
+    - type: textarea
+      id: context
+      attributes:
+          label: Context
+          description: Share relevant package/app context, links, and what you already tried.
+      validations:
+          required: false

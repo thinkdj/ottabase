@@ -1,0 +1,8 @@
+.cdx-raw-html__textarea {
+    min-height: 140px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.cdx-raw-html__hint {
+    margin: 0;
+}

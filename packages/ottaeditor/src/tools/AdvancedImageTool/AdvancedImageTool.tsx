@@ -1,8 +1,8 @@
-import './AdvancedImageTool.css';
-import { Icons } from './iconUtils';
-import { AdvancedImageData, UploadResponse } from './types';
 import { uploadFile } from '@ottabase/ottaupload/utils';
 import { validateFileType } from '@ottabase/ottaupload/validation';
+import './AdvancedImageTool.css';
+import { Icons } from './iconUtils';
+import { AdvancedImageData } from './types';
 
 export default class AdvancedImageTool {
     private api: any;
@@ -38,7 +38,7 @@ export default class AdvancedImageTool {
         };
     }
 
-    constructor({ data, config, api, readOnly }) {
+    constructor({ data, config, api, readOnly }: { data: any; config: any; api: any; readOnly: boolean }) {
         this.api = api;
         this.config = config || {};
 
@@ -53,6 +53,8 @@ export default class AdvancedImageTool {
 
         this.data = {
             url: initialUrl,
+            mediaId: data?.mediaId || '',
+            mimeType: data?.mimeType || '',
             caption: data?.caption || '',
             withBorder: data?.withBorder ?? true,
             withBackground: data?.withBackground ?? true,
@@ -67,7 +69,7 @@ export default class AdvancedImageTool {
         };
 
         this.wrapper = document.createElement('div');
-        this.wrapper.classList.add('advanced-image-tool');
+        this.wrapper.classList.add('advanced-image-tool', 'ob-plugin');
     }
 
     render() {
@@ -116,7 +118,7 @@ export default class AdvancedImageTool {
                         <span>OR</span>
                     </div>
                     <div class="advanced-image-url-input-group">
-                        <input type="url" placeholder="Enter a public image URL here..." class="advanced-image-url-input">
+                        <input type="url" placeholder="Enter a public image URL here..." class="advanced-image-url-input ob-input">
                         <button type="button" class="advanced-image-url-btn">Fetch</button>
                     </div>
                 </div>
@@ -129,8 +131,8 @@ export default class AdvancedImageTool {
         const urlBtn = this.uploadArea.querySelector('.advanced-image-url-btn') as HTMLButtonElement;
 
         // Event listeners with null checks
-        if (browseBtn) {
-            browseBtn.addEventListener('click', () => this.fileInput.click());
+        if (browseBtn && this.fileInput) {
+            browseBtn.addEventListener('click', () => this.fileInput?.click());
         }
         if (urlBtn) {
             urlBtn.addEventListener('click', () => this.handleUrlUpload());
@@ -146,8 +148,12 @@ export default class AdvancedImageTool {
         // Drag and drop
         this.setupDragAndDrop();
 
-        this.wrapper.appendChild(this.fileInput);
-        this.wrapper.appendChild(this.uploadArea);
+        if (this.fileInput) {
+            this.wrapper.appendChild(this.fileInput);
+        }
+        if (this.uploadArea) {
+            this.wrapper.appendChild(this.uploadArea);
+        }
     }
 
     renderImage() {
@@ -183,10 +189,10 @@ export default class AdvancedImageTool {
         img.src = this.data.url || '';
         img.classList.add('advanced-image');
         img.addEventListener('load', () => {
-            this.imageContainer.classList.add('advanced-image-container--loaded');
+            this.imageContainer?.classList.add('advanced-image-container--loaded');
         });
 
-        this.imageContainer.appendChild(img);
+        this.imageContainer?.appendChild(img);
 
         const inputsContainer = document.createElement('div');
         inputsContainer.classList.add('advanced-image-inputs-container');
@@ -215,7 +221,7 @@ export default class AdvancedImageTool {
         input.id = `advanced-image-${key}-input`;
         input.type = type;
         input.value = this.data[key] || '';
-        input.classList.add('cdx-input');
+        input.classList.add('cdx-input', 'ob-input');
 
         input.addEventListener('input', () => {
             this.data[key] = input.value;
@@ -248,33 +254,34 @@ export default class AdvancedImageTool {
         if (!this.uploadArea) return;
 
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
-            this.uploadArea.addEventListener(eventName, this.preventDefaults, false);
+            this.uploadArea?.addEventListener(eventName, this.preventDefaults, false);
         });
 
         ['dragenter', 'dragover'].forEach((eventName) => {
-            this.uploadArea.addEventListener(
+            this.uploadArea?.addEventListener(
                 eventName,
                 () => {
-                    this.uploadArea.classList.add('advanced-image-upload-area--dragover');
+                    this.uploadArea?.classList.add('advanced-image-upload-area--dragover');
                 },
                 false,
             );
         });
 
         ['dragleave', 'drop'].forEach((eventName) => {
-            this.uploadArea.addEventListener(
+            this.uploadArea?.addEventListener(
                 eventName,
                 () => {
-                    this.uploadArea.classList.remove('advanced-image-upload-area--dragover');
+                    this.uploadArea?.classList.remove('advanced-image-upload-area--dragover');
                 },
                 false,
             );
         });
 
-        this.uploadArea.addEventListener(
+        this.uploadArea?.addEventListener(
             'drop',
             (e) => {
-                const files = e.dataTransfer?.files;
+                const dragEvent = e as DragEvent;
+                const files = dragEvent.dataTransfer?.files;
                 if (files && files.length > 0) {
                     const file = files[0];
                     if (file.type.startsWith('image/')) {
@@ -329,7 +336,12 @@ export default class AdvancedImageTool {
                 onSuccess: (response) => {
                     if (response.url) {
                         this.data.url = response.url;
-                        this.data.caption = file.name;
+                        this.data.mediaId = (response as any)?.media?.id || '';
+                        this.data.mimeType = (response as any)?.media?.mimeType || file.type || '';
+                        this.data.caption = (response as any)?.media?.caption || file.name;
+                        this.data.alt = (response as any)?.media?.altText || this.data.alt;
+                        this.data.width = (response as any)?.media?.width || this.data.width;
+                        this.data.height = (response as any)?.media?.height || this.data.height;
                         // match legacy format
                         this.data.file = { url: response.url };
                         this.renderImage();
@@ -441,7 +453,7 @@ export default class AdvancedImageTool {
             settingItem.setAttribute('data-item-name', setting.name);
             settingItem.setAttribute('title', setting.label);
 
-            if (this.data[setting.name]) {
+            if (this.data[setting.name as keyof AdvancedImageData]) {
                 settingItem.classList.add('ce-popover-item--active');
             }
 
@@ -453,7 +465,13 @@ export default class AdvancedImageTool {
             settingItem.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                this.data[setting.name] = !this.data[setting.name];
+
+                // Use a type-safe property assignment
+                const propName = setting.name as keyof AdvancedImageData;
+                if (typeof this.data[propName] === 'boolean') {
+                    (this.data as any)[propName] = !this.data[propName];
+                }
+
                 settingItem.classList.toggle('ce-popover-item--active');
 
                 // Use setTimeout to ensure DOM updates complete before EditorJS processes
@@ -484,7 +502,7 @@ export default class AdvancedImageTool {
             </div>
         `;
 
-        const select = aspectRatioItem.querySelector('.aspect-ratio-select') as HTMLSelectElement;
+        const select = aspectRatioItem.querySelector('.aspect-ratio-select') as unknown as HTMLSelectElement;
         if (select) {
             select.value = this.data.aspectRatio || 'original';
 
@@ -562,6 +580,8 @@ export default class AdvancedImageTool {
     static get sanitize() {
         return {
             url: {}, // Use default sanitizer
+            mediaId: true,
+            mimeType: true,
             caption: true,
             withBorder: true,
             withBackground: true,

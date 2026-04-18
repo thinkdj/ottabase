@@ -125,7 +125,7 @@ const Spoiler: RenderFn<{ text?: string }> = ({ data, className = '' }) => {
                 onMouseMove={handleMouseMove}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
-                className={`${className} cursor-pointer select-none inline-block px-1.5 py-0.5 rounded bg-yellow-50 dark:bg-yellow-900/20 transition-colors relative focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800`}
+                className={`${className} cursor-pointer select-none inline-block px-1.5 py-0.5 rounded bg-yellow-50 dark:bg-yellow-900/20 transition-colors relative focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 dark:focus:ring-offset-background`}
                 role="button"
                 tabIndex={0}
                 onKeyDown={handleKeyDown}
@@ -137,23 +137,19 @@ const Spoiler: RenderFn<{ text?: string }> = ({ data, className = '' }) => {
                 data-spoiler-content={spoilerText}
             >
                 {/* Always render content in HTML for SEO - CSS blur hides it visually */}
-                <span
-                    className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words"
-                    style={textStyle}
-                    itemProp="text"
-                >
+                <span className="text-foreground whitespace-pre-wrap break-words" style={textStyle} itemProp="text">
                     {spoilerText || 'Click to reveal'}
                 </span>
             </span>
             {/* Noscript fallback for crawlers/users without JS */}
             <noscript>
-                <span className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
+                <span className="text-foreground whitespace-pre-wrap break-words">
                     {spoilerText || 'Spoiler content'}
                 </span>
             </noscript>
             {showTooltip && !isRevealed && (
                 <div
-                    className="fixed z-50 px-2 py-1 text-xs text-white bg-gray-900 dark:bg-gray-800 rounded shadow-lg pointer-events-none whitespace-nowrap"
+                    className="fixed z-50 px-2 py-1 text-xs text-popover-foreground bg-popover rounded shadow-lg pointer-events-none whitespace-nowrap"
                     style={tooltipStyle}
                     role="tooltip"
                     aria-hidden="true"

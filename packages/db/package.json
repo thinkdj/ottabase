@@ -2,6 +2,26 @@
     "name": "@ottabase/db",
     "version": "1.0.0",
     "description": "Shared database layer for Ottabase applications - Prisma schema configuration, Drizzle driver support, and ORM setup",
+    "keywords": [
+        "database",
+        "drizzle",
+        "prisma",
+        "d1",
+        "mongodb",
+        "cloudflare",
+        "orm"
+    ],
+    "author": "thinkdj",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/db"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/db#readme",
     "main": "dist/index.js",
     "module": "dist/index.mjs",
     "types": "dist/index.d.ts",

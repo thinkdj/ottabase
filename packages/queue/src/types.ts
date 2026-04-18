@@ -70,6 +70,8 @@ export interface DispatchOptions {
     uniqueKey?: string;
     /** Time window in seconds for deduplication (default: 300 = 5 min) */
     uniqueFor?: number;
+    /** Organization ID for scoped deduplication (optional) */
+    organizationId?: string;
 
     // Job chaining
     /** Jobs to dispatch after this job succeeds */

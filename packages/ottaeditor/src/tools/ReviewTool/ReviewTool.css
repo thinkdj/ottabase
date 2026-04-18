@@ -1,0 +1,208 @@
+/* Review Tool - custom/overrides only */
+
+.cdx-review__wrapper {
+    background: hsl(var(--muted) / 0.5);
+}
+
+.cdx-review__section-label {
+    margin-top: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid hsl(var(--border) / 0.5);
+}
+
+.cdx-review__textarea {
+    min-height: 60px;
+}
+
+.cdx-review__image-area {
+    min-height: 80px;
+    border: 2px dashed hsl(var(--border));
+    border-radius: 8px;
+    background: hsl(var(--muted) / 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+    position: relative;
+}
+
+.cdx-review__image-area:hover {
+    border-color: hsl(var(--primary) / 0.5);
+    background: hsl(var(--muted) / 0.5);
+}
+
+.cdx-review__image-area--has-image {
+    border-style: solid;
+    min-height: auto;
+}
+
+.cdx-review__image-area img {
+    max-width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+}
+
+.cdx-review__image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    color: hsl(var(--muted-foreground));
+    font-size: 12px;
+}
+
+.cdx-review__image-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.cdx-review__link-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.cdx-review__rating-row {
+    display: grid;
+    grid-template-columns: 1fr 80px 100px;
+    gap: 8px;
+    align-items: end;
+}
+
+.cdx-review__stars {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 4px 0;
+}
+
+.cdx-review__star {
+    cursor: pointer;
+    font-size: 18px;
+    color: hsl(var(--muted-foreground) / 0.3);
+    transition: color 0.15s ease;
+    user-select: none;
+    line-height: 1;
+}
+
+.cdx-review__star--filled {
+    color: hsl(var(--warning, 43 96% 56%));
+}
+
+.cdx-review__star--half {
+    color: hsl(var(--warning, 43 96% 56%));
+    opacity: 0.5;
+}
+
+.cdx-review__rating-value {
+    width: 100%;
+}
+
+.cdx-review__rating-config {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.cdx-review__proscons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.cdx-review__proscons-col {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cdx-review__proscons-header {
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cdx-review__proscons-header--pro {
+    color: hsl(var(--success, 142 71% 45%));
+}
+
+.cdx-review__proscons-header--con {
+    color: hsl(var(--destructive));
+}
+
+.cdx-review__proscons-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cdx-review__proscons-item input {
+    flex: 1;
+}
+
+.cdx-review__proscons-remove {
+    background: none;
+    border: none;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px;
+    line-height: 1;
+    border-radius: 2px;
+}
+
+.cdx-review__proscons-remove:hover {
+    color: hsl(var(--destructive));
+}
+
+.cdx-review__proscons-add {
+    background: none;
+    border: 1px dashed hsl(var(--border));
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.cdx-review__proscons-add:hover {
+    border-color: hsl(var(--primary));
+    color: hsl(var(--primary));
+    background: hsl(var(--primary) / 0.05);
+}
+
+@media (max-width: 480px) {
+    .cdx-review__proscons {
+        grid-template-columns: 1fr;
+    }
+
+    .cdx-review__link-row {
+        grid-template-columns: 1fr;
+    }
+
+    .cdx-review__rating-row {
+        grid-template-columns: 1fr 1fr;
+    }
+}

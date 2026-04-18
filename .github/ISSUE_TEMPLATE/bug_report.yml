@@ -1,0 +1,77 @@
+name: Bug Report
+description: Report a bug to help improve Ottabase.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for taking the time to report a bug.
+
+              Please include enough detail to reproduce the problem in a clean Ottabase setup.
+    - type: checkboxes
+      id: checks
+      attributes:
+          label: Before you continue
+          options:
+              - label: I searched existing issues and did not find a duplicate.
+                required: true
+              - label: I read the relevant README or documentation for the affected package/app.
+                required: true
+    - type: textarea
+      id: description
+      attributes:
+          label: What happened?
+          description: Describe the bug and the incorrect behavior you observed.
+          placeholder: Tell us what broke and what you expected instead.
+      validations:
+          required: true
+    - type: textarea
+      id: steps
+      attributes:
+          label: Steps to reproduce
+          description: Provide a minimal, reliable reproduction path.
+          placeholder: |
+              1. Go to ...
+              2. Run ...
+              3. Open ...
+              4. See error ...
+      validations:
+          required: true
+    - type: input
+      id: affected-package
+      attributes:
+          label: Affected package or app
+          description: "Example: @ottabase/ottaorm, @ottabase/auth, apps/otta-web"
+          placeholder: "@ottabase/..."
+      validations:
+          required: true
+    - type: textarea
+      id: environment
+      attributes:
+          label: Environment
+          description: Share the environment where the bug occurs.
+          value: |
+              - OS:
+              - Node.js:
+              - pnpm:
+              - Wrangler:
+              - Browser (if applicable):
+          render: markdown
+      validations:
+          required: true
+    - type: textarea
+      id: logs
+      attributes:
+          label: Relevant logs or output
+          description: Paste any stack traces, terminal output, or failing responses.
+          render: shell
+      validations:
+          required: false
+    - type: textarea
+      id: additional-context
+      attributes:
+          label: Additional context
+          description: Add screenshots, links, or other context if useful.
+      validations:
+          required: false

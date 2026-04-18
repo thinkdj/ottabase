@@ -1,14 +1,6 @@
+import { DEFAULT_LAYOUT, isValidLayoutConfig, isValidPathPattern, mergeLayoutConfig } from '@ottabase/ottalayout';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LAYOUT } from '../layout';
-import {
-    isValidBrandTheme,
-    isValidJSON,
-    isValidLayoutConfig,
-    isValidPathPattern,
-    isValidTokenColors,
-    mergeLayoutConfig,
-    safeParseJSON,
-} from '../validators';
+import { isValidBrandTheme, isValidJSON, isValidTokenColors, safeParseJSON } from '../validators';
 
 // ===========================================================================
 // mergeLayoutConfig
@@ -25,7 +17,7 @@ describe('mergeLayoutConfig', () => {
 
     it('preserves valid partial values', () => {
         const partial = { header: 'minimal', density: 'compact' } as unknown;
-        const result = mergeLayoutConfig(partial);
+        const result = mergeLayoutConfig(partial as any);
         expect(result.header).toBe('minimal');
         expect(result.density).toBe('compact');
         expect(result.navigation).toBe(DEFAULT_LAYOUT.navigation);
@@ -34,12 +26,12 @@ describe('mergeLayoutConfig', () => {
     });
 
     it('defaults invalid header to default', () => {
-        const result = mergeLayoutConfig({ header: 'invalid' } as unknown);
+        const result = mergeLayoutConfig({ header: 'invalid' } as any);
         expect(result.header).toBe(DEFAULT_LAYOUT.header);
     });
 
     it('defaults invalid footer to default', () => {
-        const result = mergeLayoutConfig({ footer: 'yes' } as unknown);
+        const result = mergeLayoutConfig({ footer: 'yes' } as any);
         expect(result.footer).toBe(DEFAULT_LAYOUT.footer);
     });
 
@@ -52,7 +44,15 @@ describe('mergeLayoutConfig', () => {
             density: 'compact',
         };
         const result = mergeLayoutConfig(partial);
-        expect(result).toEqual(partial);
+        // Check all required fields match partial
+        expect(result.header).toBe('none');
+        expect(result.navigation).toBe('drawer');
+        expect(result.contentWidth).toBe('full');
+        expect(result.footer).toBe(false);
+        expect(result.density).toBe('compact');
+        // Extended fields get defaults
+        expect(result.headerSticky).toBeDefined();
+        expect(result.sidebarWidth).toBeDefined();
     });
 });
 

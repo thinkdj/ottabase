@@ -5,7 +5,9 @@
  * Works on Windows, macOS, and Linux
  */
 
+const http = require('http');
 const { spawn } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 
 // ANSI color codes for better terminal output
@@ -26,13 +28,35 @@ const log = {
     backend: (msg) => console.log(`${colors.cyan}[BE]${colors.reset} ${msg}`),
 };
 
-// Determine the correct shell based on OS
+// Determine the current platform
 const isWindows = process.platform === 'win32';
-const shell = isWindows ? 'powershell.exe' : '/bin/sh';
-const shellArgs = isWindows ? ['-Command'] : ['-c'];
 
 // App directory
-const appDir = path.join(__dirname, 'apps/ottabase-template-app-tanstack');
+const appDir = path.join(__dirname, 'apps/otta-web');
+
+function ensureDistDirectory() {
+    const distDir = path.join(appDir, 'dist');
+    const indexHtmlPath = path.join(distDir, 'index.html');
+
+    try {
+        if (!fs.existsSync(distDir)) {
+            fs.mkdirSync(distDir, { recursive: true });
+            log.info(`Created missing dist directory: ${distDir}`);
+        }
+
+        if (!fs.existsSync(indexHtmlPath)) {
+            fs.writeFileSync(
+                indexHtmlPath,
+                '<html>created by dev.js as placeholder for wrangler in development mode</html>\n',
+                'utf-8',
+            );
+            log.info('Created missing dist/index.html placeholder for Wrangler');
+        }
+    } catch (error) {
+        log.error(`Failed to prepare dist directory: ${error.message}`);
+        process.exit(1);
+    }
+}
 
 // Default ports
 const PORT_FE = process.env.PORT_FE || 3003;
@@ -41,7 +65,123 @@ const PORT_BE = process.env.PORT_BE || 3004;
 // Check for --noopen flag
 const noOpen = process.argv.includes('--noopen');
 
-log.info('Starting TanStack app in development mode...');
+const FRONTEND_URL = `http://127.0.0.1:${PORT_FE}`;
+const BACKEND_URL = `http://127.0.0.1:${PORT_BE}`;
+const BACKEND_HEALTH_URL = `${BACKEND_URL}/api/health`;
+
+function waitForHttpReady(url, label, { timeoutMs = 90000, intervalMs = 250, acceptStatuses = [200] } = {}) {
+    const startedAt = Date.now();
+
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        let probeTimer = null;
+
+        const settle = (callback, value) => {
+            if (settled) {
+                return;
+            }
+
+            settled = true;
+            if (probeTimer) {
+                clearTimeout(probeTimer);
+                probeTimer = null;
+            }
+            callback(value);
+        };
+
+        const scheduleNextCheck = () => {
+            if (settled) {
+                return;
+            }
+
+            probeTimer = setTimeout(check, intervalMs);
+        };
+
+        const check = () => {
+            if (settled) {
+                return;
+            }
+
+            const request = http.get(url, (response) => {
+                response.resume();
+
+                if (acceptStatuses.includes(response.statusCode || 0)) {
+                    settle(resolve);
+                    return;
+                }
+
+                if (Date.now() - startedAt >= timeoutMs) {
+                    settle(
+                        reject,
+                        new Error(
+                            `${label} did not become ready within ${timeoutMs}ms (last status: ${response.statusCode})`,
+                        ),
+                    );
+                    return;
+                }
+
+                scheduleNextCheck();
+            });
+
+            request.on('error', () => {
+                if (Date.now() - startedAt >= timeoutMs) {
+                    settle(reject, new Error(`${label} did not become ready within ${timeoutMs}ms`));
+                    return;
+                }
+
+                scheduleNextCheck();
+            });
+
+            request.setTimeout(2000, () => {
+                request.destroy(new Error(`${label} probe timed out`));
+            });
+        };
+
+        check();
+    });
+}
+
+function openBrowser(url) {
+    if (noOpen) {
+        return;
+    }
+
+    if (isWindows) {
+        const child = spawn('cmd.exe', ['/c', 'start', '', url], {
+            detached: true,
+            stdio: 'ignore',
+        });
+        child.unref();
+        return;
+    }
+
+    const command = process.platform === 'darwin' ? 'open' : 'xdg-open';
+    const child = spawn(command, [url], {
+        detached: true,
+        stdio: 'ignore',
+    });
+    child.unref();
+}
+
+function spawnPnpm(args) {
+    if (isWindows) {
+        return spawn('cmd.exe', ['/d', '/s', '/c', `pnpm ${args.join(' ')}`], {
+            cwd: appDir,
+            stdio: 'pipe',
+            env: { ...process.env, PORT_FE, PORT_BE },
+        });
+    }
+
+    return spawn('pnpm', args, {
+        cwd: appDir,
+        stdio: 'pipe',
+        env: { ...process.env, PORT_FE, PORT_BE },
+    });
+}
+
+ensureDistDirectory();
+
+log.info('Starting Vite app in development mode...');
 log.info(`Platform: ${process.platform}`);
 log.info(`App directory: ${appDir}`);
 log.info(`Frontend Port: ${PORT_FE}`);
@@ -52,22 +192,12 @@ if (noOpen) {
 
 // Start frontend (Vite)
 log.info('Starting frontend (Vite)...');
-const frontendArgs = noOpen ? ['exec', 'vite'] : ['dev'];
-const frontend = spawn(isWindows ? 'pnpm.cmd' : 'pnpm', frontendArgs, {
-    cwd: appDir,
-    stdio: 'pipe',
-    shell: true,
-    env: { ...process.env, PORT_FE, PORT_BE },
-});
+const frontendArgs = ['exec', 'vite'];
+const frontend = spawnPnpm(frontendArgs);
 
 // Start backend (Wrangler)
 log.info('Starting backend (Wrangler)...');
-const backend = spawn(isWindows ? 'pnpm.cmd' : 'pnpm', ['dev:worker', '--', '--port', PORT_BE], {
-    cwd: appDir,
-    stdio: 'pipe',
-    shell: true,
-    env: { ...process.env, PORT_FE, PORT_BE },
-});
+const backend = spawnPnpm(['dev:worker', '--', '--port', PORT_BE]);
 
 // Handle frontend output
 frontend.stdout.on('data', (data) => {
@@ -121,7 +251,20 @@ process.on('SIGTERM', () => {
     process.exit(0);
 });
 
-log.success('Both processes started successfully!');
-log.info(`Frontend: http://127.0.0.1:${PORT_FE}`);
-log.info(`Backend: http://127.0.0.1:${PORT_BE}`);
-log.info('Press Ctrl+C to stop both processes');
+(async () => {
+    try {
+        log.info('Waiting for frontend and backend readiness...');
+        await Promise.all([
+            waitForHttpReady(FRONTEND_URL, 'Frontend', { acceptStatuses: [200] }),
+            waitForHttpReady(BACKEND_HEALTH_URL, 'Backend', { acceptStatuses: [200] }),
+        ]);
+        log.success('Frontend and backend are ready.');
+        log.info(`Frontend: ${FRONTEND_URL}`);
+        log.info(`Backend: ${BACKEND_URL}`);
+        log.info('Press Ctrl+C to stop both processes');
+        openBrowser(FRONTEND_URL);
+    } catch (error) {
+        log.error(error instanceof Error ? error.message : String(error));
+        log.info('Processes are still running. Inspect the logs above for the blocking startup issue.');
+    }
+})();

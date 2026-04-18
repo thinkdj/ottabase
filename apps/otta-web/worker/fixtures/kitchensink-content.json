@@ -1,0 +1,517 @@
+{
+    "time": 1775651802672,
+    "blocks": [
+        {
+            "id": "f9FE1I4QEv",
+            "type": "header",
+            "data": {
+                "text": "The Ottablog Kitchensink",
+                "level": 1
+            }
+        },
+        {
+            "id": "P8cvY45gey",
+            "type": "paragraph",
+            "data": {
+                "text": "This post demonstrates <b>every block type</b> available in OttaEditor. Use it to test rendering, styling, and export."
+            }
+        },
+        {
+            "id": "X1kXlgRZH9",
+            "type": "header",
+            "data": {
+                "text": "Text Blocks",
+                "level": 2
+            }
+        },
+        {
+            "id": "X9m30DLRk-",
+            "type": "paragraph",
+            "data": {
+                "text": "A regular paragraph with <i>italic</i>, <b>bold</b>, and <code>inline code</code> formatting."
+            }
+        },
+        {
+            "id": "hKv1V2gWKg",
+            "type": "quote",
+            "data": {
+                "text": "The best way to predict the future is to invent it.",
+                "caption": "Alan Kay",
+                "alignment": "left"
+            }
+        },
+        {
+            "id": "GP9bA9GgyH",
+            "type": "warning",
+            "data": {
+                "title": "Important Note",
+                "message": "Always backup your data before making changes to production systems."
+            }
+        },
+        {
+            "id": "wekwdC8vze",
+            "type": "delimiter",
+            "data": {}
+        },
+        {
+            "id": "CAky9wkOVK",
+            "type": "header",
+            "data": {
+                "text": "Lists",
+                "level": 2
+            }
+        },
+        {
+            "id": "tw8eFgqcWf",
+            "type": "list",
+            "data": {
+                "style": "ordered",
+                "items": [
+                    {
+                        "content": "First item",
+                        "items": []
+                    },
+                    {
+                        "content": "Second item with nested",
+                        "items": [
+                            {
+                                "content": "Nested item A",
+                                "items": []
+                            },
+                            {
+                                "content": "Nested item B",
+                                "items": []
+                            }
+                        ]
+                    },
+                    {
+                        "content": "Third item",
+                        "items": []
+                    }
+                ]
+            }
+        },
+        {
+            "id": "HY-N5zYh2g",
+            "type": "checklist",
+            "data": {
+                "items": [
+                    {
+                        "text": "Write the code",
+                        "checked": true
+                    },
+                    {
+                        "text": "Write the tests",
+                        "checked": true
+                    },
+                    {
+                        "text": "Deploy to production",
+                        "checked": false
+                    }
+                ]
+            }
+        },
+        {
+            "id": "RRc4ix3vB5",
+            "type": "header",
+            "data": {
+                "text": "Code &amp; Data",
+                "level": 2
+            }
+        },
+        {
+            "id": "UNPLNTvBzH",
+            "type": "code",
+            "data": {
+                "code": "function greet(name: string): string {\n  return `Hello, ${name}!`;\n}\n\nconsole.log(greet(\"World\"));",
+                "language": "javascript",
+                "showLineNumbers": true,
+                "lineNumberStart": 1,
+                "maxHeight": "200px",
+                "wrapLongLines": false,
+                "hideHeader": false,
+                "hideCopyButton": false,
+                "highlightLines": "",
+                "tabSize": 4,
+                "collapsible": false,
+                "collapsibleThreshold": 20
+            }
+        },
+        {
+            "id": "BH3G4Jg6Uw",
+            "type": "table",
+            "data": {
+                "withHeadings": true,
+                "stretched": false,
+                "content": [
+                    ["Feature", "Status", "Notes"],
+                    ["Export JSON", "Done", "Via useOttaEditor"],
+                    ["Export Markdown", "Done", "All 20+ block types"],
+                    ["Undo/Redo", "Done", "Ctrl+Z / Ctrl+Shift+Z"]
+                ]
+            }
+        },
+        {
+            "id": "x7Jnwh2DIY",
+            "type": "header",
+            "data": {
+                "text": "Visual &amp; Embed Blocks",
+                "level": 2
+            }
+        },
+        {
+            "id": "_jVRRfLo54",
+            "type": "raw",
+            "data": {
+                "html": "<div><strong>Raw HTML block:</strong> custom markup rendered intentionally.</div>"
+            }
+        },
+        {
+            "id": "-lczZ8_LTp",
+            "type": "beforeAfter",
+            "data": {
+                "beforeUrl": "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=1200",
+                "afterUrl": "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=1200",
+                "beforeLabel": "Day",
+                "afterLabel": "Night",
+                "orientation": "horizontal",
+                "sliderPosition": 52,
+                "caption": "Before/After comparison block with interactive slider.",
+                "height": "420px",
+                "imageFit": "cover",
+                "beforePosition": "center",
+                "afterPosition": "center"
+            }
+        },
+        {
+            "id": "tGuxrS0uU-",
+            "type": "map",
+            "data": {
+                "url": "https://www.openstreetmap.org/#map=13/47.3769/8.5417",
+                "provider": "openstreetmap",
+                "theme": "default",
+                "height": 340,
+                "caption": "Map block centered on Zurich.",
+                "zoom": 13
+            }
+        },
+        {
+            "id": "GQNWwAFXSK",
+            "type": "mediaEmbed",
+            "data": {
+                "url": "https://samplelib.com/lib/preview/mp4/sample-5s.mp4",
+                "title": "Short Media Embed Demo",
+                "caption": "MediaEmbed block for non-image assets.",
+                "mediaId": "",
+                "mimeType": "video/mp4",
+                "mediaKind": "video",
+                "thumbnailUrl": "",
+                "previewUrl": ""
+            }
+        },
+        {
+            "id": "yWXVRnpj9z",
+            "type": "imageHotspots",
+            "data": {
+                "imageUrl": "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=1600",
+                "alt": "Urban cityscape at dusk",
+                "caption": "Image hotspots block with click-to-reveal annotations.",
+                "hotspots": [
+                    {
+                        "id": "tower",
+                        "x": 7,
+                        "y": 20,
+                        "title": "Landmark Tower",
+                        "content": "The tallest building in the financial district."
+                    },
+                    {
+                        "id": "street",
+                        "x": 71,
+                        "y": 65,
+                        "title": "Main Avenue",
+                        "content": "The busiest street with shops and cafes."
+                    }
+                ],
+                "height": "420px",
+                "imageFit": "contain",
+                "imagePosition": "center"
+            }
+        },
+        {
+            "id": "B5Vica4TPW",
+            "type": "layout",
+            "data": {
+                "preset": "2-1",
+                "columns": [
+                    {
+                        "content": {
+                            "time": 1775651802672,
+                            "blocks": [
+                                {
+                                    "id": "hjc_iUuUxp",
+                                    "type": "header",
+                                    "data": {
+                                        "text": "Layout Column A",
+                                        "level": 3
+                                    }
+                                },
+                                {
+                                    "id": "U5ZnhWppnN",
+                                    "type": "paragraph",
+                                    "data": {
+                                        "text": "This is nested content inside a layout column. 67%"
+                                    }
+                                }
+                            ],
+                            "version": "2.31.0"
+                        }
+                    },
+                    {
+                        "content": {
+                            "time": 1775651802672,
+                            "blocks": [
+                                {
+                                    "id": "k089BxKCxO",
+                                    "type": "header",
+                                    "data": {
+                                        "text": "Layout Column B",
+                                        "level": 3
+                                    }
+                                },
+                                {
+                                    "id": "ftH1FwUQHJ",
+                                    "type": "paragraph",
+                                    "data": {
+                                        "text": "This is 33%"
+                                    }
+                                },
+                                {
+                                    "id": "BO9O_f0tKU",
+                                    "type": "checklist",
+                                    "data": {
+                                        "items": [
+                                            {
+                                                "text": "Nested blocks",
+                                                "checked": true
+                                            },
+                                            {
+                                                "text": "Responsive columns",
+                                                "checked": true
+                                            }
+                                        ]
+                                    }
+                                }
+                            ],
+                            "version": "2.31.0"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": "IPui901K4U",
+            "type": "header",
+            "data": {
+                "text": "Media",
+                "level": 2
+            }
+        },
+        {
+            "id": "w9u4YXNRj-",
+            "type": "mediaGallery",
+            "data": {
+                "title": "Urban Architecture",
+                "caption": "Layout preset = Mosaic",
+                "layout": "mosaic",
+                "items": [
+                    {
+                        "url": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=800",
+                        "altText": "Modern skyscraper",
+                        "caption": "Glass and steel tower",
+                        "mediaKind": "image",
+                        "title": ""
+                    },
+                    {
+                        "url": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800",
+                        "altText": "City at night",
+                        "caption": "Neon-lit streets",
+                        "mediaKind": "image",
+                        "title": ""
+                    },
+                    {
+                        "url": "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800",
+                        "altText": "Urban skyline",
+                        "caption": "Downtown panorama",
+                        "mediaKind": "image",
+                        "title": ""
+                    },
+                    {
+                        "url": "https://images.unsplash.com/photo-1444723121867-7a241cacace9?w=800",
+                        "altText": "Bridge at sunset",
+                        "caption": "Iconic city bridge",
+                        "mediaKind": "image",
+                        "title": ""
+                    }
+                ]
+            }
+        },
+        {
+            "id": "LuK1uW6oLA",
+            "type": "spoiler",
+            "data": {
+                "text": "Dont spoil "
+            }
+        },
+        {
+            "id": "JbmGCBfu9c",
+            "type": "header",
+            "data": {
+                "text": "Interactive Blocks",
+                "level": 2
+            }
+        },
+        {
+            "id": "T1acrJa6Xq",
+            "type": "faq",
+            "data": {
+                "style": "accordion",
+                "items": [
+                    {
+                        "question": "What is OttaEditor?",
+                        "answer": "OttaEditor is a flexible EditorJS wrapper with plugin management, undo/redo, and export capabilities."
+                    },
+                    {
+                        "question": "What export formats are supported?",
+                        "answer": "JSON and Markdown are supported out of the box."
+                    },
+                    {
+                        "question": "Is it production ready?",
+                        "answer": "Yes! It ships with undo/redo, export, and 20+ block types."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "X7CpiSibh7",
+            "type": "cta",
+            "data": {
+                "text": "Get Started with OttaEditor",
+                "url": "https://github.com/thinkdj/ottabase",
+                "style": "secondary",
+                "alignment": "center",
+                "openInNewTab": true,
+                "icon": ""
+            }
+        },
+        {
+            "id": "3uE7pFAgbX",
+            "type": "header",
+            "data": {
+                "text": "Rich Content Blocks",
+                "level": 2
+            }
+        },
+        {
+            "id": "ITztlLrKWk",
+            "type": "testimonial",
+            "data": {
+                "quote": "OttaEditor has completely transformed our content workflow. The undo/redo and export features alone saved us hours every week.",
+                "authorName": "Sarah Chen",
+                "authorRole": "Head of Content",
+                "authorCompany": "TechCorp",
+                "rating": 5,
+                "variant": "card",
+                "verified": true
+            }
+        },
+        {
+            "id": "HpqxU1KdBh",
+            "type": "review",
+            "data": {
+                "image": "",
+                "title": "OttaEditor",
+                "content": "",
+                "linkUrl": "",
+                "linkLabel": "",
+                "pros": ["Easy plugin system", "Undo/redo built in", "Great export options", "Theme-aware UI"],
+                "cons": ["EditorJS dependency", "React only"],
+                "rating": 4.5,
+                "maxStars": 5,
+                "allowHalfStars": true,
+                "summary": "A powerful EditorJS wrapper with all the features you need for production content creation.",
+                "compact": false
+            }
+        },
+        {
+            "id": "T-kbyyxqFC",
+            "type": "steps",
+            "data": {
+                "items": [
+                    {
+                        "title": "Install OttaEditor",
+                        "content": "Add @ottabase/ottaeditor to your project."
+                    },
+                    {
+                        "title": "Configure Plugins",
+                        "content": "Use defaultPlugins: \"all\" for the full suite."
+                    },
+                    {
+                        "title": "Add to your page",
+                        "content": "Use useOttaEditor() hook and attach the ref."
+                    },
+                    {
+                        "title": "Export content",
+                        "content": "Call exportJSON() or exportMarkdown() from the hook."
+                    }
+                ]
+            }
+        },
+        {
+            "id": "vWqf8yzgLp",
+            "type": "disclosure",
+            "data": {
+                "aiEnabled": true,
+                "aiLevel": "slight",
+                "aiPercent": 50,
+                "sponsoredEnabled": false,
+                "sponsoredType": "preset",
+                "sponsoredText": ""
+            }
+        },
+        {
+            "id": "IGLbnLRkxg",
+            "type": "header",
+            "data": {
+                "text": "References",
+                "level": 2
+            }
+        },
+        {
+            "id": "sjbx1oHl7K",
+            "type": "references",
+            "data": {
+                "style": "numbered",
+                "items": [
+                    {
+                        "id": "1",
+                        "url": "https://editorjs.io",
+                        "title": "Editor.js",
+                        "authors": "CodeX Team",
+                        "year": "2024",
+                        "note": "The base editor this is built on."
+                    },
+                    {
+                        "id": "2",
+                        "url": "https://unsplash.com",
+                        "title": "Unsplash",
+                        "authors": "Unsplash Inc.",
+                        "year": "2024",
+                        "accessedDate": "2024-04-01",
+                        "note": "Free high-resolution photos."
+                    }
+                ]
+            }
+        }
+    ],
+    "version": "2.31.0"
+}

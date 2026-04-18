@@ -4,7 +4,7 @@
  * Junction table linking Posts to PostTags (many-to-many relationship).
  */
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
-import { postTagLinksTable, type NewPostTagLinkType, type PostTagLinkType } from './PostTagLink.schema';
+import { postTagLinksTable } from './PostTagLink.schema';
 
 export { postTagLinksTable, type NewPostTagLinkType, type PostTagLinkType } from './PostTagLink.schema';
 
@@ -14,11 +14,22 @@ export { postTagLinksTable, type NewPostTagLinkType, type PostTagLinkType } from
 export class PostTagLink extends BaseModel {
     static entity = 'post_tag_links';
     static table = postTagLinksTable;
-    static primaryKey = 'postId'; // Composite key, using postId as primary
+    static primaryKey = 'id';
     static packageName = '@ottabase/ottablog';
     static packageType: PackageType = 'package';
 
+    static writable = {
+        create: ['postId', 'tagId'],
+        update: [] as string[],
+    };
+
     protected static fields: ModelFields = {
+        id: {
+            type: 'id',
+            primaryKey: true,
+            editable: false,
+            uiConfig: { label: 'ID' },
+        },
         postId: {
             type: 'string',
             editable: false,
@@ -55,7 +66,7 @@ export class PostTagLink extends BaseModel {
     static async unlinkTag(postId: string, tagId: string): Promise<void> {
         const link = await this.first({ postId, tagId });
         if (link) {
-            await this.delete(link.get('postId'));
+            await this.delete(link.get('id'));
         }
     }
 

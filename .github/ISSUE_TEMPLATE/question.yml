@@ -1,0 +1,45 @@
+name: Help / Question
+description: Ask a usage, setup, or architecture question about Ottabase.
+title: "[Question]: "
+labels: ["question"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Use this form for support and usage questions.
+
+              For bugs, use the bug report form. For product ideas, use the feature request form.
+    - type: textarea
+      id: question
+      attributes:
+          label: Your question
+          description: Ask your question clearly and include the outcome you want.
+      validations:
+          required: true
+    - type: input
+      id: context-package
+      attributes:
+          label: Related package or app
+          description: If relevant, specify the package or app you are working with.
+          placeholder: "@ottabase/..."
+      validations:
+          required: false
+    - type: textarea
+      id: context
+      attributes:
+          label: What you already tried
+          description: Share documentation you read, commands you ran, and where you are stuck.
+      validations:
+          required: false
+    - type: textarea
+      id: environment
+      attributes:
+          label: Environment
+          value: |
+              - OS:
+              - Node.js:
+              - pnpm:
+              - App/package:
+          render: markdown
+      validations:
+          required: false

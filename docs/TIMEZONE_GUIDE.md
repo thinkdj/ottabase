@@ -624,5 +624,5 @@ For issues or questions:
 ---
 
 **Package**: `@ottabase/utils/timezone`  
-**Version**: 0.1.0  
+**Version**: 1.0.0  
 **License**: MIT

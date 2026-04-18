@@ -1,0 +1,358 @@
+/* Before/After Slider Tool - custom/overrides only */
+
+.cdx-before-after__url-row,
+.cdx-before-after__label-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.cdx-before-after__options-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+/* ── Input with Gallery Button ───────────────────────────────────────────── */
+
+.cdx-before-after__input-with-gallery {
+    display: flex;
+    gap: 4px;
+}
+
+.cdx-before-after__input-with-gallery .ob-input {
+    flex: 1;
+}
+
+.cdx-before-after__gallery-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    flex-shrink: 0;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--input));
+    border-radius: 4px;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cdx-before-after__gallery-btn:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    border-color: hsl(var(--ring));
+}
+
+.cdx-before-after__gallery-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* ── Orientation Toggle ──────────────────────────────────────────────────── */
+
+.cdx-before-after__orientation-toggle {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    background: hsl(var(--muted));
+    border-radius: 6px;
+}
+
+.cdx-before-after__orientation-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cdx-before-after__orientation-btn:hover {
+    color: hsl(var(--foreground));
+    background: hsl(var(--background) / 0.5);
+}
+
+.cdx-before-after__orientation-btn--active {
+    background: hsl(var(--background));
+    color: hsl(var(--primary));
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+}
+
+.cdx-before-after__orientation-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.cdx-before-after__slider-input {
+    width: 100%;
+    accent-color: hsl(var(--primary));
+    padding: 4px 0 !important;
+    border: none !important;
+    background: transparent !important;
+}
+
+/* ── Height / Image Fit Row ──────────────────────────────────────────────── */
+
+.cdx-before-after__size-row {
+    display: flex;
+    gap: 12px;
+    align-items: start;
+}
+
+.cdx-before-after__size-row > .ob-input-group:first-child {
+    width: 200px;
+    flex-shrink: 0;
+}
+
+.cdx-before-after__fit-toggle {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    background: hsl(var(--muted));
+    border-radius: 6px;
+    height: 42px; /* ~matching with input */
+    box-sizing: border-box;
+}
+
+.cdx-before-after__fit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: hsl(var(--muted-foreground));
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cdx-before-after__fit-btn:hover {
+    color: hsl(var(--foreground));
+    background: hsl(var(--background) / 0.5);
+}
+
+.cdx-before-after__fit-btn--active {
+    background: hsl(var(--background));
+    color: hsl(var(--primary));
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+}
+
+/* ── Size Controls (single row above preview) ───────────────────────────── */
+
+.cdx-before-after__size-controls {
+    margin-top: 12px;
+}
+
+/* ── Position Grid (3x3) ─────────────────────────────────────────────────── */
+
+.cdx-before-after__position-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    width: 72px;
+    height: 72px;
+    padding: 2px;
+    background: hsl(var(--muted));
+    border-radius: 6px;
+}
+
+.cdx-before-after__position-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+.cdx-before-after__position-btn::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: hsl(var(--muted-foreground) / 0.4);
+    transition: all 0.15s ease;
+}
+
+.cdx-before-after__position-btn:hover::before {
+    background: hsl(var(--foreground) / 0.6);
+    transform: scale(1.2);
+}
+
+.cdx-before-after__position-btn--active {
+    background: hsl(var(--background));
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+}
+
+.cdx-before-after__position-btn--active::before {
+    background: hsl(var(--primary));
+    width: 8px;
+    height: 8px;
+}
+
+/* ── Preview Container ──────────────────────────────────────────────────── */
+
+.cdx-before-after__preview {
+    margin-top: 12px;
+}
+
+.cdx-before-after__container {
+    position: relative;
+    width: 100%;
+    min-height: 200px;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--muted) / 0.3);
+    cursor: ew-resize;
+    user-select: none;
+    touch-action: none;
+}
+
+.cdx-before-after__container--vertical {
+    cursor: ns-resize;
+}
+
+/* Cover mode: images fill container */
+.cdx-before-after__container--cover .cdx-before-after__after {
+    height: 100%;
+    object-fit: cover;
+}
+
+/* After image: full width/height base layer */
+.cdx-before-after__after {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0; /* Reset prose styles */
+    pointer-events: none;
+    object-fit: contain;
+}
+
+/* Before image: clipped overlay */
+.cdx-before-after__before {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.cdx-before-after__before img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    margin: 0; /* Reset prose styles */
+    object-fit: contain;
+}
+
+/* In cover mode, before image must match the after image's cover fit */
+.cdx-before-after__container--cover .cdx-before-after__before img {
+    object-fit: cover;
+}
+
+/* ── Drag Handle ────────────────────────────────────────────────────────── */
+
+.cdx-before-after__handle {
+    position: absolute;
+    background: hsl(var(--primary));
+    z-index: 10;
+    cursor: grab;
+    transition: box-shadow 0.15s ease;
+}
+
+.cdx-before-after__handle::before {
+    content: '';
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: hsl(var(--primary));
+    border: 3px solid hsl(var(--primary-foreground));
+    box-shadow: 0 2px 8px hsl(var(--foreground) / 0.2);
+}
+
+/* Horizontal handle: vertical bar with centered circle */
+.cdx-before-after__container:not(.cdx-before-after__container--vertical) .cdx-before-after__handle::before {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Vertical handle: horizontal bar with centered circle */
+.cdx-before-after__container--vertical .cdx-before-after__handle::before {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.cdx-before-after__handle:hover {
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.3);
+}
+
+.cdx-before-after__handle:active {
+    cursor: grabbing;
+}
+
+/* ── Labels ──────────────────────────────────────────────────────────────── */
+
+.cdx-before-after__label {
+    position: absolute;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: hsl(var(--primary-foreground));
+    background: hsl(var(--primary) / 0.85);
+    pointer-events: none;
+    z-index: 5;
+    backdrop-filter: blur(4px);
+}
+
+.cdx-before-after__label--before {
+    top: 12px;
+    left: 12px;
+}
+
+.cdx-before-after__label--after {
+    top: 12px;
+    right: 12px;
+}
+
+/* Vertical: labels at top-left and bottom-left */
+.cdx-before-after__container--vertical .cdx-before-after__label--before {
+    top: 12px;
+    left: 12px;
+}
+
+.cdx-before-after__container--vertical .cdx-before-after__label--after {
+    top: auto;
+    bottom: 12px;
+    left: 12px;
+    right: auto;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+    .cdx-before-after__url-row,
+    .cdx-before-after__label-row,
+    .cdx-before-after__options-row {
+        grid-template-columns: 1fr;
+    }
+}

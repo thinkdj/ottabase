@@ -1,0 +1,64 @@
+name: Feature Request
+description: Suggest a feature, package improvement, or product enhancement for Ottabase.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for suggesting an improvement.
+
+              Please focus on the user problem first, then the proposed solution.
+    - type: textarea
+      id: problem
+      attributes:
+          label: Problem or use case
+          description: What are you trying to accomplish, and what is missing today?
+          placeholder: Describe the user need or workflow gap.
+      validations:
+          required: true
+    - type: textarea
+      id: proposal
+      attributes:
+          label: Proposed solution
+          description: Describe the feature or change you want to see.
+      validations:
+          required: true
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: Alternatives considered
+          description: Describe workarounds or other approaches you evaluated.
+      validations:
+          required: false
+    - type: dropdown
+      id: area
+      attributes:
+          label: Area
+          description: Which part of Ottabase is this most related to?
+          options:
+              - Core framework
+              - OttaORM
+              - Auth / RBAC
+              - Cloudflare / infrastructure
+              - UI components
+              - Docs / examples
+              - Package publishing / OSS
+              - Other
+      validations:
+          required: true
+    - type: input
+      id: affected-package
+      attributes:
+          label: Affected package or app
+          description: If applicable, specify the package or app.
+          placeholder: "@ottabase/..."
+      validations:
+          required: false
+    - type: textarea
+      id: additional-context
+      attributes:
+          label: Additional context
+          description: Add mockups, references, examples, or related issues.
+      validations:
+          required: false

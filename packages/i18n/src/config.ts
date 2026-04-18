@@ -38,6 +38,9 @@ export const languageNames: Record<SupportedLanguage, string> = {
     de: 'Deutsch',
 };
 
+/** Default localStorage key for language persistence */
+export const DEFAULT_LANGUAGE_STORAGE_KEY = 'ottabase.language';
+
 export interface InitI18nOptions {
     /**
      * Default/fallback language when none is detected or persisted.
@@ -50,6 +53,8 @@ export interface InitI18nOptions {
     fallbackLng?: string;
     debug?: boolean;
     resources?: Resource;
+    /** localStorage key for language detection/cache. Default: ottabase.language */
+    lookupLocalStorage?: string;
 }
 
 let detectorAdded = false;
@@ -89,7 +94,7 @@ export const initI18n = async (options?: InitI18nOptions): Promise<typeof i18n> 
         detection: {
             order: ['localStorage', 'navigator'],
             caches: ['localStorage'],
-            lookupLocalStorage: 'i18nextLng',
+            lookupLocalStorage: options?.lookupLocalStorage ?? DEFAULT_LANGUAGE_STORAGE_KEY,
         },
     });
 

@@ -6,16 +6,26 @@
 //   • Fallback theme for graceful degradation
 //   • Route matching cache for performance
 //   • CSS validation and debounced injection
+//   • Per-route token overrides (applied on top of brand kit theme)
 // ---------------------------------------------------------------------------
 
 'use client';
 
-import type { LayoutConfig, ResolvedBrandTheme } from '@ottabase/brand-engine';
-import { applyBrandTheme, CRITICAL_STYLE_ID, DEFAULT_LAYOUT, pathPatternToRegex } from '@ottabase/brand-engine';
+import type { ResolvedBrandTheme } from '@ottabase/brand-engine';
+import { deepMerge } from '@ottabase/brand-engine';
+import type { LayoutConfig } from '@ottabase/ottalayout';
+import { DEFAULT_LAYOUT, pathPatternToRegex } from '@ottabase/ottalayout';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 /** Route mapping shape (expanded form) */
-export type RouteMapping = { pathPattern: string; layoutTemplateId: string; brandKitId: string; priority: number };
+export type RouteMapping = {
+    pathPattern: string;
+    layoutTemplateId: string;
+    brandKitId: string;
+    priority: number;
+    /** Optional per-route token overrides (partial DesignTokens JSON) */
+    tokenOverridesJson?: string | null;
+};
 
 /**
  * Validates CSS syntax using Constructable Stylesheet API when available.
@@ -74,54 +84,144 @@ function createDebounce(fn: (css: string) => void, delay: number) {
     };
 }
 
+/** Route match result from the cached matcher */
+interface RouteMatchResult {
+    layoutTemplateId: string;
+    brandKitId: string;
+    tokenOverridesJson?: string | null;
+}
+
+/** Max paths to cache before LRU eviction (handles dynamic routes, query params) */
+const MAX_PATH_CACHE_SIZE = 1000;
+
+/** Max token override merges to cache (per brandKitId + overrides combo) */
+const MAX_OVERRIDE_CACHE_SIZE = 500;
+
+/** Clear token override cache when full config changes (kit themes may have updated). */
+function clearTokenOverrideCache(): void {
+    tokenOverrideCache.clear();
+}
+
 /**
  * Creates a cached route matcher for efficient path resolution.
  * Caches both regex compilation and match results.
+ * Uses LRU eviction when cache exceeds MAX_PATH_CACHE_SIZE.
  */
 function createRouteMatcherCache(mappings: RouteMapping[]) {
-    const pathCache = new Map<string, { layoutTemplateId: string; brandKitId: string } | null>();
+    const pathCache = new Map<string, RouteMatchResult | null>();
     const regexCache = new Map<string, RegExp>();
+    const sorted = [...mappings].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
 
-    return (pathname: string) => {
-        // Check path result cache first
+    return (pathname: string): RouteMatchResult | null => {
+        // LRU: Move to end (most recent)
         if (pathCache.has(pathname)) {
-            return pathCache.get(pathname)!;
+            const result = pathCache.get(pathname)!;
+            pathCache.delete(pathname);
+            pathCache.set(pathname, result);
+            return result;
         }
 
-        // Sort by priority (higher first)
-        const sorted = [...mappings].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
-
+        // Match against route patterns
         for (const m of sorted) {
-            // Check regex cache
             let regex = regexCache.get(m.pathPattern);
             if (!regex) {
-                // Compile and cache regex
                 regex = pathPatternToRegex(m.pathPattern);
                 regexCache.set(m.pathPattern, regex);
             }
 
             if (regex.test(pathname)) {
-                const result = { layoutTemplateId: m.layoutTemplateId, brandKitId: m.brandKitId };
+                const result: RouteMatchResult = {
+                    layoutTemplateId: m.layoutTemplateId,
+                    brandKitId: m.brandKitId,
+                    tokenOverridesJson: m.tokenOverridesJson,
+                };
                 pathCache.set(pathname, result);
+                // LRU eviction: Remove oldest (first) entry when cache is full
+                if (pathCache.size > MAX_PATH_CACHE_SIZE) {
+                    const firstKey = pathCache.keys().next().value as string;
+                    pathCache.delete(firstKey);
+                }
                 return result;
             }
         }
 
-        // Cache miss
+        // No match - cache null result
         pathCache.set(pathname, null);
+        if (pathCache.size > MAX_PATH_CACHE_SIZE) {
+            const firstKey = pathCache.keys().next().value as string;
+            pathCache.delete(firstKey);
+        }
         return null;
     };
 }
 
 /**
+ * Apply per-route token overrides to a resolved theme.
+ * Parses the tokenOverridesJson and deep-merges on top of the kit theme.
+ * Uses LRU cache to avoid re-merging identical combinations.
+ */
+const tokenOverrideCache = new Map<string, ResolvedBrandTheme>();
+
+function applyRouteTokenOverrides(
+    kitTheme: ResolvedBrandTheme,
+    tokenOverridesJson: string,
+    brandKitId: string,
+): ResolvedBrandTheme {
+    // Cache key: brandKitId + token overrides JSON
+    const cacheKey = `${brandKitId}:${tokenOverridesJson}`;
+
+    // LRU: Move to end if exists
+    if (tokenOverrideCache.has(cacheKey)) {
+        const result = tokenOverrideCache.get(cacheKey)!;
+        tokenOverrideCache.delete(cacheKey);
+        tokenOverrideCache.set(cacheKey, result);
+        return result;
+    }
+
+    try {
+        const overrides = JSON.parse(tokenOverridesJson) as Record<string, unknown>;
+        if (!overrides || typeof overrides !== 'object' || Object.keys(overrides).length === 0) {
+            return kitTheme;
+        }
+        // Deep-merge overrides into the resolved theme's colors/typography/etc.
+        const merged = deepMerge(
+            kitTheme as unknown as Record<string, unknown>,
+            overrides,
+        ) as unknown as ResolvedBrandTheme;
+
+        // Cache result with LRU eviction
+        tokenOverrideCache.set(cacheKey, merged);
+        if (tokenOverrideCache.size > MAX_OVERRIDE_CACHE_SIZE) {
+            const firstKey = tokenOverrideCache.keys().next().value as string;
+            tokenOverrideCache.delete(firstKey);
+        }
+
+        return merged;
+    } catch {
+        return kitTheme;
+    }
+}
+
+/**
  * Full config from GET /api/brand – route mappings, layouts, all brand kits.
+ * API returns both light and dark themes per kit. Client picks at runtime.
  * API may return compact form (kit + routes) when single brand kit.
  */
+/** Resolved menu slot (from brand API menuSlots); compatible with @ottabase/ottamenu ResolvedMenuSlotData */
+export type ResolvedMenuSlotData = {
+    slotName: string;
+    menuId: string;
+    renderType: string;
+    sortOrder: number;
+    menu: { id: string; name: string; slug: string; type: string; items: unknown[] };
+};
+
 export interface FullBrandConfig {
     routeMappings?: RouteMapping[];
     kit?: string;
     routes?: [string, string, number][];
     r2PublicUrl?: string;
+    menuSlots?: Record<string, ResolvedMenuSlotData[]>;
     layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }>;
     brandKitsMap: Record<
         string,
@@ -129,16 +229,18 @@ export interface FullBrandConfig {
             brandName: string;
             tagline?: string;
             logos: Record<string, string>;
+            /** Light-mode resolved theme */
             theme: ResolvedBrandTheme;
-            themeBase: string;
-            tenantTheme: unknown;
+            /** Dark-mode resolved theme */
+            darkTheme?: Partial<ResolvedBrandTheme>;
             defaultColorScheme: string;
             allowDarkModeToggle: boolean;
             customCss?: string;
             hideOttabaseBranding: boolean;
         }
     >;
-    mode: 'light' | 'dark';
+    /** @deprecated No longer sent by API — client determines mode locally */
+    mode?: 'light' | 'dark';
 }
 
 function expandCompactConfig(config: FullBrandConfig): RouteMapping[] {
@@ -162,16 +264,22 @@ export interface BrandConfig {
     tagline?: string;
     logos: { primary?: string; dark?: string; icon?: string; ogImage?: string; emailLogo?: string };
     theme: ResolvedBrandTheme;
-    themeBase: string;
-    tenantTheme: unknown;
     defaultColorScheme: 'light' | 'dark' | 'system';
     allowDarkModeToggle: boolean;
     customCss?: string;
     hideOttabaseBranding: boolean;
     layoutTemplateId: string;
     layoutTemplatesMap: Record<string, { componentKey: string; config: LayoutConfig }>;
-    routeMappings: Array<{ pathPattern: string; layoutTemplateId: string; brandKitId: string; priority: number }>;
+    routeMappings: Array<{
+        pathPattern: string;
+        layoutTemplateId: string;
+        brandKitId: string;
+        priority: number;
+        tokenOverridesJson?: string | null;
+    }>;
     r2PublicUrl?: string;
+    /** Menu slot assignments (sidebar-nav, header-nav, etc.) with resolved menu data */
+    menuSlots?: Record<string, ResolvedMenuSlotData[]>;
 }
 
 interface BrandContextValue {
@@ -188,7 +296,6 @@ export interface BrandProviderProps {
     children: React.ReactNode;
     apiEndpoint?: string;
     initialConfig?: FullBrandConfig;
-    organizationId?: string | null;
     appId?: string | null;
     /**
      * Fallback theme for graceful degradation when API fails.
@@ -197,26 +304,48 @@ export interface BrandProviderProps {
     fallbackTheme?: ResolvedBrandTheme;
 }
 
-type RouteMatcherFn = (pathname: string) => { layoutTemplateId: string; brandKitId: string } | null;
+type RouteMatcherFn = (pathname: string) => RouteMatchResult | null;
 
 function resolveConfigForPath(
     full: FullBrandConfig,
     pathname: string,
     routeMatcher: RouteMatcherFn,
+    mode: 'light' | 'dark',
+    routeMappings: RouteMapping[],
 ): BrandConfig | null {
-    const routeMappings = expandCompactConfig(full);
     const match = routeMatcher(pathname);
     const kitId = match?.brandKitId ?? full.kit ?? Object.keys(full.brandKitsMap)[0];
     const layoutId = match?.layoutTemplateId ?? 'homepage';
-    const kit = kitId ? full.brandKitsMap[kitId] : Object.values(full.brandKitsMap)[0];
+    // When route's brandKitId references a deleted kit, use `default` from API response
+    const kit =
+        (kitId ? full.brandKitsMap[kitId] : null) ??
+        full.brandKitsMap[full.kit ?? Object.keys(full.brandKitsMap)[0]] ??
+        Object.values(full.brandKitsMap)[0];
     if (!kit) return null;
+
+    // Pick mode-appropriate theme (dark-mode theme if available, else fall back to light)
+    let theme =
+        mode === 'dark' && kit.darkTheme
+            ? (deepMerge(
+                  kit.theme as unknown as Record<string, unknown>,
+                  kit.darkTheme as Record<string, unknown>,
+              ) as unknown as ResolvedBrandTheme)
+            : kit.theme;
+
+    // Apply per-route token overrides if present
+    if (match?.tokenOverridesJson) {
+        theme = applyRouteTokenOverrides(theme, match.tokenOverridesJson, kitId);
+    }
+
     return {
         ...kit,
+        theme,
         defaultColorScheme: kit.defaultColorScheme as 'light' | 'dark' | 'system',
         layoutTemplateId: layoutId,
         layoutTemplatesMap: full.layoutTemplatesMap,
         routeMappings,
         r2PublicUrl: full.r2PublicUrl,
+        menuSlots: full.menuSlots,
     };
 }
 
@@ -229,8 +358,6 @@ function buildFallbackConfig(theme: ResolvedBrandTheme): BrandConfig {
         brandName: 'Default',
         logos: {},
         theme,
-        themeBase: theme.name,
-        tenantTheme: undefined,
         defaultColorScheme: 'light',
         allowDarkModeToggle: true,
         customCss: undefined,
@@ -241,58 +368,93 @@ function buildFallbackConfig(theme: ResolvedBrandTheme): BrandConfig {
     };
 }
 
+/** Detect current color scheme mode from DOM */
+function detectMode(): 'light' | 'dark' {
+    if (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) {
+        return 'dark';
+    }
+    return 'light';
+}
+
+const BRAND_FETCH_MAX_ATTEMPTS = 4;
+const BRAND_FETCH_BASE_DELAY_MS = 250;
+const BRAND_FETCH_RETRYABLE_STATUSES = new Set([502, 503, 504]);
+/* Note:
+500 is not included as it may indicate a real server error rather than a transient issue, and retrying on 500 could lead to unnecessary load on the server.
+*/
+
 export function BrandProvider({
     children,
     apiEndpoint = '/api/brand',
     initialConfig,
-    organizationId,
     appId,
     fallbackTheme,
 }: BrandProviderProps) {
     const [fullConfig, setFullConfig] = useState<FullBrandConfig | null>(initialConfig ?? null);
-    const [path, setPath] = useState('/');
+    const [path, setPath] = useState(() => (typeof window !== 'undefined' ? window.location.pathname || '/' : '/'));
+    const [mode, setMode] = useState<'light' | 'dark'>(detectMode);
     const [isLoading, setIsLoading] = useState(!initialConfig);
     const [error, setError] = useState<Error | null>(null);
     const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    // Watch for dark/light mode changes on <html> class (no refetch needed)
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const observer = new MutationObserver(() => {
+            setMode(detectMode());
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
+    }, []);
+
     const fetchConfigWithRetry = useCallback(
         async (attempt = 1) => {
             try {
-                setIsLoading(true);
+                if (attempt === 1) {
+                    setIsLoading(true);
+                    setError(null);
+                }
+                // No mode param — API returns both light+dark themes per kit
                 const params = new URLSearchParams();
-                const mode =
-                    typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
-                        ? 'dark'
-                        : 'light';
-                params.set('mode', mode);
-                if (organizationId) params.set('organizationId', organizationId);
                 if (appId) params.set('appId', appId);
-                const url = `${apiEndpoint}?${params}`;
+                const url = params.toString() ? `${apiEndpoint}?${params}` : apiEndpoint;
 
-                const response = await fetch(url);
+                const headers: Record<string, string> = {};
+                if (appId) headers['X-App-Id'] = appId;
+                const response = await fetch(url, { cache: 'no-store', headers });
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: Failed to fetch brand config`);
+                    const error = new Error(`HTTP ${response.status}: Failed to fetch brand config`) as Error & {
+                        status?: number;
+                    };
+                    error.status = response.status;
+                    throw error;
                 }
                 const data = (await response.json()) as FullBrandConfig;
+                clearTokenOverrideCache();
                 setFullConfig(data);
                 setError(null);
+                setIsLoading(false);
             } catch (err) {
                 const errObj = err instanceof Error ? err : new Error('Unknown error');
-                setError(errObj);
+                const maybeStatus = (err as { status?: number } | null)?.status;
+                const shouldRetry =
+                    attempt < BRAND_FETCH_MAX_ATTEMPTS &&
+                    (maybeStatus === undefined || BRAND_FETCH_RETRYABLE_STATUSES.has(maybeStatus));
 
-                // Retry with exponential backoff (max 3 attempts)
-                if (attempt < 3) {
-                    const delayMs = Math.pow(2, attempt) * 1000; // 2s, 4s
+                if (shouldRetry) {
+                    const delayMs = BRAND_FETCH_BASE_DELAY_MS * Math.pow(2, attempt - 1);
                     retryTimeoutRef.current = setTimeout(() => {
                         retryTimeoutRef.current = null;
                         fetchConfigWithRetry(attempt + 1);
                     }, delayMs);
+                    return;
                 }
-            } finally {
+
+                setError(errObj);
                 setIsLoading(false);
             }
         },
-        [apiEndpoint, organizationId, appId],
+        [apiEndpoint, appId],
     );
 
     useEffect(() => {
@@ -307,22 +469,24 @@ export function BrandProvider({
         };
     }, [fetchConfigWithRetry, initialConfig]);
 
-    // Create route matcher cache, memoized
-    const routeMatcher = useMemo(() => {
-        if (!fullConfig) return null;
-        const routeMappings = expandCompactConfig(fullConfig);
-        return createRouteMatcherCache(routeMappings);
+    // Create route matcher cache + expanded route mappings, memoized
+    const { routeMatcher, expandedRouteMappings } = useMemo(() => {
+        if (!fullConfig) return { routeMatcher: null, expandedRouteMappings: [] as RouteMapping[] };
+        const mappings = expandCompactConfig(fullConfig);
+        return { routeMatcher: createRouteMatcherCache(mappings), expandedRouteMappings: mappings };
     }, [fullConfig]);
 
-    // Derive path-scoped config from full config + current path (no refetch on nav)
+    // Derive path-scoped config from full config + current path + mode (no refetch on nav or mode change)
     const config = useMemo(() => {
-        // Apply fallback theme when API fails and fallbackTheme is provided
+        // Apply fallback theme when API fails and fallbackTheme is provide
         if (!fullConfig) {
             if (fallbackTheme && error) return buildFallbackConfig(fallbackTheme);
+            console.warn('[BrandProvider] No fullConfig available');
             return null;
         }
         if (!routeMatcher) return null;
-        const resolved = resolveConfigForPath(fullConfig, path, routeMatcher);
+        const normalizedPath = path || '/';
+        const resolved = resolveConfigForPath(fullConfig, normalizedPath, routeMatcher, mode, expandedRouteMappings);
         // Fallback if route resolution fails but we have fullConfig + fallbackTheme
         if (resolved || !fallbackTheme) return resolved;
         const firstKit = Object.values(fullConfig.brandKitsMap)[0];
@@ -332,10 +496,11 @@ export function BrandProvider({
             theme: fallbackTheme,
             layoutTemplateId: 'homepage',
             layoutTemplatesMap: fullConfig.layoutTemplatesMap,
-            routeMappings: expandCompactConfig(fullConfig),
+            routeMappings: expandedRouteMappings,
             r2PublicUrl: fullConfig.r2PublicUrl,
+            menuSlots: fullConfig.menuSlots,
         } as BrandConfig;
-    }, [fullConfig, path, routeMatcher, fallbackTheme, error]);
+    }, [fullConfig, path, mode, routeMatcher, expandedRouteMappings, fallbackTheme, error]);
 
     // Debounced CSS injection with validation
     const debouncedInjectCss = useMemo(
@@ -346,23 +511,22 @@ export function BrandProvider({
         [],
     );
 
+    // Inject custom CSS with validation and debouncing
+    // Note: Theme CSS variables are applied by BrandThemeApplicator in the app
     useEffect(() => {
         if (!config) return;
-        if (typeof document !== 'undefined') {
-            // Remove critical CSS (SSR-injected) and replace with runtime CSS
-            const critical = document.getElementById(CRITICAL_STYLE_ID);
-            if (critical) critical.remove();
-
-            // Re-apply theme CSS variables to ensure they persist
-            applyBrandTheme(config.theme);
-        }
         if (config.customCss) {
             debouncedInjectCss(config.customCss);
         }
     }, [config, debouncedInjectCss]);
 
+    const brandContextValue = useMemo<BrandContextValue>(
+        () => ({ config, isLoading, error, refresh: fetchConfigWithRetry }),
+        [config, isLoading, error, fetchConfigWithRetry],
+    );
+
     return (
-        <BrandContext.Provider value={{ config, isLoading, error, refresh: fetchConfigWithRetry }}>
+        <BrandContext.Provider value={brandContextValue}>
             <BrandPathContext.Provider value={setPath}>{children}</BrandPathContext.Provider>
         </BrandContext.Provider>
     );

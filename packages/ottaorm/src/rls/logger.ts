@@ -6,6 +6,7 @@
  * to persist violations to the audit_logs D1 table.
  */
 
+import { hasConnection } from '../context';
 import { AuditLog } from '../models/AuditLog';
 import type { RLSViolation } from './types';
 
@@ -16,10 +17,12 @@ declare const process: { env?: { NODE_ENV?: string } } | undefined;
 const RLS_RESOURCE_TYPE = 'rls_security';
 
 /**
- * Log security violation
- * In production, send to monitoring service (Sentry, CloudWatch, etc.)
+ * Log security violation and persist to audit log.
+ * Returns a promise that resolves when the audit entry is stored.
+ * Callers that cannot await (e.g. constructor paths) should use
+ * `logSecurityViolation(...).catch(...)` explicitly.
  */
-export function logSecurityViolation(violation: RLSViolation): void {
+export async function logSecurityViolation(violation: RLSViolation): Promise<void> {
     const logEntry = {
         severity: 'ERROR',
         type: 'SECURITY_VIOLATION',
@@ -51,16 +54,20 @@ export function logSecurityViolation(violation: RLSViolation): void {
     // }
 
     // Store in audit log for compliance
-    // This is async, but we don't await to avoid blocking the request
-    storeAuditLog(violation).catch((err) => {
+    try {
+        await storeAuditLog(violation);
+    } catch (err) {
         console.error('Failed to store RLS violation audit log:', err);
-    });
+    }
 }
 
 /**
  * Store RLS violation in the audit_logs table via the AuditLog model.
+ * Skips silently when no database connection is registered (e.g. in tests).
  */
 async function storeAuditLog(violation: RLSViolation): Promise<void> {
+    if (!hasConnection('default')) return;
+
     await AuditLog.log({
         userId: violation.context.userId,
         organizationId: violation.context.organizationId || undefined,

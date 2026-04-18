@@ -1,6 +1,12 @@
 import { getShortlinkPageCss } from './styles';
+import { DEFAULT_THEME_STORAGE_KEY } from './interstitial';
 
-export function renderExpiredShortlinkPage(): Response {
+export type ExpiredPageOptions = {
+    /** localStorage key for theme detection (default: ottabase.theme) */
+    themeStorageKey?: string;
+};
+
+export function renderExpiredShortlinkPage(options?: ExpiredPageOptions): Response {
     const css = getShortlinkPageCss();
     const html = `<!doctype html>
 <html lang="en">
@@ -11,7 +17,7 @@ export function renderExpiredShortlinkPage(): Response {
     <script>
       (function () {
         try {
-          var theme = localStorage.getItem("ottabase-theme");
+          var theme = localStorage.getItem("${options?.themeStorageKey ?? DEFAULT_THEME_STORAGE_KEY}");
           if (theme === "dark" || theme === "light") {
             document.documentElement.setAttribute("data-theme", theme);
           } else if (theme === "system") {

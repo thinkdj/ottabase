@@ -4,6 +4,78 @@ Shared UI components for Ottabase applications.
 
 ## Components
 
+### ConfirmDialog
+
+A shared confirmation dialog wrapper built on top of `@ottabase/ui-shadcn`'s alert dialog primitives.
+
+#### Props
+
+- `open?: boolean` - Controlled open state
+- `onOpenChange?: (open: boolean) => void` - Controlled state callback
+- `title?: React.ReactNode` - Dialog title (optional; defaults to a screen-reader-only title)
+- `hideTitle?: boolean` - Hide the title visually while keeping it for accessibility
+- `a11yTitle?: React.ReactNode` - Accessible fallback title when `title` is omitted (default: `Confirm action`)
+- `description?: React.ReactNode` - Optional supporting copy
+- `trigger?: React.ReactElement` - Optional trigger element for uncontrolled usage
+- `tone?: 'default' | 'destructive' | 'unsaved-changes'` - Confirmation behavior and styling
+- `primaryActionText?: React.ReactNode` - Semantic alias for the primary action button text
+- `secondaryActionText?: React.ReactNode` - Semantic alias for the secondary action button text
+- `confirmLabel?: React.ReactNode` - Confirm button label override
+- `cancelLabel?: React.ReactNode` - Cancel button label override
+- `onConfirm?: MouseEventHandler<HTMLButtonElement>` - Confirm action
+- `onCancel?: MouseEventHandler<HTMLButtonElement>` - Cancel action
+
+`primaryActionText` and `secondaryActionText` take precedence over `confirmLabel` and `cancelLabel` when both are
+provided.
+
+#### Usage
+
+```tsx
+import { ConfirmDialog } from '@ottabase/ui-components';
+
+<ConfirmDialog
+    open={open}
+    onOpenChange={setOpen}
+    title="Delete post?"
+    description="This action cannot be undone."
+    tone="destructive"
+    confirmLabel="Delete"
+    onConfirm={handleDelete}
+/>;
+```
+
+### JsonEditor
+
+A clean, minimal, dual-mode JSON editor with a Tree view (inline key/value editing, type switching, add/remove nodes)
+and a Raw mode (live validation, format/minify). No external JSON editor dependencies; Tailwind-only styling with
+dark-mode support.
+
+#### Props
+
+- `value: JsonValue` - Current JSON value (object, array, or primitive)
+- `onChange?: (value: JsonValue) => void` - Fires when the user edits
+- `readOnly?: boolean` - Disable editing (expand/collapse still works)
+- `defaultMode?: 'tree' | 'raw'` - Starting mode (default: `'tree'`)
+- `collapseAtDepth?: number` - Auto-collapse nodes at or beyond this depth
+- `rootLabel?: string` - Label shown next to the root node (e.g. `"meta"`)
+- `className?: string` - Extra className on the outer wrapper
+
+#### Usage
+
+```tsx
+import { JsonEditor } from '@ottabase/ui-components';
+
+const [value, setValue] = useState({ hello: 'world', count: 1 });
+
+<JsonEditor value={value} onChange={setValue} rootLabel="meta" collapseAtDepth={3} />;
+```
+
+Keyboard: `Enter` commits an inline edit, `Escape` cancels. In Raw mode, `Ctrl/Cmd+S` formats.
+
+This is the canonical JSON editor in the monorepo. `@ottabase/forms` uses it internally for `fieldType: 'json'` fields
+and the admin blog editor uses it for the Custom Meta tab — reach for this component instead of adding a third-party
+JSON editor dependency.
+
 ### DarkModeToggle
 
 A versatile component that provides both toggle switch and button interfaces for switching between light and dark
@@ -94,7 +166,8 @@ This component requires:
 
 - `@mantine/core` - For UI components and layout
 - `@ottabase/config` - For configuration management
-- `next/link` - For optional link functionality
+- `next/link` - For optional link functionality (**Next.js only**; if using TanStack Router or another framework, wrap
+  the Logo in your router's `<Link>` component instead and omit `linkUrl`)
 - Internal DarkModeToggle component (if darkModeSwitcher is true)
 
 ## Tree Shaking
@@ -112,12 +185,17 @@ import { DarkModeToggle } from '@ottabase/ui-components';
 ## Available Atomic Imports
 
 - `@ottabase/ui-components/dark-mode-toggle` - DarkModeToggle component
+- `@ottabase/ui-components/confirm-dialog` - ConfirmDialog component
 - `@ottabase/ui-components/logo` - Logo component
 
 ## Installation
 
-This package is part of the Ottabase monorepo and should be installed via the workspace dependencies.
-
 ```bash
-pnpm install @ottabase/ui-components
+pnpm add @ottabase/ui-components
+```
+
+For monorepo workspaces, use `workspace:*`:
+
+```json
+{ "dependencies": { "@ottabase/ui-components": "workspace:*" } }
 ```

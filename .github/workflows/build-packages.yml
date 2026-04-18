@@ -18,6 +18,9 @@ on:
                 description: "Whether packages have changed and were rebuilt"
                 value: ${{ jobs.build-packages.outputs.packages-changed }}
 
+permissions:
+    contents: read
+
 jobs:
     build-packages:
         runs-on: ubuntu-latest
@@ -44,16 +47,19 @@ jobs:
             - name: Generate cache key
               id: cache-info
               run: |
-                  # Create a hash of all package source files
-                  # This ensures cache is invalidated only when package code changes
+                  # Hash package source files.
                   PACKAGE_HASH=$(find packages -type f \
-                    -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.json" \
+                    \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.json" \) \
                     | sort | xargs cat | sha256sum | cut -d' ' -f1)
 
                   LOCK_HASH=$(sha256sum pnpm-lock.yaml | cut -d' ' -f1)
 
-                  # Combine both hashes for the cache key
-                  CACHE_KEY="packages-build-${LOCK_HASH}-${PACKAGE_HASH}"
+                  # Root build inputs: turbo.json, package.json, pnpm-workspace.yaml changes affect
+                  # how packages are built even when package source is unchanged
+                  ROOT_HASH=$(cat turbo.json package.json pnpm-workspace.yaml | sha256sum | cut -d' ' -f1)
+
+                  # Combine all three hashes — stale cache can't survive any of these changing
+                  CACHE_KEY="packages-build-${LOCK_HASH}-${ROOT_HASH}-${PACKAGE_HASH}"
 
                   echo "cache-key=${CACHE_KEY}" >> $GITHUB_OUTPUT
                   echo "📦 Cache key: ${CACHE_KEY}"

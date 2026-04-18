@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+    - name: Documentation
+      url: https://github.com/thinkdj/ottabase#readme
+      about: Start with the root README for setup, package overview, and quick start.
+    - name: Architecture Guide
+      url: https://github.com/thinkdj/ottabase/blob/main/ARCHITECTURE.md
+      about: Review the system architecture, package layering, and runtime model.
+    - name: Security Policy
+      url: https://github.com/thinkdj/ottabase/blob/main/.github/SECURITY.md
+      about: Report vulnerabilities using the private disclosure process in SECURITY.md.

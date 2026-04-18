@@ -4,7 +4,16 @@
 // Single handler for all model CRUD operations
 // ============================================================
 
-import { getModel, hasModel } from '../registry';
+import { getModel, getRegisteredModels, hasModel } from '../registry';
+import { ValidationError } from '../validation';
+
+// Type declaration for process (may not exist in Cloudflare Workers)
+declare const process: { env?: { NODE_ENV?: string } } | undefined;
+
+/** Maximum allowed limit for non-paginated list queries */
+const MAX_LIST_LIMIT = 1000;
+/** Maximum allowed offset for list queries */
+const MAX_LIST_OFFSET = 100_000;
 
 export interface CrudRequest {
     method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
@@ -13,6 +22,12 @@ export interface CrudRequest {
     body?: Record<string, unknown>;
     /** Allow additional server-controlled fields to pass writable checks */
     allowedWritableFields?: string[];
+    /**
+     * Populated by parseCrudRequest when the incoming request is malformed
+     * (e.g. invalid JSON body or invalid `where` query JSON). handleCrud
+     * short-circuits with 400 when this is set — fail closed, not open.
+     */
+    parseError?: { message: string; code: string };
     query?: {
         where?: Record<string, unknown>;
         orderBy?: string;
@@ -63,11 +78,27 @@ export interface CrudResponse {
 export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
     const { method, model: entityName, id, body, query } = request;
 
-    // Check if model is registered
-    if (!hasModel(entityName)) {
+    // Fail closed on malformed request payloads surfaced by parseCrudRequest.
+    if (request.parseError) {
         return {
             success: false,
-            error: `Model '${entityName}' not found. Make sure to register it with registerModel().`,
+            error: request.parseError.message,
+            code: request.parseError.code,
+            status: 400,
+        };
+    }
+
+    // Check if model is registered
+    if (!hasModel(entityName)) {
+        // Only show registered model names in non-production to avoid info leakage
+        const isProduction = typeof process !== 'undefined' && process?.env?.NODE_ENV === 'production';
+        return {
+            success: false,
+            error: `Model '${entityName}' not found. Register it in worker/lib/db-utils.ts initDbConnection().`,
+            code: 'MODEL_NOT_FOUND',
+            ...(isProduction
+                ? {}
+                : { hint: `Available models: ${getRegisteredModels().join(', ') || '(none registered)'}` }),
             status: 404,
         };
     }
@@ -201,20 +232,23 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
                 };
             }
 
-            // Regular list (non-paginated)
+            // Regular list (non-paginated) — cap limit/offset to prevent abuse
+            const cappedLimit = query?.limit ? Math.min(Math.max(1, query.limit), MAX_LIST_LIMIT) : undefined;
+            const cappedOffset = query?.offset ? Math.min(Math.max(0, query.offset), MAX_LIST_OFFSET) : undefined;
+
             const records =
                 search && searchableFields.length > 0 && typeof Model.search === 'function'
                     ? await Model.search(search, searchableFields, query?.where, {
                           orderBy: query?.orderBy,
                           orderDirection: query?.orderDirection,
-                          limit: query?.limit,
-                          offset: query?.offset,
+                          limit: cappedLimit,
+                          offset: cappedOffset,
                       })
                     : await Model.where(query?.where || {}, {
                           orderBy: query?.orderBy,
                           orderDirection: query?.orderDirection,
-                          limit: query?.limit,
-                          offset: query?.offset,
+                          limit: cappedLimit,
+                          offset: cappedOffset,
                       });
 
             const total = records.length;
@@ -320,6 +354,19 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
             status: 400,
         };
     } catch (error) {
+        // Return structured field errors for validation failures
+        if (error instanceof ValidationError) {
+            return {
+                success: false,
+                error: error.message,
+                code: 'VALIDATION_ERROR',
+                fieldErrors: Object.fromEntries(
+                    Object.entries(error.fieldErrors).map(([k, v]) => [k, Array.isArray(v) ? v : [v]]),
+                ),
+                status: 422,
+            };
+        }
+
         const message = error instanceof Error ? error.message : 'Unknown error';
         const isD1Error = message.includes('D1_ERROR') || message.includes('SQLITE_ERROR');
 
@@ -435,14 +482,20 @@ export async function parseCrudRequest(
 
     // Parse query parameters
     const query: CrudRequest['query'] = {};
+    let parseError: CrudRequest['parseError'];
 
     const whereParam = url.searchParams.get('where');
     if (whereParam) {
         try {
             query.where = JSON.parse(whereParam);
         } catch (error) {
-            // Log invalid JSON in "where" to aid debugging, but keep behavior lenient
-            console.warn('ottaorm: Ignoring invalid JSON in "where" query parameter:', whereParam, error);
+            // Fail closed: reject malformed JSON in `where` instead of silently dropping it.
+            // Silently ignoring can mask bugs (query runs unfiltered) or leak data across tenants.
+            console.warn('ottaorm: Invalid JSON in "where" query parameter:', whereParam, error);
+            parseError = {
+                message: 'Invalid JSON in "where" query parameter',
+                code: 'INVALID_QUERY',
+            };
         }
     }
 
@@ -500,7 +553,13 @@ export async function parseCrudRequest(
                 body = parsed as Record<string, unknown>;
             }
         } catch {
+            // Fail closed: malformed JSON must not silently degrade into an empty body.
+            // An empty body on PATCH/PUT could otherwise be treated as "no-op success".
             body = {};
+            parseError = parseError ?? {
+                message: 'Invalid JSON in request body',
+                code: 'INVALID_BODY',
+            };
         }
     }
 
@@ -510,6 +569,7 @@ export async function parseCrudRequest(
         id,
         body,
         query: Object.keys(query).length > 0 ? query : undefined,
+        ...(parseError ? { parseError } : {}),
     };
 }
 

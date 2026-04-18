@@ -1,7 +1,7 @@
 /**
  * PostSeries table schema - group related posts into a series
  */
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const seriesTable = sqliteTable(
     'series',
@@ -32,7 +32,7 @@ export const seriesTable = sqliteTable(
         sortOrder: integer('sort_order').notNull().default(0),
 
         // App identifier for multi-app database sharing
-        appId: text('app_id'),
+        appId: text('app_id').notNull(),
 
         // Timestamps
         createdAt: integer('created_at')
@@ -45,8 +45,8 @@ export const seriesTable = sqliteTable(
             .$onUpdateFn(() => Date.now()),
     },
     (table) => [
-        // Lookup by slug
-        index('series_slug_idx').on(table.slug),
+        // Enforce unique series slugs per app
+        uniqueIndex('series_app_id_slug_unique_idx').on(table.appId, table.slug),
 
         // List series by app ordered: appId + isComplete + sortOrder
         index('series_app_id_complete_order_idx').on(table.appId, table.isComplete, table.sortOrder),

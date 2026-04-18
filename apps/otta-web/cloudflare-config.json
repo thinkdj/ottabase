@@ -1,0 +1,16 @@
+{
+    "$schema": "../../schemas/cloudflare-config.schema.json",
+    "deployable": true,
+    "appType": "vite",
+    "workerName": "otta-web",
+    "buildCommand": "build",
+    "workerBuildCommand": "",
+    "outputDirectory": "dist",
+    "verifyPaths": ["dist", "cloudflare-worker.ts"],
+    "wranglerConfig": "wrangler.jsonc",
+    "wranglerEnv": "production",
+    "healthCheckPath": "/",
+    "requiresSecrets": [],
+    "requiresPreviewSecrets": [],
+    "$comment": "requiresSecrets/requiresPreviewSecrets are optional — wrangler.jsonc placeholders are auto-detected. Add here only for non-wrangler secrets (e.g. build-time)."
+}

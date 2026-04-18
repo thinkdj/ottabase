@@ -15,9 +15,14 @@
         "./migrations": null
     },
     "bin": {
+        "cloudflare-login": "bin/cloudflare-login.cjs",
         "cloudflare-setup": "bin/cloudflare-setup.cjs",
         "cloudflare-validate": "bin/cloudflare-validate.cjs",
-        "cache-clear": "bin/cache-clear.cjs"
+        "clean-cache": "bin/clean-cache.cjs",
+        "clean-reset": "bin/clean-reset.mjs",
+        "clean-db": "bin/clean-db.mjs",
+        "clean-kv": "bin/clean-kv.mjs",
+        "kill-ports": "bin/kill-ports.cjs"
     },
     "files": [
         "dist",
@@ -25,9 +30,17 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cache-clear.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cache-clear.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/cli/cloudflare-setup.ts src/cli/cloudflare-validate.ts src/cli/cloudflare-login.ts src/cli/clean-cache.ts src/cli/kill-ports.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
+        "clean-cache": "node bin/clean-cache.cjs",
+        "clean-reset": "node bin/clean-reset.mjs",
+        "clean-db": "node bin/clean-db.mjs",
+        "clean-kv": "node bin/clean-kv.mjs",
+        "kill-ports": "node bin/kill-ports.cjs",
+        "cloudflare-login": "node bin/cloudflare-login.cjs",
+        "cloudflare-setup": "node bin/cloudflare-setup.cjs",
+        "cloudflare-validate": "node bin/cloudflare-validate.cjs",
         "lint": "eslint src --ext .ts",
         "type-check": "tsc --noEmit",
         "test": "vitest",
@@ -41,14 +54,24 @@
     "author": "",
     "license": "MIT",
     "dependencies": {
+        "@inquirer/checkbox": "^5.0.7",
         "@ottabase/db": "workspace:*"
     },
     "devDependencies": {
         "@types/node": "catalog:",
-        "typescript": "catalog:",
-        "tsup": "catalog:",
-        "ts-node": "catalog:",
+        "eslint": "catalog:",
         "rimraf": "catalog:",
-        "eslint": "catalog:"
-    }
+        "ts-node": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/scripts"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/scripts#readme"
 }

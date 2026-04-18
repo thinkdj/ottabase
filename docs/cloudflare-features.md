@@ -19,8 +19,7 @@ This guide covers setup and usage of all Cloudflare Worker bindings:
 
 ### 1. Install Dependencies
 
-The `@ottabase/cf` package and required dependencies are already configured in
-`apps/ottabase-template-app/package.json`.
+The `@ottabase/cf` package and required dependencies are already configured in `apps/otta-web/package.json`.
 
 ```bash
 pnpm install
@@ -28,12 +27,15 @@ pnpm install
 
 ### 2. Configure Bindings
 
-Edit `apps/ottabase-template-app/wrangler.jsonc` to configure your Cloudflare bindings.
+**Recommended:** Run `pnpm cf:login` then `pnpm cf:setup` to create all resources. cf:setup outputs IDs for GitHub
+Secrets; it does not modify wrangler.jsonc (which stays as a template).
+
+**Manual setup:** Edit `apps/otta-web/wrangler.jsonc` and create resources below.
 
 #### Create D1 Database
 
 ```bash
-cd apps/ottabase-template-app
+cd apps/otta-web
 pnpm wrangler d1 create ottabase-db
 ```
 
@@ -41,7 +43,7 @@ Copy the returned `database_id` and update `wrangler.jsonc`:
 
 ```jsonc
 "d1_databases": [{
-  "binding: "OBCF_D1",
+  "binding": "OBCF_D1",
   "database_name": "ottabase-db",
   "database_id": "YOUR_D1_DATABASE_ID"
 }]
@@ -50,8 +52,8 @@ Copy the returned `database_id` and update `wrangler.jsonc`:
 #### Create KV Namespace
 
 ```bash
-pnpm wrangler kv:namespace create OBCF_KV
-pnpm wrangler kv:namespace create OBCF_KV --preview
+pnpm wrangler kv namespace create OBCF_KV
+pnpm wrangler kv namespace create OBCF_KV --preview
 ```
 
 Update `wrangler.jsonc` with the returned IDs:
@@ -138,7 +140,7 @@ pnpm wrangler secret put CF_API_TOKEN
 ### Local Development (with HMR)
 
 ```bash
-cd apps/ottabase-template-app
+cd apps/otta-web
 pnpm dev
 ```
 
@@ -426,7 +428,7 @@ export const runtime = 'edge';
 export async function GET(request: Request) {
     const { env } = await getCloudflareContext();
     const limiter = createRateLimitingClient({
-        rateLimiter: env.RATE_LIMITER,
+        rateLimiter: env.OBCF_RATE_LIMITER,
     });
 
     const ip = request.headers.get('cf-connecting-ip') || 'unknown';
@@ -537,7 +539,7 @@ Check `wrangler.jsonc` configuration and ensure bindings are created:
 
 ```bash
 pnpm wrangler d1 list
-pnpm wrangler kv:namespace list
+pnpm wrangler kv namespace list
 pnpm wrangler r2 bucket list
 ```
 
@@ -546,7 +548,7 @@ pnpm wrangler r2 bucket list
 Run type generation:
 
 ```bash
-pnpm wrangler types
+pnpm cf-typegen
 ```
 
 ### Local development not working

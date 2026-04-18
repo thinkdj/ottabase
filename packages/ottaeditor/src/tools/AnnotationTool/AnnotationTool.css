@@ -1,0 +1,163 @@
+/* Annotation highlight */
+.cdx-annotation {
+    background-color: hsl(var(--warning) / 0.2);
+    border-bottom: 2px solid hsl(var(--warning));
+    padding: 0 2px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.cdx-annotation:hover {
+    background-color: hsl(var(--warning) / 0.3);
+}
+
+/* Annotation popup */
+.cdx-annotation-popup {
+    position: fixed;
+    z-index: 9999;
+    width: 320px;
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
+    font-family: inherit;
+}
+
+.cdx-annotation-popup__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.cdx-annotation-popup__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: hsl(var(--foreground));
+}
+
+.cdx-annotation-popup__close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    line-height: 1;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.cdx-annotation-popup__close:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--foreground));
+}
+
+.cdx-annotation-popup__body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cdx-annotation-popup__input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid hsl(var(--input));
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    box-sizing: border-box;
+}
+
+.cdx-annotation-popup__input:focus {
+    outline: none;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+}
+
+.cdx-annotation-popup__input--title {
+    font-weight: 500;
+}
+
+.cdx-annotation-popup__input--annotation {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.cdx-annotation-popup__footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-top: 1px solid hsl(var(--border));
+    gap: 8px;
+}
+
+.cdx-annotation-popup__btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+}
+
+.cdx-annotation-popup__btn--remove {
+    background: hsl(var(--destructive) / 0.1);
+    color: hsl(var(--destructive));
+    border-color: hsl(var(--destructive) / 0.2);
+}
+
+.cdx-annotation-popup__btn--remove:hover {
+    background: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+}
+
+.cdx-annotation-popup__btn--save {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    margin-left: auto;
+}
+
+.cdx-annotation-popup__btn--save:hover {
+    background: hsl(var(--primary) / 0.9);
+}
+
+/* Actions in inline toolbar */
+.cdx-annotation-actions {
+    display: flex;
+    align-items: center;
+}
+
+.cdx-annotation-actions__edit {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: none;
+    border: none;
+    font-size: 12px;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.cdx-annotation-actions__edit:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--foreground));
+}
+
+.cdx-annotation-actions__edit svg {
+    width: 12px;
+    height: 12px;
+}

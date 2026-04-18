@@ -63,7 +63,7 @@ centralized hook and controlled provider components.
 ### The `useThemeManager` Hook
 
 The primary mechanism for theme changes is the `useThemeManager` hook (located in the application, e.g.,
-`apps/ottabase-template-app/ottabase/hooks/useThemeManager.ts`). This hook is responsible for:
+`apps/otta-web/ottabase/hooks/useThemeManager.ts`). This hook is responsible for:
 
 1. Reading the global `themeAtom`.
 2. Providing a `toggleTheme` function.

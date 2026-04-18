@@ -1,0 +1,28 @@
+title: "[Idea] "
+labels: ["discussion", "ideas"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Use this template for architecture ideas, roadmap proposals, and product direction discussions.
+    - type: textarea
+      id: problem
+      attributes:
+          label: Problem or opportunity
+          description: What gap or opportunity are you addressing?
+      validations:
+          required: true
+    - type: textarea
+      id: proposal
+      attributes:
+          label: Proposal
+          description: Describe the idea and why it would help.
+      validations:
+          required: true
+    - type: textarea
+      id: tradeoffs
+      attributes:
+          label: Tradeoffs or concerns
+          description: Include implementation risks, migration impact, or alternative approaches.
+      validations:
+          required: false

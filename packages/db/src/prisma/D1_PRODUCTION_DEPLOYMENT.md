@@ -26,7 +26,7 @@ steps.
 
 ### Local vs Production Configuration
 
-Your app uses [wrangler.jsonc](../apps/ottabase-template-app/wrangler.jsonc) with environment-specific overrides:
+Your app uses [wrangler.jsonc](../apps/otta-web/wrangler.jsonc) with environment-specific overrides:
 
 ```jsonc
 {
@@ -43,7 +43,7 @@ Your app uses [wrangler.jsonc](../apps/ottabase-template-app/wrangler.jsonc) wit
       "d1_databases": [{
         "binding: "OBCF_D1",
         "database_name": "ottabase-db",
-        "database_id": "PRODUCTION_D1_DATABASE_ID"  // Must set this!
+        "database_id": "D1_DATABASE_ID"  // Placeholder = GitHub Secret name; CI substitutes at deploy time
       }]
     }
   }
@@ -79,7 +79,8 @@ wrangler d1 create ottabase-db
 
 ### 2. Update wrangler.jsonc
 
-Replace `PRODUCTION_D1_DATABASE_ID` with the actual ID:
+The placeholder `D1_DATABASE_ID` in `env.production` matches the GitHub Secret name. CI substitutes it automatically.
+For manual deploy, replace with the actual ID:
 
 ```jsonc
 {
@@ -303,20 +304,20 @@ jobs:
 
             - name: Build app
               run: |
-                  cd apps/ottabase-template-app
+                  cd apps/your-app
                   pnpm build
                   pnpm build:worker
 
             - name: Deploy to Cloudflare
               run: |
-                  cd apps/ottabase-template-app
+                  cd apps/your-app
                   pnpm wrangler deploy --env production
               env:
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
             - name: Apply migrations
               run: |
-                  cd apps/ottabase-template-app
+                  cd apps/your-app
                   # Find latest migration
                   MIGRATION=$(ls -t prisma/migrations/ | head -1)
                   pnpm wrangler d1 execute ottabase-db \

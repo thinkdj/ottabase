@@ -5,7 +5,7 @@
 // ============================================================
 
 import type { DbDriver } from '@ottabase/db/drizzle';
-import { and, asc, desc, eq, inArray, like, ne, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, like, ne, or, sql } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { getConnection } from '../context';
 import { ValidationError } from '../validation';
@@ -80,6 +80,14 @@ export class BaseModel extends AbstractBaseModel {
     // SQL-specific static property
     static table: SQLiteTable;
 
+    /**
+     * Enable soft deletes for this model.
+     * When true, `delete()` sets `deletedAt` instead of removing the row,
+     * and all queries automatically exclude soft-deleted records.
+     * The table must have a `deletedAt` column (integer timestamp or null).
+     */
+    static softDeletes: boolean = false;
+
     constructor(params: IModelConstructorParams) {
         super();
         this.fill(params.data);
@@ -117,12 +125,100 @@ export class BaseModel extends AbstractBaseModel {
     }
 
     /**
+     * Return a scoped query object that includes soft-deleted records.
+     * Thread-safe: no shared mutable state is used.
+     *
+     * @example
+     * ```typescript
+     * const allPosts = await Post.withTrashed().where({});
+     * ```
+     */
+    static withTrashed<T extends typeof BaseModel>(this: T) {
+        return {
+            find: (id: string | number, driver?: DbDriver) => this.find(id, driver, true),
+            first: (where?: Record<string, any>, driver?: DbDriver) => this.first(where, driver, true),
+            where: (
+                where: Record<string, any>,
+                options?: { orderBy?: string; orderDirection?: 'asc' | 'desc'; limit?: number; offset?: number },
+                driver?: DbDriver,
+            ) => this.where(where, options, driver, true),
+            whereIn: (
+                field: string,
+                values: any[],
+                options?: { orderBy?: string; orderDirection?: 'asc' | 'desc'; limit?: number; offset?: number },
+                driver?: DbDriver,
+            ) => this.whereIn(field, values, options, driver, true),
+            all: (
+                options?: { orderBy?: string; orderDirection?: 'asc' | 'desc'; limit?: number; offset?: number },
+                driver?: DbDriver,
+            ) => this.all(options, driver, true),
+            count: (where?: Record<string, any>, driver?: DbDriver) => this.count(where, driver, true),
+            search: (
+                search: string,
+                fields: string[],
+                where?: Record<string, any>,
+                options?: { orderBy?: string; orderDirection?: 'asc' | 'desc'; limit?: number; offset?: number },
+                driver?: DbDriver,
+            ) => this.search(search, fields, where, options, driver, true),
+            searchPaginate: (
+                search: string,
+                fields: string[],
+                page?: number,
+                perPage?: number,
+                where?: Record<string, any>,
+                options?: { orderBy?: string; orderDirection?: 'asc' | 'desc' },
+                driver?: DbDriver,
+            ) => this.searchPaginate(search, fields, page, perPage, where, options, driver, true),
+        };
+    }
+
+    /**
+     * Query only soft-deleted records.
+     *
+     * @example
+     * ```typescript
+     * const deleted = await Post.onlyTrashed({});
+     * ```
+     */
+    static onlyTrashed<T extends typeof BaseModel>(
+        this: T,
+        where?: Record<string, any>,
+        options?: {
+            orderBy?: string;
+            orderDirection?: 'asc' | 'desc';
+            limit?: number;
+            offset?: number;
+        },
+        driver?: DbDriver,
+    ): Promise<InstanceType<T>[]> {
+        const trashedWhere = { ...where, deletedAt: { $ne: null } };
+        // includeTrashed = true so the auto-filter doesn't exclude the $ne: null condition
+        return this.where(trashedWhere, options, driver, true);
+    }
+
+    /**
+     * Build the soft-delete exclusion condition if applicable.
+     * Pure function — no shared mutable state.
+     *
+     * @param includeTrashed - When true, skip the soft-delete filter
+     */
+    protected static getSoftDeleteCondition(includeTrashed?: boolean): ReturnType<typeof isNull> | null {
+        if (!this.softDeletes) return null;
+        if (includeTrashed) return null;
+        const table = this.getTable();
+        const deletedAtCol = (table as any).deletedAt;
+        if (!deletedAtCol) return null;
+        return isNull(deletedAtCol);
+    }
+
+    /**
      * Find record by primary key
      */
     static async find<T extends typeof BaseModel>(
         this: T,
         id: string | number,
         driver?: DbDriver,
+        includeTrashed?: boolean,
     ): Promise<InstanceType<T> | null> {
         const db = this.getDriver(driver).getDb();
         const table = this.getTable();
@@ -132,7 +228,15 @@ export class BaseModel extends AbstractBaseModel {
             throw new Error(`Primary key column ${this.primaryKey} not found in table ${this.entity}`);
         }
 
-        const results = await db.select().from(table).where(eq(pkColumn, id)).limit(1);
+        const conditions: any[] = [eq(pkColumn, id)];
+        const softDeleteCond = this.getSoftDeleteCondition(includeTrashed);
+        if (softDeleteCond) conditions.push(softDeleteCond);
+
+        const results = await db
+            .select()
+            .from(table)
+            .where(and(...conditions))
+            .limit(1);
 
         if (results.length === 0) return null;
 
@@ -149,17 +253,19 @@ export class BaseModel extends AbstractBaseModel {
         this: T,
         where?: Record<string, any>,
         driver?: DbDriver,
+        includeTrashed?: boolean,
     ): Promise<InstanceType<T> | null> {
         const db = this.getDriver(driver).getDb();
         const table = this.getTable();
 
         let query = db.select().from(table);
 
-        if (where) {
-            const conditions = this.buildWhereConditions(where);
-            if (conditions.length > 0) {
-                query = query.where(and(...conditions));
-            }
+        const conditions = this.buildWhereConditions(where || {});
+        const softDeleteCond = this.getSoftDeleteCondition(includeTrashed);
+        if (softDeleteCond) conditions.push(softDeleteCond);
+
+        if (conditions.length > 0) {
+            query = query.where(and(...conditions));
         }
 
         const results = await query.limit(1);
@@ -185,14 +291,17 @@ export class BaseModel extends AbstractBaseModel {
             offset?: number;
         },
         driver?: DbDriver,
+        includeTrashed?: boolean,
     ): Promise<InstanceType<T>[]> {
         const db = this.getDriver(driver).getDb();
         const table = this.getTable();
 
         let query = db.select().from(table);
 
-        // Apply where conditions
+        // Apply where conditions + soft delete filter
         const conditions = this.buildWhereConditions(where);
+        const softDeleteCond = this.getSoftDeleteCondition(includeTrashed);
+        if (softDeleteCond) conditions.push(softDeleteCond);
         if (conditions.length > 0) {
             query = query.where(and(...conditions));
         }
@@ -232,6 +341,7 @@ export class BaseModel extends AbstractBaseModel {
             offset?: number;
         },
         driver?: DbDriver,
+        includeTrashed?: boolean,
     ): Promise<InstanceType<T>[]> {
         const db = this.getDriver(driver).getDb();
         const table = this.getTable();
@@ -241,7 +351,14 @@ export class BaseModel extends AbstractBaseModel {
             throw new Error(`Field "${field}" does not exist on table "${this.entity}"`);
         }
 
-        let query = db.select().from(table).where(inArray(fieldColumn, values));
+        const whereConditions: any[] = [inArray(fieldColumn, values)];
+        const softDeleteCond = this.getSoftDeleteCondition(includeTrashed);
+        if (softDeleteCond) whereConditions.push(softDeleteCond);
+
+        let query = db
+            .select()
+            .from(table)
+            .where(and(...whereConditions));
 
         // Apply ordering
         if (options?.orderBy) {
@@ -276,8 +393,9 @@ export class BaseModel extends AbstractBaseModel {
             offset?: number;
         },
         driver?: DbDriver,
+        includeTrashed?: boolean,
     ): Promise<InstanceType<T>[]> {
-        return this.where({}, options, driver);
+        return this.where({}, options, driver, includeTrashed);
     }
 
     /**
@@ -335,13 +453,21 @@ export class BaseModel extends AbstractBaseModel {
             if (!column) continue;
 
             if (value === null) {
-                continue; // Skip null values
+                conditions.push(isNull(column));
+                continue;
             }
 
             if (Array.isArray(value)) {
                 if (value.length > 0) {
                     conditions.push(inArray(column, value));
                 }
+                continue;
+            }
+
+            if (value && typeof value === 'object' && '$ne' in value) {
+                const neValue = (value as { $ne: unknown }).$ne;
+                // $ne: null → IS NOT NULL (SQL: col != NULL always yields NULL)
+                conditions.push(neValue === null ? isNotNull(column) : ne(column, neValue));
                 continue;
             }
 
@@ -503,7 +629,8 @@ export class BaseModel extends AbstractBaseModel {
     }
 
     /**
-     * Delete a record by primary key
+     * Delete a record by primary key.
+     * Uses soft delete (sets `deletedAt`) when `softDeletes` is enabled.
      */
     static async delete(id: string | number, driver?: DbDriver): Promise<boolean> {
         const db = this.getDriver(driver).getDb();
@@ -514,25 +641,73 @@ export class BaseModel extends AbstractBaseModel {
             throw new Error(`Primary key column ${this.primaryKey} not found`);
         }
 
-        await db.delete(table).where(eq(pkColumn, id));
+        if (this.softDeletes) {
+            const deletedAtCol = (table as any).deletedAt;
+            if (!deletedAtCol) {
+                throw new Error(`Model "${this.entity}" has softDeletes enabled but table has no "deletedAt" column.`);
+            }
+            await db.update(table).set({ deletedAt: Date.now() }).where(eq(pkColumn, id));
+        } else {
+            await db.delete(table).where(eq(pkColumn, id));
+        }
 
+        return true;
+    }
+
+    /**
+     * Permanently delete a record, bypassing soft deletes.
+     */
+    static async forceDelete(id: string | number, driver?: DbDriver): Promise<boolean> {
+        const db = this.getDriver(driver).getDb();
+        const table = this.getTable();
+        const pkColumn = (table as any)[this.primaryKey];
+
+        if (!pkColumn) {
+            throw new Error(`Primary key column ${this.primaryKey} not found`);
+        }
+
+        await db.delete(table).where(eq(pkColumn, id));
+        return true;
+    }
+
+    /**
+     * Restore a soft-deleted record by clearing `deletedAt`.
+     */
+    static async restore(id: string | number, driver?: DbDriver): Promise<boolean> {
+        if (!this.softDeletes) {
+            throw new Error(`Model "${this.entity}" does not have soft deletes enabled.`);
+        }
+
+        const db = this.getDriver(driver).getDb();
+        const table = this.getTable();
+        const pkColumn = (table as any)[this.primaryKey];
+        const deletedAtCol = (table as any).deletedAt;
+
+        if (!pkColumn) {
+            throw new Error(`Primary key column ${this.primaryKey} not found`);
+        }
+        if (!deletedAtCol) {
+            throw new Error(`Table "${this.entity}" has no "deletedAt" column.`);
+        }
+
+        await db.update(table).set({ deletedAt: null }).where(eq(pkColumn, id));
         return true;
     }
 
     /**
      * Count records matching conditions
      */
-    static async count(where?: Record<string, any>, driver?: DbDriver): Promise<number> {
+    static async count(where?: Record<string, any>, driver?: DbDriver, includeTrashed?: boolean): Promise<number> {
         const db = this.getDriver(driver).getDb();
         const table = this.getTable();
 
         let query = db.select({ count: sql<number>`count(*)` }).from(table);
 
-        if (where) {
-            const conditions = this.buildWhereConditions(where);
-            if (conditions.length > 0) {
-                query = query.where(and(...conditions));
-            }
+        const conditions = this.buildWhereConditions(where || {});
+        const softDeleteCond = this.getSoftDeleteCondition(includeTrashed);
+        if (softDeleteCond) conditions.push(softDeleteCond);
+        if (conditions.length > 0) {
+            query = query.where(and(...conditions));
         }
 
         const results = await query;
@@ -554,16 +729,19 @@ export class BaseModel extends AbstractBaseModel {
             offset?: number;
         },
         driver?: DbDriver,
+        includeTrashed?: boolean,
     ): Promise<InstanceType<T>[]> {
         const db = this.getDriver(driver).getDb();
         const table = this.getTable();
 
         const searchCondition = this.buildSearchCondition(search, fields);
         if (!searchCondition) {
-            return this.where(where || {}, options, driver);
+            return this.where(where || {}, options, driver, includeTrashed);
         }
 
         const conditions = this.buildWhereConditions(where || {});
+        const softDeleteCond = this.getSoftDeleteCondition(includeTrashed);
+        if (softDeleteCond) conditions.push(softDeleteCond);
         let query = db.select().from(table);
 
         if (conditions.length > 0) {
@@ -602,6 +780,7 @@ export class BaseModel extends AbstractBaseModel {
         where?: Record<string, any>,
         options?: { orderBy?: string; orderDirection?: 'asc' | 'desc' },
         driver?: DbDriver,
+        includeTrashed?: boolean,
     ): Promise<PaginationResult<InstanceType<T>>> {
         const offset = (page - 1) * perPage;
         const table = this.getTable();
@@ -609,6 +788,8 @@ export class BaseModel extends AbstractBaseModel {
 
         const searchCondition = this.buildSearchCondition(search, fields);
         const whereConditions = this.buildWhereConditions(where || {});
+        const softDeleteCond = this.getSoftDeleteCondition(includeTrashed);
+        if (softDeleteCond) whereConditions.push(softDeleteCond);
 
         let combinedCondition = searchCondition || undefined;
         if (whereConditions.length > 0) {
@@ -657,12 +838,13 @@ export class BaseModel extends AbstractBaseModel {
         where?: Record<string, any>,
         options?: { orderBy?: string; orderDirection?: 'asc' | 'desc' },
         driver?: DbDriver,
+        includeTrashed?: boolean,
     ): Promise<PaginationResult<InstanceType<T>>> {
         const offset = (page - 1) * perPage;
 
         const [data, total] = await Promise.all([
-            this.where(where || {}, { ...options, limit: perPage, offset }, driver),
-            this.count(where, driver),
+            this.where(where || {}, { ...options, limit: perPage, offset }, driver, includeTrashed),
+            this.count(where, driver, includeTrashed),
         ]);
 
         const totalPages = Math.ceil(total / perPage);
@@ -676,6 +858,30 @@ export class BaseModel extends AbstractBaseModel {
             hasNextPage: page < totalPages,
             hasPrevPage: page > 1,
         };
+    }
+
+    // ============================================================
+    // BATCH / TRANSACTION
+    // ============================================================
+
+    /**
+     * Execute multiple raw SQL statements as an atomic batch.
+     * Uses D1's native batch API — all succeed or all fail.
+     *
+     * @example
+     * ```typescript
+     * await BaseModel.batch([
+     *     "INSERT INTO todos (id, title) VALUES ('1', 'First')",
+     *     "INSERT INTO todos (id, title) VALUES ('2', 'Second')",
+     * ]);
+     * ```
+     */
+    static async batch(sqls: string[], driver?: DbDriver): Promise<any> {
+        const d = this.getDriver(driver);
+        if (typeof d.executeBatch !== 'function') {
+            throw new Error('Driver does not support executeBatch. D1Driver supports atomic batches natively.');
+        }
+        return d.executeBatch(sqls);
     }
 
     // ============================================================
@@ -735,6 +941,68 @@ export class BaseModel extends AbstractBaseModel {
 
         this.fill(fresh.attributes);
         return this;
+    }
+
+    /**
+     * Eager-load one or more relationships by name.
+     * Relationship methods must be defined as instance methods (e.g. `async author()`).
+     * Results are attached to `attributes` under the relationship name.
+     *
+     * @example
+     * ```typescript
+     * const post = await Post.find('post-id');
+     * await post.load('author', 'comments');
+     * console.log(post.get('author')); // User instance data
+     * console.log(post.get('comments')); // Comment[] data
+     * ```
+     */
+    async load(...relations: string[]): Promise<this> {
+        const results = await Promise.all(
+            relations.map(async (rel) => {
+                const method = (this as any)[rel];
+                if (typeof method !== 'function') {
+                    throw new Error(
+                        `Relationship "${rel}" is not defined on model "${(this.constructor as typeof BaseModel).entity}".`,
+                    );
+                }
+                const result = await method.call(this);
+                return { rel, result };
+            }),
+        );
+
+        for (const { rel, result } of results) {
+            if (result === null || result === undefined) {
+                this.set(rel, null);
+            } else if (Array.isArray(result)) {
+                this.set(
+                    rel,
+                    result.map((r: any) => (typeof r.toJson === 'function' ? r.toJson() : r)),
+                );
+            } else if (typeof result.toJson === 'function') {
+                this.set(rel, result.toJson());
+            } else {
+                this.set(rel, result);
+            }
+        }
+
+        return this;
+    }
+
+    /**
+     * Eager-load relationships for a collection of model instances.
+     * Loads each instance's relationships in parallel (N+1 per relation).
+     * For truly batched loading, use `whereIn` directly.
+     *
+     * @example
+     * ```typescript
+     * const posts = await Post.where({});
+     * await Post.loadAll(posts, 'author');
+     * ```
+     */
+    static async loadAll<T extends BaseModel>(instances: T[], ...relations: string[]): Promise<T[]> {
+        // For each instance, call load() in parallel
+        await Promise.all(instances.map((instance) => instance.load(...relations)));
+        return instances;
     }
 
     // ============================================================
@@ -980,7 +1248,16 @@ export class BaseModel extends AbstractBaseModel {
         const pivotOtherColumn = (pivotTable as any)[otherKey];
 
         if (!pivotFkColumn || !pivotOtherColumn) {
-            throw new Error(`Keys ${foreignKey} or ${otherKey} not found in pivot table`);
+            // List available columns for debugging
+            const availableColumns = Object.keys(pivotTable).filter(
+                (k) => !k.startsWith('_') && typeof (pivotTable as any)[k]?.name === 'string',
+            );
+            const missing = [!pivotFkColumn && foreignKey, !pivotOtherColumn && otherKey].filter(Boolean);
+            throw new Error(
+                `Pivot table column(s) not found: ${missing.join(', ')}. ` +
+                    `Available columns: ${availableColumns.join(', ') || '(none)'}. ` +
+                    `Use the foreignKey/otherKey options to specify custom column names.`,
+            );
         }
 
         const pivotRows = await db.select().from(pivotTable).where(eq(pivotFkColumn, localValue));

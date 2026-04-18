@@ -45,16 +45,16 @@ export default class SpoilerTool implements BlockTool {
 
     render(): HTMLElement {
         const wrapper = document.createElement('div');
-        wrapper.classList.add(SpoilerTool.CSS.baseClass, SpoilerTool.CSS.wrapper);
+        wrapper.classList.add(SpoilerTool.CSS.baseClass, SpoilerTool.CSS.wrapper, 'ob-plugin');
 
         // Add title
         const title = document.createElement('div');
-        title.classList.add(SpoilerTool.CSS.title);
+        title.classList.add(SpoilerTool.CSS.title, 'ob-section-label');
         title.textContent = 'Spoiler';
         wrapper.appendChild(title);
 
         const textarea = document.createElement('textarea');
-        textarea.classList.add(SpoilerTool.CSS.textarea);
+        textarea.classList.add(SpoilerTool.CSS.textarea, 'ob-textarea');
         textarea.placeholder = this.config.placeholder || 'Enter spoiler text...';
         textarea.value = this.data.text;
         textarea.rows = 3;

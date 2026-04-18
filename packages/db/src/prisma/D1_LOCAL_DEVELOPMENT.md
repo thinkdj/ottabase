@@ -475,4 +475,4 @@ For issues or questions:
 
 - GitHub Issues: [ottabase/issues](https://github.com/yourusername/ottabase/issues)
 - Discord: [Ottabase Community](#)
-- Docs: [docs.ottabase.dev](#)
+- Docs: [docs.ottabase.com](#)

@@ -40,10 +40,10 @@
         "react-dom": "catalog:"
     },
     "dependencies": {
+        "@ottabase/medialibrary": "workspace:*",
+        "@ottabase/ui-code-highlight": "workspace:*",
         "editorjs-blocks-react-renderer": "^1.3.0",
-        "html-react-parser": "^5.1.18",
-        "@wooorm/starry-night": "^3.5.0",
-        "hast-util-to-jsx-runtime": "^2.3.2"
+        "html-react-parser": "^5.1.18"
     },
     "devDependencies": {
         "@types/node": "catalog:",
@@ -55,5 +55,14 @@
         "tsup": "catalog:",
         "rimraf": "catalog:",
         "eslint": "catalog:"
-    }
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/ottarenderer"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/ottarenderer#readme"
 }

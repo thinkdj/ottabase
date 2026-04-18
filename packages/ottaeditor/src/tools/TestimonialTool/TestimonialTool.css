@@ -1,0 +1,121 @@
+/* Testimonial Tool - custom/overrides only (base styles come from ottaeditor-common.css) */
+
+.cdx-testimonial__wrapper {
+    background: hsl(var(--card));
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.cdx-testimonial__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.cdx-testimonial__variant-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cdx-testimonial__variant-group .ob-label {
+    margin-bottom: 0 !important;
+}
+
+/* ── Verified checkbox ───────────────────────────────────────────────────── */
+
+.cdx-testimonial__verified-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+    cursor: pointer;
+}
+
+/* ── Quote textarea ──────────────────────────────────────────────────────── */
+
+.cdx-testimonial__quote-input {
+    font-style: italic;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+/* ── Author row ──────────────────────────────────────────────────────────── */
+
+.cdx-testimonial__author-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+}
+
+/* ── Media (avatar + logo) row ───────────────────────────────────────────── */
+
+.cdx-testimonial__media-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+/* ── Rating section ──────────────────────────────────────────────────────── */
+
+.cdx-testimonial__rating-group {
+    padding-top: 4px;
+}
+
+.cdx-testimonial__stars-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cdx-testimonial__stars {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.cdx-testimonial__star {
+    background: transparent;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    color: hsl(var(--muted-foreground));
+    border-radius: 2px;
+    transition:
+        color 0.15s,
+        transform 0.1s;
+    line-height: 0;
+}
+
+.cdx-testimonial__star:hover {
+    transform: scale(1.2);
+}
+
+.cdx-testimonial__star--filled {
+    /* --warning follows the shadcn/ui convention: raw H S% L% values used inside hsl().
+       Fallback is a full, valid hsl() color in case the variable is not defined. */
+    color: hsl(var(--warning, 43 96% 56%));
+}
+
+.cdx-testimonial__rating-value {
+    font-size: 12px;
+    color: hsl(var(--muted-foreground));
+    min-width: 40px;
+}
+
+/* ── Responsive collapse ─────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+    .cdx-testimonial__author-row {
+        grid-template-columns: 1fr;
+    }
+
+    .cdx-testimonial__media-row {
+        grid-template-columns: 1fr;
+    }
+}

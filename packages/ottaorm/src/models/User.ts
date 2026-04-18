@@ -48,8 +48,8 @@ export class User extends BaseModel {
     };
 
     static writable = {
-        create: ['name', 'email', 'image', 'referralUsername'],
-        update: ['name', 'image'],
+        create: ['name', 'email', 'image', 'referralUsername', 'timezone'],
+        update: ['name', 'image', 'timezone'],
     };
 
     protected static fields: ModelFields = {

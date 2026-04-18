@@ -1,7 +1,7 @@
 /**
  * PostTag table schema - blog-specific tags with color and type support
  */
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const postTagsTable = sqliteTable(
     'post_tags',
@@ -20,7 +20,7 @@ export const postTagsTable = sqliteTable(
         color: text('color'),
 
         // App identifier for multi-app database sharing
-        appId: text('app_id'),
+        appId: text('app_id').notNull(),
 
         // Content type this tag applies to (post, news, docs, etc.)
         type: text('type').notNull().default('post'),
@@ -31,8 +31,8 @@ export const postTagsTable = sqliteTable(
             .$defaultFn(() => Date.now()),
     },
     (table) => [
-        // Lookup by slug with type filtering
-        index('post_tags_slug_type_idx').on(table.slug, table.type),
+        // Enforce unique tag slugs per app + content type
+        uniqueIndex('post_tags_app_id_type_slug_unique_idx').on(table.appId, table.type, table.slug),
 
         // Multi-tenant with type: appId + type for filtering tags by content type
         index('post_tags_app_id_type_idx').on(table.appId, table.type),

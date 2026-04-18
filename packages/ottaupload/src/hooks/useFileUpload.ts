@@ -93,29 +93,52 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
             // Response handler
             return new Promise<UploadResponse>((resolve, reject) => {
                 xhr.addEventListener('load', () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        const response = JSON.parse(xhr.responseText) as UploadResponse;
+                    // Wrap in try/catch: throwing inside an XHR async callback won't be caught
+                    // by the Promise — we must call reject() explicitly.
+                    try {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            const response = JSON.parse(xhr.responseText) as UploadResponse;
 
-                        if (response.success) {
-                            setFiles((prev) =>
-                                prev.map((f) =>
-                                    f.id === uploadFile.id
-                                        ? {
-                                              ...f,
-                                              status: 'success',
-                                              progress: 100,
-                                              url: response.url,
-                                              key: response.key,
-                                          }
-                                        : f,
-                                ),
-                            );
-                            resolve(response);
+                            if (response.success) {
+                                setFiles((prev) =>
+                                    prev.map((f) =>
+                                        f.id === uploadFile.id
+                                            ? {
+                                                  ...f,
+                                                  status: 'success',
+                                                  progress: 100,
+                                                  url: response.url,
+                                                  key: response.key,
+                                              }
+                                            : f,
+                                    ),
+                                );
+                                resolve(response);
+                            } else {
+                                throw new Error(response.error || 'Upload failed');
+                            }
                         } else {
-                            throw new Error(response.error || 'Upload failed');
+                            // Parse server error message when available (e.g., 401 JSON body)
+                            let message = `Upload failed with status ${xhr.status}`;
+                            try {
+                                const errBody = JSON.parse(xhr.responseText) as { error?: string; message?: string };
+                                if (errBody.error || errBody.message) {
+                                    message = errBody.error || errBody.message || message;
+                                }
+                            } catch {
+                                // response was not JSON — keep default message
+                            }
+                            throw new Error(message);
                         }
-                    } else {
-                        throw new Error(`Upload failed with status ${xhr.status}`);
+                    } catch (err) {
+                        const error = err instanceof Error ? err : new Error('Upload failed');
+                        setFiles((prev) =>
+                            prev.map((f) =>
+                                f.id === uploadFile.id ? { ...f, status: 'error', error: error.message } : f,
+                            ),
+                        );
+                        onUploadError?.(error);
+                        reject(error);
                     }
                 });
 

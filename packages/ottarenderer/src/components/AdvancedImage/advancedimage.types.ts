@@ -1,6 +1,8 @@
 export interface AdvancedImageData {
     url?: string;
     file?: { url: string }; // legacy @editorjs/image (file.url) support
+    mediaId?: string;
+    mimeType?: string;
     caption?: string;
     withBorder?: boolean;
     withBackground?: boolean;

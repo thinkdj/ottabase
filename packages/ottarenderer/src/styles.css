@@ -52,13 +52,13 @@
 }
 
 .cdc-content-block .inline-code {
-    color: rgb(214, 51, 132);
-    background: rgb(248, 249, 250);
+    color: hsl(var(--destructive, 0 84% 60%));
+    background: hsl(var(--muted, 240 4.8% 95.9%));
 }
 
 .cdx-marker {
-    background: rgb(252, 233, 106);
-    color: rgb(0, 0, 0);
+    background: hsl(var(--warning, 45 93% 47%) / 0.35);
+    color: hsl(var(--foreground, 0 0% 0%));
 }
 
 .cdc-content-block.image-block {
@@ -628,4 +628,839 @@
 .dark .cdc-content-cta a:not([class*='bg-']) {
     background-color: #2563eb;
     color: #ffffff;
+}
+
+/* ======================================= */
+/* Review Block */
+/* ======================================= */
+
+.cdc-content-review {
+    display: block;
+    clear: both;
+    margin: 1.5rem 0;
+    width: 100%;
+}
+
+.cdc-content-review img {
+    max-width: 100%;
+    height: auto;
+}
+
+.cdc-content-review h3 {
+    margin-top: 0;
+}
+
+.cdc-content-review ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* ======================================= */
+/* Steps Block */
+/* ======================================= */
+
+.cdc-content-steps {
+    display: block;
+    clear: both;
+    margin: 1.5rem 0;
+    width: 100%;
+}
+
+.cdc-content-steps [role='list'] {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Step item — two-column grid: rail | content */
+.cdc-steps-item {
+    display: grid;
+    grid-template-columns: 2rem 1fr;
+    gap: 1rem;
+    padding-bottom: 1.5rem;
+}
+
+.cdc-steps-item:last-child {
+    padding-bottom: 0;
+}
+
+/* Rail: badge + connecting line */
+.cdc-steps-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 0.125rem;
+}
+
+.cdc-steps-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    border: none;
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.cdc-steps-line {
+    width: 1px;
+    flex: 1;
+    margin-top: 0.5rem;
+    background: hsl(var(--border));
+}
+
+/* Content: title + description */
+.cdc-steps-content {
+    min-width: 0;
+    padding-top: 0.125rem;
+}
+
+.cdc-steps-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 2;
+    color: hsl(var(--foreground));
+}
+
+.cdc-steps-text {
+    margin: 0.125rem 0 0;
+    white-space: pre-line;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: hsl(var(--muted-foreground));
+}
+
+.cdc-steps-text--no-title {
+    margin-top: 0.25rem;
+}
+
+/* ======================================= */
+/* FAQ Block                               */
+/* ======================================= */
+
+.cdc-content-faq {
+    width: 100%;
+}
+
+/* Accordion wrapper */
+.cdc-faq-accordion,
+.cdc-faq-flat {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Individual item */
+.cdc-faq-item {
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.cdc-faq-item:last-child {
+    border-bottom: none;
+}
+
+/* Question — <summary> for accordion, <h3> for flat */
+.cdc-faq-question {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 1rem 1.25rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    list-style: none;
+    background: hsl(var(--card));
+    transition: background 0.15s;
+    user-select: none;
+}
+
+/* Hide default details marker in all browsers */
+.cdc-faq-question::-webkit-details-marker {
+    display: none;
+}
+.cdc-faq-question::marker {
+    display: none;
+}
+
+.cdc-faq-question:hover {
+    background: hsl(var(--muted) / 0.6);
+}
+
+.cdc-faq-question-text {
+    flex: 1;
+}
+
+/* Chevron icon — rotates when open */
+.cdc-faq-chevron {
+    flex-shrink: 0;
+    color: hsl(var(--muted-foreground));
+    transition: transform 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+details[open] > .cdc-faq-question .cdc-faq-chevron {
+    transform: rotate(180deg);
+}
+
+/* Answer */
+.cdc-faq-answer {
+    margin: 0;
+    padding: 0.75rem 1.25rem 1.125rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: hsl(var(--muted-foreground));
+    background: hsl(var(--background));
+    white-space: pre-line;
+}
+
+/* Flat variant: question is an h3, no cursor */
+.cdc-faq-question--flat {
+    cursor: default;
+    margin: 0;
+    font-weight: 600;
+}
+
+.cdc-faq-item--flat {
+    padding: 0;
+}
+
+/* ======================================= */
+/* Testimonial Block                       */
+/* ======================================= */
+
+.cdc-content-testimonial {
+    width: 100%;
+}
+
+/* ── Card variant ─────────────────────────────────────────────────────────── */
+
+.cdc-testimonial-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* ── Minimal variant ──────────────────────────────────────────────────────── */
+
+.cdc-testimonial-minimal {
+    border-left: 4px solid hsl(var(--primary));
+    padding: 0.75rem 0 0.75rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* ── Featured variant ─────────────────────────────────────────────────────── */
+
+.cdc-testimonial-featured {
+    background: hsl(var(--muted) / 0.4);
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    position: relative;
+}
+
+.cdc-testimonial-featured-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.cdc-testimonial-featured-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* ── Quote ───────────────────────────────────────────────────────────────── */
+
+.cdc-testimonial-quote {
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+.cdc-testimonial-quote p {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: hsl(var(--foreground));
+    font-style: italic;
+}
+
+.cdc-testimonial-quote--large p {
+    font-size: 1.25rem;
+    line-height: 1.65;
+}
+
+/* Large open-quote decoration for featured */
+.cdc-testimonial-featured .cdc-testimonial-quote::before {
+    content: '\201C';
+    display: block;
+    font-size: 4rem;
+    line-height: 0.75;
+    color: hsl(var(--primary) / 0.25);
+    font-family: Georgia, serif;
+    margin-bottom: 0.5rem;
+}
+
+/* ── Author attribution ───────────────────────────────────────────────────── */
+
+.cdc-testimonial-author {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.cdc-testimonial-author--compact {
+    gap: 0.5rem;
+}
+
+.cdc-testimonial-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.cdc-testimonial-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.cdc-testimonial-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: hsl(var(--foreground));
+}
+
+.cdc-testimonial-sub {
+    font-size: 0.8125rem;
+    color: hsl(var(--muted-foreground));
+}
+
+/* ── Company logo ─────────────────────────────────────────────────────────── */
+
+.cdc-testimonial-company-logo {
+    height: 24px;
+    width: auto;
+    max-width: 120px;
+    object-fit: contain;
+    opacity: 0.7;
+    filter: grayscale(1);
+}
+
+/* ── Stars ────────────────────────────────────────────────────────────────── */
+
+.cdc-testimonial-stars {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.cdc-testimonial-star--filled {
+    /* --warning follows the shadcn/ui convention: raw H S% L% values used inside hsl().
+       Fallback is a full, valid hsl() color in case the variable is not defined. */
+    color: hsl(var(--warning, 43 96% 56%));
+}
+
+.cdc-testimonial-star--empty {
+    color: hsl(var(--muted-foreground) / 0.4);
+}
+
+/* ── References ───────────────────────────────────────────────────────────── */
+
+.cdc-references {
+    margin: 1.5rem 0;
+}
+
+.cdc-references-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.cdc-references-item {
+    display: flex;
+    gap: 0.6rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.cdc-references-label {
+    flex-shrink: 0;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    min-width: 2rem;
+}
+
+.cdc-references--footnote .cdc-references-label {
+    font-size: 0.75rem;
+    vertical-align: super;
+    min-width: 1rem;
+}
+
+.cdc-references-body {
+    flex: 1;
+}
+
+.cdc-references-authors {
+    font-style: italic;
+}
+
+.cdc-references-link {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-all;
+}
+
+.cdc-references-link:hover {
+    opacity: 0.8;
+}
+
+.cdc-references-note {
+    color: hsl(var(--muted-foreground));
+    font-size: 0.8125rem;
+}
+
+.cdc-references-accessed {
+    color: hsl(var(--muted-foreground));
+    font-size: 0.8125rem;
+}
+
+/* ── Testimonial: quote-bubble variant ──────────────────────────────────── */
+
+.cdc-testimonial-bubble {
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    position: relative;
+    background: hsl(var(--card));
+}
+
+.cdc-testimonial-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 2rem;
+    border: 6px solid transparent;
+    border-top-color: hsl(var(--border));
+}
+
+.cdc-testimonial-bubble::before {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 2rem;
+    border: 6px solid transparent;
+    border-top-color: hsl(var(--card));
+    z-index: 1;
+}
+
+.cdc-testimonial-bubble .cdc-testimonial-author {
+    margin-top: 1rem;
+}
+
+/* ── Testimonial: side-by-side variant ──────────────────────────────────── */
+
+.cdc-testimonial-side {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1.5rem;
+    align-items: start;
+    padding: 1.25rem 0;
+    border-top: 1px solid hsl(var(--border));
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.cdc-testimonial-side .cdc-testimonial-side-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 120px;
+    text-align: center;
+}
+
+.cdc-testimonial-side .cdc-testimonial-side-right {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.cdc-testimonial-side .cdc-testimonial-quote {
+    margin: 0;
+}
+
+/* ── Testimonial: verified badge ─────────────────────────────────────────── */
+
+.cdc-testimonial-verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: hsl(var(--primary));
+    background: hsl(var(--primary) / 0.1);
+    border-radius: 9999px;
+    padding: 1px 6px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+/* ─── Annotation Tooltip ────────────────────────────────────────────────────── */
+.cdx-annotation,
+.cdc-annotation {
+    position: relative;
+    background-color: hsl(var(--warning, 45 93% 47%) / 0.2);
+    border-bottom: 2px solid hsl(var(--warning, 45 93% 47%));
+    padding: 0 2px;
+    cursor: help;
+}
+
+.cdc-annotation__tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 200px;
+    max-width: 300px;
+    padding: 12px;
+    background: hsl(var(--background, 0 0% 100%));
+    border: 1px solid hsl(var(--border, 0 0% 89%));
+    border-radius: 8px;
+    box-shadow: 0 4px 12px hsl(var(--foreground, 0 0% 0%) / 0.1);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+}
+
+.cdc-annotation__tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: hsl(var(--border, 0 0% 89%));
+}
+
+.cdc-annotation__title {
+    font-weight: 600;
+    font-size: 14px;
+    color: hsl(var(--foreground, 0 0% 0%));
+}
+
+.cdc-annotation__text {
+    font-size: 13px;
+    color: hsl(var(--muted-foreground, 0 0% 45%));
+    line-height: 1.5;
+}
+
+/* ======================================= */
+/* Before / After Slider                   */
+/* ======================================= */
+
+.cdc-before-after {
+    margin: 1.5rem auto;
+}
+
+.cdc-before-after__container {
+    position: relative;
+    min-height: 200px;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid hsl(var(--border, 0 0% 89%));
+    cursor: ew-resize;
+    user-select: none;
+    touch-action: none;
+    background: hsl(var(--muted, 240 4.8% 95.9%) / 0.3);
+}
+
+.cdc-before-after__container--vertical {
+    cursor: ns-resize;
+}
+
+/* Cover mode: images fill container */
+.cdc-before-after__container--cover .cdc-before-after__after {
+    height: 100%;
+    object-fit: cover;
+}
+
+/* After image: base layer */
+.cdc-before-after__after {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0; /* Reset prose styles */
+    pointer-events: none;
+}
+
+/* Before image: clipped overlay */
+.cdc-before-after__before {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.cdc-before-after__before img {
+    display: block;
+    width: 100%;
+    /* Contain mode (default): match the after image's natural rendering so both
+       images appear at the same scale and alignment. */
+    height: auto;
+    margin: 0; /* Reset prose styles */
+}
+
+/* Cover mode: before image must fill the fixed-height container like the after image */
+.cdc-before-after__container--cover .cdc-before-after__before img {
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Labels */
+.cdc-before-after__label {
+    position: absolute;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: hsl(var(--primary-foreground, 0 0% 100%));
+    background: hsl(var(--primary, 221.2 83.2% 53.3%) / 0.85);
+    pointer-events: none;
+    z-index: 5;
+    backdrop-filter: blur(4px);
+}
+
+.cdc-before-after__label--before {
+    top: 12px;
+    left: 12px;
+}
+
+.cdc-before-after__label--after {
+    top: 12px;
+    right: 12px;
+}
+
+.cdc-before-after__container--vertical .cdc-before-after__label--before {
+    top: 12px;
+    left: 12px;
+}
+
+.cdc-before-after__container--vertical .cdc-before-after__label--after {
+    top: auto;
+    bottom: 12px;
+    left: 12px;
+    right: auto;
+}
+
+/* Drag handle */
+.cdc-before-after__handle {
+    position: absolute;
+    background: hsl(var(--primary, 221.2 83.2% 53.3%));
+    z-index: 10;
+    cursor: grab;
+    transition: box-shadow 0.15s ease;
+}
+
+.cdc-before-after__handle::before {
+    content: '';
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: hsl(var(--primary, 221.2 83.2% 53.3%));
+    border: 3px solid hsl(var(--primary-foreground, 0 0% 100%));
+    box-shadow: 0 2px 8px hsl(var(--foreground, 0 0% 0%) / 0.2);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.cdc-before-after__handle:hover {
+    box-shadow: 0 0 0 4px hsl(var(--primary, 221.2 83.2% 53.3%) / 0.3);
+}
+
+.cdc-before-after__handle:active {
+    cursor: grabbing;
+}
+
+.cdc-before-after__caption {
+    margin-top: 8px;
+    font-size: 14px;
+    color: hsl(var(--muted-foreground, 0 0% 45%));
+    text-align: center;
+}
+
+/* ======================================= */
+/* Image Hotspots                          */
+/* ======================================= */
+
+.cdc-image-hotspots {
+    margin: 1.5rem auto;
+}
+
+.cdc-image-hotspots__container {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    min-height: 200px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid hsl(var(--border, 0 0% 89%));
+}
+
+/* Cover mode: image fills container height */
+.cdc-image-hotspots__container--cover .cdc-image-hotspots__image {
+    height: 100%;
+    object-fit: cover;
+}
+
+.cdc-image-hotspots__image {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0; /* Reset prose styles */
+    pointer-events: none;
+    user-select: none;
+}
+
+/* Hotspot dot */
+.cdc-image-hotspots__dot {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: hsl(var(--primary, 221.2 83.2% 53.3%));
+    border: 3px solid hsl(var(--primary-foreground, 0 0% 100%));
+    box-shadow: 0 2px 8px hsl(var(--foreground, 0 0% 0%) / 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    transition:
+        box-shadow 0.15s ease,
+        transform 0.15s ease;
+}
+
+.cdc-image-hotspots__dot:hover {
+    box-shadow: 0 0 0 4px hsl(var(--primary, 221.2 83.2% 53.3%) / 0.3);
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+.cdc-image-hotspots__dot--active {
+    box-shadow: 0 0 0 6px hsl(var(--primary, 221.2 83.2% 53.3%) / 0.35);
+    transform: translate(-50%, -50%) scale(1.15);
+    z-index: 15;
+}
+
+.cdc-image-hotspots__dot:focus-visible {
+    outline: 2px solid hsl(var(--ring, 221.2 83.2% 53.3%));
+    outline-offset: 2px;
+}
+
+.cdc-image-hotspots__dot-number {
+    font-size: 12px;
+    font-weight: 700;
+    color: hsl(var(--primary-foreground, 0 0% 100%));
+    line-height: 1;
+    user-select: none;
+}
+
+/* Tooltip */
+.cdc-image-hotspots__tooltip {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 200px;
+    max-width: 300px;
+    background: hsl(var(--background, 0 0% 100%));
+    border: 1px solid hsl(var(--border, 0 0% 89%));
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 4px 16px hsl(var(--foreground, 0 0% 0%) / 0.12);
+    z-index: 20;
+    text-align: left;
+}
+
+/* Arrow */
+.cdc-image-hotspots__tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-bottom-color: hsl(var(--border, 0 0% 89%));
+}
+
+.cdc-image-hotspots__tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: hsl(var(--background, 0 0% 100%));
+}
+
+.cdc-image-hotspots__tooltip-title {
+    display: block;
+    font-weight: 600;
+    font-size: 14px;
+    color: hsl(var(--foreground, 0 0% 0%));
+    margin-bottom: 4px;
+}
+
+.cdc-image-hotspots__tooltip-content {
+    font-size: 13px;
+    color: hsl(var(--muted-foreground, 0 0% 45%));
+    line-height: 1.5;
+    margin: 0;
+}
+
+.cdc-image-hotspots__caption {
+    margin-top: 8px;
+    font-size: 14px;
+    color: hsl(var(--muted-foreground, 0 0% 45%));
+    text-align: center;
 }

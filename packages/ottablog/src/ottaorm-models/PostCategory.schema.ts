@@ -1,7 +1,7 @@
 /**
  * PostCategory table schema - hierarchical content organization
  */
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const categoriesTable = sqliteTable(
     'categories',
@@ -26,7 +26,7 @@ export const categoriesTable = sqliteTable(
         sortOrder: integer('sort_order').notNull().default(0),
 
         // App identifier for multi-app database sharing
-        appId: text('app_id'),
+        appId: text('app_id').notNull(),
 
         // Content type this category applies to (post, news, docs, etc.)
         type: text('type').notNull().default('post'),
@@ -42,8 +42,8 @@ export const categoriesTable = sqliteTable(
             .$onUpdateFn(() => Date.now()),
     },
     (table) => [
-        // Lookup by slug with type filtering
-        index('categories_slug_type_idx').on(table.slug, table.type),
+        // Enforce unique category slugs per app + content type
+        uniqueIndex('categories_app_id_type_slug_unique_idx').on(table.appId, table.type, table.slug),
 
         // Multi-tenant with type: appId + type for filtering categories by content type
         index('categories_app_id_type_idx').on(table.appId, table.type),

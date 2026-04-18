@@ -1,0 +1,89 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    // Wrangler configuration for Next.js homepage app with brand-engine integration
+    // Minimal configuration for a simple homepage with Cloudflare Workers
+
+    "name": "otta-landing",
+    "compatibility_date": "2024-12-30",
+    // Main worker configuration
+    // OpenNext for Cloudflare creates .open-next/worker.js as the entry point
+    "main": ".open-next/worker.js",
+    // For next.js apps
+    "compatibility_flags": [
+        // Enable Node.js API
+        "nodejs_compat",
+        // Allow to fetch URLs in your app
+        "global_fetch_strictly_public",
+    ],
+
+    // Keep Wrangler bundling enabled so OpenNext's relative worker modules
+    // (e.g. ./cloudflare/images.js) are uploaded during deploy validation.
+
+    // Observability - logging configuration
+    "observability": {
+        "enabled": true,
+    },
+
+    // Asset bindings
+    "assets": {
+        "directory": ".open-next/assets",
+        "binding": "OBCF_ASSETS",
+    },
+
+    // Environment variables
+    "vars": {
+        "ENVIRONMENT": "development",
+        "NODE_ENV": "production",
+    },
+
+    // Local development settings
+    "dev": {
+        "port": 8788,
+        "local_protocol": "http",
+    },
+
+    // Cloudflare Images binding (required by @opennextjs/cloudflare worker bundle)
+    // No cost when images.unoptimized = true in next.config.js
+    "images": {
+        "binding": "IMAGES",
+    },
+
+    // Limits configuration
+    "limits": {
+        "cpu_ms": 50000,
+    },
+
+    // Environment-specific overrides
+    "env": {
+        "production": {
+            "vars": {
+                "ENVIRONMENT": "production",
+                "NODE_ENV": "production",
+            },
+            // Asset bindings for Production
+            "assets": {
+                "binding": "OBCF_ASSETS",
+                "directory": ".open-next/assets",
+            },
+            "images": {
+                "binding": "IMAGES",
+            },
+        },
+        // Preview environment for PR deployments
+        // The deploy workflow reads this block to verify secrets and generate wrangler.preview.jsonc
+        "preview": {
+            "vars": {
+                "ENVIRONMENT": "preview",
+                "NODE_ENV": "production",
+            },
+            // Asset bindings for Preview
+            "assets": {
+                "binding": "OBCF_ASSETS",
+                "directory": ".open-next/assets",
+            },
+            "images": {
+                "binding": "IMAGES",
+            },
+        },
+    },
+}

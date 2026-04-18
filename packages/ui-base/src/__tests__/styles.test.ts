@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as styles from '../index.ts';
+import * as styles from '../index';
 
 describe('Base UI Styles', () => {
     describe('Style Exports', () => {

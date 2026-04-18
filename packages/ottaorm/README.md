@@ -10,6 +10,11 @@ An ORM for Cloudflare D1 and SQLite. Fat model pattern with all logic in one pla
 - **Automated Migrations** - Auto-creates tables from Models, no CLI needed
 - **Type-Safe** - Full TypeScript support with Drizzle ORM
 - **Relationships** - belongsTo, hasMany, hasOne, belongsToMany
+- **Eager Loading** - `instance.load('author', 'comments')` for relationship loading
+- **Soft Deletes** - Optional `deletedAt` support with `restore()`, `withTrashed()`, `onlyTrashed()`
+- **Batch Operations** - Atomic batch execution via D1's native batch API
+- **Optimistic Updates** - Built-in optimistic cache updates in TanStack Query mutation hooks
+- **Query Safeguards** - Auto-capped `limit` (max 1000) and `offset` (max 100k) on list endpoints
 - **Field Metadata** - UI config, validation, form/table config
 - **Type Casting** - Automatic boolean, date, json conversion
 - **Per-App Models** - Core models + app-specific models
@@ -168,7 +173,7 @@ Initialize database via your API endpoint:
 pnpm dev
 
 # Initialize database (creates all tables automatically)
-curl -X POST http://localhost:3000/api/ottaorm/init
+curl -X POST http://localhost:3004/api/ottaorm/init
 ```
 
 ### Production Setup
@@ -455,6 +460,86 @@ await todo.delete();
 await Todo.destroy('todo-id');
 ```
 
+### Soft Deletes
+
+Enable soft deletes on a model by setting `softDeletes = true`. The table must have a `deletedAt` integer column.
+
+```typescript
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+
+export const postsTable = sqliteTable('posts', {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    deletedAt: integer('deleted_at'), // required for soft deletes
+});
+
+export class Post extends BaseModel {
+    static entity = 'posts';
+    static table = postsTable;
+    static softDeletes = true; // enables soft deletes
+}
+
+// Soft delete — sets deletedAt, row stays in DB
+await Post.delete('post-id');
+
+// Queries automatically exclude soft-deleted records
+const posts = await Post.where({}); // excludes deleted
+
+// Include soft-deleted records
+const allPosts = await Post.withTrashed().where({});
+
+// Query only soft-deleted records
+const trashed = await Post.onlyTrashed();
+
+// Restore a soft-deleted record
+await Post.restore('post-id');
+
+// Permanently delete (bypasses soft delete)
+await Post.forceDelete('post-id');
+```
+
+### Batch Operations
+
+Execute multiple SQL statements atomically using D1's native batch API:
+
+```typescript
+await BaseModel.batch([
+    "INSERT INTO todos (id, title) VALUES ('1', 'First')",
+    "INSERT INTO todos (id, title) VALUES ('2', 'Second')",
+]);
+// All succeed or all fail — atomic execution
+```
+
+### Eager Loading
+
+Load relationships after the initial query:
+
+```typescript
+// Single instance — loads each relation in parallel
+const post = await Post.find('post-id');
+await post.load('author', 'comments');
+console.log(post.get('author')); // { id: '...', name: '...' }
+console.log(post.get('comments')); // [{ id: '...', content: '...' }, ...]
+
+// Collection — loads each instance's relations in parallel (N queries per relation)
+// For truly batched loading, use whereIn directly on the related model
+const posts = await Post.where({});
+await Post.loadAll(posts, 'author', 'tags');
+```
+
+Relationship methods must be defined as instance methods on the model:
+
+```typescript
+export class Post extends BaseModel {
+    async author() {
+        return this.belongsTo(User, 'authorId');
+    }
+    async comments() {
+        return this.hasMany(Comment, 'postId');
+    }
+}
+```
+
 ## Relationships
 
 ### belongsTo (N:1)
@@ -535,7 +620,7 @@ const tags = await post.tags({
 
 ```bash
 # Development (no auth)
-curl -X POST http://localhost:3000/api/ottaorm/init
+curl -X POST http://localhost:3004/api/ottaorm/init
 
 # Production (requires MIGRATION_SECRET)
 curl -X POST https://your-app.com/api/ottaorm/init \
@@ -611,7 +696,7 @@ status: text('status').notNull();
 ```
 
 For complex schema changes, use custom migrations. See
-[Migration READMEs](../../apps/ottabase-template-app/ottabase/migrations/README.md) for examples.
+[Migration README](../../apps/otta-web/ottabase/migrations/README.md) for examples.
 
 ## Type Casting
 
@@ -848,6 +933,29 @@ filter: (context) => ({
 });
 ```
 
+### Slug uniqueness (`GET /api/ottaorm/posts/unique`)
+
+The `posts` model uses **Hierarchical** RLS (`organizationId` + `userId` + `appId`). For `GET …/unique`, user-scoped
+reads would make slug checks see only the current author’s rows. **Secure CRUD** therefore drops `userId` from the
+merged `where` for `model === 'posts'` and `id === 'unique'` only, so `BaseModel.isUnique` matches **organization +
+app** scope (aligned with composite unique indexes on posts).
+
+### SQLite `UNIQUE` errors
+
+`executeSecureCrudRequest` maps `UNIQUE constraint failed` (including **composite** indexes) to HTTP **409** with
+`fieldErrors`. `parseSqliteUniqueConstraintForApi()` prefers meaningful columns (e.g. `slug`) when SQLite lists several.
+
+### Malformed request payloads
+
+`parseCrudRequest` **fails closed** when it can't parse user input, attaching a `parseError` to the returned
+`CrudRequest`. Both `handleCrud` and `executeSecureCrudRequest` short-circuit with **HTTP 400** when `parseError` is
+present, so malformed input never silently degrades into an empty-body no-op or an unfiltered query:
+
+| Scenario                        | Code            | Status |
+| ------------------------------- | --------------- | ------ |
+| Invalid JSON in `?where=` param | `INVALID_QUERY` | 400    |
+| Invalid JSON body on POST/PATCH | `INVALID_BODY`  | 400    |
+
 ### SecurityContext
 
 The security context is passed to all RLS operations:
@@ -862,6 +970,22 @@ interface SecurityContext {
     memberOrganizationIds?: string[]; // orgs the user can access
 }
 ```
+
+### Permission Wildcards
+
+When a policy uses `requiredPermissions` (e.g. `['brand:edit']`), the RLS engine supports wildcard matching:
+
+| Pattern   | Matches              | Example                                   |
+| --------- | -------------------- | ----------------------------------------- |
+| `*:*`     | All permissions      | Super-admin bypasses any permission check |
+| `brand:*` | All brand actions    | Satisfies `brand:edit`, `brand:read`      |
+| `*:edit`  | Edit on any resource | Satisfies `posts:edit`, `brand:edit`      |
+
+Admins with `*:*` or `brand:*` will pass policies requiring `brand:edit`. Same semantics as
+[@ottabase/rbac](../rbac/README.md).
+
+**Limits:** Only 2-segment `resource:action` format is supported. Bare `*` does not grant—use `*:*`. 3+ segments (e.g.
+`brand:edit:admin`) are not matched by wildcards; only exact match applies.
 
 ### Audit Integration
 
@@ -953,9 +1077,22 @@ Search uses fields marked `searchable: true` in model metadata and supports pagi
 GET /api/ottaorm/posts?search=hello&orderBy=createdAt&orderDirection=desc&page=1&perPage=10
 ```
 
+### Query Limits
+
+To prevent abuse, the CRUD API enforces upper bounds on query parameters:
+
+| Parameter | Paginated | Non-paginated |
+| --------- | --------- | ------------- |
+| `perPage` | max 100   | N/A           |
+| `limit`   | N/A       | max 1000      |
+| `offset`  | N/A       | max 100,000   |
+
+Values exceeding these limits are silently capped to the maximum.
+
 ### Client Hooks
 
-TanStack Query hooks for React components:
+TanStack Query hooks for React components. Mutations include built-in optimistic updates — `useUpdate` patches the
+detail cache immediately and rolls back on error, `useDelete` removes the cached item and restores it on failure.
 
 ```typescript
 import { createModelHooks } from '@ottabase/ottaorm/client';
@@ -972,7 +1109,7 @@ function BlogDetailPage() {
     // List all
     const { data: posts } = blogPostHooks.useList();
 
-    // Mutations
+    // Mutations (with built-in optimistic updates)
     const createPost = blogPostHooks.useCreate();
     const updatePost = blogPostHooks.useUpdate();
     const deletePost = blogPostHooks.useDelete();
@@ -988,6 +1125,96 @@ function BlogDetailPage() {
 - `useUpdate()` - Update existing record
 - `useDelete()` - Delete record
 - `useInfiniteList()` - Infinite scroll pagination
+
+### Cache & Invalidation
+
+Ottabase uses **entity-namespaced query keys** and a **global mutation observer** to make cache invalidation automatic —
+similar to SWR, but layered on TanStack Query.
+
+#### How it works
+
+Every query that belongs to an entity is namespaced under `[entityName, ...]`. Every mutation that changes an entity
+broadcasts `meta: { entity: entityName }`. The `OttaQueryProvider` subscribes to the mutation cache and calls
+`invalidateQueries([entity])` on success, which TanStack propagates to all matching queries via prefix matching —
+regardless of which endpoint they hit.
+
+This means a delete in the admin panel automatically busts the public blog list, the detail page, infinite scroll — any
+query for that entity, anywhere in the app.
+
+#### `createModelHooks` — automatic, zero config
+
+All mutations from `createModelHooks` carry `meta.entity` automatically. No extra config needed.
+
+```typescript
+const blogPostHooks = createModelHooks<BlogPost>({ entityName: 'posts' });
+
+// Deleting a post invalidates ALL ['posts', ...] queries everywhere
+const deletePost = blogPostHooks.useDelete();
+await deletePost.mutateAsync(id);
+```
+
+#### `useApiQuery` — custom endpoints, same invalidation
+
+Use the `entity` option for any custom endpoint query. The key is namespaced as `[entity, ...queryKey]`, so it's busted
+by mutations on that entity automatically.
+
+```typescript
+// Key becomes ['posts', 'list', { page, contentType }]
+const { data } = useApiQuery<BlogListResponse>({
+    entity: 'posts',
+    queryKey: ['list', { page, contentType }],
+    endpoint: `/api/blog/posts?page=${page}`,
+    queryOptions: BLOG_LIST_QUERY_CONFIG,
+});
+```
+
+#### `useEntityQuery` — custom queryFn, same invalidation
+
+When you need a fully custom `queryFn` (not just an endpoint string), use `useEntityQuery`. The hook always provides a
+non-null `api` function — the injected client when available, a raw fetch adapter otherwise. No null-guarding needed.
+
+```typescript
+const { data } = useEntityQuery<BlogPost>('posts', (api) => api(`/api/blog/posts/by-slug/${slug}`), {
+    subKey: ['by-slug', slug],
+    enabled: !!slug,
+    ...BLOG_DETAIL_QUERY_CONFIG,
+});
+```
+
+#### `useApiMutation` — custom mutations with entity invalidation
+
+Invalidation runs on **success only** — failed mutations leave the cache untouched.
+
+```typescript
+const publishAll = useApiMutation({
+    endpoint: '/api/blog/publish-all',
+    method: 'POST',
+    invalidateEntities: ['posts'], // busts all ['posts', ...] queries on success
+});
+```
+
+#### Opting in from raw `useMutation`
+
+Any `useMutation` call participates in automatic invalidation by setting `meta.entity`:
+
+```typescript
+useMutation({
+    meta: { entity: 'posts' }, // observer picks this up
+    mutationFn: (id) => api(`/api/posts/${id}`, { method: 'DELETE' }),
+});
+```
+
+#### Convention: always declare `entity`
+
+| Scenario                        | Correct hook                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------- |
+| Standard CRUD on a model        | `createModelHooks`                                                              |
+| Custom endpoint, standard fetch | `useApiQuery({ entity, queryKey, endpoint })`                                   |
+| Custom endpoint, custom queryFn | `useEntityQuery(entity, queryFn, { subKey })`                                   |
+| Custom mutation                 | `useApiMutation({ invalidateEntities })` or `useMutation({ meta: { entity } })` |
+
+Queries without an `entity` declaration are not invalidated by any mutation. This is intentional for truly static or
+cross-entity data (e.g. config, stats).
 
 ## Complete Example: API Route
 

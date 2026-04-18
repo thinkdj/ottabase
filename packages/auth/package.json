@@ -77,8 +77,17 @@
         "drizzle",
         "cloudflare-d1"
     ],
-    "author": "",
+    "author": "thinkdj",
     "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/auth"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/auth#readme",
     "peerDependencies": {
         "@auth/core": "catalog:",
         "@ottabase/cf": "workspace:*",

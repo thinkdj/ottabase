@@ -1,21 +1,93 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Brand Kit API handlers
-// GET/POST /api/brand/kits, GET/PUT/DELETE /api/brand/kits/:id, POST /api/brand/kits/:id/clone, POST /api/brand/kits/:id/logo
+// Brand Engine – Brand Kit API handlers (v2: per-app scoping)
+// GET/POST /api/brand/kits, GET/PUT/DELETE /api/brand/kits/:id
+// POST /api/brand/kits/:id/clone, POST /api/brand/kits/:id/logo
+// All scoped by appId, not organizationId.
 // ---------------------------------------------------------------------------
 
-import { BrandKit } from '../persistence/BrandKit.model';
-import { createBrandCache } from '../persistence/cache';
-import { createBrandAssets, type LogoType } from '../persistence/assets';
-import type { BrandApiEnv } from './brand-api';
-import type { BrandKitItem } from '../persistence/types';
-import { jsonResponse } from '@ottabase/utils/http-response';
 import { errorResponse } from '@ottabase/utils/http-errors';
+import { jsonResponse } from '@ottabase/utils/http-response';
+import { createBrandAssets, type LogoType } from '../persistence/assets';
+import { BrandKit } from '../persistence/BrandKit.model';
+import type { BrandKitItem } from '../persistence/types';
+import { PRESET_MAP } from '../presets';
 import { logBrandAudit } from './audit-helper';
+import type { BrandApiEnv } from './brand-api';
+import { warmBrandCache } from './warm-cache';
+
+/**
+ * Expand a preset to full theme tokens and merge with custom overrides.
+ * This creates a self-contained tokensJson that doesn't need runtime resolution.
+ */
+function expandPresetToTokens(presetId: string | null, existingTokensJson: string | null | undefined): string {
+    // Parse existing tokens
+    let existing: Record<string, unknown> = {};
+    try {
+        if (existingTokensJson) {
+            existing = JSON.parse(existingTokensJson) as Record<string, unknown>;
+        }
+    } catch {
+        existing = {};
+    }
+
+    // If no preset selected, return existing tokens as-is
+    if (!presetId || !PRESET_MAP[presetId]) {
+        return JSON.stringify(existing);
+    }
+
+    const preset = PRESET_MAP[presetId];
+
+    // Cursors: user overrides take precedence; fall back to preset cursors (e.g. artisan/funky have registry cursors)
+    const effectiveCursors = existing.cursors ?? (preset as { cursors?: Record<string, string> }).cursors;
+
+    // Build full tokens with preset colors as base
+    const expanded: Record<string, unknown> = {
+        // Preset colors (light + dark)
+        color: {
+            light: preset.colors.light,
+            dark: preset.colors.dark,
+        },
+        // Keep existing typography, spacing, etc. or use preset defaults
+        typography: existing.typography || preset.typography,
+        spacing: existing.spacing || preset.spacing,
+        radius: existing.radius || preset.radius,
+        shadow: existing.shadow || preset.shadows,
+        motion: existing.motion || preset.motion,
+        // Cursors: user-configured or preset default (artisan/funky have registry cursors)
+        ...(effectiveCursors !== undefined && { cursors: effectiveCursors }),
+    };
+
+    // Merge custom color overrides on top of preset
+    if (existing.color && typeof existing.color === 'object') {
+        const customColor = existing.color as Record<string, unknown>;
+        const expandedColor = expanded.color as Record<string, unknown>;
+
+        // Deep merge custom colors over preset colors
+        if (customColor.light && typeof customColor.light === 'object') {
+            expandedColor.light = {
+                ...(expandedColor.light as Record<string, string>),
+                ...(customColor.light as Record<string, string>),
+            };
+        }
+        if (customColor.dark && typeof customColor.dark === 'object') {
+            expandedColor.dark = {
+                ...(expandedColor.dark as Record<string, string>),
+                ...(customColor.dark as Record<string, string>),
+            };
+        }
+    }
+
+    return JSON.stringify(expanded, null, 2);
+}
 
 function serializeKit(kit: BrandKit): BrandKitItem {
     return {
         id: kit.get('id') as string,
-        organizationId: (kit.get('organizationId') as string | null) ?? null,
+        appId: (kit.get('appId') as string | null) ?? null,
+        isDefault: (kit.get('isDefault') as boolean) ?? false,
+        parentBrandKitId: (kit.get('parentBrandKitId') as string | null) ?? null,
+        createdBy: (kit.get('createdBy') as string | null) ?? null,
+        updatedBy: (kit.get('updatedBy') as string | null) ?? null,
         name: kit.get('name') as string,
         slug: (kit.get('slug') as string) ?? null,
         brandName: kit.get('brandName') as string,
@@ -36,18 +108,38 @@ function serializeKit(kit: BrandKit): BrandKitItem {
     };
 }
 
-/** GET /api/brand/kits - List Brand Kits for org */
+/** GET /api/brand/kits - List Brand Kits for app */
 export async function handleGetBrandKits(
     _request: Request,
     _env: BrandApiEnv,
-    organizationId: string | null,
+    appId: string | null,
 ): Promise<Response> {
-    // Bootstrap default kit when listing system scope and none exist (ensures admin can edit default)
-    if (organizationId === null) {
-        await BrandKit.getOrCreateDefault();
+    // NOTE: Do NOT auto-create system default here now that appId is mandatory.
+    // Default kits are seeded by ensureAppBrandDefaults() during bootstrap/init.
+    /*
+    // Bootstrap: System default kit auto-created by resolution pipeline when needed
+    if (appId === null) {
+        await BrandKit.getOrCreateDefault(); // with appId=null, creates system default
     }
-    const kits = (await BrandKit.where({ organizationId: organizationId ?? null }, { orderBy: 'name' })) as BrandKit[];
+    */
+    const appKits = (await BrandKit.where({ appId: appId ?? null }, { orderBy: 'name' })) as BrandKit[];
+    // Include system default (appId=null) so it appears in the list — it's the fallback used by all apps
+    let kits = appKits;
+    if (appId !== null) {
+        const systemDefault = (await BrandKit.first({ appId: null })) as BrandKit | null;
+        if (systemDefault && !appKits.some((k) => k.get('id') === systemDefault.get('id'))) {
+            kits = [systemDefault, ...appKits];
+            kits.sort((a, b) => ((a.get('name') as string) || '').localeCompare((b.get('name') as string) || ''));
+        }
+    }
     const data = kits.map(serializeKit);
+    // Resolve parent kit names for display
+    const kitNameMap = new Map(data.map((k) => [k.id, k.name]));
+    for (const item of data) {
+        if (item.parentBrandKitId) {
+            item.parentBrandKitName = kitNameMap.get(item.parentBrandKitId) ?? null;
+        }
+    }
     return jsonResponse(data, 200);
 }
 
@@ -56,13 +148,13 @@ export async function handleGetBrandKit(
     _request: Request,
     _env: BrandApiEnv,
     id: string,
-    organizationId: string | null,
+    appId: string | null,
 ): Promise<Response> {
     const kit = (await BrandKit.find(id)) as BrandKit | null;
     if (!kit) return errorResponse('Brand Kit not found', 404);
-    const kOrg = kit.get('organizationId') as string | null;
-    // System kits (org=null) are viewable by anyone; org-scoped kits require org match
-    if (kOrg !== null && organizationId !== kOrg) return errorResponse('Brand Kit not found', 404);
+    const kApp = kit.get('appId') as string | null;
+    // System kits (appId=null) are viewable by anyone; app-scoped kits require app match
+    if (kApp !== null && appId !== kApp) return errorResponse('Brand Kit not found', 404);
     return jsonResponse(serializeKit(kit), 200);
 }
 
@@ -70,32 +162,45 @@ export async function handleGetBrandKit(
 export async function handleCreateBrandKit(
     request: Request,
     env: BrandApiEnv,
-    organizationId: string | null,
+    appId: string | null,
+    auditUser?: BrandAuditUser,
 ): Promise<Response> {
     const body = (await request.json()) as Record<string, unknown>;
     const name = body.name as string;
     if (!name || typeof name !== 'string') return errorResponse('name is required', 400);
 
+    const existing = (await BrandKit.where({ appId })) as BrandKit[];
+    const isDefault = existing.length === 0;
+
+    // Expand preset to full tokens if themePresetId is provided
+    const tokensJsonInput =
+        typeof body.tokensJson === 'string'
+            ? body.tokensJson
+            : body.tokensJson
+              ? JSON.stringify(body.tokensJson)
+              : null;
+    const presetId = (body.themePresetId as string) ?? null;
+    const expandedTokens = expandPresetToTokens(presetId, tokensJsonInput);
+
     const kit = (await BrandKit.create({
-        organizationId,
+        appId,
+        isDefault,
+        parentBrandKitId: (body.parentBrandKitId as string) ?? null,
+        createdBy: auditUser?.userId ?? auditUser?.userEmail ?? null,
+        updatedBy: auditUser?.userId ?? auditUser?.userEmail ?? null,
         name,
         slug: (body.slug as string) ?? null,
         brandName: (body.brandName as string) ?? 'My App',
         tagline: (body.tagline as string) ?? null,
-        themePresetId: (body.themePresetId as string) ?? null,
-        tokensJson:
-            typeof body.tokensJson === 'string'
-                ? body.tokensJson
-                : body.tokensJson
-                  ? JSON.stringify(body.tokensJson)
-                  : null,
+        themePresetId: presetId,
+        tokensJson: expandedTokens,
         defaultColorScheme: (body.defaultColorScheme as string) ?? 'system',
         allowDarkModeToggle: (body.allowDarkModeToggle as boolean) ?? true,
         customCss: (body.customCss as string) ?? null,
         hideOttabaseBranding: (body.hideOttabaseBranding as boolean) ?? false,
     })) as BrandKit;
 
-    await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
+    await warmBrandCache(env, { appId });
     return jsonResponse(serializeKit(kit), 201);
 }
 
@@ -110,7 +215,7 @@ export async function handleUpdateBrandKit(
     request: Request,
     env: BrandApiEnv,
     id: string,
-    organizationId: string | null,
+    appId: string | null,
     auditUser?: BrandAuditUser,
 ): Promise<Response> {
     const kit = (await BrandKit.find(id)) as BrandKit | null;
@@ -119,11 +224,20 @@ export async function handleUpdateBrandKit(
             details: `Requested ID: ${id}`,
             hint: 'If you restarted the dev server, refresh the Brand Kits list and try editing again.',
         });
-    const kOrg = kit.get('organizationId') as string | null;
-    // System kits (org=null) are editable by system-scoped users; org-scoped kits require org match
-    if (kOrg !== null && organizationId !== kOrg) return errorResponse('Brand Kit not found', 404);
+    const kApp = kit.get('appId') as string | null;
+    // System kits (appId=null) are editable by system-scoped users; app-scoped kits require app match
+    if (kApp !== null && appId !== kApp) return errorResponse('Brand Kit not found', 404);
 
     const body = (await request.json()) as Record<string, unknown>;
+    // Handle parentBrandKitId – allow setting to null (detach) or to a valid ID
+    if (body.parentBrandKitId !== undefined) {
+        const parentId = (body.parentBrandKitId as string) || null;
+        if (parentId) {
+            const parent = (await BrandKit.find(parentId)) as BrandKit | null;
+            if (!parent) return errorResponse('Parent Brand Kit not found', 400);
+        }
+        kit.set('parentBrandKitId', parentId);
+    }
     const fields = [
         'name',
         'slug',
@@ -136,24 +250,32 @@ export async function handleUpdateBrandKit(
         'hideOttabaseBranding',
     ] as const;
     for (const f of fields) {
-        // System default (org=null): name is locked and cannot be edited
-        if (f === 'name' && kOrg === null) continue;
+        // System default (appId=null): name is locked and cannot be edited
+        if (f === 'name' && kApp === null) continue;
         if (body[f] !== undefined) kit.set(f, body[f]);
     }
-    if (body.tokensJson !== undefined) {
-        kit.set('tokensJson', typeof body.tokensJson === 'string' ? body.tokensJson : JSON.stringify(body.tokensJson));
+
+    // Handle tokensJson with preset expansion
+    if (body.tokensJson !== undefined || body.themePresetId !== undefined) {
+        const tokensJsonInput =
+            typeof body.tokensJson === 'string'
+                ? body.tokensJson
+                : body.tokensJson
+                  ? JSON.stringify(body.tokensJson)
+                  : (kit.get('tokensJson') as string | null);
+        const presetId = (body.themePresetId as string | null) ?? (kit.get('themePresetId') as string | null);
+
+        // Expand preset and merge with custom overrides
+        const expandedTokens = expandPresetToTokens(presetId, tokensJsonInput);
+        kit.set('tokensJson', expandedTokens);
     }
 
-    await kit.save();
-    await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
+    kit.set('updatedBy', auditUser?.userId ?? auditUser?.userEmail ?? null);
 
-    await logBrandAudit(
-        'brand.kit.update',
-        request,
-        { organizationId, kitId: id },
-        auditUser?.userId,
-        auditUser?.userEmail,
-    );
+    await kit.save();
+    await warmBrandCache(env, { kitId: id, appId: kApp, requestAppId: appId });
+
+    await logBrandAudit('brand.kit.update', request, { appId, kitId: id }, auditUser?.userId, auditUser?.userEmail);
     return jsonResponse(serializeKit(kit), 200);
 }
 
@@ -162,18 +284,33 @@ export async function handleDeleteBrandKit(
     _request: Request,
     env: BrandApiEnv,
     id: string,
-    organizationId: string | null,
+    appId: string | null,
 ): Promise<Response> {
     const kit = (await BrandKit.find(id)) as BrandKit | null;
     if (!kit) return errorResponse('Brand Kit not found', 404);
-    const kOrg = kit.get('organizationId') as string | null;
-    if (kOrg !== null && organizationId !== kOrg) return errorResponse('Brand Kit not found', 404);
+    const kApp = kit.get('appId') as string | null;
+    if (kApp !== null && appId !== kApp) return errorResponse('Brand Kit not found', 404);
 
-    // System default (org=null) cannot be deleted
-    if (kOrg === null) return errorResponse('Cannot delete the default Brand Kit', 400, { code: 'DEFAULT_KIT' });
+    if ((kit.get('isDefault') as boolean) === true) {
+        return errorResponse('Cannot delete the default Brand Kit', 400, { code: 'DEFAULT_KIT' });
+    }
+
+    // System default (appId=null) cannot be deleted
+    if (kApp === null) return errorResponse('Cannot delete the default Brand Kit', 400, { code: 'DEFAULT_KIT' });
+
+    // Check for kits that inherit from this one
+    const children = (await BrandKit.where({ parentBrandKitId: id })) as BrandKit[];
+    if (children.length > 0) {
+        const childNames = children.map((c) => c.get('name') as string);
+        return errorResponse(
+            `Cannot delete: ${children.length} kit(s) inherit from this kit (${childNames.join(', ')})`,
+            400,
+            { code: 'HAS_CHILDREN', details: childNames.join(', ') },
+        );
+    }
 
     await kit.destroy();
-    await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
+    await warmBrandCache(env, { appId });
     return jsonResponse({ success: true }, 200);
 }
 
@@ -182,18 +319,23 @@ export async function handleCloneBrandKit(
     request: Request,
     env: BrandApiEnv,
     id: string,
-    organizationId: string | null,
+    appId: string | null,
+    auditUser?: BrandAuditUser,
 ): Promise<Response> {
     const source = (await BrandKit.find(id)) as BrandKit | null;
     if (!source) return errorResponse('Brand Kit not found', 404);
-    const sOrg = source.get('organizationId') as string | null;
-    if (sOrg !== null && organizationId !== sOrg) return errorResponse('Brand Kit not found', 404);
+    const sApp = source.get('appId') as string | null;
+    if (sApp !== null && appId !== sApp) return errorResponse('Brand Kit not found', 404);
 
-    const body = (await request.json()) as { name?: string } | undefined;
+    const body = (await request.json()) as { name?: string; inheritFromSource?: boolean } | undefined;
     const newName = body?.name ?? `${source.get('name')} (Copy)`;
 
     const copy = (await BrandKit.create({
-        organizationId,
+        appId,
+        isDefault: false,
+        parentBrandKitId: source.get('parentBrandKitId'),
+        createdBy: auditUser?.userId ?? auditUser?.userEmail ?? null,
+        updatedBy: auditUser?.userId ?? auditUser?.userEmail ?? null,
         name: newName,
         slug: null,
         brandName: source.get('brandName'),
@@ -211,7 +353,7 @@ export async function handleCloneBrandKit(
         hideOttabaseBranding: source.get('hideOttabaseBranding'),
     })) as BrandKit;
 
-    await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
+    await warmBrandCache(env, { appId });
     return jsonResponse(serializeKit(copy), 201);
 }
 
@@ -220,14 +362,14 @@ export async function handleUploadBrandKitLogo(
     request: Request,
     env: BrandApiEnv,
     id: string,
-    organizationId: string | null,
+    appId: string | null,
     logoType: LogoType,
     auditUser?: BrandAuditUser,
 ): Promise<Response> {
     const kit = (await BrandKit.find(id)) as BrandKit | null;
     if (!kit) return errorResponse('Brand Kit not found', 404);
-    const kOrg = kit.get('organizationId') as string | null;
-    if (kOrg !== null && organizationId !== kOrg) return errorResponse('Brand Kit not found', 404);
+    const kApp = kit.get('appId') as string | null;
+    if (kApp !== null && appId !== kApp) return errorResponse('Brand Kit not found', 404);
 
     const assets = createBrandAssets(env.OBCF_R2, env.R2_PUBLIC_URL || '');
     const formData = await request.formData();
@@ -245,13 +387,14 @@ export async function handleUploadBrandKitLogo(
         'email-logo': 'emailLogoKey',
     };
     kit.set(fieldMap[logoType], key);
+    kit.set('updatedBy', auditUser?.userId ?? auditUser?.userEmail ?? null);
     await kit.save();
-    await createBrandCache(env.OBCF_KV).invalidate(organizationId, null);
+    await warmBrandCache(env, { kitId: id, appId: kApp, requestAppId: appId });
 
     await logBrandAudit(
         'brand.kit.logo.upload',
         request,
-        { organizationId, kitId: id, logoType },
+        { appId, kitId: id, logoType },
         auditUser?.userId,
         auditUser?.userEmail,
     );

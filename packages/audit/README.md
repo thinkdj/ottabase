@@ -4,13 +4,13 @@ Audit logging for multi-tenant applications with RBAC context integration.
 
 ## Features
 
-- ✅ **Multi-tenant support** - Organization + App context tracking
-- ✅ **RBAC integration** - Automatic context from @ottabase/rbac
-- ✅ **Change tracking** - Before/after value capture
-- ✅ **Request metadata** - IP, user agent, URL, method
-- ✅ **Database persistence** - Auto-save to audit_logs table
-- ✅ **Structured logging** - Uses @ottabase/logger
-- ✅ **Compliance ready** - Queryable audit trail
+- **Multi-tenant support** - Organization + App context tracking
+- **RBAC integration** - Automatic context from @ottabase/rbac
+- **Change tracking** - Before/after value capture
+- **Request metadata** - IP, user agent, URL, method
+- **Database persistence** - Auto-save to audit_logs table
+- **Structured logging** - Uses @ottabase/logger
+- **Compliance ready** - Queryable audit trail
 
 ## Installation
 

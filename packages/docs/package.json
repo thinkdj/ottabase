@@ -1,0 +1,77 @@
+{
+    "name": "@ottabase/docs",
+    "version": "1.0.0",
+    "description": "Minimal, reusable documentation viewer for Markdown/MDX files",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        },
+        "./styles.css": "./src/styles.css",
+        "./themes/compact.css": "./src/themes/compact.css",
+        "./themes/standard.css": "./src/themes/standard.css",
+        "./themes/spacious.css": "./src/themes/spacious.css"
+    },
+    "files": [
+        "dist",
+        "src/styles.css",
+        "src/themes",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "clean": "rimraf dist",
+        "lint": "eslint src --ext .ts,.tsx",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "keywords": [
+        "docs",
+        "markdown",
+        "mdx",
+        "documentation",
+        "react"
+    ],
+    "author": "",
+    "license": "MIT",
+    "peerDependencies": {
+        "@ottabase/ui-code-highlight": "workspace:*",
+        "react": "catalog:",
+        "react-dom": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "@ottabase/ui-code-highlight": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@ottabase/ui-code-highlight": "workspace:*",
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "@vitejs/plugin-react": "catalog:",
+        "eslint": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/docs"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/docs#readme"
+}

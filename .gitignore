@@ -5,9 +5,13 @@ cloudflare-env.d.ts
 /wrangler.toml.backup
 /wrangler.jsonc.backup
 wrangler.production.jsonc
+wrangler.preview.jsonc
 .open-next
 .dev.vars
 .wrangler/
+
+# AI coding agent local settings (IDE-specific, not for repo)
+.claude/
 
 # Force-ignore .gitignore files
 # Add this to your local files that need not be committed (Eg: google-oauth.gitignore.json)
@@ -22,7 +26,7 @@ tmp/
 temp/
 .temp/
 
-# ============================================================================= 
+# =============================================================================
 # Dependencies
 node_modules/
 .pnp
@@ -171,3 +175,6 @@ typings/
 # OS
 .DS_Store
 Thumbs.db
+
+# devdb
+.devdbrc

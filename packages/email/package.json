@@ -1,6 +1,6 @@
 {
     "name": "@ottabase/email",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "description": "Email templating + mailer utilities for Ottabase (edge-friendly).",
     "main": "dist/index.js",
     "module": "dist/index.mjs",
@@ -39,6 +39,11 @@
             "types": "./dist/providers/cloudflare.d.ts",
             "import": "./dist/providers/cloudflare.mjs",
             "require": "./dist/providers/cloudflare.js"
+        },
+        "./providers/dev-trap": {
+            "types": "./dist/providers/dev-trap.d.ts",
+            "import": "./dist/providers/dev-trap.mjs",
+            "require": "./dist/providers/dev-trap.js"
         },
         "./providers/nodemailer": {
             "types": "./dist/providers/nodemailer.d.ts",
@@ -87,5 +92,14 @@
         "tsup": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:"
-    }
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/email"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/email#readme"
 }

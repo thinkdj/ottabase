@@ -1,0 +1,454 @@
+/* Image Hotspots Tool - custom/overrides only */
+
+.cdx-image-hotspots__url-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 8px;
+}
+
+/* ── Height / Image Fit Row ──────────────────────────────────────────────── */
+
+.cdx-image-hotspots__size-row {
+    display: flex;
+    gap: 12px;
+    align-items: start;
+}
+
+.cdx-image-hotspots__size-row > .ob-input-group:first-child {
+    width: 200px;
+    flex-shrink: 0;
+}
+
+.cdx-image-hotspots__fit-toggle {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    background: hsl(var(--muted));
+    border-radius: 6px;
+    height: 42px; /* ~matching with input */
+    box-sizing: border-box;
+}
+
+.cdx-image-hotspots__fit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: hsl(var(--muted-foreground));
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cdx-image-hotspots__fit-btn:hover {
+    color: hsl(var(--foreground));
+    background: hsl(var(--background) / 0.5);
+}
+
+.cdx-image-hotspots__fit-btn--active {
+    background: hsl(var(--background));
+    color: hsl(var(--primary));
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+}
+
+/* ── Size Controls (below canvas) ────────────────────────────────────────── */
+
+.cdx-image-hotspots__size-controls {
+    margin-top: 12px;
+}
+
+/* ── Position Grid (3x3) ─────────────────────────────────────────────────── */
+
+.cdx-image-hotspots__position-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    width: 72px;
+    height: 72px;
+    padding: 2px;
+    background: hsl(var(--muted));
+    border-radius: 6px;
+}
+
+.cdx-image-hotspots__position-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+.cdx-image-hotspots__position-btn::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: hsl(var(--muted-foreground) / 0.4);
+    transition: all 0.15s ease;
+}
+
+.cdx-image-hotspots__position-btn:hover::before {
+    background: hsl(var(--foreground) / 0.6);
+    transform: scale(1.2);
+}
+
+.cdx-image-hotspots__position-btn--active {
+    background: hsl(var(--background));
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.1);
+}
+
+.cdx-image-hotspots__position-btn--active::before {
+    background: hsl(var(--primary));
+    width: 8px;
+    height: 8px;
+}
+
+/* ── Input with Gallery Button ───────────────────────────────────────────── */
+
+.cdx-image-hotspots__input-with-gallery {
+    display: flex;
+    gap: 4px;
+}
+
+.cdx-image-hotspots__input-with-gallery .ob-input {
+    flex: 1;
+}
+
+.cdx-image-hotspots__gallery-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    flex-shrink: 0;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--input));
+    border-radius: 4px;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cdx-image-hotspots__gallery-btn:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    border-color: hsl(var(--ring));
+}
+
+.cdx-image-hotspots__gallery-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* ── Canvas ──────────────────────────────────────────────────────────────── */
+
+.cdx-image-hotspots__canvas {
+    position: relative;
+    margin-top: 12px;
+    min-height: 200px;
+    border-radius: 8px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--muted) / 0.3);
+    cursor: crosshair;
+    /* Allow tooltip to overflow */
+    overflow: visible;
+}
+
+.cdx-image-hotspots__canvas img {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0; /* Reset prose styles */
+    pointer-events: none;
+    user-select: none;
+    object-fit: contain;
+}
+
+/* When height is set with cover mode */
+.cdx-image-hotspots__canvas--cover img {
+    height: 100%;
+    object-fit: cover;
+}
+
+.cdx-image-hotspots__hint {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: hsl(var(--primary-foreground));
+    background: hsl(var(--primary) / 0.8);
+    padding: 4px 12px;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 5;
+    backdrop-filter: blur(4px);
+    white-space: nowrap;
+}
+
+/* ── Dot (hotspot marker) ────────────────────────────────────────────────── */
+
+.cdx-image-hotspots__dot {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border: 3px solid hsl(var(--primary-foreground));
+    box-shadow: 0 2px 8px hsl(var(--foreground) / 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: grab;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    transition:
+        box-shadow 0.15s ease,
+        transform 0.15s ease;
+    user-select: none;
+}
+
+.cdx-image-hotspots__dot:hover {
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.3);
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+.cdx-image-hotspots__dot--active {
+    box-shadow: 0 0 0 6px hsl(var(--primary) / 0.35);
+    transform: translate(-50%, -50%) scale(1.15);
+    z-index: 15;
+}
+
+/* Dragging state */
+.cdx-image-hotspots__dot--dragging {
+    cursor: grabbing !important;
+    opacity: 0.8;
+}
+
+/* ── Tooltip (inline form on dot click) ──────────────────────────────────── */
+
+.cdx-image-hotspots__tooltip {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 240px;
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 4px 16px hsl(var(--foreground) / 0.12);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: default;
+}
+
+/* Arrow pointing up (default: tooltip below dot) */
+.cdx-image-hotspots__tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-bottom-color: hsl(var(--border));
+}
+
+.cdx-image-hotspots__tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: hsl(var(--background));
+}
+
+/* Tooltip opens above dot when hotspot is below 70% of canvas height */
+.cdx-image-hotspots__tooltip--above {
+    top: auto;
+    bottom: calc(100% + 10px);
+}
+
+/* Arrow pointing down (tooltip above dot) */
+.cdx-image-hotspots__tooltip--above::before {
+    top: 100%;
+    bottom: auto;
+    border-bottom-color: transparent;
+    border-top-color: hsl(var(--border));
+}
+
+.cdx-image-hotspots__tooltip--above::after {
+    top: 100%;
+    bottom: auto;
+    border-bottom-color: transparent;
+    border-top-color: hsl(var(--background));
+}
+
+.cdx-image-hotspots__tooltip .ob-input,
+.cdx-image-hotspots__tooltip .ob-textarea {
+    font-size: 13px;
+}
+
+/* Button row inside tooltip */
+.cdx-image-hotspots__tooltip-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+/* Remove button inside tooltip */
+.cdx-image-hotspots__remove-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: hsl(var(--destructive) / 0.1);
+    color: hsl(var(--destructive));
+    border: 1px solid hsl(var(--destructive) / 0.25);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cdx-image-hotspots__remove-btn:hover {
+    background: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+}
+
+.cdx-image-hotspots__remove-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Save button inside tooltip */
+.cdx-image-hotspots__save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border: 1px solid hsl(var(--primary));
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cdx-image-hotspots__save-btn:hover {
+    background: hsl(var(--primary) / 0.9);
+}
+
+.cdx-image-hotspots__save-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* ── List (below canvas) ─────────────────────────────────────────────────── */
+
+.cdx-image-hotspots__list {
+    margin-top: 8px;
+}
+
+.cdx-image-hotspots__list-header {
+    padding: 4px 0;
+    border-top: 1px solid hsl(var(--border));
+    margin-top: 4px;
+}
+
+.cdx-image-hotspots__list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.cdx-image-hotspots__list-item:hover {
+    background: hsl(var(--accent));
+}
+
+.cdx-image-hotspots__list-badge {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.cdx-image-hotspots__list-title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cdx-image-hotspots__list-coords {
+    font-size: 11px;
+    color: hsl(var(--muted-foreground));
+    font-variant-numeric: tabular-nums;
+}
+
+.cdx-image-hotspots__list-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.cdx-image-hotspots__list-remove:hover {
+    color: hsl(var(--destructive));
+    background: hsl(var(--destructive) / 0.1);
+}
+
+.cdx-image-hotspots__list-remove svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+    .cdx-image-hotspots__url-row {
+        grid-template-columns: 1fr;
+    }
+
+    .cdx-image-hotspots__tooltip {
+        min-width: 200px;
+    }
+}

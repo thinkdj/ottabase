@@ -242,6 +242,80 @@ describe('API Client', () => {
 
             expect(mockFetch).toHaveBeenCalledTimes(2);
         });
+
+        it('should retry transient network errors for eligible GET requests', async () => {
+            const mockFetch = vi
+                .fn()
+                .mockRejectedValueOnce(new Error('socket hang up'))
+                .mockResolvedValueOnce(createMockResponse({ jsonData: { ok: true } }));
+            global.fetch = mockFetch;
+
+            const api = createApiClient({
+                retry: {
+                    attempts: 2,
+                    baseDelayMs: 0,
+                    maxDelayMs: 0,
+                },
+            });
+
+            const result = await api<{ ok: boolean }>('/health');
+
+            expect(result).toEqual({ ok: true });
+            expect(mockFetch).toHaveBeenCalledTimes(2);
+        });
+
+        it('should retry transient 503 responses for eligible GET requests', async () => {
+            const mockFetch = vi
+                .fn()
+                .mockResolvedValueOnce(
+                    createMockResponse({
+                        ok: false,
+                        status: 503,
+                        statusText: 'Service Unavailable',
+                        jsonData: { error: 'warming up' },
+                    }),
+                )
+                .mockResolvedValueOnce(createMockResponse({ jsonData: { ready: true } }));
+            global.fetch = mockFetch;
+
+            const api = createApiClient({
+                retry: {
+                    attempts: 2,
+                    baseDelayMs: 0,
+                    maxDelayMs: 0,
+                },
+            });
+
+            const result = await api<{ ready: boolean }>('/health');
+
+            expect(result).toEqual({ ready: true });
+            expect(mockFetch).toHaveBeenCalledTimes(2);
+        });
+
+        it('should not retry non-idempotent POST requests by default', async () => {
+            const mockFetch = vi.fn(() =>
+                Promise.resolve(
+                    createMockResponse({
+                        ok: false,
+                        status: 503,
+                        statusText: 'Service Unavailable',
+                        jsonData: { error: 'warming up' },
+                    }),
+                ),
+            );
+            global.fetch = mockFetch;
+
+            const api = createApiClient({
+                retry: {
+                    attempts: 3,
+                    baseDelayMs: 0,
+                    maxDelayMs: 0,
+                },
+            });
+
+            await expect(api('/posts', { method: 'POST', body: { title: 'Hello' } })).rejects.toBeInstanceOf(ApiError);
+            expect(mockFetch).toHaveBeenCalledTimes(1);
+        });
     });
 
     describe('ApiError class', () => {

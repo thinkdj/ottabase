@@ -5,14 +5,14 @@ applications with WebSocket support, offline message queuing, and TypeScript-fir
 
 ## Features
 
-- 🚀 **Real-time WebSocket connections** with auto-reconnect
-- 📡 **Channel-based pub/sub** (subscribe to `org-1201`, `user-22`, `system`, etc.)
-- 💾 **Offline message queuing** - messages are delivered when clients come back online
-- 🔒 **TypeScript-first** with full type safety
-- ⚡ **Powered by Cloudflare Actors** - built on Durable Objects for global scale
-- 🎯 **Simple API** - Pusher-like interface for easy migration
-- 🔄 **Server-side broadcasting** to all online subscribers
-- 📊 **Built-in stats and monitoring**
+- **Real-time WebSocket connections** with auto-reconnect
+- **Channel-based pub/sub** (subscribe to `org-1201`, `user-22`, `system`, etc.)
+- **Offline message queuing** — messages are delivered when clients reconnect
+- **TypeScript-first** with full type safety
+- **Powered by Cloudflare Durable Objects** for global scale
+- **Pusher-like API** for easy migration
+- **Server-side broadcasting** to all online subscribers
+- **Built-in stats and monitoring**
 
 ## Installation
 
@@ -24,71 +24,128 @@ pnpm add @ottabase/cf-realtime
 
 ### 1. Server Setup (Cloudflare Worker)
 
-Create a Cloudflare Worker with the RealtimeActor:
+Export `RealtimeActor` from your worker entry point so Cloudflare registers the Durable Object class:
 
 ```typescript
-// worker.ts
-import { RealtimeActor, RealtimeBroadcaster } from '@ottabase/cf-realtime/server';
-import { handler } from '@cloudflare/actors';
+// cloudflare-worker.ts
+import { RealtimeBroadcaster } from '@ottabase/cf-realtime/server';
 
-export { RealtimeActor };
-export default handler(RealtimeActor);
+// Re-export the Durable Object class (required by Cloudflare)
+export { RealtimeActor } from '@ottabase/cf-realtime/server';
 
-// Environment bindings
-export interface Env {
-    REALTIME: DurableObjectNamespace;
+interface CloudflareEnv {
+    OBCF_REALTIME: DurableObjectNamespace;
+    API_KEYS: KVNamespace;
 }
 
-// Example: Handle requests
 export default {
-    async fetch(request: Request, env: Env): Promise<Response> {
+    async fetch(request: Request, env: CloudflareEnv): Promise<Response> {
         const url = new URL(request.url);
 
-        // WebSocket upgrade - connect to the Actor
+        // WebSocket upgrade — forward to the Durable Object
         if (url.pathname === '/realtime' && request.headers.get('Upgrade') === 'websocket') {
             const id = env.OBCF_REALTIME.idFromName('global');
             const stub = env.OBCF_REALTIME.get(id);
             return stub.fetch(request);
         }
 
-        // REST API endpoint to broadcast messages
+        // Broadcast endpoint — requires authentication + channel-level authorization
         if (url.pathname === '/api/broadcast' && request.method === 'POST') {
+            const publisher = await validatePublisher(request, env);
+            if (!publisher) {
+                return new Response('Unauthorized', { status: 401 });
+            }
+
+            const body = await request.json<any>();
+            const channels = Array.isArray(body.channels) ? body.channels : [];
+            if (channels.length === 0) {
+                return new Response('channels array is required', { status: 400 });
+            }
+
+            const event = typeof body.event === 'string' ? body.event.trim() : '';
+            if (!event) {
+                return new Response('event is required', { status: 400 });
+            }
+
+            const allowedChannels = new Set(publisher.allowedChannels);
+
+            // Enforce per-channel publish permissions derived from the caller's session/API key
+            if (channels.some((channel) => !allowedChannels.has(channel))) {
+                return new Response('Forbidden', { status: 403 });
+            }
+
             const broadcaster = new RealtimeBroadcaster(env.OBCF_REALTIME);
-            const body = await request.json();
 
             const result = await broadcaster.broadcast({
-                channels: body.channels,
-                event: body.event,
+                channels,
+                event,
                 data: body.data,
-                persistForOffline: body.persistForOffline || false,
+                persistForOffline: body.persistForOffline ?? false,
             });
 
-            return new Response(JSON.stringify(result), {
-                headers: { 'Content-Type': 'application/json' },
-            });
+            return Response.json(result);
         }
 
         return new Response('Not Found', { status: 404 });
     },
 };
+
+type Publisher = { allowedChannels: string[] };
+
+// Validate an API key/session and return which channels the caller may publish to
+async function validatePublisher(request: Request, env: CloudflareEnv): Promise<Publisher | null> {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) return null;
+
+    const trimmed = authHeader.trim();
+    const [scheme, ...rest] = trimmed.split(/\s+/);
+    if (!scheme || scheme.toLowerCase() !== 'bearer') return null;
+
+    const token = rest.join(' ');
+    if (!token) return null;
+
+    // Example: look up an API key that encodes allowed channels (KV/DB/custom auth)
+    // Return null to reject callers without publish permissions.
+    const apiKey = await env.API_KEYS?.get<Publisher>(token, 'json');
+    return apiKey ?? null;
+}
 ```
 
 ### 2. Wrangler Configuration
 
-```toml
-# wrangler.toml
-name = "cf-realtime-worker"
-main = "src/worker.ts"
-compatibility_date = "2024-01-01"
-
-[[durable_objects.bindings]]
-name = "OBCF_REALTIME"
-class_name = "RealtimeActor"
-
-[[migrations]]
-tag = "v1"
-new_classes = ["RealtimeActor"]
+```jsonc
+// wrangler.jsonc
+{
+    "durable_objects": {
+        "bindings": [{ "name": "OBCF_REALTIME", "class_name": "RealtimeActor" }],
+    },
+    "kv_namespaces": [{ "binding": "API_KEYS", "id": "your-api-keys-kv" }],
+    "migrations": [{ "tag": "v1", "new_classes": ["RealtimeActor"] }],
+}
 ```
+
+Provision a KV namespace for publisher API keys (each value should include `allowedChannels`):
+
+```bash
+wrangler kv namespace create API_KEYS
+wrangler kv key put --binding=API_KEYS "server-1" '{"allowedChannels":["org-1201","system"]}'
+```
+
+Then call the broadcast endpoint from your backend with the API key:
+
+```typescript
+await fetch('https://your-worker.workers.dev/api/broadcast', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.REALTIME_PUBLISH_KEY}`,
+    },
+    body: JSON.stringify({ channels: ['org-1201'], event: 'update', data: {} }),
+});
+```
+
+> **Never expose `/api/broadcast` without authentication and channel-level authorization.** Anyone who can reach the
+> endpoint could inject arbitrary events into any channel unless you enforce publish scopes.
 
 ### 3. Client Usage (Browser/Node.js)
 
@@ -397,25 +454,6 @@ await broadcaster.send(`document:${docId}`, 'update', {
 });
 ```
 
-## Deployment
-
-1. **Install Wrangler CLI**:
-
-    ```bash
-    pnpm add -g wrangler
-    ```
-
-2. **Login to Cloudflare**:
-
-    ```bash
-    wrangler login
-    ```
-
-3. **Deploy**:
-    ```bash
-    wrangler deploy
-    ```
-
 ## Migration from Pusher
 
 cf-realtime provides a Pusher-like API, making migration straightforward:
@@ -435,25 +473,6 @@ cf-realtime provides a Pusher-like API, making migration straightforward:
 - **Auto-scaling**: Scales automatically with your traffic
 - **Low Latency**: Messages delivered in milliseconds
 
-## Pricing
-
-Based on Cloudflare Durable Objects pricing:
-
-- **Requests**: $0.15 per million requests
-- **Duration**: $12.50 per million GB-seconds
-- **WebSocket Messages**: Included in request pricing
-
-See [Cloudflare Pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/) for details.
-
 ## License
 
 MIT
-
-## Contributing
-
-Contributions welcome! Please open an issue or PR.
-
-## Support
-
-- GitHub Issues: [Report a bug](https://github.com/thinkdj/ottabase/issues)
-- Documentation: [Cloudflare Actors](https://github.com/cloudflare/actors)

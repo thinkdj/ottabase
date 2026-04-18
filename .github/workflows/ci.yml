@@ -2,14 +2,13 @@ name: CI - Build & Test
 
 on:
     workflow_dispatch:
-#     pull_request:
-#         branches:
-#             - main
-#             - develop
-#     push:
-#         branches:
-#             - main
-#             - develop
+    pull_request:
+        branches:
+            - main
+            - develop
+
+permissions:
+    contents: read
 
 jobs:
     # Build & Test on ubuntu-latest
@@ -17,9 +16,6 @@ jobs:
         name: CI - Build & Test
         runs-on: ubuntu-latest
         timeout-minutes: 15
-        strategy:
-            fail-fast: false
-
         steps:
             - name: Checkout
               uses: actions/checkout@v4
@@ -28,6 +24,8 @@ jobs:
 
             - name: Install pnpm
               uses: pnpm/action-setup@v3
+              with:
+                  version: 10.27.0
 
             - name: Setup Node.js 24
               uses: actions/setup-node@v4
@@ -38,6 +36,9 @@ jobs:
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
 
+            - name: Verify toolchain binaries
+              run: pnpm exec tsc --version && pnpm exec tsup --version && pnpm exec turbo --version
+
             # Cache Turborepo build outputs
             - name: Setup Turborepo cache
               uses: actions/cache@v4
@@ -45,12 +46,17 @@ jobs:
                   path: |
                       .turbo
                       **/node_modules/.cache/turbo
-                  key: ${{ runner.os }}-turbo-${{ github.sha }}
+                  # Key on lockfile + turbo config so cache is reused across commits that don't touch deps
+                  key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml', 'turbo.json') }}-${{ github.sha }}
                   restore-keys: |
+                      ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml', 'turbo.json') }}-
                       ${{ runner.os }}-turbo-
 
             - name: Run CI (Lint, Type-Check, Build, Test)
-              run: pnpm turbo run lint type-check test build
+              run: pnpm run ci:check
+
+            - name: Dependency audit (high severity and above)
+              run: pnpm audit --audit-level=high
 
     # Validate Cloudflare configuration
     validate-cloudflare:
@@ -65,6 +71,8 @@ jobs:
 
             - name: Install pnpm
               uses: pnpm/action-setup@v3
+              with:
+                  version: 10.27.0
 
             - name: Setup Node.js
               uses: actions/setup-node@v4
@@ -76,5 +84,11 @@ jobs:
               run: pnpm install --frozen-lockfile
 
             - name: Validate Cloudflare Configuration
-              run: pnpm cloudflare:validate
+              id: cf-validate
+              run: pnpm cf:validate -- --force
+              # Soft-fail: CF validation can have network flakiness in CI; we annotate rather than block
               continue-on-error: true
+
+            - name: Warn on Cloudflare validation failure
+              if: steps.cf-validate.outcome == 'failure'
+              run: echo "::warning::Cloudflare config validation failed — run 'pnpm cf:validate' locally to investigate"

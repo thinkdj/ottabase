@@ -1,0 +1,66 @@
+{
+    "name": "@ottabase/cli",
+    "version": "1.0.0",
+    "description": "Ottabase monorepo CLI - scaffold, develop, build, and test apps",
+    "type": "module",
+    "types": "dist/index.d.ts",
+    "bin": {
+        "otta": "bin/otta.mjs"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "files": [
+        "dist",
+        "bin",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts src/cli.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/cli.ts --format cjs,esm --dts --watch",
+        "lint": "eslint src --ext .ts",
+        "type-check": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage",
+        "clean": "rimraf dist"
+    },
+    "keywords": [
+        "ottabase",
+        "cli",
+        "monorepo",
+        "scaffold",
+        "development"
+    ],
+    "author": "Ottabase Contributors",
+    "license": "MIT",
+    "engines": {
+        "node": ">=24.0.0"
+    },
+    "dependencies": {
+        "commander": "^12.1.0",
+        "fs-extra": "^11.2.0",
+        "ora": "^8.1.0"
+    },
+    "devDependencies": {
+        "@types/fs-extra": "^11.0.4",
+        "@types/node": "catalog:",
+        "eslint": "catalog:",
+        "rimraf": "catalog:",
+        "tsup": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/cli"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/cli#readme"
+}

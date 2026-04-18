@@ -27,8 +27,9 @@
     },
     "dependencies": {
         "@ottabase/ottaselect": "workspace:*",
+        "@ottabase/ui-components": "workspace:*",
+        "@ottabase/ui-datatable": "workspace:*",
         "clsx": "catalog:",
-        "json-edit-react": "^1.29.0",
         "lucide-react": "catalog:"
     },
     "peerDependencies": {
@@ -48,5 +49,15 @@
         "tsup": "catalog:",
         "typescript": "catalog:",
         "zod": "catalog:"
-    }
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/forms"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/forms#readme"
 }

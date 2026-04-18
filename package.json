@@ -1,31 +1,71 @@
 {
     "name": "ottabase",
     "version": "1.0.0",
+    "description": "Edge-native SaaS framework monorepo for Cloudflare Workers with ORM, Auth, RBAC, and a host of UI packages.",
+    "keywords": [
+        "ottabase",
+        "saas",
+        "framework",
+        "monorepo",
+        "typescript",
+        "cloudflare",
+        "workers",
+        "edge",
+        "orm",
+        "d1",
+        "kv",
+        "r2",
+        "rbac",
+        "rls",
+        "auth"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase#readme",
+    "license": "MIT",
     "private": true,
     "workspaces": [
         "apps/*",
         "packages/*"
     ],
+    "bin": {
+        "otta": "packages/cli/bin/otta.mjs"
+    },
     "scripts": {
+        "otta": "node packages/cli/bin/otta.mjs",
         "dev": "node dev.js",
-        "dev:fe": "pnpm --filter @ottabase/ottabase-template-app-tanstack dev",
-        "dev:be": "pnpm --filter @ottabase/ottabase-template-app-tanstack dev:worker",
-        "dev:ui": "turbo dev --filter=@ottabase/ottabase-template-app-tanstack --filter=@ottabase/ui-*",
+        "dev:fe": "pnpm --filter @ottabase/otta-web dev",
+        "dev:homepage": "pnpm --filter @ottabase/otta-landing dev",
+        "dev:homepage-ob": "pnpm --filter @ottabase/homepage-ob dev",
+        "dev:be": "pnpm --filter @ottabase/otta-web dev:worker",
+        "dev:kill:ports": "node packages/scripts/bin/kill-ports.cjs",
+        "dev:ui": "turbo dev --filter=@ottabase/otta-web --filter=@ottabase/ui-*",
         "dev:pkg": "turbo dev --filter=@ottabase/*",
         "dev:full": "pnpm i & pnpm build:pkg & pnpm test & pnpm dev",
-        "build": "turbo build --filter=./packages/*... --filter=@ottabase/ottabase-template-app-tanstack...",
-        "build:app": "turbo build --filter=@ottabase/ottabase-template-app-tanstack...",
+        "build": "turbo build --filter=./packages/*... --filter=@ottabase/otta-web...",
+        "build:app": "turbo build --filter=@ottabase/otta-web...",
         "build:pkg": "turbo build --filter=./packages/*...",
-        "lint": "turbo lint",
+        "lint": "cross-env ESLINT_USE_FLAT_CONFIG=false turbo lint",
+        "ci:check": "cross-env ESLINT_USE_FLAT_CONFIG=false turbo run lint type-check test build",
         "type-check": "turbo type-check",
         "clean": "turbo clean",
-        "cache:clear": "pnpm --filter @ottabase/scripts exec cache-clear",
+        "clean:cache": "pnpm --filter @ottabase/scripts run clean-cache",
+        "clean:reset": "pnpm --filter @ottabase/scripts run clean-reset",
+        "clean:db": "pnpm --filter @ottabase/scripts run clean-db",
+        "clean:kv": "pnpm --filter @ottabase/scripts run clean-kv",
+        "clean:cf": "pnpm clean:db && pnpm clean:kv",
         "test": "turbo test -- --run",
         "test:all": "turbo test --filter=./packages/* --filter=./apps/*",
         "test:packages": "turbo test --filter=./packages/*",
         "test:apps": "turbo test --filter=./apps/*",
-        "test:tanstack": "turbo test --filter=@ottabase/ottabase-template-app-tanstack",
-        "test:next": "turbo test --filter=@ottabase/ottabase-template-app",
+        "test:otta-web": "turbo test --filter=@ottabase/otta-web",
+        "test:otta-landing": "turbo test --filter=@ottabase/otta-landing",
+        "test:analytics": "turbo test --filter=@ottabase/analytics -- --run",
         "test:coverage": "turbo test -- --coverage",
         "test:coverage:packages": "turbo test --filter=./packages/* -- --coverage",
         "test:coverage:apps": "turbo test --filter=./apps/* -- --coverage",
@@ -34,11 +74,13 @@
         "format": "prettier --write .",
         "git:normalize": "(git add --renormalize .) && (git update-index --refresh)",
         "prepare": "husky",
+        "postinstall": "node -e \"require('fs').existsSync('packages/cli/dist') || require('child_process').execSync('pnpm --filter @ottabase/cli build', {stdio:'inherit'})\"",
         "lint-staged": "lint-staged",
         "storybook": "storybook dev -p 6006",
         "storybook:build": "storybook build",
-        "cloudflare:setup": "pnpm --filter @ottabase/scripts exec cloudflare-setup",
-        "cloudflare:validate": "pnpm --filter @ottabase/scripts exec cloudflare-validate"
+        "cf:login": "node packages/scripts/bin/cloudflare-login.cjs",
+        "cf:setup": "node packages/scripts/bin/cloudflare-setup.cjs",
+        "cf:validate": "node packages/scripts/bin/cloudflare-validate.cjs"
     },
     "devDependencies": {
         "@babel/core": "catalog:",
@@ -57,6 +99,7 @@
         "@vitest/ui": "^4.0.18",
         "babel-loader": "catalog:",
         "c8": "^10.1.3",
+        "cross-env": "catalog:",
         "css-loader": "catalog:",
         "eslint-plugin-storybook": "catalog:",
         "happy-dom": "^20.4.0",
@@ -73,7 +116,7 @@
         "tailwindcss": "catalog:",
         "tailwindcss-animate": "catalog:",
         "tsup": "catalog:",
-        "turbo": "^2.8.0",
+        "turbo": "^2.9.5",
         "vitest": "catalog:",
         "webpack": "^5.104.1"
     },
@@ -84,5 +127,17 @@
     },
     "lint-staged": {
         "*.{js,jsx,ts,tsx,json,jsonc,css,scss,md,mdx,yml,yaml}": "prettier --write"
+    },
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "@prisma/client",
+            "@prisma/engines",
+            "@swc/core",
+            "esbuild",
+            "prisma",
+            "sharp",
+            "unrs-resolver",
+            "workerd"
+        ]
     }
 }

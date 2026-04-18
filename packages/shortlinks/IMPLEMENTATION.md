@@ -27,16 +27,14 @@ Located in `packages/shortlinks/`, this package provides the core schema and typ
   type: "redirect" | "tracking" | "internal" | "external"
   appName: string (multi-tenant support)
   expiryDate: Date | null (optional expiry)
-  clicks: number (analytics)
-  lastClickedAt: Date | null
   createdAt: Date
   updatedAt: Date
 }
 ```
 
-### 2. TanStack App Implementation
+### 2. Vite App Implementation
 
-Located in `apps/ottabase-template-app-tanstack/`, this provides a working reference implementation.
+Located in `apps/otta-web/`, this provides a working reference implementation.
 
 **Components:**
 
@@ -57,13 +55,12 @@ Fat model with business logic:
 - `byApp(appName)` - Filter by app
 - `byType(type)` - Filter by type
 - `isExpired()` - Check expiry
-- `trackClick()` - Increment click counter
 - `getShortUrl(baseUrl)` - Generate full short URL
 
 #### Frontend UI (`src/pages/shortlinks/`)
 
 - **ShortlinksPage.tsx** - Main management interface with:
-    - Statistics dashboard (total links, clicks, active links)
+    - Statistics dashboard (total links, active links)
     - Table view with sortable columns
     - Inline editing and deletion
     - Copy-to-clipboard functionality
@@ -76,13 +73,15 @@ Fat model with business logic:
     - App name configuration
     - Optional expiry date picker
 
+Analytics: Use `/analytics` (Shortlinks tab) for click analytics powered by WAE.
+
 ## Features
 
 ### Core Functionality
 
 - ✅ Create custom shortlinks with memorable codes
 - ✅ Automatic URL validation
-- ✅ Click tracking and analytics
+- ✅ Click analytics via WAE (Cloudflare Analytics Engine)
 - ✅ Optional expiry dates
 - ✅ Multi-tenant support (appName field)
 - ✅ Type categorization (redirect, tracking, internal, external)
@@ -287,21 +286,11 @@ const CustomTypes = {
 } as const;
 ```
 
-### Analytics Enhancement
+### Analytics
 
-Extend the model to track more metrics:
-
-```typescript
-export class ShortlinkWithAnalytics extends Shortlink {
-    async getClicksByDay() {
-        // Query D1 for daily click stats
-    }
-
-    async getClicksByCountry() {
-        // Use Cloudflare request data
-    }
-}
-```
+Click analytics use **WAE** (Cloudflare Analytics Engine). Binding: `OBCF_ANALYTICS_SHORTLINKS` → dataset
+`shortlink_clicks`. The `/analytics` page (Shortlinks tab) queries WAE via `GET /api/shortlinks/analytics` with
+`groupBy`: country, shortCode, or day.
 
 ## Best Practices
 
@@ -311,7 +300,7 @@ export class ShortlinkWithAnalytics extends Shortlink {
 4. **App Naming**: Use consistent app identifiers across your monorepo
 5. **Validation**: Always validate URLs before creating shortlinks
 6. **Rate Limiting**: Consider adding rate limits for redirect endpoints
-7. **Analytics**: Track clicks to understand link usage
+7. **Analytics**: Use WAE (Cloudflare Analytics Engine) for click analytics
 
 ## Migration Path
 

@@ -1,6 +1,7 @@
 import { OutputData } from '@editorjs/editorjs';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { defaultPlugins, getDefaultPlugins, type DefaultPluginName } from './defaultPlugins';
+import { exportToJSON, exportToMarkdown } from './export';
 import { OttaEditor } from './OttaEditor';
 import type { OttaEditorConfig, OttaEditorPlugin } from './types';
 
@@ -39,13 +40,6 @@ export interface UseOttaEditorOptions extends Omit<OttaEditorConfig, 'holder'> {
      * ]
      */
     additionalPlugins?: OttaEditorPlugin[];
-
-    /**
-     * Use default plugins automatically
-     * @default true
-     * @deprecated Use `defaultPlugins` instead for more control
-     */
-    useDefaultPlugins?: boolean;
 
     /**
      * Enable editor on mount
@@ -94,6 +88,36 @@ export interface UseOttaEditorReturn {
      * Becomes true when content changes, resets to false after save()
      */
     hasUnsavedChanges: boolean;
+
+    /**
+     * Undo the last change
+     */
+    undo: () => Promise<void>;
+
+    /**
+     * Redo the last undone change
+     */
+    redo: () => Promise<void>;
+
+    /**
+     * Whether undo is available
+     */
+    canUndo: boolean;
+
+    /**
+     * Whether redo is available
+     */
+    canRedo: boolean;
+
+    /**
+     * Export editor content as formatted JSON string
+     */
+    exportJSON: () => Promise<string | null>;
+
+    /**
+     * Export editor content as Markdown string
+     */
+    exportMarkdown: () => Promise<string | null>;
 }
 
 /**
@@ -103,31 +127,28 @@ export function useOttaEditor(options: UseOttaEditorOptions = {}): UseOttaEditor
     const editorRef = useRef<HTMLDivElement>(null);
     const editorInstanceRef = useRef<OttaEditor | null>(null);
     const initializingRef = useRef(false);
+    const hasUserInteractedRef = useRef(false);
+    const interactionHolderRef = useRef<HTMLDivElement | null>(null);
+    const interactionListenerRef = useRef<(() => void) | null>(null);
     const [isReady, setIsReady] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
     const {
         enableOnMount = true,
         plugins,
         defaultPlugins: defaultPluginsConfig,
         additionalPlugins = [],
-        useDefaultPlugins = true,
         ...editorConfig
     } = options;
 
     // Determine which plugins to use
-    let pluginsToRegister: OttaEditorPlugin[];
-
-    if (plugins !== undefined) {
-        // If plugins is explicitly provided, use only those (backward compatibility)
-        pluginsToRegister = plugins;
-    } else if (defaultPluginsConfig !== undefined) {
-        // Use the new defaultPlugins configuration
-        const selectedDefaults = getDefaultPlugins(defaultPluginsConfig);
-        pluginsToRegister = [...selectedDefaults, ...additionalPlugins];
-    } else {
-        // Fallback to legacy useDefaultPlugins behavior
-        pluginsToRegister = useDefaultPlugins ? [...defaultPlugins, ...additionalPlugins] : additionalPlugins;
-    }
+    const pluginsToRegister: OttaEditorPlugin[] =
+        plugins !== undefined
+            ? plugins
+            : defaultPluginsConfig !== undefined
+              ? [...getDefaultPlugins(defaultPluginsConfig), ...additionalPlugins]
+              : [...defaultPlugins, ...additionalPlugins];
 
     useEffect(() => {
         if (!editorRef.current || !enableOnMount || initializingRef.current || editorInstanceRef.current) {
@@ -153,8 +174,14 @@ export function useOttaEditor(options: UseOttaEditorOptions = {}): UseOttaEditor
                         editorConfig.onReady?.();
                     },
                     onChange: (api, event) => {
-                        setHasUnsavedChanges(true);
+                        if (hasUserInteractedRef.current) {
+                            setHasUnsavedChanges(true);
+                        }
                         editorConfig.onChange?.(api, event);
+                    },
+                    onUndoRedoStateChange: (state) => {
+                        setCanUndo(state.canUndo);
+                        setCanRedo(state.canRedo);
                     },
                 });
 
@@ -166,6 +193,20 @@ export function useOttaEditor(options: UseOttaEditorOptions = {}): UseOttaEditor
                 // Initialize
                 await editor.init();
                 editorInstanceRef.current = editor;
+
+                // Track first real user interaction to avoid false "dirty" state on editor bootstrap.
+                const holder = editorRef.current;
+                if (holder) {
+                    const markInteracted = () => {
+                        hasUserInteractedRef.current = true;
+                    };
+                    interactionHolderRef.current = holder;
+                    interactionListenerRef.current = markInteracted;
+                    holder.addEventListener('pointerdown', markInteracted, true);
+                    holder.addEventListener('keydown', markInteracted, true);
+                    holder.addEventListener('input', markInteracted, true);
+                    holder.addEventListener('paste', markInteracted, true);
+                }
             } catch (error) {
                 console.error('Failed to initialize OttaEditor:', error);
                 initializingRef.current = false;
@@ -176,11 +217,23 @@ export function useOttaEditor(options: UseOttaEditorOptions = {}): UseOttaEditor
 
         // Cleanup on unmount
         return () => {
+            if (interactionHolderRef.current && interactionListenerRef.current) {
+                const holder = interactionHolderRef.current;
+                const listener = interactionListenerRef.current;
+                holder.removeEventListener('pointerdown', listener, true);
+                holder.removeEventListener('keydown', listener, true);
+                holder.removeEventListener('input', listener, true);
+                holder.removeEventListener('paste', listener, true);
+                interactionHolderRef.current = null;
+                interactionListenerRef.current = null;
+            }
             if (editorInstanceRef.current) {
                 editorInstanceRef.current.destroy().catch(console.error);
                 editorInstanceRef.current = null;
                 initializingRef.current = false;
                 setIsReady(false);
+                hasUserInteractedRef.current = false;
+                setHasUnsavedChanges(false);
             }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -239,6 +292,58 @@ export function useOttaEditor(options: UseOttaEditorOptions = {}): UseOttaEditor
         }
     }, []);
 
+    const undo = useCallback(async (): Promise<void> => {
+        if (!editorInstanceRef.current) {
+            console.warn('Editor is not initialized');
+            return;
+        }
+        try {
+            await editorInstanceRef.current.undo();
+        } catch (error) {
+            console.error('Failed to undo:', error);
+        }
+    }, []);
+
+    const redo = useCallback(async (): Promise<void> => {
+        if (!editorInstanceRef.current) {
+            console.warn('Editor is not initialized');
+            return;
+        }
+        try {
+            await editorInstanceRef.current.redo();
+        } catch (error) {
+            console.error('Failed to redo:', error);
+        }
+    }, []);
+
+    const exportJSON = useCallback(async (): Promise<string | null> => {
+        if (!editorInstanceRef.current) {
+            console.warn('Editor is not initialized');
+            return null;
+        }
+        try {
+            const data = await editorInstanceRef.current.save();
+            return exportToJSON(data);
+        } catch (error) {
+            console.error('Failed to export JSON:', error);
+            return null;
+        }
+    }, []);
+
+    const exportMd = useCallback(async (): Promise<string | null> => {
+        if (!editorInstanceRef.current) {
+            console.warn('Editor is not initialized');
+            return null;
+        }
+        try {
+            const data = await editorInstanceRef.current.save();
+            return exportToMarkdown(data);
+        } catch (error) {
+            console.error('Failed to export Markdown:', error);
+            return null;
+        }
+    }, []);
+
     return {
         editorRef,
         editor: editorInstanceRef.current,
@@ -248,5 +353,11 @@ export function useOttaEditor(options: UseOttaEditorOptions = {}): UseOttaEditor
         toggleReadOnly,
         isReady,
         hasUnsavedChanges,
+        undo,
+        redo,
+        canUndo,
+        canRedo,
+        exportJSON,
+        exportMarkdown: exportMd,
     };
 }

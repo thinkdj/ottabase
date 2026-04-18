@@ -50,6 +50,7 @@ export function I18nProvider({
     fallbackLng,
     debug,
     resources,
+    lookupLocalStorage,
     fallback = null,
 }: I18nProviderProps) {
     const [ready, setReady] = useState(false);
@@ -63,8 +64,9 @@ export function I18nProvider({
             fallbackLng,
             debug,
             resources,
+            lookupLocalStorage,
         }).then(() => setReady(true));
-    }, [defaultLanguage, supportedLngs, fallbackLng, debug]);
+    }, [defaultLanguage, supportedLngs, fallbackLng, debug, lookupLocalStorage]);
 
     if (!ready) {
         return <>{fallback}</>;

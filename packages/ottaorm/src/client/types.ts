@@ -39,6 +39,7 @@ export interface PaginationResult<T> {
  */
 export interface QueryOptions {
     where?: Record<string, unknown>;
+    search?: string;
     orderBy?: string;
     orderDirection?: 'asc' | 'desc';
     limit?: number;

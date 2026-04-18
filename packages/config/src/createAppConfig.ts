@@ -8,7 +8,7 @@ import { AppConfig, AppMeta, ConfigOptions, SupportedUIFramework, ThemeColors } 
 export function createAppConfig(options: ConfigOptions = {}): AppConfig {
     const {
         appName = 'Ottabase App',
-        appId = 'ottabase-template-app',
+        appId = 'otta-web',
         defaults = {},
         envPrefix = '', // No prefix by default (Cloudflare/TanStack compatible)
     } = options;

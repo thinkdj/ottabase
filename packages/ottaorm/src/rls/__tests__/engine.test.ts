@@ -208,6 +208,84 @@ describe('RLS Engine', () => {
             expect(() => engine.applyReadFilter('admin_only', ctx)).toThrow(RLSError);
             expect(() => engine.applyReadFilter('admin_only', ctx)).toThrow(/requires one of roles/);
         });
+
+        it('requiredPermissions: allows when user has exact permission', () => {
+            engine.register({
+                model: 'menus',
+                policy: { ...RLSPolicies.AppScoped(), requiredPermissions: ['brand:edit'] },
+            });
+            const ctx: SecurityContext = { appId: 'web', permissions: ['brand:edit'] };
+            const filter = engine.applyReadFilter('menus', ctx);
+            expect(filter).toEqual({ appId: 'web' });
+        });
+
+        it('requiredPermissions: allows when user has *:* (wildcard grants all)', () => {
+            engine.register({
+                model: 'menus',
+                policy: { ...RLSPolicies.AppScoped(), requiredPermissions: ['brand:edit'] },
+            });
+            const ctx: SecurityContext = { appId: 'web', permissions: ['*:*'] };
+            const filter = engine.applyReadFilter('menus', ctx);
+            expect(filter).toEqual({ appId: 'web' });
+        });
+
+        it('requiredPermissions: allows when user has resource wildcard (brand:* matches brand:edit)', () => {
+            engine.register({
+                model: 'menus',
+                policy: { ...RLSPolicies.AppScoped(), requiredPermissions: ['brand:edit'] },
+            });
+            const ctx: SecurityContext = { appId: 'web', permissions: ['brand:*'] };
+            const filter = engine.applyReadFilter('menus', ctx);
+            expect(filter).toEqual({ appId: 'web' });
+        });
+
+        it('requiredPermissions: allows when user has action wildcard (*:edit matches brand:edit)', () => {
+            engine.register({
+                model: 'menus',
+                policy: { ...RLSPolicies.AppScoped(), requiredPermissions: ['brand:edit'] },
+            });
+            const ctx: SecurityContext = { appId: 'web', permissions: ['*:edit'] };
+            const filter = engine.applyReadFilter('menus', ctx);
+            expect(filter).toEqual({ appId: 'web' });
+        });
+
+        it('requiredPermissions: throws when user lacks permission', () => {
+            engine.register({
+                model: 'menus',
+                policy: { ...RLSPolicies.AppScoped(), requiredPermissions: ['brand:edit'] },
+            });
+            const ctx: SecurityContext = { appId: 'web', permissions: ['posts:read'] };
+            expect(() => engine.applyReadFilter('menus', ctx)).toThrow(RLSError);
+            expect(() => engine.applyReadFilter('menus', ctx)).toThrow(/requires permissions/);
+        });
+
+        it('requiredPermissions: 3+ segment required—brand:edit does NOT satisfy brand:edit:admin', () => {
+            engine.register({
+                model: 'admin_menus',
+                policy: { ...RLSPolicies.AppScoped(), requiredPermissions: ['brand:edit:admin'] },
+            });
+            const ctx: SecurityContext = { appId: 'web', permissions: ['brand:edit', 'brand:*'] };
+            expect(() => engine.applyReadFilter('admin_menus', ctx)).toThrow(RLSError);
+        });
+
+        it('requiredPermissions: 3+ segment required—exact match still works', () => {
+            engine.register({
+                model: 'admin_menus',
+                policy: { ...RLSPolicies.AppScoped(), requiredPermissions: ['brand:edit:admin'] },
+            });
+            const ctx: SecurityContext = { appId: 'web', permissions: ['brand:edit:admin'] };
+            const filter = engine.applyReadFilter('admin_menus', ctx);
+            expect(filter).toEqual({ appId: 'web' });
+        });
+
+        it('requiredPermissions: bare * does NOT grant (use *:*)', () => {
+            engine.register({
+                model: 'menus',
+                policy: { ...RLSPolicies.AppScoped(), requiredPermissions: ['brand:edit'] },
+            });
+            const ctx: SecurityContext = { appId: 'web', permissions: ['*'] };
+            expect(() => engine.applyReadFilter('menus', ctx)).toThrow(RLSError);
+        });
     });
 
     describe('validateWrite', () => {

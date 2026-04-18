@@ -63,5 +63,14 @@
         "rimraf": "catalog:",
         "eslint": "catalog:",
         "vitest": "catalog:"
-    }
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/audit"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/audit#readme"
 }

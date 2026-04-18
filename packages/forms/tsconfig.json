@@ -7,7 +7,12 @@
         "declarationMap": true,
         "sourceMap": true,
         "skipLibCheck": true,
-        "lib": ["dom", "dom.iterable", "ES2020"]
+        "lib": ["dom", "dom.iterable", "ES2020"],
+        // Override root tsconfig path aliases so the DTS build resolves workspace
+        // packages via node_modules (compiled dist types) instead of their source
+        // files. Without this, the inherited "@ottabase/*" → "packages/*/src" paths
+        // cause TS2209 (rootDir ambiguous) because source files span multiple roots.
+        "paths": {}
     },
     "include": ["src/**/*"],
     "exclude": ["dist", "node_modules", "**/*.test.*", "**/*.spec.*", "**/*.stories.*"]

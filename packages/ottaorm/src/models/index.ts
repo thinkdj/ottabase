@@ -30,9 +30,12 @@ export {
 } from './OrganizationMember';
 
 // RBAC models (with tenant + app scoping)
-export { Role, rolesTable, type NewRoleType, type RoleType } from './Role';
 export { Permission, permissionsTable, type NewPermissionType, type PermissionType } from './Permission';
+export { Role, rolesTable, type NewRoleType, type RoleType } from './Role';
 export { UserRole, userRolesTable, type NewUserRoleType, type UserRoleType } from './UserRole';
 
 // Audit logging (with tenant + app scoping)
-export { AuditLog, auditLogsTable, type NewAuditLogType, type AuditLogType } from './AuditLog';
+export { AuditLog, auditLogsTable, type AuditLogType, type NewAuditLogType } from './AuditLog';
+
+// Media (core — tracks all uploaded files)
+export { Media, mediaTable, type MediaType, type NewMediaType } from './Media';

@@ -1,0 +1,350 @@
+{
+    // ─── TWO-TIER PLACEHOLDER SYSTEM ───
+    //
+    // ┌─ Tier 1: YOUR_* (top-level, e.g. "YOUR_D1_DATABASE_ID")
+    // │   • Local dev ONLY: Wrangler ignores the value and uses local simulators (.wrangler/state/v3/*)
+    // │   • Never substituted by CI. Safe to leave as-is.
+    // │
+    // └─ Tier 2: ALL_CAPS_SNAKE_CASE (env.production / env.preview, e.g. "D1_DATABASE_ID")
+    //     • The value IS the GitHub Secret name. CI auto-detects and substitutes the real UUID at deploy time.
+    //     • Missing GitHub Secret → CI fails early with a clear error before any deployment.
+    //     • Substituted into wrangler.production.jsonc / wrangler.preview.jsonc by substitute-wrangler-secrets.py
+    //
+    // To add a new secret:   set an ALL_CAPS placeholder in env.production/env.preview → add matching GitHub Secret → done.
+    // To share a resource:   use the same placeholder value across apps → same GitHub Secret → same real ID injected.
+    // To isolate per-app:    use different placeholder values (e.g. APP_1_D1_DATABASE_ID); prefixing is a convention, not required.
+    //
+    // See CLOUDFLARE_DEPLOY.md for full walkthrough.
+
+    "$schema": "node_modules/wrangler/config-schema.json",
+
+    // Wrangler configuration for TanStack Router app with Cloudflare bindings
+    // Supports dev (local with HMR), preview (workerd), and prod (real CF resources)
+
+    "name": "otta-web",
+    "compatibility_date": "2024-12-30",
+    "compatibility_flags": ["nodejs_compat"],
+
+    // Main worker configuration
+    // TanStack Router creates a single worker entry point
+    "main": "cloudflare-worker.ts",
+
+    // Observability - logging configuration
+    "observability": {
+        "enabled": false, // legacy key; use logs.enabled instead;
+        "head_sampling_rate": 1,
+        "logs": {
+            "enabled": true,
+            "head_sampling_rate": 1,
+            "persist": true,
+            "invocation_logs": true,
+        },
+        "traces": {
+            "enabled": true,
+            "persist": true,
+            "head_sampling_rate": 1,
+        },
+    },
+
+    // TOP LEVEL BINDINGS (available in all environments unless overridden in env.*)
+    // This is required for local development to define the shape of bindings and enable Wrangler features (e.g. `wrangler dev` with real D1/KV/R2/Queue emulation).
+    // Preview and prod would use env.production/env.preview overrides to substitute real Cloudflare resource IDs from GitHub Secrets
+    // This replacement would be automatically done by CI/CD during deployment, so placeholders are intentional and should not be edited.
+
+    // D1 Database bindings
+    // Local dev: Uses local SQLite file (.wrangler/state/v3/d1)
+    // Preview/Prod: CI substitutes from GitHub Secrets – do not edit placeholder values
+    "d1_databases": [
+        {
+            "binding": "OBCF_D1",
+            "database_name": "ottabase-db",
+            "database_id": "YOUR_D1_DATABASE_ID", // YOUR_* = local dev only, NOT substituted by CI; Wrangler uses local simulator regardless of this value
+            "preview_database_id": "preview", // Uses preview DB for `wrangler dev --remote`
+        },
+    ],
+
+    // KV Namespace bindings
+    // Local dev: Uses local KV storage (.wrangler/state/v3/kv)
+    // Preview/Prod: CI substitutes from GitHub Secrets – do not edit placeholder values
+    "kv_namespaces": [
+        {
+            "binding": "OBCF_KV",
+            "id": "YOUR_KV_NAMESPACE_ID", // YOUR_* = local dev only, NOT substituted by CI; Wrangler uses local simulator regardless of this value
+            "preview_id": "YOUR_KV_PREVIEW_ID", // YOUR_* = local dev only, NOT substituted by CI
+        },
+    ],
+
+    // R2 Bucket bindings
+    // Local dev: Uses local R2 storage (.wrangler/state/v3/r2)
+    // Preview/Prod: Uses real Cloudflare R2 bucket
+    "r2_buckets": [
+        {
+            "binding": "OBCF_R2",
+            "bucket_name": "ottabase-bucket", // Create with: wrangler r2 bucket create ottabase-bucket
+            "preview_bucket_name": "ottabase-bucket-preview", // Create with: wrangler r2 bucket create ottabase-bucket-preview
+        },
+    ],
+
+    // Analytics Engine: event tracking (datasets auto-created on first write)
+    // Ensure to make these https://dash.cloudflare.com/<your-account-id>/workers/analytics-engine
+    "analytics_engine_datasets": [
+        {
+            "dataset": "core_events",
+            "binding": "OBCF_ANALYTICS_CORE",
+        },
+        {
+            "dataset": "shortlink_clicks",
+            "binding": "OBCF_ANALYTICS_SHORTLINKS",
+        },
+        {
+            "dataset": "referral_clicks",
+            "binding": "OBCF_ANALYTICS_REFERRALS",
+        },
+    ],
+
+    // Queue bindings for async message processing
+    // Local dev: Uses local queue storage
+    // Preview/Prod: Uses real Cloudflare Queue
+    "queues": {
+        "producers": [
+            {
+                "binding": "OBCF_QUEUE",
+                "queue": "ottabase-queue", // Create with: wrangler queues create ottabase-queue
+            },
+        ],
+    },
+
+    // Rate Limiting bindings
+    // Note: Rate limiting works differently in local dev vs production
+    // Local dev: Uses simulated rate limiting with local state
+    // Preview/Prod: Uses real Cloudflare Rate Limiting
+    "unsafe": {
+        "bindings": [
+            {
+                "name": "OBCF_RATE_LIMITER",
+                "type": "ratelimit",
+                "namespace_id": "1001", // For local dev, can use any INT value
+                "simple": {
+                    "limit": 10, // 10 requests
+                    "period": 60, // per 60 seconds
+                },
+            },
+        ],
+    },
+
+    // Workers AI binding — direct access to Cloudflare AI models
+    // @see https://developers.cloudflare.com/workers-ai/
+    "ai": {
+        "binding": "OBCF_AI",
+    },
+
+    // Durable Objects bindings for real-time features
+    "durable_objects": {
+        "bindings": [
+            {
+                "name": "OBCF_REALTIME",
+                "class_name": "RealtimeActor", // DOs are scoped per-worker. So inherently isolated
+            },
+        ],
+    },
+
+    // Migrations for Durable Objects
+    // NOTE: `migrations` is a top-level-only Wrangler key (cannot live under `env.*`).
+    "migrations": [
+        {
+            "tag": "v1",
+            "new_classes": ["RealtimeActor"],
+        },
+    ],
+
+    // Static assets configuration
+    // Vite build outputs to dist/ directory
+    "assets": {
+        "directory": "dist",
+        "binding": "OBCF_ASSETS", // Per-deployment binding
+    },
+
+    // Environment variables
+    // These are available in all environments (dev/preview/prod)
+    "vars": {
+        "ENVIRONMENT": "development",
+        "NODE_ENV": "production",
+        // R2 proxy path - works in dev and production (same origin)
+        // For custom R2 domain, set to: https://cdn.yourdomain.com
+        "R2_PUBLIC_URL": "/api/upload/file",
+        // CLOUDFLARE_ACCOUNT_ID: // Set in env.production/env.preview vars (substituted from GitHub Secret)
+    },
+
+    // Local development settings
+    "dev": {
+        "ip": "127.0.0.1",
+        "port": 3004,
+        "local_protocol": "http",
+    },
+
+    // Environment-specific overrides
+    "env": {
+        "production": {
+            "vars": {
+                "ENVIRONMENT": "production",
+                "NODE_ENV": "production",
+                // For Analytics (Workers Analytics Engine): Substituted from GitHub Secret at deploy; add CLOUDFLARE_ANALYTICS_API_TOKEN via wrangler secret put or CF Dash > Worker > Settings > Secrets
+                "CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID",
+            },
+            "unsafe": {
+                "bindings": [
+                    {
+                        "name": "OBCF_RATE_LIMITER",
+                        "type": "ratelimit",
+                        "namespace_id": "1001", // INT ID for production rate limiter. Ensure to change for diff app
+                        "simple": {
+                            "limit": 10,
+                            "period": 60,
+                        },
+                    },
+                ],
+            },
+            "durable_objects": {
+                "bindings": [
+                    {
+                        "name": "OBCF_REALTIME",
+                        "class_name": "RealtimeActor",
+                    },
+                ],
+            },
+            // Production assets
+            "assets": {
+                "binding": "OBCF_ASSETS",
+                "directory": "dist",
+            },
+            // Production D1 – placeholder value = GitHub Secret name; CI substitutes the real UUID at deploy time
+            // Any value works (e.g. "MY_DB_ID") — just add a matching GitHub Secret with the real UUID
+            // Two apps using the same value → same secret → same real ID → shared DB; different values → isolated
+            "d1_databases": [
+                {
+                    "binding": "OBCF_D1",
+                    "database_name": "ottabase-db",
+                    "database_id": "D1_DATABASE_ID",
+                },
+            ],
+            // Production KV – placeholder = GitHub Secret name; CI substitutes at deploy time
+            "kv_namespaces": [
+                {
+                    "binding": "OBCF_KV",
+                    "id": "KV_NAMESPACE_ID",
+                },
+            ],
+            // Production R2 Bucket
+            "r2_buckets": [
+                {
+                    "binding": "OBCF_R2",
+                    "bucket_name": "ottabase-bucket", // Update if using a different bucket or app-prefixed bucket for isolation (e.g. app1-ottabase-bucket)
+                },
+            ],
+            // Production Queue
+            "queues": {
+                "producers": [
+                    {
+                        "binding": "OBCF_QUEUE",
+                        "queue": "ottabase-queue", // Update if using a different queue or app-prefixed queue for isolation (e.g. app1-ottabase-queue)
+                    },
+                ],
+            },
+            // Production analytics datasets (auto-created on first write)
+            // Ensure to make these https://dash.cloudflare.com/<your-account-id>/workers/analytics-engine
+            "analytics_engine_datasets": [
+                {
+                    "dataset": "core_events",
+                    "binding": "OBCF_ANALYTICS_CORE",
+                },
+                {
+                    "dataset": "shortlink_clicks",
+                    "binding": "OBCF_ANALYTICS_SHORTLINKS",
+                },
+                {
+                    "dataset": "referral_clicks",
+                    "binding": "OBCF_ANALYTICS_REFERRALS",
+                },
+            ],
+        },
+        // PR preview – placeholders = GitHub Secret names; CI substitutes at deploy time
+        "preview": {
+            "vars": {
+                "ENVIRONMENT": "preview",
+                "NODE_ENV": "production",
+                // For Analytics (WAE): substituted from GitHub Secret at deploy
+                "CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID",
+            },
+            "unsafe": {
+                "bindings": [
+                    {
+                        "name": "OBCF_RATE_LIMITER",
+                        "type": "ratelimit",
+                        "namespace_id": "1002", // Ensure to use a different namespace_id for preview (and also for another app) to avoid conflicts with prod rate limiter
+                        "simple": {
+                            "limit": 10,
+                            "period": 60,
+                        },
+                    },
+                ],
+            },
+            "durable_objects": {
+                "bindings": [
+                    {
+                        "name": "OBCF_REALTIME",
+                        "class_name": "RealtimeActor",
+                    },
+                ],
+            },
+            "assets": {
+                "binding": "OBCF_ASSETS",
+                "directory": "dist",
+            },
+            // Preview D1 – placeholder = GitHub Secret name; CI substitutes at deploy time
+            "d1_databases": [
+                {
+                    "binding": "OBCF_D1",
+                    "database_name": "ottabase-db-preview",
+                    "database_id": "D1_PREVIEW_DATABASE_ID",
+                },
+            ],
+            // Preview KV – placeholder = GitHub Secret name; CI substitutes at deploy time
+            "kv_namespaces": [
+                {
+                    "binding": "OBCF_KV",
+                    "id": "KV_PREVIEW_NAMESPACE_ID",
+                },
+            ],
+            "r2_buckets": [
+                {
+                    "binding": "OBCF_R2",
+                    "bucket_name": "ottabase-bucket-preview",
+                },
+            ],
+            // Preview queue - create with: wrangler queues create ottabase-queue-preview
+            "queues": {
+                "producers": [
+                    {
+                        "binding": "OBCF_QUEUE",
+                        "queue": "ottabase-queue-preview",
+                    },
+                ],
+            },
+            // Preview analytics datasets (auto-created on first write; isolated from production)
+            "analytics_engine_datasets": [
+                {
+                    "binding": "OBCF_ANALYTICS_CORE",
+                    "dataset": "core_events_preview",
+                },
+                {
+                    "binding": "OBCF_ANALYTICS_SHORTLINKS",
+                    "dataset": "shortlink_clicks_preview",
+                },
+                {
+                    "binding": "OBCF_ANALYTICS_REFERRALS",
+                    "dataset": "referral_clicks_preview",
+                },
+            ],
+        },
+    },
+}

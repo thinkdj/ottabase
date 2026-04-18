@@ -45,9 +45,11 @@ export {
     // Credentials Provider
     createCredentialsProvider,
     createCustomCredentialsProvider,
+    createDevEmailTrapProvider,
     createDiscordProvider,
     createGitHubProvider,
     createGoogleProvider,
+    isDevEmailTrapConfigured,
     createNodemailerProvider,
     // Email Providers (Magic Link)
     createResendProvider,
@@ -88,6 +90,7 @@ export {
 // CLIENT API (Frontend)
 // ============================================================
 export {
+    changePassword,
     getCsrfToken,
     getSession as getSessionClient,
     isAuthenticated as isAuthenticatedClient,
@@ -101,6 +104,7 @@ export {
     signOut,
     verifyEmail,
     type AuthClientOptions,
+    type ChangePasswordResponse,
     type AuthResponse,
     type AuthSession,
     type EmailVerificationResponse,
@@ -113,7 +117,14 @@ export {
 // ============================================================
 // REACT HOOKS
 // ============================================================
-export { useSession, type Session, type User, type UseSessionOptions } from './react-hooks';
+export {
+    useSession,
+    clearAuthSessionStorage,
+    AUTH_STORAGE_KEY,
+    type Session,
+    type User,
+    type UseSessionOptions,
+} from './react-hooks';
 
 // ============================================================
 // TYPE DEFINITIONS
