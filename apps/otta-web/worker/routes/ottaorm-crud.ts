@@ -3,7 +3,7 @@ import { Comment } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { Post } from '@ottabase/ottablog';
 import { executeSecureCrudRequest, parseCrudRequest, registerConnection } from '@ottabase/ottaorm';
-import { OrganizationMember, User } from '@ottabase/ottaorm/models';
+import { User } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
@@ -54,7 +54,21 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     if (crudRequest.model === 'organization_members') {
         return errorResponse('Organization members CRUD is disabled via OttaORM', 403, {
             code: 'CRUD_DISABLED',
-            hint: 'Use /api/admin/organizations/:organizationId/members endpoints (includes last-owner safety guardrails)',
+            hint: 'Use /api/admin/organization/members or /api/platform/organizations/:organizationId/members endpoints',
+        });
+    }
+
+    if (crudRequest.model === 'organization_invites') {
+        return errorResponse('Organization invites CRUD is disabled via OttaORM', 403, {
+            code: 'CRUD_DISABLED',
+            hint: 'Use /api/admin/organization/invites, /api/platform/organizations/:organizationId/invites, and /api/public/org-invites/*',
+        });
+    }
+
+    if (crudRequest.model === 'organizations') {
+        return errorResponse('Organizations CRUD is disabled via OttaORM', 403, {
+            code: 'CRUD_DISABLED',
+            hint: 'Use /api/account/organizations, /api/onboarding/organizations, /api/admin/organization, and /api/platform/organizations',
         });
     }
 
@@ -88,10 +102,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 if (!Number.isFinite(currentTimestamp) || currentTimestamp !== expectedTimestamp) {
                     return errorResponse('Post was updated by another session', 409, {
                         code: 'CONFLICT',
-                        details: {
-                            expectedUpdatedAt: expectedTimestamp,
-                            currentUpdatedAt: currentTimestamp,
-                        },
+                        details: `expectedUpdatedAt=${expectedTimestamp}, currentUpdatedAt=${currentTimestamp}`,
                     });
                 }
             }
@@ -168,21 +179,6 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         }
     }
 
-    if (crudRequest.model === 'organizations' && crudRequest.body && crudRequest.method === 'POST') {
-        const userId = session?.user?.id;
-        if (!userId) {
-            return errorResponse('Authentication required', 401, { code: 'UNAUTHENTICATED' });
-        }
-
-        (crudRequest.body as any).ownerId = userId;
-        if ((crudRequest.body as any).status === undefined) {
-            (crudRequest.body as any).status = 'active';
-        }
-        if ((crudRequest.body as any).plan === undefined) {
-            (crudRequest.body as any).plan = 'free';
-        }
-    }
-
     const result = await executeSecureCrudRequest(crudRequest, securityContext);
 
     if (!result.success) {
@@ -200,29 +196,6 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
             messages: result.messages,
             fieldErrors: result.fieldErrors,
         });
-    }
-
-    if (crudRequest.model === 'organizations' && crudRequest.method === 'POST') {
-        const userId = session?.user?.id;
-        const data = result.data as any;
-        const orgId = data?.id;
-        if (userId && orgId) {
-            try {
-                await OrganizationMember.create({
-                    userId,
-                    organizationId: orgId,
-                    role: 'owner',
-                    status: 'active',
-                    invitedBy: userId,
-                    joinedAt: Date.now(),
-                } as any);
-            } catch (err) {
-                return errorResponse('Failed to create organization membership', 500, {
-                    code: 'ORG_MEMBER_CREATE_FAILED',
-                    details: err instanceof Error ? err.message : 'Unknown error',
-                });
-            }
-        }
     }
 
     // Enrich comment list responses with author info (name, image, createdAt)

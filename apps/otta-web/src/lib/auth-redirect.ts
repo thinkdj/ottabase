@@ -2,6 +2,7 @@
 const AUTH_ROUTE_PATHS = new Set(['/login', '/register', '/verify-email', '/reset-password']);
 
 const RETURN_PATH_KEY = 'ottabase.auth.returnTo';
+const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 export const DEFAULT_AUTH_REDIRECT = '/dashboard';
 
 /**
@@ -62,4 +63,33 @@ function consumeReturnPath(): string | null {
 export function resolveAuthRedirect(): string {
     if (typeof window === 'undefined') return DEFAULT_AUTH_REDIRECT;
     return consumeReturnPath() || DEFAULT_AUTH_REDIRECT;
+}
+
+function hasStoredOrganizationSelection(): boolean {
+    if (typeof window === 'undefined') return false;
+
+    try {
+        return Boolean(localStorage.getItem(CURRENT_ORG_KEY));
+    } catch {
+        return false;
+    }
+}
+
+export function resolvePostAuthRedirect(
+    fallbackTarget: string,
+    user?: { organizationId?: string | null; systemAdmin?: boolean } | null,
+): string {
+    if (fallbackTarget !== DEFAULT_AUTH_REDIRECT) {
+        return fallbackTarget;
+    }
+
+    if (user?.systemAdmin) {
+        return fallbackTarget;
+    }
+
+    if (user?.organizationId || hasStoredOrganizationSelection()) {
+        return fallbackTarget;
+    }
+
+    return '/onboarding/organization';
 }

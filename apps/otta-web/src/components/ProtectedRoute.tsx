@@ -10,6 +10,7 @@ interface ProtectedRouteProps {
     redirectTo?: string;
     requiredPermissions?: string[];
     requiredRoles?: string[];
+    requireSystemAdmin?: boolean;
     fallback?: ReactNode;
 }
 
@@ -33,6 +34,7 @@ export function ProtectedRoute({
     redirectTo = '/login',
     requiredPermissions,
     requiredRoles,
+    requireSystemAdmin = false,
     fallback,
 }: ProtectedRouteProps) {
     const navigate = useNavigate();
@@ -76,9 +78,22 @@ export function ProtectedRoute({
     const hasRequiredPermissions =
         !requiredPermissions ||
         requiredPermissions.length === 0 ||
-        requiredPermissions.every((perm) => user?.permissions?.includes('*:*') || user?.permissions?.includes(perm));
+        requiredPermissions.every((perm) => {
+            // Mirror backend logic: 'admin' permission is satisfied by owner or admin role,
+            // or by wildcard '*:*' permission (see packages/rbac/src/admin-guard.ts)
+            if (perm === 'admin') {
+                return (
+                    user?.roles?.includes('owner') ||
+                    user?.roles?.includes('admin') ||
+                    user?.permissions?.includes('*:*')
+                );
+            }
+            return user?.permissions?.includes('*:*') || user?.permissions?.includes(perm);
+        });
 
-    if (!hasRequiredRoles || !hasRequiredPermissions) {
+    const hasRequiredSystemAdmin = !requireSystemAdmin || user?.systemAdmin === true;
+
+    if (!hasRequiredRoles || !hasRequiredPermissions || !hasRequiredSystemAdmin) {
         if (fallback) return <>{fallback}</>;
         return (
             <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">

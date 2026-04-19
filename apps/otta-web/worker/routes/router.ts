@@ -5,6 +5,7 @@ import type { CloudflareEnv } from '../../cloudflare-env';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { handleCustomRoutes } from '../../ottabase/config.routes';
 import { getKillSwitchStatus } from '../lib/killswitch';
+import { handleAccountOnboardingOrganizationCreate, handleAccountOrganizationsList } from './account-organizations';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import {
     handleAdminDbRowDelete,
@@ -19,10 +20,24 @@ import {
     handleAdminDevMailList,
 } from './admin-dev-mail';
 import {
+    handleAdminOrganizationInviteCreate,
+    handleAdminOrganizationInviteResend,
+    handleAdminOrganizationInviteRevoke,
+    handleAdminOrganizationInvitesList,
+    handleCurrentOrganizationInviteCreate,
+    handleCurrentOrganizationInviteResend,
+    handleCurrentOrganizationInviteRevoke,
+    handleCurrentOrganizationInvitesList,
+} from './admin-organization-invites';
+import {
     handleAdminOrganizationInviteMember,
     handleAdminOrganizationMembersList,
     handleAdminOrganizationRemoveMember,
     handleAdminOrganizationUpdateMember,
+    handleCurrentOrganizationInviteMember,
+    handleCurrentOrganizationMembersList,
+    handleCurrentOrganizationRemoveMember,
+    handleCurrentOrganizationUpdateMember,
 } from './admin-organization-members';
 import { handleAdminPromoteOwner } from './admin-owner';
 import {
@@ -93,10 +108,25 @@ import {
     handleUploadFile,
 } from './cloudflare-storage';
 import { handleCoreAnalytics } from './core-analytics';
+import { handleCurrentOrganizationGet, handleCurrentOrganizationUpdate } from './current-organization';
 import { handleDemo, handleDemoError } from './demo';
 import { handleEmailProviders, handleEmailTest } from './email';
+import {
+    handlePublicOrgInviteAccept,
+    handlePublicOrgInviteDecline,
+    handlePublicOrgInvitePreview,
+} from './org-invites-public';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
+import {
+    handlePlatformOrganizationAvailability,
+    handlePlatformOrganizationCreate,
+    handlePlatformOrganizationDelete,
+    handlePlatformOrganizationGet,
+    handlePlatformOrganizationOffboard,
+    handlePlatformOrganizationUpdate,
+    handlePlatformOrganizationsList,
+} from './platform-organizations';
 import {
     handleReferralStats,
     handleReferralTrack,
@@ -339,9 +369,48 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleAdminUserSearch(context);
     }
 
-    const adminOrganizationMembersListMatch = route.match(/^\/api\/admin\/organizations\/([^/]+)\/members$/);
-    if (adminOrganizationMembersListMatch) {
-        return handleAdminOrganizationMembersList(context, adminOrganizationMembersListMatch[1]);
+    if (route === '/api/account/organizations') {
+        return handleAccountOrganizationsList(context);
+    }
+
+    if (route === '/api/admin/organization') {
+        return handleCurrentOrganizationGet(context);
+    }
+
+    if (route === '/api/admin/organization/invites') {
+        return handleCurrentOrganizationInvitesList(context);
+    }
+
+    if (route === '/api/admin/organization/members') {
+        return handleCurrentOrganizationMembersList(context);
+    }
+
+    if (route === '/api/platform/organizations') {
+        return handlePlatformOrganizationsList(context);
+    }
+
+    if (route === '/api/platform/organizations/availability') {
+        return handlePlatformOrganizationAvailability(context);
+    }
+
+    const publicOrgInvitePreviewMatch = route.match(/^\/api\/public\/org-invites\/([^/]+)$/);
+    if (publicOrgInvitePreviewMatch) {
+        return handlePublicOrgInvitePreview(context);
+    }
+
+    const platformOrganizationInvitesListMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/invites$/);
+    if (platformOrganizationInvitesListMatch) {
+        return handleAdminOrganizationInvitesList(context, platformOrganizationInvitesListMatch[1]);
+    }
+
+    const platformOrganizationMembersListMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/members$/);
+    if (platformOrganizationMembersListMatch) {
+        return handleAdminOrganizationMembersList(context, platformOrganizationMembersListMatch[1]);
+    }
+
+    const platformOrganizationGetMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)$/);
+    if (platformOrganizationGetMatch) {
+        return handlePlatformOrganizationGet(context, platformOrganizationGetMatch[1]);
     }
 
     const adminUserMatch = route.match(/^\/api\/admin\/users\/([^/]+)$/);
@@ -409,6 +478,62 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleEmailTest(context);
     }
 
+    const publicOrgInviteDeclineMatch = route.match(/^\/api\/public\/org-invites\/([^/]+)\/decline$/);
+    if (publicOrgInviteDeclineMatch) {
+        return handlePublicOrgInviteDecline(context);
+    }
+
+    const publicOrgInviteAcceptMatch = route.match(/^\/api\/public\/org-invites\/([^/]+)\/accept$/);
+    if (publicOrgInviteAcceptMatch) {
+        return handlePublicOrgInviteAccept(context);
+    }
+
+    const platformOrganizationOffboardMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/offboard$/);
+    if (platformOrganizationOffboardMatch) {
+        return handlePlatformOrganizationOffboard(context, platformOrganizationOffboardMatch[1]);
+    }
+
+    const currentOrganizationInviteRevokeMatch = route.match(/^\/api\/admin\/organization\/invites\/([^/]+)\/revoke$/);
+    if (currentOrganizationInviteRevokeMatch) {
+        return handleCurrentOrganizationInviteRevoke(context, currentOrganizationInviteRevokeMatch[1]);
+    }
+
+    const platformOrganizationInviteRevokeMatch = route.match(
+        /^\/api\/platform\/organizations\/([^/]+)\/invites\/([^/]+)\/revoke$/,
+    );
+    if (platformOrganizationInviteRevokeMatch) {
+        return handleAdminOrganizationInviteRevoke(
+            context,
+            platformOrganizationInviteRevokeMatch[1],
+            platformOrganizationInviteRevokeMatch[2],
+        );
+    }
+
+    const currentOrganizationInviteResendMatch = route.match(/^\/api\/admin\/organization\/invites\/([^/]+)\/resend$/);
+    if (currentOrganizationInviteResendMatch) {
+        return handleCurrentOrganizationInviteResend(context, currentOrganizationInviteResendMatch[1]);
+    }
+
+    const platformOrganizationInviteResendMatch = route.match(
+        /^\/api\/platform\/organizations\/([^/]+)\/invites\/([^/]+)\/resend$/,
+    );
+    if (platformOrganizationInviteResendMatch) {
+        return handleAdminOrganizationInviteResend(
+            context,
+            platformOrganizationInviteResendMatch[1],
+            platformOrganizationInviteResendMatch[2],
+        );
+    }
+
+    if (route === '/api/admin/organization/invites') {
+        return handleCurrentOrganizationInviteCreate(context);
+    }
+
+    const platformOrganizationInviteEmailMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/invites$/);
+    if (platformOrganizationInviteEmailMatch) {
+        return handleAdminOrganizationInviteCreate(context, platformOrganizationInviteEmailMatch[1]);
+    }
+
     if (route === '/api/admin/cron') {
         return handleAdminCronCreate(context);
     }
@@ -417,9 +542,13 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleAdminPromoteOwner(context);
     }
 
-    const adminOrganizationInviteMatch = route.match(/^\/api\/admin\/organizations\/([^/]+)\/members\/invite$/);
-    if (adminOrganizationInviteMatch) {
-        return handleAdminOrganizationInviteMember(context, adminOrganizationInviteMatch[1]);
+    if (route === '/api/admin/organization/members/invite') {
+        return handleCurrentOrganizationInviteMember(context);
+    }
+
+    const platformOrganizationInviteMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/members\/invite$/);
+    if (platformOrganizationInviteMatch) {
+        return handleAdminOrganizationInviteMember(context, platformOrganizationInviteMatch[1]);
     }
 
     if (packages.ottablog) {
@@ -507,6 +636,14 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleAdminRoleCreate(context);
     }
 
+    if (route === '/api/onboarding/organizations') {
+        return handleAccountOnboardingOrganizationCreate(context);
+    }
+
+    if (route === '/api/platform/organizations') {
+        return handlePlatformOrganizationCreate(context);
+    }
+
     if (route === '/api/ottaorm/init') {
         return handleOttaormInit(context);
     }
@@ -523,12 +660,26 @@ async function handlePatchRoutes(context: ApiRouteContext): Promise<Response | n
     const { route, env } = context;
     const packages = getOttabaseConfig(env).packages;
 
-    const adminOrganizationUpdateMatch = route.match(/^\/api\/admin\/organizations\/([^/]+)\/members\/([^/]+)$/);
-    if (adminOrganizationUpdateMatch) {
+    if (route === '/api/admin/organization') {
+        return handleCurrentOrganizationUpdate(context);
+    }
+
+    const currentOrganizationUpdateMatch = route.match(/^\/api\/admin\/organization\/members\/([^/]+)$/);
+    if (currentOrganizationUpdateMatch) {
+        return handleCurrentOrganizationUpdateMember(context, decodeURIComponent(currentOrganizationUpdateMatch[1]));
+    }
+
+    const platformOrganizationPatchMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)$/);
+    if (platformOrganizationPatchMatch) {
+        return handlePlatformOrganizationUpdate(context, platformOrganizationPatchMatch[1]);
+    }
+
+    const platformOrganizationUpdateMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/members\/([^/]+)$/);
+    if (platformOrganizationUpdateMatch) {
         return handleAdminOrganizationUpdateMember(
             context,
-            adminOrganizationUpdateMatch[1],
-            decodeURIComponent(adminOrganizationUpdateMatch[2]),
+            platformOrganizationUpdateMatch[1],
+            decodeURIComponent(platformOrganizationUpdateMatch[2]),
         );
     }
 
@@ -615,12 +766,22 @@ async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | 
         return handleAdminRoleDelete(context, adminRoleDeleteMatch[1]);
     }
 
-    const adminOrganizationDeleteMatch = route.match(/^\/api\/admin\/organizations\/([^/]+)\/members\/([^/]+)$/);
-    if (adminOrganizationDeleteMatch) {
+    const platformOrganizationEntityDeleteMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)$/);
+    if (platformOrganizationEntityDeleteMatch) {
+        return handlePlatformOrganizationDelete(context, platformOrganizationEntityDeleteMatch[1]);
+    }
+
+    const currentOrganizationDeleteMatch = route.match(/^\/api\/admin\/organization\/members\/([^/]+)$/);
+    if (currentOrganizationDeleteMatch) {
+        return handleCurrentOrganizationRemoveMember(context, decodeURIComponent(currentOrganizationDeleteMatch[1]));
+    }
+
+    const platformOrganizationDeleteMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/members\/([^/]+)$/);
+    if (platformOrganizationDeleteMatch) {
         return handleAdminOrganizationRemoveMember(
             context,
-            adminOrganizationDeleteMatch[1],
-            decodeURIComponent(adminOrganizationDeleteMatch[2]),
+            platformOrganizationDeleteMatch[1],
+            decodeURIComponent(platformOrganizationDeleteMatch[2]),
         );
     }
 

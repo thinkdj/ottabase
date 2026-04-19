@@ -5,8 +5,8 @@ TanStack Router + Query template with automated OttaORM migrations and Cloudflar
 ## Features
 
 - **TanStack Router** - Type-safe routing with file-based structure
-- **Admin Access Routing** - Organization members page is keyed by the typed `$organizationId` route param with a direct
-  back path to `/admin/access/organizations`
+- **Organization Admin Split** - Organization management is split into explicit onboarding, current-organization admin,
+  and platform tenant-directory surfaces
 - **TanStack Query** - Powerful async state management
 - **OttaORM** - Fat models with automated migrations
 - **Owner Safety Guardrail** - Admin member APIs prevent demoting, deactivating, or removing the last active
@@ -83,19 +83,22 @@ This template ships with Auth.js + D1 integration and tighter session handling:
   session picks up the KV-triggered profile version bump immediately.
 - **Tenant/app headers**: The client now sets `X-App-Id: otta-web` and, when available, `X-Org-Id` from the current
   session into all API calls; these values are also mirrored in global state atoms for UI needs.
+- **Organization flows**: Registration creates only the user account. Authenticated users create their first workspace
+  at `/onboarding/organization`, tenant admins manage the selected org at `/admin/organization/*`, and system admins
+  manage all tenants at `/admin/platform/organizations`.
 
 ### Auth API Endpoints
 
-| Endpoint                           | Method  | Notes                                                                                                                                                   |
-| ---------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/api/auth/register`               | `POST`  | Credentials registration + auto organization/role setup. Returns `{ user, organizationId, organizationRole, assignedRole, requiresEmailVerification }`. |
-| `/api/auth/verify-email`           | `POST`  | Consume verification token from email link after registration or resend.                                                                                |
-| `/api/auth/verify-email/resend`    | `POST`  | Sends a new verification token; rate-limited by `enforceRateLimit`.                                                                                     |
-| `/api/auth/password/reset/request` | `POST`  | Sends reset token email (supports Resend/Ses/KV mailers).                                                                                               |
-| `/api/auth/password/reset/confirm` | `POST`  | Applies a new password and revokes existing JWTs via `auth:usr:{userId}:revoked`.                                                                       |
-| `/api/auth/password/change`        | `POST`  | Authenticated password change (requires current password), validates strength, then revokes active JWTs.                                                |
-| `/api/users/me`                    | `GET`   | Returns the authenticated user (filters out password data).                                                                                             |
-| `/api/users/me`                    | `PATCH` | Updates profile fields (`name`, `image`), enforces validation, and bumps `auth:usr:{userId}:profile:version` in KV for session refresh.                 |
+| Endpoint                           | Method  | Notes                                                                                                                                                                        |
+| ---------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/auth/register`               | `POST`  | Credentials registration only. Returns `{ user, organizationId, organizationRole, assignedRole, requiresEmailVerification }`, where org fields stay `null` until onboarding. |
+| `/api/auth/verify-email`           | `POST`  | Consume verification token from email link after registration or resend.                                                                                                     |
+| `/api/auth/verify-email/resend`    | `POST`  | Sends a new verification token; rate-limited by `enforceRateLimit`.                                                                                                          |
+| `/api/auth/password/reset/request` | `POST`  | Sends reset token email (supports Resend/Ses/KV mailers).                                                                                                                    |
+| `/api/auth/password/reset/confirm` | `POST`  | Applies a new password and revokes existing JWTs via `auth:usr:{userId}:revoked`.                                                                                            |
+| `/api/auth/password/change`        | `POST`  | Authenticated password change (requires current password), validates strength, then revokes active JWTs.                                                                     |
+| `/api/users/me`                    | `GET`   | Returns the authenticated user (filters out password data).                                                                                                                  |
+| `/api/users/me`                    | `PATCH` | Updates profile fields (`name`, `image`), enforces validation, and bumps `auth:usr:{userId}:profile:version` in KV for session refresh.                                      |
 
 ### Required Env (production)
 
@@ -130,7 +133,7 @@ AUTH_SESSION_MAX_AGE=2592000
 
 # RBAC bootstrap toggles
 ALLOW_NULL_TENANT=true            # allow system-scope (single-founder) admin
-MULTI_TENANT_ENABLED=true         # create personal org on first user (default true)
+MULTI_TENANT_ENABLED=true         # permit tenant-aware runtime behavior; org creation is explicit via onboarding
 BOOTSTRAP_OWNER_SECRET=supersecret-token
 
 # Analytics (for /analytics - shortlinks + referrals WAE queries)
@@ -149,7 +152,8 @@ CLOUDFLARE_ANALYTICS_API_TOKEN=  # Secret: Account Analytics Read; set via: pnpm
 
 - First successful sign-in when `users.count() === 1` auto-creates a system-scoped `owner` role (organizationId:
   `system`).
-- If `MULTI_TENANT_ENABLED` is true (default), a personal org is created for that first user and linked as owner.
+- New users now create their first organization explicitly via `/onboarding/organization`; registration does not
+  auto-provision a personal workspace.
 - Set `ALLOW_NULL_TENANT=true` to run in single-founder mode (no org required; system scope is used by default).
 - Manual recovery: `POST /api/admin/owner/promote` with header `x-bootstrap-secret: $BOOTSTRAP_OWNER_SECRET` and body
   `{ "userId": "..." }` or `{ "email": "..." }` to grant the system owner role.

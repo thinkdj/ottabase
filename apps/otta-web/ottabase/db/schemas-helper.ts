@@ -21,6 +21,7 @@ import {
     auditLogsTable,
     authenticatorsTable,
     mediaTable,
+    organizationInvitesTable,
     organizationMembersTable,
     organizationsTable,
     permissionsTable,
@@ -51,6 +52,7 @@ export function getAllSchemas() {
         scheduledTasksTable,
         // Multi-tenant/RBAC tables
         organizationsTable,
+        organizationInvitesTable,
         organizationMembersTable,
         rolesTable,
         permissionsTable,
@@ -93,6 +95,7 @@ export function getSchemaSummary() {
         scheduledTasksTable,
         // Multi-tenant/RBAC tables
         organizationsTable,
+        organizationInvitesTable,
         organizationMembersTable,
         rolesTable,
         permissionsTable,

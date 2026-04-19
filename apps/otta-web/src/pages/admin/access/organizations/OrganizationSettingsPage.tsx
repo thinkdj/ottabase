@@ -1,13 +1,11 @@
-/**
- * Organization Settings Page
- *
- * Manage organization profile and settings
- * GitHub-like minimal UI with dark mode support
- */
-
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
 import { TableSkeleton } from '@/components/LoadingSkeletons';
-import { useDeleteOrganization, useOrganization, useUpdateOrganization } from '@/hooks/useRBAC';
+import {
+    useCurrentOrganizationUpdate,
+    useDeleteOrganization,
+    useOrganization,
+    usePlatformUpdateOrganization,
+} from '@/hooks/useRBAC';
 import { useRBACToast } from '@/hooks/useToast';
 import { organizationIdAtom } from '@/ottabase/state/appState';
 import { ConfirmDialog } from '@ottabase/ui-components';
@@ -32,88 +30,134 @@ import {
     Separator,
 } from '@ottabase/ui-shadcn';
 import { Link, useParams } from '@tanstack/react-router';
-import { useSetAtom } from 'jotai';
+import { useAtomValue } from 'jotai';
 import { AlertTriangle, Building2, Loader2, Trash2 } from 'lucide-react';
+import type { OrganizationStatus } from '@/types/rbac';
 import { useEffect, useState } from 'react';
 
-const CURRENT_ORG_KEY = 'ottabase.current-org-id';
-
 export function OrganizationSettingsPage() {
-    const { organizationId } = useParams({ from: '/admin/access/organizations/$organizationId/settings' });
     const toast = useRBACToast();
-    const setOrganizationId = useSetAtom(organizationIdAtom);
+    const { organizationId } = useParams({ strict: false }) as { organizationId?: string };
+    const currentOrganizationId = useAtomValue(organizationIdAtom);
+    const isPlatformMode = Boolean(organizationId);
+    const scopedOrganizationId = isPlatformMode ? organizationId : undefined;
+    const hasOrganizationContext = isPlatformMode ? !!organizationId : !!currentOrganizationId;
 
-    const { data: org, isLoading, error, refetch } = useOrganization(organizationId);
-    const updateMutation = useUpdateOrganization();
+    const {
+        data: org,
+        isLoading,
+        error,
+        refetch,
+    } = useOrganization(scopedOrganizationId, {
+        enabled: hasOrganizationContext,
+    });
+    const currentUpdateMutation = useCurrentOrganizationUpdate();
+    const platformUpdateMutation = usePlatformUpdateOrganization();
     const deleteMutation = useDeleteOrganization();
 
     const [formData, setFormData] = useState({
         name: '',
         slug: '',
         plan: 'free' as 'free' | 'pro' | 'enterprise',
-        status: 'active' as 'active' | 'suspended' | 'trial',
+        status: 'active' as OrganizationStatus,
     });
-
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
 
     useEffect(() => {
-        if (!organizationId) return;
-        setOrganizationId(organizationId);
-        try {
-            localStorage.setItem(CURRENT_ORG_KEY, organizationId);
-        } catch {
-            // ignore storage failures
-        }
-    }, [organizationId, setOrganizationId]);
-
-    // Initialize form data when org loads
-    useEffect(() => {
         if (!org) return;
-
         setFormData({
             name: org.name,
             slug: org.slug,
             plan: org.plan,
-            status: org.status === 'deleted' ? 'suspended' : org.status,
+            status: org.status,
         });
         setHasChanges(false);
     }, [org]);
 
+    const activeUpdateMutation = isPlatformMode ? platformUpdateMutation : currentUpdateMutation;
+
     const handleChange = (field: string, value: string) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
+        setFormData((previous) => ({ ...previous, [field]: value }));
         setHasChanges(true);
     };
 
     const handleSave = async () => {
-        updateMutation.mutate(
-            {
-                id: organizationId,
-                data: formData,
-            },
+        if (!org) return;
+
+        if (isPlatformMode && scopedOrganizationId) {
+            platformUpdateMutation.mutate(
+                {
+                    id: scopedOrganizationId,
+                    data: formData,
+                },
+                {
+                    onSuccess: () => {
+                        toast.rbac.organizationUpdated();
+                        setHasChanges(false);
+                    },
+                    onError: (updateError) => {
+                        toast.error(
+                            'Failed to update',
+                            updateError instanceof Error ? updateError.message : 'Unknown error',
+                        );
+                    },
+                },
+            );
+            return;
+        }
+
+        currentUpdateMutation.mutate(
+            { name: formData.name },
             {
                 onSuccess: () => {
                     toast.rbac.organizationUpdated();
                     setHasChanges(false);
                 },
-                onError: (error) => {
-                    toast.error('Failed to update', error instanceof Error ? error.message : 'Unknown error');
+                onError: (updateError) => {
+                    toast.error(
+                        'Failed to update',
+                        updateError instanceof Error ? updateError.message : 'Unknown error',
+                    );
                 },
             },
         );
     };
 
     const handleDelete = async () => {
-        deleteMutation.mutate(organizationId, {
+        if (!scopedOrganizationId) return;
+
+        deleteMutation.mutate(scopedOrganizationId, {
             onSuccess: () => {
                 toast.rbac.organizationDeleted();
-                window.location.href = '/admin/access/organizations';
+                window.location.href = '/admin/platform/organizations';
             },
-            onError: (error) => {
-                toast.error('Failed to delete', error instanceof Error ? error.message : 'Unknown error');
+            onError: (deleteError) => {
+                toast.error('Failed to delete', deleteError instanceof Error ? deleteError.message : 'Unknown error');
             },
         });
     };
+
+    if (!hasOrganizationContext) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>No organization selected</CardTitle>
+                    <CardDescription>
+                        Select an organization from the switcher or create one to edit settings.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-2">
+                    <Button asChild>
+                        <Link to="/onboarding/organization">Create Organization</Link>
+                    </Button>
+                    <Button variant="outline" asChild>
+                        <Link to="/dashboard">Back to Dashboard</Link>
+                    </Button>
+                </CardContent>
+            </Card>
+        );
+    }
 
     if (isLoading) {
         return (
@@ -133,33 +177,44 @@ export function OrganizationSettingsPage() {
     }
 
     return (
-        <div className="space-y-6 max-w-3xl">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="max-w-3xl space-y-6">
+            <div className="flex items-center justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold">Organization Settings</h1>
-                    <p className="text-muted-foreground mt-1">Manage your organization profile and preferences</p>
+                    <h1 className="text-2xl font-bold">
+                        {isPlatformMode ? 'Tenant Settings' : 'Organization Settings'}
+                    </h1>
+                    <p className="mt-1 text-muted-foreground">
+                        {isPlatformMode
+                            ? 'Platform-admin controls for tenant profile, lifecycle, and support actions.'
+                            : 'Update the current organization profile. Billing and lifecycle controls stay at platform scope.'}
+                    </p>
                 </div>
                 <Button variant="outline" asChild>
-                    <Link to="/admin/access/organizations">← Back</Link>
+                    {isPlatformMode ? (
+                        <Link to="/admin/platform/organizations">← Back to Tenant Directory</Link>
+                    ) : (
+                        <Link to="/admin/organization/members">← Back to Members</Link>
+                    )}
                 </Button>
             </div>
 
-            {/* General Settings */}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Building2 className="h-5 w-5" />
                         General
                     </CardTitle>
-                    <CardDescription>Basic organization information</CardDescription>
+                    <CardDescription>
+                        {isPlatformMode
+                            ? 'Basic tenant profile and lifecycle controls.'
+                            : 'Basic details for the current organization.'}
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {/* Organization ID */}
                     <div className="space-y-2">
                         <Label>Organization ID</Label>
                         <div className="flex items-center gap-2">
-                            <code className="text-sm bg-muted px-3 py-2 rounded flex-1">{org.id}</code>
+                            <code className="flex-1 rounded bg-muted px-3 py-2 text-sm">{org.id}</code>
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -175,36 +230,33 @@ export function OrganizationSettingsPage() {
 
                     <Separator />
 
-                    {/* Organization Name */}
                     <div className="space-y-2">
                         <Label htmlFor="name">Organization Name</Label>
                         <Input
                             id="name"
                             value={formData.name}
-                            onChange={(e) => handleChange('name', e.target.value)}
-                            disabled={updateMutation.isPending}
+                            onChange={(event) => handleChange('name', event.target.value)}
+                            disabled={activeUpdateMutation.isPending}
                         />
                     </div>
 
-                    {/* Slug */}
                     <div className="space-y-2">
                         <Label htmlFor="slug">URL Slug</Label>
                         <Input
                             id="slug"
                             value={formData.slug}
-                            onChange={(e) => handleChange('slug', e.target.value)}
-                            disabled={updateMutation.isPending}
+                            onChange={(event) => handleChange('slug', event.target.value)}
+                            disabled={!isPlatformMode || activeUpdateMutation.isPending}
                         />
                         <p className="text-sm text-muted-foreground">URL: /org/{formData.slug}</p>
                     </div>
 
-                    {/* Plan */}
                     <div className="space-y-2">
                         <Label htmlFor="plan">Plan</Label>
                         <Select
                             value={formData.plan}
                             onValueChange={(value) => handleChange('plan', value)}
-                            disabled={updateMutation.isPending}
+                            disabled={!isPlatformMode || activeUpdateMutation.isPending}
                         >
                             <SelectTrigger id="plan">
                                 <SelectValue />
@@ -217,13 +269,12 @@ export function OrganizationSettingsPage() {
                         </Select>
                     </div>
 
-                    {/* Status */}
                     <div className="space-y-2">
                         <Label htmlFor="status">Status</Label>
                         <Select
                             value={formData.status}
                             onValueChange={(value) => handleChange('status', value)}
-                            disabled={updateMutation.isPending}
+                            disabled={!isPlatformMode || activeUpdateMutation.isPending}
                         >
                             <SelectTrigger id="status">
                                 <SelectValue />
@@ -234,9 +285,9 @@ export function OrganizationSettingsPage() {
                                         <Badge variant="default">Active</Badge>
                                     </div>
                                 </SelectItem>
-                                <SelectItem value="trial">
+                                <SelectItem value="cancelled">
                                     <div className="flex items-center gap-2">
-                                        <Badge variant="secondary">Trial</Badge>
+                                        <Badge variant="secondary">Cancelled</Badge>
                                     </div>
                                 </SelectItem>
                                 <SelectItem value="suspended">
@@ -248,23 +299,31 @@ export function OrganizationSettingsPage() {
                         </Select>
                     </div>
 
-                    {/* Created At */}
+                    {!isPlatformMode && (
+                        <Alert>
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Platform-only fields</AlertTitle>
+                            <AlertDescription>
+                                Slug, plan, status, offboarding, and deletion are reserved for the platform tenant
+                                directory.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
                     <div className="space-y-2">
                         <Label>Created</Label>
                         <p className="text-sm text-muted-foreground">{new Date(org.createdAt).toLocaleString()}</p>
                     </div>
 
-                    {/* Updated At */}
                     <div className="space-y-2">
                         <Label>Last Updated</Label>
                         <p className="text-sm text-muted-foreground">{new Date(org.updatedAt).toLocaleString()}</p>
                     </div>
 
-                    {/* Owner ID */}
                     <div className="space-y-2">
                         <Label>Owner ID</Label>
                         <div className="flex items-center gap-2">
-                            <code className="text-sm bg-muted px-3 py-2 rounded flex-1">{org.ownerId}</code>
+                            <code className="flex-1 rounded bg-muted px-3 py-2 text-sm">{org.ownerId}</code>
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -278,31 +337,28 @@ export function OrganizationSettingsPage() {
                         </div>
                     </div>
 
-                    {/* Settings */}
                     <div className="space-y-2">
                         <Label>Settings</Label>
-                        <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
+                        <pre className="overflow-x-auto rounded bg-muted p-3 text-xs">
                             {JSON.stringify(org.settings ?? {}, null, 2)}
                         </pre>
                     </div>
 
-                    {/* Metadata */}
                     <div className="space-y-2">
                         <Label>Metadata</Label>
-                        <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
+                        <pre className="overflow-x-auto rounded bg-muted p-3 text-xs">
                             {JSON.stringify(org.metadata ?? {}, null, 2)}
                         </pre>
                     </div>
 
-                    {/* Save Button */}
                     {hasChanges && (
                         <div className="pt-4">
                             <Button
                                 onClick={handleSave}
-                                disabled={updateMutation.isPending}
+                                disabled={activeUpdateMutation.isPending}
                                 className="w-full sm:w-auto"
                             >
-                                {updateMutation.isPending ? (
+                                {activeUpdateMutation.isPending ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         Saving...
@@ -316,38 +372,38 @@ export function OrganizationSettingsPage() {
                 </CardContent>
             </Card>
 
-            {/* Danger Zone */}
-            <Card className="border-destructive">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-destructive">
-                        <AlertTriangle className="h-5 w-5" />
-                        Danger Zone
-                    </CardTitle>
-                    <CardDescription>Irreversible actions</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Delete Organization</AlertTitle>
-                        <AlertDescription>
-                            This will permanently delete the organization and all associated data including members,
-                            roles, and audit logs. This action cannot be undone.
-                        </AlertDescription>
-                    </Alert>
+            {isPlatformMode && (
+                <Card className="border-destructive">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="h-5 w-5" />
+                            Danger Zone
+                        </CardTitle>
+                        <CardDescription>Irreversible platform-admin actions.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Alert variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Delete Organization</AlertTitle>
+                            <AlertDescription>
+                                This permanently deletes the tenant and all associated data. This action cannot be
+                                undone.
+                            </AlertDescription>
+                        </Alert>
 
-                    <Button
-                        variant="destructive"
-                        onClick={() => setShowDeleteDialog(true)}
-                        disabled={deleteMutation.isPending}
-                        className="w-full sm:w-auto"
-                    >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Organization
-                    </Button>
-                </CardContent>
-            </Card>
+                        <Button
+                            variant="destructive"
+                            onClick={() => setShowDeleteDialog(true)}
+                            disabled={deleteMutation.isPending}
+                            className="w-full sm:w-auto"
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Organization
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
 
-            {/* Delete Confirmation Dialog */}
             <ConfirmDialog
                 open={showDeleteDialog}
                 onOpenChange={setShowDeleteDialog}

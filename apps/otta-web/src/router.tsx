@@ -48,9 +48,13 @@ function AdminPrivilegeFallback() {
 }
 
 /** Wraps an admin page in: ProtectedRoute(admin) → AdminLayout(sidebar) → page. */
-function renderAdminRoute(children: ReactNode) {
+function renderAdminRoute(children: ReactNode, requireSystemAdmin = false) {
     return (
-        <ProtectedRoute requiredPermissions={ADMIN_REQUIRED_PERMISSIONS} fallback={<AdminPrivilegeFallback />}>
+        <ProtectedRoute
+            requiredPermissions={ADMIN_REQUIRED_PERMISSIONS}
+            requireSystemAdmin={requireSystemAdmin}
+            fallback={<AdminPrivilegeFallback />}
+        >
             <AdminLayout>{children}</AdminLayout>
         </ProtectedRoute>
     );
@@ -120,6 +124,25 @@ function makeAdminRoute(
     });
 }
 
+function makePlatformAdminRoute(
+    path: string,
+    loader: () => Promise<Record<string, ComponentType>>,
+    exportName: string,
+    options: Partial<{ validateSearch: (s: Record<string, unknown>) => unknown }> = {},
+) {
+    return new Route({
+        getParentRoute: () => rootRoute,
+        path,
+        component: lazyRouteComponent(() =>
+            loader().then((m) => {
+                const Comp = m[exportName]!;
+                return { default: () => renderAdminRoute(<Comp />, true) };
+            }),
+        ),
+        ...options,
+    });
+}
+
 // ─── Marketing / app surface ─────────────────────────────────────────────────
 
 const indexRoute = publicRoute('/', () => import('@/pages/home/HomePage').then((m) => ({ default: m.HomePage })));
@@ -140,10 +163,18 @@ const verifyEmailRoute = publicRoute('/verify-email', () =>
 const resetPasswordRoute = publicRoute('/reset-password', () =>
     import('@/pages/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })),
 );
+const orgInviteRoute = publicRoute('/invite/$token', () =>
+    import('@/pages/invite/OrgInvitePage').then((m) => ({ default: m.OrgInvitePage })),
+);
 
 // ─── User app surface ────────────────────────────────────────────────────────
 
 const dashboardRoute = protectedRoute('/dashboard', () => import('@/pages/auth/DashboardPage'), 'DashboardPage');
+const onboardingOrganizationRoute = protectedRoute(
+    '/onboarding/organization',
+    () => import('@/pages/admin/access/organizations/OrganizationRegistrationPage'),
+    'OrganizationRegistrationPage',
+);
 const userProfileRoute = protectedRoute('/profile', () => import('@/pages/user/UserProfilePage'), 'UserProfilePage');
 const userMediaLibraryRoute = protectedRoute(
     '/media-library',
@@ -325,23 +356,28 @@ const adminUserRBACRoute = makeAdminRoute(
     () => import('@/pages/admin/access/users/UserRBACPage'),
     'UserRBACPage',
 );
-const adminOrganizationsRoute = makeAdminRoute(
-    '/admin/access/organizations',
-    () => import('@/pages/admin/access/organizations/OrganizationsPage'),
-    'OrganizationsPage',
-);
-const adminOrganizationNewRoute = makeAdminRoute(
-    '/admin/access/organizations/new',
-    () => import('@/pages/admin/access/organizations/OrganizationRegistrationPage'),
-    'OrganizationRegistrationPage',
-);
 const adminOrganizationMembersRoute = makeAdminRoute(
-    '/admin/access/organizations/$organizationId/members',
+    '/admin/organization/members',
     () => import('@/pages/admin/access/organizations/OrganizationMembersPage'),
     'OrganizationMembersPage',
 );
 const adminOrganizationSettingsRoute = makeAdminRoute(
-    '/admin/access/organizations/$organizationId/settings',
+    '/admin/organization/settings',
+    () => import('@/pages/admin/access/organizations/OrganizationSettingsPage'),
+    'OrganizationSettingsPage',
+);
+const adminPlatformOrganizationsRoute = makePlatformAdminRoute(
+    '/admin/platform/organizations',
+    () => import('@/pages/admin/access/organizations/OrganizationsPage'),
+    'OrganizationsPage',
+);
+const adminPlatformOrganizationMembersRoute = makePlatformAdminRoute(
+    '/admin/platform/organizations/$organizationId/members',
+    () => import('@/pages/admin/access/organizations/OrganizationMembersPage'),
+    'OrganizationMembersPage',
+);
+const adminPlatformOrganizationSettingsRoute = makePlatformAdminRoute(
+    '/admin/platform/organizations/$organizationId/settings',
     () => import('@/pages/admin/access/organizations/OrganizationSettingsPage'),
     'OrganizationSettingsPage',
 );
@@ -536,7 +572,9 @@ const coreRoutes = [
     registerRoute,
     verifyEmailRoute,
     resetPasswordRoute,
+    orgInviteRoute,
     dashboardRoute,
+    onboardingOrganizationRoute,
     userProfileRoute,
     analyticsRoute,
     // Admin
@@ -553,10 +591,11 @@ const coreRoutes = [
     adminChangelogEditRoute,
     adminUsersRoute,
     adminUserRBACRoute,
-    adminOrganizationsRoute,
-    adminOrganizationNewRoute,
     adminOrganizationMembersRoute,
     adminOrganizationSettingsRoute,
+    adminPlatformOrganizationsRoute,
+    adminPlatformOrganizationMembersRoute,
+    adminPlatformOrganizationSettingsRoute,
     adminRBACRoute,
     adminRBACRolesRoute,
     adminRBACPermissionsRoute,

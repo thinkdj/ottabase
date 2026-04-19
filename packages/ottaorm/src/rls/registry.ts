@@ -48,6 +48,12 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
     },
 
     {
+        model: 'organization_invites',
+        policy: RLSPolicies.TenantScoped(false),
+        auditEnabled: true,
+    },
+
+    {
         model: 'roles',
         policy: RLSPolicies.TenantScoped(true), // System roles have null orgId
         auditEnabled: true,

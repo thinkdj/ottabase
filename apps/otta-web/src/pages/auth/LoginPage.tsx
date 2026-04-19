@@ -1,6 +1,6 @@
 import { useSession } from '@/lib/auth';
 import { requestPasswordReset, sendMagicLink, signInWithCredentials, signInWithProvider } from '@/lib/auth-api';
-import { resolveAuthRedirect } from '@/lib/auth-redirect';
+import { resolveAuthRedirect, resolvePostAuthRedirect } from '@/lib/auth-redirect';
 import { getLoginConfig, LoginForm } from '@ottabase/auth/components';
 import {
     Button,
@@ -24,7 +24,7 @@ import { useEffect, useRef, useState } from 'react';
 
 export function LoginPage() {
     const navigate = useNavigate();
-    const { login, isAuthenticated, isLoading: isSessionLoading } = useSession({ skipAutoSync: true });
+    const { login, isAuthenticated, isLoading: isSessionLoading, user } = useSession({ skipAutoSync: true });
     const [error, setError] = useState<string>();
     const [isLoading, setIsLoading] = useState(false);
     const [magicLinkSent, setMagicLinkSent] = useState(false);
@@ -74,8 +74,8 @@ export function LoginPage() {
         if (hasNavigated.current || isSessionLoading || !isAuthenticated) return;
 
         hasNavigated.current = true;
-        navigate({ to: redirectTarget.current, replace: true });
-    }, [isAuthenticated, isSessionLoading, navigate]);
+        navigate({ to: resolvePostAuthRedirect(redirectTarget.current, user), replace: true });
+    }, [isAuthenticated, isSessionLoading, navigate, user]);
 
     // Check for missing configuration and show warnings
     useEffect(() => {
@@ -163,7 +163,7 @@ export function LoginPage() {
 
             setIsLoading(false);
             hasNavigated.current = true;
-            navigate({ to: redirectTarget.current, replace: true });
+            navigate({ to: resolvePostAuthRedirect(redirectTarget.current, result.session?.user), replace: true });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Login failed');
             setIsLoading(false);

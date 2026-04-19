@@ -82,6 +82,7 @@ export {
     Media,
     // Multi-tenant/RBAC models and tables
     Organization,
+    OrganizationInvite,
     OrganizationMember,
     Permission,
     Role,
@@ -95,6 +96,7 @@ export {
     auditLogsTable,
     authenticatorsTable,
     mediaTable,
+    organizationInvitesTable,
     organizationMembersTable,
     organizationsTable,
     permissionsTable,
@@ -115,6 +117,7 @@ export type {
     NewAuditLogType,
     NewAuthenticatorType,
     NewMediaType,
+    NewOrganizationInviteType,
     NewOrganizationMemberType,
     NewOrganizationType,
     NewPermissionType,
@@ -124,6 +127,7 @@ export type {
     NewUserRoleType,
     NewUserType,
     NewVerificationTokenType,
+    OrganizationInviteType,
     OrganizationMemberType,
     // Multi-tenant/RBAC types
     OrganizationType,

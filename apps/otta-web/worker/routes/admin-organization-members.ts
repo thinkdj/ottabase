@@ -2,7 +2,13 @@ import { OrganizationMember, User } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
-import { requireAdminAccess, SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
+import { requireAdminAccess } from '../lib/admin-guard';
+import { auditOrganizationAction } from '../lib/org-audit';
+import {
+    canAccessOrganization,
+    resolveCurrentOrgForAdmin,
+    syncMembershipRoleToTenantRBAC,
+} from '../lib/organization-admin';
 import type { ApiRouteContext } from './router';
 
 interface InviteMemberRequestBody {
@@ -37,11 +43,7 @@ export async function handleAdminOrganizationMembersList(
     const auth = await requireAdminAccess(context, { scope: 'either' });
     if (auth instanceof Response) return auth;
 
-    if (
-        auth.organizationId !== SYSTEM_ORGANIZATION_ID &&
-        auth.organizationId !== organizationId &&
-        auth.rbac.organizationId !== organizationId
-    ) {
+    if (!canAccessOrganization(auth, organizationId)) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
@@ -52,15 +54,17 @@ export async function handleAdminOrganizationMembersList(
     const offset = (page - 1) * perPage;
 
     try {
-        const [total, members] = await Promise.all([
+        const [total, members, activeOwnerCount] = await Promise.all([
             OrganizationMember.countOrganizationMembers(organizationId),
             OrganizationMember.getOrganizationMembers(organizationId, { limit: perPage, offset }),
+            OrganizationMember.countActiveOwners(organizationId),
         ]);
 
         return paginatedJsonResponse({
             data: members.map((member) => ({
                 id: `${member.userId}-${member.organizationId}`,
                 ...member,
+                isLastActiveOwner: member.role === 'owner' && member.status === 'active' && activeOwnerCount <= 1,
             })),
             total,
             page,
@@ -82,11 +86,7 @@ export async function handleAdminOrganizationInviteMember(
     const auth = await requireAdminAccess(context, { scope: 'either' });
     if (auth instanceof Response) return auth;
 
-    if (
-        auth.organizationId !== SYSTEM_ORGANIZATION_ID &&
-        auth.organizationId !== organizationId &&
-        auth.rbac.organizationId !== organizationId
-    ) {
+    if (!canAccessOrganization(auth, organizationId)) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
@@ -135,14 +135,32 @@ export async function handleAdminOrganizationInviteMember(
     }
 
     try {
-        const member = await OrganizationMember.create({
+        const member = await OrganizationMember.createMember({
             userId,
             organizationId,
             role,
             status,
             invitedBy: auth.user?.id ?? null,
             invitedAt: Date.now(),
-        } as any);
+        });
+
+        await syncMembershipRoleToTenantRBAC({
+            userId,
+            organizationId,
+            membershipRole: role,
+            membershipStatus: status,
+            assignedBy: auth.user?.id,
+        });
+
+        await auditOrganizationAction(context.request, {
+            userId: auth.user?.id,
+            userEmail: auth.user?.email ?? null,
+            organizationId,
+            action: 'member_invite',
+            resourceType: 'organization_member',
+            resourceId: userId,
+            metadata: { role, status },
+        });
 
         return jsonResponse({ data: member.toJson() }, 201);
     } catch (err) {
@@ -161,11 +179,7 @@ export async function handleAdminOrganizationUpdateMember(
     const auth = await requireAdminAccess(context, { scope: 'either' });
     if (auth instanceof Response) return auth;
 
-    if (
-        auth.organizationId !== SYSTEM_ORGANIZATION_ID &&
-        auth.organizationId !== organizationId &&
-        auth.rbac.organizationId !== organizationId
-    ) {
+    if (!canAccessOrganization(auth, organizationId)) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
@@ -222,7 +236,27 @@ export async function handleAdminOrganizationUpdateMember(
         }
 
         const updated = await OrganizationMember.first({ userId, organizationId });
-        return jsonResponse({ data: updated?.toJson() ?? existingMember.toJson() });
+        const payload = updated?.toJson() ?? existingMember.toJson();
+
+        await syncMembershipRoleToTenantRBAC({
+            userId,
+            organizationId,
+            membershipRole: payload.role,
+            membershipStatus: payload.status,
+            assignedBy: auth.user?.id,
+        });
+
+        await auditOrganizationAction(context.request, {
+            userId: auth.user?.id,
+            userEmail: auth.user?.email ?? null,
+            organizationId,
+            action: 'member_update',
+            resourceType: 'organization_member',
+            resourceId: userId,
+            metadata: { role: body.role, status: body.status },
+        });
+
+        return jsonResponse({ data: payload });
     } catch (err) {
         return errorResponse('Failed to update member', 500, {
             code: 'ORG_MEMBER_UPDATE_FAILED',
@@ -239,11 +273,7 @@ export async function handleAdminOrganizationRemoveMember(
     const auth = await requireAdminAccess(context, { scope: 'either' });
     if (auth instanceof Response) return auth;
 
-    if (
-        auth.organizationId !== SYSTEM_ORGANIZATION_ID &&
-        auth.organizationId !== organizationId &&
-        auth.rbac.organizationId !== organizationId
-    ) {
+    if (!canAccessOrganization(auth, organizationId)) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
@@ -266,6 +296,24 @@ export async function handleAdminOrganizationRemoveMember(
                 code: 'ORG_MEMBER_REMOVE_FAILED',
             });
         }
+
+        await syncMembershipRoleToTenantRBAC({
+            userId,
+            organizationId,
+            membershipRole: 'member',
+            membershipStatus: 'suspended',
+            assignedBy: auth.user?.id,
+        });
+
+        await auditOrganizationAction(context.request, {
+            userId: auth.user?.id,
+            userEmail: auth.user?.email ?? null,
+            organizationId,
+            action: 'member_remove',
+            resourceType: 'organization_member',
+            resourceId: userId,
+        });
+
         return jsonResponse({ data: { userId, organizationId, removed: true } });
     } catch (err) {
         return errorResponse('Failed to remove member', 500, {
@@ -273,4 +321,34 @@ export async function handleAdminOrganizationRemoveMember(
             details: err instanceof Error ? err.message : 'Unknown error',
         });
     }
+}
+
+export async function handleCurrentOrganizationMembersList(context: ApiRouteContext): Promise<Response> {
+    const organizationId = await resolveCurrentOrgForAdmin(context);
+    if (organizationId instanceof Response) return organizationId;
+    return handleAdminOrganizationMembersList(context, organizationId);
+}
+
+export async function handleCurrentOrganizationInviteMember(context: ApiRouteContext): Promise<Response> {
+    const organizationId = await resolveCurrentOrgForAdmin(context);
+    if (organizationId instanceof Response) return organizationId;
+    return handleAdminOrganizationInviteMember(context, organizationId);
+}
+
+export async function handleCurrentOrganizationUpdateMember(
+    context: ApiRouteContext,
+    userId: string,
+): Promise<Response> {
+    const organizationId = await resolveCurrentOrgForAdmin(context);
+    if (organizationId instanceof Response) return organizationId;
+    return handleAdminOrganizationUpdateMember(context, organizationId, userId);
+}
+
+export async function handleCurrentOrganizationRemoveMember(
+    context: ApiRouteContext,
+    userId: string,
+): Promise<Response> {
+    const organizationId = await resolveCurrentOrgForAdmin(context);
+    if (organizationId instanceof Response) return organizationId;
+    return handleAdminOrganizationRemoveMember(context, organizationId, userId);
 }

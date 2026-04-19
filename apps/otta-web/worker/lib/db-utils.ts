@@ -22,14 +22,17 @@ import {
 } from '@ottabase/ottaorm';
 import {
     Account,
+    AuditLog,
     Authenticator,
     Media,
     Organization,
+    OrganizationInvite,
     OrganizationMember,
     Permission,
     Role,
     ScheduledTask,
     Session,
+    User,
     UserRole,
     VerificationToken,
 } from '@ottabase/ottaorm/models';
@@ -86,12 +89,15 @@ function registerAppModels(env: CloudflareEnv): void {
     const packages = config.packages;
     const coreModels = [
         Account,
+        AuditLog,
         Authenticator,
         Media,
         Session,
+        User,
         VerificationToken,
         ScheduledTask,
         Organization,
+        OrganizationInvite,
         OrganizationMember,
         Role,
         UserRole,

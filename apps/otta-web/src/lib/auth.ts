@@ -7,11 +7,11 @@
 //
 // ============================================================
 
+import { APP_ID } from '@/ottabase/config';
 import { appIdAtom, isAuthenticatedAtom, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
 import { useSession as useAuthSession, type UseSessionOptions } from '@ottabase/auth/react';
 import { useSetAtom } from 'jotai';
 import { useEffect } from 'react';
-import { APP_ID } from '@/ottabase/config';
 
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 
@@ -44,7 +44,7 @@ export function useSession(options?: UseSessionOptions) {
 
         const sessionOrgId = (sessionData.user as any)?.organizationId ?? null;
         const storedOrgId = getStoredOrganizationId();
-        const effectiveOrgId = sessionOrgId ?? (sessionData.isAuthenticated ? storedOrgId : null);
+        const effectiveOrgId = sessionData.isAuthenticated ? (storedOrgId ?? sessionOrgId) : null;
 
         setOrganizationId(effectiveOrgId);
 

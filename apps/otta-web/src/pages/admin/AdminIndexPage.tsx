@@ -1,3 +1,4 @@
+import { useSession } from '@/lib/auth';
 import { getEnabledAdminNav } from '@/ottabase/config/admin-nav';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
@@ -10,7 +11,8 @@ import { Link } from '@tanstack/react-router';
  * picks it up automatically too).
  */
 export function AdminIndexPage() {
-    const groups = getEnabledAdminNav();
+    const { user } = useSession({ skipAutoSync: true });
+    const groups = getEnabledAdminNav({ systemAdmin: user?.systemAdmin === true });
 
     return (
         <div className="space-y-10 pb-20">

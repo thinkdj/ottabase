@@ -6,6 +6,7 @@ import {
     AvatarFallback,
     AvatarImage,
     Button,
+    Input,
     Label,
     Select,
     SelectContent,
@@ -26,6 +27,8 @@ export interface InviteMemberFormData {
     userId: string;
     role: MemberRole;
     status: MemberStatus;
+    /** When set, sends an email invite (works for users without an account yet). */
+    inviteEmail?: string;
 }
 
 interface InvitableUserRecord {
@@ -111,9 +114,11 @@ function UserOptionRow({ item }: ItemRendererProps) {
     );
 }
 
-export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCancel }: InviteMemberFormProps) {
+export function InviteMemberForm({ editingMember, onSubmit, onCancel }: InviteMemberFormProps) {
     const isEditing = !!editingMember;
     const [loading, setLoading] = useState(false);
+    const [inviteMode, setInviteMode] = useState<'user' | 'email'>('user');
+    const [inviteEmail, setInviteEmail] = useState('');
     const [selectedUser, setSelectedUser] = useState<InvitableUserOption | null>(null);
     const [formData, setFormData] = useState<InviteMemberFormData>({
         userId: '',
@@ -124,6 +129,8 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
     useEffect(() => {
         if (!editingMember) {
             setSelectedUser(null);
+            setInviteMode('user');
+            setInviteEmail('');
             setFormData({
                 userId: '',
                 role: 'member',
@@ -174,6 +181,24 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isEditing && inviteMode === 'email') {
+            const trimmed = inviteEmail.trim();
+            if (!trimmed || !trimmed.includes('@')) {
+                return;
+            }
+            setLoading(true);
+            try {
+                await onSubmit({
+                    userId: '',
+                    role: formData.role,
+                    status: 'invited',
+                    inviteEmail: trimmed,
+                });
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
         if (!formData.userId) {
             return;
         }
@@ -188,8 +213,41 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
+                {!isEditing && (
+                    <div className="space-y-2">
+                        <Label htmlFor="invite-mode">How to invite</Label>
+                        <Select value={inviteMode} onValueChange={(v: 'user' | 'email') => setInviteMode(v)}>
+                            <SelectTrigger id="invite-mode">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="user">Existing user (search)</SelectItem>
+                                <SelectItem value="email">Anyone by email (link to accept)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
+
+                {!isEditing && inviteMode === 'email' ? (
+                    <div className="space-y-2">
+                        <Label htmlFor="invite-email">Email address*</Label>
+                        <Input
+                            id="invite-email"
+                            type="email"
+                            autoComplete="email"
+                            value={inviteEmail}
+                            onChange={(e) => setInviteEmail(e.target.value)}
+                            placeholder="colleague@company.com"
+                            required
+                        />
+                        <p className="text-sm text-muted-foreground">
+                            We send a secure link. They can sign up or sign in with this email to accept.
+                        </p>
+                    </div>
+                ) : null}
+
                 {/* User */}
-                <div className="space-y-2">
+                <div className={`space-y-2 ${!isEditing && inviteMode === 'email' ? 'hidden' : ''}`}>
                     <Label>User*</Label>
                     <OttaSelect
                         mode="single"
@@ -249,8 +307,8 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
                     </Select>
                 </div>
 
-                {/* Status */}
-                <div className="space-y-2">
+                {/* Status — not used for email-link invites */}
+                <div className={`space-y-2 ${!isEditing && inviteMode === 'email' ? 'hidden' : ''}`}>
                     <Label htmlFor="status">Status*</Label>
                     <Select
                         value={formData.status}
@@ -275,7 +333,17 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
                 <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
                     Cancel
                 </Button>
-                <Button type="submit" disabled={loading || !formData.userId}>
+                <Button
+                    type="submit"
+                    disabled={
+                        loading ||
+                        (isEditing
+                            ? !formData.userId
+                            : inviteMode === 'email'
+                              ? !inviteEmail.trim().includes('@')
+                              : !formData.userId)
+                    }
+                >
                     {loading ? (isEditing ? 'Saving...' : 'Inviting...') : isEditing ? 'Save Changes' : 'Invite Member'}
                 </Button>
             </div>

@@ -1,6 +1,6 @@
+import { useOrganizationAvailability } from '@/hooks/useRBAC';
 import { slugFromName } from '@/lib/slug';
-import type { OrganizationPlan, OrganizationSettings, OrganizationStatus } from '@/types/rbac';
-import type { Organization } from '@ottabase/ottaorm';
+import type { OrganizationPlan, OrganizationRecord, OrganizationSettings, OrganizationStatus } from '@/types/rbac';
 import {
     Button,
     Input,
@@ -14,7 +14,7 @@ import {
 import { useEffect, useState } from 'react';
 
 export interface OrganizationFormProps {
-    organization?: Organization | null;
+    organization?: OrganizationRecord | null;
     onSubmit: (data: OrganizationFormData) => Promise<void>;
     onCancel: () => void;
 }
@@ -28,8 +28,16 @@ export interface OrganizationFormData {
     metadata?: Record<string, unknown>;
 }
 
+function editingOrgId(organization: OrganizationRecord | null | undefined): string | undefined {
+    if (!organization || typeof organization !== 'object' || !('id' in organization)) return undefined;
+    const id = (organization as { id?: unknown }).id;
+    return typeof id === 'string' && id.length > 0 ? id : undefined;
+}
+
 export function OrganizationForm({ organization, onSubmit, onCancel }: OrganizationFormProps) {
     const [loading, setLoading] = useState(false);
+    const [debouncedName, setDebouncedName] = useState('');
+    const [debouncedSlug, setDebouncedSlug] = useState('');
     const [formData, setFormData] = useState<OrganizationFormData>({
         name: '',
         slug: '',
@@ -45,12 +53,35 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                 name: organization.name || '',
                 slug: organization.slug || '',
                 plan: (organization.plan as 'free' | 'pro' | 'enterprise') || 'free',
-                status: (organization.status as 'active' | 'suspended' | 'deleted') || 'active',
+                status: (organization.status as OrganizationStatus) || 'active',
                 settings: typeof organization.settings === 'object' ? organization.settings : {},
                 metadata: typeof organization.metadata === 'object' ? organization.metadata : {},
             });
         }
     }, [organization]);
+
+    useEffect(() => {
+        const t = window.setTimeout(() => {
+            setDebouncedName(formData.name.trim());
+            setDebouncedSlug(formData.slug.trim().toLowerCase());
+        }, 400);
+        return () => window.clearTimeout(t);
+    }, [formData.name, formData.slug]);
+
+    const excludeId = editingOrgId(organization);
+    const slugForAvail = debouncedSlug.length >= 2 ? debouncedSlug : undefined;
+    const nameForAvail = debouncedName.length >= 2 ? debouncedName : undefined;
+    const { data: availabilityPayload, isFetching: availabilityLoading } = useOrganizationAvailability({
+        slug: slugForAvail,
+        name: nameForAvail,
+        excludeId,
+    });
+    const availability = availabilityPayload?.data;
+    const slugTaken = !!slugForAvail && !!availability?.slugTaken;
+    const nameTaken = !!nameForAvail && !!availability?.nameTaken;
+    const isCreate = !organization;
+    const nameConflict = nameTaken;
+    const slugConflict = isCreate && slugTaken;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -88,6 +119,11 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                     <p className="text-sm text-muted-foreground">
                         The display name of your organization (2-100 characters)
                     </p>
+                    {nameConflict ? (
+                        <p className="text-sm text-destructive dark:text-red-400" role="alert">
+                            An organization with this name already exists.
+                        </p>
+                    ) : null}
                 </div>
 
                 {/* Slug */}
@@ -109,6 +145,14 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                             ? 'Slug cannot be changed after creation'
                             : 'URL-friendly identifier (lowercase, numbers, hyphens only)'}
                     </p>
+                    {slugConflict ? (
+                        <p className="text-sm text-destructive dark:text-red-400" role="alert">
+                            This slug is already taken.
+                        </p>
+                    ) : null}
+                    {isCreate && (nameForAvail || slugForAvail) && availabilityLoading ? (
+                        <p className="text-xs text-muted-foreground">Checking availability…</p>
+                    ) : null}
                 </div>
 
                 {/* Plan */}
@@ -136,9 +180,7 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                     <Label htmlFor="status">Status*</Label>
                     <Select
                         value={formData.status}
-                        onValueChange={(value: 'active' | 'suspended' | 'deleted') =>
-                            setFormData({ ...formData, status: value })
-                        }
+                        onValueChange={(value: OrganizationStatus) => setFormData({ ...formData, status: value })}
                     >
                         <SelectTrigger id="status">
                             <SelectValue placeholder="Select status" />
@@ -147,6 +189,7 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                             <SelectItem value="active">Active</SelectItem>
                             <SelectItem value="suspended">Suspended</SelectItem>
                             <SelectItem value="deleted">Deleted</SelectItem>
+                            <SelectItem value="cancelled">Cancelled (offboarded)</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -202,7 +245,7 @@ export function OrganizationForm({ organization, onSubmit, onCancel }: Organizat
                 <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
                     Cancel
                 </Button>
-                <Button type="submit" disabled={loading}>
+                <Button type="submit" disabled={loading || (isCreate && (nameConflict || slugConflict))}>
                     {loading ? 'Saving...' : organization ? 'Update Organization' : 'Create Organization'}
                 </Button>
             </div>

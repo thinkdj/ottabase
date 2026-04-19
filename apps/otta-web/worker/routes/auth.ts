@@ -15,7 +15,6 @@ import { processReferralAttribution } from '../../ottabase/helpers/referral-attr
 import { registerAppEmailTemplates } from '../../src/email/templates';
 import { createVerificationToken, getAuthOptions, getUserLinkedAccounts, resolveMailer } from '../lib/auth-utils';
 import { enforceRateLimit } from '../lib/rate-limiting';
-import { provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
 import { getClientIpAddress, isStrongPassword, normalizeEmail, readJson } from '../lib/utils';
 
 export interface AuthRouteContext {
@@ -627,23 +626,6 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
         let organizationId: string | null = null;
         let organizationRole: string | null = null;
         let assignedRole: string | null = null;
-
-        try {
-            const provisioned = await provisionDefaultOrganizationForUser({
-                user: newUser,
-                email,
-                name,
-                organizationRole: 'owner',
-                roleFallbacks: ['member', 'viewer'],
-                appId: env.APP_ID ?? 'otta-web',
-            });
-
-            organizationId = provisioned.organizationId;
-            organizationRole = provisioned.organizationRole;
-            assignedRole = provisioned.assignedRole;
-        } catch (error) {
-            console.warn('Failed to initialize organization or roles:', error);
-        }
 
         let attributionResult;
         if (body.referralCode && getOttabaseConfig(env).packages.referrals) {

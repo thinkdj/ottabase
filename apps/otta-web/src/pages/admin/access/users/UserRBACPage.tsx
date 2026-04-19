@@ -9,8 +9,9 @@
  */
 
 import { TableSkeleton } from '@/components/LoadingSkeletons';
-import { useInviteMember, useOrganizations, useRemoveMember, useUpdateMemberRole } from '@/hooks/useRBAC';
+import { useInviteMember, usePlatformOrganizations, useRemoveMember, useUpdateMemberRole } from '@/hooks/useRBAC';
 import { useRBACToast } from '@/hooks/useToast';
+import type { BadgeVariant, MemberRole, OrganizationMemberRecord } from '@/types/rbac';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
@@ -30,12 +31,12 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    Label,
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-    Label,
     Table,
     TableBody,
     TableCell,
@@ -43,7 +44,6 @@ import {
     TableHeader,
     TableRow,
 } from '@ottabase/ui-shadcn';
-import type { MemberRole, BadgeVariant, OrganizationMemberRecord } from '@/types/rbac';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { Building2, Loader2, Plus, Shield, Trash2 } from 'lucide-react';
@@ -68,7 +68,7 @@ export function UserRBACPage() {
     const { userId } = useParams({ from: '/admin/access/users/$userId/rbac' });
     const toast = useRBACToast();
     const queryClient = useQueryClient();
-    const { data: orgs = [] } = useOrganizations();
+    const { data: orgs = [] } = usePlatformOrganizations();
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedOrg, setSelectedOrg] = useState('');

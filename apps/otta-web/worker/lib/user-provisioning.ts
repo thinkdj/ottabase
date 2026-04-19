@@ -1,9 +1,9 @@
 import { DEFAULT_ROUTE_MAPPINGS } from '@ottabase/brand-engine';
 import { BrandKit, LayoutRouteMapping } from '@ottabase/brand-engine/persistence';
-import { Organization, OrganizationMember, Role } from '@ottabase/ottaorm/models';
+import { Organization, OrganizationMember } from '@ottabase/ottaorm/models';
 import { makeSlug } from '@ottabase/utils/url';
+import { syncMembershipRoleToTenantRBAC } from './organization-admin';
 
-type ProvisionRoleName = 'owner' | 'admin' | 'member' | 'viewer';
 type UserLike = {
     get: (key: string) => unknown;
     assignRole: (roleId: string, assignedBy?: string, organizationId?: string) => Promise<void>;
@@ -66,7 +66,6 @@ export async function provisionDefaultOrganizationForUser(params: {
     name?: string | null;
     organizationRole?: 'owner' | 'member';
     assignedBy?: string;
-    roleFallbacks?: ProvisionRoleName[];
     /** App ID for brand kit seeding — when provided, ensures app-scoped default kit exists */
     appId?: string | null;
 }): Promise<{
@@ -75,15 +74,7 @@ export async function provisionDefaultOrganizationForUser(params: {
     assignedRole: string | null;
     brandSetupError?: string;
 }> {
-    const {
-        user,
-        email = null,
-        name = null,
-        organizationRole = 'owner',
-        assignedBy,
-        roleFallbacks = ['member', 'viewer'],
-        appId = null,
-    } = params;
+    const { user, email = null, name = null, organizationRole = 'owner', assignedBy, appId = null } = params;
 
     const userId = String(user.get('id') || '');
     if (!userId) {
@@ -122,20 +113,25 @@ export async function provisionDefaultOrganizationForUser(params: {
 
         let organization: InstanceType<typeof Organization>;
         try {
-            organization = await Organization.create({
+            organization = await Organization.createWithOwner({
                 name: orgName,
                 slug,
                 ownerId: userId,
+                membershipRole: resolvedOrganizationRole,
+                membershipStatus: 'active',
+                joinedAt: Date.now(),
             });
         } catch (err: unknown) {
-            // Handle unique-constraint race: another request may have taken the slug between findBySlug and create
             const msg = err instanceof Error ? err.message : String(err);
-            if (/unique|constraint|duplicate/i.test(msg)) {
+            if (/unique|constraint|duplicate|slug/i.test(msg)) {
                 slug = `${baseSlug}-${crypto.randomUUID().slice(0, 6)}`;
-                organization = await Organization.create({
+                organization = await Organization.createWithOwner({
                     name: orgName,
                     slug,
                     ownerId: userId,
+                    membershipRole: resolvedOrganizationRole,
+                    membershipStatus: 'active',
+                    joinedAt: Date.now(),
                 });
             } else {
                 throw err;
@@ -143,14 +139,15 @@ export async function provisionDefaultOrganizationForUser(params: {
         }
 
         organizationId = String(organization.get('id') || '');
-
-        await OrganizationMember.create({
-            userId,
-            organizationId,
-            role: resolvedOrganizationRole,
-            status: 'active',
-        });
     }
+
+    await syncMembershipRoleToTenantRBAC({
+        userId,
+        organizationId,
+        membershipRole: resolvedOrganizationRole,
+        membershipStatus: 'active',
+        assignedBy: assignedBy ?? userId,
+    });
 
     let brandSetupError: string | undefined;
 
@@ -163,17 +160,7 @@ export async function provisionDefaultOrganizationForUser(params: {
         }
     }
 
-    await Role.ensureDefaultRoles();
-
-    let assignedRole: string | null = null;
-    for (const roleName of roleFallbacks) {
-        const role = await Role.findByName(roleName);
-        if (role) {
-            await user.assignRole(String(role.get('id')), assignedBy, organizationId);
-            assignedRole = String(role.get('name'));
-            break;
-        }
-    }
+    const assignedRole: string | null = resolvedOrganizationRole;
 
     if (!organizationId) {
         throw new Error('Failed to resolve organization id for user provisioning');

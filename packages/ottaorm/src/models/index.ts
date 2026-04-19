@@ -28,6 +28,12 @@ export {
     type NewOrganizationMemberType,
     type OrganizationMemberType,
 } from './OrganizationMember';
+export {
+    OrganizationInvite,
+    organizationInvitesTable,
+    type NewOrganizationInviteType,
+    type OrganizationInviteType,
+} from './OrganizationInvite';
 
 // RBAC models (with tenant + app scoping)
 export { Permission, permissionsTable, type NewPermissionType, type PermissionType } from './Permission';

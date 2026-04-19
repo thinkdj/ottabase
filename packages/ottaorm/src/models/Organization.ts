@@ -3,10 +3,31 @@
 // ============================================================
 
 import type { DbDriver } from '@ottabase/db/drizzle';
+import { D1Driver } from '@ottabase/db/drizzle-d1';
 import { eq, sql } from 'drizzle-orm';
 import { BaseModel, type ModelFields, type PackageType } from '../base/BaseModel';
 import { organizationsTable, type NewOrganizationType, type OrganizationType } from './Organization.schema';
 import { organizationMembersTable } from './OrganizationMember.schema';
+
+export type OrganizationPlanValue = 'free' | 'pro' | 'enterprise';
+export type OrganizationStatusValue = 'active' | 'suspended' | 'cancelled';
+
+interface CreateWithOwnerOptions {
+    name: string;
+    ownerId: string;
+    slug?: string;
+    plan?: OrganizationPlanValue;
+    status?: OrganizationStatusValue;
+    settings?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
+    membershipRole?: 'owner' | 'admin' | 'member';
+    membershipStatus?: 'active' | 'invited' | 'suspended';
+    invitedBy?: string | null;
+    invitedAt?: number | null;
+    joinedAt?: number;
+    membershipMetadata?: Record<string, unknown>;
+    enforceUniqueName?: boolean;
+}
 
 /**
  * Organization (Tenant) model
@@ -220,6 +241,131 @@ export class Organization extends BaseModel {
     }
 
     /**
+     * Create an organization and its initial owner membership in one atomic batch when D1 is available.
+     */
+    static async createWithOwner(options: CreateWithOwnerOptions): Promise<Organization> {
+        const name = this.normalizeName(options.name);
+        const ownerId = String(options.ownerId || '').trim();
+        const slug = this.normalizeSlug(options.slug || name);
+        const plan = this.normalizePlan(options.plan);
+        const status = this.normalizeStatus(options.status);
+        const joinedAt = Number.isFinite(options.joinedAt) ? Number(options.joinedAt) : Date.now();
+        const invitedAt =
+            options.invitedAt === null || options.invitedAt === undefined
+                ? null
+                : Number.isFinite(options.invitedAt)
+                  ? Number(options.invitedAt)
+                  : null;
+
+        if (name.length < 2 || name.length > 100) {
+            throw new Error('Organization name must be 2-100 characters');
+        }
+
+        if (!ownerId) {
+            throw new Error('Owner id is required');
+        }
+
+        if (!this.isValidSlug(slug)) {
+            throw new Error('Organization slug must be lowercase letters, numbers, and hyphens (2-100 chars)');
+        }
+
+        if (await this.isSlugTaken(slug)) {
+            throw new Error('Organization slug already exists');
+        }
+
+        if (options.enforceUniqueName !== false && (await this.isNameTaken(name))) {
+            throw new Error('Organization name already exists');
+        }
+
+        const payload = {
+            id: `org-${crypto.randomUUID()}`,
+            name,
+            slug,
+            ownerId,
+            plan,
+            status,
+            settings: options.settings ?? {},
+            metadata: options.metadata ?? {},
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+        };
+        const membershipRole = options.membershipRole ?? 'owner';
+        const membershipStatus = options.membershipStatus ?? 'active';
+        const membershipMetadata = options.membershipMetadata ?? null;
+        const driver = this.getDriver();
+
+        if (driver instanceof D1Driver) {
+            const d1 = driver.getD1();
+
+            await d1.batch([
+                d1
+                    .prepare(
+                        `INSERT INTO organizations (
+                        id, name, slug, owner_id, plan, status, settings, metadata, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    )
+                    .bind(
+                        payload.id,
+                        payload.name,
+                        payload.slug,
+                        payload.ownerId,
+                        payload.plan,
+                        payload.status,
+                        JSON.stringify(payload.settings),
+                        JSON.stringify(payload.metadata),
+                        payload.createdAt,
+                        payload.updatedAt,
+                    ),
+                d1
+                    .prepare(
+                        `INSERT INTO organization_members (
+                        user_id, organization_id, role, status, invited_by, invited_at, joined_at, metadata
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                    )
+                    .bind(
+                        ownerId,
+                        payload.id,
+                        membershipRole,
+                        membershipStatus,
+                        options.invitedBy ?? ownerId,
+                        invitedAt,
+                        joinedAt,
+                        membershipMetadata ? JSON.stringify(membershipMetadata) : null,
+                    ),
+            ]);
+
+            const created = (await this.find(payload.id)) as Organization | undefined;
+            if (!created) {
+                throw new Error('Created organization could not be loaded');
+            }
+            return created;
+        }
+
+        let createdOrg: Organization | null = null;
+
+        try {
+            createdOrg = (await this.create(payload)) as Organization;
+            const { OrganizationMember } = await import('./OrganizationMember');
+            await OrganizationMember.create({
+                userId: ownerId,
+                organizationId: payload.id,
+                role: membershipRole,
+                status: membershipStatus,
+                invitedBy: options.invitedBy ?? ownerId,
+                invitedAt,
+                joinedAt,
+                metadata: membershipMetadata,
+            } as Record<string, unknown>);
+            return createdOrg;
+        } catch (error) {
+            if (createdOrg) {
+                await this.delete(String(createdOrg.get('id'))).catch(() => false);
+            }
+            throw error;
+        }
+    }
+
+    /**
      * Find organization by slug
      */
     static async findBySlug(slug: string): Promise<OrganizationType | undefined> {
@@ -232,6 +378,33 @@ export class Organization extends BaseModel {
             .limit(1);
 
         return organization;
+    }
+
+    /**
+     * Find organization by case-insensitive name match.
+     */
+    static async findByNameInsensitive(name: string): Promise<OrganizationType | undefined> {
+        const normalizedName = this.normalizeName(name);
+        if (!normalizedName) return undefined;
+
+        const db = this.getDriver().getDb();
+        const [organization] = await db
+            .select()
+            .from(organizationsTable)
+            .where(sql`lower(${organizationsTable.name}) = lower(${normalizedName})`)
+            .limit(1);
+
+        return organization;
+    }
+
+    static async isSlugTaken(slug: string, excludeId?: string): Promise<boolean> {
+        const existing = await this.findBySlug(this.normalizeSlug(slug));
+        return !!existing && (!excludeId || existing.id !== excludeId);
+    }
+
+    static async isNameTaken(name: string, excludeId?: string): Promise<boolean> {
+        const existing = await this.findByNameInsensitive(name);
+        return !!existing && (!excludeId || existing.id !== excludeId);
     }
 
     /**
@@ -264,6 +437,178 @@ export class Organization extends BaseModel {
         return (await this.update(id, { status })) as Organization;
     }
 
+    static normalizePlan(plan?: unknown): OrganizationPlanValue {
+        return plan === 'pro' || plan === 'enterprise' || plan === 'free' ? plan : 'free';
+    }
+
+    static normalizeStatus(status?: unknown): OrganizationStatusValue {
+        return status === 'suspended' || status === 'cancelled' || status === 'active' ? status : 'active';
+    }
+
+    static normalizeName(name: string): string {
+        return String(name || '')
+            .trim()
+            .replace(/\s+/g, ' ');
+    }
+
+    static normalizeSlug(input: string): string {
+        return this.generateSlug(String(input || ''));
+    }
+
+    static isValidSlug(slug: string): boolean {
+        return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && slug.length >= 2 && slug.length <= 100;
+    }
+
+    // ============================================================
+    // Validation helpers — keep route layer thin (Fat Model).
+    // Returns discriminated union so callers can map 1:1 onto
+    // errorResponse without re-implementing shape rules here.
+    // ============================================================
+
+    /**
+     * Validate and normalize a create-organization payload.
+     * Does NOT hit the database; pure input hygiene.
+     */
+    static validateCreateInput(input: { name?: unknown; slug?: unknown; plan?: unknown; status?: unknown }):
+        | {
+              ok: true;
+              payload: {
+                  name: string;
+                  slug: string;
+                  plan: OrganizationPlanValue;
+                  status: OrganizationStatusValue;
+              };
+          }
+        | { ok: false; code: 'VALIDATION_ERROR'; message: string; fieldErrors: Record<string, string[]> } {
+        const name = this.normalizeName(String(input.name ?? ''));
+        const slug = this.normalizeSlug(String(input.slug ?? name));
+
+        if (name.length < 2 || name.length > 100) {
+            return {
+                ok: false,
+                code: 'VALIDATION_ERROR',
+                message: 'Invalid organization name',
+                fieldErrors: { name: ['Name must be 2-100 characters'] },
+            };
+        }
+
+        if (!this.isValidSlug(slug)) {
+            return {
+                ok: false,
+                code: 'VALIDATION_ERROR',
+                message: 'Invalid slug',
+                fieldErrors: { slug: ['Slug must be lowercase letters, numbers, and hyphens (2-100 chars)'] },
+            };
+        }
+
+        return {
+            ok: true,
+            payload: {
+                name,
+                slug,
+                plan: this.normalizePlan(input.plan),
+                status: this.normalizeStatus(input.status),
+            },
+        };
+    }
+
+    /**
+     * Validate and normalize a platform-scope update payload.
+     * Only the keys present in `input` are emitted in `patch`.
+     * Does NOT hit the database.
+     */
+    static validatePlatformUpdateInput(input: {
+        name?: unknown;
+        slug?: unknown;
+        plan?: unknown;
+        status?: unknown;
+        settings?: unknown;
+        metadata?: unknown;
+    }):
+        | { ok: true; patch: Record<string, unknown> }
+        | { ok: false; code: 'VALIDATION_ERROR'; message: string; fieldErrors: Record<string, string[]> } {
+        const patch: Record<string, unknown> = {};
+
+        if (input.name !== undefined) {
+            const name = this.normalizeName(String(input.name));
+            if (name.length < 2 || name.length > 100) {
+                return {
+                    ok: false,
+                    code: 'VALIDATION_ERROR',
+                    message: 'Invalid organization name',
+                    fieldErrors: { name: ['Name must be 2-100 characters'] },
+                };
+            }
+            patch.name = name;
+        }
+
+        if (input.slug !== undefined) {
+            const slug = this.normalizeSlug(String(input.slug));
+            if (!this.isValidSlug(slug)) {
+                return {
+                    ok: false,
+                    code: 'VALIDATION_ERROR',
+                    message: 'Invalid slug',
+                    fieldErrors: { slug: ['Slug must be lowercase letters, numbers, and hyphens (2-100 chars)'] },
+                };
+            }
+            patch.slug = slug;
+        }
+
+        if (input.plan !== undefined) {
+            patch.plan = this.normalizePlan(input.plan);
+        }
+
+        if (input.status !== undefined) {
+            patch.status = this.normalizeStatus(input.status);
+        }
+
+        if (input.settings !== undefined && typeof input.settings === 'object' && input.settings !== null) {
+            patch.settings = input.settings;
+        }
+
+        if (input.metadata !== undefined && typeof input.metadata === 'object' && input.metadata !== null) {
+            patch.metadata = input.metadata;
+        }
+
+        return { ok: true, patch };
+    }
+
+    /**
+     * Validate a tenant-scope (non-platform) update payload.
+     * Rejects platform-only fields (slug/plan/status) with FORBIDDEN.
+     */
+    static validateTenantUpdateInput(input: {
+        name?: unknown;
+        slug?: unknown;
+        plan?: unknown;
+        status?: unknown;
+        settings?: unknown;
+        metadata?: unknown;
+    }):
+        | { ok: true; patch: Record<string, unknown> }
+        | {
+              ok: false;
+              code: 'VALIDATION_ERROR' | 'FORBIDDEN';
+              message: string;
+              fieldErrors?: Record<string, string[]>;
+          } {
+        if (input.slug !== undefined || input.plan !== undefined || input.status !== undefined) {
+            return {
+                ok: false,
+                code: 'FORBIDDEN',
+                message: 'Slug, plan, and status are platform-admin fields',
+            };
+        }
+
+        // Reuse platform validator for the subset of allowed fields.
+        return this.validatePlatformUpdateInput({
+            name: input.name,
+            settings: input.settings,
+            metadata: input.metadata,
+        });
+    }
+
     /**
      * Get organization member count
      */
@@ -291,6 +636,7 @@ export class Organization extends BaseModel {
      */
     private static generateSlug(name: string): string {
         return name
+            .trim()
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-|-$/g, '');

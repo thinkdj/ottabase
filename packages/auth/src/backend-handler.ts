@@ -375,13 +375,14 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                     async function loadUserContext(userId: string) {
                         const d1 = env.OBCF_D1;
                         if (!d1) {
-                            return { organizationId: null, roles: [], permissions: [] };
+                            return { organizationId: null, roles: [], permissions: [], systemAdmin: false };
                         }
 
                         let organizationId: string | null = null;
                         let roles: string[] = [];
                         let permissions: string[] = [];
                         let createdAt: number | null = null;
+                        let systemAdmin = false;
 
                         try {
                             const membership = await d1
@@ -412,10 +413,25 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                                     .first<any>();
 
                                 if (systemRole) {
+                                    systemAdmin = true;
                                     organizationId = SYSTEM_ORGANIZATION_ID;
                                 }
                             } catch (error) {
                                 console.warn('Failed to detect system-scope roles for auth:', error);
+                            }
+                        }
+
+                        if (!systemAdmin) {
+                            try {
+                                const systemRole = await d1
+                                    .prepare(
+                                        `SELECT 1 FROM user_roles WHERE user_id = ? AND organization_id = ? LIMIT 1`,
+                                    )
+                                    .bind(userId, SYSTEM_ORGANIZATION_ID)
+                                    .first<any>();
+                                systemAdmin = !!systemRole;
+                            } catch (error) {
+                                console.warn('Failed to detect system admin role for auth:', error);
                             }
                         }
 
@@ -469,7 +485,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                             console.warn('Failed to load user profile for auth:', error);
                         }
 
-                        return { organizationId, roles, permissions, createdAt };
+                        return { organizationId, roles, permissions, createdAt, systemAdmin };
                     }
 
                     async function refreshProfileIfNeeded(userId: string) {
@@ -543,20 +559,25 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                             token.permissions = providedPermissions;
                         }
 
-                        if (!token.organizationId || !Array.isArray(token.roles) || !Array.isArray(token.permissions)) {
+                        if (
+                            !token.organizationId ||
+                            !Array.isArray(token.roles) ||
+                            !Array.isArray(token.permissions) ||
+                            typeof token.systemAdmin !== 'boolean'
+                        ) {
                             const context = await loadUserContext(user.id);
                             if (context.organizationId) {
                                 token.organizationId = context.organizationId;
                             }
-                            if (!Array.isArray(token.roles)) {
-                                token.roles = context.roles;
-                            }
-                            if (!Array.isArray(token.permissions)) {
-                                token.permissions = context.permissions;
-                            }
+                            // Always overwrite roles/permissions from a fresh DB load — the token may
+                            // have been issued before RBAC sync completed (e.g. org provisioned in
+                            // the same request right before the jwt callback ran).
+                            token.roles = context.roles;
+                            token.permissions = context.permissions;
                             if (context.createdAt) {
                                 token.createdAt = context.createdAt;
                             }
+                            token.systemAdmin = context.systemAdmin;
                         }
                         if (env.OBCF_KV) {
                             const profileVersionKey = userKey('auth', String(user.id), 'profile', 'version');
@@ -566,20 +587,33 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                                 (token as any).profileVersion = version;
                             }
                         }
-                    } else if (token?.id && (!token.organizationId || !Array.isArray(token.roles))) {
+                    } else if (
+                        token?.id &&
+                        (!token.organizationId ||
+                            !Array.isArray(token.roles) ||
+                            !Array.isArray(token.permissions) ||
+                            typeof token.systemAdmin !== 'boolean' ||
+                            // Re-query when org is known but roles are empty — RBAC sync may have
+                            // completed after this token was first issued (e.g. org provisioned
+                            // asynchronously or in a subsequent request after initial sign-in).
+                            (token.organizationId &&
+                                Array.isArray(token.roles) &&
+                                (token.roles as string[]).length === 0))
+                    ) {
                         const context = await loadUserContext(String(token.id));
                         if (context.organizationId) {
                             token.organizationId = context.organizationId;
                         }
-                        if (!Array.isArray(token.roles)) {
+                        if (context.roles.length > 0 || !Array.isArray(token.roles)) {
                             token.roles = context.roles;
                         }
-                        if (!Array.isArray(token.permissions)) {
+                        if (context.permissions.length > 0 || !Array.isArray(token.permissions)) {
                             token.permissions = context.permissions;
                         }
                         if (context.createdAt) {
                             token.createdAt = context.createdAt;
                         }
+                        token.systemAdmin = context.systemAdmin;
                     }
                     if (token?.id) {
                         await refreshProfileIfNeeded(String(token.id));
@@ -614,6 +648,7 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                         if (token.createdAt) {
                             (session.user as any).createdAt = token.createdAt;
                         }
+                        (session.user as any).systemAdmin = Boolean(token.systemAdmin);
                     }
                     if (session.expires) {
                         const expiresMs =

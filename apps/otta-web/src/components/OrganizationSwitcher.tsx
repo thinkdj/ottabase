@@ -5,7 +5,7 @@
  * GitHub-like minimal UI with dark mode support
  */
 
-import { useOrganizations } from '@/hooks/useRBAC';
+import { useAccessibleOrganizations } from '@/hooks/useRBAC';
 import {
     Button,
     DropdownMenu,
@@ -26,28 +26,30 @@ interface OrganizationSwitcherProps {
 
 export function OrganizationSwitcher({ currentOrgId, onOrgChange }: OrganizationSwitcherProps) {
     const navigate = useNavigate();
-    const { data: orgs = [], isLoading } = useOrganizations();
+    const { data: orgs = [], isLoading } = useAccessibleOrganizations();
     const [isOpen, setIsOpen] = useState(false);
 
-    const currentOrg = orgs.find((org) => org.id === currentOrgId);
+    const currentOrg = orgs.find((org) => org.id === currentOrgId) ?? orgs[0];
 
     const handleSelect = (orgId: string) => {
         if (onOrgChange) {
             onOrgChange(orgId);
         } else {
-            // Default behavior: navigate to org page
-            navigate({ to: `/admin/access/organizations/${orgId}/members` });
+            navigate({ to: '/admin/organization/members' });
         }
         setIsOpen(false);
     };
 
     const handleCreateNew = () => {
-        navigate({ to: '/admin/access/organizations/new' });
+        navigate({ to: '/onboarding/organization' });
         setIsOpen(false);
     };
 
     const handleOpenSettings = (orgId: string) => {
-        navigate({ to: `/admin/access/organizations/${orgId}/settings` });
+        if (onOrgChange) {
+            onOrgChange(orgId);
+        }
+        navigate({ to: '/admin/organization/settings' });
         setIsOpen(false);
     };
 

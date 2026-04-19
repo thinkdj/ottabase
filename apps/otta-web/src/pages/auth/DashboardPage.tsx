@@ -1,4 +1,5 @@
 import { useSession } from '@/lib/auth';
+import { DEFAULT_AUTH_REDIRECT, resolvePostAuthRedirect } from '@/lib/auth-redirect';
 import {
     Avatar,
     AvatarFallback,
@@ -28,6 +29,12 @@ export function DashboardPage() {
         if (!user) {
             // This shouldn't happen if route protection is working
             navigate({ to: '/login' });
+            return;
+        }
+
+        const destination = resolvePostAuthRedirect(DEFAULT_AUTH_REDIRECT, user);
+        if (destination !== DEFAULT_AUTH_REDIRECT) {
+            navigate({ to: destination, replace: true });
         }
     }, [navigate, user]);
 

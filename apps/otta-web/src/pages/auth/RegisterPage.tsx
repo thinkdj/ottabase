@@ -1,6 +1,6 @@
 import { useSession } from '@/lib/auth';
 import { registerWithCredentials, requestEmailVerification, signInWithCredentials } from '@/lib/auth-api';
-import { resolveAuthRedirect } from '@/lib/auth-redirect';
+import { resolveAuthRedirect, resolvePostAuthRedirect } from '@/lib/auth-redirect';
 import {
     clearStoredReferralCode,
     extractUtmParams,
@@ -86,7 +86,10 @@ export function RegisterPage() {
             setTimeout(() => {
                 if (hasNavigated.current) return;
                 hasNavigated.current = true;
-                navigate({ to: redirectTarget.current, replace: true });
+                navigate({
+                    to: resolvePostAuthRedirect(redirectTarget.current, signInResult.session?.user),
+                    replace: true,
+                });
             }, 1000);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Registration failed');

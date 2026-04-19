@@ -31,6 +31,7 @@ export interface User {
     emailVerified?: number | null;
     role?: string;
     organizationId?: string | null;
+    systemAdmin?: boolean;
     roles?: string[];
     permissions?: string[];
     [key: string]: any;

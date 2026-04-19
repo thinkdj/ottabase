@@ -10,6 +10,7 @@
  *   requires (1) a route in router.tsx and (2) one entry in admin-nav.
  */
 
+import { useSession } from '@/lib/auth';
 import { getEnabledAdminNav } from '@/ottabase/config/admin-nav';
 import { Input } from '@ottabase/ui-shadcn';
 import { Link, useLocation } from '@tanstack/react-router';
@@ -21,7 +22,8 @@ interface AdminLayoutProps {
 }
 
 export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutProps) {
-    const groups = getEnabledAdminNav();
+    const { user } = useSession({ skipAutoSync: true });
+    const groups = getEnabledAdminNav({ systemAdmin: user?.systemAdmin === true });
     const { pathname } = useLocation();
     const [search, setSearch] = useState('');
 

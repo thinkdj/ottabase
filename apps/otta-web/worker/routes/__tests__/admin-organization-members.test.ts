@@ -12,6 +12,12 @@ vi.mock('../../lib/admin-guard', () => ({
     SYSTEM_ORGANIZATION_ID: 'system',
 }));
 
+vi.mock('../../lib/organization-admin', () => ({
+    canAccessOrganization: vi.fn(() => true),
+    resolveTenantOrganizationId: vi.fn(() => 'org-1'),
+    syncMembershipRoleToTenantRBAC: vi.fn(),
+}));
+
 import { requireAdminAccess } from '../../lib/admin-guard';
 
 describe('handleAdminOrganizationInviteMember', () => {
@@ -207,6 +213,7 @@ describe('handleAdminOrganizationInviteMember', () => {
                 status: 'active',
                 invitedAt: null,
                 joinedAt: expect.any(Number),
+                isLastActiveOwner: false,
                 user: {
                     id: 'user-2',
                     name: 'Ada Lovelace',

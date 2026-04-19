@@ -20,9 +20,19 @@ export interface OrganizationRecord {
     updatedAt: string;
 }
 
+export interface AccessibleOrganizationRecord {
+    id: string;
+    name: string;
+    slug: string;
+    plan: OrganizationPlan;
+    status: OrganizationStatus;
+    currentUserRole: MemberRole;
+    currentUserStatus: MemberStatus;
+}
+
 export type OrganizationPlan = 'free' | 'pro' | 'enterprise';
 
-export type OrganizationStatus = 'active' | 'suspended' | 'deleted';
+export type OrganizationStatus = 'active' | 'suspended' | 'cancelled';
 
 export interface OrganizationSettings {
     features?: string[];
@@ -62,12 +72,26 @@ export interface OrganizationMemberRecord {
     invitedAt?: string;
     joinedAt?: string;
     metadata?: Record<string, unknown>;
+    /** Present on admin org members API when there is only one active owner */
+    isLastActiveOwner?: boolean;
     user?: {
         id: string | null;
         name: string | null;
         email: string | null;
         image: string | null;
     };
+}
+
+/** Pending email invite (GET /api/admin/organizations/:orgId/invites) */
+export interface OrganizationPendingInviteRecord {
+    id: string;
+    organizationId: string;
+    email: string;
+    role: MemberRole;
+    status: string;
+    invitedAt: number;
+    expiresAt: number;
+    invitedBy?: string | null;
 }
 
 export type MemberRole = 'owner' | 'admin' | 'member';

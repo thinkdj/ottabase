@@ -5,8 +5,9 @@
  * Minimal, GitHub-like UI with dark mode support
  */
 
-import { useCreateOrganization } from '@/hooks/useRBAC';
+import { useOnboardingCreateOrganization } from '@/hooks/useRBAC';
 import { useRBACToast } from '@/hooks/useToast';
+import { useSession } from '@/lib/auth';
 import { slugFromName } from '@/lib/slug';
 import { organizationIdAtom } from '@/ottabase/state/appState';
 import {
@@ -35,14 +36,14 @@ const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 export function OrganizationRegistrationPage() {
     const navigate = useNavigate();
     const toast = useRBACToast();
-    const createMutation = useCreateOrganization();
+    const createMutation = useOnboardingCreateOrganization();
     const setOrganizationId = useSetAtom(organizationIdAtom);
+    const { refreshSession } = useSession({ skipAutoSync: true });
 
     const [formData, setFormData] = useState({
         name: '',
         slug: '',
         plan: 'free' as 'free' | 'pro' | 'enterprise',
-        status: 'active' as 'active' | 'suspended' | 'deleted',
     });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -103,16 +104,19 @@ export function OrganizationRegistrationPage() {
         if (!validate()) return;
 
         createMutation.mutate(formData, {
-            onSuccess: (org) => {
+            onSuccess: async (org) => {
                 toast.rbac.organizationCreated();
                 if (org?.id) {
                     applyCurrentOrganization(org.id);
-                    navigate({ to: `/admin/access/organizations/${org.id}/members` });
+                    // Refresh the session so the new JWT carries the org owner's
+                    // permissions before ProtectedRoute checks them.
+                    await refreshSession();
+                    navigate({ to: '/admin/organization/members' });
                     return;
                 }
 
                 toast.warning('Organization created', 'Could not resolve organization id for redirect.');
-                navigate({ to: '/admin/access/organizations' });
+                navigate({ to: '/dashboard' });
             },
             onError: (error) => {
                 toast.error('Failed to create organization', error instanceof Error ? error.message : 'Unknown error');
@@ -128,7 +132,7 @@ export function OrganizationRegistrationPage() {
                         <Building2 className="h-6 w-6 text-primary" />
                     </div>
                     <CardTitle className="text-2xl">Create Organization</CardTitle>
-                    <CardDescription>Set up your organization to get started</CardDescription>
+                    <CardDescription>Create the workspace you want to manage</CardDescription>
                 </CardHeader>
 
                 <form onSubmit={handleSubmit}>
@@ -223,7 +227,7 @@ export function OrganizationRegistrationPage() {
                             type="button"
                             variant="ghost"
                             className="w-full"
-                            onClick={() => navigate({ to: '/admin/access/organizations' })}
+                            onClick={() => navigate({ to: '/dashboard' })}
                             disabled={createMutation.isPending}
                         >
                             Cancel

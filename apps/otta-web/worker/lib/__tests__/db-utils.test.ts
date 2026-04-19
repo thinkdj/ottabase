@@ -58,14 +58,17 @@ vi.mock('@ottabase/ottaorm', () => ({
 
 vi.mock('@ottabase/ottaorm/models', () => ({
     Account: class Account {},
+    AuditLog: class AuditLog {},
     Authenticator: class Authenticator {},
     Media: class Media {},
     Organization: class Organization {},
+    OrganizationInvite: class OrganizationInvite {},
     OrganizationMember: class OrganizationMember {},
     Permission: class Permission {},
     Role: class Role {},
     ScheduledTask: class ScheduledTask {},
     Session: class Session {},
+    User: class User {},
     UserRole: class UserRole {},
     VerificationToken: class VerificationToken {},
 }));

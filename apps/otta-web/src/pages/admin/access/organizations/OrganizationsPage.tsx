@@ -1,6 +1,12 @@
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
 import { TableSkeleton } from '@/components/LoadingSkeletons';
-import { useCreateOrganization, useDeleteOrganization, useOrganizations, useUpdateOrganization } from '@/hooks/useRBAC';
+import {
+    useDeleteOrganization,
+    useOrganizationOffboard,
+    usePlatformCreateOrganization,
+    usePlatformOrganizations,
+    usePlatformUpdateOrganization,
+} from '@/hooks/useRBAC';
 import { useRBACToast } from '@/hooks/useToast';
 import { isApiError } from '@/lib/api';
 import type { BadgeVariant, OrganizationRecord } from '@/types/rbac';
@@ -25,6 +31,7 @@ import {
     TableHeader,
     TableRow,
 } from '@ottabase/ui-shadcn';
+import { IconDoorExit } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { Edit, Plus, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
@@ -35,13 +42,15 @@ export function OrganizationsPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOrg, setEditingOrg] = useState<OrganizationRecord | null>(null);
     const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
+    const [offboardDialog, setOffboardDialog] = useState<string | null>(null);
     const [formKey, setFormKey] = useState(0);
 
     // TanStack Query hooks
-    const { data: organizations = [], isLoading, error, refetch } = useOrganizations();
-    const createMutation = useCreateOrganization();
-    const updateMutation = useUpdateOrganization();
+    const { data: organizations = [], isLoading, error, refetch } = usePlatformOrganizations();
+    const createMutation = usePlatformCreateOrganization();
+    const updateMutation = usePlatformUpdateOrganization();
     const deleteMutation = useDeleteOrganization();
+    const offboardMutation = useOrganizationOffboard();
 
     const handleCreate = () => {
         setEditingOrg(null);
@@ -57,6 +66,23 @@ export function OrganizationsPage() {
 
     const handleDelete = async (id: string) => {
         setDeleteDialog(id);
+    };
+
+    const handleOffboard = (id: string) => {
+        setOffboardDialog(id);
+    };
+
+    const handleConfirmOffboard = () => {
+        if (!offboardDialog) return;
+        offboardMutation.mutate(offboardDialog, {
+            onSuccess: () => {
+                toast.success('Organization offboarded', 'The tenant was marked as cancelled.');
+                setOffboardDialog(null);
+            },
+            onError: (err) => {
+                toast.error('Offboard failed', err instanceof Error ? err.message : 'Unknown error');
+            },
+        });
     };
 
     const handleConfirmDelete = async () => {
@@ -110,6 +136,8 @@ export function OrganizationsPage() {
                 return 'default';
             case 'suspended':
                 return 'destructive';
+            case 'cancelled':
+                return 'secondary';
             default:
                 return 'outline';
         }
@@ -121,8 +149,10 @@ export function OrganizationsPage() {
                 <CardHeader>
                     <div className="flex justify-between items-start">
                         <div>
-                            <CardTitle>Organizations</CardTitle>
-                            <CardDescription>Manage organization tenants and settings</CardDescription>
+                            <CardTitle>Tenant Directory</CardTitle>
+                            <CardDescription>
+                                Platform-admin directory for tenant lifecycle and support actions
+                            </CardDescription>
                         </div>
                         <Button onClick={handleCreate} className="gap-2">
                             <Plus className="h-4 w-4" />
@@ -174,10 +204,22 @@ export function OrganizationsPage() {
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
                                                 <Button variant="outline" size="sm" className="gap-2" asChild>
-                                                    <Link to={`/admin/access/organizations/${org.id}/members`}>
+                                                    <Link
+                                                        to={`/admin/platform/organizations/${org.id}/members` as never}
+                                                    >
                                                         <Users className="h-4 w-4" />
                                                         View Members
                                                     </Link>
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleOffboard(org.id)}
+                                                    disabled={offboardMutation.isPending}
+                                                    title="Offboard tenant (system admin)"
+                                                    className="dark:text-slate-300"
+                                                >
+                                                    <IconDoorExit className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
@@ -218,7 +260,7 @@ export function OrganizationsPage() {
                     </DialogHeader>
                     <OrganizationForm
                         key={formKey}
-                        organization={editingOrg as any}
+                        organization={editingOrg}
                         onSubmit={handleSubmit}
                         onCancel={() => setIsDialogOpen(false)}
                     />
@@ -235,6 +277,17 @@ export function OrganizationsPage() {
                 secondaryActionText="Cancel"
                 primaryActionText="Delete"
                 onConfirm={handleConfirmDelete}
+            />
+
+            <ConfirmDialog
+                open={!!offboardDialog}
+                onOpenChange={(open) => !open && setOffboardDialog(null)}
+                title="Offboard organization?"
+                description="Marks the tenant as cancelled. Requires system-admin access; use for customer churn or shutdown without deleting historical data."
+                tone="destructive"
+                secondaryActionText="Cancel"
+                primaryActionText="Offboard"
+                onConfirm={handleConfirmOffboard}
             />
         </div>
     );

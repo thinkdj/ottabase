@@ -165,6 +165,17 @@ export class OrganizationMember extends BaseModel {
     }
 
     /**
+     * Create a member row and return a model instance.
+     *
+     * Thin typed wrapper around BaseModel.create so route code can pass a
+     * properly typed payload without resorting to `as any`. Use this instead
+     * of calling BaseModel.create directly for membership inserts.
+     */
+    static async createMember(data: NewOrganizationMemberType): Promise<OrganizationMember> {
+        return (await this.create(data as unknown as Record<string, unknown>)) as OrganizationMember;
+    }
+
+    /**
      * Remove a user from an organization
      */
     static async removeMember(userId: string, organizationId: string): Promise<boolean> {

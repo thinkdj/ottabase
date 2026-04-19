@@ -5,6 +5,22 @@ const mocks = vi.hoisted(() => {
     const refetch = vi.fn();
     return {
         useParams: vi.fn(() => ({ organizationId: 'org-123' })),
+        useAtomValue: vi.fn(() => 'org-current'),
+        useOrganization: vi.fn(() => ({
+            data: {
+                id: 'org-123',
+                name: 'Acme',
+                slug: 'acme',
+                plan: 'free',
+                status: 'active',
+                ownerId: 'u1',
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+            },
+            isLoading: false,
+            error: null,
+            refetch,
+        })),
         useOrganizationMembers: vi.fn(() => ({
             data: {
                 data: [],
@@ -27,6 +43,15 @@ const mocks = vi.hoisted(() => {
         useUpdateMemberRole: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
         useUpdateMemberStatus: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
         useRemoveMember: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+        useOrganizationPendingInvites: vi.fn(() => ({
+            data: [],
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        })),
+        useInviteByEmail: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+        useRevokeOrganizationInvite: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+        useResendOrganizationInvite: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
         useRBACToast: vi.fn(() => ({
             rbac: {
                 memberRemoved: vi.fn(),
@@ -34,15 +59,20 @@ const mocks = vi.hoisted(() => {
                 memberInvited: vi.fn(),
             },
             error: vi.fn(),
+            success: vi.fn(),
         })),
-        setOrganizationId: vi.fn(),
     };
 });
 
 vi.mock('@/hooks/useRBAC', () => ({
     useInviteMember: mocks.useInviteMember,
+    useInviteByEmail: mocks.useInviteByEmail,
+    useOrganization: mocks.useOrganization,
     useOrganizationMembers: mocks.useOrganizationMembers,
+    useOrganizationPendingInvites: mocks.useOrganizationPendingInvites,
     useRemoveMember: mocks.useRemoveMember,
+    useResendOrganizationInvite: mocks.useResendOrganizationInvite,
+    useRevokeOrganizationInvite: mocks.useRevokeOrganizationInvite,
     useUpdateMember: mocks.useUpdateMember,
     useUpdateMemberRole: mocks.useUpdateMemberRole,
     useUpdateMemberStatus: mocks.useUpdateMemberStatus,
@@ -68,7 +98,7 @@ vi.mock('@/ottabase/state/appState', () => ({
 }));
 
 vi.mock('jotai', () => ({
-    useSetAtom: () => mocks.setOrganizationId,
+    useAtomValue: mocks.useAtomValue,
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -135,18 +165,18 @@ describe('OrganizationMembersPage', () => {
         vi.clearAllMocks();
     });
 
-    it('uses route params for organization context', () => {
+    it('uses the explicit organization id when rendering platform-admin tenant pages', () => {
         render(<OrganizationMembersPage />);
 
         expect(mocks.useParams).toHaveBeenCalledWith({ strict: false });
-        expect(mocks.useOrganizationMembers).toHaveBeenCalledWith('org-123', 1);
-        expect(mocks.setOrganizationId).toHaveBeenCalledWith('org-123');
+        expect(mocks.useOrganization).toHaveBeenCalledWith('org-123', { enabled: true });
+        expect(mocks.useOrganizationMembers).toHaveBeenCalledWith('org-123', 1, 25, true);
     });
 
-    it('renders back link to absolute organizations route', () => {
+    it('renders the tenant-directory back link in platform mode', () => {
         render(<OrganizationMembersPage />);
 
-        const backLink = screen.getByRole('link', { name: '← Back to Organizations' });
-        expect(backLink).toHaveAttribute('href', '/admin/access/organizations');
+        const backLink = screen.getByRole('link', { name: '← Back to Tenant Directory' });
+        expect(backLink.getAttribute('href')).toBe('/admin/platform/organizations');
     });
 });

@@ -54,6 +54,8 @@ export interface AdminNavItem {
     requiresPackage?: keyof typeof PACKAGES_ENABLED;
     /** Visible only when MEDIA_LIBRARY_ENABLED is true. */
     requiresMediaLibrary?: boolean;
+    /** Visible only to platform/system administrators. */
+    requiresSystemAdmin?: boolean;
 }
 
 export interface AdminNavGroup {
@@ -132,12 +134,20 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 description: 'View and manage all users, assign roles, and control org access.',
                 href: '/admin/access/users',
                 icon: Users,
+                requiresSystemAdmin: true,
             },
             {
-                title: 'Organizations',
-                description: 'Manage multi-tenant organizations, members, and settings.',
-                href: '/admin/access/organizations',
+                title: 'Current Organization',
+                description: 'Manage the organization currently selected in the workspace switcher.',
+                href: '/admin/organization/members',
                 icon: Building2,
+            },
+            {
+                title: 'Tenant Directory',
+                description: 'Platform-admin tenant lifecycle, support actions, and explicit tenant management.',
+                href: '/admin/platform/organizations',
+                icon: Building2,
+                requiresSystemAdmin: true,
             },
             {
                 title: 'Roles & Permissions',
@@ -239,12 +249,13 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
 ];
 
 /** Returns admin nav with package/feature gates applied; empty groups are dropped. */
-export function getEnabledAdminNav(): AdminNavGroup[] {
+export function getEnabledAdminNav(options?: { systemAdmin?: boolean }): AdminNavGroup[] {
     return ADMIN_NAV_GROUPS.map((group) => ({
         ...group,
         items: group.items.filter((item) => {
             if (item.requiresMediaLibrary && !MEDIA_LIBRARY_ENABLED) return false;
             if (item.requiresPackage && !PACKAGES_ENABLED[item.requiresPackage]) return false;
+            if (item.requiresSystemAdmin && !options?.systemAdmin) return false;
             return true;
         }),
     })).filter((group) => group.items.length > 0);

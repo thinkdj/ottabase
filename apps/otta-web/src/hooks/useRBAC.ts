@@ -1,150 +1,197 @@
 /**
- * TanStack Query hooks for RBAC operations
- * Provides optimistic updates, cache invalidation, and error handling
- *
- * Cache layer: all queries and mutations route through the framework's
- * standard cache — createModelHooks for ottaorm CRUD, useApiQuery for
- * the custom audit-log endpoint, and raw useMutation with meta.entity
- * for the five hooks that carry optimistic updates.
+ * TanStack Query hooks for RBAC and organization management.
+ * Organization data now uses explicit account/current-tenant/platform-admin APIs.
  */
 
 import { api } from '@/lib/api';
 import type {
+    AccessibleOrganizationRecord,
     AuditLogRecord,
     MemberRole,
     OrganizationMemberRecord,
+    OrganizationPendingInviteRecord,
     OrganizationRecord,
     RoleRecord,
 } from '@/types/rbac';
 import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
 import type { PaginatedResponse } from '@ottabase/utils/pagination';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 
-// ============================================================================
-// Model hook instances
-// ============================================================================
-
-const organizationHooks = createModelHooks<OrganizationRecord>({ entityName: 'organizations' });
-const orgMemberHooks = createModelHooks<OrganizationMemberRecord>({ entityName: 'organization_members' });
 const roleHooks = createModelHooks<RoleRecord>({ entityName: 'roles' });
 
-// ============================================================================
-// Organizations — Query Hooks
-// ============================================================================
+const organizationQueryKeys = {
+    accessible: ['account-organizations'] as const,
+    current: ['current-organization'] as const,
+    currentMembers: ['current-organization-members'] as const,
+    currentInvites: ['current-organization-invites'] as const,
+    platformList: ['platform-organizations'] as const,
+    platformDetail: (organizationId: string) => ['platform-organizations', organizationId] as const,
+    platformMembers: (organizationId: string) => ['platform-organization-members', organizationId] as const,
+    platformInvites: (organizationId: string) => ['platform-organization-invites', organizationId] as const,
+    availability: (query: string) => ['platform-organization-availability', query] as const,
+};
 
-export function useOrganizations() {
-    return organizationHooks.useList();
+function scopedOrganizationEndpoint(organizationId?: string | null): string {
+    return organizationId ? `/api/platform/organizations/${organizationId}` : '/api/admin/organization';
 }
 
-export function useOrganization(id: string) {
-    return organizationHooks.useDetail(id);
+function scopedMembersEndpoint(organizationId?: string | null, page = 1, perPage = 25): string {
+    const query = new URLSearchParams({ page: String(page), per_page: String(perPage) }).toString();
+    return `${scopedOrganizationEndpoint(organizationId)}/members?${query}`;
 }
 
-// ============================================================================
-// Organizations — Mutation Hooks (with optimistic updates)
-// ============================================================================
+function scopedInvitesEndpoint(organizationId?: string | null): string {
+    return `${scopedOrganizationEndpoint(organizationId)}/invites`;
+}
 
-export function useCreateOrganization() {
+function scopedMembersQueryKey(organizationId: string | null | undefined, page: number, perPage: number) {
+    return organizationId
+        ? ([...organizationQueryKeys.platformMembers(organizationId), page, perPage] as const)
+        : ([...organizationQueryKeys.currentMembers, page, perPage] as const);
+}
+
+function scopedInvitesQueryKey(organizationId?: string | null) {
+    return organizationId
+        ? organizationQueryKeys.platformInvites(organizationId)
+        : organizationQueryKeys.currentInvites;
+}
+
+async function invalidateOrganizationQueries(
+    queryClient: ReturnType<typeof useQueryClient>,
+    organizationId?: string | null,
+) {
+    await Promise.all([
+        queryClient.invalidateQueries({ queryKey: organizationQueryKeys.accessible }),
+        queryClient.invalidateQueries({ queryKey: organizationQueryKeys.current }),
+        queryClient.invalidateQueries({ queryKey: organizationQueryKeys.currentMembers }),
+        queryClient.invalidateQueries({ queryKey: organizationQueryKeys.currentInvites }),
+        queryClient.invalidateQueries({ queryKey: organizationQueryKeys.platformList }),
+        organizationId
+            ? queryClient.invalidateQueries({ queryKey: organizationQueryKeys.platformDetail(organizationId) })
+            : Promise.resolve(),
+        organizationId
+            ? queryClient.invalidateQueries({ queryKey: organizationQueryKeys.platformMembers(organizationId) })
+            : Promise.resolve(),
+        organizationId
+            ? queryClient.invalidateQueries({ queryKey: organizationQueryKeys.platformInvites(organizationId) })
+            : Promise.resolve(),
+    ]);
+}
+
+export function useAccessibleOrganizations() {
+    return useApiQuery<{ data: AccessibleOrganizationRecord[] }, AccessibleOrganizationRecord[]>({
+        entity: 'organizations',
+        queryKey: organizationQueryKeys.accessible,
+        endpoint: '/api/account/organizations',
+        transform: (response) => response.data,
+    });
+}
+
+export function usePlatformOrganizations() {
+    return useApiQuery<{ data: OrganizationRecord[] }, OrganizationRecord[]>({
+        entity: 'organizations',
+        queryKey: organizationQueryKeys.platformList,
+        endpoint: '/api/platform/organizations',
+        transform: (response) => response.data,
+    });
+}
+
+export function useCurrentOrganization(queryOptions?: Partial<UseQueryOptions<OrganizationRecord, Error>>) {
+    return useApiQuery<{ data: OrganizationRecord }, OrganizationRecord>({
+        entity: 'organizations',
+        queryKey: organizationQueryKeys.current,
+        endpoint: '/api/admin/organization',
+        transform: (response) => response.data,
+        queryOptions,
+    });
+}
+
+export function useOrganization(
+    organizationId?: string | null,
+    queryOptions?: Partial<UseQueryOptions<OrganizationRecord, Error>>,
+) {
+    return useApiQuery<{ data: OrganizationRecord }, OrganizationRecord>({
+        entity: 'organizations',
+        queryKey: organizationId ? organizationQueryKeys.platformDetail(organizationId) : organizationQueryKeys.current,
+        endpoint: organizationId ? `/api/platform/organizations/${organizationId}` : '/api/admin/organization',
+        transform: (response) => response.data,
+        queryOptions: {
+            ...queryOptions,
+            enabled: organizationId
+                ? !!organizationId && (queryOptions?.enabled ?? true)
+                : (queryOptions?.enabled ?? true),
+        },
+    });
+}
+
+export function useOnboardingCreateOrganization() {
     const queryClient = useQueryClient();
 
     return useMutation({
         meta: { entity: 'organizations' },
         mutationFn: async (data: Partial<OrganizationRecord>) => {
-            const response = await api<Record<string, unknown>>('/api/ottaorm/organizations', {
+            const response = await api<{ data: OrganizationRecord }>('/api/onboarding/organizations', {
                 method: 'POST',
                 body: data,
             });
-
-            const createdOrg =
-                response && typeof response === 'object' && 'data' in response
-                    ? (response.data as OrganizationRecord | undefined)
-                    : (response as OrganizationRecord | undefined);
-
-            if (!createdOrg?.id) {
-                throw new Error('Organization creation returned an invalid payload');
-            }
-
-            return createdOrg;
+            return response.data;
         },
-        onMutate: async (newOrg) => {
-            // Cancel outgoing refetches
-            await queryClient.cancelQueries({ queryKey: organizationHooks.queryKeys.lists() });
-
-            // Snapshot previous value
-            const previous = queryClient.getQueryData<OrganizationRecord[]>(organizationHooks.queryKeys.lists());
-
-            // Optimistically update
-            if (previous) {
-                queryClient.setQueryData<OrganizationRecord[]>(organizationHooks.queryKeys.lists(), [
-                    ...previous,
-                    { ...newOrg, id: 'temp-' + Date.now() } as OrganizationRecord,
-                ]);
-            }
-
-            return { previous };
-        },
-        onError: (err, newOrg, context) => {
-            if (context?.previous) {
-                queryClient.setQueryData(organizationHooks.queryKeys.lists(), context.previous);
-            }
+        onSuccess: async (organization) => {
+            await invalidateOrganizationQueries(queryClient, organization.id);
         },
     });
 }
 
-export function useUpdateOrganization() {
+export function usePlatformCreateOrganization() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        meta: { entity: 'organizations' },
+        mutationFn: async (data: Partial<OrganizationRecord>) => {
+            const response = await api<{ data: OrganizationRecord }>('/api/platform/organizations', {
+                method: 'POST',
+                body: data,
+            });
+            return response.data;
+        },
+        onSuccess: async (organization) => {
+            await invalidateOrganizationQueries(queryClient, organization.id);
+        },
+    });
+}
+
+export function useCurrentOrganizationUpdate() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        meta: { entity: 'organizations' },
+        mutationFn: async (data: Partial<OrganizationRecord>) => {
+            const response = await api<{ data: OrganizationRecord }>('/api/admin/organization', {
+                method: 'PATCH',
+                body: data,
+            });
+            return response.data;
+        },
+        onSuccess: async () => {
+            await invalidateOrganizationQueries(queryClient);
+        },
+    });
+}
+
+export function usePlatformUpdateOrganization() {
     const queryClient = useQueryClient();
 
     return useMutation({
         meta: { entity: 'organizations' },
         mutationFn: async ({ id, data }: { id: string; data: Partial<OrganizationRecord> }) => {
-            const response = await api<Record<string, unknown>>(`/api/ottaorm/organizations/${id}`, {
+            const response = await api<{ data: OrganizationRecord }>(`/api/platform/organizations/${id}`, {
                 method: 'PATCH',
                 body: data,
             });
-
-            const updatedOrg =
-                response && typeof response === 'object' && 'data' in response
-                    ? (response.data as OrganizationRecord | undefined)
-                    : (response as OrganizationRecord | undefined);
-
-            if (!updatedOrg?.id) {
-                throw new Error('Organization update returned an invalid payload');
-            }
-
-            return updatedOrg;
+            return response.data;
         },
-        onMutate: async ({ id, data }) => {
-            await queryClient.cancelQueries({ queryKey: organizationHooks.queryKeys.detail(id) });
-            await queryClient.cancelQueries({ queryKey: organizationHooks.queryKeys.lists() });
-
-            const previousOrg = queryClient.getQueryData<OrganizationRecord>(organizationHooks.queryKeys.detail(id));
-            const previousOrgs = queryClient.getQueryData<OrganizationRecord[]>(organizationHooks.queryKeys.lists());
-
-            // Optimistically update single org
-            if (previousOrg) {
-                queryClient.setQueryData<OrganizationRecord>(organizationHooks.queryKeys.detail(id), {
-                    ...previousOrg,
-                    ...data,
-                });
-            }
-
-            // Optimistically update list
-            if (previousOrgs) {
-                queryClient.setQueryData<OrganizationRecord[]>(
-                    organizationHooks.queryKeys.lists(),
-                    previousOrgs.map((org) => (org.id === id ? { ...org, ...data } : org)),
-                );
-            }
-
-            return { previousOrg, previousOrgs };
-        },
-        onError: (err, { id }, context) => {
-            if (context?.previousOrg) {
-                queryClient.setQueryData(organizationHooks.queryKeys.detail(id), context.previousOrg);
-            }
-            if (context?.previousOrgs) {
-                queryClient.setQueryData(organizationHooks.queryKeys.lists(), context.previousOrgs);
-            }
+        onSuccess: async (organization) => {
+            await invalidateOrganizationQueries(queryClient, organization.id);
         },
     });
 }
@@ -154,61 +201,26 @@ export function useDeleteOrganization() {
 
     return useMutation({
         meta: { entity: 'organizations' },
-        mutationFn: async (id: string) => {
-            await api(`/api/ottaorm/organizations/${id}`, {
+        mutationFn: async (organizationId: string) => {
+            await api(`/api/platform/organizations/${organizationId}`, {
                 method: 'DELETE',
             });
         },
-        onMutate: async (id) => {
-            await queryClient.cancelQueries({ queryKey: organizationHooks.queryKeys.lists() });
-
-            const previous = queryClient.getQueryData<OrganizationRecord[]>(organizationHooks.queryKeys.lists());
-
-            if (previous) {
-                queryClient.setQueryData<OrganizationRecord[]>(
-                    organizationHooks.queryKeys.lists(),
-                    previous.filter((org) => org.id !== id),
-                );
-            }
-
-            return { previous };
-        },
-        onError: (err, id, context) => {
-            if (context?.previous) {
-                queryClient.setQueryData(organizationHooks.queryKeys.lists(), context.previous);
-            }
+        onSuccess: async (_data, organizationId) => {
+            await invalidateOrganizationQueries(queryClient, organizationId);
         },
     });
 }
 
-// ============================================================================
-// Organization Members — Query Hooks
-// ============================================================================
-
-export function useOrganizationMembers(organizationId: string, page = 1, perPage = 25) {
-    const queryParams = new URLSearchParams({
-        page: String(page),
-        per_page: String(perPage),
-    }).toString();
-
+export function useOrganizationMembers(organizationId?: string | null, page = 1, perPage = 25, enabled = true) {
     return useApiQuery<PaginatedResponse<OrganizationMemberRecord>>({
         entity: 'organization_members',
-        queryKey: ['admin-organization-members', organizationId, page, perPage],
-        endpoint: `/api/admin/organizations/${organizationId}/members?${queryParams}`,
-        queryOptions: {
-            enabled: !!organizationId,
-        },
+        queryKey: scopedMembersQueryKey(organizationId, page, perPage),
+        endpoint: scopedMembersEndpoint(organizationId, page, perPage),
+        queryOptions: { enabled },
     });
 }
 
-// ============================================================================
-// Organization Members — Mutation Hooks
-// ============================================================================
-
-/**
- * Invite a new member — no optimistic update needed; delegates cache
- * invalidation to the global observer via meta.entity.
- */
 export function useInviteMember() {
     const queryClient = useQueryClient();
 
@@ -220,28 +232,22 @@ export function useInviteMember() {
             role,
             status,
         }: {
-            organizationId: string;
+            organizationId?: string;
             userId: string;
             role: MemberRole;
             status: 'active' | 'invited' | 'suspended';
         }) => {
             const response = await api<{ data: OrganizationMemberRecord }>(
-                `/api/admin/organizations/${organizationId}/members/invite`,
+                `${scopedOrganizationEndpoint(organizationId)}/members/invite`,
                 {
                     method: 'POST',
-                    body: {
-                        userId,
-                        role,
-                        status,
-                    },
+                    body: { userId, role, status },
                 },
             );
             return response.data;
         },
-        onSuccess: async (_member, variables) => {
-            await queryClient.invalidateQueries({
-                queryKey: ['admin-organization-members', variables.organizationId],
-            });
+        onSuccess: async (_member, { organizationId }) => {
+            await invalidateOrganizationQueries(queryClient, organizationId);
         },
     });
 }
@@ -257,27 +263,22 @@ export function useUpdateMember() {
             role,
             status,
         }: {
-            organizationId: string;
+            organizationId?: string;
             userId: string;
             role: MemberRole;
             status: 'active' | 'invited' | 'suspended';
         }) => {
             const response = await api<{ data: OrganizationMemberRecord }>(
-                `/api/admin/organizations/${organizationId}/members/${encodeURIComponent(userId)}`,
+                `${scopedOrganizationEndpoint(organizationId)}/members/${encodeURIComponent(userId)}`,
                 {
                     method: 'PATCH',
-                    body: {
-                        role,
-                        status,
-                    },
+                    body: { role, status },
                 },
             );
             return response.data;
         },
-        onSuccess: async (_member, variables) => {
-            await queryClient.invalidateQueries({
-                queryKey: ['admin-organization-members', variables.organizationId],
-            });
+        onSuccess: async (_member, { organizationId }) => {
+            await invalidateOrganizationQueries(queryClient, organizationId);
         },
     });
 }
@@ -294,10 +295,10 @@ export function useUpdateMemberRole() {
         }: {
             userId: string;
             role: MemberRole;
-            organizationId: string;
+            organizationId?: string;
         }) => {
             const response = await api<{ data: OrganizationMemberRecord }>(
-                `/api/admin/organizations/${organizationId}/members/${encodeURIComponent(userId)}`,
+                `${scopedOrganizationEndpoint(organizationId)}/members/${encodeURIComponent(userId)}`,
                 {
                     method: 'PATCH',
                     body: { role },
@@ -306,9 +307,7 @@ export function useUpdateMemberRole() {
             return response.data;
         },
         onSuccess: async (_member, { organizationId }) => {
-            await queryClient.invalidateQueries({
-                queryKey: ['admin-organization-members', organizationId],
-            });
+            await invalidateOrganizationQueries(queryClient, organizationId);
         },
     });
 }
@@ -325,10 +324,10 @@ export function useUpdateMemberStatus() {
         }: {
             userId: string;
             status: 'active' | 'invited' | 'suspended';
-            organizationId: string;
+            organizationId?: string;
         }) => {
             const response = await api<{ data: OrganizationMemberRecord }>(
-                `/api/admin/organizations/${organizationId}/members/${encodeURIComponent(userId)}`,
+                `${scopedOrganizationEndpoint(organizationId)}/members/${encodeURIComponent(userId)}`,
                 {
                     method: 'PATCH',
                     body: { status },
@@ -337,9 +336,7 @@ export function useUpdateMemberStatus() {
             return response.data;
         },
         onSuccess: async (_member, { organizationId }) => {
-            await queryClient.invalidateQueries({
-                queryKey: ['admin-organization-members', organizationId],
-            });
+            await invalidateOrganizationQueries(queryClient, organizationId);
         },
     });
 }
@@ -349,30 +346,122 @@ export function useRemoveMember() {
 
     return useMutation({
         meta: { entity: 'organization_members' },
-        mutationFn: async ({ userId, organizationId }: { userId: string; organizationId: string }) => {
-            await api(`/api/admin/organizations/${organizationId}/members/${encodeURIComponent(userId)}`, {
+        mutationFn: async ({ userId, organizationId }: { userId: string; organizationId?: string }) => {
+            await api(`${scopedOrganizationEndpoint(organizationId)}/members/${encodeURIComponent(userId)}`, {
                 method: 'DELETE',
             });
         },
         onSuccess: async (_data, { organizationId }) => {
-            await queryClient.invalidateQueries({
-                queryKey: ['admin-organization-members', organizationId],
-            });
+            await invalidateOrganizationQueries(queryClient, organizationId);
         },
     });
 }
 
-// ============================================================================
-// Roles — Query Hooks
-// ============================================================================
+export function useOrganizationPendingInvites(organizationId?: string | null, enabled = true) {
+    return useApiQuery<{ data: OrganizationPendingInviteRecord[] }, OrganizationPendingInviteRecord[]>({
+        entity: 'organization_invites',
+        queryKey: scopedInvitesQueryKey(organizationId),
+        endpoint: scopedInvitesEndpoint(organizationId),
+        transform: (response) => response.data,
+        queryOptions: { enabled },
+    });
+}
+
+export function useInviteByEmail() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            organizationId,
+            email,
+            role,
+        }: {
+            organizationId?: string;
+            email: string;
+            role: MemberRole;
+        }) => {
+            const response = await api<{ data: OrganizationPendingInviteRecord }>(
+                scopedInvitesEndpoint(organizationId),
+                {
+                    method: 'POST',
+                    body: { email, role },
+                },
+            );
+            return response.data;
+        },
+        onSuccess: async (_data, { organizationId }) => {
+            await invalidateOrganizationQueries(queryClient, organizationId);
+        },
+    });
+}
+
+export function useRevokeOrganizationInvite() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ organizationId, inviteId }: { organizationId?: string; inviteId: string }) => {
+            await api(`${scopedInvitesEndpoint(organizationId)}/${inviteId}/revoke`, {
+                method: 'POST',
+                body: {},
+            });
+        },
+        onSuccess: async (_data, { organizationId }) => {
+            await invalidateOrganizationQueries(queryClient, organizationId);
+        },
+    });
+}
+
+export function useResendOrganizationInvite() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ organizationId, inviteId }: { organizationId?: string; inviteId: string }) => {
+            await api(`${scopedInvitesEndpoint(organizationId)}/${inviteId}/resend`, {
+                method: 'POST',
+                body: {},
+            });
+        },
+        onSuccess: async (_data, { organizationId }) => {
+            await invalidateOrganizationQueries(queryClient, organizationId);
+        },
+    });
+}
+
+export function useOrganizationAvailability(params: { slug?: string; name?: string; excludeId?: string }) {
+    const query = new URLSearchParams();
+    if (params.slug) query.set('slug', params.slug);
+    if (params.name) query.set('name', params.name);
+    if (params.excludeId) query.set('excludeId', params.excludeId);
+
+    const queryString = query.toString();
+
+    return useApiQuery<{
+        data: { slugAvailable: boolean; nameAvailable: boolean; slugTaken: boolean; nameTaken: boolean };
+    }>({
+        entity: 'organizations',
+        queryKey: organizationQueryKeys.availability(queryString),
+        endpoint: `/api/platform/organizations/availability?${queryString}`,
+        queryOptions: { enabled: !!queryString },
+    });
+}
+
+export function useOrganizationOffboard() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (organizationId: string) => {
+            await api(`/api/platform/organizations/${organizationId}/offboard`, {
+                method: 'POST',
+                body: {},
+            });
+        },
+        onSuccess: async (_data, organizationId) => {
+            await invalidateOrganizationQueries(queryClient, organizationId);
+        },
+    });
+}
 
 export function useRoles() {
     return roleHooks.useList();
 }
-
-// ============================================================================
-// Roles — Mutation Hooks
-// ============================================================================
 
 export function useCreateRole() {
     return roleHooks.useCreate();
@@ -404,7 +493,7 @@ export function useUpdateRole() {
 
             return { previous };
         },
-        onError: (err, variables, context) => {
+        onError: (_error, _variables, context) => {
             if (context?.previous) {
                 queryClient.setQueryData(roleHooks.queryKeys.lists(), context.previous);
             }
@@ -430,20 +519,19 @@ export function useTogglePermission() {
             permissionId: string;
             hasPermission: boolean;
         }) => {
-            // Read current role state from cache
             const roles = queryClient.getQueryData<RoleRecord[]>(roleHooks.queryKeys.lists());
-            const role = roles?.find((r) => r.id === roleId);
+            const role = roles?.find((entry) => entry.id === roleId);
 
             if (!role) throw new Error('Role not found');
 
             const currentPermissions = role.permissions || [];
-            const newPermissions = hasPermission
-                ? currentPermissions.filter((p) => p !== permissionId)
+            const nextPermissions = hasPermission
+                ? currentPermissions.filter((permission) => permission !== permissionId)
                 : [...currentPermissions, permissionId];
 
             const response = await api<{ data: RoleRecord }>(`/api/ottaorm/roles/${roleId}`, {
                 method: 'PATCH',
-                body: JSON.stringify({ permissions: newPermissions }),
+                body: JSON.stringify({ permissions: nextPermissions }),
             });
 
             return response.data;
@@ -460,28 +548,24 @@ export function useTogglePermission() {
                         if (role.id !== roleId) return role;
 
                         const currentPermissions = role.permissions || [];
-                        const newPermissions = hasPermission
-                            ? currentPermissions.filter((p) => p !== permissionId)
+                        const nextPermissions = hasPermission
+                            ? currentPermissions.filter((permission) => permission !== permissionId)
                             : [...currentPermissions, permissionId];
 
-                        return { ...role, permissions: newPermissions };
+                        return { ...role, permissions: nextPermissions };
                     }),
                 );
             }
 
             return { previous };
         },
-        onError: (err, variables, context) => {
+        onError: (_error, _variables, context) => {
             if (context?.previous) {
                 queryClient.setQueryData(roleHooks.queryKeys.lists(), context.previous);
             }
         },
     });
 }
-
-// ============================================================================
-// Audit Logs — Query Hook (custom endpoint, useApiQuery)
-// ============================================================================
 
 export function useAuditLogs(filters?: Record<string, string>) {
     const params = new URLSearchParams(filters);
@@ -490,38 +574,29 @@ export function useAuditLogs(filters?: Record<string, string>) {
         queryKey: ['list', filters],
         endpoint: `/api/audit/logs?${params.toString()}`,
         queryOptions: {
-            staleTime: 1 * 60 * 1000, // 1 minute
+            staleTime: 1 * 60 * 1000,
         },
     });
 }
 
-// ============================================================================
-// Utility Hooks
-// ============================================================================
-
-/**
- * Prefetch organizations for faster navigation.
- * Returns a callable that triggers the prefetch.
- */
 export function usePrefetchOrganizations() {
-    const { prefetchList } = organizationHooks.usePrefetch();
-    return () => prefetchList();
+    const queryClient = useQueryClient();
+    return () =>
+        queryClient.prefetchQuery({
+            queryKey: organizationQueryKeys.accessible,
+            queryFn: async () => {
+                const response = await api<{ data: AccessibleOrganizationRecord[] }>('/api/account/organizations');
+                return response.data;
+            },
+        });
 }
 
-/**
- * Invalidate all RBAC caches (use after major changes).
- * Invalidates organizations, organization_members, and roles namespaces.
- */
 export function useInvalidateRBAC() {
     const queryClient = useQueryClient();
-    const orgInvalidate = organizationHooks.useInvalidate();
-    const memberInvalidate = orgMemberHooks.useInvalidate();
     const roleInvalidate = roleHooks.useInvalidate();
 
     return () => {
-        orgInvalidate.invalidateAll();
-        memberInvalidate.invalidateAll();
         roleInvalidate.invalidateAll();
-        void queryClient.invalidateQueries({ queryKey: ['admin-organization-members'] });
+        void invalidateOrganizationQueries(queryClient);
     };
 }
