@@ -1,10 +1,12 @@
 import { CreateAuthConfigOptions } from '@ottabase/auth/backend';
 import { invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
 import { SecurityContext } from '@ottabase/ottaorm';
-import { Account, Organization, OrganizationMember, VerificationToken } from '@ottabase/ottaorm/models';
+import { Account, Organization, User, VerificationToken } from '@ottabase/ottaorm/models';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import type { CloudflareEnv } from '../cloudflare-env';
+import { initDbConnection } from './db-utils';
 import { resolveAppMailer } from './email-provider';
+import { provisionDefaultOrganizationForUser } from './user-provisioning';
 import { createSecureToken } from './utils';
 
 export async function resolveMailer(env: CloudflareEnv) {
@@ -38,6 +40,10 @@ export async function createVerificationToken(
     return { token, expiresAt };
 }
 
+function resolveAppId(env: CloudflareEnv): string {
+    return getOttabaseConfig(env).appId ?? 'web';
+}
+
 export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
     const options: CreateAuthConfigOptions = {
         authConfig: {
@@ -68,6 +74,28 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
         options.verbose = true;
     }
 
+    /**
+     * Auto-provision a personal organization the first time a user signs in.
+     * Runs serialized inside Auth.js's `signIn` callback so the jwt callback
+     * (which runs right after) always sees a membership row.
+     */
+    options.onFirstSignIn = async (user) => {
+        if (!env.OBCF_D1 || !user?.id) return;
+        initDbConnection(env);
+        try {
+            const userRecord = await User.find(user.id);
+            if (!userRecord) return;
+            await provisionDefaultOrganizationForUser({
+                user: userRecord as any,
+                email: user.email ?? null,
+                name: user.name ?? null,
+                appId: resolveAppId(env),
+            });
+        } catch (err) {
+            console.error('[auth] onFirstSignIn provisioning failed:', err);
+        }
+    };
+
     // Clear RBAC cache when user signs out so stale permissions aren't served
     options.onSignOut = async (_userId: string) => {
         if (!env.OBCF_KV) return;
@@ -83,8 +111,7 @@ export async function getSecurityContext(
     env?: CloudflareEnv,
 ): Promise<SecurityContext> {
     const url = new URL(request.url);
-
-    const userId = session?.user?.id;
+    const userId = session?.user?.id as string | undefined;
 
     let organizationId: string | null = null;
 
@@ -120,31 +147,32 @@ export async function getSecurityContext(
     const roles = session?.user?.roles as string[] | undefined;
     const permissions = session?.user?.permissions as string[] | undefined;
 
-    // Collect all organization IDs the user can access (owned + member)
+    // Collect every org the user can access (active memberships + owned).
+    // Uses the fat-model helper so RLS policies receive the same list that
+    // the rest of the app sees. Soft-fails when tables don't exist yet
+    // (e.g. during bootstrap before migrations run).
     let memberOrganizationIds: string[] | undefined;
     if (userId) {
         try {
-            const orgIds = new Set<string>();
-
-            // Orgs where user is an active member
-            const memberships = await OrganizationMember.where({ userId, status: 'active' });
-            for (const m of memberships) {
-                const oid = m.get('organizationId') as string | undefined;
-                if (oid) orgIds.add(oid);
-            }
-
-            // Orgs owned by the user
-            const owned = await Organization.where({ ownerId: userId });
-            for (const o of owned) {
-                const oid = o.get('id') as string | undefined;
-                if (oid) orgIds.add(oid);
-            }
-
-            if (orgIds.size > 0) {
-                memberOrganizationIds = Array.from(orgIds);
+            const user = await User.find(userId);
+            if (user) {
+                const [memberOrgs, ownedOrgs] = await Promise.all([
+                    user.organizations({ status: 'active' }),
+                    Organization.where({ ownerId: userId }),
+                ]);
+                const ids = new Set<string>();
+                for (const o of memberOrgs) {
+                    const id = o.get('id') as string | undefined;
+                    if (id) ids.add(id);
+                }
+                for (const o of ownedOrgs) {
+                    const id = o.get('id') as string | undefined;
+                    if (id) ids.add(id);
+                }
+                if (ids.size > 0) memberOrganizationIds = Array.from(ids);
             }
         } catch {
-            // If tables don't exist yet (e.g. before migrations), silently skip
+            // Tables not ready yet — treat as empty; RLS will fall back to ownerId matching.
         }
     }
 

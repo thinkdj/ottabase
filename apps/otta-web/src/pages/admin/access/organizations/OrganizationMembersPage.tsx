@@ -281,7 +281,7 @@ export function OrganizationMembersPage() {
                             </Button>
                             {isPlatformMode ? (
                                 <Button variant="outline" asChild>
-                                    <Link to={'/admin/platform/organizations' as never}>
+                                    <Link to={'/admin-platform/organizations' as never}>
                                         ← Back to Tenant Directory
                                     </Link>
                                 </Button>

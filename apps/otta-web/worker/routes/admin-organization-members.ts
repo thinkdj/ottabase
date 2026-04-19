@@ -1,14 +1,10 @@
-import { OrganizationMember, User } from '@ottabase/ottaorm/models';
+import { MembershipError, OrganizationMember, User } from '@ottabase/ottaorm/models';
+import { getRBACCache } from '@ottabase/rbac';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
-import { requireAdminAccess } from '../lib/admin-guard';
+import { canAccessOrganization, requireAdminAccess, resolveCurrentOrgForAdmin } from '../lib/admin-guard';
 import { auditOrganizationAction } from '../lib/org-audit';
-import {
-    canAccessOrganization,
-    resolveCurrentOrgForAdmin,
-    syncMembershipRoleToTenantRBAC,
-} from '../lib/organization-admin';
 import type { ApiRouteContext } from './router';
 
 interface InviteMemberRequestBody {
@@ -30,10 +26,13 @@ function isValidStatus(status: unknown): status is 'active' | 'invited' | 'suspe
     return status === 'active' || status === 'invited' || status === 'suspended';
 }
 
-function updateMovesAwayFromActiveOwnerState(body: UpdateMemberRequestBody): boolean {
-    return (
-        (body.role !== undefined && body.role !== 'owner') || (body.status !== undefined && body.status !== 'active')
-    );
+function membershipErrorToResponse(err: unknown): Response | null {
+    if (err instanceof MembershipError && err.code === 'LAST_ACTIVE_OWNER_GUARD') {
+        return errorResponse('Cannot change or remove the last active owner', 409, {
+            code: 'LAST_ACTIVE_OWNER_GUARD',
+        });
+    }
+    return null;
 }
 
 export async function handleAdminOrganizationMembersList(
@@ -135,21 +134,14 @@ export async function handleAdminOrganizationInviteMember(
     }
 
     try {
-        const member = await OrganizationMember.createMember({
+        const member = await OrganizationMember.addMember({
             userId,
             organizationId,
             role,
             status,
             invitedBy: auth.user?.id ?? null,
             invitedAt: Date.now(),
-        });
-
-        await syncMembershipRoleToTenantRBAC({
-            userId,
-            organizationId,
-            membershipRole: role,
-            membershipStatus: status,
-            assignedBy: auth.user?.id,
+            cache: getRBACCache(),
         });
 
         await auditOrganizationAction(context.request, {
@@ -164,6 +156,8 @@ export async function handleAdminOrganizationInviteMember(
 
         return jsonResponse({ data: member.toJson() }, 201);
     } catch (err) {
+        const mapped = membershipErrorToResponse(err);
+        if (mapped) return mapped;
         return errorResponse('Failed to invite member', 500, {
             code: 'ORG_MEMBER_INVITE_FAILED',
             details: err instanceof Error ? err.message : 'Unknown error',
@@ -218,33 +212,22 @@ export async function handleAdminOrganizationUpdateMember(
         return errorResponse('Member not found', 404, { code: 'MEMBER_NOT_FOUND' });
     }
 
-    if (updateMovesAwayFromActiveOwnerState(body)) {
-        const isLastActiveOwner = await OrganizationMember.isLastActiveOwner(userId, organizationId);
-        if (isLastActiveOwner) {
-            return errorResponse('Cannot change role or status for the last active owner', 409, {
-                code: 'LAST_ACTIVE_OWNER_GUARD',
-            });
-        }
-    }
-
     try {
         if (body.role !== undefined) {
-            await OrganizationMember.updateRole(userId, organizationId, body.role);
+            await OrganizationMember.setRole(userId, organizationId, body.role, {
+                assignedBy: auth.user?.id,
+                cache: getRBACCache(),
+            });
         }
         if (body.status !== undefined) {
-            await OrganizationMember.updateStatus(userId, organizationId, body.status);
+            await OrganizationMember.setStatus(userId, organizationId, body.status, {
+                assignedBy: auth.user?.id,
+                cache: getRBACCache(),
+            });
         }
 
         const updated = await OrganizationMember.first({ userId, organizationId });
         const payload = updated?.toJson() ?? existingMember.toJson();
-
-        await syncMembershipRoleToTenantRBAC({
-            userId,
-            organizationId,
-            membershipRole: payload.role,
-            membershipStatus: payload.status,
-            assignedBy: auth.user?.id,
-        });
 
         await auditOrganizationAction(context.request, {
             userId: auth.user?.id,
@@ -258,6 +241,8 @@ export async function handleAdminOrganizationUpdateMember(
 
         return jsonResponse({ data: payload });
     } catch (err) {
+        const mapped = membershipErrorToResponse(err);
+        if (mapped) return mapped;
         return errorResponse('Failed to update member', 500, {
             code: 'ORG_MEMBER_UPDATE_FAILED',
             details: err instanceof Error ? err.message : 'Unknown error',
@@ -282,28 +267,15 @@ export async function handleAdminOrganizationRemoveMember(
         return errorResponse('Member not found', 404, { code: 'MEMBER_NOT_FOUND' });
     }
 
-    const isLastActiveOwner = await OrganizationMember.isLastActiveOwner(userId, organizationId);
-    if (isLastActiveOwner) {
-        return errorResponse('Cannot remove the last active owner from this organization', 409, {
-            code: 'LAST_ACTIVE_OWNER_GUARD',
-        });
-    }
-
     try {
-        const removed = await OrganizationMember.removeMember(userId, organizationId);
+        const removed = await OrganizationMember.removeMember(userId, organizationId, {
+            cache: getRBACCache(),
+        });
         if (!removed) {
             return errorResponse('Failed to remove member', 500, {
                 code: 'ORG_MEMBER_REMOVE_FAILED',
             });
         }
-
-        await syncMembershipRoleToTenantRBAC({
-            userId,
-            organizationId,
-            membershipRole: 'member',
-            membershipStatus: 'suspended',
-            assignedBy: auth.user?.id,
-        });
 
         await auditOrganizationAction(context.request, {
             userId: auth.user?.id,
@@ -316,6 +288,8 @@ export async function handleAdminOrganizationRemoveMember(
 
         return jsonResponse({ data: { userId, organizationId, removed: true } });
     } catch (err) {
+        const mapped = membershipErrorToResponse(err);
+        if (mapped) return mapped;
         return errorResponse('Failed to remove member', 500, {
             code: 'ORG_MEMBER_REMOVE_FAILED',
             details: err instanceof Error ? err.message : 'Unknown error',

@@ -1,12 +1,12 @@
 import { getSession } from '@ottabase/auth/backend';
 import { Organization, OrganizationInvite, OrganizationMember } from '@ottabase/ottaorm/models';
+import { getRBACCache } from '@ottabase/rbac';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAuthOptions } from '../lib/auth-utils';
 import { initDbConnection } from '../lib/db-utils';
 import { hashOrgInviteToken } from '../lib/org-invite-token';
-import { syncMembershipRoleToTenantRBAC } from '../lib/organization-admin';
 import { normalizeEmail } from '../lib/utils';
 import type { ApiRouteContext } from './router';
 
@@ -179,13 +179,6 @@ export async function handlePublicOrgInviteAccept(context: ApiRouteContext): Pro
         const userId = String(sessionUser.id);
         const existingMember = await OrganizationMember.first({ userId, organizationId: invite.organizationId });
         if (existingMember) {
-            await syncMembershipRoleToTenantRBAC({
-                userId,
-                organizationId: invite.organizationId,
-                membershipRole: existingMember.get('role') as 'owner' | 'admin' | 'member',
-                membershipStatus: existingMember.get('status') as 'active' | 'invited' | 'suspended',
-                assignedBy: invite.invitedBy ?? userId,
-            });
             await OrganizationInvite.updateById(invite.id, {
                 status: 'accepted',
                 acceptedAt: Date.now(),
@@ -193,7 +186,7 @@ export async function handlePublicOrgInviteAccept(context: ApiRouteContext): Pro
             return jsonResponse({ data: { accepted: true, alreadyMember: true } });
         }
 
-        await OrganizationMember.createMember({
+        await OrganizationMember.addMember({
             userId,
             organizationId: invite.organizationId,
             role: invite.role as 'owner' | 'admin' | 'member',
@@ -201,14 +194,7 @@ export async function handlePublicOrgInviteAccept(context: ApiRouteContext): Pro
             joinedAt: Date.now(),
             invitedBy: invite.invitedBy ?? null,
             invitedAt: invite.invitedAt,
-        });
-
-        await syncMembershipRoleToTenantRBAC({
-            userId,
-            organizationId: invite.organizationId,
-            membershipRole: invite.role as 'owner' | 'admin' | 'member',
-            membershipStatus: 'active',
-            assignedBy: invite.invitedBy ?? userId,
+            cache: getRBACCache(),
         });
 
         await OrganizationInvite.updateById(invite.id, {

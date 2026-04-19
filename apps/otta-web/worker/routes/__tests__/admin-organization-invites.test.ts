@@ -4,13 +4,10 @@ import { handleAdminOrganizationInviteCreate } from '../admin-organization-invit
 
 vi.mock('../../lib/admin-guard', () => ({
     requireAdminAccess: vi.fn(),
-    SYSTEM_ORGANIZATION_ID: 'system',
-}));
-
-vi.mock('../../lib/organization-admin', () => ({
-    canAccessOrganization: vi.fn(() => true),
+    resolveCurrentOrgForAdmin: vi.fn(async () => 'org-1'),
     resolveTenantOrganizationId: vi.fn(() => 'org-1'),
-    syncMembershipRoleToTenantRBAC: vi.fn(),
+    canAccessOrganization: vi.fn(() => true),
+    SYSTEM_ORGANIZATION_ID: 'system',
 }));
 
 vi.mock('@ottabase/email', async (importOriginal) => {

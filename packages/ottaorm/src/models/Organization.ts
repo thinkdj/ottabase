@@ -4,13 +4,24 @@
 
 import type { DbDriver } from '@ottabase/db/drizzle';
 import { D1Driver } from '@ottabase/db/drizzle-d1';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { BaseModel, type ModelFields, type PackageType } from '../base/BaseModel';
+import { DEFAULT_ROLE_NAMES, type DefaultRoleName } from './DefaultRoles';
 import { organizationsTable, type NewOrganizationType, type OrganizationType } from './Organization.schema';
 import { organizationMembersTable } from './OrganizationMember.schema';
 
 export type OrganizationPlanValue = 'free' | 'pro' | 'enterprise';
 export type OrganizationStatusValue = 'active' | 'suspended' | 'cancelled';
+
+/**
+ * Minimal structural shape of the RBAC cache. Keeps ottaorm dependency-free
+ * from @ottabase/rbac (which depends on ottaorm) while still letting callers
+ * pass the real RBACCache instance.
+ */
+export interface RBACCacheLike {
+    invalidateUser(userId: string, organizationId: string, appId?: string | null): Promise<void>;
+    invalidateOrganization?(organizationId: string, roleName?: string): Promise<void>;
+}
 
 interface CreateWithOwnerOptions {
     name: string;
@@ -20,13 +31,20 @@ interface CreateWithOwnerOptions {
     status?: OrganizationStatusValue;
     settings?: Record<string, unknown>;
     metadata?: Record<string, unknown>;
-    membershipRole?: 'owner' | 'admin' | 'member';
+    membershipRole?: DefaultRoleName;
     membershipStatus?: 'active' | 'invited' | 'suspended';
     invitedBy?: string | null;
     invitedAt?: number | null;
     joinedAt?: number;
     membershipMetadata?: Record<string, unknown>;
     enforceUniqueName?: boolean;
+    /** RBAC cache for post-commit invalidation (optional). */
+    cache?: RBACCacheLike;
+}
+
+interface EnsurePersonalOrgOptions {
+    cache?: RBACCacheLike;
+    appId?: string | null;
 }
 
 /**
@@ -241,7 +259,14 @@ export class Organization extends BaseModel {
     }
 
     /**
-     * Create an organization and its initial owner membership in one atomic batch when D1 is available.
+     * Create an organization with its initial membership AND matching RBAC
+     * user_roles row in one atomic batch (D1 fast path) or try/rollback fallback
+     * (non-D1 drivers).
+     *
+     * Three rows are inserted together so a signed-in user never has a
+     * membership row without the matching RBAC assignment — the silent bug the
+     * old auth bootstrap had. Pass `cache` to invalidate the fresh org's RBAC
+     * cache entry after commit; safe to omit for tests.
      */
     static async createWithOwner(options: CreateWithOwnerOptions): Promise<Organization> {
         const name = this.normalizeName(options.name);
@@ -277,6 +302,19 @@ export class Organization extends BaseModel {
             throw new Error('Organization name already exists');
         }
 
+        const membershipRole: DefaultRoleName = (options.membershipRole ?? 'owner') as DefaultRoleName;
+        if (!DEFAULT_ROLE_NAMES.includes(membershipRole)) {
+            throw new Error(`Unknown membership role: ${membershipRole}`);
+        }
+        const membershipStatus = options.membershipStatus ?? 'active';
+        const membershipMetadata = options.membershipMetadata ?? null;
+
+        // Pre-resolve role ids (idempotent, cheap — short-circuits if already seeded).
+        const { Role } = await import('./Role');
+        const defaultRoles = await Role.ensureDefaults();
+        const rbacRole = defaultRoles[membershipRole];
+        const rbacRoleId = String(rbacRole.get('id'));
+
         const payload = {
             id: `org-${crypto.randomUUID()}`,
             name,
@@ -289,10 +327,9 @@ export class Organization extends BaseModel {
             createdAt: Date.now(),
             updatedAt: Date.now(),
         };
-        const membershipRole = options.membershipRole ?? 'owner';
-        const membershipStatus = options.membershipStatus ?? 'active';
-        const membershipMetadata = options.membershipMetadata ?? null;
         const driver = this.getDriver();
+        const invitedBy = options.invitedBy ?? ownerId;
+        const assignedAt = Date.now();
 
         if (driver instanceof D1Driver) {
             const d1 = driver.getD1();
@@ -327,42 +364,153 @@ export class Organization extends BaseModel {
                         payload.id,
                         membershipRole,
                         membershipStatus,
-                        options.invitedBy ?? ownerId,
+                        invitedBy,
                         invitedAt,
                         joinedAt,
                         membershipMetadata ? JSON.stringify(membershipMetadata) : null,
                     ),
+                d1
+                    .prepare(
+                        `INSERT INTO user_roles (
+                        user_id, role_id, organization_id, app_id, assigned_at, assigned_by
+                    ) VALUES (?, ?, ?, ?, ?, ?)`,
+                    )
+                    .bind(ownerId, rbacRoleId, payload.id, null, assignedAt, invitedBy),
             ]);
+        } else {
+            // Non-D1 (e.g. Postgres in tests): sequential insert with best-effort
+            // rollback. No cross-table transaction is available here, so we
+            // unwind on the first failing step.
+            let orgCreated = false;
+            let memberCreated = false;
+            try {
+                await this.create(payload);
+                orgCreated = true;
 
-            const created = (await this.find(payload.id)) as Organization | undefined;
-            if (!created) {
-                throw new Error('Created organization could not be loaded');
+                const { OrganizationMember } = await import('./OrganizationMember');
+                await OrganizationMember.create({
+                    userId: ownerId,
+                    organizationId: payload.id,
+                    role: membershipRole,
+                    status: membershipStatus,
+                    invitedBy,
+                    invitedAt,
+                    joinedAt,
+                    metadata: membershipMetadata,
+                } as Record<string, unknown>);
+                memberCreated = true;
+
+                const { UserRole } = await import('./UserRole');
+                await UserRole.create({
+                    userId: ownerId,
+                    roleId: rbacRoleId,
+                    organizationId: payload.id,
+                    appId: null,
+                    assignedAt,
+                    assignedBy: invitedBy,
+                } as Record<string, unknown>);
+            } catch (error) {
+                if (memberCreated) {
+                    const db = this.getDriver().getDb();
+                    await db
+                        .delete(organizationMembersTable)
+                        .where(
+                            and(
+                                eq(organizationMembersTable.userId, ownerId),
+                                eq(organizationMembersTable.organizationId, payload.id),
+                            ),
+                        )
+                        .catch(() => undefined);
+                }
+                if (orgCreated) {
+                    await this.delete(payload.id).catch(() => false);
+                }
+                throw error;
             }
-            return created;
         }
 
-        let createdOrg: Organization | null = null;
-
-        try {
-            createdOrg = (await this.create(payload)) as Organization;
-            const { OrganizationMember } = await import('./OrganizationMember');
-            await OrganizationMember.create({
-                userId: ownerId,
-                organizationId: payload.id,
-                role: membershipRole,
-                status: membershipStatus,
-                invitedBy: options.invitedBy ?? ownerId,
-                invitedAt,
-                joinedAt,
-                metadata: membershipMetadata,
-            } as Record<string, unknown>);
-            return createdOrg;
-        } catch (error) {
-            if (createdOrg) {
-                await this.delete(String(createdOrg.get('id'))).catch(() => false);
-            }
-            throw error;
+        const created = (await this.find(payload.id)) as Organization | undefined;
+        if (!created) {
+            throw new Error('Created organization could not be loaded');
         }
+
+        if (options.cache) {
+            try {
+                await options.cache.invalidateUser(ownerId, payload.id);
+            } catch {
+                // Cache errors must not fail the create — the row is already committed.
+            }
+        }
+
+        return created;
+    }
+
+    /**
+     * Idempotently ensure the user has a personal organization.
+     *
+     * Contract:
+     *   1. If the user already has any active membership, return that org
+     *      (first by joinedAt).
+     *   2. Otherwise create `${displayName}'s Workspace` via createWithOwner,
+     *      retrying slug collisions up to 5× with numeric suffixes, then once
+     *      more with a UUID tail as the deterministic fallback.
+     *
+     * Safe to call from hot paths (signin onFirstSignIn hook) — the lookup
+     * short-circuits cheaply once an org exists.
+     */
+    static async ensurePersonalOrg(
+        user: { id: string; name?: string | null; email?: string | null },
+        options: EnsurePersonalOrgOptions = {},
+    ): Promise<Organization> {
+        const userId = String(user.id || '').trim();
+        if (!userId) {
+            throw new Error('User id is required to ensure a personal organization');
+        }
+
+        const { OrganizationMember } = await import('./OrganizationMember');
+        const existing = await OrganizationMember.getUserOrganizations(userId, { status: 'active' });
+        if (existing.length > 0) {
+            const sorted = [...existing].sort((a, b) => Number(a.joinedAt ?? 0) - Number(b.joinedAt ?? 0));
+            const primary = sorted[0];
+            const org = (await this.find(String(primary.organizationId))) as Organization | undefined;
+            if (org) return org;
+        }
+
+        const baseName = this.deriveWorkspaceName(user);
+        const baseSlug = this.normalizeSlug(baseName) || `user-${userId.slice(0, 8)}`;
+
+        const candidates: string[] = [baseSlug];
+        for (let n = 2; n <= 5; n++) candidates.push(`${baseSlug}-${n}`);
+        candidates.push(`${baseSlug}-${crypto.randomUUID().slice(0, 8)}`);
+
+        let lastError: unknown;
+        for (const slug of candidates) {
+            try {
+                return await this.createWithOwner({
+                    name: baseName,
+                    slug,
+                    ownerId: userId,
+                    enforceUniqueName: false,
+                    cache: options.cache,
+                });
+            } catch (error) {
+                lastError = error;
+                const message = error instanceof Error ? error.message : String(error);
+                if (!/slug/i.test(message) || !/exist|taken|unique/i.test(message)) {
+                    throw error;
+                }
+            }
+        }
+
+        throw lastError instanceof Error
+            ? lastError
+            : new Error('Failed to allocate a unique slug for personal organization');
+    }
+
+    private static deriveWorkspaceName(user: { name?: string | null; email?: string | null }): string {
+        const displayBase = String(user.name || '').trim() || String(user.email || '').split('@')[0] || 'User';
+        const trimmed = displayBase.slice(0, 80);
+        return `${trimmed}'s Workspace`;
     }
 
     /**

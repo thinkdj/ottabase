@@ -375,6 +375,67 @@ apps/otta-web/
 - `/api/shortlinks/analytics` - Shortlink clicks (powers /analytics Shortlinks tab)
 - `/api/referrals/analytics` - Referral clicks (powers /analytics Referrals tab)
 
+## Organizations & Tenancy
+
+The template ships a fully-wired multi-tenant flow built on `@ottabase/ottaorm` fat models + `@ottabase/auth` hooks.
+There are no flags to flip — every signed-in user has at least one organization.
+
+### Personal-org auto-provisioning
+
+`getAuthOptions` (`worker/lib/auth-utils.ts`) wires the auth `onFirstSignIn` hook to call `Role.ensureDefaults()`
+followed by `Organization.ensurePersonalOrg(user, ...)`. The hook runs inside Auth.js's `signIn` callback, before the
+JWT is issued, so the very first request after sign-up already has `organizationId`, `roles=['owner']`, and
+`permissions=['*:*']` in the session.
+
+`ensurePersonalOrg` is idempotent: a returning user with an existing active membership keeps it; new users get
+`"${name}'s Workspace"` with slug-collision retries (5× numeric suffix + 1× UUID tail).
+
+### Tenant admin vs. platform admin
+
+| Surface              | Path prefix         | Audience                                              |
+| -------------------- | ------------------- | ----------------------------------------------------- |
+| Tenant admin         | `/admin/*`          | Owners/admins of the **current** organization         |
+| Platform superadmin  | `/admin-platform/*` | SaaS founder (`systemAdmin = true`, `*:*` permission) |
+| App-level "platform" | `/platform/*`       | **Reserved for the app you build** — never used here  |
+
+Worker routes follow the same split: `/api/admin/*` checks org-scoped membership; `/api/admin-platform/*` requires
+`scope: 'system'`. The two nav variants live in `src/ottabase/config/admin-nav.ts` (`TENANT_ADMIN_NAV_GROUPS`,
+`ADMIN_PLATFORM_NAV_GROUPS`) and `AdminLayout` picks one based on `location.pathname.startsWith('/admin-platform')`.
+
+### Org switcher (`POST /api/account/switch-org`)
+
+```http
+POST /api/account/switch-org
+Content-Type: application/json
+
+{ "organizationId": "org-acme" }
+```
+
+The endpoint:
+
+1. Verifies the session.
+2. Verifies the caller has an `active` `OrganizationMember` for the target org (else 403).
+3. Writes the override into KV at `auth:usr:<userId>:profile:currentOrgId`.
+4. Bumps the `auth:usr:<userId>:profile:version` counter.
+5. Invalidates `RBACCache` for `(userId, organizationId)`.
+
+The Auth.js `jwt` callback reads `currentOrgId` on the next refresh, so calling `session.update()` from the client fully
+refreshes `session.user.organizationId`. The `OrganizationSwitcher` component does exactly this and then invalidates any
+react-query keys containing `'organization'`.
+
+### Bootstrapping a clean install
+
+```bash
+curl -s -X POST :3004/__bootstrap__/api/init   -H "X-Bootstrap-Secret: $BS"
+curl -s -X POST :3004/__bootstrap__/api/seed   -H "X-Bootstrap-Secret: $BS"  # Role.ensureDefaults
+curl -s -X POST :3004/__bootstrap__/api/create-owner -H "X-Bootstrap-Secret: $BS" \
+     -H "Content-Type: application/json" \
+     -d '{"email":"admin@example.com","password":"X!xxxxxx","name":"Admin"}'
+```
+
+The created founder lands on `/admin-platform/*`. Any subsequent user that signs in via `/login` is auto-provisioned
+into their own personal org and lands on `/admin/*`.
+
 ## Using Cloudflare Bindings
 
 ### In Cloudflare Worker

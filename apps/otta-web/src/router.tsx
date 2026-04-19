@@ -346,16 +346,6 @@ const adminMediaLibraryRoute = makeAdminRoute(
 
 // ─── /admin/access ───────────────────────────────────────────────────────────
 
-const adminUsersRoute = makeAdminRoute(
-    '/admin/access/users',
-    () => import('@/pages/admin/access/users/UserManagementPage'),
-    'UserManagementPage',
-);
-const adminUserRBACRoute = makeAdminRoute(
-    '/admin/access/users/$userId/rbac',
-    () => import('@/pages/admin/access/users/UserRBACPage'),
-    'UserRBACPage',
-);
 const adminOrganizationMembersRoute = makeAdminRoute(
     '/admin/organization/members',
     () => import('@/pages/admin/access/organizations/OrganizationMembersPage'),
@@ -366,20 +356,82 @@ const adminOrganizationSettingsRoute = makeAdminRoute(
     () => import('@/pages/admin/access/organizations/OrganizationSettingsPage'),
     'OrganizationSettingsPage',
 );
+const adminPlatformIndexRoute = makePlatformAdminRoute(
+    '/admin-platform',
+    () => import('@/pages/admin-platform/AdminPlatformIndexPage'),
+    'AdminPlatformIndexPage',
+);
 const adminPlatformOrganizationsRoute = makePlatformAdminRoute(
-    '/admin/platform/organizations',
+    '/admin-platform/organizations',
     () => import('@/pages/admin/access/organizations/OrganizationsPage'),
     'OrganizationsPage',
 );
 const adminPlatformOrganizationMembersRoute = makePlatformAdminRoute(
-    '/admin/platform/organizations/$organizationId/members',
+    '/admin-platform/organizations/$organizationId/members',
     () => import('@/pages/admin/access/organizations/OrganizationMembersPage'),
     'OrganizationMembersPage',
 );
 const adminPlatformOrganizationSettingsRoute = makePlatformAdminRoute(
-    '/admin/platform/organizations/$organizationId/settings',
+    '/admin-platform/organizations/$organizationId/settings',
     () => import('@/pages/admin/access/organizations/OrganizationSettingsPage'),
     'OrganizationSettingsPage',
+);
+const adminPlatformUsersRoute = makePlatformAdminRoute(
+    '/admin-platform/users',
+    () => import('@/pages/admin/access/users/UserManagementPage'),
+    'UserManagementPage',
+);
+const adminPlatformUserRBACRoute = makePlatformAdminRoute(
+    '/admin-platform/users/$userId/rbac',
+    () => import('@/pages/admin/access/users/UserRBACPage'),
+    'UserRBACPage',
+);
+const adminPlatformAuditRoute = makePlatformAdminRoute(
+    '/admin-platform/security/audit',
+    () => import('@/pages/admin/security/audit/AuditLogViewerPage'),
+    'AuditLogViewerPage',
+);
+const adminPlatformRLSRoute = makePlatformAdminRoute(
+    '/admin-platform/security/rls',
+    () => import('@/pages/admin/security/RLSInspectorPage'),
+    'RLSInspectorPage',
+);
+const adminPlatformKillSwitchesRoute = makePlatformAdminRoute(
+    '/admin-platform/security/kill-switches',
+    () => import('@/pages/admin/security/KillSwitchesPage'),
+    'default',
+);
+const adminPlatformDatabaseRoute = makePlatformAdminRoute(
+    '/admin-platform/infrastructure/database',
+    () => import('@/pages/admin/infrastructure/DatabasePage'),
+    'AdminDbPage',
+    {
+        validateSearch: (search: Record<string, unknown>) => ({
+            table: (search.table as string) || '',
+            page: Number(search.page) || 1,
+            perPage: Number(search.perPage) || 25,
+        }),
+    },
+);
+const adminPlatformMigrationsRoute = makePlatformAdminRoute(
+    '/admin-platform/infrastructure/migrations',
+    () => import('@/pages/admin/infrastructure/MigrationsPage'),
+    'MigrationStatusPage',
+);
+const adminPlatformQueuesRoute = makePlatformAdminRoute(
+    '/admin-platform/infrastructure/queues',
+    () => import('@/pages/admin/infrastructure/QueuesPage'),
+    'AdminQueuePage',
+);
+const adminPlatformCronRoute = makePlatformAdminRoute(
+    '/admin-platform/infrastructure/cron',
+    () => import('@/pages/admin/infrastructure/CronPage'),
+    'AdminCronPage',
+);
+const adminPlatformDevMailRoute = makePlatformAdminRoute(
+    '/admin-platform/infrastructure/dev-mail',
+    () => import('@/pages/admin/infrastructure/DevMailPage'),
+    'AdminDevMailPage',
 );
 const adminRBACRoute = makeAdminRoute(
     '/admin/access/rbac',
@@ -403,51 +455,6 @@ const adminAuditRoute = makeAdminRoute(
     '/admin/security/audit',
     () => import('@/pages/admin/security/audit/AuditLogViewerPage'),
     'AuditLogViewerPage',
-);
-const adminSecurityRLSRoute = makeAdminRoute(
-    '/admin/security/rls',
-    () => import('@/pages/admin/security/RLSInspectorPage'),
-    'RLSInspectorPage',
-);
-const adminKillSwitchesRoute = makeAdminRoute(
-    '/admin/security/kill-switches',
-    () => import('@/pages/admin/security/KillSwitchesPage'),
-    'default',
-);
-
-// ─── /admin/infrastructure ───────────────────────────────────────────────────
-
-const adminDatabaseRoute = makeAdminRoute(
-    '/admin/infrastructure/database',
-    () => import('@/pages/admin/infrastructure/DatabasePage'),
-    'AdminDbPage',
-    {
-        validateSearch: (search: Record<string, unknown>) => ({
-            table: (search.table as string) || '',
-            page: Number(search.page) || 1,
-            perPage: Number(search.perPage) || 25,
-        }),
-    },
-);
-const adminMigrationsRoute = makeAdminRoute(
-    '/admin/infrastructure/migrations',
-    () => import('@/pages/admin/infrastructure/MigrationsPage'),
-    'MigrationStatusPage',
-);
-const adminQueuesRoute = makeAdminRoute(
-    '/admin/infrastructure/queues',
-    () => import('@/pages/admin/infrastructure/QueuesPage'),
-    'AdminQueuePage',
-);
-const adminCronRoute = makeAdminRoute(
-    '/admin/infrastructure/cron',
-    () => import('@/pages/admin/infrastructure/CronPage'),
-    'AdminCronPage',
-);
-const adminDevMailRoute = makeAdminRoute(
-    '/admin/infrastructure/dev-mail',
-    () => import('@/pages/admin/infrastructure/DevMailPage'),
-    'AdminDevMailPage',
 );
 
 // ─── /admin/growth ───────────────────────────────────────────────────────────
@@ -589,25 +596,28 @@ const coreRoutes = [
     adminChangelogRoute,
     adminChangelogNewRoute,
     adminChangelogEditRoute,
-    adminUsersRoute,
-    adminUserRBACRoute,
     adminOrganizationMembersRoute,
     adminOrganizationSettingsRoute,
-    adminPlatformOrganizationsRoute,
-    adminPlatformOrganizationMembersRoute,
-    adminPlatformOrganizationSettingsRoute,
     adminRBACRoute,
     adminRBACRolesRoute,
     adminRBACPermissionsRoute,
     adminAuditRoute,
-    adminSecurityRLSRoute,
-    adminKillSwitchesRoute,
-    adminDatabaseRoute,
-    adminMigrationsRoute,
-    adminQueuesRoute,
-    adminCronRoute,
-    adminDevMailRoute,
     adminNotificationsRoute,
+    // Admin Platform (superadmin)
+    adminPlatformIndexRoute,
+    adminPlatformOrganizationsRoute,
+    adminPlatformOrganizationMembersRoute,
+    adminPlatformOrganizationSettingsRoute,
+    adminPlatformUsersRoute,
+    adminPlatformUserRBACRoute,
+    adminPlatformAuditRoute,
+    adminPlatformRLSRoute,
+    adminPlatformKillSwitchesRoute,
+    adminPlatformDatabaseRoute,
+    adminPlatformMigrationsRoute,
+    adminPlatformQueuesRoute,
+    adminPlatformCronRoute,
+    adminPlatformDevMailRoute,
 ];
 
 // Routes that depend on optional packages.

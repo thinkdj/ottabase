@@ -18,8 +18,8 @@ import { Auth, type AuthConfig } from '@auth/core';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { userKey } from '@ottabase/cf/cache-keys';
 import { createKvEmailTrapStore } from '@ottabase/email/providers/dev-trap';
-import { bootstrapFirstUser, parseBooleanFlag, SYSTEM_ORGANIZATION_ID } from './bootstrap';
 import { createOttabaseAuthConfig } from './config';
+import { SYSTEM_ORGANIZATION_ID } from './constants';
 import type { ProviderEnv } from './providers';
 import {
     autoConfigureProviders,
@@ -29,6 +29,15 @@ import {
     createResendProvider,
     isDevEmailTrapConfigured,
 } from './providers';
+
+function parseBooleanFlag(value: unknown): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+        const normalized = value.toLowerCase();
+        return normalized === 'true' || normalized === '1' || normalized === 'yes';
+    }
+    return false;
+}
 
 /**
  * Environment interface for auth handler
@@ -174,6 +183,34 @@ export interface CreateAuthConfigOptions extends CredentialsAuthorizeOptions {
      * (e.g., RBAC) without overriding the core signOut event.
      */
     onSignOut?: (userId: string) => Promise<void> | void;
+
+    /**
+     * Called on sign-in when the user has no organization memberships yet.
+     * The typical app-level implementation provisions a personal workspace
+     * via `Organization.ensurePersonalOrg` so the user lands on a working
+     * tenant. Errors here are swallowed — the user still signs in.
+     *
+     * Runs serialized inside Auth.js's `signIn` callback so membership
+     * exists before the jwt callback issues a token.
+     */
+    onFirstSignIn?: (user: AuthSignInUser, env: AuthEnv) => Promise<void> | void;
+
+    /**
+     * Called on every successful sign-in, after `onFirstSignIn`. Useful for
+     * audit logs, welcome notifications, or per-session side effects.
+     */
+    onSignIn?: (user: AuthSignInUser, env: AuthEnv, account: unknown) => Promise<void> | void;
+}
+
+/**
+ * Minimal user shape Auth.js hands to callbacks during sign-in.
+ */
+export interface AuthSignInUser {
+    id?: string | null;
+    email?: string | null;
+    name?: string | null;
+    image?: string | null;
+    [key: string]: unknown;
 }
 
 /**
@@ -326,7 +363,32 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                         }
                     }
 
-                    await bootstrapFirstUser(env, user as any);
+                    // First-sign-in hook fires iff the user has no
+                    // organization membership yet — the app-level hook
+                    // (Organization.ensurePersonalOrg) auto-provisions a
+                    // personal workspace and assigns the owner role.
+                    if (options?.onFirstSignIn) {
+                        try {
+                            const hasMembership = await env.OBCF_D1.prepare(
+                                `SELECT 1 FROM organization_members WHERE user_id = ? LIMIT 1`,
+                            )
+                                .bind(user.id)
+                                .first<any>();
+                            if (!hasMembership) {
+                                await options.onFirstSignIn(user as AuthSignInUser, env);
+                            }
+                        } catch (error) {
+                            console.warn('onFirstSignIn hook failed:', error);
+                        }
+                    }
+
+                    if (options?.onSignIn) {
+                        try {
+                            await options.onSignIn(user as AuthSignInUser, env, account);
+                        } catch (error) {
+                            console.warn('onSignIn hook failed:', error);
+                        }
+                    }
 
                     return true;
                 },
@@ -384,23 +446,51 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                         let createdAt: number | null = null;
                         let systemAdmin = false;
 
-                        try {
-                            const membership = await d1
-                                .prepare(
-                                    `SELECT organization_id as organizationId
-                                 FROM organization_members
-                                 WHERE user_id = ? AND status = 'active'
-                                 ORDER BY joined_at ASC
-                                 LIMIT 1`,
-                                )
-                                .bind(userId)
-                                .first<any>();
-
-                            if (membership?.organizationId) {
-                                organizationId = membership.organizationId;
+                        // Honor the user's most-recently-selected org (set by
+                        // POST /api/account/switch-org) when it still maps to
+                        // an active membership. Falls through to first-joined
+                        // membership when missing or stale.
+                        if (env.OBCF_KV) {
+                            try {
+                                const hint = await env.OBCF_KV.get(userKey('auth', userId, 'profile', 'currentOrgId'));
+                                if (hint) {
+                                    const membership = await d1
+                                        .prepare(
+                                            `SELECT organization_id as organizationId
+                                         FROM organization_members
+                                         WHERE user_id = ? AND organization_id = ? AND status = 'active'
+                                         LIMIT 1`,
+                                        )
+                                        .bind(userId, hint)
+                                        .first<any>();
+                                    if (membership?.organizationId) {
+                                        organizationId = String(membership.organizationId);
+                                    }
+                                }
+                            } catch (error) {
+                                console.warn('Failed to honor currentOrgId KV hint:', error);
                             }
-                        } catch (error) {
-                            console.warn('Failed to load organization membership for auth:', error);
+                        }
+
+                        if (!organizationId) {
+                            try {
+                                const membership = await d1
+                                    .prepare(
+                                        `SELECT organization_id as organizationId
+                                     FROM organization_members
+                                     WHERE user_id = ? AND status = 'active'
+                                     ORDER BY joined_at ASC
+                                     LIMIT 1`,
+                                    )
+                                    .bind(userId)
+                                    .first<any>();
+
+                                if (membership?.organizationId) {
+                                    organizationId = membership.organizationId;
+                                }
+                            } catch (error) {
+                                console.warn('Failed to load organization membership for auth:', error);
+                            }
                         }
 
                         if (!organizationId && allowNullTenant) {

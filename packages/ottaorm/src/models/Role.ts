@@ -3,6 +3,7 @@
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { DEFAULT_ROLE_NAMES, DEFAULT_ROLES, type DefaultRoleName } from './DefaultRoles';
 import { rolesTable } from './Role.schema';
 
 export { rolesTable, type NewRoleType, type RoleType } from './Role.schema';
@@ -202,50 +203,60 @@ export class Role extends BaseModel {
     }
 
     /**
-     * Get or create default roles
+     * Seed the four OOB roles (owner, admin, member, viewer) from DEFAULT_ROLES.
+     *
+     * Idempotent and cheap: short-circuits when all four already exist. If a
+     * role exists but has drifted (permissions or description changed in the
+     * framework), it is reconciled in-place so upgrades are hands-free.
+     *
+     * Returns a map of {name: Role} for every default role. Safe to call from
+     * hot paths (e.g. signin) — the short-circuit avoids row writes.
      */
-    static async ensureDefaultRoles() {
-        const defaultRoles = [
-            {
-                name: 'owner',
-                description: 'System owner (all permissions)',
-                permissions: JSON.stringify(['*:*']),
-                isSystem: true,
-            },
-            {
-                name: 'admin',
-                description: 'Full system access',
-                permissions: JSON.stringify(['*:*']),
-                isSystem: true,
-            },
-            {
-                name: 'editor',
-                description: 'Can create and edit content',
-                permissions: JSON.stringify(['*:read', '*:create', '*:update']),
-                isSystem: true,
-            },
-            {
-                name: 'viewer',
-                description: 'Read-only access',
-                permissions: JSON.stringify(['*:read']),
-                isSystem: true,
-            },
-            {
-                name: 'member',
-                description: 'Default member access',
-                permissions: JSON.stringify(['*:read']),
-                isSystem: true,
-            },
-        ];
+    static async ensureDefaults(): Promise<Record<DefaultRoleName, Role>> {
+        const existing = (await Role.whereIn('name', DEFAULT_ROLE_NAMES as unknown as string[])) as Role[];
+        const byName = new Map<string, Role>(existing.map((role) => [role.get('name') as string, role]));
 
-        const created = [];
-        for (const roleData of defaultRoles) {
-            const existing = await this.findByName(roleData.name);
-            if (!existing) {
-                created.push(await this.create(roleData));
+        for (const name of DEFAULT_ROLE_NAMES) {
+            const seed = DEFAULT_ROLES[name];
+            const serialized = JSON.stringify(seed.permissions);
+            const current = byName.get(name);
+
+            if (!current) {
+                const created = (await this.create({
+                    name: seed.name,
+                    description: seed.description,
+                    permissions: serialized,
+                    isSystem: seed.isSystem,
+                })) as Role;
+                byName.set(name, created);
+                continue;
+            }
+
+            const currentPerms = JSON.stringify(current.getPermissions());
+            const currentDesc = (current.get('description') as string | null) ?? '';
+            if (currentPerms !== serialized || currentDesc !== seed.description) {
+                current.set('permissions', serialized);
+                current.set('description', seed.description);
+                current.set('isSystem', seed.isSystem);
+                await current.save();
             }
         }
 
-        return created;
+        return {
+            owner: byName.get('owner')!,
+            admin: byName.get('admin')!,
+            member: byName.get('member')!,
+            viewer: byName.get('viewer')!,
+        };
+    }
+
+    /**
+     * @deprecated Use {@link Role.ensureDefaults} — retained as a thin alias
+     * only so the bootstrap wizard flow doesn't break during rollout. New code
+     * should call `ensureDefaults()` which returns a typed role map.
+     */
+    static async ensureDefaultRoles() {
+        const map = await this.ensureDefaults();
+        return Object.values(map);
     }
 }

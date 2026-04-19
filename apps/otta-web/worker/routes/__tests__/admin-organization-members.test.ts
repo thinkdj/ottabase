@@ -1,4 +1,4 @@
-import { OrganizationMember, User } from '@ottabase/ottaorm/models';
+import { MembershipError, OrganizationMember, User } from '@ottabase/ottaorm/models';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     handleAdminOrganizationInviteMember,
@@ -9,13 +9,14 @@ import {
 
 vi.mock('../../lib/admin-guard', () => ({
     requireAdminAccess: vi.fn(),
+    resolveCurrentOrgForAdmin: vi.fn(async () => 'org-1'),
+    resolveTenantOrganizationId: vi.fn(() => 'org-1'),
+    canAccessOrganization: vi.fn(() => true),
     SYSTEM_ORGANIZATION_ID: 'system',
 }));
 
-vi.mock('../../lib/organization-admin', () => ({
-    canAccessOrganization: vi.fn(() => true),
-    resolveTenantOrganizationId: vi.fn(() => 'org-1'),
-    syncMembershipRoleToTenantRBAC: vi.fn(),
+vi.mock('../../lib/org-audit', () => ({
+    auditOrganizationAction: vi.fn(),
 }));
 
 import { requireAdminAccess } from '../../lib/admin-guard';
@@ -23,7 +24,6 @@ import { requireAdminAccess } from '../../lib/admin-guard';
 describe('handleAdminOrganizationInviteMember', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.spyOn(OrganizationMember as any, 'isLastActiveOwner').mockResolvedValue(false);
     });
 
     it('creates the membership with server-controlled invite fields', async () => {
@@ -36,7 +36,7 @@ describe('handleAdminOrganizationInviteMember', () => {
         });
         vi.spyOn(User, 'find').mockResolvedValue({ toJson: () => ({ id: 'user-2' }) } as any);
         vi.spyOn(OrganizationMember, 'first').mockResolvedValue(null);
-        const createSpy = vi.spyOn(OrganizationMember, 'create').mockResolvedValue({
+        const addMemberSpy = vi.spyOn(OrganizationMember, 'addMember').mockResolvedValue({
             toJson: () => ({ userId: 'user-2', organizationId: 'org-1', role: 'member', status: 'invited' }),
         } as any);
 
@@ -53,7 +53,7 @@ describe('handleAdminOrganizationInviteMember', () => {
         );
 
         expect(response.status).toBe(201);
-        expect(createSpy).toHaveBeenCalledWith(
+        expect(addMemberSpy).toHaveBeenCalledWith(
             expect.objectContaining({
                 userId: 'user-2',
                 organizationId: 'org-1',
@@ -91,7 +91,7 @@ describe('handleAdminOrganizationInviteMember', () => {
         expect(response.status).toBe(409);
     });
 
-    it('updates role and status for an existing member', async () => {
+    it('updates role and status for an existing member via setRole / setStatus', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue({
             user: { id: 'admin-1' },
             organizationId: 'org-1',
@@ -105,18 +105,8 @@ describe('handleAdminOrganizationInviteMember', () => {
                 toJson: () => ({ userId: 'user-2', organizationId: 'org-1', role: 'admin', status: 'active' }),
             } as any);
 
-        const updateRoleSpy = vi.spyOn(OrganizationMember, 'updateRole').mockResolvedValue({
-            userId: 'user-2',
-            organizationId: 'org-1',
-            role: 'admin',
-            status: 'invited',
-        } as any);
-        const updateStatusSpy = vi.spyOn(OrganizationMember, 'updateStatus').mockResolvedValue({
-            userId: 'user-2',
-            organizationId: 'org-1',
-            role: 'admin',
-            status: 'active',
-        } as any);
+        const setRoleSpy = vi.spyOn(OrganizationMember, 'setRole').mockResolvedValue(undefined as any);
+        const setStatusSpy = vi.spyOn(OrganizationMember, 'setStatus').mockResolvedValue(undefined as any);
 
         const response = await handleAdminOrganizationUpdateMember(
             {
@@ -132,11 +122,21 @@ describe('handleAdminOrganizationInviteMember', () => {
         );
 
         expect(response.status).toBe(200);
-        expect(updateRoleSpy).toHaveBeenCalledWith('user-2', 'org-1', 'admin');
-        expect(updateStatusSpy).toHaveBeenCalledWith('user-2', 'org-1', 'active');
+        expect(setRoleSpy).toHaveBeenCalledWith(
+            'user-2',
+            'org-1',
+            'admin',
+            expect.objectContaining({ assignedBy: 'admin-1' }),
+        );
+        expect(setStatusSpy).toHaveBeenCalledWith(
+            'user-2',
+            'org-1',
+            'active',
+            expect.objectContaining({ assignedBy: 'admin-1' }),
+        );
     });
 
-    it('prevents changing role or status of the last active owner', async () => {
+    it('maps LAST_ACTIVE_OWNER_GUARD from setRole to a 409', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue({
             user: { id: 'admin-1' },
             organizationId: 'org-1',
@@ -145,15 +145,16 @@ describe('handleAdminOrganizationInviteMember', () => {
             session: {},
         });
         vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ toJson: () => ({}) } as any);
-        vi.spyOn(OrganizationMember as any, 'isLastActiveOwner').mockResolvedValueOnce(true);
-        const updateRoleSpy = vi.spyOn(OrganizationMember, 'updateRole');
+        vi.spyOn(OrganizationMember, 'setRole').mockRejectedValue(
+            new MembershipError('LAST_ACTIVE_OWNER_GUARD', 'demoting only owner'),
+        );
 
         const response = await handleAdminOrganizationUpdateMember(
             {
                 request: new Request('http://localhost/api/admin/organizations/org-1/members/user-2', {
                     method: 'PATCH',
                     headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify({ role: 'admin' }),
+                    body: JSON.stringify({ role: 'member' }),
                 }),
                 env: {},
             } as any,
@@ -162,7 +163,6 @@ describe('handleAdminOrganizationInviteMember', () => {
         );
 
         expect(response.status).toBe(409);
-        expect(updateRoleSpy).not.toHaveBeenCalled();
         const body = (await response.json()) as any;
         expect(body.code).toBe('LAST_ACTIVE_OWNER_GUARD');
     });
@@ -177,6 +177,7 @@ describe('handleAdminOrganizationInviteMember', () => {
         });
 
         vi.spyOn(OrganizationMember, 'countOrganizationMembers').mockResolvedValue(1);
+        vi.spyOn(OrganizationMember, 'countActiveOwners').mockResolvedValue(2);
         vi.spyOn(OrganizationMember, 'getOrganizationMembers').mockResolvedValue([
             {
                 userId: 'user-2',
@@ -249,13 +250,13 @@ describe('handleAdminOrganizationInviteMember', () => {
         );
 
         expect(response.status).toBe(200);
-        expect(removeSpy).toHaveBeenCalledWith('user-2', 'org-1');
+        expect(removeSpy).toHaveBeenCalledWith('user-2', 'org-1', expect.any(Object));
         expect(await response.json()).toEqual({
             data: { userId: 'user-2', organizationId: 'org-1', removed: true },
         });
     });
 
-    it('prevents removing the last active owner', async () => {
+    it('maps LAST_ACTIVE_OWNER_GUARD from removeMember to a 409', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue({
             user: { id: 'admin-1' },
             organizationId: 'org-1',
@@ -265,8 +266,9 @@ describe('handleAdminOrganizationInviteMember', () => {
         });
 
         vi.spyOn(OrganizationMember, 'first').mockResolvedValueOnce({ toJson: () => ({}) } as any);
-        vi.spyOn(OrganizationMember as any, 'isLastActiveOwner').mockResolvedValueOnce(true);
-        const removeSpy = vi.spyOn(OrganizationMember, 'removeMember');
+        vi.spyOn(OrganizationMember, 'removeMember').mockRejectedValue(
+            new MembershipError('LAST_ACTIVE_OWNER_GUARD', 'cannot remove last owner'),
+        );
 
         const response = await handleAdminOrganizationRemoveMember(
             {
@@ -280,7 +282,6 @@ describe('handleAdminOrganizationInviteMember', () => {
         );
 
         expect(response.status).toBe(409);
-        expect(removeSpy).not.toHaveBeenCalled();
         const body = (await response.json()) as any;
         expect(body.code).toBe('LAST_ACTIVE_OWNER_GUARD');
     });

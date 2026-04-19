@@ -17,11 +17,10 @@ vi.mock('../../lib/db-utils', () => ({
 
 vi.mock('../../lib/admin-guard', () => ({
     requireAdminAccess: vi.fn(),
-}));
-
-vi.mock('../../lib/organization-admin', () => ({
+    resolveCurrentOrgForAdmin: vi.fn(),
     resolveTenantOrganizationId: vi.fn(),
-    syncMembershipRoleToTenantRBAC: vi.fn(),
+    canAccessOrganization: vi.fn(() => true),
+    SYSTEM_ORGANIZATION_ID: 'system',
 }));
 
 vi.mock('../../lib/org-audit', () => ({
@@ -29,8 +28,7 @@ vi.mock('../../lib/org-audit', () => ({
 }));
 
 import { getSession } from '@ottabase/auth/backend';
-import { requireAdminAccess } from '../../lib/admin-guard';
-import { resolveTenantOrganizationId, syncMembershipRoleToTenantRBAC } from '../../lib/organization-admin';
+import { requireAdminAccess, resolveTenantOrganizationId } from '../../lib/admin-guard';
 
 describe('organization route handlers', () => {
     beforeEach(() => {
@@ -58,13 +56,13 @@ describe('organization route handlers', () => {
         } as any);
 
         expect(response.status).toBe(201);
-        expect(syncMembershipRoleToTenantRBAC).toHaveBeenCalledWith({
-            userId: 'user-1',
-            organizationId: 'org-new',
-            membershipRole: 'owner',
-            membershipStatus: 'active',
-            assignedBy: 'user-1',
-        });
+        expect(Organization.createWithOwner).toHaveBeenCalledWith(
+            expect.objectContaining({
+                ownerId: 'user-1',
+                membershipRole: 'owner',
+                membershipStatus: 'active',
+            }),
+        );
     });
 
     it('rejects platform-only fields on the current-organization update route', async () => {

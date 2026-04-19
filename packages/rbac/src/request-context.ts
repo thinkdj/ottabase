@@ -1,5 +1,6 @@
+import { SYSTEM_ORGANIZATION_ID } from '@ottabase/auth';
 import { getSession } from '@ottabase/auth/backend';
-import { User } from '@ottabase/ottaorm/models';
+import { OrganizationMember, User } from '@ottabase/ottaorm/models';
 import type { RBACCache } from './cache';
 import { createRBACContext } from './utils';
 
@@ -10,6 +11,13 @@ export interface RequestContext {
     appId: string;
     roles: string[];
     permissions: string[];
+    /**
+     * Organization ids the authenticated user holds an **active** membership in.
+     * Populated once per request and fed into SecurityContext so RLS policies
+     * can authorise reads across every org the user belongs to (not just the
+     * org they currently own via `ownerId`).
+     */
+    memberOrganizationIds: string[];
     isAuthenticated: boolean;
     isSystemScope: boolean;
     cache?: RBACCache;
@@ -24,7 +32,7 @@ export interface GetRequestContextOptions {
     organizationIdOverride?: string | null;
 }
 
-export const SYSTEM_ORGANIZATION_ID = 'system';
+export { SYSTEM_ORGANIZATION_ID };
 
 function parseBooleanFlag(value: unknown): boolean {
     if (typeof value === 'boolean') return value;
@@ -72,6 +80,40 @@ function resolveAppId(request: Request): string {
     return cleanValue(request.headers.get('x-app-id')) || 'web';
 }
 
+/**
+ * Fetch the set of organization ids a user is an active member of, consulting
+ * the RBAC cache first so hot RLS paths don't re-hit D1 every request.
+ */
+async function loadMemberOrganizationIds(
+    userId: string,
+    organizationId: string | null,
+    cache: RBACCache | undefined,
+): Promise<string[]> {
+    const cacheOrg = organizationId && organizationId !== SYSTEM_ORGANIZATION_ID ? organizationId : null;
+
+    if (cache && cacheOrg) {
+        try {
+            const cached = await cache.getUserMemberOrgs(userId, cacheOrg);
+            if (cached) return cached;
+        } catch {
+            // fall through to DB lookup
+        }
+    }
+
+    const memberships = await OrganizationMember.getUserOrganizations(userId, { status: 'active' });
+    const ids = memberships.map((m) => String(m.organizationId));
+
+    if (cache && cacheOrg) {
+        try {
+            await cache.setUserMemberOrgs(userId, cacheOrg, ids);
+        } catch {
+            // ignore cache write failures
+        }
+    }
+
+    return ids;
+}
+
 export async function getRequestContext(
     request: Request,
     env: any,
@@ -89,6 +131,7 @@ export async function getRequestContext(
             appId: resolveAppId(request),
             roles: [],
             permissions: [],
+            memberOrganizationIds: [],
             isAuthenticated: false,
             isSystemScope: false,
             cache: options?.cache,
@@ -105,6 +148,7 @@ export async function getRequestContext(
             appId: resolveAppId(request),
             roles: [],
             permissions: [],
+            memberOrganizationIds: [],
             isAuthenticated: false,
             isSystemScope: false,
             cache: options?.cache,
@@ -136,6 +180,8 @@ export async function getRequestContext(
 
     const finalOrganizationId = organizationId ?? (allowNullTenant ? SYSTEM_ORGANIZATION_ID : null);
 
+    const memberOrganizationIds = await loadMemberOrganizationIds(session.user.id, finalOrganizationId, cache);
+
     return {
         sessionUser: session.user,
         user,
@@ -143,6 +189,7 @@ export async function getRequestContext(
         appId,
         roles,
         permissions,
+        memberOrganizationIds,
         isAuthenticated: systemContext.isAuthenticated || scopedContext.isAuthenticated,
         isSystemScope: finalOrganizationId === SYSTEM_ORGANIZATION_ID,
         cache,

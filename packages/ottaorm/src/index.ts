@@ -78,8 +78,11 @@ export {
     AuditLog,
     // Auth.js SQL models (Edge-safe)
     Authenticator,
+    DEFAULT_ROLE_NAMES,
+    DEFAULT_ROLES,
     // Media (core — tracks all uploaded files)
     Media,
+    MembershipError,
     // Multi-tenant/RBAC models and tables
     Organization,
     OrganizationInvite,
@@ -112,7 +115,12 @@ export type {
     AccountType,
     AuditLogType,
     AuthenticatorType,
+    DefaultRoleName,
+    DefaultRoleSeed,
     MediaType,
+    MembershipErrorCode,
+    MembershipRole,
+    MembershipStatus,
     NewAccountType,
     NewAuditLogType,
     NewAuthenticatorType,
@@ -132,6 +140,7 @@ export type {
     // Multi-tenant/RBAC types
     OrganizationType,
     PermissionType,
+    RBACCacheLike,
     RoleType,
     SessionType,
     TagType,

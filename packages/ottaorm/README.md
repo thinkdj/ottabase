@@ -770,77 +770,66 @@ The package includes these core models (in `@ottabase/ottaorm`):
 **Note:** The Post model has been moved to `@ottabase/ottablog` as a comprehensive blog/content management model with
 enhanced features.
 
-## Multi-Tenant Models
+## Organizations & Tenancy
 
-Ottabase includes built-in multi-tenant SaaS models following the **Tenant > App > User** hierarchy:
-
-- **Organization** - Tenants with plan, status, settings, metadata
-- **OrganizationMember** - User memberships with roles (owner, admin, member)
-
-### Organization Model
-
-Organizations represent tenants in your multi-tenant application:
+OttaORM is the canonical place for every organization/tenant mutation. The fat-model API keeps routes thin and
+guarantees that the three coupled rows (`organizations`, `organization_members`, `user_roles`) stay in lockstep:
 
 ```typescript
-import { Organization } from '@ottabase/ottaorm';
+import { Organization, OrganizationMember, Role } from '@ottabase/ottaorm/models';
 
-// Create organization (tenant)
-const org = await Organization.create({
+// 1. Seed the four OOB roles (owner, admin, member, viewer). Idempotent.
+await Role.ensureDefaults();
+
+// 2. Create an org AND its initial owner membership AND the matching
+//    user_roles row in one atomic D1 batch (or a try/rollback on non-D1).
+const org = await Organization.createWithOwner({
     name: 'Acme Corp',
-    slug: 'acme-corp',
     ownerId: 'user-123',
+    slug: 'acme-corp', // optional; auto-generated from name
     plan: 'pro',
-    status: 'active',
-    settings: {
-        features: ['rbac', 'audit'],
-        maxMembers: 50,
-    },
+    cache: getRBACCache(), // optional; invalidates the new owner's RBAC
 });
 
-// Find by slug
-const org = await Organization.first({ slug: 'acme-corp' });
-
-// Get all active organizations
-const activeOrgs = await Organization.where({ status: 'active' });
-```
-
-**Available Plans:** `free`, `pro`, `enterprise` **Available Statuses:** `active`, `suspended`, `deleted`
-
-### OrganizationMember Model
-
-Manage user memberships and roles within organizations:
-
-```typescript
-import { OrganizationMember } from '@ottabase/ottaorm';
-
-// Add member to organization
-const member = await OrganizationMember.create({
-    userId: 'user-456',
-    organizationId: org.id,
-    role: 'member',
-    status: 'active',
-    invitedBy: 'user-123',
-    joinedAt: Date.now(),
-});
-
-// Get all members of an organization
-const members = await OrganizationMember.where(
-    { organizationId: org.id, status: 'active' },
-    { orderBy: 'joinedAt', orderDirection: 'desc' },
+// 3. Auto-provision a personal org on first signin. Idempotent and
+//    slug-collision safe — retries 5x with numeric suffixes, then a
+//    UUID tail. Use this from Auth.js's onFirstSignIn hook.
+await Organization.ensurePersonalOrg(
+    { id: 'user-123', name: 'Ada Lovelace', email: 'ada@example.com' },
+    { cache: getRBACCache() },
 );
 
-// Check user's role in organization
-const membership = await OrganizationMember.first({
+// 4. Invite / add a user. Grants the correct default role (and skips
+//    RBAC for status='invited' until the invite is accepted).
+await OrganizationMember.addMember({
     userId: 'user-456',
-    organizationId: org.id,
+    organizationId: org.get('id'),
+    role: 'member',
+    status: 'invited',
+    invitedBy: 'user-123',
+    cache: getRBACCache(),
 });
-console.log(membership.get('role')); // 'admin', 'member', etc.
 
-// Update member role
-await OrganizationMember.update(membership.id, { role: 'admin' });
+// 5. Change role. Re-syncs RBAC. Throws MembershipError('LAST_ACTIVE_OWNER_GUARD')
+//    when demoting the only active owner; routes map that to HTTP 409.
+await OrganizationMember.setRole('user-456', org.get('id'), 'admin', {
+    cache: getRBACCache(),
+    assignedBy: 'user-123',
+});
+
+// 6. Remove a member. Clears RBAC first, then deletes the membership.
+//    Same last-active-owner guard.
+await OrganizationMember.removeMember('user-456', org.get('id'), {
+    cache: getRBACCache(),
+});
 ```
 
-**Available Roles:** `owner`, `admin`, `member` **Available Statuses:** `active`, `invited`, `suspended`
+**OOB roles (`DEFAULT_ROLES`):** `owner` (`*:*`), `admin` (`users:*`, `org:*`, `brand:*`, `blog:*`, `media:*`,
+`notifications:*`, plus `*:read/create/update`), `member` (`*:read/create/update`), `viewer` (`*:read`).
+
+**Available Plans:** `free`, `pro`, `enterprise` &nbsp;&nbsp; **Available Statuses:** `active`, `suspended`, `cancelled`
+
+**Membership Statuses:** `active`, `invited`, `suspended`
 
 ### Multi-Tenant Setup
 

@@ -6,10 +6,10 @@
 // ============================================================
 
 import { Organization } from '@ottabase/ottaorm/models';
+import { getRBACCache } from '@ottabase/rbac';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { auditOrganizationAction } from '../../lib/org-audit';
-import { syncMembershipRoleToTenantRBAC } from '../../lib/organization-admin';
 import type { ApiRouteContext } from '../router';
 
 export async function parseJsonBody<T>(context: ApiRouteContext): Promise<T | Response> {
@@ -46,16 +46,10 @@ export async function createOrganizationWithOwner(
             membershipRole: 'owner',
             membershipStatus: 'active',
             joinedAt: Date.now(),
+            cache: getRBACCache(),
         });
 
         const organizationId = String(created.get('id'));
-        await syncMembershipRoleToTenantRBAC({
-            userId: owner.userId,
-            organizationId,
-            membershipRole: 'owner',
-            membershipStatus: 'active',
-            assignedBy: owner.userId,
-        });
 
         await auditOrganizationAction(context.request, {
             userId: owner.userId,

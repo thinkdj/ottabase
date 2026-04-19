@@ -56,30 +56,6 @@ function jsonResp(data: unknown, status = 200): Response {
     });
 }
 
-const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-    owner: ['*:*'],
-    admin: ['*:*'],
-    editor: ['*:read', '*:create', '*:update'],
-    viewer: ['*:read'],
-    member: ['*:read'],
-};
-
-async function enforceDefaultRolePermissions(env: CloudflareEnv): Promise<string[]> {
-    if (!env.OBCF_D1) return [];
-
-    const normalized: string[] = [];
-    const now = Date.now();
-
-    for (const [name, permissions] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
-        await env.OBCF_D1.prepare(`UPDATE roles SET permissions = ?, updated_at = ? WHERE name = ?`)
-            .bind(JSON.stringify(permissions), now, name)
-            .run();
-        normalized.push(name);
-    }
-
-    return normalized;
-}
-
 /**
  * Check if the provided bootstrap secret is valid.
  * For API requests, only X-Bootstrap-Secret header is accepted.
@@ -410,18 +386,16 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
         const appId = (env as { APP_ID?: string }).APP_ID ?? 'otta-web';
         await ensureAppBrandDefaults('Ottabase', appId);
 
-        // Seed default roles (owner, admin, editor, viewer, member)
-        const createdRoles = await Role.ensureDefaultRoles();
-        const roleNames = createdRoles.map((r: any) => r.get('name') as string);
-        const normalizedRoles = await enforceDefaultRolePermissions(env);
+        // Seed default roles (owner, admin, member, viewer) — single source of truth in ottaorm
+        const defaultRoles = await Role.ensureDefaults();
+        const roleNames = Object.values(defaultRoles).map((r) => r.get('name') as string);
 
-        // Count existing roles for reporting
         const allRolesResult = await env.OBCF_D1.prepare('SELECT name FROM roles').all();
         const existingRoles = (allRolesResult.results || []).map((r: any) => r.name as string);
 
         return jsonResp({
             success: true,
-            roles: { created: roleNames, existing: existingRoles, normalized: normalizedRoles },
+            roles: { created: roleNames, existing: existingRoles },
             timestamp: Date.now(),
         });
     } catch (error: any) {
@@ -475,8 +449,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
     try {
         ensureOrmConnection(env);
 
-        await Role.ensureDefaultRoles();
-        await enforceDefaultRolePermissions(env);
+        await Role.ensureDefaults();
 
         // Check if users already exist
         const countRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
@@ -504,22 +477,17 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
 
         const userId = newUser.get('id') as string;
 
-        // Create personal organization
+        // Create personal organization (owner, *:* via the owner role)
         let organizationId: string | null = null;
-        let assignedRole: string | null = null;
         try {
             const provisioned = await provisionDefaultOrganizationForUser({
                 user: newUser as any,
                 email,
                 name,
-                organizationRole: 'owner',
-                assignedBy: 'system',
-                roleFallbacks: ['owner'],
                 appId: (env as { APP_ID?: string }).APP_ID ?? 'otta-web',
             });
             organizationId = provisioned.organizationId;
-            assignedRole = provisioned.assignedRole;
-        } catch (error) {
+        } catch (_error) {
             return jsonResp(
                 {
                     success: false,
@@ -529,6 +497,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 500,
             );
         }
+        const assignedRole: 'owner' = 'owner';
 
         // Auto-login: create auth cookie so the user is immediately authenticated
         const cookieName = (env as any).AUTH_COOKIE_NAME || 'authjs.session-token';

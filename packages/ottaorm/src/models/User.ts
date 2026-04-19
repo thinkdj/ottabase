@@ -293,6 +293,40 @@ export class User extends BaseModel {
         return this.hasMany(AuditLog, 'userId', options);
     }
 
+    /**
+     * Get organizations the user belongs to, optionally filtered by status.
+     * Returns Organization instances (not raw join rows) so callers can use
+     * fat-model helpers like `.toJson()` directly.
+     */
+    async organizations(options?: { status?: 'active' | 'invited' | 'suspended' }) {
+        const { Organization } = await import('./Organization');
+        const { OrganizationMember } = await import('./OrganizationMember');
+        const status = options?.status ?? 'active';
+
+        const memberships = await OrganizationMember.getUserOrganizations(this.get('id') as string, { status });
+        if (memberships.length === 0) return [];
+
+        const ids = memberships.map((m) => String(m.organizationId));
+        return Organization.whereIn('id', ids);
+    }
+
+    /**
+     * Return the user's primary (first-joined active) organization, or null
+     * when the user has no active memberships yet.
+     */
+    async primaryOrganization() {
+        const { Organization } = await import('./Organization');
+        const { OrganizationMember } = await import('./OrganizationMember');
+
+        const memberships = await OrganizationMember.getUserOrganizations(this.get('id') as string, {
+            status: 'active',
+        });
+        if (memberships.length === 0) return null;
+
+        const sorted = [...memberships].sort((a, b) => Number(a.joinedAt ?? 0) - Number(b.joinedAt ?? 0));
+        return Organization.find(String(sorted[0].organizationId));
+    }
+
     // ============================================================
     // HELPER METHODS
     // ============================================================

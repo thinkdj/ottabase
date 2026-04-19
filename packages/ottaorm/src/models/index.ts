@@ -21,10 +21,21 @@ export {
 export { ScheduledTask, scheduledTasksTable, type NewScheduledTaskType, type ScheduledTaskType } from './ScheduledTask';
 
 // Multi-tenant organization models
-export { Organization, organizationsTable, type NewOrganizationType, type OrganizationType } from './Organization';
+export { DEFAULT_ROLE_NAMES, DEFAULT_ROLES, type DefaultRoleName, type DefaultRoleSeed } from './DefaultRoles';
 export {
+    Organization,
+    organizationsTable,
+    type NewOrganizationType,
+    type OrganizationType,
+    type RBACCacheLike,
+} from './Organization';
+export {
+    MembershipError,
     OrganizationMember,
     organizationMembersTable,
+    type MembershipErrorCode,
+    type MembershipRole,
+    type MembershipStatus,
     type NewOrganizationMemberType,
     type OrganizationMemberType,
 } from './OrganizationMember';

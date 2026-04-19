@@ -6,12 +6,10 @@
  * - x-app-id and x-org-id headers from global state
  */
 
-import { appIdAtom, globalStore, isAuthenticatedAtom, organizationIdAtom } from '@/ottabase/state/appState';
+import { appIdAtom, globalStore, isAuthenticatedAtom } from '@/ottabase/state/appState';
 import { createApiClient, type ApiError } from '@ottabase/api';
 import { AUTH_STORAGE_KEY, clearAuthSessionStorage } from '@ottabase/auth/react';
 import { toast } from 'sonner';
-
-const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 
 /**
  * Get auth token from storage/context.
@@ -34,25 +32,16 @@ function getAppId(): string | null {
 }
 
 /**
- * Get current organization ID from global state.
- * Falls back to localStorage if state not yet initialized.
+ * The session (JWT) is the single source of truth for the user's
+ * current organization. Switching orgs goes through
+ * `POST /api/account/switch-org` which re-issues the JWT; the
+ * header is derived from that session on every request.
  */
 function getOrganizationId(): string | null {
-    // Never send org context when not authenticated.
     try {
-        const isAuthenticated = globalStore.get(isAuthenticatedAtom);
-        if (!isAuthenticated) {
-            return null;
-        }
+        if (!globalStore.get(isAuthenticatedAtom)) return null;
     } catch {
-        // ignore atom read issues and continue to storage fallback
-    }
-
-    try {
-        const orgId = globalStore.get(organizationIdAtom);
-        if (orgId) return orgId;
-    } catch {
-        // State not yet initialized, try localStorage fallback
+        // ignore
     }
 
     try {
@@ -169,15 +158,9 @@ export const api = createApiClient({
     onUnauthorized: () => {
         clearAuthSessionStorage();
         try {
-            globalStore.set(organizationIdAtom, null);
             globalStore.set(isAuthenticatedAtom, false);
         } catch {
             // ignore store update failures
-        }
-        try {
-            localStorage.removeItem(CURRENT_ORG_KEY);
-        } catch {
-            // ignore storage failures
         }
         if (typeof window !== 'undefined') {
             window.location.href = '/login';

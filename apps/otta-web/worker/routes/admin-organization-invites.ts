@@ -5,11 +5,10 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { isEmail } from '@ottabase/utils/string';
 import { buildOrgInviteEmail } from '../../src/email/org-invite';
 import { registerAppEmailTemplates } from '../../src/email/templates';
-import { requireAdminAccess } from '../lib/admin-guard';
+import { canAccessOrganization, requireAdminAccess, resolveCurrentOrgForAdmin } from '../lib/admin-guard';
 import { resolveMailer } from '../lib/auth-utils';
 import { auditOrganizationAction } from '../lib/org-audit';
 import { generateOrgInviteRawToken, hashOrgInviteToken } from '../lib/org-invite-token';
-import { canAccessOrganization, resolveCurrentOrgForAdmin } from '../lib/organization-admin';
 import { normalizeEmail } from '../lib/utils';
 import type { ApiRouteContext } from './router';
 

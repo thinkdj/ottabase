@@ -1,23 +1,23 @@
-import { getTenantAdminNav } from '@/ottabase/config/admin-nav';
+import { getAdminPlatformNav } from '@/ottabase/config/admin-nav';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 
 /**
- * Tenant admin overview page.
+ * Admin Platform (superadmin) overview page.
  *
- * Renders cards driven by TENANT_ADMIN_NAV_GROUPS in
- * `apps/otta-web/src/ottabase/config/admin-nav.ts`. Adding a new tenant-admin
- * page = one entry in that file (the AdminLayout sidebar picks it up too).
+ * Renders cards driven by ADMIN_PLATFORM_NAV_GROUPS in
+ * `apps/otta-web/src/ottabase/config/admin-nav.ts`.
  */
-export function AdminIndexPage() {
-    const groups = getTenantAdminNav();
+export function AdminPlatformIndexPage() {
+    const groups = getAdminPlatformNav();
 
     return (
         <div className="space-y-10 pb-20">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Admin Console</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Platform Admin</h1>
                 <p className="text-muted-foreground mt-2 max-w-3xl">
-                    Everything you need to run your organization — content, access, security, and growth — in one place.
+                    SaaS-wide operations: tenants, users, platform security, and infrastructure. Scoped to system admins
+                    only.
                 </p>
             </div>
 
