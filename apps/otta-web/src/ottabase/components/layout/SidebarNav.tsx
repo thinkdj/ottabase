@@ -22,7 +22,8 @@ export const SidebarNav = memo(function SidebarNav({ widthClass = 'w-56' }: { wi
     const location = useLocation();
     const { config } = useBrand();
     const isAdmin = !!user?.permissions?.includes('admin') || !!user?.permissions?.includes('*:*');
-    const links = getNavLinks({ isAuthenticated, isAdmin });
+    const isSystemAdmin = !!(user as any)?.systemAdmin;
+    const links = getNavLinks({ isAuthenticated, isAdmin, isSystemAdmin });
 
     const staticContent = links.map((link) => {
         const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));

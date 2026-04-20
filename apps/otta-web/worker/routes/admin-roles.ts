@@ -7,7 +7,7 @@ import { requireAdminAccess } from '../lib/admin-guard';
 import type { ApiRouteContext } from './router';
 
 /** Invalidate all RBAC cache entries when system roles change */
-async function invalidateRBACCache(env: { OBCF_KV?: KVNamespace }): Promise<void> {
+export async function invalidateRBACCache(env: { OBCF_KV?: KVNamespace }): Promise<void> {
     if (!env.OBCF_KV) return;
     try {
         await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');

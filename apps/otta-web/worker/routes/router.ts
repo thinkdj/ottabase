@@ -650,6 +650,11 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleAdminRoleCreate(context);
     }
 
+    if (route === '/api/rbac/roles') {
+        const { handleRBACRoleCreate } = await import('./rbac-roles');
+        return handleRBACRoleCreate(context);
+    }
+
     if (route === '/api/onboarding/organizations') {
         return handleAccountOnboardingOrganizationCreate(context);
     }
@@ -724,6 +729,12 @@ async function handlePatchRoutes(context: ApiRouteContext): Promise<Response | n
         return handleAdminRoleUpdate(context, adminRolePatchMatch[1]);
     }
 
+    const rbacRolePatchMatch = route.match(/^\/api\/rbac\/roles\/([^/]+)$/);
+    if (rbacRolePatchMatch) {
+        const { handleRBACRoleUpdate } = await import('./rbac-roles');
+        return handleRBACRoleUpdate(context, rbacRolePatchMatch[1]);
+    }
+
     return null;
 }
 
@@ -784,6 +795,12 @@ async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | 
     const adminRoleDeleteMatch = route.match(/^\/api\/admin\/roles\/([^/]+)$/);
     if (adminRoleDeleteMatch) {
         return handleAdminRoleDelete(context, adminRoleDeleteMatch[1]);
+    }
+
+    const rbacRoleDeleteMatch = route.match(/^\/api\/rbac\/roles\/([^/]+)$/);
+    if (rbacRoleDeleteMatch) {
+        const { handleRBACRoleDelete } = await import('./rbac-roles');
+        return handleRBACRoleDelete(context, rbacRoleDeleteMatch[1]);
     }
 
     const platformOrganizationEntityDeleteMatch = route.match(/^\/api\/admin-platform\/organizations\/([^/]+)$/);
