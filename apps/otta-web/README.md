@@ -83,9 +83,11 @@ This template ships with Auth.js + D1 integration and tighter session handling:
   session picks up the KV-triggered profile version bump immediately.
 - **Tenant/app headers**: The client now sets `X-App-Id: otta-web` and, when available, `X-Org-Id` from the current
   session into all API calls; these values are also mirrored in global state atoms for UI needs.
-- **Organization flows**: Registration creates only the user account. Authenticated users create their first workspace
-  at `/onboarding/organization`, tenant admins manage the selected org at `/admin/organization/*`, and system admins
-  manage all tenants at `/admin/platform/organizations`.
+- **Organization flows**: Registration creates only the user account. On first sign-in, `Organization.ensurePersonalOrg`
+  auto-provisions a personal workspace so the new session lands on a real tenant. Users can additionally create new orgs
+  at `/onboarding/organization`; tenant admins manage the selected org at `/admin/organization/*`; platform superadmins
+  manage all tenants at `/admin-platform/organizations`. See the [Organizations & Tenancy](#organizations--tenancy)
+  section below for the full split.
 
 ### Auth API Endpoints
 
@@ -133,7 +135,6 @@ AUTH_SESSION_MAX_AGE=2592000
 
 # RBAC bootstrap toggles
 ALLOW_NULL_TENANT=true            # allow system-scope (single-founder) admin
-MULTI_TENANT_ENABLED=true         # permit tenant-aware runtime behavior; org creation is explicit via onboarding
 BOOTSTRAP_OWNER_SECRET=supersecret-token
 
 # Analytics (for /analytics - shortlinks + referrals WAE queries)

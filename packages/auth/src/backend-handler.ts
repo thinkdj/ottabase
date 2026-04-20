@@ -610,8 +610,24 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                                         token.createdAt = createdAtValue;
                                     }
                                 }
-                                (token as any).profileVersion = version;
                             }
+
+                            // A version bump may have been triggered by POST /api/account/switch-org,
+                            // which writes `currentOrgId` in the same KV profile namespace. Re-run
+                            // the context loader so organizationId/roles/permissions reflect the
+                            // current choice instead of the stale token snapshot.
+                            const freshContext = await loadUserContext(userId);
+                            if (freshContext.organizationId) {
+                                token.organizationId = freshContext.organizationId;
+                            }
+                            token.roles = freshContext.roles;
+                            token.permissions = freshContext.permissions;
+                            if (freshContext.createdAt) {
+                                token.createdAt = freshContext.createdAt;
+                            }
+                            token.systemAdmin = freshContext.systemAdmin;
+
+                            (token as any).profileVersion = version;
                         } catch (error) {
                             console.warn('Failed to refresh profile from KV version:', error);
                         }

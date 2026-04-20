@@ -165,4 +165,78 @@ describe('Auth Backend Handler', () => {
         expect(result).toBe(true);
         expect(d1.prepare).toHaveBeenCalledWith(expect.stringContaining('UPDATE users SET email_verified'));
     });
+
+    it('re-reads currentOrgId and refreshes org/roles when profile version bumps', async () => {
+        // Simulate: user switched orgs via POST /api/account/switch-org.
+        // That endpoint writes `currentOrgId` + bumps `profile:version` in KV.
+        // The jwt callback must re-read both and update the token on refresh.
+        const prepare = vi.fn((sql: string) => {
+            const stub: any = {
+                first: vi.fn(async () => null),
+                all: vi.fn(async () => ({ results: [] })),
+                run: vi.fn(async () => ({ success: true })),
+            };
+            const lower = sql.toLowerCase();
+            if (lower.includes('from organization_members') && lower.includes('organization_id = ?')) {
+                // KV-hint branch: called with (userId, hint='org-new')
+                stub.first = vi.fn(async () => ({ organizationId: 'org-new' }));
+            } else if (lower.includes('from organization_members')) {
+                // Fallback branch (should NOT be hit when KV hint resolves)
+                stub.first = vi.fn(async () => ({ organizationId: 'org-stale' }));
+            } else if (lower.includes('select r.name')) {
+                stub.all = vi.fn(async () => ({
+                    results: [{ name: 'admin', permissions: JSON.stringify(['*:read', '*:update']) }],
+                }));
+            } else if (lower.includes('from user_roles')) {
+                // systemAdmin probe: user is not a system admin
+                stub.first = vi.fn(async () => null);
+            } else if (lower.includes('from users') && lower.includes('created_at')) {
+                stub.first = vi.fn(async () => ({
+                    name: 'User One',
+                    email: 'user@example.com',
+                    image: null,
+                    emailVerified: null,
+                    createdAt: 1700000000000,
+                }));
+            }
+            return { ...stub, bind: vi.fn(() => stub) };
+        });
+
+        const kvStore = new Map<string, string>();
+        kvStore.set('auth:usr:user-1:profile:version', '2');
+        kvStore.set('auth:usr:user-1:profile:currentOrgId', 'org-new');
+
+        const env = {
+            OBCF_D1: { prepare } as any,
+            OBCF_KV: { get: vi.fn(async (key: string) => kvStore.get(key) ?? null) } as any,
+            AUTH_SECRET: 'test-secret',
+            ENVIRONMENT: 'test',
+        };
+
+        const config = createAuthConfig(env as any);
+        const jwt = config.callbacks?.jwt!;
+
+        // Token carries the prior org + stale version, no fresh `user` (refresh path)
+        const result = await jwt({
+            token: {
+                id: 'user-1',
+                email: 'user@example.com',
+                name: 'User One',
+                organizationId: 'org-old',
+                roles: ['member'],
+                permissions: ['*:read'],
+                systemAdmin: false,
+                profileVersion: 1,
+                jti: 'tok-1',
+                issuedAt: 1,
+            },
+        } as any);
+
+        expect(result).not.toBeNull();
+        if (!result) throw new Error('Expected token');
+        expect(result.organizationId).toBe('org-new');
+        expect(result.roles).toEqual(['admin']);
+        expect((result.permissions as string[]).sort()).toEqual(['*:read', '*:update']);
+        expect((result as any).profileVersion).toBe(2);
+    });
 });
