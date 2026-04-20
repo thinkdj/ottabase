@@ -616,6 +616,9 @@ export class BaseModel extends AbstractBaseModel {
         // Prepare data for database (convert string dates, etc.)
         const updateData = this.prepareForDatabase(validatedData);
 
+        // Remove primary key from update data — it cannot be changed
+        delete updateData[this.primaryKey];
+
         const result = await db.update(table).set(updateData).where(eq(pkColumn, id)).returning();
 
         if (result.length === 0) {
