@@ -7,7 +7,6 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
-    Checkbox,
     Table,
     TableBody,
     TableCell,
@@ -24,8 +23,8 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
 import { TableSkeleton } from '@/components/LoadingSkeletons';
-import { useRBACToast } from '@/hooks/useToast';
-import { useRoles, useTogglePermission } from '@/hooks/useRBAC';
+import { useApiQuery } from '@ottabase/ottaorm/client';
+import type { PaginatedResponse } from '@ottabase/utils/pagination';
 
 // Predefined permissions for the system
 const SYSTEM_PERMISSIONS = [
@@ -57,12 +56,22 @@ const SYSTEM_PERMISSIONS = [
 ];
 
 export function PermissionsMatrixPage() {
-    const toast = useRBACToast();
     const [activeTab, setActiveTab] = useState('all');
 
-    // TanStack Query hooks with optimistic updates
-    const { data: roles = [], isLoading, error, refetch } = useRoles();
-    const togglePermission = useTogglePermission();
+    // Fetch roles via /api/rbac/roles (read-only, shows current permissions)
+    const {
+        data: rolesData,
+        isLoading,
+        error,
+        refetch,
+    } = useApiQuery<{ data: RoleRecord[] }, RoleRecord[]>({
+        entity: 'roles',
+        queryKey: ['rbac-roles-matrix'],
+        endpoint: '/api/rbac/roles',
+        transform: (response) => response.data,
+    });
+
+    const roles = rolesData || [];
 
     const filterRoles = (filter: string) => {
         switch (filter) {
@@ -81,27 +90,6 @@ export function PermissionsMatrixPage() {
 
     const hasPermission = (role: RoleRecord, permissionId: string): boolean => {
         return role.permissions?.includes(permissionId) || false;
-    };
-
-    // Optimistic permission toggle with instant UI feedback
-    const handleToggle = async (role: RoleRecord, permissionId: string) => {
-        const hasIt = hasPermission(role, permissionId);
-
-        togglePermission.mutate(
-            {
-                roleId: role.id,
-                permissionId,
-                hasPermission: hasIt,
-            },
-            {
-                onSuccess: () => {
-                    toast.rbac[hasIt ? 'permissionRevoked' : 'permissionGranted']();
-                },
-                onError: (err) => {
-                    toast.error('Permission update failed', err instanceof Error ? err.message : 'Unknown error');
-                },
-            },
-        );
     };
 
     // Group permissions by category
@@ -126,7 +114,10 @@ export function PermissionsMatrixPage() {
                                 <Shield className="h-5 w-5" />
                                 Permissions Matrix
                             </CardTitle>
-                            <CardDescription>Manage role permissions across the hierarchy</CardDescription>
+                            <CardDescription>
+                                View system role permissions. System roles (owner, admin, member, viewer) have fixed
+                                permissions defined in the framework.
+                            </CardDescription>
                         </div>
                         <Button variant="outline" asChild>
                             <Link to="/admin/access/rbac">← Back to RBAC</Link>
@@ -214,19 +205,11 @@ export function PermissionsMatrixPage() {
                                                                             className="text-center"
                                                                         >
                                                                             <div className="flex justify-center">
-                                                                                <Checkbox
-                                                                                    checked={hasIt}
-                                                                                    onCheckedChange={() =>
-                                                                                        handleToggle(
-                                                                                            role,
-                                                                                            permission.id,
-                                                                                        )
-                                                                                    }
-                                                                                    disabled={
-                                                                                        togglePermission.isPending
-                                                                                    }
-                                                                                    aria-label={`Toggle ${permission.name} for ${role.name}`}
-                                                                                />
+                                                                                {hasIt ? (
+                                                                                    <Check className="h-4 w-4 text-green-600" />
+                                                                                ) : (
+                                                                                    <X className="h-4 w-4 text-muted-foreground" />
+                                                                                )}
                                                                             </div>
                                                                         </TableCell>
                                                                     );

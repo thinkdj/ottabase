@@ -2,9 +2,12 @@ import { Role } from '@ottabase/ottaorm/models';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { ApiRouteContext } from './router';
 
+/**
+ * List all available roles (system + custom) with their permissions.
+ * Consumed by /admin/access/rbac/roles and /admin-platform/users role assignment.
+ */
 export async function handleRBACRolesList(context: ApiRouteContext): Promise<Response> {
     try {
-        await Role.ensureDefaults();
         const roles = await Role.all();
 
         return jsonResponse({
