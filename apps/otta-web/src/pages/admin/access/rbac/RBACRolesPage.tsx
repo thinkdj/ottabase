@@ -131,13 +131,13 @@ export function RBACRolesPage() {
             if (editingRole) {
                 await api(`/api/rbac/roles/${editingRole.id}`, {
                     method: 'PATCH',
-                    body: JSON.stringify(data),
+                    body: data,
                 });
                 toast.rbac.roleUpdated();
             } else {
                 await api('/api/rbac/roles', {
                     method: 'POST',
-                    body: JSON.stringify(data),
+                    body: data,
                 });
                 toast.rbac.roleCreated();
             }

@@ -37,6 +37,16 @@ const PACKAGE_ROUTE_MAP: Partial<Record<string, keyof typeof PACKAGES_ENABLED>> 
 };
 
 /**
+ * Returns true when `pathname` should highlight the nav link for `to`.
+ * Uses strict segment-boundary matching to prevent `/admin` from matching `/admin-platform`.
+ */
+export function isNavLinkActive(pathname: string, to: string): boolean {
+    if (pathname === to) return true;
+    if (to === '/') return false;
+    return pathname.startsWith(`${to}/`);
+}
+
+/**
  * Returns the visible nav links for the current viewer.
  * Filters by enabled package, auth state, admin permission, and system-admin flag.
  */

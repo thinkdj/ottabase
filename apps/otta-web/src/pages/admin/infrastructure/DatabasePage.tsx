@@ -48,10 +48,10 @@ interface ModelsMetadataResponse {
 
 export function AdminDbPage() {
     const navigate = useNavigate();
-    const search = useSearch({ from: '/admin/infrastructure/database' });
-    const selectedTable = search.table;
-    const page = search.page;
-    const perPage = search.perPage;
+    const search = useSearch({ strict: false }) as { table?: string; page?: number; perPage?: number };
+    const selectedTable = search.table ?? '';
+    const page = search.page ?? 1;
+    const perPage = search.perPage ?? 25;
 
     const queryClient = useQueryClient();
     const [isDropTableDialogOpen, setIsDropTableDialogOpen] = useState(false);
@@ -112,7 +112,7 @@ export function AdminDbPage() {
             toast.success('Table dropped successfully');
             setIsDropTableDialogOpen(false);
             queryClient.invalidateQueries({ queryKey: ['admin', 'db', 'tables'] });
-            navigate({ to: '/admin/infrastructure/database', search: { table: '', page: 1, perPage: 25 } });
+            navigate({ search: { table: '', page: 1, perPage: 25 } });
         },
         onError: (err) => {
             toast.error(isApiError(err) ? err.message : 'Failed to drop table');
@@ -121,7 +121,6 @@ export function AdminDbPage() {
 
     const handleTableSelect = (tableName: string) => {
         navigate({
-            to: '/admin/infrastructure/database',
             search: { table: tableName, page: 1, perPage: 25 },
         });
     };
