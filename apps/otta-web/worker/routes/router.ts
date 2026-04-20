@@ -314,6 +314,11 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleAuditLogs(context);
     }
 
+    if (route === '/api/rbac/roles') {
+        const { handleRBACRolesList } = await import('./rbac-roles');
+        return handleRBACRolesList(context);
+    }
+
     if (route === '/api/cloudflare/realtime/stats') {
         return handleRealtimeStats(context);
     }

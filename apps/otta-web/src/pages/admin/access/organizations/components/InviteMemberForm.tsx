@@ -148,6 +148,7 @@ export function InviteMemberForm({ editingMember, onSubmit, onCancel }: InviteMe
             image: editingMember.user?.image ?? null,
         };
 
+        setInviteMode('user');
         setSelectedUser(presetUser);
         setFormData({
             userId: editingMember.userId,

@@ -66,6 +66,7 @@ export function OrganizationMembersPage() {
     const [editingMember, setEditingMember] = useState<OrganizationMemberRecord | null>(null);
     const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
     const [revokeInviteId, setRevokeInviteId] = useState<string | null>(null);
+    const [resendInviteId, setResendInviteId] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
 
     const {
@@ -156,12 +157,17 @@ export function OrganizationMembersPage() {
         );
     };
 
-    const handleResendInvite = (invite: OrganizationPendingInviteRecord) => {
+    const handleConfirmResendInvite = () => {
+        if (!resendInviteId) return;
+        const invite = pendingInvites.find((i) => i.id === resendInviteId);
+        if (!invite) return;
+
         resendInviteMutation.mutate(
-            { organizationId: scopedOrganizationId, inviteId: invite.id },
+            { organizationId: scopedOrganizationId, inviteId: resendInviteId },
             {
                 onSuccess: () => {
                     toast.success('Invitation resent', `A new email was sent to ${invite.email}.`);
+                    setResendInviteId(null);
                 },
                 onError: (err) => {
                     toast.error('Failed to resend invite', err instanceof Error ? err.message : 'Unknown error');
@@ -503,7 +509,7 @@ export function OrganizationMembersPage() {
                                                     variant="outline"
                                                     size="sm"
                                                     className="gap-1 dark:border-slate-600"
-                                                    onClick={() => handleResendInvite(invite)}
+                                                    onClick={() => setResendInviteId(invite.id)}
                                                     disabled={resendInviteMutation.isPending}
                                                 >
                                                     <IconMailForward className="h-4 w-4" />
@@ -600,6 +606,17 @@ export function OrganizationMembersPage() {
                 secondaryActionText="Cancel"
                 primaryActionText="Revoke"
                 onConfirm={handleConfirmRevokeInvite}
+            />
+
+            <ConfirmDialog
+                open={!!resendInviteId}
+                onOpenChange={(open) => !open && setResendInviteId(null)}
+                title="Resend invitation?"
+                description={`A new invitation email will be sent to ${pendingInvites.find((i) => i.id === resendInviteId)?.email || 'the recipient'}. The previous link will still work.`}
+                tone="default"
+                secondaryActionText="Cancel"
+                primaryActionText="Resend"
+                onConfirm={handleConfirmResendInvite}
             />
         </div>
     );
