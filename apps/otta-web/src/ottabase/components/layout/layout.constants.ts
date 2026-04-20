@@ -47,6 +47,23 @@ export function isNavLinkActive(pathname: string, to: string): boolean {
 }
 
 /**
+ * For flat lists with hierarchical URLs (demo, breadcrumbs), find the longest matching path.
+ * This prevents `/demo/cloudflare` from lighting up when on `/demo/cloudflare/ai`.
+ */
+export function getLongestNavMatch(pathname: string, items: string[]): string | null {
+    let longest: string | null = null;
+    for (const item of items) {
+        if (pathname === item) return item; // Exact match wins
+        if (item !== '/' && pathname.startsWith(`${item}/`)) {
+            if (!longest || item.length > longest.length) {
+                longest = item;
+            }
+        }
+    }
+    return longest;
+}
+
+/**
  * Returns the visible nav links for the current viewer.
  * Filters by enabled package, auth state, admin permission, and system-admin flag.
  */

@@ -1,4 +1,5 @@
 import { Breadcrumbs } from '@/components/Breadcrumbs';
+import { getLongestNavMatch } from '@/ottabase/components/layout/layout.constants';
 import { Button, Input } from '@ottabase/ui-shadcn';
 import { cn } from '@ottabase/ui-shadcn/lib/utils';
 import { Link, Outlet, useLocation } from '@tanstack/react-router';
@@ -24,6 +25,15 @@ export function DemoLayout() {
         if (!q) return DEMO_ITEMS;
         return DEMO_ITEMS.filter((item) => item.label.toLowerCase().includes(q));
     }, [search]);
+
+    const activeItem = useMemo(
+        () =>
+            getLongestNavMatch(
+                location.pathname,
+                DEMO_ITEMS.map((item) => item.to),
+            ),
+        [location.pathname],
+    );
 
     return (
         <div className="flex min-h-[calc(100vh-3.5rem)]">
@@ -83,7 +93,7 @@ export function DemoLayout() {
                                 size="sm"
                                 className={cn(
                                     'w-full justify-start gap-2',
-                                    location.pathname.startsWith(item.to)
+                                    activeItem === item.to
                                         ? 'bg-accent text-accent-foreground'
                                         : 'text-muted-foreground hover:text-foreground',
                                 )}

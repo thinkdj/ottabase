@@ -10,6 +10,7 @@
  * router.tsx and (2) one entry in admin-nav.
  */
 
+import { getLongestNavMatch } from '@/ottabase/components/layout/layout.constants';
 import { resolveAdminSurface } from '@/ottabase/config/admin-nav';
 import { Input } from '@ottabase/ui-shadcn';
 import { Link, useLocation } from '@tanstack/react-router';
@@ -47,6 +48,15 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
             }))
             .filter((group) => group.items.length > 0);
     }, [surface.groups, search]);
+
+    const activeHrefsByGroup = useMemo(() => {
+        const map: Record<string, string | null> = {};
+        for (const group of surface.groups) {
+            const hrefs = group.items.map((item) => item.href);
+            map[group.id] = getLongestNavMatch(pathname, hrefs);
+        }
+        return map;
+    }, [pathname, surface.groups]);
 
     const OverviewIcon = surface.overviewIcon;
 
@@ -99,9 +109,7 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
                             {group.items
                                 .filter((item) => !item.external)
                                 .map((item) => {
-                                    const isActive =
-                                        pathname === item.href ||
-                                        (item.href !== surface.rootPath && pathname.startsWith(`${item.href}/`));
+                                    const isActive = activeHrefsByGroup[group.id] === item.href;
                                     return (
                                         <Link
                                             key={item.href}

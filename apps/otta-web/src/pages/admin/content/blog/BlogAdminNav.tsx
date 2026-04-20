@@ -4,8 +4,10 @@
  * Persistent navigation across all admin blog pages.
  * Highlights the current section based on the URL.
  */
+import { getLongestNavMatch } from '@/ottabase/components/layout/layout.constants';
 import { Button } from '@ottabase/ui-shadcn';
 import { Link, useLocation } from '@tanstack/react-router';
+import { useMemo } from 'react';
 import { FileText, FolderTree, Layers, Palette, Tag } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -19,15 +21,19 @@ const NAV_ITEMS = [
 export function BlogAdminNav() {
     const { pathname } = useLocation();
 
-    const isActive = (to: string, exact?: boolean) => {
-        if (exact) return pathname === to;
-        return pathname.startsWith(to);
-    };
+    const activeNav = useMemo(
+        () =>
+            getLongestNavMatch(
+                pathname,
+                NAV_ITEMS.map((item) => item.to),
+            ),
+        [pathname],
+    );
 
     return (
         <nav className="flex items-center gap-1 border-b pb-3 mb-6">
-            {NAV_ITEMS.map(({ to, label, icon: Icon, exact }) => (
-                <Button key={to} asChild variant={isActive(to, exact) ? 'default' : 'ghost'} size="sm">
+            {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+                <Button key={to} asChild variant={activeNav === to ? 'default' : 'ghost'} size="sm">
                     <Link to={to}>
                         <Icon className="mr-1.5 h-4 w-4" />
                         {label}
