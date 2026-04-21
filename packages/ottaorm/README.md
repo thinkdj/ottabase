@@ -827,6 +827,61 @@ await OrganizationMember.removeMember('user-456', org.get('id'), {
 **OOB roles (`DEFAULT_ROLES`):** `owner` (`*:*`), `admin` (`users:*`, `org:*`, `brand:*`, `blog:*`, `media:*`,
 `notifications:*`, plus `*:read/create/update`), `member` (`*:read/create/update`), `viewer` (`*:read`).
 
+### Org-scoped custom roles
+
+System roles (owner/admin/member/viewer) are global (`organizationId = NULL`) and read-only. Every other role is a
+**custom role** bound to one organization via `organizationId`. This keeps tenant role definitions fully isolated — no
+org can see or modify another org's custom roles.
+
+```typescript
+import { Role } from '@ottabase/ottaorm/models';
+
+// All roles visible to an org: system roles first, then the org's custom roles, both sorted by name.
+const roles = await Role.findByOrg('org-123');
+
+// Lookup: org-custom shadow system roles within a tenant.
+const role = await Role.findByName('editor', 'org-123');
+// → org-custom 'editor' if it exists, otherwise falls back to a system role named 'editor'.
+
+// Custom-only (for admin UIs that should not list system roles).
+const custom = await Role.findCustomByOrg('org-123');
+```
+
+**Reserved names:** `owner`, `admin`, `member`, `viewer` cannot be used as custom role names. The `POST /api/rbac/roles`
+endpoint enforces this with a 409 `CONFLICT` error.
+
+**Uniqueness:** The schema enforces `UNIQUE(name, organizationId)`. Because SQLite treats `NULL != NULL` in unique
+indexes, system-role uniqueness (all `organizationId = NULL`) is additionally enforced by application-level idempotency
+in `Role.ensureDefaults()`.
+
+**Migration note for existing deployments:** The `roles` table previously had a global `UNIQUE(name)` constraint. New
+installs work fine (the table is created fresh). Existing deployments must recreate the `roles` table. Example custom
+migration:
+
+```typescript
+{
+    name: '0010_roles_add_organization_id',
+    up: async (db) => {
+        await db.execute(`
+            CREATE TABLE roles_new (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                organization_id TEXT,
+                description TEXT,
+                permissions TEXT NOT NULL DEFAULT '[]',
+                is_system INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            );
+        `);
+        await db.execute(`INSERT INTO roles_new SELECT id, name, NULL, description, permissions, is_system, created_at, updated_at FROM roles;`);
+        await db.execute(`DROP TABLE roles;`);
+        await db.execute(`ALTER TABLE roles_new RENAME TO roles;`);
+        await db.execute(`CREATE UNIQUE INDEX roles_name_org_uniq ON roles (name, organization_id);`);
+    },
+}
+```
+
 **Available Plans:** `free`, `pro`, `enterprise` &nbsp;&nbsp; **Available Statuses:** `active`, `suspended`, `cancelled`
 
 **Membership Statuses:** `active`, `invited`, `suspended`

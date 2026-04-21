@@ -3,20 +3,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../lib/admin-guard', () => ({
     requireAdminAccess: vi.fn(),
+    resolveTenantOrganizationId: vi.fn(),
+    canAccessOrganization: vi.fn(),
 }));
 
 vi.mock('../admin-roles', () => ({
     invalidateRBACCache: vi.fn(),
 }));
 
-import { requireAdminAccess } from '../../lib/admin-guard';
+import { canAccessOrganization, requireAdminAccess, resolveTenantOrganizationId } from '../../lib/admin-guard';
 import { invalidateRBACCache } from '../admin-roles';
 import { handleRBACRoleCreate, handleRBACRoleDelete, handleRBACRoleUpdate, handleRBACRolesList } from '../rbac-roles';
 
-function adminContext() {
+function adminContext(orgId = 'org-1') {
     return {
         user: { id: 'admin-1' },
-        organizationId: 'org-1',
+        organizationId: orgId,
         appId: 'web',
         rbac: {} as any,
         session: {},
@@ -27,6 +29,7 @@ function mockRole(overrides: Partial<Record<string, any>> = {}) {
     const attrs: Record<string, any> = {
         id: 'role-1',
         name: 'custom',
+        organizationId: 'org-1',
         description: null,
         permissions: '[]',
         isSystem: false,
@@ -62,15 +65,13 @@ function jsonRequest(url: string, method: string, body?: unknown) {
 describe('handleRBACRolesList', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
+        vi.mocked(resolveTenantOrganizationId).mockReturnValue('org-1');
+        vi.mocked(canAccessOrganization).mockReturnValue(true);
     });
 
-    it('returns roles ordered by name without requiring auth', async () => {
-        const allSpy = vi
-            .spyOn(Role, 'all')
-            .mockResolvedValue([
-                mockRole({ id: 'r1', name: 'admin' }),
-                mockRole({ id: 'r2', name: 'owner', permissions: '["*:*"]' }),
-            ] as any);
+    it('returns 401 when auth fails', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(new Response('unauthorized', { status: 401 }));
 
         const response = await handleRBACRolesList({
             request: new Request('http://localhost/api/rbac/roles'),
@@ -78,17 +79,47 @@ describe('handleRBACRolesList', () => {
             url: new URL('http://localhost/api/rbac/roles'),
         });
 
-        expect(allSpy).toHaveBeenCalledWith({ orderBy: 'name', orderDirection: 'asc' });
-        expect(requireAdminAccess).not.toHaveBeenCalled();
+        expect(response.status).toBe(401);
+    });
+
+    it('returns system and org custom roles when org context is present', async () => {
+        const systemRole = mockRole({ id: 'r-sys', name: 'admin', isSystem: true, organizationId: null });
+        const customRole = mockRole({ id: 'r-custom', name: 'editor', organizationId: 'org-1' });
+        vi.spyOn(Role, 'findByOrg').mockResolvedValue([systemRole, customRole] as any);
+
+        const response = await handleRBACRolesList({
+            request: new Request('http://localhost/api/rbac/roles'),
+            env: {} as any,
+            url: new URL('http://localhost/api/rbac/roles'),
+        });
+
+        expect(Role.findByOrg).toHaveBeenCalledWith('org-1');
         expect(response.status).toBe(200);
         const body = (await response.json()) as any;
         expect(body.data).toHaveLength(2);
         expect(body.data[0].name).toBe('admin');
-        expect(body.data[1].permissions).toEqual(['*:*']);
+        expect(body.data[1].organizationId).toBe('org-1');
+    });
+
+    it('returns only system roles when there is no org context (system scope)', async () => {
+        vi.mocked(resolveTenantOrganizationId).mockReturnValue(null);
+        const systemRole = mockRole({ id: 'r-sys', name: 'owner', isSystem: true, organizationId: null });
+        vi.spyOn(Role, 'where').mockResolvedValue([systemRole] as any);
+
+        const response = await handleRBACRolesList({
+            request: new Request('http://localhost/api/rbac/roles'),
+            env: {} as any,
+            url: new URL('http://localhost/api/rbac/roles'),
+        });
+
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as any;
+        expect(body.data).toHaveLength(1);
+        expect(body.data[0].name).toBe('owner');
     });
 
     it('returns 500 when the database read fails', async () => {
-        vi.spyOn(Role, 'all').mockRejectedValue(new Error('boom'));
+        vi.spyOn(Role, 'findByOrg').mockRejectedValue(new Error('boom'));
 
         const response = await handleRBACRolesList({
             request: new Request('http://localhost/api/rbac/roles'),
@@ -103,6 +134,9 @@ describe('handleRBACRolesList', () => {
 describe('handleRBACRoleCreate', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
+        vi.mocked(resolveTenantOrganizationId).mockReturnValue('org-1');
+        vi.mocked(canAccessOrganization).mockReturnValue(true);
     });
 
     it('forwards the auth guard response when unauthorized', async () => {
@@ -115,13 +149,25 @@ describe('handleRBACRoleCreate', () => {
             url: new URL('http://localhost/api/rbac/roles'),
         });
 
-        expect(requireAdminAccess).toHaveBeenCalledWith(expect.anything(), { scope: 'system' });
+        expect(requireAdminAccess).toHaveBeenCalledWith(expect.anything(), { scope: 'either' });
         expect(response).toBe(forbidden);
     });
 
-    it('returns 400 when name is missing', async () => {
-        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
+    it('returns 400 when there is no org context', async () => {
+        vi.mocked(resolveTenantOrganizationId).mockReturnValue(null);
 
+        const response = await handleRBACRoleCreate({
+            request: jsonRequest('http://localhost/api/rbac/roles', 'POST', { name: 'editor' }),
+            env: {} as any,
+            url: new URL('http://localhost/api/rbac/roles'),
+        });
+
+        expect(response.status).toBe(400);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('ORG_CONTEXT_REQUIRED');
+    });
+
+    it('returns 400 when name is missing', async () => {
         const response = await handleRBACRoleCreate({
             request: jsonRequest('http://localhost/api/rbac/roles', 'POST', { permissions: [] }),
             env: {} as any,
@@ -133,12 +179,29 @@ describe('handleRBACRoleCreate', () => {
         expect(body.code).toBe('VALIDATION_ERROR');
     });
 
-    it('returns 409 when role name already exists', async () => {
-        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
-        vi.spyOn(Role, 'first').mockResolvedValue(mockRole({ name: 'existing' }));
+    it('returns 409 when name shadows a reserved system role name', async () => {
+        for (const reserved of ['owner', 'admin', 'member', 'viewer']) {
+            vi.clearAllMocks();
+            vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
+            vi.mocked(resolveTenantOrganizationId).mockReturnValue('org-1');
+
+            const response = await handleRBACRoleCreate({
+                request: jsonRequest('http://localhost/api/rbac/roles', 'POST', { name: reserved }),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles'),
+            });
+
+            expect(response.status).toBe(409);
+            const body = (await response.json()) as any;
+            expect(body.code).toBe('CONFLICT');
+        }
+    });
+
+    it('returns 409 when a role with the same name already exists in the org', async () => {
+        vi.spyOn(Role, 'first').mockResolvedValue(mockRole({ name: 'editor' }) as any);
 
         const response = await handleRBACRoleCreate({
-            request: jsonRequest('http://localhost/api/rbac/roles', 'POST', { name: 'existing' }),
+            request: jsonRequest('http://localhost/api/rbac/roles', 'POST', { name: 'editor' }),
             env: {} as any,
             url: new URL('http://localhost/api/rbac/roles'),
         });
@@ -148,13 +211,13 @@ describe('handleRBACRoleCreate', () => {
         expect(body.code).toBe('CONFLICT');
     });
 
-    it('creates a non-system role and invalidates the RBAC cache', async () => {
-        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
+    it('creates an org-scoped role and invalidates the RBAC cache', async () => {
         vi.spyOn(Role, 'first').mockResolvedValue(null as any);
         const createSpy = vi.spyOn(Role, 'create').mockResolvedValue(
             mockRole({
                 id: 'r-new',
                 name: 'editor',
+                organizationId: 'org-1',
                 description: 'Editor role',
                 permissions: '["blog:*"]',
             }) as any,
@@ -172,6 +235,7 @@ describe('handleRBACRoleCreate', () => {
 
         expect(createSpy).toHaveBeenCalledWith({
             name: 'editor',
+            organizationId: 'org-1',
             description: 'Editor role',
             permissions: JSON.stringify(['blog:*']),
             isSystem: false,
@@ -180,6 +244,7 @@ describe('handleRBACRoleCreate', () => {
         expect(response.status).toBe(201);
         const body = (await response.json()) as any;
         expect(body.data.name).toBe('editor');
+        expect(body.data.organizationId).toBe('org-1');
         expect(body.data.permissions).toEqual(['blog:*']);
     });
 });
@@ -187,10 +252,12 @@ describe('handleRBACRoleCreate', () => {
 describe('handleRBACRoleUpdate', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
+        vi.mocked(resolveTenantOrganizationId).mockReturnValue('org-1');
+        vi.mocked(canAccessOrganization).mockReturnValue(true);
     });
 
     it('returns 404 when role is not found', async () => {
-        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
         vi.spyOn(Role, 'find').mockResolvedValue(null as any);
 
         const response = await handleRBACRoleUpdate(
@@ -206,7 +273,6 @@ describe('handleRBACRoleUpdate', () => {
     });
 
     it('rejects attempts to modify a system role with 403', async () => {
-        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
         vi.spyOn(Role, 'find').mockResolvedValue(mockRole({ isSystem: true, name: 'owner' }) as any);
 
         const response = await handleRBACRoleUpdate(
@@ -224,9 +290,27 @@ describe('handleRBACRoleUpdate', () => {
         expect(invalidateRBACCache).not.toHaveBeenCalled();
     });
 
-    it('updates description and permissions on a non-system role', async () => {
-        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
-        const role = mockRole({ id: 'r-editor', name: 'editor' });
+    it('returns 403 when the role belongs to a different org', async () => {
+        vi.spyOn(Role, 'find').mockResolvedValue(mockRole({ organizationId: 'org-other' }) as any);
+        vi.mocked(canAccessOrganization).mockReturnValue(false);
+
+        const response = await handleRBACRoleUpdate(
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-other', 'PATCH', {
+                    description: 'hijack',
+                }),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-other'),
+            },
+            'r-other',
+        );
+
+        expect(response.status).toBe(403);
+        expect(invalidateRBACCache).not.toHaveBeenCalled();
+    });
+
+    it('updates description and permissions on an org-scoped custom role', async () => {
+        const role = mockRole({ id: 'r-editor', name: 'editor', organizationId: 'org-1' });
         vi.spyOn(Role, 'find').mockResolvedValue(role);
 
         const response = await handleRBACRoleUpdate(
@@ -252,10 +336,12 @@ describe('handleRBACRoleUpdate', () => {
 describe('handleRBACRoleDelete', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
+        vi.mocked(resolveTenantOrganizationId).mockReturnValue('org-1');
+        vi.mocked(canAccessOrganization).mockReturnValue(true);
     });
 
     it('rejects deletion of a system role with 403', async () => {
-        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
         const role = mockRole({ isSystem: true, name: 'owner' });
         vi.spyOn(Role, 'find').mockResolvedValue(role);
 
@@ -273,9 +359,27 @@ describe('handleRBACRoleDelete', () => {
         expect(invalidateRBACCache).not.toHaveBeenCalled();
     });
 
-    it('deletes a custom role and invalidates the RBAC cache', async () => {
-        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
-        const role = mockRole({ id: 'r-editor', name: 'editor' });
+    it('returns 403 when the role belongs to a different org', async () => {
+        const role = mockRole({ id: 'r-other', organizationId: 'org-other' });
+        vi.spyOn(Role, 'find').mockResolvedValue(role);
+        vi.mocked(canAccessOrganization).mockReturnValue(false);
+
+        const response = await handleRBACRoleDelete(
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-other', 'DELETE'),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-other'),
+            },
+            'r-other',
+        );
+
+        expect(response.status).toBe(403);
+        expect(role.destroy).not.toHaveBeenCalled();
+        expect(invalidateRBACCache).not.toHaveBeenCalled();
+    });
+
+    it('deletes an org-scoped custom role and invalidates the RBAC cache', async () => {
+        const role = mockRole({ id: 'r-editor', name: 'editor', organizationId: 'org-1' });
         vi.spyOn(Role, 'find').mockResolvedValue(role);
 
         const response = await handleRBACRoleDelete(

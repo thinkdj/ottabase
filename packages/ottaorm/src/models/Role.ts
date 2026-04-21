@@ -15,18 +15,19 @@ export { rolesTable, type NewRoleType, type RoleType } from './Role.schema';
  * ```typescript
  * import { Role } from "@ottabase/ottaorm/models";
  *
- * // Find role
- * const adminRole = await Role.first({ name: "admin" });
+ * // Find a system role
+ * const adminRole = await Role.findByName("admin");
  *
- * // Create custom role
+ * // Create a custom role scoped to an organization
  * const role = await Role.create({
  *   name: "moderator",
+ *   organizationId: "org-123",
  *   description: "Can moderate content",
  *   permissions: JSON.stringify(["posts:read", "posts:update", "comments:delete"])
  * });
  *
- * // Get role permissions
- * const permissions = role.getPermissions();
+ * // List all roles visible to an organization (system + org-custom)
+ * const roles = await Role.findByOrg("org-123");
  * ```
  */
 export class Role extends BaseModel {
@@ -62,10 +63,9 @@ export class Role extends BaseModel {
             type: 'string',
             editable: true,
             searchable: true,
-            unique: true,
             uiConfig: {
                 label: 'Name',
-                description: 'Role name (e.g., admin, editor, viewer)',
+                description: 'Role name (e.g., editor, reviewer). Must be unique within the organization.',
             },
             formConfig: {
                 visible: true,
@@ -75,11 +75,24 @@ export class Role extends BaseModel {
                 visible: true,
             },
             validation: {
-                rules: 'required|unique:roles,name',
+                rules: 'required',
                 messages: {
                     required: 'Role name is required',
-                    unique: 'Role name already exists',
                 },
+            },
+        },
+        organizationId: {
+            type: 'string',
+            editable: false,
+            uiConfig: {
+                label: 'Organization',
+                description: 'Null for system roles; set to the owning org for custom roles.',
+            },
+            formConfig: {
+                visible: false,
+            },
+            tableConfig: {
+                visible: false,
             },
         },
         description: {
@@ -102,7 +115,7 @@ export class Role extends BaseModel {
             editable: true,
             uiConfig: {
                 label: 'Permissions',
-                description: 'Array of permission names',
+                description: 'Array of permission strings',
             },
             formConfig: {
                 visible: true,
@@ -117,7 +130,7 @@ export class Role extends BaseModel {
             editable: false,
             uiConfig: {
                 label: 'System Role',
-                description: 'System roles cannot be deleted',
+                description: 'System roles cannot be modified or deleted',
             },
             formConfig: {
                 visible: true,
@@ -185,36 +198,85 @@ export class Role extends BaseModel {
         const { User } = await import('./User');
         const { UserRole } = await import('./UserRole');
 
-        // Get user IDs through junction table
         const userRoles = await UserRole.where({ roleId: this.get('id') });
         const userIds = userRoles.map((ur) => ur.get('userId'));
 
         if (userIds.length === 0) return [];
 
-        // Get users
         return User.whereIn('id', userIds);
     }
 
+    // ============================================================
+    // ORG-SCOPED LOOKUP
+    // ============================================================
+
     /**
-     * Find role by name
+     * Find a role by name, with optional org scoping.
+     *
+     * Lookup order:
+     *  1. If `organizationId` is provided, check for an org-specific role first.
+     *  2. Fall back to a system role (isSystem=true) with that name.
+     *
+     * This means org-custom roles can shadow system role names within their own
+     * tenant while system roles remain the global fallback.
      */
-    static async findByName(name: string) {
-        return this.first({ name });
+    static async findByName(name: string, organizationId?: string | null): Promise<Role | null> {
+        if (organizationId) {
+            const orgRole = (await this.first({ name, organizationId })) as Role | null;
+            if (orgRole) return orgRole;
+        }
+        // System roles are identified by isSystem flag; find one matching the name.
+        const systemRoles = (await this.where({ name, isSystem: true })) as Role[];
+        return systemRoles[0] ?? null;
     }
+
+    /**
+     * Return all roles visible to an organization: system roles (organizationId=null)
+     * plus the org's own custom roles.
+     *
+     * Callers use this to populate the "assign role" dropdown — users can only be
+     * assigned to roles their org owns or to shared system roles.
+     */
+    static async findByOrg(organizationId: string): Promise<Role[]> {
+        const [systemRoles, customRoles] = await Promise.all([
+            this.where({ isSystem: true }) as Promise<Role[]>,
+            this.where({ organizationId, isSystem: false }) as Promise<Role[]>,
+        ]);
+        // Sort: system roles first (by name), then custom (by name)
+        const byName = (a: Role, b: Role) => String(a.get('name')).localeCompare(String(b.get('name')));
+        return [...systemRoles.sort(byName), ...customRoles.sort(byName)];
+    }
+
+    /**
+     * Return only the custom (non-system) roles that belong to a specific org.
+     */
+    static async findCustomByOrg(organizationId: string): Promise<Role[]> {
+        return (await this.where({ organizationId, isSystem: false })) as Role[];
+    }
+
+    // ============================================================
+    // DEFAULT ROLE SEEDING
+    // ============================================================
 
     /**
      * Seed the four OOB roles (owner, admin, member, viewer) from DEFAULT_ROLES.
      *
-     * Idempotent and cheap: short-circuits when all four already exist. If a
-     * role exists but has drifted (permissions or description changed in the
-     * framework), it is reconciled in-place so upgrades are hands-free.
+     * These are system roles (organizationId = NULL) shared across all tenants.
+     * Idempotent and cheap: short-circuits when all four already exist. If a role
+     * exists but has drifted (permissions or description changed in the framework)
+     * it is reconciled in-place so upgrades are hands-free.
      *
-     * Returns a map of {name: Role} for every default role. Safe to call from
-     * hot paths (e.g. signin) — the short-circuit avoids row writes.
+     * Returns a map of {name: Role} for every default role.
      */
     static async ensureDefaults(): Promise<Record<DefaultRoleName, Role>> {
-        const existing = (await Role.whereIn('name', DEFAULT_ROLE_NAMES as unknown as string[])) as Role[];
-        const byName = new Map<string, Role>(existing.map((role) => [role.get('name') as string, role]));
+        // Query by isSystem=true to avoid confusing org-custom roles that happen
+        // to share a name with a system role.
+        const allSystem = (await this.where({ isSystem: true })) as Role[];
+        const byName = new Map<string, Role>(
+            allSystem
+                .filter((r) => DEFAULT_ROLE_NAMES.includes(r.get('name') as DefaultRoleName))
+                .map((r) => [r.get('name') as string, r]),
+        );
 
         for (const name of DEFAULT_ROLE_NAMES) {
             const seed = DEFAULT_ROLES[name];
@@ -224,6 +286,7 @@ export class Role extends BaseModel {
             if (!current) {
                 const created = (await this.create({
                     name: seed.name,
+                    organizationId: null,
                     description: seed.description,
                     permissions: serialized,
                     isSystem: seed.isSystem,
@@ -252,8 +315,7 @@ export class Role extends BaseModel {
 
     /**
      * @deprecated Use {@link Role.ensureDefaults} — retained as a thin alias
-     * only so the bootstrap wizard flow doesn't break during rollout. New code
-     * should call `ensureDefaults()` which returns a typed role map.
+     * only so the bootstrap wizard flow doesn't break during rollout.
      */
     static async ensureDefaultRoles() {
         const map = await this.ensureDefaults();
