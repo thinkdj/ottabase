@@ -70,7 +70,7 @@ catalog:
     prisma: ^5.22.0
     react: ^19.2.4
     react-dom: ^19.2.4
-    react-hook-form: ^7.54.2
+    react-hook-form: ^7.73.1
     rimraf: ^6.1.2
     sonner: ^1.5.1
     storybook: ^10.2.10
