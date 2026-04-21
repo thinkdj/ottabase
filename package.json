@@ -102,7 +102,7 @@
         "cross-env": "catalog:",
         "css-loader": "catalog:",
         "eslint-plugin-storybook": "catalog:",
-        "happy-dom": "^20.4.0",
+        "happy-dom": "^20.9.0",
         "husky": "catalog:",
         "jsdom": "catalog:",
         "lint-staged": "catalog:",
