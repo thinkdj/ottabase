@@ -236,6 +236,30 @@ describe('handleRBACUserRoleAssign', () => {
         expect(response.status).toBe(201);
     });
 
+    it('allows assigning a custom role that belongs to the same organization', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-1'));
+        const assignRole = vi.fn();
+        vi.spyOn(User, 'find').mockResolvedValue({ assignRole } as any);
+        // Custom role scoped to the caller's own org — must be assignable
+        vi.spyOn(Role, 'find').mockResolvedValue(
+            mockRole({ id: 'r-editor', name: 'editor', isSystem: false, organizationId: 'org-1' }),
+        );
+        vi.spyOn(UserRole, 'first').mockResolvedValue(
+            mockUserRole({ userId: 'user-1', roleId: 'r-editor', organizationId: 'org-1' }) as any,
+        );
+
+        const response = await handleRBACUserRoleAssign({
+            request: jsonRequest('http://localhost/api/rbac/user-roles', 'POST', {
+                userId: 'user-1',
+                roleId: 'r-editor',
+            }),
+            env: { OBCF_KV: {} } as any,
+            url: new URL('http://localhost/api/rbac/user-roles'),
+        });
+
+        expect(response.status).toBe(201);
+    });
+
     it('assigns the role, invalidates the RBAC cache, and returns the assignment', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-1'));
         const assignRole = vi.fn();

@@ -412,15 +412,12 @@ export class OrganizationMember extends BaseModel {
      * without reassigning. Called by `removeMember` so a deleted member leaves
      * no RBAC residue — neither their base membership role nor any extra custom
      * roles they were granted via the RBAC user-roles API.
+     *
+     * Uses a single bulk DELETE query to avoid N+1 round-trips.
      */
     private static async clearTenantRBAC(userId: string, organizationId: string): Promise<void> {
         const { UserRole } = await import('./UserRole');
-        // Fetch every user_roles row for this (user, org) pair — this covers
-        // both the four default system roles and any org-scoped custom roles.
-        const assignments = await UserRole.getUserRoles(userId, organizationId);
-        for (const assignment of assignments) {
-            await (assignment as UserRole).destroy();
-        }
+        await UserRole.clearUserRoles(userId, organizationId);
     }
 
     /**
