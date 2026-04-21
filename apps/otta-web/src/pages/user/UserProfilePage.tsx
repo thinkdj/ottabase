@@ -34,7 +34,7 @@ import { clearAuthSessionStorage } from '@ottabase/auth/react';
 import { getTimezonesForSelect, setTimezoneConfig } from '@ottabase/utils/timezone';
 import { IconExternalLink, IconPencil, IconTrash } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import { Calendar, Check, Loader2, Mail, User } from 'lucide-react';
+import { Calendar, Check, Download, Loader2, Mail, Trash2, User } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AvatarEditModal } from './AvatarEditModal';
 
@@ -45,7 +45,7 @@ interface LinkedAccountRecord {
 }
 
 export function UserProfilePage() {
-    const { user, updateUser, refreshSession } = useSession({ skipAutoSync: true });
+    const { user, updateUser, refreshSession, logout } = useSession({ skipAutoSync: true });
     const toast = useRBACToast();
 
     const [formData, setFormData] = useState({
@@ -74,6 +74,11 @@ export function UserProfilePage() {
         newPassword: '',
         confirmPassword: '',
     });
+
+    const [isExporting, setIsExporting] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
 
     const normalize = useCallback((value: string) => value.trim(), []);
 
@@ -364,6 +369,57 @@ export function UserProfilePage() {
             toast.error('Password update failed', message);
         } finally {
             setIsChangingPassword(false);
+        }
+    };
+
+    const handleExportData = async () => {
+        setIsExporting(true);
+        try {
+            const response = await fetch('/api/account/export', {
+                credentials: 'include',
+            });
+            if (!response.ok) {
+                throw new Error('Export failed');
+            }
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `account-export-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success('Export ready', 'Your data has been downloaded.');
+        } catch (err) {
+            toast.error('Export failed', err instanceof Error ? err.message : 'Could not export data');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        setIsDeleting(true);
+        setDeleteError(null);
+        try {
+            const response = await api<{
+                success?: boolean;
+                code?: string;
+                details?: { organizations?: string[] };
+            }>('/api/account', { method: 'DELETE' });
+            if (response.code === 'LAST_ACTIVE_OWNER_GUARD') {
+                const orgs = response.details?.organizations ?? [];
+                setDeleteError(
+                    `You are the sole owner of: ${orgs.join(', ')}. Transfer ownership or delete the organization(s) before deleting your account.`,
+                );
+                setIsDeleting(false);
+                return;
+            }
+            clearAuthSessionStorage();
+            logout?.();
+            window.location.href = '/';
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to delete account';
+            setDeleteError(message);
+            setIsDeleting(false);
         }
     };
 
@@ -763,6 +819,92 @@ export function UserProfilePage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Data & Privacy */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Data &amp; Privacy</CardTitle>
+                    <CardDescription>Download your data or permanently delete your account</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h4 className="font-medium">Export My Data</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Download a copy of your profile, memberships, and activity as JSON.
+                            </p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleExportData} disabled={isExporting}>
+                            {isExporting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Exporting...
+                                </>
+                            ) : (
+                                <>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Export
+                                </>
+                            )}
+                        </Button>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h4 className="font-medium text-destructive">Delete Account</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Permanently delete your account and all associated data. This cannot be undone.
+                            </p>
+                        </div>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                                setDeleteError(null);
+                                setDeleteDialogOpen(true);
+                            }}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Account
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <ConfirmDialog
+                open={deleteDialogOpen}
+                onOpenChange={(open) => {
+                    setDeleteDialogOpen(open);
+                    if (!open) setDeleteError(null);
+                }}
+                title="Delete your account?"
+                description={
+                    <div className="space-y-2">
+                        <p>
+                            This will permanently delete your account, remove you from all organizations, and erase your
+                            data. This action cannot be undone.
+                        </p>
+                        {deleteError && <p className="text-sm text-destructive font-medium">{deleteError}</p>}
+                    </div>
+                }
+                tone="destructive"
+                secondaryActionText="Cancel"
+                primaryActionText={
+                    isDeleting ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Deleting...
+                        </>
+                    ) : (
+                        'Delete Account'
+                    )
+                }
+                onConfirm={handleDeleteAccount}
+                confirmProps={{ disabled: isDeleting }}
+                cancelProps={{ disabled: isDeleting }}
+            />
 
             <Dialog
                 open={isPasswordDialogOpen}

@@ -6,6 +6,7 @@ import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { handleCustomRoutes } from '../../ottabase/config.routes';
 import { getKillSwitchStatus } from '../lib/killswitch';
 import { handleAccountOnboardingOrganizationCreate, handleAccountOrganizationsList } from './account-organizations';
+import { handleAccountDelete, handleAccountExport } from './account-self';
 import { handleAccountSwitchOrg } from './account-switch-org';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import {
@@ -382,6 +383,10 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
 
     if (route === '/api/account/organizations') {
         return handleAccountOrganizationsList(context);
+    }
+
+    if (route === '/api/account/export') {
+        return handleAccountExport(context);
     }
 
     if (route === '/api/admin/organization') {
@@ -800,6 +805,10 @@ async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | 
     const d1TodoMatch = route.match(/^\/api\/cloudflare\/d1\/todos\/(.+)$/);
     if (d1TodoMatch) {
         return handleD1TodoById(context, d1TodoMatch[1], 'DELETE');
+    }
+
+    if (route === '/api/account') {
+        return handleAccountDelete(context);
     }
 
     const adminRoleDeleteMatch = route.match(/^\/api\/admin\/roles\/([^/]+)$/);
