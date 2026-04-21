@@ -54,6 +54,7 @@ export async function handleRBACRolesList(context: ApiRouteContext): Promise<Res
         return jsonResponse({ data: roles.map(serializeRole) });
     } catch (err) {
         return errorResponse('Failed to load roles', 500, {
+            code: 'ROLES_LIST_FAILED',
             details: err instanceof Error ? err.message : 'Unknown error',
         });
     }

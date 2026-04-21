@@ -110,13 +110,14 @@ export class OrganizationMember extends BaseModel {
                     { id: 'owner', name: 'Owner' },
                     { id: 'admin', name: 'Admin' },
                     { id: 'member', name: 'Member' },
+                    { id: 'viewer', name: 'Viewer' },
                 ],
             },
             tableConfig: {
                 visible: true,
             },
             validation: {
-                rules: 'required|in:owner,admin,member',
+                rules: 'required|in:owner,admin,member,viewer',
                 messages: {
                     required: 'Role is required',
                     in: 'Invalid role',
@@ -407,19 +408,18 @@ export class OrganizationMember extends BaseModel {
     }
 
     /**
-     * Internal: remove every default-role assignment for (user, org) without
-     * reassigning. Called by `removeMember` so a deleted member leaves no
-     * RBAC residue.
+     * Internal: remove ALL role assignments (default + custom) for (user, org)
+     * without reassigning. Called by `removeMember` so a deleted member leaves
+     * no RBAC residue — neither their base membership role nor any extra custom
+     * roles they were granted via the RBAC user-roles API.
      */
     private static async clearTenantRBAC(userId: string, organizationId: string): Promise<void> {
-        const { Role } = await import('./Role');
         const { UserRole } = await import('./UserRole');
-        const defaults = await Role.ensureDefaults();
-
-        for (const name of DEFAULT_ROLE_NAMES) {
-            const target = defaults[name];
-            if (!target) continue;
-            await UserRole.removeRole(userId, String(target.get('id')), organizationId);
+        // Fetch every user_roles row for this (user, org) pair — this covers
+        // both the four default system roles and any org-scoped custom roles.
+        const assignments = await UserRole.getUserRoles(userId, organizationId);
+        for (const assignment of assignments) {
+            await (assignment as UserRole).destroy();
         }
     }
 
@@ -430,7 +430,7 @@ export class OrganizationMember extends BaseModel {
         organizationId: string,
         options?: {
             status?: 'active' | 'invited' | 'suspended';
-            role?: 'owner' | 'admin' | 'member';
+            role?: 'owner' | 'admin' | 'member' | 'viewer';
             limit?: number;
             /** Zero-based row offset for pagination */
             offset?: number;
@@ -489,7 +489,7 @@ export class OrganizationMember extends BaseModel {
         organizationId: string,
         options?: {
             status?: 'active' | 'invited' | 'suspended';
-            role?: 'owner' | 'admin' | 'member';
+            role?: 'owner' | 'admin' | 'member' | 'viewer';
         },
     ): Promise<number> {
         const db = this.getDriver().getDb();
@@ -541,7 +541,7 @@ export class OrganizationMember extends BaseModel {
         userId: string,
         options?: {
             status?: 'active' | 'invited' | 'suspended';
-            role?: 'owner' | 'admin' | 'member';
+            role?: 'owner' | 'admin' | 'member' | 'viewer';
         },
     ): Promise<Array<OrganizationMemberType & { organization?: any }>> {
         const db = this.getDriver().getDb();
@@ -603,7 +603,11 @@ export class OrganizationMember extends BaseModel {
     /**
      * Check if user has specific role in organization
      */
-    static async hasRole(userId: string, organizationId: string, role: 'owner' | 'admin' | 'member'): Promise<boolean> {
+    static async hasRole(
+        userId: string,
+        organizationId: string,
+        role: 'owner' | 'admin' | 'member' | 'viewer',
+    ): Promise<boolean> {
         const db = this.getDriver().getDb();
 
         const [member] = await db

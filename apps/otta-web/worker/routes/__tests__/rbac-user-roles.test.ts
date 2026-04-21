@@ -190,11 +190,58 @@ describe('handleRBACUserRoleAssign', () => {
         expect(body.code).toBe('ROLE_NOT_FOUND');
     });
 
+    it('returns 404 when the role belongs to a different organization (cross-tenant guard)', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-1'));
+        vi.spyOn(User, 'find').mockResolvedValue({ assignRole: vi.fn() } as any);
+        // Role exists but belongs to a different org — must not be assignable cross-tenant
+        vi.spyOn(Role, 'find').mockResolvedValue(
+            mockRole({ id: 'r-foreign', name: 'analyst', isSystem: false, organizationId: 'org-other' }),
+        );
+
+        const response = await handleRBACUserRoleAssign({
+            request: jsonRequest('http://localhost/api/rbac/user-roles', 'POST', {
+                userId: 'user-1',
+                roleId: 'r-foreign',
+            }),
+            env: {} as any,
+            url: new URL('http://localhost/api/rbac/user-roles'),
+        });
+
+        expect(response.status).toBe(404);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('ROLE_NOT_FOUND');
+    });
+
+    it('allows assigning a system role across organizations', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-1'));
+        const assignRole = vi.fn();
+        vi.spyOn(User, 'find').mockResolvedValue({ assignRole } as any);
+        // System role (isSystem=true, organizationId=null) must be assignable in any org
+        vi.spyOn(Role, 'find').mockResolvedValue(
+            mockRole({ id: 'r-member', name: 'member', isSystem: true, organizationId: null }),
+        );
+        vi.spyOn(UserRole, 'first').mockResolvedValue(
+            mockUserRole({ userId: 'user-1', roleId: 'r-member', organizationId: 'org-1' }) as any,
+        );
+
+        const response = await handleRBACUserRoleAssign({
+            request: jsonRequest('http://localhost/api/rbac/user-roles', 'POST', {
+                userId: 'user-1',
+                roleId: 'r-member',
+            }),
+            env: { OBCF_KV: {} } as any,
+            url: new URL('http://localhost/api/rbac/user-roles'),
+        });
+
+        expect(response.status).toBe(201);
+    });
+
     it('assigns the role, invalidates the RBAC cache, and returns the assignment', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-1'));
         const assignRole = vi.fn();
         vi.spyOn(User, 'find').mockResolvedValue({ assignRole } as any);
-        vi.spyOn(Role, 'find').mockResolvedValue(mockRole());
+        // Role must belong to the caller's org (organizationId matches) to pass the cross-tenant guard.
+        vi.spyOn(Role, 'find').mockResolvedValue(mockRole({ organizationId: 'org-1' }));
         vi.spyOn(UserRole, 'first').mockResolvedValue(
             mockUserRole({ userId: 'user-1', roleId: 'role-editor', organizationId: 'org-1' }) as any,
         );

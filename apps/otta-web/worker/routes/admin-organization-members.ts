@@ -9,17 +9,17 @@ import type { ApiRouteContext } from './router';
 
 interface InviteMemberRequestBody {
     userId?: string;
-    role?: 'owner' | 'admin' | 'member';
+    role?: 'owner' | 'admin' | 'member' | 'viewer';
     status?: 'active' | 'invited' | 'suspended';
 }
 
 interface UpdateMemberRequestBody {
-    role?: 'owner' | 'admin' | 'member';
+    role?: 'owner' | 'admin' | 'member' | 'viewer';
     status?: 'active' | 'invited' | 'suspended';
 }
 
-function isValidRole(role: unknown): role is 'owner' | 'admin' | 'member' {
-    return role === 'owner' || role === 'admin' || role === 'member';
+function isValidRole(role: unknown): role is 'owner' | 'admin' | 'member' | 'viewer' {
+    return role === 'owner' || role === 'admin' || role === 'member' || role === 'viewer';
 }
 
 function isValidStatus(status: unknown): status is 'active' | 'invited' | 'suspended' {
@@ -154,7 +154,7 @@ export async function handleAdminOrganizationInviteMember(
             metadata: { role, status },
         });
 
-        return jsonResponse({ data: member.toJson() }, 201);
+        return jsonResponse({ data: member }, 201);
     } catch (err) {
         const mapped = membershipErrorToResponse(err);
         if (mapped) return mapped;

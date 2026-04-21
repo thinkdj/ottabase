@@ -128,6 +128,8 @@ describe('handleRBACRolesList', () => {
         });
 
         expect(response.status).toBe(500);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('ROLES_LIST_FAILED');
     });
 });
 

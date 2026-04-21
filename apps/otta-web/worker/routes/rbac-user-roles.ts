@@ -107,6 +107,13 @@ export async function handleRBACUserRoleAssign(context: ApiRouteContext): Promis
     if (!user) return errorResponse('User not found', 404, { code: 'USER_NOT_FOUND' });
     if (!role) return errorResponse('Role not found', 404, { code: 'ROLE_NOT_FOUND' });
 
+    // Security: the role must be a system role or belong to the target org.
+    // Returning 404 instead of 403 to avoid disclosing the existence of
+    // custom roles from other organizations.
+    if (!role.get('isSystem') && role.get('organizationId') !== organizationId) {
+        return errorResponse('Role not found', 404, { code: 'ROLE_NOT_FOUND' });
+    }
+
     const cache = getRBACCache();
     await (user as User).assignRole(roleId, auth.user.id, organizationId, { cache });
     await invalidateRBACCache(context.env);
