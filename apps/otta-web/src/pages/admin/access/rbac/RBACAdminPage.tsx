@@ -13,10 +13,10 @@ export function RBACAdminPage() {
         },
         {
             title: 'User Roles Assignment',
-            description: 'Assign roles to users and manage access control',
+            description: 'Assign custom roles to members of the current organization',
             href: '/admin/access/rbac/user-roles',
             icon: Users,
-            disabled: true, // Can be implemented later
+            disabled: false,
         },
         {
             title: 'Permissions Matrix',

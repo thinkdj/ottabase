@@ -448,6 +448,11 @@ const adminRBACPermissionsRoute = makeAdminRoute(
     () => import('@/pages/admin/access/rbac/PermissionsMatrixPage'),
     'PermissionsMatrixPage',
 );
+const adminRBACUserRolesRoute = makeAdminRoute(
+    '/admin/access/rbac/user-roles',
+    () => import('@/pages/admin/access/rbac/UserRolesPage'),
+    'UserRolesPage',
+);
 
 // ─── /admin/security ─────────────────────────────────────────────────────────
 
@@ -601,6 +606,7 @@ const coreRoutes = [
     adminRBACRoute,
     adminRBACRolesRoute,
     adminRBACPermissionsRoute,
+    adminRBACUserRolesRoute,
     adminAuditRoute,
     adminNotificationsRoute,
     // Admin Platform (superadmin)

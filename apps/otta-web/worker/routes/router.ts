@@ -319,6 +319,11 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleRBACRolesList(context);
     }
 
+    if (route === '/api/rbac/user-roles') {
+        const { handleRBACUserRolesList } = await import('./rbac-user-roles');
+        return handleRBACUserRolesList(context);
+    }
+
     if (route === '/api/cloudflare/realtime/stats') {
         return handleRealtimeStats(context);
     }
@@ -655,6 +660,11 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleRBACRoleCreate(context);
     }
 
+    if (route === '/api/rbac/user-roles') {
+        const { handleRBACUserRoleAssign } = await import('./rbac-user-roles');
+        return handleRBACUserRoleAssign(context);
+    }
+
     if (route === '/api/onboarding/organizations') {
         return handleAccountOnboardingOrganizationCreate(context);
     }
@@ -801,6 +811,12 @@ async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | 
     if (rbacRoleDeleteMatch) {
         const { handleRBACRoleDelete } = await import('./rbac-roles');
         return handleRBACRoleDelete(context, rbacRoleDeleteMatch[1]);
+    }
+
+    const rbacUserRoleDeleteMatch = route.match(/^\/api\/rbac\/user-roles\/([^/]+)\/([^/]+)$/);
+    if (rbacUserRoleDeleteMatch) {
+        const { handleRBACUserRoleRemove } = await import('./rbac-user-roles');
+        return handleRBACUserRoleRemove(context, rbacUserRoleDeleteMatch[1], rbacUserRoleDeleteMatch[2]);
     }
 
     const platformOrganizationEntityDeleteMatch = route.match(/^\/api\/admin-platform\/organizations\/([^/]+)$/);
