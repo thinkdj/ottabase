@@ -6,6 +6,7 @@
 // roles (isSystem=true, organizationId=null) are read-only from here.
 //
 // GET  /api/rbac/roles           — system roles + caller's org custom roles
+// GET  /api/rbac/roles/:id       — fetch a single role by ID
 // POST /api/rbac/roles           — create org-custom role (requires org admin)
 // PATCH /api/rbac/roles/:id      — update org-custom role (requires org admin + ownership)
 // DELETE /api/rbac/roles/:id     — delete org-custom role (requires org admin + ownership)
@@ -60,6 +61,42 @@ export async function handleRBACRolesList(context: ApiRouteContext): Promise<Res
     }
 }
 
+// A valid permission string is colon-separated, non-empty segments, e.g. "blog:read" or "org:*".
+// Wildcards ("*") are allowed as individual segments.
+const PERMISSION_RE = /^[a-z0-9_*-]+(:[a-z0-9_*-]+)+$/i;
+
+function validatePermissions(permissions: unknown[]): string | null {
+    const invalid = permissions.filter((p) => typeof p !== 'string' || !PERMISSION_RE.test(p as string));
+    if (invalid.length > 0) {
+        return `Invalid permission format: ${invalid.map((p) => JSON.stringify(p)).join(', ')}. Expected "resource:action" pattern.`;
+    }
+    return null;
+}
+
+/**
+ * GET /api/rbac/roles/:id
+ *
+ * Returns a single role by ID. The caller must have access to the org the role
+ * belongs to; system roles (organizationId=null) are accessible to any
+ * authenticated admin.
+ */
+export async function handleRBACRoleGet(context: ApiRouteContext, roleId: string): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'either', allowNullTenant: true });
+    if (auth instanceof Response) return auth;
+
+    const role = (await Role.find(roleId)) as Role | null;
+    if (!role) return errorResponse('Role not found', 404, { code: 'NOT_FOUND' });
+
+    const roleOrgId = role.get('organizationId') as string | null;
+    // System roles are accessible to any authenticated admin; custom roles are
+    // only visible to admins within the owning organization.
+    if (roleOrgId !== null && !canAccessOrganization(auth, roleOrgId)) {
+        return errorResponse('Role not found', 404, { code: 'NOT_FOUND' });
+    }
+
+    return jsonResponse({ data: serializeRole(role) });
+}
+
 /**
  * POST /api/rbac/roles
  *
@@ -94,11 +131,17 @@ export async function handleRBACRoleCreate(context: ApiRouteContext): Promise<Re
         return errorResponse('A role with this name already exists in your organization', 409, { code: 'CONFLICT' });
     }
 
+    const permissions: unknown[] = Array.isArray(body.permissions) ? body.permissions : [];
+    const permissionError = validatePermissions(permissions);
+    if (permissionError) {
+        return errorResponse(permissionError, 400, { code: 'VALIDATION_ERROR' });
+    }
+
     const role = (await Role.create({
         name,
         organizationId,
         description: body.description || null,
-        permissions: Array.isArray(body.permissions) ? JSON.stringify(body.permissions) : '[]',
+        permissions: JSON.stringify(permissions),
         isSystem: false,
     })) as Role;
 
@@ -127,8 +170,34 @@ export async function handleRBACRoleUpdate(context: ApiRouteContext, roleId: str
     }
 
     const body = (await context.request.json()) as any;
+
+    // Allow renaming a custom role, subject to the same reservations as create.
+    if (typeof body.name === 'string') {
+        const newName = body.name.toLowerCase().trim();
+        if (newName) {
+            const SYSTEM_NAMES = new Set(['owner', 'admin', 'member', 'viewer']);
+            if (SYSTEM_NAMES.has(newName)) {
+                return errorResponse(`"${newName}" is a reserved system role name`, 409, { code: 'CONFLICT' });
+            }
+            // Prevent duplicate names within the same org (excluding the role being renamed).
+            const duplicate = await Role.first({ name: newName, organizationId: roleOrgId });
+            if (duplicate && (duplicate as Role).get('id') !== roleId) {
+                return errorResponse('A role with this name already exists in your organization', 409, {
+                    code: 'CONFLICT',
+                });
+            }
+            role.set('name', newName);
+        }
+    }
+
     if (body.description !== undefined) role.set('description', body.description);
-    if (Array.isArray(body.permissions)) role.set('permissions', JSON.stringify(body.permissions));
+    if (Array.isArray(body.permissions)) {
+        const permissionError = validatePermissions(body.permissions);
+        if (permissionError) {
+            return errorResponse(permissionError, 400, { code: 'VALIDATION_ERROR' });
+        }
+        role.set('permissions', JSON.stringify(body.permissions));
+    }
     await role.save();
 
     await invalidateRBACCache(context.env);

@@ -32,6 +32,11 @@ function membershipErrorToResponse(err: unknown): Response | null {
             code: 'LAST_ACTIVE_OWNER_GUARD',
         });
     }
+    if (err instanceof MembershipError && err.code === 'MEMBER_ALREADY_EXISTS') {
+        return errorResponse('User is already a member of this organization', 409, {
+            code: 'MEMBER_ALREADY_EXISTS',
+        });
+    }
     return null;
 }
 

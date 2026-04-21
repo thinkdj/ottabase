@@ -320,6 +320,12 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleRBACRolesList(context);
     }
 
+    const rbacRoleGetMatch = route.match(/^\/api\/rbac\/roles\/([^/]+)$/);
+    if (rbacRoleGetMatch) {
+        const { handleRBACRoleGet } = await import('./rbac-roles');
+        return handleRBACRoleGet(context, rbacRoleGetMatch[1]);
+    }
+
     if (route === '/api/rbac/user-roles') {
         const { handleRBACUserRolesList } = await import('./rbac-user-roles');
         return handleRBACUserRolesList(context);
