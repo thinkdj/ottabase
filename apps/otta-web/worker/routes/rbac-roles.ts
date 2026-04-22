@@ -53,8 +53,10 @@ export async function handleRBACRolesList(context: ApiRouteContext): Promise<Res
 
     try {
         const url = new URL(context.request.url);
-        const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
-        const perPage = Math.min(100, Math.max(1, parseInt(url.searchParams.get('perPage') || '50', 10)));
+        const parsedPage = parseInt(url.searchParams.get('page') || '1', 10);
+        const parsedPerPage = parseInt(url.searchParams.get('perPage') || '50', 10);
+        const page = Number.isFinite(parsedPage) ? Math.max(1, parsedPage) : 1;
+        const perPage = Number.isFinite(parsedPerPage) ? Math.min(100, Math.max(1, parsedPerPage)) : 50;
         const search = url.searchParams.get('search')?.toLowerCase().trim() || '';
 
         const organizationId = resolveTenantOrganizationId(auth);
@@ -228,6 +230,18 @@ export async function handleRBACRoleUpdate(context: ApiRouteContext, roleId: str
     if (typeof body.name === 'string') {
         const newName = body.name.toLowerCase().trim();
         if (newName) {
+            if (newName.length > 50) {
+                return errorResponse('Role name must not exceed 50 characters', 400, { code: 'VALIDATION_ERROR' });
+            }
+            if (!/^[a-z0-9_-]+$/.test(newName)) {
+                return errorResponse(
+                    'Role name can only contain lowercase letters, numbers, hyphens, and underscores',
+                    400,
+                    {
+                        code: 'VALIDATION_ERROR',
+                    },
+                );
+            }
             if (SYSTEM_ROLE_NAMES_SET.has(newName)) {
                 return errorResponse(`"${newName}" is a reserved system role name`, 409, { code: 'CONFLICT' });
             }

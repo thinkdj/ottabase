@@ -259,7 +259,7 @@ describe('handleAdminOrganizationInviteMember', () => {
         expect(response.status).toBe(200);
         expect(removeSpy).toHaveBeenCalledWith('user-2', 'org-1', expect.any(Object));
         expect(await response.json()).toEqual({
-            data: { userId: 'user-2', organizationId: 'org-1', removed: true, notificationSent: false },
+            data: { userId: 'user-2', organizationId: 'org-1', removed: true, notificationRequested: false },
         });
     });
 

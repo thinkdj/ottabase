@@ -161,15 +161,16 @@ export async function handleAdminOrganizationInviteMember(
         });
 
         // Send welcome email to new member (best effort — failures do not block the response)
-        if (user.email) {
+        const userEmail = (user as User).get('email') as string | null;
+        if (userEmail) {
             const organization = await Organization.find(organizationId);
             const dashboardUrl = new URL('/dashboard', context.request.url).toString();
 
             await sendMemberAddedEmail(context.env, {
-                to: user.email,
-                organizationName: organization?.name || 'the organization',
+                to: userEmail,
+                organizationName: (organization?.get('name') as string | null) || 'the organization',
                 inviterName: auth.user?.name || undefined,
-                memberName: user.name || user.email,
+                memberName: ((user as User).get('name') as string | null) || userEmail,
                 role,
                 dashboardUrl,
             });
@@ -328,7 +329,7 @@ export async function handleAdminOrganizationRemoveMember(
                 removedUser: existingMember.user?.email || userId,
                 removedUserRole: existingMember.role,
                 offboardingReason: offboardingData.reason,
-                notificationSent: offboardingData.notifyMember,
+                notificationRequested: offboardingData.notifyMember,
             },
         });
 
@@ -338,7 +339,7 @@ export async function handleAdminOrganizationRemoveMember(
 
             await sendMemberRemovedEmail(context.env, {
                 to: existingMember.user.email,
-                organizationName: organization?.name || 'the organization',
+                organizationName: (organization?.get('name') as string | null) || 'the organization',
                 memberName: existingMember.user.name || existingMember.user.email,
                 role: existingMember.role,
                 reason: offboardingData.reason,
@@ -350,7 +351,7 @@ export async function handleAdminOrganizationRemoveMember(
                 userId,
                 organizationId,
                 removed: true,
-                notificationSent: offboardingData.notifyMember,
+                notificationRequested: offboardingData.notifyMember,
             },
         });
     } catch (err) {

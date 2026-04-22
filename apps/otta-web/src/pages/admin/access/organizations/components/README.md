@@ -75,7 +75,7 @@ metadata: {
     removedUser: "user@example.com",
     removedUserRole: "member",
     offboardingReason: "left_company",
-    notificationSent: true,
+    notificationRequested: true,
 }
 ```
 

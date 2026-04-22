@@ -14,11 +14,16 @@ vi.mock('../admin-roles', () => ({
     invalidateRBACCache: vi.fn(),
 }));
 
+vi.mock('../../lib/rate-limiting', () => ({
+    enforceRateLimit: vi.fn(async () => null),
+}));
+
 vi.mock('../../lib/org-audit', () => ({
     auditOrganizationAction: vi.fn(),
 }));
 
 import { requireAdminAccess } from '../../lib/admin-guard';
+import { enforceRateLimit } from '../../lib/rate-limiting';
 import { invalidateRBACCache } from '../admin-roles';
 import { auditOrganizationAction } from '../../lib/org-audit';
 import { handleRBACUserRoleAssign, handleRBACUserRoleRemove, handleRBACUserRolesList } from '../rbac-user-roles';
@@ -306,7 +311,7 @@ describe('handleRBACUserRoleAssign', () => {
         expect(response.status).toBe(201);
     });
 
-    it('returns 409 when assigning a custom role to a non-member user', async () => {
+    it('returns 403 when assigning a custom role to a non-member user', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-1'));
         const assignRole = vi.fn();
         vi.spyOn(User, 'find').mockResolvedValue({ assignRole } as any);
@@ -325,9 +330,9 @@ describe('handleRBACUserRoleAssign', () => {
         });
 
         expect(assignRole).not.toHaveBeenCalled();
-        expect(response.status).toBe(409);
+        expect(response.status).toBe(403);
         const body = (await response.json()) as any;
-        expect(body.code).toBe('MEMBER_ACTIVE_REQUIRED');
+        expect(body.code).toBe('FORBIDDEN');
     });
 
     it('assigns the role, invalidates the RBAC cache, and returns the assignment', async () => {
@@ -367,6 +372,40 @@ describe('handleRBACUserRoleAssign', () => {
         expect(response.status).toBe(201);
         const body = (await response.json()) as any;
         expect(body.data.roleName).toBe('editor');
+    });
+
+    it('uses the target organizationId in the assign rate-limit key', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('system'));
+        const assignRole = vi.fn();
+        vi.spyOn(User, 'find').mockResolvedValue({ assignRole } as any);
+        vi.spyOn(Role, 'find').mockResolvedValue(
+            mockRole({ id: 'role-editor', name: 'editor', isSystem: false, organizationId: 'org-1' }),
+        );
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ userId: 'user-1', organizationId: 'org-1' } as any);
+        vi.spyOn(UserRole, 'first').mockResolvedValue(
+            mockUserRole({ userId: 'user-1', roleId: 'role-editor', organizationId: 'org-1' }) as any,
+        );
+
+        const response = await handleRBACUserRoleAssign({
+            request: jsonRequest('http://localhost/api/rbac/user-roles', 'POST', {
+                userId: 'user-1',
+                roleId: 'role-editor',
+                organizationId: 'org-1',
+            }),
+            env: { OBCF_KV: {} } as any,
+            url: new URL('http://localhost/api/rbac/user-roles'),
+        });
+
+        expect(response.status).toBe(201);
+        expect(enforceRateLimit).toHaveBeenCalledWith(
+            expect.any(Request),
+            expect.anything(),
+            'rbac:role-assign:org-1',
+            {
+                limit: 20,
+                period: 60,
+            },
+        );
     });
 });
 
@@ -452,5 +491,43 @@ describe('handleRBACUserRoleRemove', () => {
         expect(response.status).toBe(409);
         const body = (await response.json()) as any;
         expect(body.code).toBe('SYSTEM_ROLE_ASSIGNMENT_FORBIDDEN');
+    });
+
+    it('uses the target organizationId in the remove rate-limit key', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('system'));
+        const removeRole = vi.fn();
+        vi.spyOn(User, 'find').mockResolvedValue({ removeRole } as any);
+        vi.spyOn(Role, 'find').mockResolvedValue(
+            mockRole({ id: 'role-editor', name: 'editor', isSystem: false, organizationId: 'org-target' }),
+        );
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({
+            userId: 'user-1',
+            organizationId: 'org-target',
+            status: 'active',
+        } as any);
+
+        const response = await handleRBACUserRoleRemove(
+            {
+                request: jsonRequest(
+                    'http://localhost/api/rbac/user-roles/user-1/role-editor?organizationId=org-target',
+                    'DELETE',
+                ),
+                env: { OBCF_KV: {} } as any,
+                url: new URL('http://localhost/api/rbac/user-roles/user-1/role-editor?organizationId=org-target'),
+            },
+            'user-1',
+            'role-editor',
+        );
+
+        expect(response.status).toBe(200);
+        expect(enforceRateLimit).toHaveBeenCalledWith(
+            expect.any(Request),
+            expect.anything(),
+            'rbac:role-remove:org-target',
+            {
+                limit: 20,
+                period: 60,
+            },
+        );
     });
 });

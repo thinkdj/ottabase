@@ -124,14 +124,6 @@ export async function handleRBACUserRoleAssign(context: ApiRouteContext): Promis
     const auth = await requireAdminAccess(context, { scope: 'either' });
     if (auth instanceof Response) return auth;
 
-    // Rate limit: 20 role assignments per minute per organization
-    const rateLimitKey = `rbac:role-assign:${auth.organizationId}`;
-    const rateLimit = await enforceRateLimit(context.request, context.env, rateLimitKey, {
-        limit: 20,
-        period: 60,
-    });
-    if (rateLimit) return rateLimit;
-
     let body: { userId?: string; roleId?: string; organizationId?: string };
     try {
         body = (await context.request.json()) as typeof body;
@@ -158,6 +150,14 @@ export async function handleRBACUserRoleAssign(context: ApiRouteContext): Promis
     if (!canAccessOrganization(auth, organizationId)) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
+
+    // Rate limit: 20 role assignments per minute per target organization
+    const rateLimitKey = `rbac:role-assign:${organizationId}`;
+    const rateLimit = await enforceRateLimit(context.request, context.env, rateLimitKey, {
+        limit: 20,
+        period: 60,
+    });
+    if (rateLimit) return rateLimit;
 
     const [user, role] = await Promise.all([User.find(userId), Role.find(roleId)]);
     if (!user) return errorResponse('User not found', 404, { code: 'USER_NOT_FOUND' });
@@ -219,14 +219,6 @@ export async function handleRBACUserRoleRemove(
     const auth = await requireAdminAccess(context, { scope: 'either' });
     if (auth instanceof Response) return auth;
 
-    // Rate limit: 20 role removals per minute per organization
-    const rateLimitKey = `rbac:role-remove:${auth.organizationId}`;
-    const rateLimit = await enforceRateLimit(context.request, context.env, rateLimitKey, {
-        limit: 20,
-        period: 60,
-    });
-    if (rateLimit) return rateLimit;
-
     const url = new URL(context.request.url);
     const organizationId = resolveOrganizationId(url, auth.organizationId);
     if (!organizationId) {
@@ -235,6 +227,14 @@ export async function handleRBACUserRoleRemove(
     if (!canAccessOrganization(auth, organizationId)) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
+
+    // Rate limit: 20 role removals per minute per target organization
+    const rateLimitKey = `rbac:role-remove:${organizationId}`;
+    const rateLimit = await enforceRateLimit(context.request, context.env, rateLimitKey, {
+        limit: 20,
+        period: 60,
+    });
+    if (rateLimit) return rateLimit;
 
     const [user, role] = (await Promise.all([User.find(userId), Role.find(roleId)])) as [User | null, Role | null];
     if (!user) return errorResponse('User not found', 404, { code: 'USER_NOT_FOUND' });

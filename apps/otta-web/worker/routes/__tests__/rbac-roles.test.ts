@@ -137,6 +137,22 @@ describe('handleRBACRolesList', () => {
         const body = (await response.json()) as any;
         expect(body.code).toBe('ROLES_LIST_FAILED');
     });
+
+    it('falls back to safe pagination defaults when page/perPage are non-numeric', async () => {
+        const systemRole = mockRole({ id: 'r-sys', name: 'admin', isSystem: true, organizationId: null });
+        vi.spyOn(Role, 'findByOrg').mockResolvedValue([systemRole] as any);
+
+        const response = await handleRBACRolesList({
+            request: new Request('http://localhost/api/rbac/roles?page=abc&perPage=xyz'),
+            env: {} as any,
+            url: new URL('http://localhost/api/rbac/roles?page=abc&perPage=xyz'),
+        });
+
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as any;
+        expect(body.pagination.page).toBe(1);
+        expect(body.pagination.perPage).toBe(50);
+    });
 });
 
 describe('handleRBACRoleCreate', () => {
@@ -575,6 +591,26 @@ describe('handleRBACRoleUpdate — rename support (M1)', () => {
             {
                 request: jsonRequest('http://localhost/api/rbac/roles/r-editor', 'PATCH', {
                     permissions: ['invalid-no-colon'],
+                }),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-editor'),
+            },
+            'r-editor',
+        );
+
+        expect(response.status).toBe(400);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('returns 400 when renaming role to an invalid format', async () => {
+        const role = mockRole({ id: 'r-editor', name: 'editor', organizationId: 'org-1' });
+        vi.spyOn(Role, 'find').mockResolvedValue(role);
+
+        const response = await handleRBACRoleUpdate(
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-editor', 'PATCH', {
+                    name: 'editor role',
                 }),
                 env: {} as any,
                 url: new URL('http://localhost/api/rbac/roles/r-editor'),
