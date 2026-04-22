@@ -1,6 +1,5 @@
-/**
- * Helper functions for sending member-related emails
- */
+// Thin wrappers around the shared mailer for member lifecycle emails.
+// Mirrors the pattern used by admin-organization-invites.ts.
 
 import { sendTemplatedEmail } from '@ottabase/email';
 import { buildMemberAddedEmail, type MemberAddedEmailOpts } from '../../src/email/member-added';
@@ -9,54 +8,36 @@ import { registerAppEmailTemplates } from '../../src/email/templates';
 import { resolveMailer } from './auth-utils';
 import type { CloudflareEnv } from '../../cloudflare-env';
 
-export async function sendMemberAddedEmail(
+type SendResult = { ok: boolean; error?: string };
+
+async function send(
     env: CloudflareEnv,
-    request: Request,
-    opts: MemberAddedEmailOpts & { to: string },
-): Promise<{ ok: boolean; error?: string }> {
+    to: string,
+    payload: ReturnType<typeof buildMemberAddedEmail>,
+): Promise<SendResult> {
     registerAppEmailTemplates();
     const { mailer, from } = await resolveMailer(env);
-    
     if (!mailer || !from) {
         return { ok: false, error: 'No email provider configured' };
     }
-
-    const payload = buildMemberAddedEmail(opts);
-
     try {
-        await sendTemplatedEmail(mailer, {
-            from,
-            to: opts.to,
-            ...payload,
-        });
+        await sendTemplatedEmail(mailer, { from, to, ...payload });
         return { ok: true };
     } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : 'send failed' };
     }
 }
 
-export async function sendMemberRemovedEmail(
+export function sendMemberAddedEmail(
     env: CloudflareEnv,
-    request: Request,
+    opts: MemberAddedEmailOpts & { to: string },
+): Promise<SendResult> {
+    return send(env, opts.to, buildMemberAddedEmail(opts));
+}
+
+export function sendMemberRemovedEmail(
+    env: CloudflareEnv,
     opts: MemberRemovedEmailOpts & { to: string },
-): Promise<{ ok: boolean; error?: string }> {
-    registerAppEmailTemplates();
-    const { mailer, from } = await resolveMailer(env);
-    
-    if (!mailer || !from) {
-        return { ok: false, error: 'No email provider configured' };
-    }
-
-    const payload = buildMemberRemovedEmail(opts);
-
-    try {
-        await sendTemplatedEmail(mailer, {
-            from,
-            to: opts.to,
-            ...payload,
-        });
-        return { ok: true };
-    } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : 'send failed' };
-    }
+): Promise<SendResult> {
+    return send(env, opts.to, buildMemberRemovedEmail(opts));
 }

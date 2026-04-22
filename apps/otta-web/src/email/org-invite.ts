@@ -5,9 +5,7 @@
 // makes it reviewable without touching the handler.
 // ============================================================
 
-function escapeHtml(value: string): string {
-    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+import { escapeHtml } from './_utils';
 
 export interface OrgInviteEmailOpts {
     organizationName: string;
@@ -31,7 +29,7 @@ export function buildOrgInviteEmail(opts: OrgInviteEmailOpts): OrgInviteEmailPay
     const body =
         `<p><strong>${escapeHtml(opts.inviterName)}</strong> invited you to join ` +
         `<strong>${escapeHtml(opts.organizationName)}</strong> as <strong>${escapeHtml(opts.role)}</strong>.</p>` +
-        `<p><a href="${opts.acceptUrl}">Review invitation</a></p>` +
+        `<p><a href="${escapeHtml(opts.acceptUrl)}">Review invitation</a></p>` +
         `<p style="color:#64748b;font-size:13px">This link expires on ${escapeHtml(expiresAt)}.</p>`;
 
     return {

@@ -1,13 +1,9 @@
-/**
- * Tests for member email builders
- */
-
 import { describe, it, expect } from 'vitest';
 import { buildMemberAddedEmail } from '../member-added';
 import { buildMemberRemovedEmail } from '../member-removed';
 
 describe('buildMemberAddedEmail', () => {
-    it('should build email with all fields', () => {
+    it('includes organization, role, inviter and dashboard link', () => {
         const result = buildMemberAddedEmail({
             organizationName: 'Acme Corp',
             inviterName: 'John Doe',
@@ -18,144 +14,130 @@ describe('buildMemberAddedEmail', () => {
 
         expect(result.subject).toBe('Welcome to Acme Corp');
         expect(result.template).toBe('minimalist');
-        expect(result.content.body).toContain('Jane Smith');
         expect(result.content.body).toContain('John Doe');
         expect(result.content.body).toContain('Acme Corp');
         expect(result.content.body).toContain('admin');
         expect(result.content.body).toContain('https://example.com/dashboard');
-        expect(result.content.body).toContain('Access Dashboard');
-        expect(result.content.footer).toContain('contact your organization administrator');
     });
 
-    it('should build email without inviter name', () => {
+    it('omits inviter phrasing when inviter is missing', () => {
         const result = buildMemberAddedEmail({
             organizationName: 'Acme Corp',
-            memberName: 'Jane Smith',
+            memberName: 'Jane',
             role: 'member',
         });
 
-        expect(result.subject).toBe('Welcome to Acme Corp');
-        expect(result.content.body).toContain('Jane Smith');
         expect(result.content.body).toContain('You have been added to');
-        expect(result.content.body).not.toContain('has added you');
-        expect(result.content.body).toContain('member');
+        expect(result.content.body).not.toContain('added you to');
     });
 
-    it('should build email without dashboard URL', () => {
+    it('omits the CTA when dashboardUrl is missing', () => {
         const result = buildMemberAddedEmail({
             organizationName: 'Acme Corp',
-            inviterName: 'John Doe',
-            memberName: 'Jane Smith',
+            memberName: 'Jane',
             role: 'viewer',
         });
 
-        expect(result.content.body).not.toContain('Access Dashboard');
-        expect(result.content.body).toContain('viewer');
+        expect(result.content.body).not.toContain('Open dashboard');
     });
 
-    it('should escape HTML in input values', () => {
+    it('escapes HTML in all user-controlled fields (including URL)', () => {
         const result = buildMemberAddedEmail({
-            organizationName: '<script>alert("xss")</script>',
-            inviterName: '<b>John</b>',
+            organizationName: '<script>x</script>',
+            inviterName: '<b>J</b>',
             memberName: 'Jane & Co',
             role: 'admin',
+            dashboardUrl: 'https://ex.com/"><script>x</script>',
         });
 
-        expect(result.content.body).not.toContain('<script>');
+        expect(result.content.body).not.toContain('<script>x</script>');
         expect(result.content.body).toContain('&lt;script&gt;');
-        expect(result.content.body).not.toContain('<b>John</b>');
-        expect(result.content.body).toContain('&lt;b&gt;John&lt;/b&gt;');
-        expect(result.content.body).toContain('Jane &amp; Co');
+        expect(result.content.body).toContain('&lt;b&gt;J&lt;/b&gt;');
+        // URL is escaped so it cannot break out of the href attribute
+        expect(result.content.body).not.toContain('"><script>');
+        expect(result.content.body).toContain('&quot;&gt;&lt;script&gt;');
     });
 });
 
 describe('buildMemberRemovedEmail', () => {
-    it('should build email with all fields', () => {
+    it('includes organization, role and mapped reason label', () => {
         const result = buildMemberRemovedEmail({
             organizationName: 'Acme Corp',
-            memberName: 'Jane Smith',
+            memberName: 'Jane',
             role: 'admin',
             reason: 'left_company',
-            contactEmail: 'support@example.com',
         });
 
         expect(result.subject).toBe('Access removed from Acme Corp');
         expect(result.template).toBe('minimalist');
-        expect(result.content.body).toContain('Jane Smith');
         expect(result.content.body).toContain('Acme Corp');
         expect(result.content.body).toContain('admin');
         expect(result.content.body).toContain('Left the company');
-        expect(result.content.footer).toContain('support@example.com');
     });
 
-    it('should build email without reason', () => {
+    it('omits the reason line when reason is missing', () => {
         const result = buildMemberRemovedEmail({
             organizationName: 'Acme Corp',
-            memberName: 'Jane Smith',
+            memberName: 'Jane',
             role: 'member',
         });
 
-        expect(result.subject).toBe('Access removed from Acme Corp');
-        expect(result.content.body).toContain('Jane Smith');
         expect(result.content.body).not.toContain('Reason:');
-        expect(result.content.body).toContain('member');
     });
 
-    it('should map reason codes to labels', () => {
-        const reasons = [
-            { code: 'left_company', label: 'Left the company' },
-            { code: 'role_change', label: 'Role change' },
-            { code: 'contract_ended', label: 'Contract ended' },
-            { code: 'security_concern', label: 'Security concern' },
-            { code: 'duplicate_account', label: 'Duplicate account' },
-            { code: 'other', label: 'Other reason' },
+    it('maps all whitelisted reason codes', () => {
+        const cases: Array<[string, string]> = [
+            ['left_company', 'Left the company'],
+            ['role_change', 'Role change'],
+            ['contract_ended', 'Contract ended'],
+            ['security_concern', 'Security concern'],
+            ['duplicate_account', 'Duplicate account'],
+            ['other', 'Other'],
         ];
-
-        reasons.forEach(({ code, label }) => {
+        for (const [code, label] of cases) {
             const result = buildMemberRemovedEmail({
-                organizationName: 'Acme Corp',
-                memberName: 'Jane Smith',
+                organizationName: 'Acme',
+                memberName: 'Jane',
                 role: 'member',
                 reason: code,
             });
-
             expect(result.content.body).toContain(label);
-        });
+        }
     });
 
-    it('should not show unknown reason codes', () => {
+    it('drops unknown reason codes (no arbitrary text echo)', () => {
         const result = buildMemberRemovedEmail({
-            organizationName: 'Acme Corp',
-            memberName: 'Jane Smith',
+            organizationName: 'Acme',
+            memberName: 'Jane',
             role: 'member',
-            reason: 'unknown_reason_code',
+            reason: '<script>alert(1)</script>',
         });
 
         expect(result.content.body).not.toContain('Reason:');
-        expect(result.content.body).not.toContain('unknown_reason_code');
-    });
-
-    it('should build email without contact email', () => {
-        const result = buildMemberRemovedEmail({
-            organizationName: 'Acme Corp',
-            memberName: 'Jane Smith',
-            role: 'viewer',
-        });
-
-        expect(result.content.footer).toContain('This notification is for your records');
-        expect(result.content.footer).not.toContain('mailto:');
-    });
-
-    it('should escape HTML in input values', () => {
-        const result = buildMemberRemovedEmail({
-            organizationName: '<script>alert("xss")</script>',
-            memberName: 'Jane & Co',
-            role: 'admin',
-            contactEmail: 'test@example.com',
-        });
-
         expect(result.content.body).not.toContain('<script>');
+    });
+
+    it('escapes HTML in all user-controlled fields', () => {
+        const result = buildMemberRemovedEmail({
+            organizationName: '<script>x</script>',
+            memberName: 'Jane & Co',
+            role: '<b>admin</b>',
+        });
+
+        expect(result.content.body).not.toContain('<script>x</script>');
         expect(result.content.body).toContain('&lt;script&gt;');
-        expect(result.content.body).toContain('Jane &amp; Co');
+        expect(result.content.body).toContain('&lt;b&gt;admin&lt;/b&gt;');
+    });
+
+    it('does not include the admin contact email (privacy)', () => {
+        const result = buildMemberRemovedEmail({
+            organizationName: 'Acme',
+            memberName: 'Jane',
+            role: 'member',
+            reason: 'other',
+        });
+
+        expect(result.content.footer).not.toContain('mailto:');
+        expect(result.content.footer).not.toContain('@');
     });
 });

@@ -3,16 +3,13 @@
 // Notifies a user when they've been removed from an organization.
 // ============================================================
 
-function escapeHtml(value: string): string {
-    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+import { escapeHtml } from './_utils';
 
 export interface MemberRemovedEmailOpts {
     organizationName: string;
     memberName: string;
     role: string;
     reason?: string;
-    contactEmail?: string;
 }
 
 export interface MemberRemovedEmailPayload {
@@ -22,33 +19,29 @@ export interface MemberRemovedEmailPayload {
     content: { header: string; body: string; footer: string };
 }
 
+// Whitelist of offboarding reason codes → human-readable labels.
+// Any value not in this map is ignored (prevents arbitrary text from being echoed to the recipient).
 const REASON_LABELS: Record<string, string> = {
     left_company: 'Left the company',
     role_change: 'Role change',
     contract_ended: 'Contract ended',
     security_concern: 'Security concern',
     duplicate_account: 'Duplicate account',
-    other: 'Other reason',
+    other: 'Other',
 };
 
 export function buildMemberRemovedEmail(opts: MemberRemovedEmailOpts): MemberRemovedEmailPayload {
     const subject = `Access removed from ${opts.organizationName}`;
-    
-    let body = `<p>Hello <strong>${escapeHtml(opts.memberName)}</strong>,</p>`;
-    
-    body += `<p>Your access to <strong>${escapeHtml(opts.organizationName)}</strong> has been removed. `;
-    body += `You no longer have <strong>${escapeHtml(opts.role)}</strong> permissions.</p>`;
-    
-    if (opts.reason && REASON_LABELS[opts.reason]) {
-        body += `<p style="color:#64748b;font-size:14px"><strong>Reason:</strong> ${escapeHtml(REASON_LABELS[opts.reason])}</p>`;
-    }
-    
-    body += `<p>If you believe this was done in error or have any questions, please contact your organization administrator.</p>`;
 
-    let footer = 'This notification is for your records.';
-    if (opts.contactEmail) {
-        footer += ` For assistance, contact <a href="mailto:${escapeHtml(opts.contactEmail)}">${escapeHtml(opts.contactEmail)}</a>.`;
-    }
+    const reasonLabel = opts.reason ? REASON_LABELS[opts.reason] : undefined;
+    const reasonLine = reasonLabel
+        ? `<p style="color:#64748b;font-size:13px"><strong>Reason:</strong> ${escapeHtml(reasonLabel)}</p>`
+        : '';
+
+    const body =
+        `<p>Your access to <strong>${escapeHtml(opts.organizationName)}</strong> ` +
+        `as <strong>${escapeHtml(opts.role)}</strong> has been removed.</p>` +
+        reasonLine;
 
     return {
         subject,
@@ -57,7 +50,7 @@ export function buildMemberRemovedEmail(opts: MemberRemovedEmailOpts): MemberRem
         content: {
             header: '',
             body,
-            footer,
+            footer: 'If you believe this was done in error, please contact your organization administrator.',
         },
     };
 }

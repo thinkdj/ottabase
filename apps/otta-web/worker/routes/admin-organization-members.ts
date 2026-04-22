@@ -160,12 +160,12 @@ export async function handleAdminOrganizationInviteMember(
             metadata: { role, status },
         });
 
-        // Send welcome email to new member
+        // Send welcome email to new member (best effort — failures do not block the response)
         if (user.email) {
             const organization = await Organization.find(organizationId);
             const dashboardUrl = new URL('/dashboard', context.request.url).toString();
-            
-            await sendMemberAddedEmail(context.env, context.request, {
+
+            await sendMemberAddedEmail(context.env, {
                 to: user.email,
                 organizationName: organization?.name || 'the organization',
                 inviterName: auth.user?.name || undefined,
@@ -326,17 +326,16 @@ export async function handleAdminOrganizationRemoveMember(
             },
         });
 
-        // Send email notification if requested
+        // Send email notification if requested (best effort — failures do not block the response)
         if (offboardingData.notifyMember && existingMember.user?.email) {
             const organization = await Organization.find(organizationId);
-            
-            await sendMemberRemovedEmail(context.env, context.request, {
+
+            await sendMemberRemovedEmail(context.env, {
                 to: existingMember.user.email,
                 organizationName: organization?.name || 'the organization',
                 memberName: existingMember.user.name || existingMember.user.email,
                 role: existingMember.role,
                 reason: offboardingData.reason,
-                contactEmail: auth.user?.email || undefined,
             });
         }
 
