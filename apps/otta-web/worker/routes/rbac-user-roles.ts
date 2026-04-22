@@ -4,6 +4,7 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { canAccessOrganization, requireAdminAccess } from '../lib/admin-guard';
 import { auditOrganizationAction } from '../lib/org-audit';
+import { enforceRateLimit } from '../lib/rate-limiting';
 import { invalidateRBACCache } from './admin-roles';
 import type { ApiRouteContext } from './router';
 
@@ -117,10 +118,19 @@ export async function handleRBACUserRolesList(context: ApiRouteContext): Promise
  * Body: { userId, roleId, organizationId? }
  *
  * Assigns a role to a user in the current organization. Idempotent.
+ * Rate limited to 20 requests per minute per organization to prevent cache DOS.
  */
 export async function handleRBACUserRoleAssign(context: ApiRouteContext): Promise<Response> {
     const auth = await requireAdminAccess(context, { scope: 'either' });
     if (auth instanceof Response) return auth;
+
+    // Rate limit: 20 role assignments per minute per organization
+    const rateLimitKey = `rbac:role-assign:${auth.organizationId}`;
+    const rateLimit = await enforceRateLimit(context.request, context.env, rateLimitKey, {
+        limit: 20,
+        period: 60,
+    });
+    if (rateLimit) return rateLimit;
 
     let body: { userId?: string; roleId?: string; organizationId?: string };
     try {
@@ -197,6 +207,7 @@ export async function handleRBACUserRoleAssign(context: ApiRouteContext): Promis
 
 /**
  * DELETE /api/rbac/user-roles/:userId/:roleId?organizationId=<id>
+ * Rate limited to 20 requests per minute per organization to prevent abuse.
  */
 export async function handleRBACUserRoleRemove(
     context: ApiRouteContext,
@@ -205,6 +216,14 @@ export async function handleRBACUserRoleRemove(
 ): Promise<Response> {
     const auth = await requireAdminAccess(context, { scope: 'either' });
     if (auth instanceof Response) return auth;
+
+    // Rate limit: 20 role removals per minute per organization
+    const rateLimitKey = `rbac:role-remove:${auth.organizationId}`;
+    const rateLimit = await enforceRateLimit(context.request, context.env, rateLimitKey, {
+        limit: 20,
+        period: 60,
+    });
+    if (rateLimit) return rateLimit;
 
     const url = new URL(context.request.url);
     const organizationId = resolveOrganizationId(url, auth.organizationId);

@@ -22,7 +22,11 @@ function buildRateLimitKey(key: string, scope?: { type: 'user' | 'global'; id?: 
     return globalKey('ratelimit', key);
 }
 
-export async function simulateRateLimit(env: CloudflareEnv, key: string) {
+export async function simulateRateLimit(
+    env: CloudflareEnv,
+    key: string,
+    options: { limit?: number; period?: number } = {},
+) {
     if (!env.OBCF_KV) {
         return null;
     }
@@ -30,8 +34,8 @@ export async function simulateRateLimit(env: CloudflareEnv, key: string) {
     const kv = createKVClient({ namespace: env.OBCF_KV as any });
     const rateLimitKey = buildRateLimitKey(key);
 
-    const LIMIT = 10;
-    const PERIOD = 60; // seconds
+    const LIMIT = options.limit ?? 10;
+    const PERIOD = options.period ?? 60; // seconds
 
     const result = await kv.getText(rateLimitKey);
 
@@ -73,7 +77,11 @@ export async function simulateRateLimit(env: CloudflareEnv, key: string) {
     };
 }
 
-export async function getRateLimitData(env: CloudflareEnv, key: string) {
+export async function getRateLimitData(
+    env: CloudflareEnv,
+    key: string,
+    options: { limit?: number; period?: number } = {},
+) {
     let rateLimitData: {
         success: boolean;
         limit: number;
@@ -99,14 +107,19 @@ export async function getRateLimitData(env: CloudflareEnv, key: string) {
     }
 
     if (!rateLimitData) {
-        rateLimitData = await simulateRateLimit(env, key);
+        rateLimitData = await simulateRateLimit(env, key, options);
     }
 
     return rateLimitData;
 }
 
-export async function enforceRateLimit(request: Request, env: CloudflareEnv, key: string): Promise<Response | null> {
-    const rateLimitData = await getRateLimitData(env, key);
+export async function enforceRateLimit(
+    request: Request,
+    env: CloudflareEnv,
+    key: string,
+    options: { limit?: number; period?: number } = {},
+): Promise<Response | null> {
+    const rateLimitData = await getRateLimitData(env, key, options);
     if (!rateLimitData) {
         return errorResponse('Rate limiter not available', 500, {
             hint: 'Enable OBCF_RATE_LIMITER or OBCF_KV for rate limiting',
