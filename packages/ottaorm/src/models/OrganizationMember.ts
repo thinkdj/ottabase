@@ -21,7 +21,11 @@ export type MembershipStatus = 'active' | 'invited' | 'suspended';
  * Codes raised by OrganizationMember lifecycle methods. Routes map these
  * directly to HTTP responses instead of reimplementing the guard logic.
  */
-export type MembershipErrorCode = 'LAST_ACTIVE_OWNER_GUARD' | 'USER_NOT_FOUND' | 'MEMBER_NOT_FOUND' | 'MEMBER_ALREADY_EXISTS';
+export type MembershipErrorCode =
+    | 'LAST_ACTIVE_OWNER_GUARD'
+    | 'USER_NOT_FOUND'
+    | 'MEMBER_NOT_FOUND'
+    | 'MEMBER_ALREADY_EXISTS';
 
 export class MembershipError extends Error {
     public readonly code: MembershipErrorCode;
@@ -220,20 +224,31 @@ export class OrganizationMember extends BaseModel {
                   ? Number(options.invitedAt)
                   : null;
 
-        const db = this.getDriver().getDb();
-        const [member] = await db
-            .insert(organizationMembersTable)
-            .values({
-                userId,
-                organizationId,
-                role: options.role,
-                status,
-                invitedBy: options.invitedBy ?? null,
-                invitedAt,
-                joinedAt,
-                metadata: options.metadata ?? null,
-            } as NewOrganizationMemberType)
-            .returning();
+        let member: OrganizationMemberType;
+        try {
+            const db = this.getDriver().getDb();
+            const [created] = await db
+                .insert(organizationMembersTable)
+                .values({
+                    userId,
+                    organizationId,
+                    role: options.role,
+                    status,
+                    invitedBy: options.invitedBy ?? null,
+                    invitedAt,
+                    joinedAt,
+                    metadata: options.metadata ?? null,
+                } as NewOrganizationMemberType)
+                .returning();
+            member = created;
+        } catch (error) {
+            // Race-safe duplicate handling: two concurrent callers may pass the
+            // pre-insert existence check and collide on the composite PK insert.
+            if (this.isDuplicateMembershipInsertError(error)) {
+                throw new MembershipError('MEMBER_ALREADY_EXISTS');
+            }
+            throw error;
+        }
 
         await this.syncTenantRBAC(userId, organizationId, options.role, status, {
             cache: options.cache,
@@ -241,6 +256,12 @@ export class OrganizationMember extends BaseModel {
         });
 
         return member;
+    }
+
+    private static isDuplicateMembershipInsertError(error: unknown): boolean {
+        if (!error) return false;
+        const message = error instanceof Error ? error.message : String(error);
+        return /unique|constraint|already exists|organization_members/i.test(message);
     }
 
     /**

@@ -94,7 +94,7 @@ export interface OrganizationPendingInviteRecord {
     invitedBy?: string | null;
 }
 
-export type MemberRole = 'owner' | 'admin' | 'member';
+export type MemberRole = 'owner' | 'admin' | 'member' | 'viewer';
 
 export type MemberStatus = 'active' | 'invited' | 'suspended';
 

@@ -1,4 +1,4 @@
-import { Role, User, UserRole } from '@ottabase/ottaorm/models';
+import { OrganizationMember, Role, User, UserRole } from '@ottabase/ottaorm/models';
 import { getRBACCache } from '@ottabase/rbac';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -37,6 +37,15 @@ async function serializeAssignment(userRole: UserRole) {
     };
 }
 
+async function ensureActiveMember(userId: string, organizationId: string): Promise<boolean> {
+    const membership = await OrganizationMember.first({
+        userId,
+        organizationId,
+        status: 'active',
+    });
+    return !!membership;
+}
+
 /**
  * GET /api/rbac/user-roles?userId=<id>&organizationId=<id>
  *
@@ -61,9 +70,13 @@ export async function handleRBACUserRolesList(context: ApiRouteContext): Promise
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
+    if (!(await ensureActiveMember(userId, organizationId))) {
+        return errorResponse('Member not found', 404, { code: 'MEMBER_NOT_FOUND' });
+    }
+
     const assignments = await UserRole.getUserRoles(userId, organizationId);
     const serialized = await Promise.all(assignments.map((a) => serializeAssignment(a as UserRole)));
-    return jsonResponse({ data: serialized });
+    return jsonResponse({ data: serialized.filter((assignment) => !assignment.isSystemRole) });
 }
 
 /**
@@ -114,6 +127,20 @@ export async function handleRBACUserRoleAssign(context: ApiRouteContext): Promis
         return errorResponse('Role not found', 404, { code: 'ROLE_NOT_FOUND' });
     }
 
+    // This endpoint manages additive tenant custom roles only.
+    // Membership/system roles are owned by OrganizationMember lifecycle methods.
+    if (role.get('isSystem')) {
+        return errorResponse('System role assignments must be managed via organization membership', 409, {
+            code: 'SYSTEM_ROLE_ASSIGNMENT_FORBIDDEN',
+        });
+    }
+
+    if (!(await ensureActiveMember(userId, organizationId))) {
+        return errorResponse('User must be an active member of this organization before assigning custom roles', 409, {
+            code: 'MEMBER_ACTIVE_REQUIRED',
+        });
+    }
+
     const cache = getRBACCache();
     await (user as User).assignRole(roleId, auth.user.id, organizationId, { cache });
     await invalidateRBACCache(context.env);
@@ -145,8 +172,23 @@ export async function handleRBACUserRoleRemove(
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
-    const user = (await User.find(userId)) as User | null;
+    const [user, role] = (await Promise.all([User.find(userId), Role.find(roleId)])) as [User | null, Role | null];
     if (!user) return errorResponse('User not found', 404, { code: 'USER_NOT_FOUND' });
+    if (!role) return errorResponse('Role not found', 404, { code: 'ROLE_NOT_FOUND' });
+
+    if (role.get('organizationId') !== null && role.get('organizationId') !== organizationId) {
+        return errorResponse('Role not found', 404, { code: 'ROLE_NOT_FOUND' });
+    }
+
+    if (role.get('isSystem')) {
+        return errorResponse('System role assignments must be managed via organization membership', 409, {
+            code: 'SYSTEM_ROLE_ASSIGNMENT_FORBIDDEN',
+        });
+    }
+
+    if (!(await ensureActiveMember(userId, organizationId))) {
+        return errorResponse('Member not found', 404, { code: 'MEMBER_NOT_FOUND' });
+    }
 
     const cache = getRBACCache();
     await user.removeRole(roleId, organizationId, { cache });

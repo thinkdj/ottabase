@@ -95,7 +95,7 @@ export async function handleAdminOrganizationInvitesList(
 
 interface CreateInviteBody {
     email?: string;
-    role?: 'owner' | 'admin' | 'member';
+    role?: 'owner' | 'admin' | 'member' | 'viewer';
 }
 
 export async function handleAdminOrganizationInviteCreate(
@@ -125,7 +125,7 @@ export async function handleAdminOrganizationInviteCreate(
         });
     }
 
-    if (role !== 'owner' && role !== 'admin' && role !== 'member') {
+    if (role !== 'owner' && role !== 'admin' && role !== 'member' && role !== 'viewer') {
         return errorResponse('Invalid role', 400, {
             code: 'VALIDATION_ERROR',
             fieldErrors: { role: ['Invalid role'] },

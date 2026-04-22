@@ -190,7 +190,7 @@ export async function handlePublicOrgInviteAccept(context: ApiRouteContext): Pro
             await OrganizationMember.addMember({
                 userId,
                 organizationId: invite.organizationId,
-                role: invite.role as 'owner' | 'admin' | 'member',
+                role: invite.role as 'owner' | 'admin' | 'member' | 'viewer',
                 status: 'active',
                 joinedAt: Date.now(),
                 invitedBy: invite.invitedBy ?? null,

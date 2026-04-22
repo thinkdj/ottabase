@@ -1,13 +1,10 @@
-import { Role, User, UserRole } from '@ottabase/ottaorm/models';
+import { OrganizationMember, Role, User, UserRole } from '@ottabase/ottaorm/models';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../lib/admin-guard', async () => {
-    const actual = await vi.importActual<typeof import('../../lib/admin-guard')>('../../lib/admin-guard');
-    return {
-        ...actual,
-        requireAdminAccess: vi.fn(),
-    };
-});
+vi.mock('../../lib/admin-guard', () => ({
+    requireAdminAccess: vi.fn(),
+    canAccessOrganization: vi.fn((auth: any, organizationId: string) => auth.organizationId === organizationId),
+}));
 
 vi.mock('@ottabase/rbac', () => ({
     getRBACCache: () => ({ invalidateUser: vi.fn() }),
@@ -91,6 +88,7 @@ describe('handleRBACUserRolesList', () => {
 
     it('uses caller organization when organizationId is not in the query', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-my'));
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ userId: 'user-1', organizationId: 'org-my' } as any);
         const getSpy = vi
             .spyOn(UserRole, 'getUserRoles')
             .mockResolvedValue([mockUserRole({ organizationId: 'org-my' })] as any);
@@ -105,6 +103,48 @@ describe('handleRBACUserRolesList', () => {
         expect(response.status).toBe(200);
         const body = (await response.json()) as any;
         expect(body.data[0]).toMatchObject({ userId: 'user-1', roleId: 'role-editor', roleName: 'editor' });
+    });
+
+    it('returns 404 when the target user is not an active organization member', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-my'));
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue(null as any);
+
+        const response = await handleRBACUserRolesList({
+            request: new Request('http://localhost/api/rbac/user-roles?userId=user-1'),
+            env: {} as any,
+            url: new URL('http://localhost/api/rbac/user-roles?userId=user-1'),
+        });
+
+        expect(response.status).toBe(404);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('MEMBER_NOT_FOUND');
+    });
+
+    it('returns only custom assignments (filters system roles)', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-my'));
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ userId: 'user-1', organizationId: 'org-my' } as any);
+        vi.spyOn(UserRole, 'getUserRoles').mockResolvedValue([
+            {
+                ...mockUserRole({ roleId: 'role-owner' }),
+                role: async () => mockRole({ id: 'role-owner', name: 'owner', isSystem: true, organizationId: null }),
+            },
+            {
+                ...mockUserRole({ roleId: 'role-editor' }),
+                role: async () =>
+                    mockRole({ id: 'role-editor', name: 'editor', isSystem: false, organizationId: 'org-my' }),
+            },
+        ] as any);
+
+        const response = await handleRBACUserRolesList({
+            request: new Request('http://localhost/api/rbac/user-roles?userId=user-1'),
+            env: {} as any,
+            url: new URL('http://localhost/api/rbac/user-roles?userId=user-1'),
+        });
+
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as any;
+        expect(body.data).toHaveLength(1);
+        expect(body.data[0].roleName).toBe('editor');
     });
 
     it('returns 403 when the caller cannot access the requested org', async () => {
@@ -212,16 +252,13 @@ describe('handleRBACUserRoleAssign', () => {
         expect(body.code).toBe('ROLE_NOT_FOUND');
     });
 
-    it('allows assigning a system role across organizations', async () => {
+    it('rejects assigning system roles via custom user-role endpoint', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-1'));
         const assignRole = vi.fn();
         vi.spyOn(User, 'find').mockResolvedValue({ assignRole } as any);
         // System role (isSystem=true, organizationId=null) must be assignable in any org
         vi.spyOn(Role, 'find').mockResolvedValue(
             mockRole({ id: 'r-member', name: 'member', isSystem: true, organizationId: null }),
-        );
-        vi.spyOn(UserRole, 'first').mockResolvedValue(
-            mockUserRole({ userId: 'user-1', roleId: 'r-member', organizationId: 'org-1' }) as any,
         );
 
         const response = await handleRBACUserRoleAssign({
@@ -233,13 +270,17 @@ describe('handleRBACUserRoleAssign', () => {
             url: new URL('http://localhost/api/rbac/user-roles'),
         });
 
-        expect(response.status).toBe(201);
+        expect(assignRole).not.toHaveBeenCalled();
+        expect(response.status).toBe(409);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('SYSTEM_ROLE_ASSIGNMENT_FORBIDDEN');
     });
 
     it('allows assigning a custom role that belongs to the same organization', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-1'));
         const assignRole = vi.fn();
         vi.spyOn(User, 'find').mockResolvedValue({ assignRole } as any);
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ userId: 'user-1', organizationId: 'org-1' } as any);
         // Custom role scoped to the caller's own org — must be assignable
         vi.spyOn(Role, 'find').mockResolvedValue(
             mockRole({ id: 'r-editor', name: 'editor', isSystem: false, organizationId: 'org-1' }),
@@ -260,10 +301,35 @@ describe('handleRBACUserRoleAssign', () => {
         expect(response.status).toBe(201);
     });
 
+    it('returns 409 when assigning a custom role to a non-member user', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-1'));
+        const assignRole = vi.fn();
+        vi.spyOn(User, 'find').mockResolvedValue({ assignRole } as any);
+        vi.spyOn(Role, 'find').mockResolvedValue(
+            mockRole({ id: 'r-editor', name: 'editor', isSystem: false, organizationId: 'org-1' }),
+        );
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue(null as any);
+
+        const response = await handleRBACUserRoleAssign({
+            request: jsonRequest('http://localhost/api/rbac/user-roles', 'POST', {
+                userId: 'user-1',
+                roleId: 'r-editor',
+            }),
+            env: {} as any,
+            url: new URL('http://localhost/api/rbac/user-roles'),
+        });
+
+        expect(assignRole).not.toHaveBeenCalled();
+        expect(response.status).toBe(409);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('MEMBER_ACTIVE_REQUIRED');
+    });
+
     it('assigns the role, invalidates the RBAC cache, and returns the assignment', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-1'));
         const assignRole = vi.fn();
         vi.spyOn(User, 'find').mockResolvedValue({ assignRole } as any);
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ userId: 'user-1', organizationId: 'org-1' } as any);
         // Role must belong to the caller's org (organizationId matches) to pass the cross-tenant guard.
         vi.spyOn(Role, 'find').mockResolvedValue(mockRole({ organizationId: 'org-1' }));
         vi.spyOn(UserRole, 'first').mockResolvedValue(
@@ -313,6 +379,10 @@ describe('handleRBACUserRoleRemove', () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-1'));
         const removeRole = vi.fn();
         vi.spyOn(User, 'find').mockResolvedValue({ removeRole } as any);
+        vi.spyOn(Role, 'find').mockResolvedValue(
+            mockRole({ id: 'role-editor', name: 'editor', isSystem: false, organizationId: 'org-1' }),
+        );
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ userId: 'user-1', organizationId: 'org-1' } as any);
 
         const response = await handleRBACUserRoleRemove(
             {
@@ -329,5 +399,29 @@ describe('handleRBACUserRoleRemove', () => {
         expect(response.status).toBe(200);
         const body = (await response.json()) as any;
         expect(body.success).toBe(true);
+    });
+
+    it('returns 409 when trying to remove a system role via custom user-role endpoint', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-1'));
+        const removeRole = vi.fn();
+        vi.spyOn(User, 'find').mockResolvedValue({ removeRole } as any);
+        vi.spyOn(Role, 'find').mockResolvedValue(
+            mockRole({ id: 'role-member', name: 'member', isSystem: true, organizationId: null }),
+        );
+
+        const response = await handleRBACUserRoleRemove(
+            {
+                request: jsonRequest('http://localhost/api/rbac/user-roles/user-1/role-member', 'DELETE'),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/user-roles/user-1/role-member'),
+            },
+            'user-1',
+            'role-member',
+        );
+
+        expect(removeRole).not.toHaveBeenCalled();
+        expect(response.status).toBe(409);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('SYSTEM_ROLE_ASSIGNMENT_FORBIDDEN');
     });
 });

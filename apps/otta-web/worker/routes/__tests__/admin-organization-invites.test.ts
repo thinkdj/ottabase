@@ -136,6 +136,34 @@ describe('handleAdminOrganizationInviteCreate', () => {
         expect(response.status).toBe(201);
         expect(revokeCalledBeforeSend).toBe(true);
     });
+
+    it('accepts viewer role when creating an email invite', async () => {
+        vi.spyOn(OrganizationInvite, 'deleteById').mockResolvedValue(undefined);
+        vi.spyOn(OrganizationInvite, 'revokePendingForEmailExcept').mockResolvedValue(undefined);
+        vi.spyOn(OrganizationInvite, 'insertInvite').mockResolvedValue({
+            id: 'inv-viewer',
+            organizationId: 'org-1',
+            email: 'viewer@test.com',
+            role: 'viewer',
+            status: 'pending',
+            expiresAt: Date.now() + 999,
+        } as any);
+        vi.mocked(sendTemplatedEmail).mockResolvedValue(undefined as any);
+
+        const response = await handleAdminOrganizationInviteCreate(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-1/invites', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ email: 'viewer@test.com', role: 'viewer' }),
+                }),
+                env: { OBCF_D1: {} },
+            } as any,
+            'org-1',
+        );
+
+        expect(response.status).toBe(201);
+    });
 });
 
 function inviteRow(overrides: Record<string, any> = {}) {
@@ -196,16 +224,20 @@ describe('handleAdminOrganizationInviteResend (H4)', () => {
         const body = (await response.json()) as any;
         expect(body.code).toBe('ORG_INVITE_EMAIL_FAILED');
         // Operator-visible structured log must be emitted
-        expect(consoleSpy).toHaveBeenCalledWith('ORG_INVITE_RESEND_ROLLBACK_FAILED', expect.objectContaining({
-            inviteId: 'inv-1',
-            organizationId: 'org-1',
-        }));
+        expect(consoleSpy).toHaveBeenCalledWith(
+            'ORG_INVITE_RESEND_ROLLBACK_FAILED',
+            expect.objectContaining({
+                inviteId: 'inv-1',
+                organizationId: 'org-1',
+            }),
+        );
         consoleSpy.mockRestore();
     });
 
     it('returns 500 with rollback applied when send fails but rollback succeeds', async () => {
         vi.spyOn(OrganizationInvite, 'listForOrganization').mockResolvedValue([inviteRow()] as any);
-        const updateSpy = vi.spyOn(OrganizationInvite, 'updateById')
+        const updateSpy = vi
+            .spyOn(OrganizationInvite, 'updateById')
             .mockResolvedValueOnce(inviteRow({ tokenHash: 'new-hash' }) as any)
             .mockResolvedValueOnce(inviteRow() as any); // rollback succeeds
         vi.mocked(sendTemplatedEmail).mockRejectedValue(new Error('smtp down'));

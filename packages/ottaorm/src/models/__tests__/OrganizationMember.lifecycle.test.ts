@@ -36,6 +36,7 @@ describe('OrganizationMember lifecycle', () => {
     beforeEach(() => {
         vi.spyOn(Role, 'ensureDefaults').mockResolvedValue(defaults as any);
         vi.spyOn(UserRole, 'removeRole').mockResolvedValue(undefined as any);
+        vi.spyOn(UserRole, 'clearUserRoles').mockResolvedValue(undefined as any);
         vi.spyOn(UserRole, 'create').mockResolvedValue({} as any);
     });
 
@@ -53,6 +54,7 @@ describe('OrganizationMember lifecycle', () => {
             };
             const { driver, insert } = makeInsertDriver(inserted);
             vi.spyOn(OrganizationMember as any, 'getDriver').mockReturnValue(driver as any);
+            vi.spyOn(OrganizationMember, 'getMember').mockResolvedValue(undefined);
             const cache = { invalidateUser: vi.fn().mockResolvedValue(undefined) };
 
             const result = await OrganizationMember.addMember({
@@ -77,6 +79,7 @@ describe('OrganizationMember lifecycle', () => {
             const inserted = { userId: 'user-1', organizationId: 'org-1', role: 'member', status: 'invited' };
             const { driver } = makeInsertDriver(inserted);
             vi.spyOn(OrganizationMember as any, 'getDriver').mockReturnValue(driver as any);
+            vi.spyOn(OrganizationMember, 'getMember').mockResolvedValue(undefined);
 
             await OrganizationMember.addMember({
                 userId: 'user-1',
@@ -85,8 +88,35 @@ describe('OrganizationMember lifecycle', () => {
                 status: 'invited',
             });
 
-            expect(UserRole.removeRole).toHaveBeenCalledTimes(4);
+            expect(UserRole.clearUserRoles).toHaveBeenCalledWith('user-1', 'org-1');
+            expect(UserRole.removeRole).not.toHaveBeenCalled();
             expect(UserRole.create).not.toHaveBeenCalled();
+        });
+
+        it('maps duplicate insert races to MEMBER_ALREADY_EXISTS', async () => {
+            const returning = vi.fn(async () => {
+                throw new Error(
+                    'UNIQUE constraint failed: organization_members.user_id, organization_members.organization_id',
+                );
+            });
+            const values = vi.fn(() => ({ returning }));
+            const insert = vi.fn(() => ({ values }));
+            const driver = {
+                getDb: () => ({ insert }),
+            };
+            vi.spyOn(OrganizationMember as any, 'getDriver').mockReturnValue(driver as any);
+            vi.spyOn(OrganizationMember, 'getMember').mockResolvedValue(undefined);
+
+            await expect(
+                OrganizationMember.addMember({
+                    userId: 'user-1',
+                    organizationId: 'org-1',
+                    role: 'member',
+                    status: 'active',
+                }),
+            ).rejects.toMatchObject({
+                code: 'MEMBER_ALREADY_EXISTS',
+            });
         });
 
         it('rejects unknown roles', async () => {
@@ -197,7 +227,7 @@ describe('OrganizationMember lifecycle', () => {
             const result = await OrganizationMember.removeMember('user-1', 'org-1', { cache: cache as any });
 
             expect(result).toBe(true);
-            expect(UserRole.removeRole).toHaveBeenCalledTimes(4);
+            expect(UserRole.clearUserRoles).toHaveBeenCalledWith('user-1', 'org-1');
             expect(del).toHaveBeenCalled();
             expect(cache.invalidateUser).toHaveBeenCalledWith('user-1', 'org-1');
         });

@@ -1,6 +1,7 @@
 # Org / Member / RBAC Flow — Issue Tracker (Latest Re-scan)
 
 Fresh audit scope:
+
 - tenant/org membership lifecycle
 - org invite (admin + public accept)
 - RBAC role + user-role assignment paths
@@ -31,87 +32,69 @@ Fresh audit scope:
 
 ## NEW / STILL-OPEN Findings (from latest state)
 
-## CRITICAL
+### ✅ N1 — Fixed: RBAC custom roles now require active organization membership
 
-### N1 — RBAC custom roles can be assigned to users with no active org membership
 **Files:**
+
 - `apps/otta-web/worker/routes/rbac-user-roles.ts`
-- `packages/rbac/src/request-context.ts`
-- `packages/rbac/src/admin-guard.ts`
-- `apps/otta-web/worker/routes/rbac-roles.ts`
+- `apps/otta-web/worker/routes/__tests__/rbac-user-roles.test.ts`
 
-`handleRBACUserRoleAssign` validates caller access + role ownership but does **not** verify that target `userId` is an active member of `organizationId`.
-
-Because request context permissions come from `user_roles` for the scoped org, a non-member user can still receive org-scoped permissions if an admin assigns a role directly. This is especially dangerous because custom roles currently allow `*:*` permissions, and `assertAdmin` treats `*:*` as admin-equivalent.
-
-**Recommended fix:** enforce `OrganizationMember.first({ userId, organizationId, status: 'active' })` (or equivalent model helper) before assign/list/remove custom org roles; reject otherwise.
+`/api/rbac/user-roles` now enforces active org membership for list/assign/remove operations and rejects system-role
+mutation via this custom-role endpoint (`SYSTEM_ROLE_ASSIGNMENT_FORBIDDEN`).
 
 ---
 
-## HIGH
+### ✅ N2 — Fixed: cached role rehydration resolves with organization scope
 
-### N2 — Cached role-name rehydration drops org-custom roles
-**File:** `packages/ottaorm/src/models/User.ts`
-
-In `User.roles(...)`, cache-hit path fetches cached role names, then resolves each via `Role.findByName(roleName)` **without organization scope**.
-
-For org-custom roles (e.g., `editor`), `findByName` without org only checks system roles and returns null; custom role permissions disappear on cache-hit requests.
-
-**Impact:** intermittent permission loss / inconsistent authorization behavior between cold and warm cache paths.
-
-**Recommended fix:** resolve cached roles by `(name, organizationId)` or cache role IDs and resolve by ID.
-
----
-
-### N3 — `addMember` race can still throw raw DB UNIQUE errors (not mapped)
 **Files:**
+
+- `packages/ottaorm/src/models/User.ts`
+
+`User.roles(...)` cache-hit rehydration now resolves with org scope (`Role.findByName(roleName, organizationId)`), so
+org-custom roles are not dropped on warm-cache requests.
+
+---
+
+### ✅ N3 — Fixed: `addMember` maps DB unique races to typed membership error
+
+**Files:**
+
 - `packages/ottaorm/src/models/OrganizationMember.ts`
-- `apps/otta-web/worker/routes/org-invites-public.ts`
-- `apps/otta-web/worker/routes/admin-organization-members.ts`
+- `packages/ottaorm/src/models/__tests__/OrganizationMember.lifecycle.test.ts`
 
-`addMember` has a pre-insert duplicate check, but concurrent calls can still pass the check and race on INSERT.
-
-Current handlers only map `MembershipError('MEMBER_ALREADY_EXISTS')`; a raw UNIQUE violation can still bubble up as 500.
-
-**Recommended fix:** catch unique-constraint insert errors inside `addMember` and rethrow `MembershipError('MEMBER_ALREADY_EXISTS')` so all callers get consistent idempotent handling.
+Concurrent insert races are now normalized to `MembershipError('MEMBER_ALREADY_EXISTS')`, preventing raw DB UNIQUE
+violations from surfacing as opaque 500s.
 
 ---
 
-## MEDIUM
+### ✅ N4 — Fixed: `viewer` role is now consistent across invite + UI flows
 
-### N4 — `viewer` role remains inconsistent across invite/UI flows
 **Files:**
+
 - `apps/otta-web/worker/routes/admin-organization-invites.ts`
 - `apps/otta-web/worker/routes/org-invites-public.ts`
 - `apps/otta-web/src/types/rbac.ts`
 - `apps/otta-web/src/pages/admin/access/organizations/components/InviteMemberForm.tsx`
 - `apps/otta-web/src/pages/admin/access/organizations/OrganizationMembersPage.tsx`
+- `apps/otta-web/src/pages/admin/access/users/UserRBACPage.tsx`
+- `apps/otta-web/worker/routes/__tests__/admin-organization-invites.test.ts`
 
-Model + member-admin APIs now support `viewer`, but:
-- email invite create validation still allows only owner/admin/member,
-- frontend `MemberRole` excludes `viewer`,
-- role selects in member pages/forms also exclude `viewer`.
-
-**Impact:** admins cannot consistently assign/invite `viewer` through current UI/email flows.
-
-**Recommended fix:** make role unions/options consistent end-to-end with backend membership enum.
+Backend invite validation and admin UI role unions/select options now include `viewer` end-to-end.
 
 ---
 
-## LOW
+### ✅ N5 — Fixed: RBAC role create/update now guard malformed JSON
 
-### N5 — RBAC role create/update still lacks invalid-JSON body guard
-**File:** `apps/otta-web/worker/routes/rbac-roles.ts`
+**Files:**
 
-`handleRBACRoleCreate` and `handleRBACRoleUpdate` call `await request.json()` without local try/catch; malformed JSON currently surfaces as generic 500 instead of structured 400 `BAD_REQUEST`.
+- `apps/otta-web/worker/routes/rbac-roles.ts`
+- `apps/otta-web/worker/routes/__tests__/rbac-roles.test.ts`
 
-**Recommended fix:** add JSON parse guard similar to other routes.
+`handleRBACRoleCreate` and `handleRBACRoleUpdate` now return structured `400 BAD_REQUEST` for invalid JSON payloads.
 
 ---
 
-## Suggested immediate assessment order
-1. N1 (security boundary bypass)
-2. N2 (authorization correctness drift)
-3. N3 (idempotency + 500 race)
-4. N4 (role-model consistency)
-5. N5 (error-shape consistency)
+## Current status
+
+- No open issues from this N1–N5 re-scan set remain.
+- Targeted regression tests were added/updated and passing for touched org/tenant/member flow surfaces.

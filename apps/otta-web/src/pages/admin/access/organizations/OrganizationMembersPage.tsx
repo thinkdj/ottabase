@@ -384,6 +384,7 @@ export function OrganizationMembersPage() {
                                                         <SelectItem value="owner">Owner</SelectItem>
                                                         <SelectItem value="admin">Admin</SelectItem>
                                                         <SelectItem value="member">Member</SelectItem>
+                                                        <SelectItem value="viewer">Viewer</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </TableCell>

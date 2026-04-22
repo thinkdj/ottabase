@@ -187,6 +187,22 @@ describe('handleRBACRoleCreate', () => {
         expect(body.code).toBe('VALIDATION_ERROR');
     });
 
+    it('returns 400 when request body is invalid JSON', async () => {
+        const response = await handleRBACRoleCreate({
+            request: new Request('http://localhost/api/rbac/roles', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: '{',
+            }),
+            env: {} as any,
+            url: new URL('http://localhost/api/rbac/roles'),
+        });
+
+        expect(response.status).toBe(400);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('BAD_REQUEST');
+    });
+
     it('returns 409 when name shadows a reserved system role name', async () => {
         for (const reserved of ['owner', 'admin', 'member', 'viewer']) {
             vi.clearAllMocks();
@@ -278,6 +294,27 @@ describe('handleRBACRoleUpdate', () => {
         );
 
         expect(response.status).toBe(404);
+    });
+
+    it('returns 400 when update body is invalid JSON', async () => {
+        vi.spyOn(Role, 'find').mockResolvedValue(mockRole({ organizationId: 'org-1' }) as any);
+
+        const response = await handleRBACRoleUpdate(
+            {
+                request: new Request('http://localhost/api/rbac/roles/r-editor', {
+                    method: 'PATCH',
+                    headers: { 'content-type': 'application/json' },
+                    body: '{',
+                }),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-editor'),
+            },
+            'r-editor',
+        );
+
+        expect(response.status).toBe(400);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('BAD_REQUEST');
     });
 
     it('rejects attempts to modify a system role with 403', async () => {
@@ -562,7 +599,11 @@ describe('handleRBACRoleGet (L4)', () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(new Response('unauthorized', { status: 401 }));
 
         const response = await handleRBACRoleGet(
-            { request: jsonRequest('http://localhost/api/rbac/roles/r-1', 'GET'), env: {} as any, url: new URL('http://localhost/api/rbac/roles/r-1') },
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-1', 'GET'),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-1'),
+            },
             'r-1',
         );
 
@@ -573,7 +614,11 @@ describe('handleRBACRoleGet (L4)', () => {
         vi.spyOn(Role, 'find').mockResolvedValue(null as any);
 
         const response = await handleRBACRoleGet(
-            { request: jsonRequest('http://localhost/api/rbac/roles/missing', 'GET'), env: {} as any, url: new URL('http://localhost/api/rbac/roles/missing') },
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/missing', 'GET'),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/missing'),
+            },
             'missing',
         );
 
@@ -585,7 +630,11 @@ describe('handleRBACRoleGet (L4)', () => {
         vi.mocked(canAccessOrganization).mockReturnValue(false);
 
         const response = await handleRBACRoleGet(
-            { request: jsonRequest('http://localhost/api/rbac/roles/r-1', 'GET'), env: {} as any, url: new URL('http://localhost/api/rbac/roles/r-1') },
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-1', 'GET'),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-1'),
+            },
             'r-1',
         );
 
@@ -598,7 +647,11 @@ describe('handleRBACRoleGet (L4)', () => {
         );
 
         const response = await handleRBACRoleGet(
-            { request: jsonRequest('http://localhost/api/rbac/roles/r-editor', 'GET'), env: {} as any, url: new URL('http://localhost/api/rbac/roles/r-editor') },
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-editor', 'GET'),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-editor'),
+            },
             'r-editor',
         );
 
@@ -614,7 +667,11 @@ describe('handleRBACRoleGet (L4)', () => {
         );
 
         const response = await handleRBACRoleGet(
-            { request: jsonRequest('http://localhost/api/rbac/roles/r-admin', 'GET'), env: {} as any, url: new URL('http://localhost/api/rbac/roles/r-admin') },
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-admin', 'GET'),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-admin'),
+            },
             'r-admin',
         );
 

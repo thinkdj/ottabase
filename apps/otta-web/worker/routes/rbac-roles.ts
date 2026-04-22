@@ -115,7 +115,12 @@ export async function handleRBACRoleCreate(context: ApiRouteContext): Promise<Re
         });
     }
 
-    const body = (await context.request.json()) as any;
+    let body: any;
+    try {
+        body = (await context.request.json()) as any;
+    } catch {
+        return errorResponse('Invalid JSON body', 400, { code: 'BAD_REQUEST' });
+    }
     const name = typeof body.name === 'string' ? body.name.toLowerCase().trim() : '';
     if (!name) return errorResponse('Role name is required', 400, { code: 'VALIDATION_ERROR' });
 
@@ -169,7 +174,12 @@ export async function handleRBACRoleUpdate(context: ApiRouteContext, roleId: str
         return errorResponse('You do not have permission to modify this role', 403, { code: 'FORBIDDEN' });
     }
 
-    const body = (await context.request.json()) as any;
+    let body: any;
+    try {
+        body = (await context.request.json()) as any;
+    } catch {
+        return errorResponse('Invalid JSON body', 400, { code: 'BAD_REQUEST' });
+    }
 
     // Allow renaming a custom role, subject to the same reservations as create.
     if (typeof body.name === 'string') {
