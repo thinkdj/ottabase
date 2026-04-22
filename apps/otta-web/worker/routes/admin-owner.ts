@@ -51,11 +51,8 @@ export async function handleAdminPromoteOwner(context: ApiRouteContext): Promise
         return errorResponse('User not found', 404, { code: 'NOT_FOUND' });
     }
 
-    await Role.ensureDefaultRoles();
-    const ownerRole = await Role.findByName('owner');
-    if (!ownerRole) {
-        return errorResponse('Owner role is missing', 500, { code: 'ROLE_MISSING' });
-    }
+    const roles = await Role.ensureDefaults();
+    const ownerRole = roles.owner;
 
     await user.assignRole(ownerRole.get('id') as string, undefined, SYSTEM_ORGANIZATION_ID);
 
