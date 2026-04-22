@@ -12,7 +12,7 @@
 // DELETE /api/rbac/roles/:id     — delete org-custom role (requires org admin + ownership)
 // ============================================================
 
-import { Role } from '@ottabase/ottaorm/models';
+import { Role, SYSTEM_ROLE_NAMES_SET } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { canAccessOrganization, requireAdminAccess, resolveTenantOrganizationId } from '../lib/admin-guard';
@@ -33,7 +33,7 @@ function serializeRole(role: Role) {
 }
 
 /**
- * GET /api/rbac/roles
+ * GET /api/rbac/roles?page=1&perPage=50&search=term
  *
  * Returns system roles + the current org's custom roles. Requires auth so that
  * org-specific role definitions are never exposed to a different tenant.
@@ -41,18 +41,54 @@ function serializeRole(role: Role) {
  * When an org context is present, org-custom roles are appended after system
  * roles. When no tenant org is resolvable (e.g. platform-admin system scope),
  * only system roles are returned.
+ *
+ * Supports pagination via query params:
+ * - page: page number (default: 1, min: 1)
+ * - perPage: items per page (default: 50, min: 1, max: 100)
+ * - search: filter roles by name (case-insensitive partial match)
  */
 export async function handleRBACRolesList(context: ApiRouteContext): Promise<Response> {
     const auth = await requireAdminAccess(context, { scope: 'either', allowNullTenant: true });
     if (auth instanceof Response) return auth;
 
     try {
+        const url = new URL(context.request.url);
+        const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+        const perPage = Math.min(100, Math.max(1, parseInt(url.searchParams.get('perPage') || '50', 10)));
+        const search = url.searchParams.get('search')?.toLowerCase().trim() || '';
+
         const organizationId = resolveTenantOrganizationId(auth);
-        const roles = organizationId
+        let roles = organizationId
             ? await Role.findByOrg(organizationId)
             : ((await Role.where({ isSystem: true })) as Role[]);
 
-        return jsonResponse({ data: roles.map(serializeRole) });
+        // Apply search filter if provided
+        if (search) {
+            roles = roles.filter((r) => {
+                const name = String(r.get('name') ?? '').toLowerCase();
+                const description = String(r.get('description') ?? '').toLowerCase();
+                return name.includes(search) || description.includes(search);
+            });
+        }
+
+        // Pagination
+        const total = roles.length;
+        const totalPages = Math.ceil(total / perPage);
+        const startIndex = (page - 1) * perPage;
+        const endIndex = startIndex + perPage;
+        const paginatedRoles = roles.slice(startIndex, endIndex);
+
+        return jsonResponse({
+            data: paginatedRoles.map(serializeRole),
+            pagination: {
+                page,
+                perPage,
+                total,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1,
+            },
+        });
     } catch (err) {
         return errorResponse('Failed to load roles', 500, {
             code: 'ROLES_LIST_FAILED',
@@ -133,8 +169,7 @@ export async function handleRBACRoleCreate(context: ApiRouteContext): Promise<Re
     }
 
     // Prevent shadowing system role names
-    const SYSTEM_NAMES = new Set(['owner', 'admin', 'member', 'viewer']);
-    if (SYSTEM_NAMES.has(name)) {
+    if (SYSTEM_ROLE_NAMES_SET.has(name)) {
         return errorResponse(`"${name}" is a reserved system role name`, 409, { code: 'CONFLICT' });
     }
 
@@ -193,8 +228,7 @@ export async function handleRBACRoleUpdate(context: ApiRouteContext, roleId: str
     if (typeof body.name === 'string') {
         const newName = body.name.toLowerCase().trim();
         if (newName) {
-            const SYSTEM_NAMES = new Set(['owner', 'admin', 'member', 'viewer']);
-            if (SYSTEM_NAMES.has(newName)) {
+            if (SYSTEM_ROLE_NAMES_SET.has(newName)) {
                 return errorResponse(`"${newName}" is a reserved system role name`, 409, { code: 'CONFLICT' });
             }
             // Prevent duplicate names within the same org (excluding the role being renamed).
