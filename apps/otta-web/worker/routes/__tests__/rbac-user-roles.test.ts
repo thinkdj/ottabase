@@ -22,7 +22,7 @@ vi.mock('../../lib/org-audit', () => ({
     auditOrganizationAction: vi.fn(),
 }));
 
-import { requireAdminAccess } from '../../lib/admin-guard';
+import { canAccessOrganization, requireAdminAccess } from '../../lib/admin-guard';
 import { enforceRateLimit } from '../../lib/rate-limiting';
 import { invalidateRBACCache } from '../admin-roles';
 import { auditOrganizationAction } from '../../lib/org-audit';
@@ -80,6 +80,9 @@ function jsonRequest(url: string, method: string, body?: unknown) {
 describe('handleRBACUserRolesList', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(canAccessOrganization).mockImplementation((auth: any, organizationId: string) => {
+            return auth.organizationId === organizationId;
+        });
     });
 
     it('returns 400 when userId is missing', async () => {
@@ -99,6 +102,10 @@ describe('handleRBACUserRolesList', () => {
     it('uses caller organization when organizationId is not in the query', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-my'));
         vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ userId: 'user-1', organizationId: 'org-my' } as any);
+        vi.spyOn(Role, 'whereIn').mockResolvedValue([
+            mockRole({ id: 'role-editor', name: 'editor', isSystem: false }),
+        ] as any);
+        vi.spyOn(User, 'whereIn').mockResolvedValue([] as any);
         const getSpy = vi
             .spyOn(UserRole, 'getUserRoles')
             .mockResolvedValue([mockUserRole({ organizationId: 'org-my' })] as any);
@@ -133,6 +140,11 @@ describe('handleRBACUserRolesList', () => {
     it('returns only custom assignments (filters system roles)', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('org-my'));
         vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ userId: 'user-1', organizationId: 'org-my' } as any);
+        vi.spyOn(Role, 'whereIn').mockResolvedValue([
+            mockRole({ id: 'role-owner', name: 'owner', isSystem: true, organizationId: null }),
+            mockRole({ id: 'role-editor', name: 'editor', isSystem: false, organizationId: 'org-my' }),
+        ] as any);
+        vi.spyOn(User, 'whereIn').mockResolvedValue([] as any);
         vi.spyOn(UserRole, 'getUserRoles').mockResolvedValue([
             {
                 ...mockUserRole({ roleId: 'role-owner' }),
@@ -173,6 +185,9 @@ describe('handleRBACUserRolesList', () => {
 describe('handleRBACUserRoleAssign', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(canAccessOrganization).mockImplementation((auth: any, organizationId: string) => {
+            return auth.organizationId === organizationId;
+        });
     });
 
     it('forwards the auth guard response when unauthorized', async () => {
@@ -376,6 +391,7 @@ describe('handleRBACUserRoleAssign', () => {
 
     it('uses the target organizationId in the assign rate-limit key', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('system'));
+        vi.mocked(canAccessOrganization).mockReturnValue(true);
         const assignRole = vi.fn();
         vi.spyOn(User, 'find').mockResolvedValue({ assignRole } as any);
         vi.spyOn(Role, 'find').mockResolvedValue(
@@ -412,6 +428,9 @@ describe('handleRBACUserRoleAssign', () => {
 describe('handleRBACUserRoleRemove', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(canAccessOrganization).mockImplementation((auth: any, organizationId: string) => {
+            return auth.organizationId === organizationId;
+        });
     });
 
     it('returns 404 when the user does not exist', async () => {
@@ -495,6 +514,7 @@ describe('handleRBACUserRoleRemove', () => {
 
     it('uses the target organizationId in the remove rate-limit key', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue(adminContext('system'));
+        vi.mocked(canAccessOrganization).mockReturnValue(true);
         const removeRole = vi.fn();
         vi.spyOn(User, 'find').mockResolvedValue({ removeRole } as any);
         vi.spyOn(Role, 'find').mockResolvedValue(

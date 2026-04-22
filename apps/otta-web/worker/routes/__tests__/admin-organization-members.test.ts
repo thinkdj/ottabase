@@ -34,7 +34,10 @@ describe('handleAdminOrganizationInviteMember', () => {
             rbac: { organizationId: 'org-1' } as any,
             session: {},
         });
-        vi.spyOn(User, 'find').mockResolvedValue({ toJson: () => ({ id: 'user-2' }) } as any);
+        vi.spyOn(User, 'find').mockResolvedValue({
+            toJson: () => ({ id: 'user-2' }),
+            get: (key: string) => ({ email: null, name: null })[key],
+        } as any);
         vi.spyOn(OrganizationMember, 'first').mockResolvedValue(null);
         const addMemberSpy = vi.spyOn(OrganizationMember, 'addMember').mockResolvedValue({
             userId: 'user-2',
@@ -80,7 +83,10 @@ describe('handleAdminOrganizationInviteMember', () => {
             rbac: { organizationId: 'org-1' } as any,
             session: {},
         });
-        vi.spyOn(User, 'find').mockResolvedValue({ toJson: () => ({ id: 'user-2' }) } as any);
+        vi.spyOn(User, 'find').mockResolvedValue({
+            toJson: () => ({ id: 'user-2' }),
+            get: (key: string) => ({ email: null, name: null })[key],
+        } as any);
         vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ toJson: () => ({}) } as any);
 
         const response = await handleAdminOrganizationInviteMember(
