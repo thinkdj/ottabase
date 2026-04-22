@@ -1,9 +1,10 @@
-import { MembershipError, OrganizationMember, User } from '@ottabase/ottaorm/models';
+import { MembershipError, Organization, OrganizationMember, User } from '@ottabase/ottaorm/models';
 import { getRBACCache } from '@ottabase/rbac';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
 import { canAccessOrganization, requireAdminAccess, resolveCurrentOrgForAdmin } from '../lib/admin-guard';
+import { sendMemberAddedEmail, sendMemberRemovedEmail } from '../lib/member-emails';
 import { auditOrganizationAction } from '../lib/org-audit';
 import type { ApiRouteContext } from './router';
 
@@ -159,6 +160,21 @@ export async function handleAdminOrganizationInviteMember(
             metadata: { role, status },
         });
 
+        // Send welcome email to new member
+        if (user.email) {
+            const organization = await Organization.find(organizationId);
+            const dashboardUrl = new URL('/dashboard', context.request.url).toString();
+            
+            await sendMemberAddedEmail(context.env, context.request, {
+                to: user.email,
+                organizationName: organization?.name || 'the organization',
+                inviterName: auth.user?.name || undefined,
+                memberName: user.name || user.email,
+                role,
+                dashboardUrl,
+            });
+        }
+
         return jsonResponse({ data: member }, 201);
     } catch (err) {
         const mapped = membershipErrorToResponse(err);
@@ -310,16 +326,19 @@ export async function handleAdminOrganizationRemoveMember(
             },
         });
 
-        // TODO: Send email notification if notifyMember is true
-        // This would integrate with an email service/queue
-        // if (offboardingData.notifyMember && existingMember.user?.email) {
-        //     await sendOffboardingEmail({
-        //         to: existingMember.user.email,
-        //         name: existingMember.user.name,
-        //         organizationName: organization?.name,
-        //         reason: offboardingData.reason,
-        //     });
-        // }
+        // Send email notification if requested
+        if (offboardingData.notifyMember && existingMember.user?.email) {
+            const organization = await Organization.find(organizationId);
+            
+            await sendMemberRemovedEmail(context.env, context.request, {
+                to: existingMember.user.email,
+                organizationName: organization?.name || 'the organization',
+                memberName: existingMember.user.name || existingMember.user.email,
+                role: existingMember.role,
+                reason: offboardingData.reason,
+                contactEmail: auth.user?.email || undefined,
+            });
+        }
 
         return jsonResponse({
             data: {
