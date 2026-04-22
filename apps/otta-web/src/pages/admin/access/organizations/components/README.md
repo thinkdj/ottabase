@@ -48,6 +48,7 @@ function MyComponent() {
 ## Offboarding Reasons
 
 The following predefined reasons are available:
+
 - Left the company
 - Role change
 - Contract ended
@@ -61,8 +62,8 @@ The backend endpoint accepts the following in the DELETE request body:
 
 ```json
 {
-  "reason": "left_company",
-  "notifyMember": true
+    "reason": "left_company",
+    "notifyMember": true
 }
 ```
 

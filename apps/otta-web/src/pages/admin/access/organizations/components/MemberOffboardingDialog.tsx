@@ -176,11 +176,7 @@ export function MemberOffboardingDialog({
                     <Button variant="outline" onClick={handleCancel} disabled={isPending}>
                         Cancel
                     </Button>
-                    <Button
-                        variant="destructive"
-                        onClick={handleConfirm}
-                        disabled={!isConfirmationValid || isPending}
-                    >
+                    <Button variant="destructive" onClick={handleConfirm} disabled={!isConfirmationValid || isPending}>
                         {isPending ? 'Removing...' : 'Remove Member'}
                     </Button>
                 </AlertDialogFooter>

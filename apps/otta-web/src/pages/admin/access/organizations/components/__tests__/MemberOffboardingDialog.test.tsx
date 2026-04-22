@@ -155,12 +155,7 @@ describe('MemberOffboardingDialog', () => {
         const onOpenChange = vi.fn();
 
         const { container } = render(
-            <MemberOffboardingDialog
-                open={true}
-                onOpenChange={onOpenChange}
-                member={null}
-                onConfirm={onConfirm}
-            />,
+            <MemberOffboardingDialog open={true} onOpenChange={onOpenChange} member={null} onConfirm={onConfirm} />,
         );
 
         expect(container.firstChild).toBeNull();
