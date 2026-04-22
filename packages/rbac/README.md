@@ -116,7 +116,7 @@ const editorRole = await Role.create({
     permissions: ['posts:*', 'tags:read'],
 });
 
-// Assign to user in this org
+// Assign to user in this org (organizationId is REQUIRED for tenant safety)
 await user.assignRole(editorRole.id, adminId, 'org-123');
 
 // Check permission in org context
@@ -224,11 +224,17 @@ await cache.clear();
 ## User Model Extensions
 
 ```typescript
+import { SYSTEM_ORGANIZATION_ID } from '@ottabase/ottaorm';
+
 const user = await User.find('user-id');
 
-// Role management (org-scoped)
-await user.assignRole(roleId, assignedBy?, organizationId?);
-await user.removeRole(roleId, organizationId?);
+// Role management (organizationId is REQUIRED — pass SYSTEM_ORGANIZATION_ID for
+// platform-level / superadmin scope, or a real org id for tenant-scoped roles).
+await user.assignRole(roleId, assignedBy, organizationId);
+await user.removeRole(roleId, organizationId);
+
+// Grant platform-level owner (superadmin, *:* across every tenant)
+await user.assignRole(ownerRoleId, undefined, SYSTEM_ORGANIZATION_ID);
 
 // Role checks
 await user.hasRole('admin', organizationId);

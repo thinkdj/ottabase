@@ -857,9 +857,18 @@ const custom = await Role.findCustomByOrg('org-123');
 **Reserved names:** `owner`, `admin`, `member`, `viewer` cannot be used as custom role names. The `POST /api/rbac/roles`
 endpoint enforces this with a 409 `CONFLICT` error.
 
-**Membership integrity guard:** org-scoped role/permission resolution now requires an active `organization_members` row.
-If a stale `user_roles` row exists for an org without active membership, it is ignored and does not grant effective
-permissions.
+**Membership integrity guard:** org-scoped role/permission resolution requires an active `organization_members` row. If
+a stale `user_roles` row exists for an org without active membership, it is ignored and does not grant effective
+permissions. The virtual platform scope (`SYSTEM_ORGANIZATION_ID = 'system'`, exported from `@ottabase/ottaorm`) is
+exempt from this guard — it has no membership row by design and is used for platform-level owner/superadmin assignments
+(e.g. the first bootstrapped user).
+
+```typescript
+import { SYSTEM_ORGANIZATION_ID } from '@ottabase/ottaorm';
+
+// Grant platform-level owner (*:* across every tenant)
+await user.assignRole(ownerRole.id, undefined, SYSTEM_ORGANIZATION_ID);
+```
 
 **Uniqueness:** The schema enforces `UNIQUE(name, organizationId)`. Because SQLite treats `NULL != NULL` in unique
 indexes, system-role uniqueness (all `organizationId = NULL`) is additionally enforced by application-level idempotency

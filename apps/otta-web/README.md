@@ -434,8 +434,10 @@ curl -s -X POST :3004/__bootstrap__/api/create-owner -H "X-Bootstrap-Secret: $BS
      -d '{"email":"admin@example.com","password":"X!xxxxxx","name":"Admin"}'
 ```
 
-The created founder lands on `/admin-platform/*`. Any subsequent user that signs in via `/login` is auto-provisioned
-into their own personal org and lands on `/admin/*`.
+The created founder is the platform owner: `/__bootstrap__/api/create-owner` assigns the `owner` role scoped to
+`SYSTEM_ORGANIZATION_ID` (the virtual platform scope) and also provisions a personal tenant org. They land on
+`/admin-platform/*` with `*:*` permissions that persist across sessions (not just the initial JWT). Subsequent users who
+sign in via `/login` are auto-provisioned into their own personal org and land on `/admin/*`.
 
 ## Using Cloudflare Bindings
 
