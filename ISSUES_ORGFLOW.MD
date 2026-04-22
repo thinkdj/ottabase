@@ -1,100 +1,117 @@
-# Org / Member / RBAC Flow — Issue Tracker
+# Org / Member / RBAC Flow — Issue Tracker (Latest Re-scan)
 
-Findings from scanning: Organization > Member > org-scoped custom roles, platform super-admin, and SaaS tenant org users flow.
-
----
-
-## CRITICAL (runtime crash / security) — ✅ All Fixed
-
-### C1 — `member.toJson()` called on a plain DB row → runtime crash ✅ Fixed
-### C2 — `clearTenantRBAC` does not clean up custom roles on member removal ✅ Fixed
-### C3 — Cross-tenant role assignment in `handleRBACUserRoleAssign` ✅ Fixed
+Fresh audit scope:
+- tenant/org membership lifecycle
+- org invite (admin + public accept)
+- RBAC role + user-role assignment paths
+- request-context + permission evaluation chain
+- current admin UI wiring for member roles
 
 ---
 
-## HIGH (incorrect behavior / security design gap) — ✅ All Fixed
+## Previously fixed set (still verified as fixed)
 
-### H1 — `syncTenantRBAC` does not revoke custom roles when member is suspended ✅ Fixed
-**Files:** `packages/ottaorm/src/models/OrganizationMember.ts`
-
-When a member is suspended (`setStatus(..., 'suspended', ...)`) or demoted, `syncTenantRBAC` only revoked the four default role assignments. Any custom roles were untouched.
-
-**Fix:** On non-active status (suspended/invited), use the `UserRole.clearUserRoles()` bulk DELETE to remove ALL org-scoped roles (default + custom). On reactivation, only the base membership role is restored — custom roles must be re-granted explicitly by an admin.
-
----
-
-### H2 — `viewer` role is missing from member-invite and member-update API validators ✅ Fixed
-
----
-
-### H3 — Invite cleanup happens after email send; old invites not revoked on email failure ✅ Fixed
-**File:** `apps/otta-web/worker/routes/admin-organization-invites.ts`
-
-`revokePendingForEmailExcept` was called **after** the email send. If send failed, older pending invites for the same email remained active.
-
-**Fix:** Call `revokePendingForEmailExcept` after insert but before email send. On send failure, delete the new invite row (already done). This ensures there is never more than one live invite token for the same (org, email) pair, regardless of send success.
+- C1 `member.toJson()` crash on plain row
+- C2 `clearTenantRBAC` now removes all roles on member removal
+- C3 cross-tenant role assignment guard in `handleRBACUserRoleAssign`
+- H1 suspend/deactivate now revokes custom roles
+- H2 viewer support added for member invite/update APIs
+- H3 invite duplicate cleanup moved before email send
+- H4 resend rollback now logs double-failure condition
+- M1 role rename support in `PATCH /api/rbac/roles/:id`
+- M2 permission format validation in role create/update
+- M3 bootstrap owner secret no longer accepted in query params
+- M4 model-layer duplicate guard in `OrganizationMember.addMember`
+- M5 public accept handles `MEMBER_ALREADY_EXISTS` idempotently
+- M6 roles list 500 now includes error `code`
+- M7 viewer role filter parity in OrganizationMember helpers
+- L1/L2/L3/L4 prior test/docs/endpoint gaps
 
 ---
 
-### H4 — Non-atomic resend rollback can leave an invite permanently broken ✅ Fixed
-**File:** `apps/otta-web/worker/routes/admin-organization-invites.ts`
+## NEW / STILL-OPEN Findings (from latest state)
 
-If email send fails on resend and the rollback `updateById` also fails, the invite's `tokenHash` has been replaced but the old token is gone and the new token was never delivered.
+## CRITICAL
 
-**Fix:** Wrapped the rollback in a try/catch; logs a structured `ORG_INVITE_RESEND_ROLLBACK_FAILED` error with `inviteId`, `organizationId`, `sendError`, and `rollbackError` so an operator can identify and manually revoke.
+### N1 — RBAC custom roles can be assigned to users with no active org membership
+**Files:**
+- `apps/otta-web/worker/routes/rbac-user-roles.ts`
+- `packages/rbac/src/request-context.ts`
+- `packages/rbac/src/admin-guard.ts`
+- `apps/otta-web/worker/routes/rbac-roles.ts`
+
+`handleRBACUserRoleAssign` validates caller access + role ownership but does **not** verify that target `userId` is an active member of `organizationId`.
+
+Because request context permissions come from `user_roles` for the scoped org, a non-member user can still receive org-scoped permissions if an admin assigns a role directly. This is especially dangerous because custom roles currently allow `*:*` permissions, and `assertAdmin` treats `*:*` as admin-equivalent.
+
+**Recommended fix:** enforce `OrganizationMember.first({ userId, organizationId, status: 'active' })` (or equivalent model helper) before assign/list/remove custom org roles; reject otherwise.
 
 ---
 
-## MEDIUM (missing validation / minor UX gaps) — ✅ All Fixed
+## HIGH
 
-### M1 — `handleRBACRoleUpdate` cannot rename a custom role ✅ Fixed
+### N2 — Cached role-name rehydration drops org-custom roles
+**File:** `packages/ottaorm/src/models/User.ts`
+
+In `User.roles(...)`, cache-hit path fetches cached role names, then resolves each via `Role.findByName(roleName)` **without organization scope**.
+
+For org-custom roles (e.g., `editor`), `findByName` without org only checks system roles and returns null; custom role permissions disappear on cache-hit requests.
+
+**Impact:** intermittent permission loss / inconsistent authorization behavior between cold and warm cache paths.
+
+**Recommended fix:** resolve cached roles by `(name, organizationId)` or cache role IDs and resolve by ID.
+
+---
+
+### N3 — `addMember` race can still throw raw DB UNIQUE errors (not mapped)
+**Files:**
+- `packages/ottaorm/src/models/OrganizationMember.ts`
+- `apps/otta-web/worker/routes/org-invites-public.ts`
+- `apps/otta-web/worker/routes/admin-organization-members.ts`
+
+`addMember` has a pre-insert duplicate check, but concurrent calls can still pass the check and race on INSERT.
+
+Current handlers only map `MembershipError('MEMBER_ALREADY_EXISTS')`; a raw UNIQUE violation can still bubble up as 500.
+
+**Recommended fix:** catch unique-constraint insert errors inside `addMember` and rethrow `MembershipError('MEMBER_ALREADY_EXISTS')` so all callers get consistent idempotent handling.
+
+---
+
+## MEDIUM
+
+### N4 — `viewer` role remains inconsistent across invite/UI flows
+**Files:**
+- `apps/otta-web/worker/routes/admin-organization-invites.ts`
+- `apps/otta-web/worker/routes/org-invites-public.ts`
+- `apps/otta-web/src/types/rbac.ts`
+- `apps/otta-web/src/pages/admin/access/organizations/components/InviteMemberForm.tsx`
+- `apps/otta-web/src/pages/admin/access/organizations/OrganizationMembersPage.tsx`
+
+Model + member-admin APIs now support `viewer`, but:
+- email invite create validation still allows only owner/admin/member,
+- frontend `MemberRole` excludes `viewer`,
+- role selects in member pages/forms also exclude `viewer`.
+
+**Impact:** admins cannot consistently assign/invite `viewer` through current UI/email flows.
+
+**Recommended fix:** make role unions/options consistent end-to-end with backend membership enum.
+
+---
+
+## LOW
+
+### N5 — RBAC role create/update still lacks invalid-JSON body guard
 **File:** `apps/otta-web/worker/routes/rbac-roles.ts`
 
-`PATCH /api/rbac/roles/:id` now accepts an optional `name` field. Renaming is subject to the same reserved-name (system role names) and per-org uniqueness constraints as role creation.
+`handleRBACRoleCreate` and `handleRBACRoleUpdate` call `await request.json()` without local try/catch; malformed JSON currently surfaces as generic 500 instead of structured 400 `BAD_REQUEST`.
+
+**Recommended fix:** add JSON parse guard similar to other routes.
 
 ---
 
-### M2 — `handleRBACRoleCreate` does not validate permission string format ✅ Fixed
-**File:** `apps/otta-web/worker/routes/rbac-roles.ts`
-
-Added `validatePermissions()` that requires `resource:action` format (colon-separated non-empty segments, wildcards allowed). Called on both create and update. Returns 400 `VALIDATION_ERROR` for malformed entries.
-
----
-
-### M3 — Bootstrap owner-promote secret accepted via query parameter ✅ Fixed
-**File:** `apps/otta-web/worker/routes/admin-owner.ts`
-
-Removed `querySecret` branch. Secret is now only accepted via `X-Bootstrap-Secret` header or POST body — never in a URL that could be captured in access logs.
-
----
-
-### M4 — `addMember` has no duplicate-membership guard at the model layer ✅ Fixed
-**File:** `packages/ottaorm/src/models/OrganizationMember.ts`
-
-`addMember` now calls `getMember` first and throws `MembershipError('MEMBER_ALREADY_EXISTS')` if a row already exists. `MembershipErrorCode` union extended to include `'MEMBER_ALREADY_EXISTS'`. `membershipErrorToResponse` in the route maps it to 409.
-
----
-
-### M5 — Public invite-accept race condition ✅ Fixed
-**File:** `apps/otta-web/worker/routes/org-invites-public.ts`
-
-`addMember` now throws `MembershipError('MEMBER_ALREADY_EXISTS')` on concurrent duplicate inserts. The public accept handler catches that specific error and returns an idempotent success (`{ accepted: true, alreadyMember: true }`) instead of a 500.
-
----
-
-### M6 — `handleRBACRolesList` 500 response body missing `code` field ✅ Fixed
-
-### M7 — `OrganizationMember` `role` filter narrower than model enum ✅ Fixed
-
----
-
-## LOW (docs / test coverage) — ✅ All Fixed
-
-### L1 — Tests mask the `toJson` crash ✅ Fixed
-### L2 — No test for cross-tenant role assignment guard ✅ Fixed
-
-### L3 — README omits `viewer` from default roles list ✅ Fixed
-**File:** `packages/rbac/README.md`
-
-### L4 — No GET by ID endpoint for `/api/rbac/roles/:id` ✅ Fixed
-Added `handleRBACRoleGet` in `rbac-roles.ts` and wired it in the router under GET `/api/rbac/roles/:id`. System roles are accessible to any authenticated admin; custom roles are only visible to admins within the owning organization (returns 404 for cross-org to avoid disclosure).
+## Suggested immediate assessment order
+1. N1 (security boundary bypass)
+2. N2 (authorization correctness drift)
+3. N3 (idempotency + 500 race)
+4. N4 (role-model consistency)
+5. N5 (error-shape consistency)
