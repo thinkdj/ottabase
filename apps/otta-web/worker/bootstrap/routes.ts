@@ -21,6 +21,7 @@ import {
     registerConnection,
     Role,
     runMigrations,
+    SYSTEM_ORGANIZATION_ID,
     User,
 } from '@ottabase/ottaorm';
 import type { CloudflareEnv } from '../../cloudflare-env';
@@ -498,6 +499,18 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             );
         }
         const assignedRole: 'owner' = 'owner';
+
+        // Grant platform-level superadmin: first bootstrapped user is the platform
+        // Owner, scoped to SYSTEM_ORGANIZATION_ID (virtual platform scope). This
+        // persists `*:*` via the owner role so subsequent logins and RBAC checks
+        // honor platform-wide access, not just a JWT-baked permissions claim.
+        try {
+            const roles = await Role.ensureDefaults();
+            const ownerRoleId = roles.owner.get('id') as string;
+            await (newUser as any).assignRole(ownerRoleId, undefined, SYSTEM_ORGANIZATION_ID);
+        } catch (error) {
+            console.warn('Failed to assign platform-level owner role to bootstrap user:', error);
+        }
 
         // Auto-login: create auth cookie so the user is immediately authenticated
         const cookieName = (env as any).AUTH_COOKIE_NAME || 'authjs.session-token';

@@ -11,8 +11,12 @@ import { normalizeEmail } from '../lib/utils';
 import type { ApiRouteContext } from './router';
 
 function maskEmail(email: string): string {
-    const [local, domain] = email.split('@');
-    if (!domain) return '***';
+    if (typeof email !== 'string' || !email) return '***';
+    const atIdx = email.indexOf('@');
+    if (atIdx <= 0 || atIdx === email.length - 1) return '***';
+    const local = email.slice(0, atIdx);
+    const domain = email.slice(atIdx + 1);
+    if (!domain.includes('.')) return '***';
     if (local.length <= 2) return `***@${domain}`;
     return `${local[0]}***${local[local.length - 1]}@${domain}`;
 }
@@ -186,11 +190,22 @@ export async function handlePublicOrgInviteAccept(context: ApiRouteContext): Pro
             return jsonResponse({ data: { accepted: true, alreadyMember: true } });
         }
 
+        // Defense-in-depth: validate the stored role before materializing a
+        // membership. Invite creation already validates, but a stale or
+        // tampered row shouldn't be able to promote a user silently.
+        const ALLOWED_INVITE_ROLES = ['owner', 'admin', 'member', 'viewer'] as const;
+        type AllowedInviteRole = (typeof ALLOWED_INVITE_ROLES)[number];
+        if (!ALLOWED_INVITE_ROLES.includes(invite.role as AllowedInviteRole)) {
+            return errorResponse('Invitation has an invalid role and cannot be accepted', 409, {
+                code: 'INVITE_INVALID_ROLE',
+            });
+        }
+
         try {
             await OrganizationMember.addMember({
                 userId,
                 organizationId: invite.organizationId,
-                role: invite.role as 'owner' | 'admin' | 'member' | 'viewer',
+                role: invite.role as AllowedInviteRole,
                 status: 'active',
                 joinedAt: Date.now(),
                 invitedBy: invite.invitedBy ?? null,

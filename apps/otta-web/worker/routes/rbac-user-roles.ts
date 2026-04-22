@@ -118,7 +118,7 @@ export async function handleRBACUserRolesList(context: ApiRouteContext): Promise
  * Body: { userId, roleId, organizationId? }
  *
  * Assigns a role to a user in the current organization. Idempotent.
- * Rate limited to 20 requests per minute per organization to prevent cache DOS.
+ * Rate limited to 10 requests per minute per organization.
  */
 export async function handleRBACUserRoleAssign(context: ApiRouteContext): Promise<Response> {
     const auth = await requireAdminAccess(context, { scope: 'either' });
@@ -151,10 +151,10 @@ export async function handleRBACUserRoleAssign(context: ApiRouteContext): Promis
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
-    // Rate limit: 20 role assignments per minute per target organization
+    // Rate limit: 10 role assignments per minute per target organization
     const rateLimitKey = `rbac:role-assign:${organizationId}`;
     const rateLimit = await enforceRateLimit(context.request, context.env, rateLimitKey, {
-        limit: 20,
+        limit: 10,
         period: 60,
     });
     if (rateLimit) return rateLimit;
@@ -209,7 +209,7 @@ export async function handleRBACUserRoleAssign(context: ApiRouteContext): Promis
 
 /**
  * DELETE /api/rbac/user-roles/:userId/:roleId?organizationId=<id>
- * Rate limited to 20 requests per minute per organization to prevent abuse.
+ * Rate limited to 10 requests per minute per organization to prevent abuse.
  */
 export async function handleRBACUserRoleRemove(
     context: ApiRouteContext,
@@ -228,10 +228,10 @@ export async function handleRBACUserRoleRemove(
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 
-    // Rate limit: 20 role removals per minute per target organization
+    // Rate limit: 10 role removals per minute per target organization
     const rateLimitKey = `rbac:role-remove:${organizationId}`;
     const rateLimit = await enforceRateLimit(context.request, context.env, rateLimitKey, {
-        limit: 20,
+        limit: 10,
         period: 60,
     });
     if (rateLimit) return rateLimit;

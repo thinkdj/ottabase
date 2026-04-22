@@ -3,6 +3,7 @@
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { SYSTEM_ORGANIZATION_ID } from '../rbac-constants';
 import { usersTable } from './User.schema';
 
 export { usersTable, type NewUserType, type UserType } from './User.schema';
@@ -228,6 +229,26 @@ export class User extends BaseModel {
     }) {
         const userId = this.get('id') as string;
         const organizationId = options?.organizationId;
+        // The virtual platform scope has no membership row by design. Skip the
+        // membership guard so platform-level owner/admin roles are honored.
+        const isSystemScope = organizationId === SYSTEM_ORGANIZATION_ID;
+        const hasActiveMembership =
+            organizationId && !isSystemScope ? await this.hasActiveOrganizationMembership(organizationId) : true;
+
+        // Defense-in-depth: org-scoped roles must only be effective for active members.
+        // This prevents stale/orphaned user_roles rows from granting permissions.
+        if (!hasActiveMembership) {
+            if (options?.cache) {
+                try {
+                    await options.cache.setUserRoles(userId, [], organizationId);
+                    await options.cache.setUserPermissions(userId, [], organizationId);
+                } catch (error) {
+                    // Ignore cache errors
+                }
+            }
+            return [];
+        }
+
         const { UserRole } = await import('./UserRole');
         const { Role } = await import('./Role');
 
@@ -283,6 +304,11 @@ export class User extends BaseModel {
         }
 
         return roles;
+    }
+
+    private async hasActiveOrganizationMembership(organizationId: string): Promise<boolean> {
+        const { OrganizationMember } = await import('./OrganizationMember');
+        return OrganizationMember.isMember(this.get('id') as string, organizationId);
     }
 
     /**
@@ -379,60 +405,51 @@ export class User extends BaseModel {
     // ============================================================
 
     /**
-     * Assign a role to the user
-     * Automatically invalidates cache if provided
+     * Assign a role to the user.
+     *
+     * `organizationId` is REQUIRED for multi-tenant safety: the existence check
+     * and cache invalidation must both be scoped to a single tenant. Pass the
+     * shared `SYSTEM_ORGANIZATION_ID` for platform-level owner roles.
      */
     async assignRole(
         roleId: string,
-        assignedBy?: string,
-        organizationId?: string,
+        assignedBy: string | undefined,
+        organizationId: string,
         options?: { cache?: any },
     ): Promise<void> {
         const { UserRole } = await import('./UserRole');
         const userId = this.get('id') as string;
 
-        // Check if already assigned
-        const existing = await UserRole.first({
-            userId,
-            roleId,
-            ...(organizationId ? { organizationId } : {}),
-        });
+        // Org-scoped duplicate check — prevents re-inserting an identical assignment.
+        const existing = await UserRole.first({ userId, roleId, organizationId });
+        if (existing) return;
 
-        if (!existing) {
-            await UserRole.create({
-                userId,
-                roleId,
-                assignedBy,
-                organizationId,
-            });
+        await UserRole.create({ userId, roleId, assignedBy, organizationId });
 
-            // Invalidate cache
-            if (options?.cache) {
-                try {
-                    await options.cache.invalidateUser(userId);
-                } catch (error) {
-                    // Ignore cache errors
-                }
+        if (options?.cache) {
+            try {
+                await options.cache.invalidateUser(userId, organizationId);
+            } catch {
+                // Cache failures are non-fatal — entries expire naturally.
             }
         }
     }
 
     /**
-     * Remove a role from the user
-     * Automatically invalidates cache if provided
+     * Remove a role from the user. `organizationId` is REQUIRED so we never
+     * fan out a removal across every tenant the user belongs to.
      */
-    async removeRole(roleId: string, organizationId?: string, options?: { cache?: any }): Promise<void> {
+    async removeRole(roleId: string, organizationId: string, options?: { cache?: any }): Promise<void> {
         const { UserRole } = await import('./UserRole');
         const userId = this.get('id') as string;
 
         await UserRole.removeRole(userId, roleId, organizationId);
 
-        // Invalidate cache
         if (options?.cache) {
             try {
-                await options.cache.invalidateUser(userId);
-            } catch (error) {
-                // Ignore cache errors
+                await options.cache.invalidateUser(userId, organizationId);
+            } catch {
+                // Cache failures are non-fatal — entries expire naturally.
             }
         }
     }
@@ -441,12 +458,8 @@ export class User extends BaseModel {
      * Check if user has a specific role
      */
     async hasRole(roleName: string, organizationId?: string): Promise<boolean> {
-        const { Role } = await import('./Role');
-        const role = await Role.findByName(roleName);
-        if (!role) return false;
-
-        const { UserRole } = await import('./UserRole');
-        return UserRole.hasRole(this.get('id'), role.get('id'), organizationId);
+        const roles = await this.roles({ organizationId });
+        return roles.some((role) => String(role.get('name')) === roleName);
     }
 
     /**
@@ -480,6 +493,25 @@ export class User extends BaseModel {
     async getPermissions(options?: { cache?: any; organizationId?: string }): Promise<string[]> {
         const userId = this.get('id') as string;
         const organizationId = options?.organizationId;
+
+        if (organizationId) {
+            // Virtual platform scope has no membership row — skip the guard so
+            // platform-level owner/admin permissions resolve.
+            const isSystemScope = organizationId === SYSTEM_ORGANIZATION_ID;
+            const hasActiveMembership = isSystemScope
+                ? true
+                : await this.hasActiveOrganizationMembership(organizationId);
+            if (!hasActiveMembership) {
+                if (options?.cache) {
+                    try {
+                        await options.cache.setUserPermissions(userId, [], organizationId);
+                    } catch (error) {
+                        // Ignore cache errors
+                    }
+                }
+                return [];
+            }
+        }
 
         // Try cache first if provided
         if (options?.cache) {

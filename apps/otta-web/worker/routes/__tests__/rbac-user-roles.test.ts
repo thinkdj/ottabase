@@ -418,7 +418,7 @@ describe('handleRBACUserRoleAssign', () => {
             expect.anything(),
             'rbac:role-assign:org-1',
             {
-                limit: 20,
+                limit: 10,
                 period: 60,
             },
         );
@@ -545,7 +545,7 @@ describe('handleRBACUserRoleRemove', () => {
             expect.anything(),
             'rbac:role-remove:org-target',
             {
-                limit: 20,
+                limit: 10,
                 period: 60,
             },
         );

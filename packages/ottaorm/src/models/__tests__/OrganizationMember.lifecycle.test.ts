@@ -24,10 +24,12 @@ function makeInsertDriver(returned: any) {
         set: () => ({ where: () => ({ returning: async () => [returned] }) }),
     }));
     const del = vi.fn(() => ({ where: async () => undefined }));
+    const executeBatch = vi.fn(async () => []);
     const driver = {
         getDb: () => ({ insert, update, delete: del }),
+        executeBatch,
     };
-    return { driver, insert, values, returning, update, delete: del };
+    return { driver, insert, values, returning, update, delete: del, executeBatch };
 }
 
 describe('OrganizationMember lifecycle', () => {
@@ -164,14 +166,21 @@ describe('OrganizationMember lifecycle', () => {
         });
 
         it('allows demoting an owner when another active owner exists', async () => {
-            vi.spyOn(OrganizationMember, 'getMember').mockResolvedValue({
-                userId: 'user-1',
-                organizationId: 'org-1',
-                role: 'owner',
-                status: 'active',
-            } as any);
+            vi.spyOn(OrganizationMember, 'getMember')
+                .mockResolvedValueOnce({
+                    userId: 'user-1',
+                    organizationId: 'org-1',
+                    role: 'owner',
+                    status: 'active',
+                } as any)
+                .mockResolvedValueOnce({
+                    userId: 'user-1',
+                    organizationId: 'org-1',
+                    role: 'admin',
+                    status: 'active',
+                } as any);
             vi.spyOn(OrganizationMember, 'isLastActiveOwner').mockResolvedValue(false);
-            const { driver } = makeInsertDriver({
+            const { driver, executeBatch } = makeInsertDriver({
                 userId: 'user-1',
                 organizationId: 'org-1',
                 role: 'admin',
@@ -183,10 +192,84 @@ describe('OrganizationMember lifecycle', () => {
             const result = await OrganizationMember.setRole('user-1', 'org-1', 'admin', { cache: cache as any });
 
             expect(result.role).toBe('admin');
-            expect(UserRole.create).toHaveBeenCalledWith(
-                expect.objectContaining({ roleId: 'role-admin', userId: 'user-1', organizationId: 'org-1' }),
+            expect(executeBatch).toHaveBeenCalledTimes(1);
+            expect(executeBatch).toHaveBeenCalledWith(
+                expect.arrayContaining([
+                    expect.stringContaining("UPDATE organization_members SET role = 'admin'"),
+                    expect.stringContaining('DELETE FROM user_roles'),
+                    expect.stringContaining('INSERT OR IGNORE INTO user_roles'),
+                ]),
             );
             expect(cache.invalidateUser).toHaveBeenCalledWith('user-1', 'org-1');
+        });
+
+        it('updates role and syncs RBAC in a single atomic batch', async () => {
+            vi.spyOn(OrganizationMember, 'getMember')
+                .mockResolvedValueOnce({
+                    userId: 'user-7',
+                    organizationId: 'org-7',
+                    role: 'member',
+                    status: 'active',
+                } as any)
+                .mockResolvedValueOnce({
+                    userId: 'user-7',
+                    organizationId: 'org-7',
+                    role: 'viewer',
+                    status: 'active',
+                } as any);
+            vi.spyOn(OrganizationMember, 'isLastActiveOwner').mockResolvedValue(false);
+            const { driver, executeBatch } = makeInsertDriver(null);
+            vi.spyOn(OrganizationMember as any, 'getDriver').mockReturnValue(driver as any);
+
+            const result = await OrganizationMember.setRole('user-7', 'org-7', 'viewer', {
+                assignedBy: 'admin-7',
+            });
+
+            expect(result.role).toBe('viewer');
+            expect(executeBatch).toHaveBeenCalledTimes(1);
+            expect(executeBatch).toHaveBeenCalledWith(
+                expect.arrayContaining([
+                    expect.stringContaining("UPDATE organization_members SET role = 'viewer'"),
+                    expect.stringContaining("organization_id = 'org-7'"),
+                    expect.stringContaining("assigned_by) VALUES ('user-7'"),
+                ]),
+            );
+        });
+    });
+
+    describe('setStatus', () => {
+        it('updates membership status and RBAC in a single atomic batch', async () => {
+            vi.spyOn(OrganizationMember, 'getMember')
+                .mockResolvedValueOnce({
+                    userId: 'user-2',
+                    organizationId: 'org-2',
+                    role: 'admin',
+                    status: 'active',
+                } as any)
+                .mockResolvedValueOnce({
+                    userId: 'user-2',
+                    organizationId: 'org-2',
+                    role: 'admin',
+                    status: 'suspended',
+                } as any);
+            vi.spyOn(OrganizationMember, 'isLastActiveOwner').mockResolvedValue(false);
+            const { driver, executeBatch } = makeInsertDriver(null);
+            vi.spyOn(OrganizationMember as any, 'getDriver').mockReturnValue(driver as any);
+
+            const cache = { invalidateUser: vi.fn().mockResolvedValue(undefined) };
+            const result = await OrganizationMember.setStatus('user-2', 'org-2', 'suspended', {
+                cache: cache as any,
+            });
+
+            expect(result.status).toBe('suspended');
+            expect(executeBatch).toHaveBeenCalledTimes(1);
+            expect(executeBatch).toHaveBeenCalledWith(
+                expect.arrayContaining([
+                    expect.stringContaining("UPDATE organization_members SET status = 'suspended'"),
+                    expect.stringContaining("DELETE FROM user_roles WHERE user_id = 'user-2'"),
+                ]),
+            );
+            expect(cache.invalidateUser).toHaveBeenCalledWith('user-2', 'org-2');
         });
     });
 

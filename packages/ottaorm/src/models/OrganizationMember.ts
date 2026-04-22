@@ -54,6 +54,13 @@ interface LifecycleOptions {
     assignedBy?: string | null;
 }
 
+interface DefaultRolesMap {
+    owner: { get(key: string): unknown };
+    admin: { get(key: string): unknown };
+    member: { get(key: string): unknown };
+    viewer: { get(key: string): unknown };
+}
+
 /**
  * OrganizationMember model
  * Manages user membership in organizations
@@ -264,6 +271,91 @@ export class OrganizationMember extends BaseModel {
         return /unique|constraint|already exists|organization_members/i.test(message);
     }
 
+    private static sqlString(value: string): string {
+        return `'${String(value).replace(/'/g, "''")}'`;
+    }
+
+    private static sqlNullableString(value?: string | null): string {
+        if (value === null || value === undefined) return 'NULL';
+        return this.sqlString(value);
+    }
+
+    private static buildTenantRBACSyncBatchSql(
+        userId: string,
+        organizationId: string,
+        role: MembershipRole,
+        status: MembershipStatus,
+        defaults: DefaultRolesMap,
+        options: LifecycleOptions,
+    ): string[] {
+        const statements: string[] = [];
+        const quotedUserId = this.sqlString(userId);
+        const quotedOrgId = this.sqlString(organizationId);
+
+        if (status !== 'active') {
+            statements.push(
+                `DELETE FROM user_roles WHERE user_id = ${quotedUserId} AND organization_id = ${quotedOrgId}`,
+            );
+            return statements;
+        }
+
+        const defaultRoleIds = DEFAULT_ROLE_NAMES.map((name) => String(defaults[name].get('id'))).filter(Boolean);
+        if (defaultRoleIds.length > 0) {
+            const quotedRoleIds = defaultRoleIds.map((id) => this.sqlString(id)).join(', ');
+            statements.push(
+                `DELETE FROM user_roles WHERE user_id = ${quotedUserId} AND organization_id = ${quotedOrgId} AND role_id IN (${quotedRoleIds})`,
+            );
+        }
+
+        const targetRole = defaults[role];
+        if (!targetRole) {
+            throw new Error(`Role ${role} not found for tenant RBAC sync`);
+        }
+
+        const targetRoleId = String(targetRole.get('id'));
+        const assignedAt = Date.now();
+        statements.push(
+            `INSERT OR IGNORE INTO user_roles (user_id, role_id, organization_id, app_id, assigned_at, assigned_by) VALUES (${quotedUserId}, ${this.sqlString(targetRoleId)}, ${quotedOrgId}, NULL, ${assignedAt}, ${this.sqlNullableString(options.assignedBy)})`,
+        );
+
+        return statements;
+    }
+
+    private static async runMembershipUpdateWithAtomicRBACSync(
+        userId: string,
+        organizationId: string,
+        updateMembershipSql: string,
+        role: MembershipRole,
+        status: MembershipStatus,
+        options: LifecycleOptions,
+    ): Promise<OrganizationMemberType> {
+        const { Role } = await import('./Role');
+        const defaults = (await Role.ensureDefaults()) as DefaultRolesMap;
+        const syncSql = this.buildTenantRBACSyncBatchSql(userId, organizationId, role, status, defaults, options);
+
+        const driver = this.getDriver();
+        if (!driver.executeBatch) {
+            throw new Error('Database driver does not support executeBatch for atomic membership RBAC sync');
+        }
+
+        await driver.executeBatch([updateMembershipSql, ...syncSql]);
+
+        const updated = await this.getMember(userId, organizationId);
+        if (!updated) {
+            throw new MembershipError('MEMBER_NOT_FOUND');
+        }
+
+        if (options.cache) {
+            try {
+                await options.cache.invalidateUser(userId, organizationId);
+            } catch {
+                // cache failures don't fail the write
+            }
+        }
+
+        return updated;
+    }
+
     /**
      * Change an existing member's role and re-sync RBAC atomically.
      *
@@ -291,21 +383,17 @@ export class OrganizationMember extends BaseModel {
             }
         }
 
-        const db = this.getDriver().getDb();
-        const [updated] = await db
-            .update(organizationMembersTable)
-            .set({ role })
-            .where(
-                and(
-                    eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId),
-                ),
-            )
-            .returning();
+        const status = current.status as MembershipStatus;
+        const updateMembershipSql = `UPDATE organization_members SET role = ${this.sqlString(role)} WHERE user_id = ${this.sqlString(userId)} AND organization_id = ${this.sqlString(organizationId)}`;
 
-        const status = (updated?.status ?? current.status) as MembershipStatus;
-        await this.syncTenantRBAC(userId, organizationId, role, status, options);
-        return updated ?? { ...current, role };
+        return this.runMembershipUpdateWithAtomicRBACSync(
+            userId,
+            organizationId,
+            updateMembershipSql,
+            role,
+            status,
+            options,
+        );
     }
 
     /**
@@ -329,21 +417,17 @@ export class OrganizationMember extends BaseModel {
             }
         }
 
-        const db = this.getDriver().getDb();
-        const [updated] = await db
-            .update(organizationMembersTable)
-            .set({ status })
-            .where(
-                and(
-                    eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId),
-                ),
-            )
-            .returning();
+        const role = current.role as MembershipRole;
+        const updateMembershipSql = `UPDATE organization_members SET status = ${this.sqlString(status)} WHERE user_id = ${this.sqlString(userId)} AND organization_id = ${this.sqlString(organizationId)}`;
 
-        const role = (updated?.role ?? current.role) as MembershipRole;
-        await this.syncTenantRBAC(userId, organizationId, role, status, options);
-        return updated ?? { ...current, status };
+        return this.runMembershipUpdateWithAtomicRBACSync(
+            userId,
+            organizationId,
+            updateMembershipSql,
+            role,
+            status,
+            options,
+        );
     }
 
     /**

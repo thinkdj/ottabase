@@ -105,6 +105,23 @@ global.ResizeObserver = class ResizeObserver {
     unobserve() {}
 } as any;
 
+// Radix UI relies on a handful of DOM APIs that jsdom doesn't implement.
+// Stubbing them here prevents runtime errors inside Select/Dialog/Popover etc.
+if (typeof Element !== 'undefined') {
+    if (!(Element.prototype as any).scrollIntoView) {
+        (Element.prototype as any).scrollIntoView = vi.fn();
+    }
+    if (!(Element.prototype as any).hasPointerCapture) {
+        (Element.prototype as any).hasPointerCapture = vi.fn(() => false);
+    }
+    if (!(Element.prototype as any).setPointerCapture) {
+        (Element.prototype as any).setPointerCapture = vi.fn();
+    }
+    if (!(Element.prototype as any).releasePointerCapture) {
+        (Element.prototype as any).releasePointerCapture = vi.fn();
+    }
+}
+
 afterAll(() => {
     vi.clearAllMocks();
 });

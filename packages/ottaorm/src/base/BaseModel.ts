@@ -527,6 +527,22 @@ export class BaseModel extends AbstractBaseModel {
                         continue;
                     }
                 }
+
+                // For json casts, serialize objects/arrays to a JSON string so the
+                // DB driver doesn't coerce arrays via Array#toString ("a,b,c"),
+                // which silently corrupts the stored value.
+                if (castType === 'json') {
+                    if (typeof value === 'string') {
+                        // Already serialized — trust the caller.
+                        continue;
+                    }
+                    try {
+                        prepared[key] = JSON.stringify(value);
+                    } catch {
+                        // If it can't be serialized, leave as-is and let the DB
+                        // driver surface the error rather than silently mangle.
+                    }
+                }
             }
         }
 

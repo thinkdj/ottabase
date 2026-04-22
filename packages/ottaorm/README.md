@@ -812,7 +812,14 @@ await OrganizationMember.addMember({
 
 // 5. Change role. Re-syncs RBAC. Throws MembershipError('LAST_ACTIVE_OWNER_GUARD')
 //    when demoting the only active owner; routes map that to HTTP 409.
+//    This write is atomic on D1: membership update + RBAC sync run in one batch.
 await OrganizationMember.setRole('user-456', org.get('id'), 'admin', {
+    cache: getRBACCache(),
+    assignedBy: 'user-123',
+});
+
+// 5b. Status updates are also atomic with RBAC sync (e.g. suspend/activate).
+await OrganizationMember.setStatus('user-456', org.get('id'), 'suspended', {
     cache: getRBACCache(),
     assignedBy: 'user-123',
 });
@@ -849,6 +856,10 @@ const custom = await Role.findCustomByOrg('org-123');
 
 **Reserved names:** `owner`, `admin`, `member`, `viewer` cannot be used as custom role names. The `POST /api/rbac/roles`
 endpoint enforces this with a 409 `CONFLICT` error.
+
+**Membership integrity guard:** org-scoped role/permission resolution now requires an active `organization_members` row.
+If a stale `user_roles` row exists for an org without active membership, it is ignored and does not grant effective
+permissions.
 
 **Uniqueness:** The schema enforces `UNIQUE(name, organizationId)`. Because SQLite treats `NULL != NULL` in unique
 indexes, system-role uniqueness (all `organizationId = NULL`) is additionally enforced by application-level idempotency

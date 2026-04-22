@@ -182,17 +182,19 @@ export class UserRole extends BaseModel {
     // ============================================================
 
     /**
-     * Remove a role from a user
+     * Remove a role from a user. `organizationId` is REQUIRED to keep the
+     * removal scoped to a single tenant and avoid cross-org side effects.
      * @param userId User ID
      * @param roleId Role ID
      * @param organizationId Organization ID (REQUIRED for multi-tenant security)
-     * @param appId Optional app ID (null = remove from all apps)
+     * @param appId Optional app ID (null/omitted = any app within the org)
      */
-    static async removeRole(userId: string, roleId: string, organizationId?: string | null, appId?: string | null) {
-        const where: Record<string, any> = { userId, roleId };
-        if (organizationId !== undefined && organizationId !== null) {
-            where.organizationId = organizationId;
+    static async removeRole(userId: string, roleId: string, organizationId: string, appId?: string | null) {
+        if (!organizationId) {
+            throw new Error('organizationId is required for UserRole.removeRole');
         }
+
+        const where: Record<string, any> = { userId, roleId, organizationId };
         if (appId !== undefined) {
             where.appId = appId;
         }
@@ -204,7 +206,7 @@ export class UserRole extends BaseModel {
     }
 
     /**
-     * Check if user has role
+     * Check if user has role. `organizationId` is REQUIRED.
      * @param userId User ID
      * @param roleId Role ID
      * @param organizationId Organization ID (REQUIRED for multi-tenant security)
@@ -213,13 +215,14 @@ export class UserRole extends BaseModel {
     static async hasRole(
         userId: string,
         roleId: string,
-        organizationId?: string | null,
+        organizationId: string,
         appId?: string | null,
     ): Promise<boolean> {
-        const where: Record<string, any> = { userId, roleId };
-        if (organizationId !== undefined && organizationId !== null) {
-            where.organizationId = organizationId;
+        if (!organizationId) {
+            throw new Error('organizationId is required for UserRole.hasRole');
         }
+
+        const where: Record<string, any> = { userId, roleId, organizationId };
         if (appId !== undefined) {
             where.appId = appId;
         }

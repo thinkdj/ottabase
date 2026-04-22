@@ -24,17 +24,17 @@ export type { CrudRequest, CrudResponse } from './crud';
 
 // Row-Level Security (RLS)
 export {
-    RLSError,
-    RLSPolicies,
     executeSecureCrudRequest,
     extractSecurityContext,
-    parseSqliteUniqueConstraintForApi,
     getRegisteredModels as getRLSModels,
     globalRLS,
     initRLS,
     logSecurityViolation,
+    parseSqliteUniqueConstraintForApi,
     registerPolicy,
+    RLSError,
     rlsMiddleware,
+    RLSPolicies,
     secureCrud,
 } from './rls';
 export type { ModelRLSConfig, RLSPolicy, RLSViolation, SecureCrudOptions, SecurityContext, SecurityLevel } from './rls';
@@ -57,19 +57,19 @@ export { AbstractBaseModel, BaseModel } from './base';
 export type {
     IModelConstructorParams,
     ModelFieldDescriptor,
-    ModelFieldType,
     ModelFields,
+    ModelFieldType,
     PackageType,
     PaginationResult,
     RelationshipConfig,
 } from './base';
 
 // Validation (Zod schema builder from field metadata)
-export { ValidationError, buildZodSchema, validateField, validateWithSchema } from './validation';
+export { buildZodSchema, validateField, validateWithSchema, ValidationError } from './validation';
 export type { ValidationResult } from './validation';
 
 // RBAC Constants (centralized system role utilities)
-export { SYSTEM_ROLE_NAMES_SET, isSystemRoleName } from './rbac-constants';
+export { isSystemRoleName, SYSTEM_ORGANIZATION_ID, SYSTEM_ROLE_NAMES_SET } from './rbac-constants';
 export type { SystemRoleName } from './rbac-constants';
 
 /**
@@ -79,40 +79,40 @@ export type { SystemRoleName } from './rbac-constants';
  */
 export {
     Account,
+    accountsTable,
     AuditLog,
+    auditLogsTable,
     // Auth.js SQL models (Edge-safe)
     Authenticator,
+    authenticatorsTable,
     DEFAULT_ROLE_NAMES,
     DEFAULT_ROLES,
     // Media (core — tracks all uploaded files)
     Media,
+    mediaTable,
     MembershipError,
     // Multi-tenant/RBAC models and tables
     Organization,
     OrganizationInvite,
-    OrganizationMember,
-    Permission,
-    Role,
-    ScheduledTask,
-    Session,
-    Tag,
-    User,
-    UserRole,
-    VerificationToken,
-    accountsTable,
-    auditLogsTable,
-    authenticatorsTable,
-    mediaTable,
     organizationInvitesTable,
+    OrganizationMember,
     organizationMembersTable,
     organizationsTable,
+    Permission,
     permissionsTable,
+    Role,
     rolesTable,
+    ScheduledTask,
     scheduledTasksTable,
+    Session,
     sessionsTable,
+    Tag,
     tagsTable,
+    User,
+    UserRole,
     userRolesTable,
     usersTable,
+    VerificationToken,
     verificationTokensTable,
 } from './models';
 export type {

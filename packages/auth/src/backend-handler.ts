@@ -527,14 +527,19 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
 
                         if (organizationId) {
                             try {
+                                // Load scoped-org roles AND platform-level (system-scope) roles
+                                // in a single query. The system scope is a virtual platform-wide
+                                // bucket — e.g. the first bootstrapped user gets `owner @ system`
+                                // so they retain platform superadmin (`*:*`) even while viewing
+                                // a specific tenant. Both sets are merged into the JWT.
                                 const roleResult = await d1
                                     .prepare(
                                         `SELECT r.name as name, r.permissions as permissions
                                      FROM user_roles ur
                                      JOIN roles r ON r.id = ur.role_id
-                                     WHERE ur.user_id = ? AND ur.organization_id = ?`,
+                                     WHERE ur.user_id = ? AND ur.organization_id IN (?, ?)`,
                                     )
-                                    .bind(userId, organizationId)
+                                    .bind(userId, organizationId, SYSTEM_ORGANIZATION_ID)
                                     .all<any>();
 
                                 roles = (roleResult?.results || []).map((row: any) => String(row.name)).filter(Boolean);

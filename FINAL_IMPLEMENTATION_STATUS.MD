@@ -13,7 +13,7 @@ All critical and medium-priority recommendations from the organization flow secu
 - ✅ Input validation and sanitization
 - ✅ Error message sanitization to prevent enumeration
 - ✅ Audit logging for security-critical actions
-- ✅ N+1 query optimization (100 queries → 2 queries)
+- ✅ N+1 query optimization (100 queries → 3 queries)
 - ✅ Centralized RBAC constants
 - ✅ Pagination for role listing
 - ✅ Rate limiting on role mutations
@@ -27,8 +27,8 @@ All critical and medium-priority recommendations from the organization flow secu
 
 **Implementation:**
 - Enhanced rate-limiting utilities to support custom `limit` and `period` options
-- Added rate limiting to role assignment endpoint: 20 requests/min per organization
-- Added rate limiting to role removal endpoint: 20 requests/min per organization
+- Added rate limiting to role assignment endpoint: 10 requests/min per organization
+- Added rate limiting to role removal endpoint: 10 requests/min per organization
 - Falls back to KV-based simulation when OBCF_RATE_LIMITER unavailable
 - Returns 429 with `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` headers
 
@@ -58,8 +58,8 @@ const assignersMap = new Map(assigners.map(u => [u.get('id'), u]));
 ```
 
 **Impact:**
-- 10 assignments: 20 queries → 2 queries (10x reduction)
-- 50 assignments: 100 queries → 2 queries (50x reduction)
+- 10 assignments: 20 queries → 3 queries (~6.7x reduction)
+- 50 assignments: 100 queries → 3 queries (~33x reduction)
 
 ---
 
@@ -214,9 +214,9 @@ ALTER TABLE user_roles ADD CONSTRAINT fk_user_roles_membership
 - ✅ `worker/routes/__tests__/admin-organization-invites.test.ts` (viewer role test)
 
 ### Recommended New Tests
-- [ ] Rate limiting: Verify 429 after 20 role assignments in 60 seconds
+- [ ] Rate limiting: Verify 429 after 10 role assignments in 60 seconds
 - [ ] Pagination: Verify page boundaries and search filter
-- [ ] N+1 regression: Assert max 2 queries for 50 role assignments
+- [ ] N+1 regression: Assert max 3 queries for 50 role assignments
 - [ ] Input validation: Reject `<script>`, 1000-char names, special chars
 - [ ] Audit logging: Verify `RBAC_ROLE_ASSIGNED` and `RBAC_ROLE_REMOVED` events
 - [ ] Error sanitization: Verify no membership enumeration via error messages
@@ -232,9 +232,9 @@ ALTER TABLE user_roles ADD CONSTRAINT fk_user_roles_membership
 - Role mutations: **No rate limiting** (cache DOS vector)
 
 ### After Optimizations
-- Role assignment list (50 assignments): **2 DB queries** (50x reduction)
+- Role assignment list (50 assignments): **3 DB queries** (~33x reduction)
 - Role list (200+ roles): **Paginated, 50/page** (4 pages with search filter)
-- Role mutations: **20 requests/min limit** (prevents cache thrashing)
+- Role mutations: **10 requests/min limit** (prevents cache thrashing)
 
 ---
 
@@ -250,7 +250,7 @@ ALTER TABLE user_roles ADD CONSTRAINT fk_user_roles_membership
 - ✅ Role names: max 50 chars, `^[a-z0-9_-]+$` only
 - ✅ Generic error messages: `"Operation not permitted"` (403)
 - ✅ Audit logs: `RBAC_ROLE_ASSIGNED`, `RBAC_ROLE_REMOVED`
-- ✅ Rate limiting: 20 requests/min per org
+- ✅ Rate limiting: 10 requests/min per org
 
 **Security Score:** 8.5/10 (production-grade)
 

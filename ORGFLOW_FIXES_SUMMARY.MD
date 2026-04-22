@@ -181,8 +181,8 @@ const serialized = assignments.map((a) => ({
 ```
 
 **Impact:**
-- 10 role assignments: **20 queries → 2 queries**
-- 50 role assignments: **100 queries → 2 queries**
+- 10 role assignments: **20 queries → 3 queries**
+- 50 role assignments: **100 queries → 3 queries**
 - O(N²) → O(N) complexity
 
 ---

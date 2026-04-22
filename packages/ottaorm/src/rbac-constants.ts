@@ -5,11 +5,21 @@
 import { DEFAULT_ROLE_NAMES } from './models/DefaultRoles';
 
 /**
+ * Virtual platform-level organization scope used for superadmin/platform-owner
+ * role assignments. Not a real tenant — no `organization_members` rows are
+ * created for this id. Roles granted under this scope apply platform-wide.
+ */
+export const SYSTEM_ORGANIZATION_ID = 'system';
+
+/**
  * Re-export default role constants from DefaultRoles for centralized access.
  * This avoids duplication across the codebase.
  */
-export { DEFAULT_ROLE_NAMES, type DefaultRoleName } from './models/DefaultRoles';
-export { DEFAULT_ROLE_NAMES as SYSTEM_ROLE_NAMES } from './models/DefaultRoles';
+export {
+    DEFAULT_ROLE_NAMES,
+    DEFAULT_ROLE_NAMES as SYSTEM_ROLE_NAMES,
+    type DefaultRoleName,
+} from './models/DefaultRoles';
 export type { DefaultRoleName as SystemRoleName } from './models/DefaultRoles';
 
 /**

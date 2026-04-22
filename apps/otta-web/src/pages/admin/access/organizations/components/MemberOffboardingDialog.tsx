@@ -88,41 +88,49 @@ export function MemberOffboardingDialog({
                         <AlertTriangle className="h-5 w-5" />
                         Remove Member from Organization
                     </AlertDialogTitle>
-                    <AlertDialogDescription className="space-y-4 pt-2">
-                        <div className="rounded-md border border-border bg-muted/50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
-                            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground dark:text-slate-200">
-                                <UserIcon className="h-4 w-4 text-muted-foreground" />
-                                Member Details
-                            </div>
-                            <div className="space-y-1 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground dark:text-slate-400">Name:</span>
-                                    <span className="font-medium dark:text-slate-200">{memberName}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground dark:text-slate-400">Email:</span>
-                                    <span className="font-medium dark:text-slate-200">{memberEmail}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground dark:text-slate-400">Role:</span>
-                                    <span className="capitalize font-medium dark:text-slate-200">{member.role}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2 text-sm">
-                            <p className="font-medium text-foreground dark:text-slate-200">
-                                This action will immediately:
-                            </p>
-                            <ul className="ml-4 list-disc space-y-1 text-muted-foreground dark:text-slate-400">
-                                <li>Remove all access to this organization</li>
-                                <li>Revoke all assigned permissions and roles</li>
-                                <li>Remove from all organization resources</li>
-                                <li>This action cannot be undone</li>
-                            </ul>
-                        </div>
+                    {/*
+                     * AlertDialogDescription renders a <p>, so it can only hold
+                     * inline/phrasing content. Put the member-details card and
+                     * the bullet list *outside* it as sibling blocks to avoid
+                     * invalid HTML nesting (<div>/<ul>/<p> inside <p>).
+                     */}
+                    <AlertDialogDescription>
+                        Review the member details below. This action cannot be undone.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
+
+                <div className="space-y-4 pt-2 text-sm">
+                    <div className="rounded-md border border-border bg-muted/50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                        <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground dark:text-slate-200">
+                            <UserIcon className="h-4 w-4 text-muted-foreground" />
+                            Member Details
+                        </div>
+                        <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground dark:text-slate-400">Name:</span>
+                                <span className="font-medium dark:text-slate-200">{memberName}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground dark:text-slate-400">Email:</span>
+                                <span className="font-medium dark:text-slate-200">{memberEmail}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground dark:text-slate-400">Role:</span>
+                                <span className="capitalize font-medium dark:text-slate-200">{member.role}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2 text-sm">
+                        <p className="font-medium text-foreground dark:text-slate-200">This action will immediately:</p>
+                        <ul className="ml-4 list-disc space-y-1 text-muted-foreground dark:text-slate-400">
+                            <li>Remove all access to this organization</li>
+                            <li>Revoke all assigned permissions and roles</li>
+                            <li>Remove from all organization resources</li>
+                            <li>This action cannot be undone</li>
+                        </ul>
+                    </div>
+                </div>
 
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
@@ -157,9 +165,7 @@ export function MemberOffboardingDialog({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="confirmation">
-                            Type <span className="font-semibold">{memberName}</span> to confirm
-                        </Label>
+                        <Label htmlFor="confirmation">Type the member's name to confirm</Label>
                         <Input
                             id="confirmation"
                             value={confirmationText}
