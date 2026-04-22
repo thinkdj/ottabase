@@ -123,6 +123,14 @@ export async function handleRBACRoleCreate(context: ApiRouteContext): Promise<Re
     }
     const name = typeof body.name === 'string' ? body.name.toLowerCase().trim() : '';
     if (!name) return errorResponse('Role name is required', 400, { code: 'VALIDATION_ERROR' });
+    if (name.length > 50) {
+        return errorResponse('Role name must not exceed 50 characters', 400, { code: 'VALIDATION_ERROR' });
+    }
+    if (!/^[a-z0-9_-]+$/.test(name)) {
+        return errorResponse('Role name can only contain lowercase letters, numbers, hyphens, and underscores', 400, {
+            code: 'VALIDATION_ERROR',
+        });
+    }
 
     // Prevent shadowing system role names
     const SYSTEM_NAMES = new Set(['owner', 'admin', 'member', 'viewer']);

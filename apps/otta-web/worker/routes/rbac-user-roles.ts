@@ -3,6 +3,7 @@ import { getRBACCache } from '@ottabase/rbac';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { canAccessOrganization, requireAdminAccess } from '../lib/admin-guard';
+import { auditOrganizationAction } from '../lib/org-audit';
 import { invalidateRBACCache } from './admin-roles';
 import type { ApiRouteContext } from './router';
 
@@ -75,7 +76,39 @@ export async function handleRBACUserRolesList(context: ApiRouteContext): Promise
     }
 
     const assignments = await UserRole.getUserRoles(userId, organizationId);
-    const serialized = await Promise.all(assignments.map((a) => serializeAssignment(a as UserRole)));
+    
+    // Batch fetch all related roles and users to avoid N+1 queries
+    const roleIds = [...new Set(assignments.map((a) => a.get('roleId') as string))];
+    const assignerIds = [...new Set(assignments.map((a) => a.get('assignedBy') as string).filter(Boolean))];
+
+    const [roles, assigners] = await Promise.all([
+        roleIds.length > 0 ? Role.whereIn('id', roleIds) : Promise.resolve([]),
+        assignerIds.length > 0 ? User.whereIn('id', assignerIds) : Promise.resolve([]),
+    ]);
+
+    const rolesMap = new Map(roles.map((r) => [r.get('id'), r]));
+    const assignersMap = new Map(assigners.map((u) => [u.get('id'), u]));
+
+    const serialized = assignments.map((a) => {
+        const roleId = a.get('roleId') as string;
+        const assignedBy = a.get('assignedBy') as string;
+        const role = rolesMap.get(roleId);
+        const assigner = assignersMap.get(assignedBy);
+
+        return {
+            userId: a.get('userId'),
+            roleId,
+            roleName: role?.get('name') ?? null,
+            roleDescription: role?.get('description') ?? null,
+            isSystemRole: !!role?.get('isSystem'),
+            organizationId: a.get('organizationId'),
+            appId: a.get('appId') ?? null,
+            assignedAt: a.get('assignedAt') ?? null,
+            assignedBy,
+            assignedByName: assigner?.get('name') ?? null,
+        };
+    });
+
     return jsonResponse({ data: serialized.filter((assignment) => !assignment.isSystemRole) });
 }
 
@@ -136,14 +169,24 @@ export async function handleRBACUserRoleAssign(context: ApiRouteContext): Promis
     }
 
     if (!(await ensureActiveMember(userId, organizationId))) {
-        return errorResponse('User must be an active member of this organization before assigning custom roles', 409, {
-            code: 'MEMBER_ACTIVE_REQUIRED',
+        // Use generic error to avoid revealing org membership structure
+        return errorResponse('Operation not permitted', 403, {
+            code: 'FORBIDDEN',
         });
     }
 
     const cache = getRBACCache();
     await (user as User).assignRole(roleId, auth.user.id, organizationId, { cache });
     await invalidateRBACCache(context.env);
+
+    // Audit trail for security-critical action
+    await auditOrganizationAction(context.env, {
+        organizationId,
+        action: 'RBAC_ROLE_ASSIGNED',
+        actorId: auth.user.id,
+        targetUserId: userId,
+        metadata: { roleId, roleName: role.get('name') as string },
+    });
 
     const userRole = await UserRole.first({ userId, roleId, organizationId });
     if (!userRole) {
@@ -187,11 +230,22 @@ export async function handleRBACUserRoleRemove(
     }
 
     if (!(await ensureActiveMember(userId, organizationId))) {
-        return errorResponse('Member not found', 404, { code: 'MEMBER_NOT_FOUND' });
+        // Use generic error to avoid revealing org membership structure
+        return errorResponse('Operation not permitted', 403, { code: 'FORBIDDEN' });
     }
 
     const cache = getRBACCache();
     await user.removeRole(roleId, organizationId, { cache });
     await invalidateRBACCache(context.env);
+
+    // Audit trail for security-critical action
+    await auditOrganizationAction(context.env, {
+        organizationId,
+        action: 'RBAC_ROLE_REMOVED',
+        actorId: auth.user.id,
+        targetUserId: userId,
+        metadata: { roleId, roleName: role.get('name') as string },
+    });
+
     return jsonResponse({ success: true });
 }
