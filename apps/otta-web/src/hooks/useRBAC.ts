@@ -346,9 +346,20 @@ export function useRemoveMember() {
 
     return useMutation({
         meta: { entity: 'organization_members' },
-        mutationFn: async ({ userId, organizationId }: { userId: string; organizationId?: string }) => {
+        mutationFn: async ({
+            userId,
+            organizationId,
+            reason,
+            notifyMember,
+        }: {
+            userId: string;
+            organizationId?: string;
+            reason?: string;
+            notifyMember?: boolean;
+        }) => {
             await api(`${scopedOrganizationEndpoint(organizationId)}/members/${encodeURIComponent(userId)}`, {
                 method: 'DELETE',
+                body: { reason, notifyMember },
             });
         },
         onSuccess: async (_data, { organizationId }) => {

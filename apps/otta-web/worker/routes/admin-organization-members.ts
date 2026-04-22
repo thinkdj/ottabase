@@ -272,6 +272,18 @@ export async function handleAdminOrganizationRemoveMember(
         return errorResponse('Member not found', 404, { code: 'MEMBER_NOT_FOUND' });
     }
 
+    // Parse optional offboarding metadata from request body
+    let offboardingData: { reason?: string; notifyMember?: boolean } = {};
+    try {
+        const body = await context.request.json().catch(() => ({}));
+        offboardingData = {
+            reason: body.reason || undefined,
+            notifyMember: body.notifyMember === true,
+        };
+    } catch {
+        // Body is optional for backward compatibility
+    }
+
     try {
         const removed = await OrganizationMember.removeMember(userId, organizationId, {
             cache: getRBACCache(),
@@ -282,6 +294,7 @@ export async function handleAdminOrganizationRemoveMember(
             });
         }
 
+        // Enhanced audit log with offboarding metadata
         await auditOrganizationAction(context.request, {
             userId: auth.user?.id,
             userEmail: auth.user?.email ?? null,
@@ -289,9 +302,33 @@ export async function handleAdminOrganizationRemoveMember(
             action: 'member_remove',
             resourceType: 'organization_member',
             resourceId: userId,
+            metadata: {
+                removedUser: existingMember.user?.email || userId,
+                removedUserRole: existingMember.role,
+                offboardingReason: offboardingData.reason,
+                notificationSent: offboardingData.notifyMember,
+            },
         });
 
-        return jsonResponse({ data: { userId, organizationId, removed: true } });
+        // TODO: Send email notification if notifyMember is true
+        // This would integrate with an email service/queue
+        // if (offboardingData.notifyMember && existingMember.user?.email) {
+        //     await sendOffboardingEmail({
+        //         to: existingMember.user.email,
+        //         name: existingMember.user.name,
+        //         organizationName: organization?.name,
+        //         reason: offboardingData.reason,
+        //     });
+        // }
+
+        return jsonResponse({
+            data: {
+                userId,
+                organizationId,
+                removed: true,
+                notificationSent: offboardingData.notifyMember,
+            },
+        });
     } catch (err) {
         const mapped = membershipErrorToResponse(err);
         if (mapped) return mapped;
