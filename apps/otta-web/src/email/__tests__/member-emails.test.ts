@@ -53,9 +53,9 @@ describe('buildMemberAddedEmail', () => {
         expect(result.content.body).not.toContain('<script>x</script>');
         expect(result.content.body).toContain('&lt;script&gt;');
         expect(result.content.body).toContain('&lt;b&gt;J&lt;/b&gt;');
-        // URL is escaped so it cannot break out of the href attribute
+        // URL is escaped AND appears inside the href — cannot break out of the attribute
         expect(result.content.body).not.toContain('"><script>');
-        expect(result.content.body).toContain('&quot;&gt;&lt;script&gt;');
+        expect(result.content.body).toMatch(/href="https:\/\/ex\.com\/&quot;&gt;&lt;script&gt;x&lt;\/script&gt;"/);
     });
 });
 
