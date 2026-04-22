@@ -224,7 +224,7 @@ await cache.clear();
 ## User Model Extensions
 
 ```typescript
-import { SYSTEM_ORGANIZATION_ID } from '@ottabase/ottaorm';
+import { SYSTEM_ORGANIZATION_ID } from '@ottabase/auth';
 
 const user = await User.find('user-id');
 

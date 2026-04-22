@@ -12,6 +12,7 @@
 // ============================================================
 
 import { encode as encodeAuthJwt } from '@auth/core/jwt';
+import { SYSTEM_ORGANIZATION_ID } from '@ottabase/auth';
 import { hashPassword } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import {
@@ -21,7 +22,6 @@ import {
     registerConnection,
     Role,
     runMigrations,
-    SYSTEM_ORGANIZATION_ID,
     User,
 } from '@ottabase/ottaorm';
 import type { CloudflareEnv } from '../../cloudflare-env';

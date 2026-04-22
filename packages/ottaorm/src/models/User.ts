@@ -3,8 +3,17 @@
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
-import { SYSTEM_ORGANIZATION_ID } from '../rbac-constants';
 import { usersTable } from './User.schema';
+
+/**
+ * Virtual platform-level organization scope. Roles assigned under this scope
+ * apply platform-wide (no `organization_members` row required).
+ *
+ * MUST equal `@ottabase/auth` `SYSTEM_ORGANIZATION_ID`. Duplicated locally to
+ * avoid a reverse package dependency (ottaorm is a peer of auth, not the other
+ * way around). If you change one, change both.
+ */
+const SYSTEM_ORGANIZATION_ID = 'system';
 
 export { usersTable, type NewUserType, type UserType } from './User.schema';
 

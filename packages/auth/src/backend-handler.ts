@@ -363,14 +363,20 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                         }
                     }
 
-                    // First-sign-in hook fires iff the user has no
+                    // First-sign-in hook fires iff the user has no **active**
                     // organization membership yet — the app-level hook
                     // (Organization.ensurePersonalOrg) auto-provisions a
                     // personal workspace and assigns the owner role.
+                    //
+                    // We gate on active membership (not any row) so users who
+                    // only hold an 'invited' record still get a usable personal
+                    // tenant on first sign-in; otherwise the jwt callback below
+                    // would find no active org and leave them in null/system
+                    // scope with no workspace to land in.
                     if (options?.onFirstSignIn) {
                         try {
                             const hasMembership = await env.OBCF_D1.prepare(
-                                `SELECT 1 FROM organization_members WHERE user_id = ? LIMIT 1`,
+                                `SELECT 1 FROM organization_members WHERE user_id = ? AND status = 'active' LIMIT 1`,
                             )
                                 .bind(user.id)
                                 .first<any>();

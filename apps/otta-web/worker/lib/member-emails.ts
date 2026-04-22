@@ -2,19 +2,19 @@
 // Mirrors the pattern used by admin-organization-invites.ts.
 
 import { sendTemplatedEmail } from '@ottabase/email';
+import type { CloudflareEnv } from '../../cloudflare-env';
 import { buildMemberAddedEmail, type MemberAddedEmailOpts } from '../../src/email/member-added';
 import { buildMemberRemovedEmail, type MemberRemovedEmailOpts } from '../../src/email/member-removed';
 import { registerAppEmailTemplates } from '../../src/email/templates';
 import { resolveMailer } from './auth-utils';
-import type { CloudflareEnv } from '../../cloudflare-env';
 
 type SendResult = { ok: boolean; error?: string };
 
-async function send(
-    env: CloudflareEnv,
-    to: string,
-    payload: ReturnType<typeof buildMemberAddedEmail>,
-): Promise<SendResult> {
+// Accepts the return type of either builder. Both produce the templated-email
+// payload shape (template/variables/subject/content) consumed by sendTemplatedEmail.
+type MemberEmailPayload = ReturnType<typeof buildMemberAddedEmail> | ReturnType<typeof buildMemberRemovedEmail>;
+
+async function send(env: CloudflareEnv, to: string, payload: MemberEmailPayload): Promise<SendResult> {
     registerAppEmailTemplates();
     const { mailer, from } = await resolveMailer(env);
     if (!mailer || !from) {

@@ -859,12 +859,12 @@ endpoint enforces this with a 409 `CONFLICT` error.
 
 **Membership integrity guard:** org-scoped role/permission resolution requires an active `organization_members` row. If
 a stale `user_roles` row exists for an org without active membership, it is ignored and does not grant effective
-permissions. The virtual platform scope (`SYSTEM_ORGANIZATION_ID = 'system'`, exported from `@ottabase/ottaorm`) is
-exempt from this guard — it has no membership row by design and is used for platform-level owner/superadmin assignments
-(e.g. the first bootstrapped user).
+permissions. The virtual platform scope (`SYSTEM_ORGANIZATION_ID = 'system'`, exported from `@ottabase/auth`) is exempt
+from this guard — it has no membership row by design and is used for platform-level owner/superadmin assignments (e.g.
+the first bootstrapped user).
 
 ```typescript
-import { SYSTEM_ORGANIZATION_ID } from '@ottabase/ottaorm';
+import { SYSTEM_ORGANIZATION_ID } from '@ottabase/auth';
 
 // Grant platform-level owner (*:* across every tenant)
 await user.assignRole(ownerRole.id, undefined, SYSTEM_ORGANIZATION_ID);

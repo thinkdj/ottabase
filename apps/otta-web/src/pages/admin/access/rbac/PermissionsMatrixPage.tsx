@@ -1,4 +1,7 @@
+import { ApiErrorDisplay } from '@/components/ErrorBoundary';
+import { TableSkeleton } from '@/components/LoadingSkeletons';
 import type { RoleRecord } from '@/types/rbac';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import {
     Badge,
     Button,
@@ -18,13 +21,9 @@ import {
     TabsList,
     TabsTrigger,
 } from '@ottabase/ui-shadcn';
+import { Link } from '@tanstack/react-router';
 import { Check, Shield, X } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import { ApiErrorDisplay } from '@/components/ErrorBoundary';
-import { TableSkeleton } from '@/components/LoadingSkeletons';
-import { useApiQuery } from '@ottabase/ottaorm/client';
-import type { PaginatedResponse } from '@ottabase/utils/pagination';
 
 // Predefined permissions for the system
 const SYSTEM_PERMISSIONS = [

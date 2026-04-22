@@ -69,7 +69,7 @@ export { buildZodSchema, validateField, validateWithSchema, ValidationError } fr
 export type { ValidationResult } from './validation';
 
 // RBAC Constants (centralized system role utilities)
-export { isSystemRoleName, SYSTEM_ORGANIZATION_ID, SYSTEM_ROLE_NAMES_SET } from './rbac-constants';
+export { isSystemRoleName, SYSTEM_ROLE_NAMES_SET } from './rbac-constants';
 export type { SystemRoleName } from './rbac-constants';
 
 /**
