@@ -14,8 +14,13 @@ vi.mock('../admin-roles', () => ({
     invalidateRBACCache: vi.fn(),
 }));
 
+vi.mock('../../lib/org-audit', () => ({
+    auditOrganizationAction: vi.fn(),
+}));
+
 import { requireAdminAccess } from '../../lib/admin-guard';
 import { invalidateRBACCache } from '../admin-roles';
+import { auditOrganizationAction } from '../../lib/org-audit';
 import { handleRBACUserRoleAssign, handleRBACUserRoleRemove, handleRBACUserRolesList } from '../rbac-user-roles';
 
 function adminContext(orgId = 'org-1') {
@@ -347,6 +352,18 @@ describe('handleRBACUserRoleAssign', () => {
 
         expect(assignRole).toHaveBeenCalledWith('role-editor', 'admin-1', 'org-1', expect.any(Object));
         expect(invalidateRBACCache).toHaveBeenCalled();
+        // Audit must be called with a Request and the canonical shape — not context.env
+        expect(auditOrganizationAction).toHaveBeenCalledTimes(1);
+        const [auditReq, auditOpts] = vi.mocked(auditOrganizationAction).mock.calls[0]!;
+        expect(auditReq).toBeInstanceOf(Request);
+        expect(auditOpts).toMatchObject({
+            userId: 'admin-1',
+            organizationId: 'org-1',
+            action: 'RBAC_ROLE_ASSIGNED',
+            resourceType: 'user_role',
+            resourceId: 'user-1',
+            metadata: { roleId: 'role-editor', roleName: 'editor' },
+        });
         expect(response.status).toBe(201);
         const body = (await response.json()) as any;
         expect(body.data.roleName).toBe('editor');
@@ -396,6 +413,18 @@ describe('handleRBACUserRoleRemove', () => {
 
         expect(removeRole).toHaveBeenCalledWith('role-editor', 'org-1', expect.any(Object));
         expect(invalidateRBACCache).toHaveBeenCalled();
+        // Audit must be called with a Request and the canonical shape — not context.env
+        expect(auditOrganizationAction).toHaveBeenCalledTimes(1);
+        const [auditReq, auditOpts] = vi.mocked(auditOrganizationAction).mock.calls[0]!;
+        expect(auditReq).toBeInstanceOf(Request);
+        expect(auditOpts).toMatchObject({
+            userId: 'admin-1',
+            organizationId: 'org-1',
+            action: 'RBAC_ROLE_REMOVED',
+            resourceType: 'user_role',
+            resourceId: 'user-1',
+            metadata: { roleId: 'role-editor', roleName: 'editor' },
+        });
         expect(response.status).toBe(200);
         const body = (await response.json()) as any;
         expect(body.success).toBe(true);

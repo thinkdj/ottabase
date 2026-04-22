@@ -67,7 +67,8 @@ The backend endpoint accepts the following in the DELETE request body:
 }
 ```
 
-These values are stored in the audit log metadata for compliance and tracking:
+`reason` is free-form (the UI codes above are a convention, not an enum) and is capped at 500 characters server-side
+before being stored in the audit log metadata for compliance and tracking:
 
 ```typescript
 metadata: {
@@ -78,10 +79,5 @@ metadata: {
 }
 ```
 
-## Future Enhancements
-
-- Email notification implementation (currently TODO)
-- Data export before removal (GDPR compliance)
-- Resource transfer wizard
-- Soft delete option (vs hard delete)
-- Bulk member offboarding
+When `notifyMember` is `true`, an offboarding email is sent to the removed member via the standard email engine (see
+`apps/otta-web/src/email/member-removed.ts`).

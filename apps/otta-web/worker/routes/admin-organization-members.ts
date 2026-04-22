@@ -288,16 +288,22 @@ export async function handleAdminOrganizationRemoveMember(
         return errorResponse('Member not found', 404, { code: 'MEMBER_NOT_FOUND' });
     }
 
-    // Parse optional offboarding metadata from request body
+    // Optional offboarding metadata from request body (reason, notifyMember)
     let offboardingData: { reason?: string; notifyMember?: boolean } = {};
     try {
-        const body = await context.request.json().catch(() => ({}));
+        const body = (await context.request.json().catch(() => ({}))) as {
+            reason?: unknown;
+            notifyMember?: unknown;
+        };
+        // Cap free-form reason to avoid unbounded strings landing in the audit log
+        const reason =
+            typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim().slice(0, 500) : undefined;
         offboardingData = {
-            reason: body.reason || undefined,
+            reason,
             notifyMember: body.notifyMember === true,
         };
     } catch {
-        // Body is optional for backward compatibility
+        // Body is optional — treat as an unannotated removal
     }
 
     try {

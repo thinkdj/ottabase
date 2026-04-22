@@ -77,7 +77,7 @@ export async function handleRBACUserRolesList(context: ApiRouteContext): Promise
     }
 
     const assignments = await UserRole.getUserRoles(userId, organizationId);
-    
+
     // Batch fetch all related roles and users to avoid N+1 queries
     const roleIds = [...new Set(assignments.map((a) => a.get('roleId') as string))];
     const assignerIds = [...new Set(assignments.map((a) => a.get('assignedBy') as string).filter(Boolean))];
@@ -190,11 +190,13 @@ export async function handleRBACUserRoleAssign(context: ApiRouteContext): Promis
     await invalidateRBACCache(context.env);
 
     // Audit trail for security-critical action
-    await auditOrganizationAction(context.env, {
+    await auditOrganizationAction(context.request, {
+        userId: auth.user.id,
+        userEmail: auth.user.email ?? null,
         organizationId,
         action: 'RBAC_ROLE_ASSIGNED',
-        actorId: auth.user.id,
-        targetUserId: userId,
+        resourceType: 'user_role',
+        resourceId: userId,
         metadata: { roleId, roleName: role.get('name') as string },
     });
 
@@ -258,11 +260,13 @@ export async function handleRBACUserRoleRemove(
     await invalidateRBACCache(context.env);
 
     // Audit trail for security-critical action
-    await auditOrganizationAction(context.env, {
+    await auditOrganizationAction(context.request, {
+        userId: auth.user.id,
+        userEmail: auth.user.email ?? null,
         organizationId,
         action: 'RBAC_ROLE_REMOVED',
-        actorId: auth.user.id,
-        targetUserId: userId,
+        resourceType: 'user_role',
+        resourceId: userId,
         metadata: { roleId, roleName: role.get('name') as string },
     });
 

@@ -263,6 +263,43 @@ describe('handleAdminOrganizationInviteMember', () => {
         });
     });
 
+    it('caps a long offboarding reason to 500 chars before it reaches the audit log', async () => {
+        const { auditOrganizationAction } = await import('../../lib/org-audit');
+        vi.mocked(requireAdminAccess).mockResolvedValue({
+            user: { id: 'admin-1', email: 'admin@example.com' },
+            organizationId: 'org-1',
+            appId: 'web',
+            rbac: { organizationId: 'org-1' } as any,
+            session: {},
+        });
+
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValueOnce({
+            role: 'member',
+            user: { email: 'ada@example.com' },
+        } as any);
+        vi.spyOn(OrganizationMember, 'removeMember').mockResolvedValue(true);
+
+        const longReason = 'x'.repeat(2000);
+        const response = await handleAdminOrganizationRemoveMember(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-1/members/user-2', {
+                    method: 'DELETE',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ reason: longReason, notifyMember: false }),
+                }),
+                env: {},
+            } as any,
+            'org-1',
+            'user-2',
+        );
+
+        expect(response.status).toBe(200);
+        const auditCall = vi.mocked(auditOrganizationAction).mock.calls.at(-1)!;
+        const recordedReason = (auditCall[1].metadata as { offboardingReason?: string }).offboardingReason;
+        expect(recordedReason).toHaveLength(500);
+        expect(recordedReason).toBe('x'.repeat(500));
+    });
+
     it('maps LAST_ACTIVE_OWNER_GUARD from removeMember to a 409', async () => {
         vi.mocked(requireAdminAccess).mockResolvedValue({
             user: { id: 'admin-1' },
