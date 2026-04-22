@@ -310,6 +310,9 @@ export function UserRBACPage() {
                                                 <SelectItem value="member">
                                                     <Badge variant="outline">Member</Badge>
                                                 </SelectItem>
+                                                <SelectItem value="viewer">
+                                                    <Badge variant="outline">Viewer</Badge>
+                                                </SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -381,6 +384,9 @@ export function UserRBACPage() {
                                                     </SelectItem>
                                                     <SelectItem value="member">
                                                         <Badge variant="outline">Member</Badge>
+                                                    </SelectItem>
+                                                    <SelectItem value="viewer">
+                                                        <Badge variant="outline">Viewer</Badge>
                                                     </SelectItem>
                                                 </SelectContent>
                                             </Select>

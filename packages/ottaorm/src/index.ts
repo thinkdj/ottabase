@@ -68,6 +68,10 @@ export type {
 export { ValidationError, buildZodSchema, validateField, validateWithSchema } from './validation';
 export type { ValidationResult } from './validation';
 
+// RBAC Constants (centralized system role utilities)
+export { SYSTEM_ROLE_NAMES_SET, isSystemRoleName } from './rbac-constants';
+export type { SystemRoleName } from './rbac-constants';
+
 /**
  * Core models (SQL only - Edge-safe)
  *

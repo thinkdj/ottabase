@@ -239,7 +239,7 @@ export class User extends BaseModel {
                     // Get Role objects by names from cache
                     const roles = [];
                     for (const roleName of cachedRoleNames) {
-                        const role = await Role.findByName(roleName);
+                        const role = await Role.findByName(roleName, organizationId ?? undefined);
                         if (role) roles.push(role);
                     }
                     return roles;

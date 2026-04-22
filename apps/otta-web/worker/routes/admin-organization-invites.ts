@@ -95,7 +95,7 @@ export async function handleAdminOrganizationInvitesList(
 
 interface CreateInviteBody {
     email?: string;
-    role?: 'owner' | 'admin' | 'member';
+    role?: 'owner' | 'admin' | 'member' | 'viewer';
 }
 
 export async function handleAdminOrganizationInviteCreate(
@@ -125,7 +125,7 @@ export async function handleAdminOrganizationInviteCreate(
         });
     }
 
-    if (role !== 'owner' && role !== 'admin' && role !== 'member') {
+    if (role !== 'owner' && role !== 'admin' && role !== 'member' && role !== 'viewer') {
         return errorResponse('Invalid role', 400, {
             code: 'VALIDATION_ERROR',
             fieldErrors: { role: ['Invalid role'] },
@@ -163,6 +163,11 @@ export async function handleAdminOrganizationInviteCreate(
         metadata: {},
     });
 
+    // Revoke any older pending invites for this email in this org before sending.
+    // Doing this before the email send ensures that even if the send fails, there
+    // are never two live invite tokens for the same (org, email) pair.
+    await OrganizationInvite.revokePendingForEmailExcept(organizationId, email, row.id);
+
     const inviterName =
         (typeof auth.user?.name === 'string' && auth.user.name.trim()) ||
         (typeof auth.user?.email === 'string' && auth.user.email) ||
@@ -184,8 +189,6 @@ export async function handleAdminOrganizationInviteCreate(
         }
         return errorResponse(send.error || 'Failed to send invite email', 500, { code: 'ORG_INVITE_EMAIL_FAILED' });
     }
-
-    await OrganizationInvite.revokePendingForEmailExcept(organizationId, email, row.id);
 
     await auditOrganizationAction(context.request, {
         userId: auth.user?.id,
@@ -315,12 +318,27 @@ export async function handleAdminOrganizationInviteResend(
     });
 
     if (!send.ok) {
-        await OrganizationInvite.updateById(inviteId, {
-            tokenHash: previousTokenHash,
-            invitedAt: previousInvitedAt,
-            expiresAt: previousExpiresAt,
-            metadata: previousMetadata,
-        });
+        // Best-effort rollback: restore the previous token so the invite remains
+        // usable with the token the invitee already received.
+        try {
+            await OrganizationInvite.updateById(inviteId, {
+                tokenHash: previousTokenHash,
+                invitedAt: previousInvitedAt,
+                expiresAt: previousExpiresAt,
+                metadata: previousMetadata,
+            });
+        } catch (rollbackErr) {
+            // Both the email send and the token rollback failed.  The invite row
+            // now has a new tokenHash that was never delivered, making the invite
+            // effectively undeliverable.  Log a structured error so an operator
+            // can find and manually revoke the invite.
+            console.error('ORG_INVITE_RESEND_ROLLBACK_FAILED', {
+                inviteId,
+                organizationId,
+                sendError: send.error,
+                rollbackError: rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr),
+            });
+        }
         return errorResponse(send.error || 'Failed to send email', 500, { code: 'ORG_INVITE_EMAIL_FAILED' });
     }
 

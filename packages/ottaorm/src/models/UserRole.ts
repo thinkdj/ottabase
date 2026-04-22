@@ -244,17 +244,15 @@ export class UserRole extends BaseModel {
     }
 
     /**
-     * Get all users with a specific role in an organization
-     * @param roleId Role ID
-     * @param organizationId Organization ID (REQUIRED for multi-tenant security)
-     * @param appId Optional app ID filter
+     * Remove all role assignments for a user in an organization in a single
+     * bulk DELETE query. Used when a member is removed from an org to clear
+     * both default and custom roles atomically.
      */
-    static async getUsersWithRole(roleId: string, organizationId: string, appId?: string | null) {
-        const where: Record<string, any> = { roleId, organizationId };
-        if (appId !== undefined) {
-            where.appId = appId;
-        }
-
-        return this.where(where);
+    static async clearUserRoles(userId: string, organizationId: string): Promise<void> {
+        const { and, eq } = await import('drizzle-orm');
+        const db = this.getDriver().getDb();
+        await db
+            .delete(userRolesTable)
+            .where(and(eq(userRolesTable.userId, userId), eq(userRolesTable.organizationId, organizationId)));
     }
 }

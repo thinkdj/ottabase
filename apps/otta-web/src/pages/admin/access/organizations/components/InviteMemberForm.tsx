@@ -57,7 +57,7 @@ export interface InvitableUserOption extends OttaSelectItem {
 }
 
 function normalizeRole(value: unknown): MemberRole {
-    return value === 'owner' || value === 'admin' || value === 'member' ? value : 'member';
+    return value === 'owner' || value === 'admin' || value === 'member' || value === 'viewer' ? value : 'member';
 }
 
 function normalizeStatus(value: unknown): MemberStatus {
@@ -293,7 +293,7 @@ export function InviteMemberForm({ editingMember, onSubmit, onCancel }: InviteMe
                     <Label htmlFor="role">Role*</Label>
                     <Select
                         value={formData.role}
-                        onValueChange={(value: 'owner' | 'admin' | 'member') =>
+                        onValueChange={(value: 'owner' | 'admin' | 'member' | 'viewer') =>
                             setFormData({ ...formData, role: value })
                         }
                     >
@@ -304,6 +304,7 @@ export function InviteMemberForm({ editingMember, onSubmit, onCancel }: InviteMe
                             <SelectItem value="owner">Owner (Full control)</SelectItem>
                             <SelectItem value="admin">Admin (Manage members)</SelectItem>
                             <SelectItem value="member">Member (Basic access)</SelectItem>
+                            <SelectItem value="viewer">Viewer (Read-only access)</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

@@ -313,12 +313,4 @@ export class Role extends BaseModel {
         };
     }
 
-    /**
-     * @deprecated Use {@link Role.ensureDefaults} — retained as a thin alias
-     * only so the bootstrap wizard flow doesn't break during rollout.
-     */
-    static async ensureDefaultRoles() {
-        const map = await this.ensureDefaults();
-        return Object.values(map);
-    }
 }

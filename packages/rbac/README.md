@@ -30,7 +30,7 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 pnpm --filter @ottabase/ottaorm seed:rbac
 ```
 
-Creates tables: `roles`, `permissions`, `user_roles` Default roles: `owner`, `admin`, `member`
+Creates tables: `roles`, `permissions`, `user_roles` Default roles: `owner`, `admin`, `member`, `viewer`
 
 ### 2. Initialize Cache
 

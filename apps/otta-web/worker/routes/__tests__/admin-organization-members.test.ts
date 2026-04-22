@@ -34,10 +34,20 @@ describe('handleAdminOrganizationInviteMember', () => {
             rbac: { organizationId: 'org-1' } as any,
             session: {},
         });
-        vi.spyOn(User, 'find').mockResolvedValue({ toJson: () => ({ id: 'user-2' }) } as any);
+        vi.spyOn(User, 'find').mockResolvedValue({
+            toJson: () => ({ id: 'user-2' }),
+            get: (key: string) => ({ email: null, name: null })[key],
+        } as any);
         vi.spyOn(OrganizationMember, 'first').mockResolvedValue(null);
         const addMemberSpy = vi.spyOn(OrganizationMember, 'addMember').mockResolvedValue({
-            toJson: () => ({ userId: 'user-2', organizationId: 'org-1', role: 'member', status: 'invited' }),
+            userId: 'user-2',
+            organizationId: 'org-1',
+            role: 'member',
+            status: 'invited',
+            invitedBy: 'admin-1',
+            invitedAt: Date.now(),
+            joinedAt: Date.now(),
+            metadata: null,
         } as any);
 
         const response = await handleAdminOrganizationInviteMember(
@@ -73,7 +83,10 @@ describe('handleAdminOrganizationInviteMember', () => {
             rbac: { organizationId: 'org-1' } as any,
             session: {},
         });
-        vi.spyOn(User, 'find').mockResolvedValue({ toJson: () => ({ id: 'user-2' }) } as any);
+        vi.spyOn(User, 'find').mockResolvedValue({
+            toJson: () => ({ id: 'user-2' }),
+            get: (key: string) => ({ email: null, name: null })[key],
+        } as any);
         vi.spyOn(OrganizationMember, 'first').mockResolvedValue({ toJson: () => ({}) } as any);
 
         const response = await handleAdminOrganizationInviteMember(
@@ -252,8 +265,45 @@ describe('handleAdminOrganizationInviteMember', () => {
         expect(response.status).toBe(200);
         expect(removeSpy).toHaveBeenCalledWith('user-2', 'org-1', expect.any(Object));
         expect(await response.json()).toEqual({
-            data: { userId: 'user-2', organizationId: 'org-1', removed: true },
+            data: { userId: 'user-2', organizationId: 'org-1', removed: true, notificationRequested: false },
         });
+    });
+
+    it('caps a long offboarding reason to 500 chars before it reaches the audit log', async () => {
+        const { auditOrganizationAction } = await import('../../lib/org-audit');
+        vi.mocked(requireAdminAccess).mockResolvedValue({
+            user: { id: 'admin-1', email: 'admin@example.com' },
+            organizationId: 'org-1',
+            appId: 'web',
+            rbac: { organizationId: 'org-1' } as any,
+            session: {},
+        });
+
+        vi.spyOn(OrganizationMember, 'first').mockResolvedValueOnce({
+            role: 'member',
+            user: { email: 'ada@example.com' },
+        } as any);
+        vi.spyOn(OrganizationMember, 'removeMember').mockResolvedValue(true);
+
+        const longReason = 'x'.repeat(2000);
+        const response = await handleAdminOrganizationRemoveMember(
+            {
+                request: new Request('http://localhost/api/admin/organizations/org-1/members/user-2', {
+                    method: 'DELETE',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ reason: longReason, notifyMember: false }),
+                }),
+                env: {},
+            } as any,
+            'org-1',
+            'user-2',
+        );
+
+        expect(response.status).toBe(200);
+        const auditCall = vi.mocked(auditOrganizationAction).mock.calls.at(-1)!;
+        const recordedReason = (auditCall[1].metadata as { offboardingReason?: string }).offboardingReason;
+        expect(recordedReason).toHaveLength(500);
+        expect(recordedReason).toBe('x'.repeat(500));
     });
 
     it('maps LAST_ACTIVE_OWNER_GUARD from removeMember to a 409', async () => {

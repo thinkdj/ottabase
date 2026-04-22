@@ -48,6 +48,7 @@ import { useAtomValue } from 'jotai';
 import { ChevronLeft, ChevronRight, Edit, RefreshCw, Trash2, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { InviteMemberForm, type InviteMemberFormData } from './components/InviteMemberForm';
+import { MemberOffboardingDialog } from './components/MemberOffboardingDialog';
 
 function formatInviteDate(timestamp: number): string {
     const ms = timestamp > 1e12 ? timestamp : timestamp * 1000;
@@ -64,7 +65,7 @@ export function OrganizationMembersPage() {
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingMember, setEditingMember] = useState<OrganizationMemberRecord | null>(null);
-    const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
+    const [memberToRemove, setMemberToRemove] = useState<OrganizationMemberRecord | null>(null);
     const [revokeInviteId, setRevokeInviteId] = useState<string | null>(null);
     const [resendInviteId, setResendInviteId] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
@@ -123,15 +124,23 @@ export function OrganizationMembersPage() {
         setIsDialogOpen(true);
     };
 
-    const handleConfirmDelete = async () => {
-        if (!deleteDialog) return;
+    const handleConfirmOffboarding = async (options: { reason?: string; notifyMember: boolean }) => {
+        if (!memberToRemove) return;
 
         removeMutation.mutate(
-            { userId: deleteDialog, organizationId: scopedOrganizationId },
+            {
+                userId: memberToRemove.userId,
+                organizationId: scopedOrganizationId,
+                reason: options.reason,
+                notifyMember: options.notifyMember,
+            },
             {
                 onSuccess: () => {
-                    toast.rbac.memberRemoved();
-                    setDeleteDialog(null);
+                    const message = options.notifyMember
+                        ? `${memberToRemove.user?.name || 'Member'} has been removed and notified`
+                        : `${memberToRemove.user?.name || 'Member'} has been removed`;
+                    toast.success('Member removed', message);
+                    setMemberToRemove(null);
                 },
                 onError: (err) => {
                     toast.error('Failed to remove member', err instanceof Error ? err.message : 'Unknown error');
@@ -384,6 +393,7 @@ export function OrganizationMembersPage() {
                                                         <SelectItem value="owner">Owner</SelectItem>
                                                         <SelectItem value="admin">Admin</SelectItem>
                                                         <SelectItem value="member">Member</SelectItem>
+                                                        <SelectItem value="viewer">Viewer</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </TableCell>
@@ -440,7 +450,7 @@ export function OrganizationMembersPage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        onClick={() => setDeleteDialog(member.userId)}
+                                                        onClick={() => setMemberToRemove(member)}
                                                         disabled={locked || removeMutation.isPending}
                                                         title={
                                                             locked ? 'Cannot remove the only active owner.' : undefined
@@ -586,15 +596,12 @@ export function OrganizationMembersPage() {
                 </DialogContent>
             </Dialog>
 
-            <ConfirmDialog
-                open={!!deleteDialog}
-                onOpenChange={(open) => !open && setDeleteDialog(null)}
-                title="Remove Member?"
-                description="This will remove the member from the organization. They will lose access immediately."
-                tone="destructive"
-                secondaryActionText="Cancel"
-                primaryActionText="Remove"
-                onConfirm={handleConfirmDelete}
+            <MemberOffboardingDialog
+                open={!!memberToRemove}
+                onOpenChange={(open) => !open && setMemberToRemove(null)}
+                member={memberToRemove}
+                onConfirm={handleConfirmOffboarding}
+                isPending={removeMutation.isPending}
             />
 
             <ConfirmDialog

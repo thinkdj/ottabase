@@ -13,7 +13,13 @@ vi.mock('../admin-roles', () => ({
 
 import { canAccessOrganization, requireAdminAccess, resolveTenantOrganizationId } from '../../lib/admin-guard';
 import { invalidateRBACCache } from '../admin-roles';
-import { handleRBACRoleCreate, handleRBACRoleDelete, handleRBACRoleUpdate, handleRBACRolesList } from '../rbac-roles';
+import {
+    handleRBACRoleCreate,
+    handleRBACRoleDelete,
+    handleRBACRoleGet,
+    handleRBACRoleUpdate,
+    handleRBACRolesList,
+} from '../rbac-roles';
 
 function adminContext(orgId = 'org-1') {
     return {
@@ -128,6 +134,24 @@ describe('handleRBACRolesList', () => {
         });
 
         expect(response.status).toBe(500);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('ROLES_LIST_FAILED');
+    });
+
+    it('falls back to safe pagination defaults when page/perPage are non-numeric', async () => {
+        const systemRole = mockRole({ id: 'r-sys', name: 'admin', isSystem: true, organizationId: null });
+        vi.spyOn(Role, 'findByOrg').mockResolvedValue([systemRole] as any);
+
+        const response = await handleRBACRolesList({
+            request: new Request('http://localhost/api/rbac/roles?page=abc&perPage=xyz'),
+            env: {} as any,
+            url: new URL('http://localhost/api/rbac/roles?page=abc&perPage=xyz'),
+        });
+
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as any;
+        expect(body.pagination.page).toBe(1);
+        expect(body.pagination.perPage).toBe(50);
     });
 });
 
@@ -177,6 +201,22 @@ describe('handleRBACRoleCreate', () => {
         expect(response.status).toBe(400);
         const body = (await response.json()) as any;
         expect(body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('returns 400 when request body is invalid JSON', async () => {
+        const response = await handleRBACRoleCreate({
+            request: new Request('http://localhost/api/rbac/roles', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: '{',
+            }),
+            env: {} as any,
+            url: new URL('http://localhost/api/rbac/roles'),
+        });
+
+        expect(response.status).toBe(400);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('BAD_REQUEST');
     });
 
     it('returns 409 when name shadows a reserved system role name', async () => {
@@ -270,6 +310,27 @@ describe('handleRBACRoleUpdate', () => {
         );
 
         expect(response.status).toBe(404);
+    });
+
+    it('returns 400 when update body is invalid JSON', async () => {
+        vi.spyOn(Role, 'find').mockResolvedValue(mockRole({ organizationId: 'org-1' }) as any);
+
+        const response = await handleRBACRoleUpdate(
+            {
+                request: new Request('http://localhost/api/rbac/roles/r-editor', {
+                    method: 'PATCH',
+                    headers: { 'content-type': 'application/json' },
+                    body: '{',
+                }),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-editor'),
+            },
+            'r-editor',
+        );
+
+        expect(response.status).toBe(400);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('BAD_REQUEST');
     });
 
     it('rejects attempts to modify a system role with 403', async () => {
@@ -396,5 +457,261 @@ describe('handleRBACRoleDelete', () => {
         expect(response.status).toBe(200);
         const body = (await response.json()) as any;
         expect(body.success).toBe(true);
+    });
+});
+
+describe('handleRBACRoleCreate — permission format validation (M2)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
+        vi.mocked(resolveTenantOrganizationId).mockReturnValue('org-1');
+        vi.spyOn(Role, 'first').mockResolvedValue(null as any);
+    });
+
+    it('returns 400 when a permission string has no colon separator', async () => {
+        const response = await handleRBACRoleCreate({
+            request: jsonRequest('http://localhost/api/rbac/roles', 'POST', {
+                name: 'editor',
+                permissions: ['nocolon'],
+            }),
+            env: {} as any,
+            url: new URL('http://localhost/api/rbac/roles'),
+        });
+
+        expect(response.status).toBe(400);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('returns 400 when an empty string permission is supplied', async () => {
+        const response = await handleRBACRoleCreate({
+            request: jsonRequest('http://localhost/api/rbac/roles', 'POST', {
+                name: 'editor',
+                permissions: [''],
+            }),
+            env: {} as any,
+            url: new URL('http://localhost/api/rbac/roles'),
+        });
+
+        expect(response.status).toBe(400);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('accepts wildcard permissions like "blog:*"', async () => {
+        vi.spyOn(Role, 'create').mockResolvedValue(
+            mockRole({ id: 'r-new', name: 'editor', permissions: '["blog:*"]' }) as any,
+        );
+
+        const response = await handleRBACRoleCreate({
+            request: jsonRequest('http://localhost/api/rbac/roles', 'POST', {
+                name: 'editor',
+                permissions: ['blog:*'],
+            }),
+            env: { OBCF_KV: {} } as any,
+            url: new URL('http://localhost/api/rbac/roles'),
+        });
+
+        expect(response.status).toBe(201);
+    });
+});
+
+describe('handleRBACRoleUpdate — rename support (M1)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
+        vi.mocked(resolveTenantOrganizationId).mockReturnValue('org-1');
+        vi.mocked(canAccessOrganization).mockReturnValue(true);
+    });
+
+    it('renames a custom role to a valid new name', async () => {
+        const role = mockRole({ id: 'r-editor', name: 'editor', organizationId: 'org-1' });
+        vi.spyOn(Role, 'find').mockResolvedValue(role);
+        vi.spyOn(Role, 'first').mockResolvedValue(null as any);
+
+        const response = await handleRBACRoleUpdate(
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-editor', 'PATCH', {
+                    name: 'content-editor',
+                }),
+                env: { OBCF_KV: {} } as any,
+                url: new URL('http://localhost/api/rbac/roles/r-editor'),
+            },
+            'r-editor',
+        );
+
+        expect(role.set).toHaveBeenCalledWith('name', 'content-editor');
+        expect(role.save).toHaveBeenCalled();
+        expect(response.status).toBe(200);
+    });
+
+    it('returns 409 when renaming to a reserved system role name', async () => {
+        const role = mockRole({ id: 'r-editor', name: 'editor', organizationId: 'org-1' });
+        vi.spyOn(Role, 'find').mockResolvedValue(role);
+
+        const response = await handleRBACRoleUpdate(
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-editor', 'PATCH', { name: 'admin' }),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-editor'),
+            },
+            'r-editor',
+        );
+
+        expect(response.status).toBe(409);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('CONFLICT');
+    });
+
+    it('returns 409 when renaming to a name already used by another role in the org', async () => {
+        const role = mockRole({ id: 'r-editor', name: 'editor', organizationId: 'org-1' });
+        const otherRole = mockRole({ id: 'r-other', name: 'designer', organizationId: 'org-1' });
+        vi.spyOn(Role, 'find').mockResolvedValue(role);
+        vi.spyOn(Role, 'first').mockResolvedValue(otherRole as any);
+
+        const response = await handleRBACRoleUpdate(
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-editor', 'PATCH', { name: 'designer' }),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-editor'),
+            },
+            'r-editor',
+        );
+
+        expect(response.status).toBe(409);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('CONFLICT');
+    });
+
+    it('returns 400 when updating permissions with invalid format', async () => {
+        const role = mockRole({ id: 'r-editor', name: 'editor', organizationId: 'org-1' });
+        vi.spyOn(Role, 'find').mockResolvedValue(role);
+
+        const response = await handleRBACRoleUpdate(
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-editor', 'PATCH', {
+                    permissions: ['invalid-no-colon'],
+                }),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-editor'),
+            },
+            'r-editor',
+        );
+
+        expect(response.status).toBe(400);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('returns 400 when renaming role to an invalid format', async () => {
+        const role = mockRole({ id: 'r-editor', name: 'editor', organizationId: 'org-1' });
+        vi.spyOn(Role, 'find').mockResolvedValue(role);
+
+        const response = await handleRBACRoleUpdate(
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-editor', 'PATCH', {
+                    name: 'editor role',
+                }),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-editor'),
+            },
+            'r-editor',
+        );
+
+        expect(response.status).toBe(400);
+        const body = (await response.json()) as any;
+        expect(body.code).toBe('VALIDATION_ERROR');
+    });
+});
+
+describe('handleRBACRoleGet (L4)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(requireAdminAccess).mockResolvedValue(adminContext());
+        vi.mocked(canAccessOrganization).mockReturnValue(true);
+    });
+
+    it('returns 401 when auth fails', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(new Response('unauthorized', { status: 401 }));
+
+        const response = await handleRBACRoleGet(
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-1', 'GET'),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-1'),
+            },
+            'r-1',
+        );
+
+        expect(response.status).toBe(401);
+    });
+
+    it('returns 404 when the role does not exist', async () => {
+        vi.spyOn(Role, 'find').mockResolvedValue(null as any);
+
+        const response = await handleRBACRoleGet(
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/missing', 'GET'),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/missing'),
+            },
+            'missing',
+        );
+
+        expect(response.status).toBe(404);
+    });
+
+    it('returns 404 when the role belongs to a different org', async () => {
+        vi.spyOn(Role, 'find').mockResolvedValue(mockRole({ id: 'r-1', organizationId: 'org-other' }) as any);
+        vi.mocked(canAccessOrganization).mockReturnValue(false);
+
+        const response = await handleRBACRoleGet(
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-1', 'GET'),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-1'),
+            },
+            'r-1',
+        );
+
+        expect(response.status).toBe(404);
+    });
+
+    it('returns the role when found and accessible', async () => {
+        vi.spyOn(Role, 'find').mockResolvedValue(
+            mockRole({ id: 'r-editor', name: 'editor', organizationId: 'org-1', permissions: '["blog:read"]' }) as any,
+        );
+
+        const response = await handleRBACRoleGet(
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-editor', 'GET'),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-editor'),
+            },
+            'r-editor',
+        );
+
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as any;
+        expect(body.data.id).toBe('r-editor');
+        expect(body.data.permissions).toEqual(['blog:read']);
+    });
+
+    it('returns a system role (organizationId=null) without org access check', async () => {
+        vi.spyOn(Role, 'find').mockResolvedValue(
+            mockRole({ id: 'r-admin', name: 'admin', organizationId: null, isSystem: true }) as any,
+        );
+
+        const response = await handleRBACRoleGet(
+            {
+                request: jsonRequest('http://localhost/api/rbac/roles/r-admin', 'GET'),
+                env: {} as any,
+                url: new URL('http://localhost/api/rbac/roles/r-admin'),
+            },
+            'r-admin',
+        );
+
+        expect(response.status).toBe(200);
+        expect(canAccessOrganization).not.toHaveBeenCalled();
     });
 });

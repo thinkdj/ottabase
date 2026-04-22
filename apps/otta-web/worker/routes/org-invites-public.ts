@@ -1,5 +1,5 @@
 import { getSession } from '@ottabase/auth/backend';
-import { Organization, OrganizationInvite, OrganizationMember } from '@ottabase/ottaorm/models';
+import { MembershipError, Organization, OrganizationInvite, OrganizationMember } from '@ottabase/ottaorm/models';
 import { getRBACCache } from '@ottabase/rbac';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -186,16 +186,27 @@ export async function handlePublicOrgInviteAccept(context: ApiRouteContext): Pro
             return jsonResponse({ data: { accepted: true, alreadyMember: true } });
         }
 
-        await OrganizationMember.addMember({
-            userId,
-            organizationId: invite.organizationId,
-            role: invite.role as 'owner' | 'admin' | 'member',
-            status: 'active',
-            joinedAt: Date.now(),
-            invitedBy: invite.invitedBy ?? null,
-            invitedAt: invite.invitedAt,
-            cache: getRBACCache(),
-        });
+        try {
+            await OrganizationMember.addMember({
+                userId,
+                organizationId: invite.organizationId,
+                role: invite.role as 'owner' | 'admin' | 'member' | 'viewer',
+                status: 'active',
+                joinedAt: Date.now(),
+                invitedBy: invite.invitedBy ?? null,
+                invitedAt: invite.invitedAt,
+                cache: getRBACCache(),
+            });
+        } catch (addErr) {
+            // A concurrent request (e.g. double-click) may have inserted the member
+            // between our existence check and the addMember call.  Treat that as an
+            // idempotent success rather than a 500.
+            if (addErr instanceof MembershipError && addErr.code === 'MEMBER_ALREADY_EXISTS') {
+                await OrganizationInvite.updateById(invite.id, { status: 'accepted', acceptedAt: Date.now() });
+                return jsonResponse({ data: { accepted: true, alreadyMember: true } });
+            }
+            throw addErr;
+        }
 
         await OrganizationInvite.updateById(invite.id, {
             status: 'accepted',

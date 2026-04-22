@@ -21,7 +21,11 @@ export type MembershipStatus = 'active' | 'invited' | 'suspended';
  * Codes raised by OrganizationMember lifecycle methods. Routes map these
  * directly to HTTP responses instead of reimplementing the guard logic.
  */
-export type MembershipErrorCode = 'LAST_ACTIVE_OWNER_GUARD' | 'USER_NOT_FOUND' | 'MEMBER_NOT_FOUND';
+export type MembershipErrorCode =
+    | 'LAST_ACTIVE_OWNER_GUARD'
+    | 'USER_NOT_FOUND'
+    | 'MEMBER_NOT_FOUND'
+    | 'MEMBER_ALREADY_EXISTS';
 
 export class MembershipError extends Error {
     public readonly code: MembershipErrorCode;
@@ -110,13 +114,14 @@ export class OrganizationMember extends BaseModel {
                     { id: 'owner', name: 'Owner' },
                     { id: 'admin', name: 'Admin' },
                     { id: 'member', name: 'Member' },
+                    { id: 'viewer', name: 'Viewer' },
                 ],
             },
             tableConfig: {
                 visible: true,
             },
             validation: {
-                rules: 'required|in:owner,admin,member',
+                rules: 'required|in:owner,admin,member,viewer',
                 messages: {
                     required: 'Role is required',
                     in: 'Invalid role',
@@ -203,6 +208,13 @@ export class OrganizationMember extends BaseModel {
             throw new Error(`Unknown membership role: ${options.role}`);
         }
 
+        // Guard at the model layer so callers that bypass the route layer still
+        // get a well-typed MembershipError instead of an opaque D1 UNIQUE violation.
+        const existing = await this.getMember(userId, organizationId);
+        if (existing) {
+            throw new MembershipError('MEMBER_ALREADY_EXISTS');
+        }
+
         const status = options.status ?? 'invited';
         const joinedAt = Number.isFinite(options.joinedAt) ? Number(options.joinedAt) : Date.now();
         const invitedAt =
@@ -212,20 +224,31 @@ export class OrganizationMember extends BaseModel {
                   ? Number(options.invitedAt)
                   : null;
 
-        const db = this.getDriver().getDb();
-        const [member] = await db
-            .insert(organizationMembersTable)
-            .values({
-                userId,
-                organizationId,
-                role: options.role,
-                status,
-                invitedBy: options.invitedBy ?? null,
-                invitedAt,
-                joinedAt,
-                metadata: options.metadata ?? null,
-            } as NewOrganizationMemberType)
-            .returning();
+        let member: OrganizationMemberType;
+        try {
+            const db = this.getDriver().getDb();
+            const [created] = await db
+                .insert(organizationMembersTable)
+                .values({
+                    userId,
+                    organizationId,
+                    role: options.role,
+                    status,
+                    invitedBy: options.invitedBy ?? null,
+                    invitedAt,
+                    joinedAt,
+                    metadata: options.metadata ?? null,
+                } as NewOrganizationMemberType)
+                .returning();
+            member = created;
+        } catch (error) {
+            // Race-safe duplicate handling: two concurrent callers may pass the
+            // pre-insert existence check and collide on the composite PK insert.
+            if (this.isDuplicateMembershipInsertError(error)) {
+                throw new MembershipError('MEMBER_ALREADY_EXISTS');
+            }
+            throw error;
+        }
 
         await this.syncTenantRBAC(userId, organizationId, options.role, status, {
             cache: options.cache,
@@ -233,6 +256,12 @@ export class OrganizationMember extends BaseModel {
         });
 
         return member;
+    }
+
+    private static isDuplicateMembershipInsertError(error: unknown): boolean {
+        if (!error) return false;
+        const message = error instanceof Error ? error.message : String(error);
+        return /unique|constraint|already exists|organization_members/i.test(message);
     }
 
     /**
@@ -364,6 +393,11 @@ export class OrganizationMember extends BaseModel {
      * Internal: drop every default-role assignment for (user, org) and then —
      * when status='active' — assign the single matching role. Keeps the
      * `user_roles` junction in lockstep with `organization_members.role`.
+     *
+     * When status is NOT 'active' (i.e. suspended or invited), all custom
+     * org-scoped roles are also removed via a bulk DELETE to ensure a suspended
+     * or de-listed member cannot continue to exercise permissions granted by
+     * custom roles they were assigned while active.
      */
     static async syncTenantRBAC(
         userId: string,
@@ -376,11 +410,20 @@ export class OrganizationMember extends BaseModel {
         const { UserRole } = await import('./UserRole');
         const defaults = await Role.ensureDefaults();
 
-        // Revoke every default role in this org so prior assignments can't leak.
-        for (const name of DEFAULT_ROLE_NAMES) {
-            const target = defaults[name];
-            if (!target) continue;
-            await UserRole.removeRole(userId, String(target.get('id')), organizationId);
+        if (status !== 'active') {
+            // Member is being suspended or invited — remove ALL org-scoped role
+            // assignments (both default and custom) in a single bulk DELETE so no
+            // permission can survive the status change.
+            await UserRole.clearUserRoles(userId, organizationId);
+        } else {
+            // Member is (re-)activating — only revoke the four default roles so
+            // that the correct one can be re-assigned below. Custom roles are NOT
+            // touched on activation; they must be re-granted explicitly by an admin.
+            for (const name of DEFAULT_ROLE_NAMES) {
+                const target = defaults[name];
+                if (!target) continue;
+                await UserRole.removeRole(userId, String(target.get('id')), organizationId);
+            }
         }
 
         if (status === 'active') {
@@ -407,20 +450,16 @@ export class OrganizationMember extends BaseModel {
     }
 
     /**
-     * Internal: remove every default-role assignment for (user, org) without
-     * reassigning. Called by `removeMember` so a deleted member leaves no
-     * RBAC residue.
+     * Internal: remove ALL role assignments (default + custom) for (user, org)
+     * without reassigning. Called by `removeMember` so a deleted member leaves
+     * no RBAC residue — neither their base membership role nor any extra custom
+     * roles they were granted via the RBAC user-roles API.
+     *
+     * Uses a single bulk DELETE query to avoid N+1 round-trips.
      */
     private static async clearTenantRBAC(userId: string, organizationId: string): Promise<void> {
-        const { Role } = await import('./Role');
         const { UserRole } = await import('./UserRole');
-        const defaults = await Role.ensureDefaults();
-
-        for (const name of DEFAULT_ROLE_NAMES) {
-            const target = defaults[name];
-            if (!target) continue;
-            await UserRole.removeRole(userId, String(target.get('id')), organizationId);
-        }
+        await UserRole.clearUserRoles(userId, organizationId);
     }
 
     /**
@@ -430,7 +469,7 @@ export class OrganizationMember extends BaseModel {
         organizationId: string,
         options?: {
             status?: 'active' | 'invited' | 'suspended';
-            role?: 'owner' | 'admin' | 'member';
+            role?: 'owner' | 'admin' | 'member' | 'viewer';
             limit?: number;
             /** Zero-based row offset for pagination */
             offset?: number;
@@ -489,7 +528,7 @@ export class OrganizationMember extends BaseModel {
         organizationId: string,
         options?: {
             status?: 'active' | 'invited' | 'suspended';
-            role?: 'owner' | 'admin' | 'member';
+            role?: 'owner' | 'admin' | 'member' | 'viewer';
         },
     ): Promise<number> {
         const db = this.getDriver().getDb();
@@ -541,7 +580,7 @@ export class OrganizationMember extends BaseModel {
         userId: string,
         options?: {
             status?: 'active' | 'invited' | 'suspended';
-            role?: 'owner' | 'admin' | 'member';
+            role?: 'owner' | 'admin' | 'member' | 'viewer';
         },
     ): Promise<Array<OrganizationMemberType & { organization?: any }>> {
         const db = this.getDriver().getDb();
@@ -603,7 +642,11 @@ export class OrganizationMember extends BaseModel {
     /**
      * Check if user has specific role in organization
      */
-    static async hasRole(userId: string, organizationId: string, role: 'owner' | 'admin' | 'member'): Promise<boolean> {
+    static async hasRole(
+        userId: string,
+        organizationId: string,
+        role: 'owner' | 'admin' | 'member' | 'viewer',
+    ): Promise<boolean> {
         const db = this.getDriver().getDb();
 
         const [member] = await db

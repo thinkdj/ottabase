@@ -22,6 +22,7 @@ export { ScheduledTask, scheduledTasksTable, type NewScheduledTaskType, type Sch
 
 // Multi-tenant organization models
 export { DEFAULT_ROLE_NAMES, DEFAULT_ROLES, type DefaultRoleName, type DefaultRoleSeed } from './DefaultRoles';
+export { SYSTEM_ROLE_NAMES_SET, isSystemRoleName } from '../rbac-constants';
 export {
     Organization,
     organizationsTable,
