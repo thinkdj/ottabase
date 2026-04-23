@@ -628,9 +628,10 @@ export function createAuthConfig(env: AuthEnv, options?: CreateAuthConfigOptions
                             // the context loader so organizationId/roles/permissions reflect the
                             // current choice instead of the stale token snapshot.
                             const freshContext = await loadUserContext(userId);
-                            if (freshContext.organizationId) {
-                                token.organizationId = freshContext.organizationId;
-                            }
+                            // Always overwrite — even a null/SYSTEM_ORGANIZATION_ID result must
+                            // clear a stale org hint so the client can't keep sending an incorrect
+                            // X-Org-Id after the user's membership has been removed.
+                            token.organizationId = freshContext.organizationId;
                             token.roles = freshContext.roles;
                             token.permissions = freshContext.permissions;
                             if (freshContext.createdAt) {

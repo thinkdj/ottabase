@@ -163,11 +163,6 @@ export async function handleAdminOrganizationInviteCreate(
         metadata: {},
     });
 
-    // Revoke any older pending invites for this email in this org before sending.
-    // Doing this before the email send ensures that even if the send fails, there
-    // are never two live invite tokens for the same (org, email) pair.
-    await OrganizationInvite.revokePendingForEmailExcept(organizationId, email, row.id);
-
     const inviterName =
         (typeof auth.user?.name === 'string' && auth.user.name.trim()) ||
         (typeof auth.user?.email === 'string' && auth.user.email) ||
@@ -182,6 +177,8 @@ export async function handleAdminOrganizationInviteCreate(
     });
 
     if (!send.ok) {
+        // Email failed — remove the new row so prior invites (not yet revoked)
+        // remain valid and the invitee can still use their existing link.
         try {
             await OrganizationInvite.deleteById(row.id);
         } catch {
@@ -189,6 +186,10 @@ export async function handleAdminOrganizationInviteCreate(
         }
         return errorResponse(send.error || 'Failed to send invite email', 500, { code: 'ORG_INVITE_EMAIL_FAILED' });
     }
+
+    // Revoke any older pending invites only after a successful send, so the
+    // invitee is never left without a valid link if the send fails.
+    await OrganizationInvite.revokePendingForEmailExcept(organizationId, email, row.id);
 
     await auditOrganizationAction(context.request, {
         userId: auth.user?.id,

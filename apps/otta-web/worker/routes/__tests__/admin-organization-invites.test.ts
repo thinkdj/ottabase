@@ -59,7 +59,7 @@ describe('handleAdminOrganizationInviteCreate', () => {
         vi.spyOn(OrganizationInvite, 'expirePendingPast').mockResolvedValue(0);
     });
 
-    it('deletes the new invite row when email send fails', async () => {
+    it('deletes the new invite row when email send fails, leaving prior invites intact', async () => {
         const deleteSpy = vi.spyOn(OrganizationInvite, 'deleteById').mockResolvedValue(undefined);
         const revokeSpy = vi.spyOn(OrganizationInvite, 'revokePendingForEmail').mockResolvedValue(undefined);
         const revokeExceptSpy = vi
@@ -88,13 +88,14 @@ describe('handleAdminOrganizationInviteCreate', () => {
         );
 
         expect(response.status).toBe(500);
-        // Prior invites are revoked before send (H3 fix); new invite row is deleted after failed send.
-        expect(revokeExceptSpy).toHaveBeenCalledWith('org-1', 'x@test.com', 'inv-1');
+        // Prior invites must NOT be revoked when the send fails — they remain valid
+        // so the invitee can still use their existing link.
+        expect(revokeExceptSpy).not.toHaveBeenCalled();
         expect(deleteSpy).toHaveBeenCalledWith('inv-1');
         expect(revokeSpy).not.toHaveBeenCalled();
     });
 
-    it('revokes prior pending invites BEFORE sending the email', async () => {
+    it('revokes prior pending invites AFTER a successful send', async () => {
         vi.spyOn(OrganizationInvite, 'deleteById').mockResolvedValue(undefined);
         const revokeExceptSpy = vi
             .spyOn(OrganizationInvite, 'revokePendingForEmailExcept')
@@ -107,17 +108,15 @@ describe('handleAdminOrganizationInviteCreate', () => {
             status: 'pending',
             expiresAt: Date.now() + 999,
         } as any);
-        vi.mocked(sendTemplatedEmail).mockResolvedValue(undefined as any);
 
-        let revokeCalledBeforeSend = false;
-        // Capture the call order: revoke must fire before send
-        revokeExceptSpy.mockImplementation(async () => {
-            revokeCalledBeforeSend = true;
-        });
+        let sendCalledBeforeRevoke = false;
         vi.mocked(sendTemplatedEmail).mockImplementation(async () => {
-            // At this point revoke should already have been called
-            if (!revokeCalledBeforeSend) {
-                throw new Error('revoke was not called before send');
+            sendCalledBeforeRevoke = true;
+        });
+        revokeExceptSpy.mockImplementation(async () => {
+            // Revocation must occur after the send — verify ordering
+            if (!sendCalledBeforeRevoke) {
+                throw new Error('revoke was called before send');
             }
         });
 
@@ -134,7 +133,8 @@ describe('handleAdminOrganizationInviteCreate', () => {
         );
 
         expect(response.status).toBe(201);
-        expect(revokeCalledBeforeSend).toBe(true);
+        expect(revokeExceptSpy).toHaveBeenCalledWith('org-1', 'y@test.com', 'inv-2');
+        expect(sendCalledBeforeRevoke).toBe(true);
     });
 
     it('accepts viewer role when creating an email invite', async () => {

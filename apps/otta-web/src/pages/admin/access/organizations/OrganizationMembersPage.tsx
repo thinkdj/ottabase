@@ -619,7 +619,7 @@ export function OrganizationMembersPage() {
                 open={!!resendInviteId}
                 onOpenChange={(open) => !open && setResendInviteId(null)}
                 title="Resend invitation?"
-                description={`A new invitation email will be sent to ${pendingInvites.find((i) => i.id === resendInviteId)?.email || 'the recipient'}. The previous link will still work.`}
+                description={`A new invitation email will be sent to ${pendingInvites.find((i) => i.id === resendInviteId)?.email || 'the recipient'}. The previous link will be invalidated.`}
                 tone="default"
                 secondaryActionText="Cancel"
                 primaryActionText="Resend"
