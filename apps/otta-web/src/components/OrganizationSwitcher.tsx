@@ -1,11 +1,15 @@
 /**
  * Organization Switcher
  *
- * Dropdown to switch between organizations
- * GitHub-like minimal UI with dark mode support
+ * Dropdown to switch between organizations. Current org is
+ * derived from the session (single source of truth). Selecting
+ * an org calls POST /api/account/switch-org which re-issues the
+ * JWT, then refreshSession() pulls the new token + context.
  */
 
 import { useAccessibleOrganizations } from '@/hooks/useRBAC';
+import { api } from '@/lib/api';
+import { useSession } from '@/lib/auth';
 import {
     Button,
     DropdownMenu,
@@ -15,29 +19,51 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@ottabase/ui-shadcn';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Building2, Check, ChevronsUpDown, Plus, Settings } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
-interface OrganizationSwitcherProps {
-    currentOrgId?: string;
-    onOrgChange?: (orgId: string) => void;
-}
-
-export function OrganizationSwitcher({ currentOrgId, onOrgChange }: OrganizationSwitcherProps) {
+export function OrganizationSwitcher() {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
+    const { user, refreshSession } = useSession();
     const { data: orgs = [], isLoading } = useAccessibleOrganizations();
     const [isOpen, setIsOpen] = useState(false);
+    const [isSwitching, setIsSwitching] = useState(false);
 
+    const currentOrgId = (user as any)?.organizationId ?? null;
     const currentOrg = orgs.find((org) => org.id === currentOrgId) ?? orgs[0];
 
-    const handleSelect = (orgId: string) => {
-        if (onOrgChange) {
-            onOrgChange(orgId);
-        } else {
+    const switchOrganization = async (organizationId: string): Promise<boolean> => {
+        setIsSwitching(true);
+        try {
+            await api('/api/account/switch-org', {
+                method: 'POST',
+                body: { organizationId },
+            });
+            await refreshSession();
+            await queryClient.invalidateQueries({
+                predicate: (query) =>
+                    query.queryKey.some((key) => typeof key === 'string' && key.toLowerCase().includes('organization')),
+            });
+            return true;
+        } catch (error) {
+            toast.error(error instanceof Error && error.message ? error.message : 'Failed to switch organization');
+            return false;
+        } finally {
+            setIsSwitching(false);
+        }
+    };
+
+    const handleSelect = async (orgId: string) => {
+        setIsOpen(false);
+        if (orgId === currentOrgId) return;
+        const ok = await switchOrganization(orgId);
+        if (ok) {
             navigate({ to: '/admin/organization/members' });
         }
-        setIsOpen(false);
     };
 
     const handleCreateNew = () => {
@@ -45,12 +71,13 @@ export function OrganizationSwitcher({ currentOrgId, onOrgChange }: Organization
         setIsOpen(false);
     };
 
-    const handleOpenSettings = (orgId: string) => {
-        if (onOrgChange) {
-            onOrgChange(orgId);
+    const handleOpenSettings = async (orgId: string) => {
+        setIsOpen(false);
+        if (orgId !== currentOrgId) {
+            const ok = await switchOrganization(orgId);
+            if (!ok) return;
         }
         navigate({ to: '/admin/organization/settings' });
-        setIsOpen(false);
     };
 
     if (isLoading) {
@@ -76,10 +103,18 @@ export function OrganizationSwitcher({ currentOrgId, onOrgChange }: Organization
     return (
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={isOpen} className="w-[200px] justify-between">
+                <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={isOpen}
+                    disabled={isSwitching}
+                    className="w-[200px] justify-between"
+                >
                     <div className="flex items-center gap-2 overflow-hidden">
                         <Building2 className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-sm truncate">{currentOrg?.name || 'Select org...'}</span>
+                        <span className="text-sm truncate">
+                            {isSwitching ? 'Switching…' : currentOrg?.name || 'Select org...'}
+                        </span>
                     </div>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -107,7 +142,7 @@ export function OrganizationSwitcher({ currentOrgId, onOrgChange }: Organization
                                 onClick={(event) => {
                                     event.preventDefault();
                                     event.stopPropagation();
-                                    handleOpenSettings(org.id);
+                                    void handleOpenSettings(org.id);
                                 }}
                             >
                                 <Settings className="h-3.5 w-3.5" />

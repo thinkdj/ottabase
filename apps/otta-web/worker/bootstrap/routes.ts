@@ -12,6 +12,7 @@
 // ============================================================
 
 import { encode as encodeAuthJwt } from '@auth/core/jwt';
+import { SYSTEM_ORGANIZATION_ID } from '@ottabase/auth';
 import { hashPassword } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import {
@@ -54,30 +55,6 @@ function jsonResp(data: unknown, status = 200): Response {
         status,
         headers: { 'Content-Type': 'application/json' },
     });
-}
-
-const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-    owner: ['*:*'],
-    admin: ['*:*'],
-    editor: ['*:read', '*:create', '*:update'],
-    viewer: ['*:read'],
-    member: ['*:read'],
-};
-
-async function enforceDefaultRolePermissions(env: CloudflareEnv): Promise<string[]> {
-    if (!env.OBCF_D1) return [];
-
-    const normalized: string[] = [];
-    const now = Date.now();
-
-    for (const [name, permissions] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
-        await env.OBCF_D1.prepare(`UPDATE roles SET permissions = ?, updated_at = ? WHERE name = ?`)
-            .bind(JSON.stringify(permissions), now, name)
-            .run();
-        normalized.push(name);
-    }
-
-    return normalized;
 }
 
 /**
@@ -410,18 +387,16 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
         const appId = (env as { APP_ID?: string }).APP_ID ?? 'otta-web';
         await ensureAppBrandDefaults('Ottabase', appId);
 
-        // Seed default roles (owner, admin, editor, viewer, member)
-        const createdRoles = await Role.ensureDefaultRoles();
-        const roleNames = createdRoles.map((r: any) => r.get('name') as string);
-        const normalizedRoles = await enforceDefaultRolePermissions(env);
+        // Seed default roles (owner, admin, member, viewer) — single source of truth in ottaorm
+        const defaultRoles = await Role.ensureDefaults();
+        const roleNames = Object.values(defaultRoles).map((r) => r.get('name') as string);
 
-        // Count existing roles for reporting
         const allRolesResult = await env.OBCF_D1.prepare('SELECT name FROM roles').all();
         const existingRoles = (allRolesResult.results || []).map((r: any) => r.name as string);
 
         return jsonResp({
             success: true,
-            roles: { created: roleNames, existing: existingRoles, normalized: normalizedRoles },
+            roles: { created: roleNames, existing: existingRoles },
             timestamp: Date.now(),
         });
     } catch (error: any) {
@@ -475,8 +450,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
     try {
         ensureOrmConnection(env);
 
-        await Role.ensureDefaultRoles();
-        await enforceDefaultRolePermissions(env);
+        await Role.ensureDefaults();
 
         // Check if users already exist
         const countRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
@@ -504,22 +478,17 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
 
         const userId = newUser.get('id') as string;
 
-        // Create personal organization
+        // Create personal organization (owner, *:* via the owner role)
         let organizationId: string | null = null;
-        let assignedRole: string | null = null;
         try {
             const provisioned = await provisionDefaultOrganizationForUser({
                 user: newUser as any,
                 email,
                 name,
-                organizationRole: 'owner',
-                assignedBy: 'system',
-                roleFallbacks: ['owner'],
                 appId: (env as { APP_ID?: string }).APP_ID ?? 'otta-web',
             });
             organizationId = provisioned.organizationId;
-            assignedRole = provisioned.assignedRole;
-        } catch (error) {
+        } catch (_error) {
             return jsonResp(
                 {
                     success: false,
@@ -528,6 +497,19 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 },
                 500,
             );
+        }
+        const assignedRole: 'owner' = 'owner';
+
+        // Grant platform-level superadmin: first bootstrapped user is the platform
+        // Owner, scoped to SYSTEM_ORGANIZATION_ID (virtual platform scope). This
+        // persists `*:*` via the owner role so subsequent logins and RBAC checks
+        // honor platform-wide access, not just a JWT-baked permissions claim.
+        try {
+            const roles = await Role.ensureDefaults();
+            const ownerRoleId = roles.owner.get('id') as string;
+            await (newUser as any).assignRole(ownerRoleId, undefined, SYSTEM_ORGANIZATION_ID);
+        } catch (error) {
+            console.warn('Failed to assign platform-level owner role to bootstrap user:', error);
         }
 
         // Auto-login: create auth cookie so the user is immediately authenticated

@@ -237,7 +237,11 @@ function KitCard({
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
                 title="Delete Brand Kit?"
-                description={`This cannot be undone. The Brand Kit "${kit.name}" will be permanently deleted.`}
+                description={
+                    !kit.appId
+                        ? `This cannot be undone. "${kit.name}" has no linked app (it may have been created accidentally). Deleting it is safe as long as no routes reference it.`
+                        : `This cannot be undone. The Brand Kit "${kit.name}" will be permanently deleted.`
+                }
                 tone="destructive"
                 secondaryActionText="Cancel"
                 primaryActionText={deleting ? 'Deleting…' : 'Delete'}

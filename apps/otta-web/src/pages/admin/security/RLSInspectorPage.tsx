@@ -50,6 +50,7 @@ interface SecurityTest {
     description: string;
     level: string;
     status: 'passed' | 'blocked' | 'warning';
+    expected: 'passed' | 'blocked' | 'warning';
     details: string;
 }
 
@@ -63,6 +64,7 @@ export function RLSInspectorPage() {
             description: 'Prevent cross-tenant data access',
             level: 'CRITICAL',
             status: 'passed',
+            expected: 'passed',
             details: 'All queries automatically filtered by organizationId',
         },
         {
@@ -70,6 +72,7 @@ export function RLSInspectorPage() {
             description: 'Users can only access their own data',
             level: 'HIGH',
             status: 'passed',
+            expected: 'passed',
             details: 'User-scoped models enforce userId filtering',
         },
         {
@@ -77,6 +80,7 @@ export function RLSInspectorPage() {
             description: 'Prevent writing to another org',
             level: 'CRITICAL',
             status: 'blocked',
+            expected: 'blocked',
             details: 'Attempted write to org-456 from org-123 context - BLOCKED',
         },
         {
@@ -84,6 +88,7 @@ export function RLSInspectorPage() {
             description: 'Enforce role-based permissions',
             level: 'HIGH',
             status: 'passed',
+            expected: 'passed',
             details: 'Member role correctly denied admin operations',
         },
         {
@@ -91,6 +96,7 @@ export function RLSInspectorPage() {
             description: 'Allow read-only access to public models',
             level: 'MEDIUM',
             status: 'passed',
+            expected: 'passed',
             details: 'Public models accessible without authentication',
         },
         {
@@ -98,6 +104,7 @@ export function RLSInspectorPage() {
             description: 'Audit logs are read-only',
             level: 'CRITICAL',
             status: 'blocked',
+            expected: 'blocked',
             details: 'Attempted write to audit_logs - BLOCKED (read-only policy)',
         },
     ];
@@ -203,6 +210,17 @@ export function RLSInspectorPage() {
             case 'warning':
                 return <Badge variant="secondary">Warning</Badge>;
         }
+    };
+
+    const getResultBadge = (test: SecurityTest) => {
+        const ok = test.status === test.expected;
+        return ok ? (
+            <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                Pass
+            </Badge>
+        ) : (
+            <Badge variant="destructive">Fail</Badge>
+        );
     };
 
     const getLevelBadge = (level: string) => {
@@ -334,7 +352,9 @@ export function RLSInspectorPage() {
                                         <TableHead>Test Name</TableHead>
                                         <TableHead>Description</TableHead>
                                         <TableHead>Level</TableHead>
+                                        <TableHead>Expected</TableHead>
                                         <TableHead>Status</TableHead>
+                                        <TableHead>Result</TableHead>
                                         <TableHead>Details</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -345,7 +365,9 @@ export function RLSInspectorPage() {
                                             <TableCell className="font-medium">{test.name}</TableCell>
                                             <TableCell className="text-muted-foreground">{test.description}</TableCell>
                                             <TableCell>{getLevelBadge(test.level)}</TableCell>
+                                            <TableCell>{getStatusBadge(test.expected)}</TableCell>
                                             <TableCell>{getStatusBadge(test.status)}</TableCell>
+                                            <TableCell>{getResultBadge(test)}</TableCell>
                                             <TableCell className="text-sm text-muted-foreground">
                                                 {test.details}
                                             </TableCell>

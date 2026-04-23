@@ -35,6 +35,11 @@ export {
 export { createOttabaseAuthConfig, createOttabaseAuthConfigDev, type OttabaseAuthConfigOptions } from './config';
 
 // ============================================================
+// CONSTANTS
+// ============================================================
+export { SYSTEM_ORGANIZATION_ID } from './constants';
+
+// ============================================================
 // PROVIDER PRESETS
 // ============================================================
 export {

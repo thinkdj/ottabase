@@ -1,26 +1,23 @@
-import { useSession } from '@/lib/auth';
-import { getEnabledAdminNav } from '@/ottabase/config/admin-nav';
+import { getTenantAdminNav } from '@/ottabase/config/admin-nav';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 
 /**
- * Admin Console overview page.
+ * Tenant admin overview page.
  *
- * Renders cards driven by the SSOT in `apps/otta-web/src/ottabase/config/admin-nav.ts`.
- * Adding a new admin page = one entry in that file (the AdminLayout sidebar
- * picks it up automatically too).
+ * Renders cards driven by TENANT_ADMIN_NAV_GROUPS in
+ * `apps/otta-web/src/ottabase/config/admin-nav.ts`. Adding a new tenant-admin
+ * page = one entry in that file (the AdminLayout sidebar picks it up too).
  */
 export function AdminIndexPage() {
-    const { user } = useSession({ skipAutoSync: true });
-    const groups = getEnabledAdminNav({ systemAdmin: user?.systemAdmin === true });
+    const groups = getTenantAdminNav();
 
     return (
         <div className="space-y-10 pb-20">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Admin Console</h1>
                 <p className="text-muted-foreground mt-2 max-w-3xl">
-                    Everything that keeps the platform running — identity, content, infrastructure, growth — in one
-                    place. Tenant-isolated, role-gated, and built for production operations.
+                    Everything you need to run your organization — content, access, security, and growth — in one place.
                 </p>
             </div>
 

@@ -4,7 +4,7 @@ import type { ResolvedMenuSlotData } from '@ottabase/ottamenu';
 import { MenuSlotRenderer } from '@ottabase/ottamenu';
 import { Link, useLocation } from '@tanstack/react-router';
 import { memo } from 'react';
-import { getNavLinks } from './layout.constants';
+import { getNavLinks, isNavLinkActive } from './layout.constants';
 
 /** Map width class to px value for responsive inline style */
 const WIDTH_MAP: Record<string, string> = {
@@ -22,10 +22,11 @@ export const SidebarNav = memo(function SidebarNav({ widthClass = 'w-56' }: { wi
     const location = useLocation();
     const { config } = useBrand();
     const isAdmin = !!user?.permissions?.includes('admin') || !!user?.permissions?.includes('*:*');
-    const links = getNavLinks({ isAuthenticated, isAdmin });
+    const isSystemAdmin = !!(user as any)?.systemAdmin;
+    const links = getNavLinks({ isAuthenticated, isAdmin, isSystemAdmin });
 
     const staticContent = links.map((link) => {
-        const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
+        const isActive = isNavLinkActive(location.pathname, link.to);
         return (
             <Link
                 key={link.to}

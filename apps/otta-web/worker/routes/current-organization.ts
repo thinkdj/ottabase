@@ -7,9 +7,8 @@
 import { Organization } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { requireAdminAccess } from '../lib/admin-guard';
+import { requireAdminAccess, resolveCurrentOrgForAdmin, resolveTenantOrganizationId } from '../lib/admin-guard';
 import { auditOrganizationAction } from '../lib/org-audit';
-import { resolveCurrentOrgForAdmin, resolveTenantOrganizationId } from '../lib/organization-admin';
 import type { ApiRouteContext } from './router';
 import { parseJsonBody } from './shared/organization-validation';
 

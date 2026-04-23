@@ -1,12 +1,13 @@
 /**
  * Admin Navigation – Single Source of Truth
  *
- * One typed array drives BOTH:
- *   - The admin sidebar (apps/otta-web/src/components/admin/AdminLayout.tsx)
- *   - The admin overview cards (apps/otta-web/src/pages/admin/AdminIndexPage.tsx)
+ * Two typed arrays drive the two admin surfaces:
+ *   - TENANT_ADMIN_NAV_GROUPS: /admin/* (owner/admin of the current organization)
+ *   - ADMIN_PLATFORM_NAV_GROUPS: /admin-platform/* (SaaS founder / system admin)
  *
- * To add a new admin page: add a single entry to ADMIN_NAV_GROUPS,
- * then register the route in apps/otta-web/src/router.tsx.
+ * Both drive their respective sidebar and overview index cards. To add a new
+ * admin page, add a single entry to the correct array and register the matching
+ * route in `apps/otta-web/src/router.tsx`.
  */
 
 import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
@@ -23,6 +24,7 @@ import {
     Inbox,
     Layers,
     Layout,
+    LayoutDashboard,
     Palette,
     Power,
     RefreshCw,
@@ -54,23 +56,31 @@ export interface AdminNavItem {
     requiresPackage?: keyof typeof PACKAGES_ENABLED;
     /** Visible only when MEDIA_LIBRARY_ENABLED is true. */
     requiresMediaLibrary?: boolean;
-    /** Visible only to platform/system administrators. */
-    requiresSystemAdmin?: boolean;
 }
 
+export type AdminNavGroupId =
+    | 'overview'
+    | 'appearance'
+    | 'content'
+    | 'access'
+    | 'security'
+    | 'growth'
+    | 'tenants'
+    | 'users'
+    | 'infrastructure';
+
 export interface AdminNavGroup {
-    /** Stable id used by sidebar for active-group detection (matches URL segment). */
-    id: 'overview' | 'appearance' | 'content' | 'access' | 'security' | 'infrastructure' | 'growth';
+    id: AdminNavGroupId;
     label: string;
     icon: AdminNavIcon;
     items: AdminNavItem[];
 }
 
 /**
- * Master admin nav. Order here = order in sidebar + cards.
- * brandEngine and ottamenu are core (always enabled) — no `requiresPackage`.
+ * Tenant admin nav — available to owner/admin of the current organization.
+ * Lives under /admin/*.
  */
-export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
+export const TENANT_ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     {
         id: 'appearance',
         label: 'Appearance',
@@ -130,28 +140,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         icon: ShieldEllipsis,
         items: [
             {
-                title: 'Users',
-                description: 'View and manage all users, assign roles, and control org access.',
-                href: '/admin/access/users',
-                icon: Users,
-                requiresSystemAdmin: true,
-            },
-            {
-                title: 'Current Organization',
-                description: 'Manage the organization currently selected in the workspace switcher.',
+                title: 'Members',
+                description: 'Invite, promote, or remove members of the current organization.',
                 href: '/admin/organization/members',
-                icon: Building2,
-            },
-            {
-                title: 'Tenant Directory',
-                description: 'Platform-admin tenant lifecycle, support actions, and explicit tenant management.',
-                href: '/admin/platform/organizations',
-                icon: Building2,
-                requiresSystemAdmin: true,
+                icon: Users,
             },
             {
                 title: 'Roles & Permissions',
-                description: 'Manage RBAC roles and the permissions matrix.',
+                description: 'Manage RBAC roles and the permissions matrix for this organization.',
                 href: '/admin/access/rbac',
                 icon: UserCog,
             },
@@ -167,62 +163,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 description: 'Search audit logs for security and compliance tracking.',
                 href: '/admin/security/audit',
                 icon: FileText,
-            },
-            {
-                title: 'Row-Level Security',
-                description: 'Inspect tenant isolation policies and verify RLS enforcement.',
-                href: '/admin/security/rls',
-                icon: ShieldCheck,
-            },
-            {
-                title: 'Kill Switches',
-                description: 'Configure global read-only mode or full lockdown.',
-                href: '/admin/security/kill-switches',
-                icon: Power,
-            },
-        ],
-    },
-    {
-        id: 'infrastructure',
-        label: 'Infrastructure',
-        icon: Server,
-        items: [
-            {
-                title: 'Database',
-                description: 'Browse and manage database tables and records.',
-                href: '/admin/infrastructure/database',
-                icon: Database,
-            },
-            {
-                title: 'Migrations',
-                description: 'Schema status, migration history, and table initialization.',
-                href: '/admin/infrastructure/migrations',
-                icon: RefreshCw,
-            },
-            {
-                title: 'Queues',
-                description: 'Background job queues, processing stats, and failed jobs.',
-                href: '/admin/infrastructure/queues',
-                icon: Layers,
-            },
-            {
-                title: 'Cron',
-                description: 'DB-driven scheduled tasks with run history.',
-                href: '/admin/infrastructure/cron',
-                icon: Clock,
-            },
-            {
-                title: 'Dev Mail',
-                description: 'Inspect locally captured emails (magic links, resets, queue sends).',
-                href: '/admin/infrastructure/dev-mail',
-                icon: Inbox,
-            },
-            {
-                title: 'System Health',
-                description: 'View system health metrics and API status.',
-                href: '/api/health',
-                icon: Activity,
-                external: true,
             },
         ],
     },
@@ -248,15 +188,156 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     },
 ];
 
-/** Returns admin nav with package/feature gates applied; empty groups are dropped. */
-export function getEnabledAdminNav(options?: { systemAdmin?: boolean }): AdminNavGroup[] {
-    return ADMIN_NAV_GROUPS.map((group) => ({
-        ...group,
-        items: group.items.filter((item) => {
-            if (item.requiresMediaLibrary && !MEDIA_LIBRARY_ENABLED) return false;
-            if (item.requiresPackage && !PACKAGES_ENABLED[item.requiresPackage]) return false;
-            if (item.requiresSystemAdmin && !options?.systemAdmin) return false;
-            return true;
-        }),
-    })).filter((group) => group.items.length > 0);
+/**
+ * Admin-platform (superadmin) nav — SaaS founder / system admin only.
+ * Lives under /admin-platform/*.
+ */
+export const ADMIN_PLATFORM_NAV_GROUPS: AdminNavGroup[] = [
+    {
+        id: 'tenants',
+        label: 'Tenants',
+        icon: Building2,
+        items: [
+            {
+                title: 'All Organizations',
+                description: 'Platform-admin tenant lifecycle, support actions, and explicit tenant management.',
+                href: '/admin-platform/organizations',
+                icon: Building2,
+            },
+        ],
+    },
+    {
+        id: 'users',
+        label: 'Users',
+        icon: Users,
+        items: [
+            {
+                title: 'All Users',
+                description: 'View and manage all users, assign roles, and control org access.',
+                href: '/admin-platform/users',
+                icon: Users,
+            },
+        ],
+    },
+    {
+        id: 'security',
+        label: 'Security',
+        icon: Shield,
+        items: [
+            {
+                title: 'Row-Level Security',
+                description: 'Inspect tenant isolation policies and verify RLS enforcement.',
+                href: '/admin-platform/security/rls',
+                icon: ShieldCheck,
+            },
+            {
+                title: 'Kill Switches',
+                description: 'Configure global read-only mode or full lockdown.',
+                href: '/admin-platform/security/kill-switches',
+                icon: Power,
+            },
+            {
+                title: 'Platform Audit',
+                description: 'Cross-tenant audit view for the entire platform.',
+                href: '/admin-platform/security/audit',
+                icon: FileText,
+            },
+        ],
+    },
+    {
+        id: 'infrastructure',
+        label: 'Infrastructure',
+        icon: Server,
+        items: [
+            {
+                title: 'Database',
+                description: 'Browse and manage database tables and records.',
+                href: '/admin-platform/infrastructure/database',
+                icon: Database,
+            },
+            {
+                title: 'Migrations',
+                description: 'Schema status, migration history, and table initialization.',
+                href: '/admin-platform/infrastructure/migrations',
+                icon: RefreshCw,
+            },
+            {
+                title: 'Queues',
+                description: 'Background job queues, processing stats, and failed jobs.',
+                href: '/admin-platform/infrastructure/queues',
+                icon: Layers,
+            },
+            {
+                title: 'Cron',
+                description: 'DB-driven scheduled tasks with run history.',
+                href: '/admin-platform/infrastructure/cron',
+                icon: Clock,
+            },
+            {
+                title: 'Dev Mail',
+                description: 'Inspect locally captured emails (magic links, resets, queue sends).',
+                href: '/admin-platform/infrastructure/dev-mail',
+                icon: Inbox,
+            },
+            {
+                title: 'System Health',
+                description: 'View system health metrics and API status.',
+                href: '/api/health',
+                icon: Activity,
+                external: true,
+            },
+        ],
+    },
+];
+
+function filterGroups(groups: AdminNavGroup[]): AdminNavGroup[] {
+    return groups
+        .map((group) => ({
+            ...group,
+            items: group.items.filter((item) => {
+                if (item.requiresMediaLibrary && !MEDIA_LIBRARY_ENABLED) return false;
+                if (item.requiresPackage && !PACKAGES_ENABLED[item.requiresPackage]) return false;
+                return true;
+            }),
+        }))
+        .filter((group) => group.items.length > 0);
+}
+
+export function getTenantAdminNav(): AdminNavGroup[] {
+    return filterGroups(TENANT_ADMIN_NAV_GROUPS);
+}
+
+export function getAdminPlatformNav(): AdminNavGroup[] {
+    return filterGroups(ADMIN_PLATFORM_NAV_GROUPS);
+}
+
+export interface AdminSurfaceInfo {
+    /** 'tenant' for /admin/*, 'platform' for /admin-platform/*. */
+    surface: 'tenant' | 'platform';
+    /** Root path of the surface (used for the Overview link). */
+    rootPath: '/admin' | '/admin-platform';
+    /** Display label. */
+    label: string;
+    /** Overview icon. */
+    overviewIcon: AdminNavIcon;
+    groups: AdminNavGroup[];
+}
+
+export function resolveAdminSurface(pathname: string): AdminSurfaceInfo {
+    if (pathname.startsWith('/admin-platform')) {
+        return {
+            surface: 'platform',
+            rootPath: '/admin-platform',
+            label: 'Platform Admin',
+            overviewIcon: LayoutDashboard,
+            groups: getAdminPlatformNav(),
+        };
+    }
+    return {
+        surface: 'tenant',
+        rootPath: '/admin',
+        label: 'Admin Console',
+        overviewIcon: LayoutDashboard,
+        groups: getTenantAdminNav(),
+    };
 }

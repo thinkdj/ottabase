@@ -1,18 +1,22 @@
 import { getSession } from '@ottabase/auth/backend';
-import { Organization, OrganizationInvite, OrganizationMember } from '@ottabase/ottaorm/models';
+import { MembershipError, Organization, OrganizationInvite, OrganizationMember } from '@ottabase/ottaorm/models';
+import { getRBACCache } from '@ottabase/rbac';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { CloudflareEnv } from '../../cloudflare-env';
 import { getAuthOptions } from '../lib/auth-utils';
 import { initDbConnection } from '../lib/db-utils';
 import { hashOrgInviteToken } from '../lib/org-invite-token';
-import { syncMembershipRoleToTenantRBAC } from '../lib/organization-admin';
 import { normalizeEmail } from '../lib/utils';
 import type { ApiRouteContext } from './router';
 
 function maskEmail(email: string): string {
-    const [local, domain] = email.split('@');
-    if (!domain) return '***';
+    if (typeof email !== 'string' || !email) return '***';
+    const atIdx = email.indexOf('@');
+    if (atIdx <= 0 || atIdx === email.length - 1) return '***';
+    const local = email.slice(0, atIdx);
+    const domain = email.slice(atIdx + 1);
+    if (!domain.includes('.')) return '***';
     if (local.length <= 2) return `***@${domain}`;
     return `${local[0]}***${local[local.length - 1]}@${domain}`;
 }
@@ -179,13 +183,6 @@ export async function handlePublicOrgInviteAccept(context: ApiRouteContext): Pro
         const userId = String(sessionUser.id);
         const existingMember = await OrganizationMember.first({ userId, organizationId: invite.organizationId });
         if (existingMember) {
-            await syncMembershipRoleToTenantRBAC({
-                userId,
-                organizationId: invite.organizationId,
-                membershipRole: existingMember.get('role') as 'owner' | 'admin' | 'member',
-                membershipStatus: existingMember.get('status') as 'active' | 'invited' | 'suspended',
-                assignedBy: invite.invitedBy ?? userId,
-            });
             await OrganizationInvite.updateById(invite.id, {
                 status: 'accepted',
                 acceptedAt: Date.now(),
@@ -193,23 +190,38 @@ export async function handlePublicOrgInviteAccept(context: ApiRouteContext): Pro
             return jsonResponse({ data: { accepted: true, alreadyMember: true } });
         }
 
-        await OrganizationMember.createMember({
-            userId,
-            organizationId: invite.organizationId,
-            role: invite.role as 'owner' | 'admin' | 'member',
-            status: 'active',
-            joinedAt: Date.now(),
-            invitedBy: invite.invitedBy ?? null,
-            invitedAt: invite.invitedAt,
-        });
+        // Defense-in-depth: validate the stored role before materializing a
+        // membership. Invite creation already validates, but a stale or
+        // tampered row shouldn't be able to promote a user silently.
+        const ALLOWED_INVITE_ROLES = ['owner', 'admin', 'member', 'viewer'] as const;
+        type AllowedInviteRole = (typeof ALLOWED_INVITE_ROLES)[number];
+        if (!ALLOWED_INVITE_ROLES.includes(invite.role as AllowedInviteRole)) {
+            return errorResponse('Invitation has an invalid role and cannot be accepted', 409, {
+                code: 'INVITE_INVALID_ROLE',
+            });
+        }
 
-        await syncMembershipRoleToTenantRBAC({
-            userId,
-            organizationId: invite.organizationId,
-            membershipRole: invite.role as 'owner' | 'admin' | 'member',
-            membershipStatus: 'active',
-            assignedBy: invite.invitedBy ?? userId,
-        });
+        try {
+            await OrganizationMember.addMember({
+                userId,
+                organizationId: invite.organizationId,
+                role: invite.role as AllowedInviteRole,
+                status: 'active',
+                joinedAt: Date.now(),
+                invitedBy: invite.invitedBy ?? null,
+                invitedAt: invite.invitedAt,
+                cache: getRBACCache(),
+            });
+        } catch (addErr) {
+            // A concurrent request (e.g. double-click) may have inserted the member
+            // between our existence check and the addMember call.  Treat that as an
+            // idempotent success rather than a 500.
+            if (addErr instanceof MembershipError && addErr.code === 'MEMBER_ALREADY_EXISTS') {
+                await OrganizationInvite.updateById(invite.id, { status: 'accepted', acceptedAt: Date.now() });
+                return jsonResponse({ data: { accepted: true, alreadyMember: true } });
+            }
+            throw addErr;
+        }
 
         await OrganizationInvite.updateById(invite.id, {
             status: 'accepted',

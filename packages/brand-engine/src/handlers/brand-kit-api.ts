@@ -295,9 +295,6 @@ export async function handleDeleteBrandKit(
         return errorResponse('Cannot delete the default Brand Kit', 400, { code: 'DEFAULT_KIT' });
     }
 
-    // System default (appId=null) cannot be deleted
-    if (kApp === null) return errorResponse('Cannot delete the default Brand Kit', 400, { code: 'DEFAULT_KIT' });
-
     // Check for kits that inherit from this one
     const children = (await BrandKit.where({ parentBrandKitId: id })) as BrandKit[];
     if (children.length > 0) {

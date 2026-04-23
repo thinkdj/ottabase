@@ -30,7 +30,7 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 pnpm --filter @ottabase/ottaorm seed:rbac
 ```
 
-Creates tables: `roles`, `permissions`, `user_roles` Default roles: `owner`, `admin`, `member`
+Creates tables: `roles`, `permissions`, `user_roles` Default roles: `owner`, `admin`, `member`, `viewer`
 
 ### 2. Initialize Cache
 
@@ -116,7 +116,7 @@ const editorRole = await Role.create({
     permissions: ['posts:*', 'tags:read'],
 });
 
-// Assign to user in this org
+// Assign to user in this org (organizationId is REQUIRED for tenant safety)
 await user.assignRole(editorRole.id, adminId, 'org-123');
 
 // Check permission in org context
@@ -224,11 +224,17 @@ await cache.clear();
 ## User Model Extensions
 
 ```typescript
+import { SYSTEM_ORGANIZATION_ID } from '@ottabase/auth';
+
 const user = await User.find('user-id');
 
-// Role management (org-scoped)
-await user.assignRole(roleId, assignedBy?, organizationId?);
-await user.removeRole(roleId, organizationId?);
+// Role management (organizationId is REQUIRED — pass SYSTEM_ORGANIZATION_ID for
+// platform-level / superadmin scope, or a real org id for tenant-scoped roles).
+await user.assignRole(roleId, assignedBy, organizationId);
+await user.removeRole(roleId, organizationId);
+
+// Grant platform-level owner (superadmin, *:* across every tenant)
+await user.assignRole(ownerRoleId, undefined, SYSTEM_ORGANIZATION_ID);
 
 // Role checks
 await user.hasRole('admin', organizationId);
@@ -295,13 +301,46 @@ if (isOwnerOrAdmin(context)) {
 }
 ```
 
+## Request Context
+
+`getRequestContext(request, env, { cache? })` returns a `RequestContext` that already contains everything routes
+typically need to enforce tenancy:
+
+```typescript
+import { getRequestContext } from '@ottabase/rbac';
+
+const ctx = await getRequestContext(request, env, { cache: getRBACCache() });
+
+ctx.user; // resolved User instance (or null)
+ctx.organizationId; // org chosen by header / query / subdomain
+ctx.memberOrganizationIds; // every active membership the user has
+ctx.roles; // tenant-scoped role names
+ctx.permissions; // tenant-scoped permissions
+ctx.isAuthenticated;
+```
+
+`memberOrganizationIds` is auto-populated by calling
+`OrganizationMember.getUserOrganizations(userId, { status: 'active' })`. Results are cached on `RBACCache` via
+`getUserMemberOrgs`/`setUserMemberOrgs` and tagged with the per-org version counter — calling
+`cache.invalidateUser(userId, organizationId)` (which `OrganizationMember` does on every
+`addMember`/`setRole`/`removeMember`) bumps that counter and transparently refreshes the list.
+
+This is what powers the `organizations` model's RLS path for non-owner members: if a user belongs to `org-a` and
+`org-b`, both ids appear in `memberOrganizationIds` and the row-level filter
+`id IN memberOrganizationIds OR ownerId = userId` lets them list those orgs.
+
 ## Default Roles
 
-| Role     | Permissions        | Description                     |
-| -------- | ------------------ | ------------------------------- |
-| `owner`  | `*:*`              | Full organization control       |
-| `admin`  | `*:*` (org-scoped) | Manage org members and settings |
-| `member` | `*:read`           | Basic read access               |
+| Role     | Permissions                                                      | Description                                 |
+| -------- | ---------------------------------------------------------------- | ------------------------------------------- |
+| `owner`  | `*:*`                                                            | Full organization control                   |
+| `admin`  | `users:*`, `org:*`, `brand:*`, `blog:*`, `media:*`, `*:read/...` | Manage members, settings, and content       |
+| `member` | `*:read`, `*:create`, `*:update`                                 | Read + author content, no destructive scope |
+| `viewer` | `*:read`                                                         | Read-only                                   |
+
+The OOB role set is the single source of truth in `@ottabase/ottaorm` (`DEFAULT_ROLES` / `DefaultRoleName`). Seed them
+with `Role.ensureDefaults()` — usually called once during bootstrap and again from the `onFirstSignIn` hook in
+`@ottabase/auth`.
 
 Create custom roles:
 

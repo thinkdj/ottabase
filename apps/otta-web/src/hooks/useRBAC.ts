@@ -32,7 +32,7 @@ const organizationQueryKeys = {
 };
 
 function scopedOrganizationEndpoint(organizationId?: string | null): string {
-    return organizationId ? `/api/platform/organizations/${organizationId}` : '/api/admin/organization';
+    return organizationId ? `/api/admin-platform/organizations/${organizationId}` : '/api/admin/organization';
 }
 
 function scopedMembersEndpoint(organizationId?: string | null, page = 1, perPage = 25): string {
@@ -91,7 +91,7 @@ export function usePlatformOrganizations() {
     return useApiQuery<{ data: OrganizationRecord[] }, OrganizationRecord[]>({
         entity: 'organizations',
         queryKey: organizationQueryKeys.platformList,
-        endpoint: '/api/platform/organizations',
+        endpoint: '/api/admin-platform/organizations',
         transform: (response) => response.data,
     });
 }
@@ -113,7 +113,7 @@ export function useOrganization(
     return useApiQuery<{ data: OrganizationRecord }, OrganizationRecord>({
         entity: 'organizations',
         queryKey: organizationId ? organizationQueryKeys.platformDetail(organizationId) : organizationQueryKeys.current,
-        endpoint: organizationId ? `/api/platform/organizations/${organizationId}` : '/api/admin/organization',
+        endpoint: organizationId ? `/api/admin-platform/organizations/${organizationId}` : '/api/admin/organization',
         transform: (response) => response.data,
         queryOptions: {
             ...queryOptions,
@@ -148,7 +148,7 @@ export function usePlatformCreateOrganization() {
     return useMutation({
         meta: { entity: 'organizations' },
         mutationFn: async (data: Partial<OrganizationRecord>) => {
-            const response = await api<{ data: OrganizationRecord }>('/api/platform/organizations', {
+            const response = await api<{ data: OrganizationRecord }>('/api/admin-platform/organizations', {
                 method: 'POST',
                 body: data,
             });
@@ -184,7 +184,7 @@ export function usePlatformUpdateOrganization() {
     return useMutation({
         meta: { entity: 'organizations' },
         mutationFn: async ({ id, data }: { id: string; data: Partial<OrganizationRecord> }) => {
-            const response = await api<{ data: OrganizationRecord }>(`/api/platform/organizations/${id}`, {
+            const response = await api<{ data: OrganizationRecord }>(`/api/admin-platform/organizations/${id}`, {
                 method: 'PATCH',
                 body: data,
             });
@@ -202,7 +202,7 @@ export function useDeleteOrganization() {
     return useMutation({
         meta: { entity: 'organizations' },
         mutationFn: async (organizationId: string) => {
-            await api(`/api/platform/organizations/${organizationId}`, {
+            await api(`/api/admin-platform/organizations/${organizationId}`, {
                 method: 'DELETE',
             });
         },
@@ -346,9 +346,20 @@ export function useRemoveMember() {
 
     return useMutation({
         meta: { entity: 'organization_members' },
-        mutationFn: async ({ userId, organizationId }: { userId: string; organizationId?: string }) => {
+        mutationFn: async ({
+            userId,
+            organizationId,
+            reason,
+            notifyMember,
+        }: {
+            userId: string;
+            organizationId?: string;
+            reason?: string;
+            notifyMember?: boolean;
+        }) => {
             await api(`${scopedOrganizationEndpoint(organizationId)}/members/${encodeURIComponent(userId)}`, {
                 method: 'DELETE',
+                body: { reason, notifyMember },
             });
         },
         onSuccess: async (_data, { organizationId }) => {
@@ -438,7 +449,7 @@ export function useOrganizationAvailability(params: { slug?: string; name?: stri
     }>({
         entity: 'organizations',
         queryKey: organizationQueryKeys.availability(queryString),
-        endpoint: `/api/platform/organizations/availability?${queryString}`,
+        endpoint: `/api/admin-platform/organizations/availability?${queryString}`,
         queryOptions: { enabled: !!queryString },
     });
 }
@@ -448,7 +459,7 @@ export function useOrganizationOffboard() {
 
     return useMutation({
         mutationFn: async (organizationId: string) => {
-            await api(`/api/platform/organizations/${organizationId}/offboard`, {
+            await api(`/api/admin-platform/organizations/${organizationId}/offboard`, {
                 method: 'POST',
                 body: {},
             });

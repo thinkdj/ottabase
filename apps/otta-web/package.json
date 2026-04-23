@@ -54,6 +54,7 @@
         "@ottabase/ottaselect": "workspace:*",
         "@ottabase/ottaupload": "workspace:*",
         "@ottabase/queue": "workspace:*",
+        "@ottabase/rbac": "workspace:*",
         "@ottabase/referrals": "workspace:*",
         "@ottabase/shortlinks": "workspace:*",
         "@ottabase/spotlight": "workspace:*",

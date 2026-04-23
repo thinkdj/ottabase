@@ -130,7 +130,7 @@ export function OrganizationSettingsPage() {
         deleteMutation.mutate(scopedOrganizationId, {
             onSuccess: () => {
                 toast.rbac.organizationDeleted();
-                window.location.href = '/admin/platform/organizations';
+                window.location.href = '/admin-platform/organizations';
             },
             onError: (deleteError) => {
                 toast.error('Failed to delete', deleteError instanceof Error ? deleteError.message : 'Unknown error');
@@ -191,7 +191,7 @@ export function OrganizationSettingsPage() {
                 </div>
                 <Button variant="outline" asChild>
                     {isPlatformMode ? (
-                        <Link to="/admin/platform/organizations">← Back to Tenant Directory</Link>
+                        <Link to="/admin-platform/organizations">← Back to Tenant Directory</Link>
                     ) : (
                         <Link to="/admin/organization/members">← Back to Members</Link>
                     )}

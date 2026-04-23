@@ -3,7 +3,9 @@
 // ============================================================
 //
 // Wraps the @ottabase/auth/react hooks to sync with the
-// global app state management (@ottabase/state).
+// global app state management (@ottabase/state). The session
+// (JWT) is the single source of truth for organizationId;
+// switching orgs flows through POST /api/account/switch-org.
 //
 // ============================================================
 
@@ -12,16 +14,6 @@ import { appIdAtom, isAuthenticatedAtom, organizationIdAtom, userAtom } from '@/
 import { useSession as useAuthSession, type UseSessionOptions } from '@ottabase/auth/react';
 import { useSetAtom } from 'jotai';
 import { useEffect } from 'react';
-
-const CURRENT_ORG_KEY = 'ottabase.current-org-id';
-
-function getStoredOrganizationId(): string | null {
-    try {
-        return localStorage.getItem(CURRENT_ORG_KEY);
-    } catch {
-        return null;
-    }
-}
 
 // Re-export types
 export { type Session, type User, type UseSessionOptions } from '@ottabase/auth/react';
@@ -43,20 +35,7 @@ export function useSession(options?: UseSessionOptions) {
         setAppId(APP_ID);
 
         const sessionOrgId = (sessionData.user as any)?.organizationId ?? null;
-        const storedOrgId = getStoredOrganizationId();
-        const effectiveOrgId = sessionData.isAuthenticated ? (storedOrgId ?? sessionOrgId) : null;
-
-        setOrganizationId(effectiveOrgId);
-
-        try {
-            if (effectiveOrgId) {
-                localStorage.setItem(CURRENT_ORG_KEY, effectiveOrgId);
-            } else {
-                localStorage.removeItem(CURRENT_ORG_KEY);
-            }
-        } catch {
-            // ignore storage failures
-        }
+        setOrganizationId(sessionData.isAuthenticated ? sessionOrgId : null);
     }, [
         sessionData.user,
         sessionData.isAuthenticated,

@@ -205,7 +205,7 @@ export function OrganizationsPage() {
                                             <div className="flex justify-end gap-2">
                                                 <Button variant="outline" size="sm" className="gap-2" asChild>
                                                     <Link
-                                                        to={`/admin/platform/organizations/${org.id}/members` as never}
+                                                        to={`/admin-platform/organizations/${org.id}/members` as never}
                                                     >
                                                         <Users className="h-4 w-4" />
                                                         View Members

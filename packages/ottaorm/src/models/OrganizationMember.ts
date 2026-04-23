@@ -4,6 +4,8 @@
 
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { BaseModel, type ModelFields, type PackageType } from '../base/BaseModel';
+import { DEFAULT_ROLE_NAMES, type DefaultRoleName } from './DefaultRoles';
+import type { RBACCacheLike } from './Organization';
 import { organizationsTable } from './Organization.schema';
 import {
     organizationMembersTable,
@@ -11,6 +13,53 @@ import {
     type OrganizationMemberType,
 } from './OrganizationMember.schema';
 import { usersTable } from './User.schema';
+
+export type MembershipRole = DefaultRoleName;
+export type MembershipStatus = 'active' | 'invited' | 'suspended';
+
+/**
+ * Codes raised by OrganizationMember lifecycle methods. Routes map these
+ * directly to HTTP responses instead of reimplementing the guard logic.
+ */
+export type MembershipErrorCode =
+    | 'LAST_ACTIVE_OWNER_GUARD'
+    | 'USER_NOT_FOUND'
+    | 'MEMBER_NOT_FOUND'
+    | 'MEMBER_ALREADY_EXISTS';
+
+export class MembershipError extends Error {
+    public readonly code: MembershipErrorCode;
+
+    constructor(code: MembershipErrorCode, message?: string) {
+        super(message ?? code);
+        this.name = 'MembershipError';
+        this.code = code;
+    }
+}
+
+interface AddMemberOptions {
+    userId: string;
+    organizationId: string;
+    role: MembershipRole;
+    status?: MembershipStatus;
+    invitedBy?: string | null;
+    invitedAt?: number | null;
+    joinedAt?: number;
+    metadata?: Record<string, unknown> | null;
+    cache?: RBACCacheLike;
+}
+
+interface LifecycleOptions {
+    cache?: RBACCacheLike;
+    assignedBy?: string | null;
+}
+
+interface DefaultRolesMap {
+    owner: { get(key: string): unknown };
+    admin: { get(key: string): unknown };
+    member: { get(key: string): unknown };
+    viewer: { get(key: string): unknown };
+}
 
 /**
  * OrganizationMember model
@@ -72,13 +121,14 @@ export class OrganizationMember extends BaseModel {
                     { id: 'owner', name: 'Owner' },
                     { id: 'admin', name: 'Admin' },
                     { id: 'member', name: 'Member' },
+                    { id: 'viewer', name: 'Viewer' },
                 ],
             },
             tableConfig: {
                 visible: true,
             },
             validation: {
-                rules: 'required|in:owner,admin,member',
+                rules: 'required|in:owner,admin,member,viewer',
                 messages: {
                     required: 'Role is required',
                     in: 'Invalid role',
@@ -148,39 +198,261 @@ export class OrganizationMember extends BaseModel {
     };
 
     /**
-     * Add a user to an organization
+     * Add a user to an organization and sync RBAC in one call.
+     *
+     * - Creates the membership row (or refuses if one already exists).
+     * - When status='active', assigns the matching default role via
+     *   `syncTenantRBAC`. Invited/suspended members get no RBAC until activated.
+     * - Invalidates the RBAC cache when `cache` is provided so the next
+     *   request sees the change without waiting for TTL.
      */
-    static async addMember(data: NewOrganizationMemberType): Promise<OrganizationMemberType> {
-        const db = this.getDriver().getDb();
+    static async addMember(options: AddMemberOptions): Promise<OrganizationMemberType> {
+        const userId = String(options.userId || '').trim();
+        const organizationId = String(options.organizationId || '').trim();
+        if (!userId) throw new MembershipError('USER_NOT_FOUND', 'userId is required');
+        if (!organizationId) throw new Error('organizationId is required');
+        if (!DEFAULT_ROLE_NAMES.includes(options.role)) {
+            throw new Error(`Unknown membership role: ${options.role}`);
+        }
 
-        const [member] = await db
-            .insert(organizationMembersTable)
-            .values({
-                ...data,
-                joinedAt: data.joinedAt || Date.now(),
-            })
-            .returning();
+        // Guard at the model layer so callers that bypass the route layer still
+        // get a well-typed MembershipError instead of an opaque D1 UNIQUE violation.
+        const existing = await this.getMember(userId, organizationId);
+        if (existing) {
+            throw new MembershipError('MEMBER_ALREADY_EXISTS');
+        }
+
+        const status = options.status ?? 'invited';
+        const joinedAt = Number.isFinite(options.joinedAt) ? Number(options.joinedAt) : Date.now();
+        const invitedAt =
+            options.invitedAt === null || options.invitedAt === undefined
+                ? null
+                : Number.isFinite(options.invitedAt)
+                  ? Number(options.invitedAt)
+                  : null;
+
+        let member: OrganizationMemberType;
+        try {
+            const db = this.getDriver().getDb();
+            const [created] = await db
+                .insert(organizationMembersTable)
+                .values({
+                    userId,
+                    organizationId,
+                    role: options.role,
+                    status,
+                    invitedBy: options.invitedBy ?? null,
+                    invitedAt,
+                    joinedAt,
+                    metadata: options.metadata ?? null,
+                } as NewOrganizationMemberType)
+                .returning();
+            member = created;
+        } catch (error) {
+            // Race-safe duplicate handling: two concurrent callers may pass the
+            // pre-insert existence check and collide on the composite PK insert.
+            if (this.isDuplicateMembershipInsertError(error)) {
+                throw new MembershipError('MEMBER_ALREADY_EXISTS');
+            }
+            throw error;
+        }
+
+        await this.syncTenantRBAC(userId, organizationId, options.role, status, {
+            cache: options.cache,
+            assignedBy: options.invitedBy ?? null,
+        });
 
         return member;
     }
 
-    /**
-     * Create a member row and return a model instance.
-     *
-     * Thin typed wrapper around BaseModel.create so route code can pass a
-     * properly typed payload without resorting to `as any`. Use this instead
-     * of calling BaseModel.create directly for membership inserts.
-     */
-    static async createMember(data: NewOrganizationMemberType): Promise<OrganizationMember> {
-        return (await this.create(data as unknown as Record<string, unknown>)) as OrganizationMember;
+    private static isDuplicateMembershipInsertError(error: unknown): boolean {
+        if (!error) return false;
+        const message = error instanceof Error ? error.message : String(error);
+        return /unique|constraint|already exists|organization_members/i.test(message);
+    }
+
+    private static sqlString(value: string): string {
+        return `'${String(value).replace(/'/g, "''")}'`;
+    }
+
+    private static sqlNullableString(value?: string | null): string {
+        if (value === null || value === undefined) return 'NULL';
+        return this.sqlString(value);
+    }
+
+    private static buildTenantRBACSyncBatchSql(
+        userId: string,
+        organizationId: string,
+        role: MembershipRole,
+        status: MembershipStatus,
+        defaults: DefaultRolesMap,
+        options: LifecycleOptions,
+    ): string[] {
+        const statements: string[] = [];
+        const quotedUserId = this.sqlString(userId);
+        const quotedOrgId = this.sqlString(organizationId);
+
+        if (status !== 'active') {
+            statements.push(
+                `DELETE FROM user_roles WHERE user_id = ${quotedUserId} AND organization_id = ${quotedOrgId}`,
+            );
+            return statements;
+        }
+
+        const defaultRoleIds = DEFAULT_ROLE_NAMES.map((name) => String(defaults[name].get('id'))).filter(Boolean);
+        if (defaultRoleIds.length > 0) {
+            const quotedRoleIds = defaultRoleIds.map((id) => this.sqlString(id)).join(', ');
+            statements.push(
+                `DELETE FROM user_roles WHERE user_id = ${quotedUserId} AND organization_id = ${quotedOrgId} AND role_id IN (${quotedRoleIds})`,
+            );
+        }
+
+        const targetRole = defaults[role];
+        if (!targetRole) {
+            throw new Error(`Role ${role} not found for tenant RBAC sync`);
+        }
+
+        const targetRoleId = String(targetRole.get('id'));
+        const assignedAt = Date.now();
+        statements.push(
+            `INSERT OR IGNORE INTO user_roles (user_id, role_id, organization_id, app_id, assigned_at, assigned_by) VALUES (${quotedUserId}, ${this.sqlString(targetRoleId)}, ${quotedOrgId}, NULL, ${assignedAt}, ${this.sqlNullableString(options.assignedBy)})`,
+        );
+
+        return statements;
+    }
+
+    private static async runMembershipUpdateWithAtomicRBACSync(
+        userId: string,
+        organizationId: string,
+        updateMembershipSql: string,
+        role: MembershipRole,
+        status: MembershipStatus,
+        options: LifecycleOptions,
+    ): Promise<OrganizationMemberType> {
+        const { Role } = await import('./Role');
+        const defaults = (await Role.ensureDefaults()) as DefaultRolesMap;
+        const syncSql = this.buildTenantRBACSyncBatchSql(userId, organizationId, role, status, defaults, options);
+
+        const driver = this.getDriver();
+        if (!driver.executeBatch) {
+            throw new Error('Database driver does not support executeBatch for atomic membership RBAC sync');
+        }
+
+        await driver.executeBatch([updateMembershipSql, ...syncSql]);
+
+        const updated = await this.getMember(userId, organizationId);
+        if (!updated) {
+            throw new MembershipError('MEMBER_NOT_FOUND');
+        }
+
+        if (options.cache) {
+            try {
+                await options.cache.invalidateUser(userId, organizationId);
+            } catch {
+                // cache failures don't fail the write
+            }
+        }
+
+        return updated;
     }
 
     /**
-     * Remove a user from an organization
+     * Change an existing member's role and re-sync RBAC atomically.
+     *
+     * Throws `MembershipError('LAST_ACTIVE_OWNER_GUARD')` when demoting the
+     * only remaining active owner — routes catch this and map to 409.
      */
-    static async removeMember(userId: string, organizationId: string): Promise<boolean> {
-        const db = this.getDriver().getDb();
+    static async setRole(
+        userId: string,
+        organizationId: string,
+        role: MembershipRole,
+        options: LifecycleOptions = {},
+    ): Promise<OrganizationMemberType> {
+        if (!DEFAULT_ROLE_NAMES.includes(role)) {
+            throw new Error(`Unknown membership role: ${role}`);
+        }
 
+        const current = await this.getMember(userId, organizationId);
+        if (!current) {
+            throw new MembershipError('MEMBER_NOT_FOUND');
+        }
+
+        if (role !== 'owner' && current.role === 'owner' && current.status === 'active') {
+            if (await this.isLastActiveOwner(userId, organizationId)) {
+                throw new MembershipError('LAST_ACTIVE_OWNER_GUARD');
+            }
+        }
+
+        const status = current.status as MembershipStatus;
+        const updateMembershipSql = `UPDATE organization_members SET role = ${this.sqlString(role)} WHERE user_id = ${this.sqlString(userId)} AND organization_id = ${this.sqlString(organizationId)}`;
+
+        return this.runMembershipUpdateWithAtomicRBACSync(
+            userId,
+            organizationId,
+            updateMembershipSql,
+            role,
+            status,
+            options,
+        );
+    }
+
+    /**
+     * Change an existing member's status and re-sync RBAC. Used primarily to
+     * accept invites (invited → active) or suspend a member.
+     */
+    static async setStatus(
+        userId: string,
+        organizationId: string,
+        status: MembershipStatus,
+        options: LifecycleOptions = {},
+    ): Promise<OrganizationMemberType> {
+        const current = await this.getMember(userId, organizationId);
+        if (!current) {
+            throw new MembershipError('MEMBER_NOT_FOUND');
+        }
+
+        if (status !== 'active' && current.role === 'owner' && current.status === 'active') {
+            if (await this.isLastActiveOwner(userId, organizationId)) {
+                throw new MembershipError('LAST_ACTIVE_OWNER_GUARD');
+            }
+        }
+
+        const role = current.role as MembershipRole;
+        const updateMembershipSql = `UPDATE organization_members SET status = ${this.sqlString(status)} WHERE user_id = ${this.sqlString(userId)} AND organization_id = ${this.sqlString(organizationId)}`;
+
+        return this.runMembershipUpdateWithAtomicRBACSync(
+            userId,
+            organizationId,
+            updateMembershipSql,
+            role,
+            status,
+            options,
+        );
+    }
+
+    /**
+     * Remove a user from an organization, tearing down RBAC and guarding
+     * against demoting the last active owner.
+     */
+    static async removeMember(
+        userId: string,
+        organizationId: string,
+        options: LifecycleOptions = {},
+    ): Promise<boolean> {
+        const current = await this.getMember(userId, organizationId);
+        if (!current) return false;
+
+        if (current.role === 'owner' && current.status === 'active') {
+            if (await this.isLastActiveOwner(userId, organizationId)) {
+                throw new MembershipError('LAST_ACTIVE_OWNER_GUARD');
+            }
+        }
+
+        // Strip all tenant-scoped RBAC first — if this fails, the membership
+        // row is still intact and the caller can retry.
+        await this.clearTenantRBAC(userId, organizationId);
+
+        const db = this.getDriver().getDb();
         await db
             .delete(organizationMembersTable)
             .where(
@@ -190,65 +462,88 @@ export class OrganizationMember extends BaseModel {
                 ),
             );
 
-        const [remaining] = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(organizationMembersTable)
-            .where(
-                and(
-                    eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId),
-                ),
-            );
+        if (options.cache) {
+            try {
+                await options.cache.invalidateUser(userId, organizationId);
+            } catch {
+                // ignore — cache will expire naturally
+            }
+        }
 
-        return Number(remaining?.count ?? 0) === 0;
+        return true;
     }
 
     /**
-     * Update member role in organization
+     * Internal: drop every default-role assignment for (user, org) and then —
+     * when status='active' — assign the single matching role. Keeps the
+     * `user_roles` junction in lockstep with `organization_members.role`.
+     *
+     * When status is NOT 'active' (i.e. suspended or invited), all custom
+     * org-scoped roles are also removed via a bulk DELETE to ensure a suspended
+     * or de-listed member cannot continue to exercise permissions granted by
+     * custom roles they were assigned while active.
      */
-    static async updateRole(
+    static async syncTenantRBAC(
         userId: string,
         organizationId: string,
-        role: 'owner' | 'admin' | 'member',
-    ): Promise<OrganizationMemberType | undefined> {
-        const db = this.getDriver().getDb();
+        role: MembershipRole,
+        status: MembershipStatus,
+        options: LifecycleOptions = {},
+    ): Promise<void> {
+        const { Role } = await import('./Role');
+        const { UserRole } = await import('./UserRole');
+        const defaults = await Role.ensureDefaults();
 
-        const [updated] = await db
-            .update(organizationMembersTable)
-            .set({ role })
-            .where(
-                and(
-                    eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId),
-                ),
-            )
-            .returning();
+        if (status !== 'active') {
+            // Member is being suspended or invited — remove ALL org-scoped role
+            // assignments (both default and custom) in a single bulk DELETE so no
+            // permission can survive the status change.
+            await UserRole.clearUserRoles(userId, organizationId);
+        } else {
+            // Member is (re-)activating — only revoke the four default roles so
+            // that the correct one can be re-assigned below. Custom roles are NOT
+            // touched on activation; they must be re-granted explicitly by an admin.
+            for (const name of DEFAULT_ROLE_NAMES) {
+                const target = defaults[name];
+                if (!target) continue;
+                await UserRole.removeRole(userId, String(target.get('id')), organizationId);
+            }
+        }
 
-        return updated;
+        if (status === 'active') {
+            const target = defaults[role];
+            if (!target) {
+                throw new Error(`Role ${role} not found for tenant RBAC sync`);
+            }
+            await UserRole.create({
+                userId,
+                roleId: String(target.get('id')),
+                organizationId,
+                appId: null,
+                assignedBy: options.assignedBy ?? null,
+            } as Record<string, unknown>);
+        }
+
+        if (options.cache) {
+            try {
+                await options.cache.invalidateUser(userId, organizationId);
+            } catch {
+                // cache failures don't fail the write
+            }
+        }
     }
 
     /**
-     * Update member status
+     * Internal: remove ALL role assignments (default + custom) for (user, org)
+     * without reassigning. Called by `removeMember` so a deleted member leaves
+     * no RBAC residue — neither their base membership role nor any extra custom
+     * roles they were granted via the RBAC user-roles API.
+     *
+     * Uses a single bulk DELETE query to avoid N+1 round-trips.
      */
-    static async updateStatus(
-        userId: string,
-        organizationId: string,
-        status: 'active' | 'invited' | 'suspended',
-    ): Promise<OrganizationMemberType | undefined> {
-        const db = this.getDriver().getDb();
-
-        const [updated] = await db
-            .update(organizationMembersTable)
-            .set({ status })
-            .where(
-                and(
-                    eq(organizationMembersTable.userId, userId),
-                    eq(organizationMembersTable.organizationId, organizationId),
-                ),
-            )
-            .returning();
-
-        return updated;
+    private static async clearTenantRBAC(userId: string, organizationId: string): Promise<void> {
+        const { UserRole } = await import('./UserRole');
+        await UserRole.clearUserRoles(userId, organizationId);
     }
 
     /**
@@ -258,7 +553,7 @@ export class OrganizationMember extends BaseModel {
         organizationId: string,
         options?: {
             status?: 'active' | 'invited' | 'suspended';
-            role?: 'owner' | 'admin' | 'member';
+            role?: 'owner' | 'admin' | 'member' | 'viewer';
             limit?: number;
             /** Zero-based row offset for pagination */
             offset?: number;
@@ -317,7 +612,7 @@ export class OrganizationMember extends BaseModel {
         organizationId: string,
         options?: {
             status?: 'active' | 'invited' | 'suspended';
-            role?: 'owner' | 'admin' | 'member';
+            role?: 'owner' | 'admin' | 'member' | 'viewer';
         },
     ): Promise<number> {
         const db = this.getDriver().getDb();
@@ -369,7 +664,7 @@ export class OrganizationMember extends BaseModel {
         userId: string,
         options?: {
             status?: 'active' | 'invited' | 'suspended';
-            role?: 'owner' | 'admin' | 'member';
+            role?: 'owner' | 'admin' | 'member' | 'viewer';
         },
     ): Promise<Array<OrganizationMemberType & { organization?: any }>> {
         const db = this.getDriver().getDb();
@@ -431,7 +726,11 @@ export class OrganizationMember extends BaseModel {
     /**
      * Check if user has specific role in organization
      */
-    static async hasRole(userId: string, organizationId: string, role: 'owner' | 'admin' | 'member'): Promise<boolean> {
+    static async hasRole(
+        userId: string,
+        organizationId: string,
+        role: 'owner' | 'admin' | 'member' | 'viewer',
+    ): Promise<boolean> {
         const db = this.getDriver().getDb();
 
         const [member] = await db

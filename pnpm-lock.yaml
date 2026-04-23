@@ -576,6 +576,9 @@ importers:
       '@ottabase/queue':
         specifier: workspace:*
         version: link:../../packages/queue
+      '@ottabase/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@ottabase/referrals':
         specifier: workspace:*
         version: link:../../packages/referrals

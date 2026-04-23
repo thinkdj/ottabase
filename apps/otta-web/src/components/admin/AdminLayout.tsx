@@ -1,20 +1,20 @@
 /**
  * AdminLayout
  *
- * Wraps every /admin/* page with a left sidebar built from
- * `apps/otta-web/src/ottabase/config/admin-nav.ts` (SSOT).
+ * Wraps every /admin/* and /admin-platform/* page with a left
+ * sidebar. The nav variant is picked from the current pathname:
+ *   - /admin/*           → TENANT_ADMIN_NAV_GROUPS (org admin)
+ *   - /admin-platform/*  → ADMIN_PLATFORM_NAV_GROUPS (superadmin)
  *
- * - Sidebar shows grouped sections; the active item is highlighted.
- * - The page content sits in a content well to the right.
- * - The layout is intentionally thin — adding a new admin page only
- *   requires (1) a route in router.tsx and (2) one entry in admin-nav.
+ * Adding a new admin page only requires (1) a route in
+ * router.tsx and (2) one entry in admin-nav.
  */
 
-import { useSession } from '@/lib/auth';
-import { getEnabledAdminNav } from '@/ottabase/config/admin-nav';
+import { getLongestNavMatch } from '@/ottabase/components/layout/layout.constants';
+import { resolveAdminSurface } from '@/ottabase/config/admin-nav';
 import { Input } from '@ottabase/ui-shadcn';
 import { Link, useLocation } from '@tanstack/react-router';
-import { LayoutDashboard, Search, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { memo, useMemo, useState, type ReactNode } from 'react';
 
 interface AdminLayoutProps {
@@ -22,21 +22,20 @@ interface AdminLayoutProps {
 }
 
 export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutProps) {
-    const { user } = useSession({ skipAutoSync: true });
-    const groups = getEnabledAdminNav({ systemAdmin: user?.systemAdmin === true });
     const { pathname } = useLocation();
+    const surface = useMemo(() => resolveAdminSurface(pathname), [pathname]);
     const [search, setSearch] = useState('');
 
     const filteredGroups = useMemo(() => {
         const q = search.trim().toLowerCase();
         if (!q) {
-            return groups.map((group) => ({
+            return surface.groups.map((group) => ({
                 ...group,
                 items: group.items.filter((item) => !item.external),
             }));
         }
 
-        return groups
+        return surface.groups
             .map((group) => ({
                 ...group,
                 items: group.items.filter(
@@ -48,7 +47,18 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
                 ),
             }))
             .filter((group) => group.items.length > 0);
-    }, [groups, search]);
+    }, [surface.groups, search]);
+
+    const activeHrefsByGroup = useMemo(() => {
+        const map: Record<string, string | null> = {};
+        for (const group of surface.groups) {
+            const hrefs = group.items.map((item) => item.href);
+            map[group.id] = getLongestNavMatch(pathname, hrefs);
+        }
+        return map;
+    }, [pathname, surface.groups]);
+
+    const OverviewIcon = surface.overviewIcon;
 
     return (
         <div className="flex flex-col gap-4 md:flex-row md:gap-6">
@@ -58,7 +68,7 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
                         <div className="relative">
                             <Search className="pointer-events-none absolute h-3.5 w-3.5 left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
-                                placeholder="Search admin..."
+                                placeholder={`Search ${surface.label.toLowerCase()}...`}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="h-8 pl-8 pr-8 text-sm"
@@ -78,14 +88,14 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
 
                     {!search && (
                         <Link
-                            to={'/admin' as never}
+                            to={surface.rootPath as never}
                             className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                                pathname === '/admin'
+                                pathname === surface.rootPath
                                     ? 'bg-accent text-accent-foreground'
                                     : 'text-foreground hover:bg-accent/50'
                             }`}
                         >
-                            <LayoutDashboard className="h-4 w-4" />
+                            <OverviewIcon className="h-4 w-4" />
                             Overview
                         </Link>
                     )}
@@ -99,9 +109,7 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
                             {group.items
                                 .filter((item) => !item.external)
                                 .map((item) => {
-                                    const isActive =
-                                        pathname === item.href ||
-                                        (item.href !== '/admin' && pathname.startsWith(`${item.href}/`));
+                                    const isActive = activeHrefsByGroup[group.id] === item.href;
                                     return (
                                         <Link
                                             key={item.href}

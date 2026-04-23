@@ -1,22 +1,16 @@
 import { DEFAULT_ROUTE_MAPPINGS } from '@ottabase/brand-engine';
 import { BrandKit, LayoutRouteMapping } from '@ottabase/brand-engine/persistence';
-import { Organization, OrganizationMember } from '@ottabase/ottaorm/models';
-import { makeSlug } from '@ottabase/utils/url';
-import { syncMembershipRoleToTenantRBAC } from './organization-admin';
+import { Organization, Role } from '@ottabase/ottaorm/models';
+import { getRBACCache } from '@ottabase/rbac';
 
 type UserLike = {
     get: (key: string) => unknown;
-    assignRole: (roleId: string, assignedBy?: string, organizationId?: string) => Promise<void>;
 };
 
 /**
  * Ensure brand defaults exist for the given app.
  * Uses BrandKit + DEFAULT_ROUTE_MAPPINGS — saves to DB via ORM.
  * Call after tables exist and ORM connection is registered.
- *
- * @param fallbackBrandName — Used when creating a new kit
- * @param appId — App to seed. When provided, creates app-scoped kit + mappings.
- *               When null, creates system fallback (appId=null). Pass env.APP_ID for current app.
  */
 export async function ensureAppBrandDefaults(fallbackBrandName: string, appId: string | null = null): Promise<void> {
     const targetAppId = appId ?? null;
@@ -60,116 +54,52 @@ export async function ensureAppBrandDefaults(fallbackBrandName: string, appId: s
     }
 }
 
+/**
+ * Ensure the given user owns a personal organization and seed default brand
+ * assets for the current app. Thin wrapper over `Organization.ensurePersonalOrg`
+ * so callers (bootstrap, first-signin hook, onboarding) share one code path.
+ */
 export async function provisionDefaultOrganizationForUser(params: {
     user: UserLike;
     email?: string | null;
     name?: string | null;
-    organizationRole?: 'owner' | 'member';
-    assignedBy?: string;
     /** App ID for brand kit seeding — when provided, ensures app-scoped default kit exists */
     appId?: string | null;
 }): Promise<{
     organizationId: string;
-    organizationRole: 'owner' | 'member';
-    assignedRole: string | null;
     brandSetupError?: string;
 }> {
-    const { user, email = null, name = null, organizationRole = 'owner', assignedBy, appId = null } = params;
+    const { user, email = null, name = null, appId = null } = params;
 
     const userId = String(user.get('id') || '');
     if (!userId) {
         throw new Error('Missing user id for organization provisioning');
     }
 
-    let organizationId: string | null = null;
-    let resolvedOrganizationRole: 'owner' | 'member' = organizationRole;
-    const fallbackBrandName = (name || email?.split('@')[0] || 'My App').trim() || 'My App';
+    await Role.ensureDefaults();
 
-    const existingMembership = await OrganizationMember.first({ userId, status: 'active' });
-    if (existingMembership) {
-        organizationId = String(existingMembership.get('organizationId') || '');
-        const existingRole = existingMembership.get('role');
-        if (existingRole === 'owner' || existingRole === 'member') {
-            resolvedOrganizationRole = existingRole;
-        }
-    }
+    const organization = await Organization.ensurePersonalOrg(
+        {
+            id: userId,
+            name: name ?? (user.get('name') as string | null | undefined) ?? null,
+            email: email ?? (user.get('email') as string | null | undefined) ?? null,
+        },
+        { cache: getRBACCache(), appId },
+    );
 
-    if (!organizationId) {
-        const baseName = (name || email?.split('@')[0] || 'Workspace').trim();
-        const orgName = `${baseName}'s Workspace`;
-        const baseSlug = makeSlug(orgName) || `org-${userId.slice(0, 8)}`;
-
-        // Resolve a unique slug, then create with retry on unique-constraint conflict (TOCTOU guard)
-        let slug = baseSlug;
-        let attempt = 0;
-        while (await Organization.findBySlug(slug)) {
-            attempt += 1;
-            slug = `${baseSlug}-${attempt}`;
-            if (attempt > 8) {
-                slug = `${baseSlug}-${crypto.randomUUID().slice(0, 6)}`;
-                break;
-            }
-        }
-
-        let organization: InstanceType<typeof Organization>;
-        try {
-            organization = await Organization.createWithOwner({
-                name: orgName,
-                slug,
-                ownerId: userId,
-                membershipRole: resolvedOrganizationRole,
-                membershipStatus: 'active',
-                joinedAt: Date.now(),
-            });
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err);
-            if (/unique|constraint|duplicate|slug/i.test(msg)) {
-                slug = `${baseSlug}-${crypto.randomUUID().slice(0, 6)}`;
-                organization = await Organization.createWithOwner({
-                    name: orgName,
-                    slug,
-                    ownerId: userId,
-                    membershipRole: resolvedOrganizationRole,
-                    membershipStatus: 'active',
-                    joinedAt: Date.now(),
-                });
-            } else {
-                throw err;
-            }
-        }
-
-        organizationId = String(organization.get('id') || '');
-    }
-
-    await syncMembershipRoleToTenantRBAC({
-        userId,
-        organizationId,
-        membershipRole: resolvedOrganizationRole,
-        membershipStatus: 'active',
-        assignedBy: assignedBy ?? userId,
-    });
-
-    let brandSetupError: string | undefined;
-
-    if (organizationId) {
-        try {
-            await ensureAppBrandDefaults(fallbackBrandName, appId ?? null);
-        } catch (brandError) {
-            brandSetupError = brandError instanceof Error ? brandError.message : String(brandError);
-            console.error('[user-provisioning] Default brand setup failed:', brandError);
-        }
-    }
-
-    const assignedRole: string | null = resolvedOrganizationRole;
-
+    const organizationId = String(organization.get('id') || '');
     if (!organizationId) {
         throw new Error('Failed to resolve organization id for user provisioning');
     }
 
-    return {
-        organizationId,
-        organizationRole: resolvedOrganizationRole,
-        assignedRole,
-        brandSetupError,
-    };
+    const fallbackBrandName = (name || email?.split('@')[0] || 'My App').trim() || 'My App';
+    let brandSetupError: string | undefined;
+    try {
+        await ensureAppBrandDefaults(fallbackBrandName, appId);
+    } catch (brandError) {
+        brandSetupError = brandError instanceof Error ? brandError.message : String(brandError);
+        console.error('[user-provisioning] Default brand setup failed:', brandError);
+    }
+
+    return { organizationId, brandSetupError };
 }

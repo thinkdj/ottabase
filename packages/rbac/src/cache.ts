@@ -179,7 +179,7 @@ export class RBACCache {
      * @param version Cache version (will be fetched if not provided)
      */
     private async buildCacheKey(
-        type: 'user' | 'roles' | 'perms',
+        type: 'user' | 'roles' | 'perms' | 'memberOrgs',
         userId: string,
         organizationId: string,
         appId?: string | null,
@@ -427,6 +427,77 @@ export class RBACCache {
             } catch (error) {
                 logger.error(
                     'Failed to set permissions in KV',
+                    error instanceof Error ? error : new Error(String(error)),
+                );
+            }
+        }
+    }
+
+    /**
+     * Get the list of organization ids a user is an active member of, cached.
+     *
+     * The RLS engine calls this on every request to populate
+     * `SecurityContext.memberOrganizationIds`, so the lookup must be cheap.
+     * The key is versioned per-org (we use the current request org as the
+     * version anchor) so `invalidateOrganization(orgId)` will also purge a
+     * user's membership list when that org's membership changes.
+     */
+    async getUserMemberOrgs(userId: string, organizationId: string): Promise<string[] | null> {
+        if (!this.enabled) return null;
+        if (!organizationId) {
+            throw new Error('organizationId is required for tenant-scoped caching');
+        }
+
+        const version = await this.getOrgCacheVersion(organizationId);
+        const cacheKey = await this.buildCacheKey('memberOrgs', userId, organizationId, null, version);
+
+        const requestCached = this.requestCache.get<string[]>(cacheKey);
+        if (requestCached) return requestCached;
+
+        if (this.kv) {
+            try {
+                const result = await this.kv.getJSON<string[]>(cacheKey);
+                if (result.success && result.data) {
+                    this.requestCache.set(cacheKey, result.data, 60);
+                    return result.data;
+                }
+            } catch (error) {
+                logger.error(
+                    'Failed to get member orgs from KV',
+                    error instanceof Error ? error : new Error(String(error)),
+                );
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Set the cached list of organization ids for a user.
+     */
+    async setUserMemberOrgs(userId: string, organizationId: string, orgIds: string[]): Promise<void> {
+        if (!this.enabled) return;
+        if (!organizationId) {
+            throw new Error('organizationId is required for tenant-scoped caching');
+        }
+
+        const version = await this.getOrgCacheVersion(organizationId);
+        const cacheKey = await this.buildCacheKey('memberOrgs', userId, organizationId, null, version);
+
+        this.requestCache.set(cacheKey, orgIds, 60);
+
+        if (this.kv) {
+            try {
+                const result = await this.kv.putJSON(cacheKey, orgIds, { expirationTtl: this.ttl });
+                if (!result.success) {
+                    logger.error(
+                        'Failed to set member orgs in KV',
+                        result.error instanceof Error ? result.error : new Error(String(result.error)),
+                    );
+                }
+            } catch (error) {
+                logger.error(
+                    'Failed to set member orgs in KV',
                     error instanceof Error ? error : new Error(String(error)),
                 );
             }

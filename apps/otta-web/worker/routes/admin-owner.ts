@@ -23,7 +23,6 @@ export async function handleAdminPromoteOwner(context: ApiRouteContext): Promise
     }
 
     const headerSecret = clean(request.headers.get('x-bootstrap-secret'));
-    const querySecret = clean(context.url.searchParams.get('secret'));
 
     let bodySecret: string | null = null;
     let userId: string | undefined;
@@ -38,7 +37,7 @@ export async function handleAdminPromoteOwner(context: ApiRouteContext): Promise
         // ignore malformed JSON
     }
 
-    const providedSecret = headerSecret || bodySecret || querySecret;
+    const providedSecret = headerSecret || bodySecret;
     if (providedSecret !== secret) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
@@ -52,11 +51,8 @@ export async function handleAdminPromoteOwner(context: ApiRouteContext): Promise
         return errorResponse('User not found', 404, { code: 'NOT_FOUND' });
     }
 
-    await Role.ensureDefaultRoles();
-    const ownerRole = await Role.findByName('owner');
-    if (!ownerRole) {
-        return errorResponse('Owner role is missing', 500, { code: 'ROLE_MISSING' });
-    }
+    const roles = await Role.ensureDefaults();
+    const ownerRole = roles.owner;
 
     await user.assignRole(ownerRole.get('id') as string, undefined, SYSTEM_ORGANIZATION_ID);
 

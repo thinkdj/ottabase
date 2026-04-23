@@ -770,77 +770,141 @@ The package includes these core models (in `@ottabase/ottaorm`):
 **Note:** The Post model has been moved to `@ottabase/ottablog` as a comprehensive blog/content management model with
 enhanced features.
 
-## Multi-Tenant Models
+## Organizations & Tenancy
 
-Ottabase includes built-in multi-tenant SaaS models following the **Tenant > App > User** hierarchy:
-
-- **Organization** - Tenants with plan, status, settings, metadata
-- **OrganizationMember** - User memberships with roles (owner, admin, member)
-
-### Organization Model
-
-Organizations represent tenants in your multi-tenant application:
+OttaORM is the canonical place for every organization/tenant mutation. The fat-model API keeps routes thin and
+guarantees that the three coupled rows (`organizations`, `organization_members`, `user_roles`) stay in lockstep:
 
 ```typescript
-import { Organization } from '@ottabase/ottaorm';
+import { Organization, OrganizationMember, Role } from '@ottabase/ottaorm/models';
 
-// Create organization (tenant)
-const org = await Organization.create({
+// 1. Seed the four OOB roles (owner, admin, member, viewer). Idempotent.
+await Role.ensureDefaults();
+
+// 2. Create an org AND its initial owner membership AND the matching
+//    user_roles row in one atomic D1 batch (or a try/rollback on non-D1).
+const org = await Organization.createWithOwner({
     name: 'Acme Corp',
-    slug: 'acme-corp',
     ownerId: 'user-123',
+    slug: 'acme-corp', // optional; auto-generated from name
     plan: 'pro',
-    status: 'active',
-    settings: {
-        features: ['rbac', 'audit'],
-        maxMembers: 50,
-    },
+    cache: getRBACCache(), // optional; invalidates the new owner's RBAC
 });
 
-// Find by slug
-const org = await Organization.first({ slug: 'acme-corp' });
-
-// Get all active organizations
-const activeOrgs = await Organization.where({ status: 'active' });
-```
-
-**Available Plans:** `free`, `pro`, `enterprise` **Available Statuses:** `active`, `suspended`, `deleted`
-
-### OrganizationMember Model
-
-Manage user memberships and roles within organizations:
-
-```typescript
-import { OrganizationMember } from '@ottabase/ottaorm';
-
-// Add member to organization
-const member = await OrganizationMember.create({
-    userId: 'user-456',
-    organizationId: org.id,
-    role: 'member',
-    status: 'active',
-    invitedBy: 'user-123',
-    joinedAt: Date.now(),
-});
-
-// Get all members of an organization
-const members = await OrganizationMember.where(
-    { organizationId: org.id, status: 'active' },
-    { orderBy: 'joinedAt', orderDirection: 'desc' },
+// 3. Auto-provision a personal org on first signin. Idempotent and
+//    slug-collision safe — retries 5x with numeric suffixes, then a
+//    UUID tail. Use this from Auth.js's onFirstSignIn hook.
+await Organization.ensurePersonalOrg(
+    { id: 'user-123', name: 'Ada Lovelace', email: 'ada@example.com' },
+    { cache: getRBACCache() },
 );
 
-// Check user's role in organization
-const membership = await OrganizationMember.first({
+// 4. Invite / add a user. Grants the correct default role (and skips
+//    RBAC for status='invited' until the invite is accepted).
+await OrganizationMember.addMember({
     userId: 'user-456',
-    organizationId: org.id,
+    organizationId: org.get('id'),
+    role: 'member',
+    status: 'invited',
+    invitedBy: 'user-123',
+    cache: getRBACCache(),
 });
-console.log(membership.get('role')); // 'admin', 'member', etc.
 
-// Update member role
-await OrganizationMember.update(membership.id, { role: 'admin' });
+// 5. Change role. Re-syncs RBAC. Throws MembershipError('LAST_ACTIVE_OWNER_GUARD')
+//    when demoting the only active owner; routes map that to HTTP 409.
+//    This write is atomic on D1: membership update + RBAC sync run in one batch.
+await OrganizationMember.setRole('user-456', org.get('id'), 'admin', {
+    cache: getRBACCache(),
+    assignedBy: 'user-123',
+});
+
+// 5b. Status updates are also atomic with RBAC sync (e.g. suspend/activate).
+await OrganizationMember.setStatus('user-456', org.get('id'), 'suspended', {
+    cache: getRBACCache(),
+    assignedBy: 'user-123',
+});
+
+// 6. Remove a member. Clears RBAC first, then deletes the membership.
+//    Same last-active-owner guard.
+await OrganizationMember.removeMember('user-456', org.get('id'), {
+    cache: getRBACCache(),
+});
 ```
 
-**Available Roles:** `owner`, `admin`, `member` **Available Statuses:** `active`, `invited`, `suspended`
+**OOB roles (`DEFAULT_ROLES`):** `owner` (`*:*`), `admin` (`users:*`, `org:*`, `brand:*`, `blog:*`, `media:*`,
+`notifications:*`, plus `*:read/create/update`), `member` (`*:read/create/update`), `viewer` (`*:read`).
+
+### Org-scoped custom roles
+
+System roles (owner/admin/member/viewer) are global (`organizationId = NULL`) and read-only. Every other role is a
+**custom role** bound to one organization via `organizationId`. This keeps tenant role definitions fully isolated — no
+org can see or modify another org's custom roles.
+
+```typescript
+import { Role } from '@ottabase/ottaorm/models';
+
+// All roles visible to an org: system roles first, then the org's custom roles, both sorted by name.
+const roles = await Role.findByOrg('org-123');
+
+// Lookup: org-custom shadow system roles within a tenant.
+const role = await Role.findByName('editor', 'org-123');
+// → org-custom 'editor' if it exists, otherwise falls back to a system role named 'editor'.
+
+// Custom-only (for admin UIs that should not list system roles).
+const custom = await Role.findCustomByOrg('org-123');
+```
+
+**Reserved names:** `owner`, `admin`, `member`, `viewer` cannot be used as custom role names. The `POST /api/rbac/roles`
+endpoint enforces this with a 409 `CONFLICT` error.
+
+**Membership integrity guard:** org-scoped role/permission resolution requires an active `organization_members` row. If
+a stale `user_roles` row exists for an org without active membership, it is ignored and does not grant effective
+permissions. The virtual platform scope (`SYSTEM_ORGANIZATION_ID = 'system'`, exported from `@ottabase/auth`) is exempt
+from this guard — it has no membership row by design and is used for platform-level owner/superadmin assignments (e.g.
+the first bootstrapped user).
+
+```typescript
+import { SYSTEM_ORGANIZATION_ID } from '@ottabase/auth';
+
+// Grant platform-level owner (*:* across every tenant)
+await user.assignRole(ownerRole.id, undefined, SYSTEM_ORGANIZATION_ID);
+```
+
+**Uniqueness:** The schema enforces `UNIQUE(name, organizationId)`. Because SQLite treats `NULL != NULL` in unique
+indexes, system-role uniqueness (all `organizationId = NULL`) is additionally enforced by application-level idempotency
+in `Role.ensureDefaults()`.
+
+**Migration note for existing deployments:** The `roles` table previously had a global `UNIQUE(name)` constraint. New
+installs work fine (the table is created fresh). Existing deployments must recreate the `roles` table. Example custom
+migration:
+
+```typescript
+{
+    name: '0010_roles_add_organization_id',
+    up: async (db) => {
+        await db.execute(`
+            CREATE TABLE roles_new (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                organization_id TEXT,
+                description TEXT,
+                permissions TEXT NOT NULL DEFAULT '[]',
+                is_system INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            );
+        `);
+        await db.execute(`INSERT INTO roles_new SELECT id, name, NULL, description, permissions, is_system, created_at, updated_at FROM roles;`);
+        await db.execute(`DROP TABLE roles;`);
+        await db.execute(`ALTER TABLE roles_new RENAME TO roles;`);
+        await db.execute(`CREATE UNIQUE INDEX roles_name_org_uniq ON roles (name, organization_id);`);
+    },
+}
+```
+
+**Available Plans:** `free`, `pro`, `enterprise` &nbsp;&nbsp; **Available Statuses:** `active`, `suspended`, `cancelled`
+
+**Membership Statuses:** `active`, `invited`, `suspended`
 
 ### Multi-Tenant Setup
 

@@ -6,6 +6,8 @@ import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { handleCustomRoutes } from '../../ottabase/config.routes';
 import { getKillSwitchStatus } from '../lib/killswitch';
 import { handleAccountOnboardingOrganizationCreate, handleAccountOrganizationsList } from './account-organizations';
+import { handleAccountDelete, handleAccountExport } from './account-self';
+import { handleAccountSwitchOrg } from './account-switch-org';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import {
     handleAdminDbRowDelete,
@@ -313,6 +315,22 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleAuditLogs(context);
     }
 
+    if (route === '/api/rbac/roles') {
+        const { handleRBACRolesList } = await import('./rbac-roles');
+        return handleRBACRolesList(context);
+    }
+
+    const rbacRoleGetMatch = route.match(/^\/api\/rbac\/roles\/([^/]+)$/);
+    if (rbacRoleGetMatch) {
+        const { handleRBACRoleGet } = await import('./rbac-roles');
+        return handleRBACRoleGet(context, rbacRoleGetMatch[1]);
+    }
+
+    if (route === '/api/rbac/user-roles') {
+        const { handleRBACUserRolesList } = await import('./rbac-user-roles');
+        return handleRBACUserRolesList(context);
+    }
+
     if (route === '/api/cloudflare/realtime/stats') {
         return handleRealtimeStats(context);
     }
@@ -373,6 +391,10 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleAccountOrganizationsList(context);
     }
 
+    if (route === '/api/account/export') {
+        return handleAccountExport(context);
+    }
+
     if (route === '/api/admin/organization') {
         return handleCurrentOrganizationGet(context);
     }
@@ -385,11 +407,11 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handleCurrentOrganizationMembersList(context);
     }
 
-    if (route === '/api/platform/organizations') {
+    if (route === '/api/admin-platform/organizations') {
         return handlePlatformOrganizationsList(context);
     }
 
-    if (route === '/api/platform/organizations/availability') {
+    if (route === '/api/admin-platform/organizations/availability') {
         return handlePlatformOrganizationAvailability(context);
     }
 
@@ -398,17 +420,21 @@ async function handleGetRoutes(context: ApiRouteContext): Promise<Response | nul
         return handlePublicOrgInvitePreview(context);
     }
 
-    const platformOrganizationInvitesListMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/invites$/);
+    const platformOrganizationInvitesListMatch = route.match(
+        /^\/api\/admin-platform\/organizations\/([^/]+)\/invites$/,
+    );
     if (platformOrganizationInvitesListMatch) {
         return handleAdminOrganizationInvitesList(context, platformOrganizationInvitesListMatch[1]);
     }
 
-    const platformOrganizationMembersListMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/members$/);
+    const platformOrganizationMembersListMatch = route.match(
+        /^\/api\/admin-platform\/organizations\/([^/]+)\/members$/,
+    );
     if (platformOrganizationMembersListMatch) {
         return handleAdminOrganizationMembersList(context, platformOrganizationMembersListMatch[1]);
     }
 
-    const platformOrganizationGetMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)$/);
+    const platformOrganizationGetMatch = route.match(/^\/api\/admin-platform\/organizations\/([^/]+)$/);
     if (platformOrganizationGetMatch) {
         return handlePlatformOrganizationGet(context, platformOrganizationGetMatch[1]);
     }
@@ -488,7 +514,7 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handlePublicOrgInviteAccept(context);
     }
 
-    const platformOrganizationOffboardMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/offboard$/);
+    const platformOrganizationOffboardMatch = route.match(/^\/api\/admin-platform\/organizations\/([^/]+)\/offboard$/);
     if (platformOrganizationOffboardMatch) {
         return handlePlatformOrganizationOffboard(context, platformOrganizationOffboardMatch[1]);
     }
@@ -499,7 +525,7 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
     }
 
     const platformOrganizationInviteRevokeMatch = route.match(
-        /^\/api\/platform\/organizations\/([^/]+)\/invites\/([^/]+)\/revoke$/,
+        /^\/api\/admin-platform\/organizations\/([^/]+)\/invites\/([^/]+)\/revoke$/,
     );
     if (platformOrganizationInviteRevokeMatch) {
         return handleAdminOrganizationInviteRevoke(
@@ -515,7 +541,7 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
     }
 
     const platformOrganizationInviteResendMatch = route.match(
-        /^\/api\/platform\/organizations\/([^/]+)\/invites\/([^/]+)\/resend$/,
+        /^\/api\/admin-platform\/organizations\/([^/]+)\/invites\/([^/]+)\/resend$/,
     );
     if (platformOrganizationInviteResendMatch) {
         return handleAdminOrganizationInviteResend(
@@ -529,7 +555,9 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleCurrentOrganizationInviteCreate(context);
     }
 
-    const platformOrganizationInviteEmailMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/invites$/);
+    const platformOrganizationInviteEmailMatch = route.match(
+        /^\/api\/admin-platform\/organizations\/([^/]+)\/invites$/,
+    );
     if (platformOrganizationInviteEmailMatch) {
         return handleAdminOrganizationInviteCreate(context, platformOrganizationInviteEmailMatch[1]);
     }
@@ -546,7 +574,9 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleCurrentOrganizationInviteMember(context);
     }
 
-    const platformOrganizationInviteMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/members\/invite$/);
+    const platformOrganizationInviteMatch = route.match(
+        /^\/api\/admin-platform\/organizations\/([^/]+)\/members\/invite$/,
+    );
     if (platformOrganizationInviteMatch) {
         return handleAdminOrganizationInviteMember(context, platformOrganizationInviteMatch[1]);
     }
@@ -636,11 +666,25 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleAdminRoleCreate(context);
     }
 
+    if (route === '/api/rbac/roles') {
+        const { handleRBACRoleCreate } = await import('./rbac-roles');
+        return handleRBACRoleCreate(context);
+    }
+
+    if (route === '/api/rbac/user-roles') {
+        const { handleRBACUserRoleAssign } = await import('./rbac-user-roles');
+        return handleRBACUserRoleAssign(context);
+    }
+
     if (route === '/api/onboarding/organizations') {
         return handleAccountOnboardingOrganizationCreate(context);
     }
 
-    if (route === '/api/platform/organizations') {
+    if (route === '/api/account/switch-org') {
+        return handleAccountSwitchOrg(context);
+    }
+
+    if (route === '/api/admin-platform/organizations') {
         return handlePlatformOrganizationCreate(context);
     }
 
@@ -669,12 +713,14 @@ async function handlePatchRoutes(context: ApiRouteContext): Promise<Response | n
         return handleCurrentOrganizationUpdateMember(context, decodeURIComponent(currentOrganizationUpdateMatch[1]));
     }
 
-    const platformOrganizationPatchMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)$/);
+    const platformOrganizationPatchMatch = route.match(/^\/api\/admin-platform\/organizations\/([^/]+)$/);
     if (platformOrganizationPatchMatch) {
         return handlePlatformOrganizationUpdate(context, platformOrganizationPatchMatch[1]);
     }
 
-    const platformOrganizationUpdateMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/members\/([^/]+)$/);
+    const platformOrganizationUpdateMatch = route.match(
+        /^\/api\/admin-platform\/organizations\/([^/]+)\/members\/([^/]+)$/,
+    );
     if (platformOrganizationUpdateMatch) {
         return handleAdminOrganizationUpdateMember(
             context,
@@ -702,6 +748,12 @@ async function handlePatchRoutes(context: ApiRouteContext): Promise<Response | n
     const adminRolePatchMatch = route.match(/^\/api\/admin\/roles\/([^/]+)$/);
     if (adminRolePatchMatch) {
         return handleAdminRoleUpdate(context, adminRolePatchMatch[1]);
+    }
+
+    const rbacRolePatchMatch = route.match(/^\/api\/rbac\/roles\/([^/]+)$/);
+    if (rbacRolePatchMatch) {
+        const { handleRBACRoleUpdate } = await import('./rbac-roles');
+        return handleRBACRoleUpdate(context, rbacRolePatchMatch[1]);
     }
 
     return null;
@@ -761,12 +813,28 @@ async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | 
         return handleD1TodoById(context, d1TodoMatch[1], 'DELETE');
     }
 
+    if (route === '/api/account') {
+        return handleAccountDelete(context);
+    }
+
     const adminRoleDeleteMatch = route.match(/^\/api\/admin\/roles\/([^/]+)$/);
     if (adminRoleDeleteMatch) {
         return handleAdminRoleDelete(context, adminRoleDeleteMatch[1]);
     }
 
-    const platformOrganizationEntityDeleteMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)$/);
+    const rbacRoleDeleteMatch = route.match(/^\/api\/rbac\/roles\/([^/]+)$/);
+    if (rbacRoleDeleteMatch) {
+        const { handleRBACRoleDelete } = await import('./rbac-roles');
+        return handleRBACRoleDelete(context, rbacRoleDeleteMatch[1]);
+    }
+
+    const rbacUserRoleDeleteMatch = route.match(/^\/api\/rbac\/user-roles\/([^/]+)\/([^/]+)$/);
+    if (rbacUserRoleDeleteMatch) {
+        const { handleRBACUserRoleRemove } = await import('./rbac-user-roles');
+        return handleRBACUserRoleRemove(context, rbacUserRoleDeleteMatch[1], rbacUserRoleDeleteMatch[2]);
+    }
+
+    const platformOrganizationEntityDeleteMatch = route.match(/^\/api\/admin-platform\/organizations\/([^/]+)$/);
     if (platformOrganizationEntityDeleteMatch) {
         return handlePlatformOrganizationDelete(context, platformOrganizationEntityDeleteMatch[1]);
     }
@@ -776,7 +844,9 @@ async function handleDeleteRoutes(context: ApiRouteContext): Promise<Response | 
         return handleCurrentOrganizationRemoveMember(context, decodeURIComponent(currentOrganizationDeleteMatch[1]));
     }
 
-    const platformOrganizationDeleteMatch = route.match(/^\/api\/platform\/organizations\/([^/]+)\/members\/([^/]+)$/);
+    const platformOrganizationDeleteMatch = route.match(
+        /^\/api\/admin-platform\/organizations\/([^/]+)\/members\/([^/]+)$/,
+    );
     if (platformOrganizationDeleteMatch) {
         return handleAdminOrganizationRemoveMember(
             context,

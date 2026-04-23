@@ -177,6 +177,6 @@ describe('OrganizationMembersPage', () => {
         render(<OrganizationMembersPage />);
 
         const backLink = screen.getByRole('link', { name: '← Back to Tenant Directory' });
-        expect(backLink.getAttribute('href')).toBe('/admin/platform/organizations');
+        expect(backLink.getAttribute('href')).toBe('/admin-platform/organizations');
     });
 });

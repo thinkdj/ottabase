@@ -1,0 +1,296 @@
+// ============================================================
+// RBAC Roles — tenant-scoped role management
+//
+// All mutation endpoints require org-admin auth (scope: 'either').
+// Custom roles are always bound to the caller's organization; system
+// roles (isSystem=true, organizationId=null) are read-only from here.
+//
+// GET  /api/rbac/roles           — system roles + caller's org custom roles
+// GET  /api/rbac/roles/:id       — fetch a single role by ID
+// POST /api/rbac/roles           — create org-custom role (requires org admin)
+// PATCH /api/rbac/roles/:id      — update org-custom role (requires org admin + ownership)
+// DELETE /api/rbac/roles/:id     — delete org-custom role (requires org admin + ownership)
+// ============================================================
+
+import { Role, SYSTEM_ROLE_NAMES_SET } from '@ottabase/ottaorm/models';
+import { errorResponse } from '@ottabase/utils/http-errors';
+import { jsonResponse } from '@ottabase/utils/http-response';
+import { canAccessOrganization, requireAdminAccess, resolveTenantOrganizationId } from '../lib/admin-guard';
+import { invalidateRBACCache } from './admin-roles';
+import type { ApiRouteContext } from './router';
+
+function serializeRole(role: Role) {
+    return {
+        id: role.get('id'),
+        name: role.get('name'),
+        organizationId: role.get('organizationId') ?? null,
+        description: role.get('description'),
+        permissions: role.getPermissions(),
+        isSystem: role.get('isSystem'),
+        createdAt: role.get('createdAt'),
+        updatedAt: role.get('updatedAt'),
+    };
+}
+
+/**
+ * GET /api/rbac/roles?page=1&perPage=50&search=term
+ *
+ * Returns system roles + the current org's custom roles. Requires auth so that
+ * org-specific role definitions are never exposed to a different tenant.
+ *
+ * When an org context is present, org-custom roles are appended after system
+ * roles. When no tenant org is resolvable (e.g. platform-admin system scope),
+ * only system roles are returned.
+ *
+ * Supports pagination via query params:
+ * - page: page number (default: 1, min: 1)
+ * - perPage: items per page (default: 50, min: 1, max: 100)
+ * - search: filter roles by name (case-insensitive partial match)
+ */
+export async function handleRBACRolesList(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'either', allowNullTenant: true });
+    if (auth instanceof Response) return auth;
+
+    try {
+        const url = new URL(context.request.url);
+        const parsedPage = parseInt(url.searchParams.get('page') || '1', 10);
+        const parsedPerPage = parseInt(url.searchParams.get('perPage') || '50', 10);
+        const page = Number.isFinite(parsedPage) ? Math.max(1, parsedPage) : 1;
+        const perPage = Number.isFinite(parsedPerPage) ? Math.min(100, Math.max(1, parsedPerPage)) : 50;
+        const search = url.searchParams.get('search')?.toLowerCase().trim() || '';
+
+        const organizationId = resolveTenantOrganizationId(auth);
+        let roles = organizationId
+            ? await Role.findByOrg(organizationId)
+            : ((await Role.where({ isSystem: true })) as Role[]);
+
+        // Apply search filter if provided
+        if (search) {
+            roles = roles.filter((r) => {
+                const name = String(r.get('name') ?? '').toLowerCase();
+                const description = String(r.get('description') ?? '').toLowerCase();
+                return name.includes(search) || description.includes(search);
+            });
+        }
+
+        // Pagination
+        const total = roles.length;
+        const totalPages = Math.ceil(total / perPage);
+        const startIndex = (page - 1) * perPage;
+        const endIndex = startIndex + perPage;
+        const paginatedRoles = roles.slice(startIndex, endIndex);
+
+        return jsonResponse({
+            data: paginatedRoles.map(serializeRole),
+            pagination: {
+                page,
+                perPage,
+                total,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1,
+            },
+        });
+    } catch (err) {
+        return errorResponse('Failed to load roles', 500, {
+            code: 'ROLES_LIST_FAILED',
+            details: err instanceof Error ? err.message : 'Unknown error',
+        });
+    }
+}
+
+// A valid permission string is colon-separated, non-empty segments, e.g. "blog:read" or "org:*".
+// Wildcards ("*") are allowed as individual segments.
+const PERMISSION_RE = /^[a-z0-9_*-]+(:[a-z0-9_*-]+)+$/i;
+
+function validatePermissions(permissions: unknown[]): string | null {
+    const invalid = permissions.filter((p) => typeof p !== 'string' || !PERMISSION_RE.test(p as string));
+    if (invalid.length > 0) {
+        return `Invalid permission format: ${invalid.map((p) => JSON.stringify(p)).join(', ')}. Expected "resource:action" pattern.`;
+    }
+    return null;
+}
+
+/**
+ * GET /api/rbac/roles/:id
+ *
+ * Returns a single role by ID. The caller must have access to the org the role
+ * belongs to; system roles (organizationId=null) are accessible to any
+ * authenticated admin.
+ */
+export async function handleRBACRoleGet(context: ApiRouteContext, roleId: string): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'either', allowNullTenant: true });
+    if (auth instanceof Response) return auth;
+
+    const role = (await Role.find(roleId)) as Role | null;
+    if (!role) return errorResponse('Role not found', 404, { code: 'NOT_FOUND' });
+
+    const roleOrgId = role.get('organizationId') as string | null;
+    // System roles are accessible to any authenticated admin; custom roles are
+    // only visible to admins within the owning organization.
+    if (roleOrgId !== null && !canAccessOrganization(auth, roleOrgId)) {
+        return errorResponse('Role not found', 404, { code: 'NOT_FOUND' });
+    }
+
+    return jsonResponse({ data: serializeRole(role) });
+}
+
+/**
+ * POST /api/rbac/roles
+ *
+ * Create a custom role scoped to the caller's organization. System role names
+ * (owner, admin, member, viewer) are reserved and cannot be reused as custom
+ * role names to prevent accidental permission escalation.
+ */
+export async function handleRBACRoleCreate(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'either' });
+    if (auth instanceof Response) return auth;
+
+    const organizationId = resolveTenantOrganizationId(auth);
+    if (!organizationId) {
+        return errorResponse('An organization context is required to create a custom role', 400, {
+            code: 'ORG_CONTEXT_REQUIRED',
+        });
+    }
+
+    let body: any;
+    try {
+        body = (await context.request.json()) as any;
+    } catch {
+        return errorResponse('Invalid JSON body', 400, { code: 'BAD_REQUEST' });
+    }
+    const name = typeof body.name === 'string' ? body.name.toLowerCase().trim() : '';
+    if (!name) return errorResponse('Role name is required', 400, { code: 'VALIDATION_ERROR' });
+    if (name.length > 50) {
+        return errorResponse('Role name must not exceed 50 characters', 400, { code: 'VALIDATION_ERROR' });
+    }
+    if (!/^[a-z0-9_-]+$/.test(name)) {
+        return errorResponse('Role name can only contain lowercase letters, numbers, hyphens, and underscores', 400, {
+            code: 'VALIDATION_ERROR',
+        });
+    }
+
+    // Prevent shadowing system role names
+    if (SYSTEM_ROLE_NAMES_SET.has(name)) {
+        return errorResponse(`"${name}" is a reserved system role name`, 409, { code: 'CONFLICT' });
+    }
+
+    // Enforce per-org uniqueness
+    const existing = await Role.first({ name, organizationId });
+    if (existing) {
+        return errorResponse('A role with this name already exists in your organization', 409, { code: 'CONFLICT' });
+    }
+
+    const permissions: unknown[] = Array.isArray(body.permissions) ? body.permissions : [];
+    const permissionError = validatePermissions(permissions);
+    if (permissionError) {
+        return errorResponse(permissionError, 400, { code: 'VALIDATION_ERROR' });
+    }
+
+    const role = (await Role.create({
+        name,
+        organizationId,
+        description: body.description || null,
+        permissions: JSON.stringify(permissions),
+        isSystem: false,
+    })) as Role;
+
+    await invalidateRBACCache(context.env);
+    return jsonResponse({ data: serializeRole(role) }, 201);
+}
+
+/**
+ * PATCH /api/rbac/roles/:id
+ *
+ * Update a custom role. The caller must be an org admin, the role must belong to
+ * their organization, and system roles cannot be modified.
+ */
+export async function handleRBACRoleUpdate(context: ApiRouteContext, roleId: string): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'either' });
+    if (auth instanceof Response) return auth;
+
+    const role = (await Role.find(roleId)) as Role | null;
+    if (!role) return errorResponse('Role not found', 404, { code: 'NOT_FOUND' });
+    if (role.get('isSystem')) return errorResponse('System roles cannot be modified', 403, { code: 'FORBIDDEN' });
+
+    // Ownership check: the role must belong to the caller's org
+    const roleOrgId = role.get('organizationId') as string | null;
+    if (!roleOrgId || !canAccessOrganization(auth, roleOrgId)) {
+        return errorResponse('You do not have permission to modify this role', 403, { code: 'FORBIDDEN' });
+    }
+
+    let body: any;
+    try {
+        body = (await context.request.json()) as any;
+    } catch {
+        return errorResponse('Invalid JSON body', 400, { code: 'BAD_REQUEST' });
+    }
+
+    // Allow renaming a custom role, subject to the same reservations as create.
+    if (typeof body.name === 'string') {
+        const newName = body.name.toLowerCase().trim();
+        if (newName) {
+            if (newName.length > 50) {
+                return errorResponse('Role name must not exceed 50 characters', 400, { code: 'VALIDATION_ERROR' });
+            }
+            if (!/^[a-z0-9_-]+$/.test(newName)) {
+                return errorResponse(
+                    'Role name can only contain lowercase letters, numbers, hyphens, and underscores',
+                    400,
+                    {
+                        code: 'VALIDATION_ERROR',
+                    },
+                );
+            }
+            if (SYSTEM_ROLE_NAMES_SET.has(newName)) {
+                return errorResponse(`"${newName}" is a reserved system role name`, 409, { code: 'CONFLICT' });
+            }
+            // Prevent duplicate names within the same org (excluding the role being renamed).
+            const duplicate = await Role.first({ name: newName, organizationId: roleOrgId });
+            if (duplicate && (duplicate as Role).get('id') !== roleId) {
+                return errorResponse('A role with this name already exists in your organization', 409, {
+                    code: 'CONFLICT',
+                });
+            }
+            role.set('name', newName);
+        }
+    }
+
+    if (body.description !== undefined) role.set('description', body.description);
+    if (Array.isArray(body.permissions)) {
+        const permissionError = validatePermissions(body.permissions);
+        if (permissionError) {
+            return errorResponse(permissionError, 400, { code: 'VALIDATION_ERROR' });
+        }
+        role.set('permissions', JSON.stringify(body.permissions));
+    }
+    await role.save();
+
+    await invalidateRBACCache(context.env);
+    return jsonResponse({ data: serializeRole(role) });
+}
+
+/**
+ * DELETE /api/rbac/roles/:id
+ *
+ * Delete a custom role. System roles and roles belonging to other orgs are
+ * protected.
+ */
+export async function handleRBACRoleDelete(context: ApiRouteContext, roleId: string): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'either' });
+    if (auth instanceof Response) return auth;
+
+    const role = (await Role.find(roleId)) as Role | null;
+    if (!role) return errorResponse('Role not found', 404, { code: 'NOT_FOUND' });
+    if (role.get('isSystem')) return errorResponse('System roles cannot be deleted', 403, { code: 'FORBIDDEN' });
+
+    // Ownership check
+    const roleOrgId = role.get('organizationId') as string | null;
+    if (!roleOrgId || !canAccessOrganization(auth, roleOrgId)) {
+        return errorResponse('You do not have permission to delete this role', 403, { code: 'FORBIDDEN' });
+    }
+
+    await role.destroy();
+    await invalidateRBACCache(context.env);
+    return jsonResponse({ success: true });
+}

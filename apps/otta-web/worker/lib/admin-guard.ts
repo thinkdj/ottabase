@@ -6,6 +6,38 @@ import type { ApiRouteContext } from '../routes/router';
 import { getAuthOptions } from './auth-utils';
 import { initDbConnection } from './db-utils';
 
+export function canAccessOrganization(auth: AdminContext, organizationId: string): boolean {
+    return (
+        auth.organizationId === SYSTEM_ORGANIZATION_ID ||
+        auth.organizationId === organizationId ||
+        auth.rbac.organizationId === organizationId
+    );
+}
+
+export function resolveTenantOrganizationId(auth: Pick<AdminContext, 'organizationId' | 'rbac'>): string | null {
+    const scopedOrganizationId = auth.rbac.organizationId ?? auth.organizationId ?? null;
+    if (!scopedOrganizationId || scopedOrganizationId === SYSTEM_ORGANIZATION_ID) {
+        return null;
+    }
+    return scopedOrganizationId;
+}
+
+/**
+ * Tenant-admin entry point: authenticate as an org admin and return the resolved
+ * tenant org id (never the system scope). Returns a 400 Response when no tenant
+ * org is in context, 401/403 Response when the caller isn't authorised.
+ */
+export async function resolveCurrentOrgForAdmin(context: ApiRouteContext): Promise<string | Response> {
+    const auth = await requireAdminAccess(context, { scope: 'either' });
+    if (auth instanceof Response) return auth;
+
+    const organizationId = resolveTenantOrganizationId(auth);
+    if (!organizationId) {
+        return errorResponse('Select an organization to manage first', 400, { code: 'ORG_CONTEXT_REQUIRED' });
+    }
+    return organizationId;
+}
+
 export interface AdminContext {
     user: any;
     organizationId: string | null;

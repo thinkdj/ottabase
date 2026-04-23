@@ -110,6 +110,40 @@ const config = createOttabaseAuthConfig({
 });
 ```
 
+### First-Sign-In Hook (auto-provision a personal org)
+
+`createAuthConfig` accepts an `onFirstSignIn` hook that fires from Auth.js's `signIn` callback iff the user has no
+existing `organization_members` row. App-level code uses it to auto-provision a personal workspace on the very first
+login, replacing the old `bootstrap.ts` raw-SQL path:
+
+```typescript
+import { createAuthConfig } from '@ottabase/auth/backend';
+import { Organization, Role } from '@ottabase/ottaorm/models';
+import { getRBACCache } from '@ottabase/rbac';
+
+const config = createAuthConfig(env, {
+    onFirstSignIn: async (user) => {
+        // Runs inside Auth.js's signIn callback — awaited serially, so the
+        // jwt callback sees the new membership on the same request.
+        await Role.ensureDefaults();
+        await Organization.ensurePersonalOrg(user, { cache: getRBACCache() });
+    },
+    // Optional: fires on every signin, after onFirstSignIn.
+    onSignIn: async (user, _env, account) => {
+        console.log('signin', user.id, account?.provider);
+    },
+});
+```
+
+Errors thrown from the hook are logged and swallowed — the sign-in proceeds either way. If you need to hard-fail signup
+on provisioning error, do that inside your own `authorize` callback instead.
+
+### Switch-Org / JWT refresh
+
+The jwt callback honours a KV override at `auth:usr:<userId>:profile:currentOrgId` when present and the membership is
+still active. Combined with the `auth:usr:<userId>:profile:version` counter that forces the callback to rerun, this is
+how `/api/account/switch-org` makes `session.user.organizationId` lag-free on the very next request.
+
 ## Framework Integration
 
 ### Next.js App Router

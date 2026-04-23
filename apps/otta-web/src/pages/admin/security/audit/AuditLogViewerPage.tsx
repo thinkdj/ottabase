@@ -354,7 +354,54 @@ export function AuditLogViewerPage() {
     const handleExport = async () => {
         try {
             toast.info('Exporting audit logs...', 'This may take a moment for large datasets');
-            toast.success('Export complete', 'Audit logs have been downloaded');
+
+            const params = new URLSearchParams({ page: '1', per_page: '5000' });
+            if (searchTerm) params.append('search', searchTerm);
+            if (actionFilter !== 'all') params.append('action', actionFilter);
+            if (entityTypeFilter !== 'all') params.append('entityType', entityTypeFilter);
+            if (userIdFilter) params.append('userId', userIdFilter);
+            if (organizationIdFilter) params.append('organizationId', organizationIdFilter);
+
+            const response = await api<AuditLogsResponse>(`/api/audit/logs?${params.toString()}`);
+            const rows = response.data ?? [];
+
+            const headers = [
+                'id',
+                'created_at',
+                'action',
+                'status',
+                'resource_type',
+                'resource_id',
+                'user_id',
+                'user_email',
+                'organization_id',
+                'app_id',
+                'ip_address',
+                'error_message',
+            ];
+            const csvLines = [
+                headers.join(','),
+                ...rows.map((r) =>
+                    headers
+                        .map((h) => {
+                            const val = (r as any)[h];
+                            if (val == null) return '';
+                            const str = String(val).replace(/"/g, '""');
+                            return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str}"` : str;
+                        })
+                        .join(','),
+                ),
+            ];
+
+            const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            toast.success('Export complete', `Downloaded ${rows.length} audit log entries`);
         } catch {
             toast.error('Export failed', 'Could not export audit logs');
         }

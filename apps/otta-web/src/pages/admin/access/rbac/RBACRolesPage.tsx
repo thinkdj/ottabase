@@ -33,7 +33,6 @@ import { useRBACToast } from '@/hooks/useToast';
 
 interface RoleFormData {
     name: string;
-    displayName: string;
     description: string;
     permissions: string;
 }
@@ -49,7 +48,6 @@ export function RBACRolesPage() {
 
     const [formData, setFormData] = useState<RoleFormData>({
         name: '',
-        displayName: '',
         description: '',
         permissions: '',
     });
@@ -78,7 +76,6 @@ export function RBACRolesPage() {
         setEditingRole(null);
         setFormData({
             name: '',
-            displayName: '',
             description: '',
             permissions: '',
         });
@@ -89,7 +86,6 @@ export function RBACRolesPage() {
         setEditingRole(role);
         setFormData({
             name: role.name,
-            displayName: role.displayName || '',
             description: role.description || '',
             permissions: (role.permissions || []).join(', '),
         });
@@ -119,7 +115,6 @@ export function RBACRolesPage() {
 
         const data = {
             name: formData.name,
-            displayName: formData.displayName,
             description: formData.description,
             permissions: formData.permissions
                 .split(',')
@@ -131,13 +126,13 @@ export function RBACRolesPage() {
             if (editingRole) {
                 await api(`/api/rbac/roles/${editingRole.id}`, {
                     method: 'PATCH',
-                    body: JSON.stringify(data),
+                    body: data,
                 });
                 toast.rbac.roleUpdated();
             } else {
                 await api('/api/rbac/roles', {
                     method: 'POST',
-                    body: JSON.stringify(data),
+                    body: data,
                 });
                 toast.rbac.roleCreated();
             }
@@ -159,7 +154,10 @@ export function RBACRolesPage() {
                                 <Shield className="h-5 w-5" />
                                 RBAC Roles
                             </CardTitle>
-                            <CardDescription>Manage roles and their permissions</CardDescription>
+                            <CardDescription>
+                                Manage custom roles for your organization. System roles (owner, admin, member, viewer)
+                                are shared across all tenants and cannot be modified here.
+                            </CardDescription>
                         </div>
                         <div className="flex gap-2">
                             <Button variant="outline" asChild>
@@ -196,7 +194,6 @@ export function RBACRolesPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Name</TableHead>
-                                    <TableHead>Display Name</TableHead>
                                     <TableHead>Description</TableHead>
                                     <TableHead>Permissions</TableHead>
                                     <TableHead>Type</TableHead>
@@ -209,7 +206,6 @@ export function RBACRolesPage() {
                                         <TableCell>
                                             <code className="text-sm bg-muted px-2 py-1 rounded">{role.name}</code>
                                         </TableCell>
-                                        <TableCell className="font-medium">{role.displayName || '-'}</TableCell>
                                         <TableCell className="max-w-xs truncate">{role.description || '-'}</TableCell>
                                         <TableCell>
                                             <Badge variant="outline">{role.permissions?.length || 0} permissions</Badge>
@@ -217,10 +213,8 @@ export function RBACRolesPage() {
                                         <TableCell>
                                             {role.isSystem ? (
                                                 <Badge>System</Badge>
-                                            ) : role.organizationId ? (
-                                                <Badge variant="secondary">Organization</Badge>
                                             ) : (
-                                                <Badge variant="outline">Custom</Badge>
+                                                <Badge variant="secondary">Custom</Badge>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -275,19 +269,8 @@ export function RBACRolesPage() {
                                 <p className="text-sm text-muted-foreground">
                                     {editingRole
                                         ? 'Role name cannot be changed'
-                                        : 'Unique role identifier (lowercase, no spaces)'}
+                                        : 'Unique within your organization (lowercase, no spaces). Reserved names: owner, admin, member, viewer.'}
                                 </p>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="displayName">Display Name*</Label>
-                                <Input
-                                    id="displayName"
-                                    value={formData.displayName}
-                                    onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                                    placeholder="Editor"
-                                    required
-                                />
                             </div>
 
                             <div className="space-y-2">

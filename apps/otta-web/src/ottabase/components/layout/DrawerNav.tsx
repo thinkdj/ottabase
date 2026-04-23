@@ -8,7 +8,7 @@ import { Link, useLocation } from '@tanstack/react-router';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { getNavLinks } from './layout.constants';
+import { getNavLinks, isNavLinkActive } from './layout.constants';
 
 export function DrawerNav() {
     const { isAuthenticated, user } = useSession();
@@ -17,9 +17,10 @@ export function DrawerNav() {
     const [open, setOpen] = useState(false);
 
     const isAdmin = !!user?.permissions?.includes('admin') || !!user?.permissions?.includes('*:*');
-    const links = getNavLinks({ isAuthenticated, isAdmin });
+    const isSystemAdmin = !!(user as any)?.systemAdmin;
+    const links = getNavLinks({ isAuthenticated, isAdmin, isSystemAdmin });
     const staticNav = links.map((link) => {
-        const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
+        const isActive = isNavLinkActive(location.pathname, link.to);
         return (
             <Link
                 key={link.to}
