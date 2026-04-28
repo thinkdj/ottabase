@@ -27,7 +27,7 @@ catalog:
     "@tabler/icons-react": ^3.35.0
     "@tailwindcss/forms": ^0.5.10
     "@tailwindcss/typography": ^0.5.18
-    "@tanstack/react-query": ^5.90.16
+    "@tanstack/react-query": ^5.100.6
     "@tanstack/react-query-devtools": ^5.90.16
     "@tanstack/react-router": ^1.145.2
     "@types/node": ^20.19.27
