@@ -45,6 +45,7 @@ export { accountsTable, authenticatorsTable, mediaTable, sessionsTable, usersTab
 // APP-SPECIFIC TABLES
 // ============================================================
 export { changelogEntriesTable } from '../models/ChangelogEntry';
+export { expenseGroupMembersTable, expenseGroupsTable, expensesTable, expenseSplitsTable } from '../models/Expense';
 export { pageActionsTable, pageFeaturesTable, pagesTable, pageSectionsTable } from '../models/MarketingPage';
 export { todosTable } from '../models/Todo';
 

@@ -64,6 +64,8 @@ export class PageSection extends BaseModel {
         title: { type: 'string', editable: true, searchable: true },
         subtitle: { type: 'string', editable: true },
         body: { type: 'string', editable: true },
+        mediaUrl: { type: 'string', editable: true },
+        mediaAlt: { type: 'string', editable: true },
         enabled: { type: 'boolean', editable: true, filterable: true },
         sortOrder: { type: 'number', editable: true, sortable: true },
         createdAt: { type: 'date', editable: false, sortable: true },
@@ -88,6 +90,8 @@ export class PageFeature extends BaseModel {
         description: { type: 'string', editable: true },
         icon: { type: 'string', editable: true },
         link: { type: 'string', editable: true },
+        mediaUrl: { type: 'string', editable: true },
+        mediaAlt: { type: 'string', editable: true },
         sortOrder: { type: 'number', editable: true, sortable: true },
         createdAt: { type: 'date', editable: false, sortable: true },
     };

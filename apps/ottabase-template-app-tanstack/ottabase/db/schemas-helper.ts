@@ -34,6 +34,7 @@ import {
 } from '@ottabase/ottaorm';
 import { getEnabledPackageTables } from '../config.migrations';
 import { changelogEntriesTable } from '../models/ChangelogEntry';
+import { expenseGroupMembersTable, expenseGroupsTable, expensesTable, expenseSplitsTable } from '../models/Expense';
 import { pageActionsTable, pageFeaturesTable, pagesTable, pageSectionsTable } from '../models/MarketingPage';
 import { todosTable } from '../models/Todo';
 
@@ -67,6 +68,10 @@ export function getAllSchemas() {
         pageSectionsTable,
         pageFeaturesTable,
         pageActionsTable,
+        expenseGroupsTable,
+        expenseGroupMembersTable,
+        expensesTable,
+        expenseSplitsTable,
         todosTable,
     };
 
@@ -113,6 +118,10 @@ export function getSchemaSummary() {
         pageSectionsTable,
         pageFeaturesTable,
         pageActionsTable,
+        expenseGroupsTable,
+        expenseGroupMembersTable,
+        expensesTable,
+        expenseSplitsTable,
         todosTable,
     };
 

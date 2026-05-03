@@ -486,3 +486,15 @@ Ottabase now includes a dynamic marketing pages system with OttaORM CRUD + drag-
 - `/admin/pages` — list/create/duplicate/delete marketing pages
 - `/admin/pages/$pageId` — block builder with drag-and-drop reordering and inline editor
 - Public preview route in TanStack app: `/pages/$slug`
+
+Notes:
+
+- The admin pages list and builder consume OttaORM `useList()` hooks as arrays, while still tolerating legacy CRUD
+  payload wrappers (`{ data: [...] }` and `{ data: { data: [...] } }`) for list/detail/mutation payloads.
+- The public marketing renderer (`/pages/$slug`) now mirrors the Next.js homepage variant family for `navbar`, `hero`,
+  `features`, `cta`, `footer`, and `about` slots.
+- Duplicate and delete operations in the admin pages list/builder now use shadcn `AlertDialog` confirmations.
+- Admin page builder now supports image selection from `@ottabase/medialibrary` for section media and feature images.
+- Admin page builder includes a live preview panel with desktop/tablet/mobile viewport switching.
+- Admin block editor includes an AI Copy Assistant powered by `@ottabase/cf-ai` with per-field generation plus bulk
+  Generate All and rewrite/shorten/expand actions for title/subtitle/body copy.

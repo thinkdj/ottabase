@@ -1,14 +1,34 @@
 import { actionHooks, featureHooks, pageHooks, sectionHooks } from '@/hooks/marketingPageHooks';
 import { globalStore, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    Input,
+} from '@ottabase/ui-shadcn';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Copy, FileText, Plus, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { extractCrudMutationRecord, normalizeCrudListPayload } from './crudPayload';
 
 export function AdminPagesListPage() {
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
+    const [duplicateDialogPage, setDuplicateDialogPage] = useState<any | null>(null);
+    const [deleteDialogPage, setDeleteDialogPage] = useState<any | null>(null);
+    const [duplicatingPageId, setDuplicatingPageId] = useState<string | null>(null);
+    const [deletingPageId, setDeletingPageId] = useState<string | null>(null);
     const organizationId = globalStore.get(organizationIdAtom) || null;
     const userId = globalStore.get(userAtom)?.id || null;
 
@@ -23,12 +43,12 @@ export function AdminPagesListPage() {
     const createAction = actionHooks.useCreate();
 
     const pages = useMemo(() => {
-        const rows = (listQuery.data?.data ?? []) as any[];
+        const rows = normalizeCrudListPayload<any>(listQuery.data);
         return rows.filter((page) => {
             const term = search.toLowerCase();
             return page.title?.toLowerCase().includes(term) || page.slug?.toLowerCase().includes(term);
         });
-    }, [listQuery.data?.data, search]);
+    }, [listQuery.data, search]);
 
     const onCreate = async () => {
         const title = `New Page ${pages.length + 1}`;
@@ -42,13 +62,15 @@ export function AdminPagesListPage() {
             userId,
         });
         toast.success('Page created');
-        const pageId = (created as any)?.data?.id;
+        const createdPage = extractCrudMutationRecord<any>(created);
+        const pageId = createdPage?.id;
         if (pageId) {
             navigate({ to: '/admin/pages/$pageId', params: { pageId } });
         }
     };
 
     const onDuplicate = async (page: any) => {
+        setDuplicatingPageId(String(page.id));
         const created = await createPage.mutateAsync({
             ...page,
             id: undefined,
@@ -59,12 +81,18 @@ export function AdminPagesListPage() {
             userId,
         });
 
-        const newPageId = (created as any)?.data?.id;
-        const originalSections = ((sectionList.data?.data ?? []) as any[])
+        const duplicatedPage = extractCrudMutationRecord<any>(created);
+        const newPageId = duplicatedPage?.id;
+        if (!newPageId) {
+            toast.error('Page duplicated but new page id was missing');
+            return;
+        }
+
+        const originalSections = normalizeCrudListPayload<any>(sectionList.data)
             .filter((section) => section.pageId === page.id)
             .sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder));
-        const allFeatures = (featureList.data?.data ?? []) as any[];
-        const allActions = (actionList.data?.data ?? []) as any[];
+        const allFeatures = normalizeCrudListPayload<any>(featureList.data);
+        const allActions = normalizeCrudListPayload<any>(actionList.data);
 
         for (const section of originalSections) {
             const createdSection = await createSection.mutateAsync({
@@ -77,10 +105,16 @@ export function AdminPagesListPage() {
                 title: section.title,
                 subtitle: section.subtitle,
                 body: section.body,
+                mediaUrl: section.mediaUrl,
+                mediaAlt: section.mediaAlt,
                 enabled: section.enabled,
                 sortOrder: section.sortOrder,
             });
-            const newSectionId = (createdSection as any)?.data?.id;
+            const createdSectionRecord = extractCrudMutationRecord<any>(createdSection);
+            const newSectionId = createdSectionRecord?.id;
+            if (!newSectionId) {
+                continue;
+            }
 
             for (const feature of allFeatures.filter((item) => item.sectionId === section.id)) {
                 await createFeature.mutateAsync({
@@ -92,6 +126,8 @@ export function AdminPagesListPage() {
                     description: feature.description,
                     icon: feature.icon,
                     link: feature.link,
+                    mediaUrl: feature.mediaUrl,
+                    mediaAlt: feature.mediaAlt,
                     sortOrder: feature.sortOrder,
                 });
             }
@@ -114,6 +150,15 @@ export function AdminPagesListPage() {
 
         toast.success('Page duplicated with blocks');
         await listQuery.refetch();
+        setDuplicatingPageId(null);
+    };
+
+    const onDeletePage = async (page: any) => {
+        setDeletingPageId(String(page.id));
+        await deletePage.mutateAsync(page.id);
+        toast.success('Page deleted');
+        await listQuery.refetch();
+        setDeletingPageId(null);
     };
 
     return (
@@ -153,17 +198,19 @@ export function AdminPagesListPage() {
                                         <FileText className="mr-1 h-4 w-4" /> Builder
                                     </Link>
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => onDuplicate(page)}>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setDuplicateDialogPage(page)}
+                                    disabled={duplicatingPageId === String(page.id)}
+                                >
                                     <Copy className="mr-1 h-4 w-4" /> Duplicate
                                 </Button>
                                 <Button
                                     size="sm"
                                     variant="destructive"
-                                    onClick={async () => {
-                                        await deletePage.mutateAsync(page.id);
-                                        toast.success('Page deleted');
-                                        await listQuery.refetch();
-                                    }}
+                                    onClick={() => setDeleteDialogPage(page)}
+                                    disabled={deletingPageId === String(page.id)}
                                 >
                                     <Trash2 className="mr-1 h-4 w-4" /> Delete
                                 </Button>
@@ -172,6 +219,71 @@ export function AdminPagesListPage() {
                     </Card>
                 ))}
             </div>
+
+            <AlertDialog
+                open={duplicateDialogPage !== null}
+                onOpenChange={(open) => {
+                    if (!open) setDuplicateDialogPage(null);
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Duplicate Page?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will create a full copy of <strong>{duplicateDialogPage?.title || 'this page'}</strong>{' '}
+                            including all blocks, features, and actions.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={duplicatingPageId !== null}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={async () => {
+                                if (!duplicateDialogPage) return;
+                                try {
+                                    await onDuplicate(duplicateDialogPage);
+                                } finally {
+                                    setDuplicateDialogPage(null);
+                                }
+                            }}
+                            disabled={duplicatingPageId !== null}
+                        >
+                            {duplicatingPageId !== null ? 'Duplicating...' : 'Duplicate'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog
+                open={deleteDialogPage !== null}
+                onOpenChange={(open) => {
+                    if (!open) setDeleteDialogPage(null);
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Page?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete <strong>{deleteDialogPage?.title || 'this page'}</strong>.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deletingPageId !== null}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={async () => {
+                                if (!deleteDialogPage) return;
+                                try {
+                                    await onDeletePage(deleteDialogPage);
+                                } finally {
+                                    setDeleteDialogPage(null);
+                                }
+                            }}
+                            disabled={deletingPageId !== null}
+                        >
+                            {deletingPageId !== null ? 'Deleting...' : 'Delete'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

@@ -36,6 +36,8 @@ export const pageSectionsTable = sqliteTable('page_sections', {
     title: text('title'),
     subtitle: text('subtitle'),
     body: text('body'),
+    mediaUrl: text('media_url'),
+    mediaAlt: text('media_alt'),
     enabled: integer('enabled', { mode: 'boolean' }).default(true).notNull(),
     sortOrder: integer('sort_order').notNull().default(0),
     createdAt: integer('created_at')
@@ -59,6 +61,8 @@ export const pageFeaturesTable = sqliteTable('page_features', {
     description: text('description'),
     icon: text('icon'),
     link: text('link'),
+    mediaUrl: text('media_url'),
+    mediaAlt: text('media_alt'),
     sortOrder: integer('sort_order').notNull().default(0),
     createdAt: integer('created_at')
         .$defaultFn(() => Date.now())

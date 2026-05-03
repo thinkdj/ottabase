@@ -1005,6 +1005,34 @@ const organizationSettingsRoute = new Route({
     ),
 });
 
+const expenseGroupsRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/expenses',
+    component: lazyRouteComponent(() =>
+        import('@/pages/expenses/ExpenseGroupsPage').then((m) => ({
+            default: () => (
+                <ProtectedRoute>
+                    <m.ExpenseGroupsPage />
+                </ProtectedRoute>
+            ),
+        })),
+    ),
+});
+
+const expenseGroupRoute = new Route({
+    getParentRoute: () => rootRoute,
+    path: '/expenses/$groupId',
+    component: lazyRouteComponent(() =>
+        import('@/pages/expenses/ExpenseGroupPage').then((m) => ({
+            default: () => (
+                <ProtectedRoute>
+                    <m.ExpenseGroupPage />
+                </ProtectedRoute>
+            ),
+        })),
+    ),
+});
+
 // User routes
 const userProfileRoute = new Route({
     getParentRoute: () => rootRoute,
@@ -1215,6 +1243,8 @@ const coreRoutes = [
     organizationMembersRoute,
     organizationRegistrationRoute,
     organizationSettingsRoute,
+    expenseGroupsRoute,
+    expenseGroupRoute,
     userProfileRoute,
     ...(MEDIA_LIBRARY_ENABLED ? [userMediaLibraryRoute, adminMediaLibraryRoute] : []),
 ];

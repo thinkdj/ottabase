@@ -11,7 +11,8 @@ type BlockDefinition = {
     fields: Array<{ id: string; label: string; type: 'text' | 'textarea' | 'url' | 'boolean' }>;
 };
 
-export const BLOCK_REGISTRY: BlockDefinition[] = [
+/** Built-in block definitions. Apps can register additional blocks via registerCustomBlock(). */
+const BUILT_IN_BLOCKS: BlockDefinition[] = [
     {
         id: 'hero',
         label: 'Hero',
@@ -56,6 +57,21 @@ export const BLOCK_REGISTRY: BlockDefinition[] = [
         ],
     },
     {
+        id: 'about',
+        label: 'About',
+        category: 'layout',
+        variants: [
+            { id: 'default', label: 'Default' },
+            { id: 'minimal', label: 'Minimal' },
+            { id: 'detailed', label: 'Detailed' },
+        ],
+        fields: [
+            { id: 'title', label: 'Title', type: 'text' },
+            { id: 'subtitle', label: 'Subtitle', type: 'text' },
+            { id: 'body', label: 'Body', type: 'textarea' },
+        ],
+    },
+    {
         id: 'navbar',
         label: 'Navbar',
         category: 'navigation',
@@ -77,6 +93,10 @@ export const BLOCK_REGISTRY: BlockDefinition[] = [
         ],
         fields: [{ id: 'title', label: 'Footer Title', type: 'text' }],
     },
+];
+
+/** Runtime-registered custom blocks from the app. */
+const customBlocks: BlockDefinition[] = [
     {
         id: 'app-value-grid',
         label: 'App: Value Grid',
@@ -89,8 +109,40 @@ export const BLOCK_REGISTRY: BlockDefinition[] = [
     },
 ];
 
+/**
+ * Register a custom block from app code. This allows each app
+ * to extend the block registry with its own components.
+ */
+export function registerCustomBlock(block: BlockDefinition): void {
+    if (!customBlocks.some((b) => b.id === block.id)) {
+        customBlocks.push(block);
+    }
+}
+
+/** Combined block registry (built-in + custom). Dynamically includes runtime-registered blocks. */
+export function getBlockRegistry(): BlockDefinition[] {
+    return [...BUILT_IN_BLOCKS, ...customBlocks];
+}
+
+/** @deprecated Use getBlockRegistry() for a live snapshot. Kept for backward compat. */
+export const BLOCK_REGISTRY = BUILT_IN_BLOCKS;
+
+function modelGet(record: any, key: string): unknown {
+    if (record && typeof record.get === 'function') {
+        return record.get(key);
+    }
+    return record?.[key];
+}
+
+function modelToJson<T extends Record<string, unknown>>(record: any): T {
+    if (record && typeof record.toJSON === 'function') {
+        return record.toJSON() as T;
+    }
+    return (record ?? {}) as T;
+}
+
 export async function handleBlocksRegistry(context: ApiRouteContext): Promise<Response> {
-    return jsonResponse({ blocks: BLOCK_REGISTRY, updatedAt: Date.now() });
+    return jsonResponse({ blocks: getBlockRegistry(), updatedAt: Date.now() });
 }
 
 export async function handleMarketingPageNav(context: ApiRouteContext): Promise<Response> {
@@ -120,43 +172,45 @@ export async function handleMarketingPageBySlug(context: ApiRouteContext, slug: 
         return errorResponse('Page not found', 404);
     }
 
-    const status = String(page.get('status') || 'draft');
+    const status = String(modelGet(page, 'status') || 'draft');
     if (status !== 'published' && !preview) {
         return errorResponse('Page not found', 404);
     }
 
-    const sections = await PageSection.where({ pageId: page.get('id') });
+    const sections = await PageSection.where({ pageId: String(modelGet(page, 'id') || '') });
     const sortedSections = sections
-        .filter((section) => Boolean(section.get('enabled')))
-        .sort((a, b) => Number(a.get('sortOrder')) - Number(b.get('sortOrder')));
+        .filter((section) => Boolean(modelGet(section, 'enabled')))
+        .sort((a, b) => Number(modelGet(a, 'sortOrder')) - Number(modelGet(b, 'sortOrder')));
 
     const fullSections = await Promise.all(
         sortedSections.map(async (section) => {
-            const sectionId = String(section.get('id'));
+            const sectionId = String(modelGet(section, 'id') || '');
             const features = await PageFeature.where({ sectionId });
             const actions = await PageAction.where({ sectionId });
             return {
                 id: sectionId,
-                slot: section.get('slot'),
-                variant: section.get('variant'),
-                title: section.get('title'),
-                subtitle: section.get('subtitle'),
-                body: section.get('body'),
-                enabled: section.get('enabled'),
-                sortOrder: section.get('sortOrder'),
+                slot: modelGet(section, 'slot'),
+                variant: modelGet(section, 'variant'),
+                title: modelGet(section, 'title'),
+                subtitle: modelGet(section, 'subtitle'),
+                body: modelGet(section, 'body'),
+                mediaUrl: modelGet(section, 'mediaUrl'),
+                mediaAlt: modelGet(section, 'mediaAlt'),
+                enabled: modelGet(section, 'enabled'),
+                sortOrder: modelGet(section, 'sortOrder'),
                 features: features
-                    .sort((a, b) => Number(a.get('sortOrder')) - Number(b.get('sortOrder')))
-                    .map((feature) => feature.toJSON()),
+                    .sort((a, b) => Number(modelGet(a, 'sortOrder')) - Number(modelGet(b, 'sortOrder')))
+                    .map((feature) => modelToJson(feature)),
                 actions: actions
-                    .sort((a, b) => Number(a.get('sortOrder')) - Number(b.get('sortOrder')))
-                    .map((action) => action.toJSON()),
+                    .sort((a, b) => Number(modelGet(a, 'sortOrder')) - Number(modelGet(b, 'sortOrder')))
+                    .map((action) => modelToJson(action)),
             };
         }),
     );
 
     return jsonResponse({
         page: {
-            ...page.toJSON(),
+            ...modelToJson(page),
             sections: fullSections,
         },
     });
