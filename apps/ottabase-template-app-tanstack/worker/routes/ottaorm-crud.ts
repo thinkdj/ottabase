@@ -17,6 +17,12 @@ export interface OttaormCrudContext {
     url: URL;
 }
 
+function injectTenantContext(body: Record<string, any>, user: any, securityContext: any) {
+    body.userId = user?.id ?? body.userId ?? null;
+    body.organizationId = securityContext.organizationId ?? null;
+    body.appId = securityContext.appId ?? body.appId ?? 'web';
+}
+
 function isMissingSchemaError(result: { code?: string; error?: string | null }) {
     const message = String(result.error || '').toLowerCase();
     return (
@@ -93,9 +99,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         (crudRequest.body as any).authorId = user?.id ?? (crudRequest.body as any).authorId ?? null;
         (crudRequest.body as any).authorName = user?.name ?? (crudRequest.body as any).authorName ?? null;
         (crudRequest.body as any).authorEmail = user?.email ?? (crudRequest.body as any).authorEmail ?? null;
-        (crudRequest.body as any).userId = user?.id ?? (crudRequest.body as any).userId ?? null;
-        (crudRequest.body as any).organizationId = securityContext.organizationId ?? null;
-        (crudRequest.body as any).appId = securityContext.appId ?? (crudRequest.body as any).appId ?? 'web';
+        injectTenantContext(crudRequest.body as Record<string, any>, user, securityContext);
     }
 
     if (
@@ -116,10 +120,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         crudRequest.body &&
         (crudRequest.method === 'POST' || crudRequest.method === 'PATCH')
     ) {
-        const user = session?.user;
-        (crudRequest.body as any).userId = user?.id ?? (crudRequest.body as any).userId ?? null;
-        (crudRequest.body as any).organizationId = securityContext.organizationId ?? null;
-        (crudRequest.body as any).appId = securityContext.appId ?? (crudRequest.body as any).appId ?? 'web';
+        injectTenantContext(crudRequest.body as Record<string, any>, session?.user, securityContext);
     }
 
     // Inject server-side context for comments (userId + organizationId)

@@ -66,6 +66,13 @@ const CURRENCY_ALIASES: Record<string, string> = {
     pounds: 'GBP',
 };
 
+const MIN_CONFIDENCE = 0.4;
+const BASE_CONFIDENCE = 0.55;
+const FIXED_SPLIT_CONFIDENCE_BOOST = 0.15;
+const EQUAL_SPLIT_CONFIDENCE_BOOST = 0.2;
+// The first few words usually contain the vendor/place before category words like "dinner".
+const MERCHANT_WORD_LIMIT = 3;
+
 function normalizeName(name: string) {
     return name.trim().replace(/\s+/g, ' ');
 }
@@ -195,10 +202,15 @@ export function parseNaturalExpenseInput(input: string, options: ParserOptions =
     const paidByMatch = normalizedInput.match(/\bpaid\s+by\s+([a-z][a-z .'-]*?)(?=\s*,|\s+on\b|$)/i);
     const paidByName = paidByMatch ? canonicalMemberName(paidByMatch[1], knownMembers) : undefined;
     const description = removeParsedFragments(normalizedInput) || 'Expense';
-    const merchant = description.split(/\s+/).slice(0, 3).join(' ');
+    const merchant = description.split(/\s+/).slice(0, MERCHANT_WORD_LIMIT).join(' ');
     const confidence = Math.max(
-        0.4,
-        Math.min(1, 0.55 + (fixedSplits.length ? 0.15 : 0) + (equalSplits.length ? 0.2 : 0)),
+        MIN_CONFIDENCE,
+        Math.min(
+            1,
+            BASE_CONFIDENCE +
+                (fixedSplits.length ? FIXED_SPLIT_CONFIDENCE_BOOST : 0) +
+                (equalSplits.length ? EQUAL_SPLIT_CONFIDENCE_BOOST : 0),
+        ),
     );
 
     return {
