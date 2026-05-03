@@ -115,6 +115,7 @@ export async function handleNaturalExpenseCreate(context: ApiRouteContext, group
         });
         const createdSplit = await ExpenseSplit.create({
             expenseId: expense.get('id'),
+            groupId,
             memberId: member.get('id'),
             appId,
             organizationId,

@@ -141,6 +141,12 @@ function splitNames(value: string, knownMembers: string[]) {
         .map((name) => canonicalMemberName(name, knownMembers));
 }
 
+function extractMerchant(description: string) {
+    const locationMatch = description.match(/\bat\s+(.+)$/i);
+    const source = locationMatch?.[1] || description;
+    return source.split(/\s+/).slice(0, MERCHANT_WORD_LIMIT).join(' ');
+}
+
 export function parseNaturalExpenseInput(input: string, options: ParserOptions = {}): ParsedExpenseInput {
     const now = options.now || new Date();
     const knownMembers = options.knownMembers || [];
@@ -188,6 +194,7 @@ export function parseNaturalExpenseInput(input: string, options: ParserOptions =
         const base = Math.floor(remaining / equalNames.length);
         const remainder = remaining % equalNames.length;
         equalNames.forEach((memberName, index) => {
+            // Keep integer currency units by assigning leftover units to earlier names deterministically.
             equalSplits.push({
                 memberName,
                 amount: base + (index < remainder ? 1 : 0),
@@ -202,7 +209,7 @@ export function parseNaturalExpenseInput(input: string, options: ParserOptions =
     const paidByMatch = normalizedInput.match(/\bpaid\s+by\s+([a-z][a-z .'-]*?)(?=\s*,|\s+on\b|$)/i);
     const paidByName = paidByMatch ? canonicalMemberName(paidByMatch[1], knownMembers) : undefined;
     const description = removeParsedFragments(normalizedInput) || 'Expense';
-    const merchant = description.split(/\s+/).slice(0, MERCHANT_WORD_LIMIT).join(' ');
+    const merchant = extractMerchant(description);
     const confidence = Math.max(
         MIN_CONFIDENCE,
         Math.min(

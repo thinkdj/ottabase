@@ -459,9 +459,14 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
         return handleAuthRegister(context);
     }
 
-    const naturalExpenseMatch = route.match(/^\/api\/expense-groups\/([^/]+)\/natural-expense$/);
-    if (naturalExpenseMatch) {
-        return handleNaturalExpenseCreate(context, decodeURIComponent(naturalExpenseMatch[1]));
+    const expenseRouteParts = route.split('/');
+    if (
+        expenseRouteParts.length === 5 &&
+        expenseRouteParts[1] === 'api' &&
+        expenseRouteParts[2] === 'expense-groups' &&
+        expenseRouteParts[4] === 'natural-expense'
+    ) {
+        return handleNaturalExpenseCreate(context, decodeURIComponent(expenseRouteParts[3]));
     }
 
     if (route === '/api/cloudflare/d1/init') {

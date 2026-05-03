@@ -34,6 +34,7 @@ export interface ExpenseRecord {
 export interface ExpenseSplitRecord {
     id: string;
     expenseId: string;
+    groupId?: string | null;
     memberId: string;
     amount: number;
     splitType: 'fixed' | 'equal' | string;

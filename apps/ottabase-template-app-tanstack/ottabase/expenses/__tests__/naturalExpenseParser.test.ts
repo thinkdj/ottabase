@@ -38,4 +38,12 @@ describe('parseNaturalExpenseInput', () => {
     it('throws when total amount is missing', () => {
         expect(() => parseNaturalExpenseInput('Dinner for Chris')).toThrow('Could not find a total amount');
     });
+
+    it('extracts merchant names after an at phrase', () => {
+        const result = parseNaturalExpenseInput('The dinner at Osaka Haiku on 29 may 10000 yen', {
+            now: new Date(2026, 2, 31),
+        });
+
+        expect(result.merchant).toBe('Osaka Haiku');
+    });
 });

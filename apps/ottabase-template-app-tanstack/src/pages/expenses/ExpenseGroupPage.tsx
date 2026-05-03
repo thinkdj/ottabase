@@ -12,13 +12,12 @@ export function ExpenseGroupPage() {
     const groupQuery = expenseGroupHooks.useDetail(groupId);
     const membersQuery = expenseMemberHooks.useList({ where: { groupId }, orderBy: 'name', orderDirection: 'asc' });
     const expensesQuery = expenseHooks.useList({ where: { groupId }, orderBy: 'expenseDate', orderDirection: 'desc' });
-    const splitsQuery = expenseSplitHooks.useList({ limit: 500 });
+    const splitsQuery = expenseSplitHooks.useList({ where: { groupId }, limit: 500 });
 
     const group = groupQuery.data;
     const members = membersQuery.data || [];
     const expenses = expensesQuery.data || [];
-    const expenseIds = new Set(expenses.map((expense) => expense.id));
-    const splits = (splitsQuery.data || []).filter((split) => expenseIds.has(split.expenseId));
+    const splits = splitsQuery.data || [];
 
     if (groupQuery.isLoading) {
         return <Skeleton className="h-64 w-full" />;

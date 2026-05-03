@@ -65,6 +65,7 @@ export const expenseSplitsTable = sqliteTable('expense_splits', {
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
     expenseId: text('expense_id').notNull(),
+    groupId: text('group_id'),
     memberId: text('member_id').notNull(),
     appId: text('app_id').notNull(),
     organizationId: text('organization_id'),

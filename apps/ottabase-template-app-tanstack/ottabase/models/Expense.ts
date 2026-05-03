@@ -99,6 +99,7 @@ export class ExpenseSplit extends BaseModel {
     protected static fields: ModelFields = {
         id: { type: 'id', primaryKey: true, editable: false },
         expenseId: { type: 'string', editable: true, filterable: true },
+        groupId: { type: 'string', editable: true, filterable: true },
         memberId: { type: 'string', editable: true, filterable: true },
         ...tenantFields,
         amount: { type: 'number', editable: true, sortable: true },
