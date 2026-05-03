@@ -39,6 +39,7 @@ import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { ChangelogEntry } from '../../ottabase/models/ChangelogEntry';
 import { changelogPolicy } from '../../ottabase/models/changelogPolicy';
+import { Expense, ExpenseGroup, ExpenseGroupMember, ExpenseSplit } from '../../ottabase/models/Expense';
 import { MarketingPage, PageAction, PageFeature, PageSection } from '../../ottabase/models/MarketingPage';
 import { marketingPagesPolicies } from '../../ottabase/models/marketingPagesPolicy';
 import { Todo } from '../../ottabase/models/Todo';
@@ -132,7 +133,18 @@ export function initDbConnection(env: CloudflareEnv): void {
         registerPolicy(policy);
     }
 
-    const appModels = [Todo, ChangelogEntry, MarketingPage, PageSection, PageFeature, PageAction];
+    const appModels = [
+        Todo,
+        ChangelogEntry,
+        MarketingPage,
+        PageSection,
+        PageFeature,
+        PageAction,
+        ExpenseGroup,
+        ExpenseGroupMember,
+        Expense,
+        ExpenseSplit,
+    ];
 
     registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
 

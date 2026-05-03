@@ -87,6 +87,7 @@ import {
 import { handleCoreAnalytics } from './core-analytics';
 import { handleAuditLogs, handleDemo, handleDemoError } from './demo';
 import { handleEmailProviders, handleEmailTest } from './email';
+import { handleNaturalExpenseCreate } from './expenses';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
 import { handleMarketingPageBySlug, handleMarketingPageNav, handleBlocksRegistry } from './marketing-pages';
@@ -456,6 +457,11 @@ async function handlePostRoutes(context: ApiRouteContext): Promise<Response | nu
 
     if (route === '/api/auth/register') {
         return handleAuthRegister(context);
+    }
+
+    const naturalExpenseMatch = route.match(/^\/api\/expense-groups\/([^/]+)\/natural-expense$/);
+    if (naturalExpenseMatch) {
+        return handleNaturalExpenseCreate(context, decodeURIComponent(naturalExpenseMatch[1]));
     }
 
     if (route === '/api/cloudflare/d1/init') {
