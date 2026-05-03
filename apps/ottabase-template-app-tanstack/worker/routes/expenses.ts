@@ -3,7 +3,6 @@ import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import type { CloudflareEnv } from '../../cloudflare-env';
 import { Expense, ExpenseGroup, ExpenseGroupMember, ExpenseSplit } from '../../ottabase/models/Expense';
 import { parseNaturalExpenseInput } from '../../ottabase/expenses/naturalExpenseParser';
 import { getAuthOptions, getSecurityContext } from '../lib/auth-utils';
