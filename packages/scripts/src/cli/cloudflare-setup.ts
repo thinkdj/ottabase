@@ -65,6 +65,10 @@ function isInteractive(): boolean {
 }
 
 async function selectResources(force: boolean, appConfig: CloudflareAppConfig): Promise<ResourceId[]> {
+    const { kv } = appConfig.resources;
+    // Build informational suffix for KV to show the binding name stays generic
+    const kvBindingSuffix = kv.binding ? `; binding stays ${kv.binding}` : '';
+
     // Only include resource types that are actually configured in wrangler.jsonc
     const resourceChoices = (
         [
@@ -76,7 +80,8 @@ async function selectResources(force: boolean, appConfig: CloudflareAppConfig): 
             {
                 id: 'kv' as ResourceId,
                 label: 'KV Namespaces',
-                names: [appConfig.resources.kv.production, appConfig.resources.kv.preview],
+                names: [kv.production, kv.preview],
+                suffix: kvBindingSuffix,
             },
             {
                 id: 'r2' as ResourceId,
@@ -91,8 +96,8 @@ async function selectResources(force: boolean, appConfig: CloudflareAppConfig): 
         ] as const
     )
         .filter(({ names }) => names.some(Boolean))
-        .map(({ id, label, names }) => ({
-            name: `${label} (${names.filter(Boolean).join(' + ')})`,
+        .map(({ id, label, names, ...rest }) => ({
+            name: `${label} (${(names as readonly (string | undefined)[]).filter(Boolean).join(' + ')}${'suffix' in rest ? rest.suffix : ''})`,
             value: id,
             checked: true,
         }));
@@ -162,12 +167,15 @@ async function main() {
 
     // ── 1. D1 ─────────────────────────────────────────────────────────────
     if (selectedResources.includes('d1')) {
-        const createOrFindD1 = async (dbName: string): Promise<string> => {
+        const createOrFindD1 = (dbName: string): string => {
             const listOut = runCommand(`${wranglerCmd} d1 list --json`, true);
             const existing = listOut
                 ? extractJson<{ uuid: string; name: string }[]>(listOut).find((db) => db.name === dbName)
                 : null;
-            if (existing) return existing.uuid;
+            if (existing) {
+                log(`  D1 '${dbName}' already exists. ID: ${existing.uuid}`, GREEN);
+                return existing.uuid;
+            }
             const createOut = runCommand(`${wranglerCmd} d1 create ${dbName}`);
             return parseD1CreateOutput(createOut);
         };
@@ -175,8 +183,8 @@ async function main() {
         if (resources.d1.production) {
             log(`Setting up D1 Database '${resources.d1.production}'...`, YELLOW);
             try {
-                d1Id = await createOrFindD1(resources.d1.production);
-                log(`D1 Database ready. ID: ${d1Id}`, GREEN);
+                d1Id = createOrFindD1(resources.d1.production);
+                if (d1Id) log(`Created D1 Database. ID: ${d1Id}`, GREEN);
             } catch (e) {
                 log(`Error setting up D1 Database: ${e instanceof Error ? e.message : String(e)}`, RED);
             }
@@ -185,8 +193,8 @@ async function main() {
         if (resources.d1.preview) {
             log(`Setting up D1 Preview Database '${resources.d1.preview}'...`, YELLOW);
             try {
-                d1PreviewId = await createOrFindD1(resources.d1.preview);
-                log(`D1 Preview Database ready. ID: ${d1PreviewId}`, GREEN);
+                d1PreviewId = createOrFindD1(resources.d1.preview);
+                if (d1PreviewId) log(`Created D1 Preview Database. ID: ${d1PreviewId}`, GREEN);
             } catch (e) {
                 log(`Error setting up D1 Preview Database: ${e instanceof Error ? e.message : String(e)}`, RED);
             }
@@ -201,78 +209,86 @@ async function main() {
         };
 
         /**
-         * Creates or finds a KV namespace.
-         * @param titleToFind   The namespace title to search for in the listing.
-         * @param wranglerArg   The argument(s) passed to `wrangler kv namespace create`.
-         *                      For the preview namespace this is `<baseBinding> --preview`,
-         *                      which wrangler stores under title `<baseBinding>_preview`.
+         * Creates or finds a KV namespace by its Cloudflare title.
+         * @param titleToFind  The namespace title to search for in the listing.
+         * @param createArgs   Arguments for `wrangler kv namespace create`.
+         *                     For the preview namespace: `<title> --preview` — wrangler
+         *                     stores the result under the title `<title>_preview`.
          */
-        const createOrFindKv = (titleToFind: string, wranglerArg: string): string => {
+        const createOrFindKv = (titleToFind: string, createArgs: string): string => {
             let list = getKvList();
             let existing = list.find((ns) => ns.title === titleToFind);
-            if (existing) return existing.id;
+            if (existing) {
+                log(`  KV namespace '${titleToFind}' already exists. ID: ${existing.id}`, GREEN);
+                return existing.id;
+            }
             try {
-                const out = runCommand(`${wranglerCmd} kv namespace create ${wranglerArg}`);
+                const out = runCommand(`${wranglerCmd} kv namespace create ${createArgs}`);
                 return parseKvCreateOutput(out);
             } catch (e) {
                 // Race condition: another process may have created it — re-check
                 list = getKvList();
                 existing = list.find((ns) => ns.title === titleToFind);
-                if (existing) return existing.id;
+                if (existing) {
+                    log(`  KV namespace '${titleToFind}' already exists. ID: ${existing.id}`, GREEN);
+                    return existing.id;
+                }
                 throw e;
             }
         };
 
         if (resources.kv.production) {
-            log(`Setting up KV Namespace '${resources.kv.production}'...`, YELLOW);
+            const bindingNote = resources.kv.binding ? ` (binding ${resources.kv.binding})` : '';
+            log(`Setting up KV namespace '${resources.kv.production}'${bindingNote}...`, YELLOW);
             try {
                 kvId = createOrFindKv(resources.kv.production, resources.kv.production);
-                log(`KV Namespace ready. ID: ${kvId}`, GREEN);
+                if (kvId) log(`Created KV namespace. ID: ${kvId}`, GREEN);
             } catch (e) {
-                log(`Error setting up KV Namespace: ${e instanceof Error ? e.message : String(e)}`, RED);
+                log(`Error setting up KV namespace: ${e instanceof Error ? e.message : String(e)}`, RED);
             }
         }
 
-        // KV preview is derived from the production binding; both can only exist together
+        // KV preview is derived from the production name; both can only exist together
         if (resources.kv.preview && resources.kv.production) {
-            log(`Setting up KV Preview Namespace '${resources.kv.preview}'...`, YELLOW);
+            log(`Setting up KV preview namespace '${resources.kv.preview}'...`, YELLOW);
             try {
+                // Pass the production title + --preview flag; wrangler stores it as <title>_preview
                 kvPreviewId = createOrFindKv(resources.kv.preview, `${resources.kv.production} --preview`);
-                log(`KV Preview Namespace ready. ID: ${kvPreviewId}`, GREEN);
+                if (kvPreviewId) log(`Created KV preview namespace. ID: ${kvPreviewId}`, GREEN);
             } catch (e) {
-                log(`Error setting up KV Preview Namespace: ${e instanceof Error ? e.message : String(e)}`, RED);
+                log(`Error setting up KV preview namespace: ${e instanceof Error ? e.message : String(e)}`, RED);
             }
         }
     }
 
     // ── 3. R2 ─────────────────────────────────────────────────────────────
     if (selectedResources.includes('r2')) {
-        const createOrFindR2 = (bucketName: string): void => {
+        const createOrFindR2 = (bucketName: string, label: string): void => {
             const out = runCommand(`${wranglerCmd} r2 bucket list --json`, true);
-            const existing = out ? extractJson<{ name: string }[]>(out).some((b) => b.name === bucketName) : false;
-            if (existing) {
-                log(`R2 Bucket '${bucketName}' already exists.`, GREEN);
+            const exists = out ? extractJson<{ name: string }[]>(out).some((b) => b.name === bucketName) : false;
+            if (exists) {
+                log(`${label} already exists.`, GREEN);
                 return;
             }
             runCommand(`${wranglerCmd} r2 bucket create ${bucketName}`);
-            log(`R2 Bucket '${bucketName}' created.`, GREEN);
+            log(`${label} created.`, GREEN);
         };
 
         if (resources.r2.production) {
             log(`Setting up R2 Bucket '${resources.r2.production}'...`, YELLOW);
             try {
-                createOrFindR2(resources.r2.production);
+                createOrFindR2(resources.r2.production, `R2 Bucket '${resources.r2.production}'`);
             } catch (e) {
                 log(`Error setting up R2 Bucket: ${e instanceof Error ? e.message : String(e)}`, RED);
             }
         }
 
         if (resources.r2.preview) {
-            log(`Setting up R2 Preview Bucket '${resources.r2.preview}'...`, YELLOW);
+            log(`Setting up R2 preview bucket '${resources.r2.preview}' (for \`wrangler dev --remote\`)...`, YELLOW);
             try {
-                createOrFindR2(resources.r2.preview);
+                createOrFindR2(resources.r2.preview, `R2 preview bucket '${resources.r2.preview}'`);
             } catch (e) {
-                log(`Error setting up R2 Preview Bucket: ${e instanceof Error ? e.message : String(e)}`, RED);
+                log(`Error setting up R2 preview bucket: ${e instanceof Error ? e.message : String(e)}`, RED);
             }
         }
     }
@@ -281,10 +297,10 @@ async function main() {
     if (selectedResources.includes('queue')) {
         const createOrFindQueue = (queueName: string): void => {
             const out = runCommand(`${wranglerCmd} queues list --json`, true);
-            const existing = out
+            const exists = out
                 ? extractJson<{ queue_name: string }[]>(out).some((q) => q.queue_name === queueName)
                 : false;
-            if (existing) {
+            if (exists) {
                 log(`Queue '${queueName}' already exists.`, GREEN);
                 return;
             }
@@ -321,35 +337,34 @@ async function main() {
         }
     }
 
+    // ── Analytics note (only for apps that declare Analytics Engine datasets) ─
+    if (appConfig.analyticsDatasets.length > 0) {
+        log('', NC);
+        log('Analytics Engine (auto-created on first write):', YELLOW);
+        log('  - Dataset is auto-created on first write. No setup is needed.');
+        log('  - For /analytics page, set `CLOUDFLARE_ACCOUNT_ID` (vars) and');
+        log('    `CLOUDFLARE_ANALYTICS_API_TOKEN` (secret) with `Account Analytics` Read permission.');
+    }
+
     // ── Summary ────────────────────────────────────────────────────────────
     log('', NC);
     log('Setup Complete!', GREEN);
     log('', NC);
 
-    if (d1Id || kvId) {
-        log('Production (add to GitHub Secrets):', YELLOW);
-        if (d1Id) log(`  D1_DATABASE_ID=${d1Id}`);
-        if (kvId) log(`  KV_NAMESPACE_ID=${kvId}`);
-        log('', NC);
-    }
+    // Collect all secret key/value pairs in the order they'll appear in GitHub Secrets.
+    // Keys come from wrangler.jsonc env.production/preview placeholders (the actual GitHub secret names).
+    const allSecrets: Array<[string, string]> = [
+        appConfig.secretKeys.d1 && d1Id ? [appConfig.secretKeys.d1, d1Id] : null,
+        appConfig.secretKeys.kv && kvId ? [appConfig.secretKeys.kv, kvId] : null,
+        appConfig.secretKeys.kvPreview && kvPreviewId ? [appConfig.secretKeys.kvPreview, kvPreviewId] : null,
+        appConfig.secretKeys.d1Preview && d1PreviewId ? [appConfig.secretKeys.d1Preview, d1PreviewId] : null,
+    ].filter((pair): pair is [string, string] => pair !== null);
 
-    if (d1PreviewId || kvPreviewId) {
-        log('Preview (add to GitHub Secrets):', YELLOW);
-        if (d1PreviewId) log(`  D1_PREVIEW_DATABASE_ID=${d1PreviewId}`);
-        if (kvPreviewId) log(`  KV_PREVIEW_NAMESPACE_ID=${kvPreviewId}`);
-        log('', NC);
-    }
-
-    // Show analytics note only for apps that declare Analytics Engine datasets
-    if (appConfig.analyticsDatasets.length > 0) {
-        log('Analytics Engine datasets (auto-created on first write):', YELLOW);
-        for (const dataset of appConfig.analyticsDatasets) {
-            log(`  • ${dataset}`);
+    if (allSecrets.length > 0) {
+        log('GitHub Actions secrets (add to repo Settings → Secrets):', YELLOW);
+        for (const [key, value] of allSecrets) {
+            log(`  ${key}=${value}`);
         }
-        log(
-            '  Set CLOUDFLARE_ACCOUNT_ID (var) and CLOUDFLARE_ANALYTICS_API_TOKEN (secret) for the /analytics page.',
-            NC,
-        );
         log('', NC);
     }
 

@@ -37,7 +37,7 @@ function runCommand(command: string): string {
  * handle everything including brackets inside string values.
  * Returns an empty array on any parse failure so callers can always iterate safely.
  */
-function parseWranglerJson<T>(output: string): T[] {
+function parseWranglerJsonArray<T>(output: string): T[] {
     const start = output.indexOf('[');
     if (start === -1) return [];
     try {
@@ -125,7 +125,7 @@ async function main() {
 
     // D1
     if (resources.d1.production || resources.d1.preview) {
-        const d1Records = parseWranglerJson<{ name: string; uuid: string }>(
+        const d1Records = parseWranglerJsonArray<{ name: string; uuid: string }>(
             runCommand(`${wranglerCmd} d1 list --json`),
         );
         const d1Names = new Set(d1Records.map((r) => r.name));
@@ -150,16 +150,18 @@ async function main() {
 
     // KV — wrangler returns JSON even without --json flag
     if (resources.kv.production || resources.kv.preview) {
-        const kvRecords = parseWranglerJson<{ id: string; title: string }>(
+        const kvRecords = parseWranglerJsonArray<{ id: string; title: string }>(
             runCommand(`${wranglerCmd} kv namespace list`),
         );
         const kvTitles = new Set(kvRecords.map((r) => r.title));
 
+        const kvBindingNote = resources.kv.binding ? ` (binding ${resources.kv.binding})` : '';
+
         if (resources.kv.production) {
             if (kvTitles.has(resources.kv.production)) {
-                log(`✓ KV Namespace: ${resources.kv.production}`, GREEN);
+                log(`✓ KV Namespace: ${resources.kv.production}${kvBindingNote}`, GREEN);
             } else {
-                log(`✗ KV Namespace: ${resources.kv.production} not found — run: pnpm cf:setup`, RED);
+                log(`✗ KV Namespace: ${resources.kv.production}${kvBindingNote} not found — run: pnpm cf:setup`, RED);
                 hasErrors = true;
             }
         }
@@ -175,7 +177,7 @@ async function main() {
 
     // R2
     if (resources.r2.production || resources.r2.preview) {
-        const r2Records = parseWranglerJson<{ name: string }>(runCommand(`${wranglerCmd} r2 bucket list --json`));
+        const r2Records = parseWranglerJsonArray<{ name: string }>(runCommand(`${wranglerCmd} r2 bucket list --json`));
         const r2Names = new Set(r2Records.map((r) => r.name));
 
         if (resources.r2.production) {
@@ -198,7 +200,9 @@ async function main() {
 
     // Queue
     if (resources.queue.production || resources.queue.preview) {
-        const queueRecords = parseWranglerJson<{ queue_name: string }>(runCommand(`${wranglerCmd} queues list --json`));
+        const queueRecords = parseWranglerJsonArray<{ queue_name: string }>(
+            runCommand(`${wranglerCmd} queues list --json`),
+        );
         const queueNames = new Set(queueRecords.map((r) => r.queue_name));
 
         if (resources.queue.production) {
