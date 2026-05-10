@@ -22,24 +22,37 @@ afterEach(() => {
 });
 
 describe('cloudflare app config', () => {
-    it('reads app names from --app flags', () => {
+    it('reads --app flag values', () => {
         expect(getCliArgValue(['--app', 'otta-landing'], 'app')).toBe('otta-landing');
         expect(getCliArgValue(['--force', '--app=otta-web'], 'app')).toBe('otta-web');
         expect(getCliArgValue(['--force'], 'app')).toBeUndefined();
+        // --app= with empty value
+        expect(getCliArgValue(['--app='], 'app')).toBe('');
+        // --app followed by another flag (no value) should return undefined
+        expect(getCliArgValue(['--app', '--force'], 'app')).toBeUndefined();
     });
 
-    it('extracts resource names from wrangler.jsonc', () => {
+    it('extracts resource names from wrangler.jsonc with env.production overrides', () => {
         const cwd = makeTempApp(
             'custom-app',
             `{
-                // top-level defaults
-                "d1_databases": [{ "binding": "DB", "database_name": "custom-db", "preview_database_id": "preview" }],
+                // top-level defaults (local dev)
+                "d1_databases": [{ "binding": "DB", "database_name": "custom-db" }],
                 "kv_namespaces": [{ "binding": "CUSTOM_KV", "id": "YOUR_KV_NAMESPACE_ID", "preview_id": "YOUR_KV_PREVIEW_ID" }],
                 "r2_buckets": [{ "binding": "FILES", "bucket_name": "custom-bucket", "preview_bucket_name": "custom-bucket-preview" }],
                 "queues": { "producers": [{ "binding": "QUEUE", "queue": "custom-queue" }] },
+                "analytics_engine_datasets": [{ "binding": "AE", "dataset": "custom_events" }],
                 "env": {
+                    "production": {
+                        "d1_databases": [{ "binding": "DB", "database_name": "custom-db" }],
+                        "kv_namespaces": [{ "binding": "CUSTOM_KV", "id": "KV_NAMESPACE_ID" }],
+                        "r2_buckets": [{ "binding": "FILES", "bucket_name": "custom-bucket" }],
+                        "queues": { "producers": [{ "binding": "QUEUE", "queue": "custom-queue" }] },
+                    },
                     "preview": {
                         "d1_databases": [{ "binding": "DB", "database_name": "custom-db-preview" }],
+                        "kv_namespaces": [{ "binding": "CUSTOM_KV", "id": "KV_PREVIEW_NAMESPACE_ID" }],
+                        "r2_buckets": [{ "binding": "FILES", "bucket_name": "custom-bucket-preview" }],
                         "queues": { "producers": [{ "binding": "QUEUE", "queue": "custom-queue-preview" }] },
                     },
                 },
@@ -48,34 +61,35 @@ describe('cloudflare app config', () => {
 
         const config = getCloudflareAppConfig('custom-app', cwd);
 
-        expect(config.resources.d1).toEqual({
-            production: 'custom-db',
-            preview: 'custom-db-preview',
-        });
-        expect(config.resources.kv).toEqual({
-            production: 'CUSTOM_KV',
-            preview: 'CUSTOM_KV_preview',
-        });
-        expect(config.resources.r2).toEqual({
-            production: 'custom-bucket',
-            preview: 'custom-bucket-preview',
-        });
-        expect(config.resources.queue).toEqual({
-            production: 'custom-queue',
-            preview: 'custom-queue-preview',
-        });
+        expect(config.resources.d1).toEqual({ production: 'custom-db', preview: 'custom-db-preview' });
+        expect(config.resources.kv).toEqual({ production: 'CUSTOM_KV', preview: 'CUSTOM_KV_preview' });
+        expect(config.resources.r2).toEqual({ production: 'custom-bucket', preview: 'custom-bucket-preview' });
+        expect(config.resources.queue).toEqual({ production: 'custom-queue', preview: 'custom-queue-preview' });
+        expect(config.analyticsDatasets).toEqual(['custom_events']);
     });
 
-    it('returns empty managed resources for apps without D1/KV/R2/Queue bindings', () => {
+    it('no KV preview when env.preview has no kv_namespaces', () => {
+        const cwd = makeTempApp(
+            'no-kv-preview',
+            `{
+                "kv_namespaces": [{ "binding": "MY_KV", "id": "YOUR_ID" }],
+                "env": {
+                    "preview": { "vars": { "ENV": "preview" } },
+                },
+            }`,
+        );
+        const config = getCloudflareAppConfig('no-kv-preview', cwd);
+        expect(config.resources.kv).toEqual({ production: 'MY_KV', preview: undefined });
+    });
+
+    it('returns empty resources for apps without D1/KV/R2/Queue bindings', () => {
         const cwd = makeTempApp(
             'landing-like',
             `{
                 "name": "landing-like",
                 "assets": { "directory": "dist", "binding": "ASSETS" },
                 "env": {
-                    "preview": {
-                        "assets": { "directory": "dist", "binding": "ASSETS" },
-                    },
+                    "preview": { "assets": { "directory": "dist", "binding": "ASSETS" } },
                 },
             }`,
         );
@@ -88,5 +102,10 @@ describe('cloudflare app config', () => {
             r2: { production: undefined, preview: undefined },
             queue: { production: undefined, preview: undefined },
         });
+        expect(config.analyticsDatasets).toEqual([]);
+    });
+
+    it('throws when wrangler.jsonc is missing', () => {
+        expect(() => getCloudflareAppConfig('nonexistent', '/tmp')).toThrow('wrangler.jsonc not found');
     });
 });
