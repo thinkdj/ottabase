@@ -48,10 +48,10 @@ export function getCliArgValue(args: string[], name: string): string | undefined
     const exact = `--${name}`;
     const withValue = `--${name}=`;
 
-    for (let index = 0; index < args.length; index++) {
-        const arg = args[index];
+    for (let argIndex = 0; argIndex < args.length; argIndex++) {
+        const arg = args[argIndex];
         if (arg === exact) {
-            const next = args[index + 1];
+            const next = args[argIndex + 1];
             return next && !next.startsWith('--') ? next : undefined;
         }
         if (arg.startsWith(withValue)) {
@@ -67,9 +67,9 @@ function stripJsonComments(input: string): string {
     let inString = false;
     let isEscaped = false;
 
-    for (let index = 0; index < input.length; index++) {
-        const current = input[index];
-        const next = input[index + 1];
+    for (let charIndex = 0; charIndex < input.length; charIndex++) {
+        const current = input[charIndex];
+        const next = input[charIndex + 1];
 
         if (inString) {
             output += current;
@@ -90,19 +90,19 @@ function stripJsonComments(input: string): string {
         }
 
         if (current === '/' && next === '/') {
-            while (index < input.length && input[index] !== '\n') {
-                index++;
+            while (charIndex < input.length && input[charIndex] !== '\n') {
+                charIndex++;
             }
-            if (index < input.length) output += input[index];
+            if (charIndex < input.length) output += input[charIndex];
             continue;
         }
 
         if (current === '/' && next === '*') {
-            index += 2;
-            while (index < input.length && !(input[index] === '*' && input[index + 1] === '/')) {
-                index++;
+            charIndex += 2;
+            while (charIndex < input.length && !(input[charIndex] === '*' && input[charIndex + 1] === '/')) {
+                charIndex++;
             }
-            index++;
+            charIndex++;
             continue;
         }
 
@@ -117,8 +117,8 @@ function stripTrailingCommas(input: string): string {
     let inString = false;
     let isEscaped = false;
 
-    for (let index = 0; index < input.length; index++) {
-        const current = input[index];
+    for (let charIndex = 0; charIndex < input.length; charIndex++) {
+        const current = input[charIndex];
 
         if (inString) {
             output += current;
@@ -139,7 +139,7 @@ function stripTrailingCommas(input: string): string {
         }
 
         if (current === ',') {
-            let lookAheadIndex = index + 1;
+            let lookAheadIndex = charIndex + 1;
             while (lookAheadIndex < input.length && /\s/.test(input[lookAheadIndex])) {
                 lookAheadIndex++;
             }
@@ -193,7 +193,10 @@ export function getCloudflareAppConfig(appName: string, cwd: string = process.cw
         wranglerCmd: `pnpm --dir "${appDir}" exec wrangler`,
         resources: {
             d1: {
-                production: getFirstDefined(production?.d1_databases?.[0]?.database_name, config.d1_databases?.[0]?.database_name),
+                production: getFirstDefined(
+                    production?.d1_databases?.[0]?.database_name,
+                    config.d1_databases?.[0]?.database_name,
+                ),
                 preview: preview?.d1_databases?.[0]?.database_name,
             },
             kv: {
@@ -201,8 +204,14 @@ export function getCloudflareAppConfig(appName: string, cwd: string = process.cw
                 preview: kvBinding && hasPreviewKv ? `${kvBinding}_preview` : undefined,
             },
             r2: {
-                production: getFirstDefined(production?.r2_buckets?.[0]?.bucket_name, config.r2_buckets?.[0]?.bucket_name),
-                preview: getFirstDefined(preview?.r2_buckets?.[0]?.bucket_name, config.r2_buckets?.[0]?.preview_bucket_name),
+                production: getFirstDefined(
+                    production?.r2_buckets?.[0]?.bucket_name,
+                    config.r2_buckets?.[0]?.bucket_name,
+                ),
+                preview: getFirstDefined(
+                    preview?.r2_buckets?.[0]?.bucket_name,
+                    config.r2_buckets?.[0]?.preview_bucket_name,
+                ),
             },
             queue: {
                 production: getFirstDefined(getQueueName(production), getQueueName(config)),
