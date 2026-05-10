@@ -24,9 +24,13 @@ use as GitHub Secrets. Does **not** modify `wrangler.jsonc`.
 ```bash
 pnpm cf:setup          # Interactive: select resources to create
 pnpm cf:setup --force  # Create all resources without prompts
+pnpm cf:setup --app otta-web
 ```
 
-**Output includes IDs for:**
+By default the CLI reads `apps/otta-web/wrangler.jsonc`. Use `--app <app-name>` (or `--app=<app-name>`) to target a
+different app and read its D1/KV/R2/Queue names from `apps/<app-name>/wrangler.jsonc`.
+
+**Output includes IDs for the targeted app's configured resources:**
 
 - `D1_DATABASE_ID` — Production D1 database
 - `D1_PREVIEW_DATABASE_ID` — Preview D1 database
@@ -39,7 +43,11 @@ Validates that all resources in `wrangler.jsonc` exist in your Cloudflare accoun
 
 ```bash
 pnpm cf:validate
+pnpm cf:validate --app otta-web
 ```
+
+Like `cf:setup`, validation reads resource names from `apps/<app-name>/wrangler.jsonc` instead of assuming
+`ottabase-*` names.
 
 ## DB Schema CLI
 

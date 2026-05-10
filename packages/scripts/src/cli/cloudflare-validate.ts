@@ -1,7 +1,7 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
-import path from 'path';
 import readline from 'readline';
+import { getCliArgValue, getCloudflareAppConfig } from './cloudflare-app-config';
 
 const GREEN = '\x1b[32m';
 const YELLOW = '\x1b[33m';
@@ -33,9 +33,12 @@ function runCommand(command: string): string {
 
 async function main() {
     const force = process.argv.includes('--force');
+    const appName = getCliArgValue(process.argv.slice(2), 'app') || 'otta-web';
+    const appConfig = getCloudflareAppConfig(appName);
 
     log('', NC);
     log(`${BOLD}cf:validate - Cloudflare Configuration Check${NC}`);
+    log(`App: ${appConfig.appName}`, YELLOW);
     log('', NC);
     log('This will verify:', YELLOW);
     log('  • Cloudflare authentication');
@@ -60,16 +63,15 @@ async function main() {
 
     let hasErrors = false;
     let hasWarnings = false;
-
-    const wranglerPath = path.join(process.cwd(), 'apps', 'otta-web', 'wrangler.jsonc');
+    const wranglerPath = appConfig.wranglerPath;
 
     if (!fs.existsSync(wranglerPath)) {
         log(`Error: ${wranglerPath} not found.`, RED);
         process.exit(1);
     }
 
-    const wranglerContent = fs.readFileSync(wranglerPath, 'utf8');
-    const wranglerCmd = 'pnpm --filter @ottabase/otta-web exec wrangler';
+    const wranglerContent = appConfig.wranglerContent;
+    const wranglerCmd = appConfig.wranglerCmd;
 
     // Check wrangler login
     log('Checking Cloudflare authentication...', YELLOW);
@@ -101,47 +103,109 @@ async function main() {
     // Verify D1
     log('', NC);
     log('Checking Cloudflare resources...', YELLOW);
-    const d1List = runCommand(`${wranglerCmd} d1 list --json`);
-    if (d1List.includes('ottabase-db')) {
-        log('✓ D1 Database: ottabase-db', GREEN);
-    } else {
-        log('✗ D1 Database: ottabase-db not found', RED);
-        hasErrors = true;
+    if (appConfig.resources.d1.production || appConfig.resources.d1.preview) {
+        const d1List = runCommand(`${wranglerCmd} d1 list --json`);
+
+        if (appConfig.resources.d1.production) {
+            if (d1List.includes(appConfig.resources.d1.production)) {
+                log(`✓ D1 Database: ${appConfig.resources.d1.production}`, GREEN);
+            } else {
+                log(`✗ D1 Database: ${appConfig.resources.d1.production} not found`, RED);
+                hasErrors = true;
+            }
+        }
+
+        if (appConfig.resources.d1.preview) {
+            if (d1List.includes(appConfig.resources.d1.preview)) {
+                log(`✓ D1 Preview Database: ${appConfig.resources.d1.preview}`, GREEN);
+            } else {
+                log(`⚠ D1 Preview Database: ${appConfig.resources.d1.preview} not found`, YELLOW);
+                hasWarnings = true;
+            }
+        }
     }
 
     // Verify KV
-    const kvList = runCommand(`${wranglerCmd} kv namespace list`);
-    if (kvList.includes('OBCF_KV')) {
-        log('✓ KV Namespace: OBCF_KV', GREEN);
-    } else {
-        log('✗ KV Namespace: OBCF_KV not found', RED);
-        hasErrors = true;
+    if (appConfig.resources.kv.production || appConfig.resources.kv.preview) {
+        const kvList = runCommand(`${wranglerCmd} kv namespace list`);
+
+        if (appConfig.resources.kv.production) {
+            if (kvList.includes(appConfig.resources.kv.production)) {
+                log(`✓ KV Namespace: ${appConfig.resources.kv.production}`, GREEN);
+            } else {
+                log(`✗ KV Namespace: ${appConfig.resources.kv.production} not found`, RED);
+                hasErrors = true;
+            }
+        }
+
+        if (appConfig.resources.kv.preview) {
+            if (kvList.includes(appConfig.resources.kv.preview)) {
+                log(`✓ KV Preview Namespace: ${appConfig.resources.kv.preview}`, GREEN);
+            } else {
+                log(`⚠ KV Preview Namespace: ${appConfig.resources.kv.preview} not found`, YELLOW);
+                hasWarnings = true;
+            }
+        }
     }
 
     // Verify R2
-    const r2List = runCommand(`${wranglerCmd} r2 bucket list --json`);
-    if (r2List.includes('ottabase-bucket')) {
-        log('✓ R2 Bucket: ottabase-bucket', GREEN);
-    } else {
-        log('✗ R2 Bucket: ottabase-bucket not found', RED);
-        hasErrors = true;
-    }
+    if (appConfig.resources.r2.production || appConfig.resources.r2.preview) {
+        const r2List = runCommand(`${wranglerCmd} r2 bucket list --json`);
 
-    // Verify R2 Preview
-    if (r2List.includes('ottabase-bucket-preview')) {
-        log('✓ R2 Preview Bucket: ottabase-bucket-preview', GREEN);
-    } else {
-        log('⚠ R2 Preview Bucket: ottabase-bucket-preview not found (optional)', YELLOW);
-        hasWarnings = true;
+        if (appConfig.resources.r2.production) {
+            if (r2List.includes(appConfig.resources.r2.production)) {
+                log(`✓ R2 Bucket: ${appConfig.resources.r2.production}`, GREEN);
+            } else {
+                log(`✗ R2 Bucket: ${appConfig.resources.r2.production} not found`, RED);
+                hasErrors = true;
+            }
+        }
+
+        if (appConfig.resources.r2.preview) {
+            if (r2List.includes(appConfig.resources.r2.preview)) {
+                log(`✓ R2 Preview Bucket: ${appConfig.resources.r2.preview}`, GREEN);
+            } else {
+                log(`⚠ R2 Preview Bucket: ${appConfig.resources.r2.preview} not found (optional)`, YELLOW);
+                hasWarnings = true;
+            }
+        }
     }
 
     // Verify Queue
-    const queueList = runCommand(`${wranglerCmd} queues list --json`);
-    if (queueList.includes('ottabase-queue')) {
-        log('✓ Queue: ottabase-queue', GREEN);
-    } else {
-        log('✗ Queue: ottabase-queue not found', RED);
-        hasErrors = true;
+    if (appConfig.resources.queue.production || appConfig.resources.queue.preview) {
+        const queueList = runCommand(`${wranglerCmd} queues list --json`);
+
+        if (appConfig.resources.queue.production) {
+            if (queueList.includes(appConfig.resources.queue.production)) {
+                log(`✓ Queue: ${appConfig.resources.queue.production}`, GREEN);
+            } else {
+                log(`✗ Queue: ${appConfig.resources.queue.production} not found`, RED);
+                hasErrors = true;
+            }
+        }
+
+        if (appConfig.resources.queue.preview) {
+            if (queueList.includes(appConfig.resources.queue.preview)) {
+                log(`✓ Preview Queue: ${appConfig.resources.queue.preview}`, GREEN);
+            } else {
+                log(`⚠ Preview Queue: ${appConfig.resources.queue.preview} not found`, YELLOW);
+                hasWarnings = true;
+            }
+        }
+    }
+
+    if (
+        !appConfig.resources.d1.production &&
+        !appConfig.resources.d1.preview &&
+        !appConfig.resources.kv.production &&
+        !appConfig.resources.kv.preview &&
+        !appConfig.resources.r2.production &&
+        !appConfig.resources.r2.preview &&
+        !appConfig.resources.queue.production &&
+        !appConfig.resources.queue.preview
+    ) {
+        log('No managed D1/KV/R2/Queue resources found in wrangler.jsonc.', YELLOW);
+        hasWarnings = true;
     }
 
     // Summary
