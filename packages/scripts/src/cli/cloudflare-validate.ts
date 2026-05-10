@@ -223,6 +223,11 @@ async function main() {
         }
     }
 
+    // Workers AI — auto-provided; just confirm the binding is declared in wrangler.jsonc
+    if (appConfig.aiBinding) {
+        log(`✓ Workers AI: ${appConfig.aiBinding} (auto-provided by Cloudflare — no setup needed)`, GREEN);
+    }
+
     // ── Summary ──────────────────────────────────────────────────────────────
     log('', NC);
     if (hasErrors) {

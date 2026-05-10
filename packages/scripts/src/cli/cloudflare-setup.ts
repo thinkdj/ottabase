@@ -346,6 +346,15 @@ async function main() {
         log('    `CLOUDFLARE_ANALYTICS_API_TOKEN` (secret) with `Account Analytics` Read permission.');
     }
 
+    // ── AI note (only for apps that declare the Workers AI binding) ──────────
+    if (appConfig.aiBinding) {
+        log('', NC);
+        log(`Workers AI (${appConfig.aiBinding}):`, YELLOW);
+        log('  - Auto-provided by Cloudflare. No resource creation needed.');
+        log('  - Enable the "Workers AI" plan in the Cloudflare dashboard if not already done.');
+        log('  - @see https://developers.cloudflare.com/workers-ai/');
+    }
+
     // ── Summary ────────────────────────────────────────────────────────────
     log('', NC);
     log('Setup Complete!', GREEN);

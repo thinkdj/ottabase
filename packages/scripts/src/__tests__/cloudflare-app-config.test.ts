@@ -77,6 +77,7 @@ describe('cloudflare app config', () => {
         });
 
         expect(config.analyticsDatasets).toEqual(['custom_events']);
+        expect(config.aiBinding).toBeUndefined(); // not declared in this fixture
 
         // Secret keys are read from env.production/preview ALL_CAPS placeholder values
         expect(config.secretKeys).toEqual({
@@ -143,6 +144,32 @@ describe('cloudflare app config', () => {
         expect(config.analyticsDatasets).toEqual([]);
         // No env.production placeholders → no secret keys
         expect(config.secretKeys).toEqual({ d1: undefined, d1Preview: undefined, kv: undefined, kvPreview: undefined });
+        expect(config.aiBinding).toBeUndefined();
+    });
+
+    it('reads Workers AI binding from the top-level ai field', () => {
+        const cwd = makeTempApp(
+            'ai-app',
+            `{
+                "name": "ai-app",
+                "ai": { "binding": "OBCF_AI" },
+                "kv_namespaces": [{ "binding": "OBCF_KV", "id": "YOUR_KV_ID" }],
+            }`,
+        );
+        const config = getCloudflareAppConfig('ai-app', cwd);
+        expect(config.aiBinding).toBe('OBCF_AI');
+    });
+
+    it('aiBinding is undefined when ai field is absent', () => {
+        const cwd = makeTempApp(
+            'no-ai-app',
+            `{
+                "name": "no-ai-app",
+                "kv_namespaces": [{ "binding": "OBCF_KV", "id": "YOUR_KV_ID" }],
+            }`,
+        );
+        const config = getCloudflareAppConfig('no-ai-app', cwd);
+        expect(config.aiBinding).toBeUndefined();
     });
 
     it('filters out non-ALL_CAPS values from secretKeys (UUIDs, YOUR_* stay as undefined)', () => {

@@ -8,6 +8,7 @@ type WranglerKv = { binding?: string; id?: string; preview_id?: string };
 type WranglerR2 = { binding?: string; bucket_name?: string; preview_bucket_name?: string };
 type WranglerQueue = { binding?: string; queue?: string };
 type WranglerAnalytics = { binding?: string; dataset?: string };
+type WranglerAi = { binding?: string };
 
 type WranglerEnv = {
     d1_databases?: WranglerD1[];
@@ -19,6 +20,8 @@ type WranglerEnv = {
 
 type WranglerConfig = WranglerEnv & {
     name?: string;
+    /** Workers AI binding — declared at top-level only; auto-provided by Cloudflare. */
+    ai?: WranglerAi;
     env?: { production?: WranglerEnv; preview?: WranglerEnv };
 };
 
@@ -50,6 +53,12 @@ export type CloudflareAppConfig = {
     };
     /** Analytics Engine dataset names declared in wrangler.jsonc (auto-created; no setup needed). */
     analyticsDatasets: string[];
+    /**
+     * Workers AI binding name (`ai.binding` in wrangler.jsonc), if declared.
+     * Auto-provided by Cloudflare — no resource creation needed.
+     * @see https://developers.cloudflare.com/workers-ai/
+     */
+    aiBinding?: string;
     /**
      * GitHub Secret names for each managed resource ID, read from the ALL_CAPS placeholder values
      * in `env.production` / `env.preview` of wrangler.jsonc. These are what you add to
@@ -228,6 +237,9 @@ export function getCloudflareAppConfig(appName: string, cwd: string = process.cw
     const allDatasets = [...(config.analytics_engine_datasets ?? []), ...(prod?.analytics_engine_datasets ?? [])];
     const analyticsDatasets = [...new Set(allDatasets.map((d) => d.dataset).filter((d): d is string => !!d))];
 
+    // Workers AI: declared at top-level only; auto-provided by Cloudflare (no resource creation needed)
+    const aiBinding = config.ai?.binding;
+
     // GitHub Secret names: read from env.production/preview placeholder values (ALL_CAPS_SNAKE_CASE).
     // These are the secret names you add to GitHub → Settings → Secrets so CI substitutes real IDs.
     const secretKeys = {
@@ -253,6 +265,7 @@ export function getCloudflareAppConfig(appName: string, cwd: string = process.cw
             queue: { production: queueProd, preview: queuePreview },
         },
         analyticsDatasets,
+        aiBinding,
         secretKeys,
     };
 }
